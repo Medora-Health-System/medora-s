@@ -3,10 +3,12 @@ API Routes for the Electronic Medical Record System
 """
 from flask import jsonify, request
 from datetime import datetime
-from models import Patient, Provider, Appointment, MedicalRecord, Prescription, Allergy
 
 def register_routes(app, db):
     """Register all API routes"""
+    
+    # Import models here to avoid circular imports
+    from models import Patient, Provider, Appointment, MedicalRecord, Prescription, Allergy
     
     # ==================== Patient Routes ====================
     

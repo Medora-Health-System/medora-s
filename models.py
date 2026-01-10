@@ -1,7 +1,7 @@
 """
 Database models for the Electronic Medical Record System
 """
-from app import db
+from database import db
 from datetime import datetime
 
 class Patient(db.Model):

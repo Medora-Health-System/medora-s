@@ -4,7 +4,8 @@ Tests for the Electronic Medical Record System
 import unittest
 import json
 from datetime import datetime, timedelta
-from app import app, db
+from app import app
+from database import db
 from models import Patient, Provider, Appointment, MedicalRecord, Prescription, Allergy
 
 class EMRTestCase(unittest.TestCase):

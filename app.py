@@ -1,22 +1,20 @@
 """
 Electronic Medical Record System - Main Application
 """
-from flask import Flask, jsonify, request, render_template
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template
 from flask_cors import CORS
-from datetime import datetime
-import os
+from database import db
 
+# Initialize Flask app and extensions
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///emr.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
 
 CORS(app)
-db = SQLAlchemy(app)
+db.init_app(app)
 
-# Import models and routes after db initialization
-from models import Patient, Provider, Appointment, MedicalRecord, Prescription, Allergy
+# Import models and routes after db and app initialization
 from routes import register_routes
 
 # Register all routes
