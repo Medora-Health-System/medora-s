@@ -1,4 +1,5 @@
 import { PrismaClient, RoleCode, DepartmentCode, AuditAction } from "@prisma/client";
+import * as argon2 from "argon2";
 
 const prisma = new PrismaClient();
 
@@ -58,7 +59,10 @@ async function main() {
     )
   );
 
-  // Admin user (placeholder; update later via auth/user management)
+  // Admin user (deterministic credentials for local dev)
+  // Username/email: admin@medora.local
+  // Password: Admin123!
+  const passwordHash = await argon2.hash("Admin123!");
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@medora.local" },
     update: { firstName: "Admin", lastName: "User", isActive: true },
@@ -66,7 +70,7 @@ async function main() {
       email: "admin@medora.local",
       firstName: "Admin",
       lastName: "User",
-      passwordHash: "CHANGE_ME",
+      passwordHash,
       isActive: true
     }
   });
