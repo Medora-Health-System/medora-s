@@ -245,13 +245,13 @@
         
         <nav>
             <div class="nav-buttons">
-                <button class="nav-btn active" onclick="showSection('dashboard')">Dashboard</button>
-                <button class="nav-btn" onclick="showSection('patients')">Patients</button>
-                <button class="nav-btn" onclick="showSection('providers')">Providers</button>
-                <button class="nav-btn" onclick="showSection('appointments')">Appointments</button>
-                <button class="nav-btn" onclick="showSection('medical-records')">Medical Records</button>
-                <button class="nav-btn" onclick="showSection('prescriptions')">Prescriptions</button>
-                <button class="nav-btn" onclick="showSection('allergies')">Allergies</button>
+                <button class="nav-btn active" onclick="showSection('dashboard', event)">Dashboard</button>
+                <button class="nav-btn" onclick="showSection('patients', event)">Patients</button>
+                <button class="nav-btn" onclick="showSection('providers', event)">Providers</button>
+                <button class="nav-btn" onclick="showSection('appointments', event)">Appointments</button>
+                <button class="nav-btn" onclick="showSection('medical-records', event)">Medical Records</button>
+                <button class="nav-btn" onclick="showSection('prescriptions', event)">Prescriptions</button>
+                <button class="nav-btn" onclick="showSection('allergies', event)">Allergies</button>
             </div>
         </nav>
         
@@ -435,7 +435,7 @@
     
     <script>
         // Navigation
-        function showSection(sectionId) {
+        function showSection(sectionId, event) {
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
             });
@@ -444,7 +444,9 @@
             });
             
             document.getElementById(sectionId).classList.add('active');
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
             
             // Load data when switching sections
             if (sectionId === 'dashboard') loadDashboard();

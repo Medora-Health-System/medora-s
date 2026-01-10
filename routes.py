@@ -2,7 +2,7 @@
 API Routes for the Electronic Medical Record System
 """
 from flask import jsonify, request
-from datetime import datetime
+from datetime import datetime, timezone
 
 def register_routes(app, db):
     """Register all API routes"""
@@ -82,7 +82,7 @@ def register_routes(app, db):
             if 'emergency_phone' in data:
                 patient.emergency_phone = data['emergency_phone']
             
-            patient.updated_at = datetime.utcnow()
+            patient.updated_at = datetime.now(timezone.utc)
             db.session.commit()
             
             return jsonify(patient.to_dict())
@@ -287,7 +287,7 @@ def register_routes(app, db):
         data = request.json
         
         try:
-            visit_date = datetime.strptime(data['visit_date'], '%Y-%m-%dT%H:%M') if 'visit_date' in data else datetime.utcnow()
+            visit_date = datetime.strptime(data['visit_date'], '%Y-%m-%dT%H:%M') if 'visit_date' in data else datetime.now(timezone.utc)
             
             record = MedicalRecord(
                 patient_id=data['patient_id'],
