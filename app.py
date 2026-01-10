@@ -36,4 +36,6 @@ if __name__ == '__main__':
     init_db()
     
     # Run the application
+    # Note: Debug mode is enabled for development only
+    # In production, set debug=False and use a proper WSGI server
     app.run(debug=True, host='0.0.0.0', port=5000)

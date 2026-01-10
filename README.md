@@ -259,16 +259,19 @@ medora-s/
 
 ## Security Considerations
 
-**Important**: This is a demonstration system. For production use:
-- Implement proper authentication and authorization
-- Use HTTPS for all communications
-- Encrypt sensitive patient data
-- Implement audit logging
-- Follow HIPAA compliance requirements
-- Use environment variables for configuration
-- Implement rate limiting
-- Add input sanitization and validation
-- Regular security audits
+**⚠️ IMPORTANT**: This is a demonstration system. For production use:
+- **Disable Debug Mode**: Set `debug=False` in `app.py`
+- **Use HTTPS**: All communications must be encrypted
+- **Implement Authentication**: Add user authentication and authorization
+- **Use Production WSGI Server**: Deploy with Gunicorn, uWSGI, or similar
+- **Encrypt Sensitive Data**: Encrypt patient data at rest and in transit
+- **Implement Audit Logging**: Track all data access and modifications
+- **Follow HIPAA Compliance**: Ensure all healthcare data regulations are met
+- **Use Environment Variables**: Store secrets and configuration securely
+- **Implement Rate Limiting**: Prevent API abuse
+- **Add Input Sanitization**: Validate and sanitize all user inputs
+- **Regular Security Audits**: Conduct periodic security assessments
+- **Use Strong Secret Key**: Replace the default secret key with a secure random value
 
 ## Contributing
 
