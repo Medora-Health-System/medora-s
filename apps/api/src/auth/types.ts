@@ -1,0 +1,22 @@
+export type JwtPayload = {
+  sub: string; // userId
+  username: string;
+  iss: string;
+  type: "access" | "refresh";
+  jti?: string;
+};
+
+export type FacilityRoleDto = {
+  facilityId: string;
+  role: string;
+  departmentId: string | null;
+};
+
+export type AuthUserDto = {
+  id: string;
+  username: string;
+  fullName: string;
+  preferredLang: string;
+  facilityRoles: FacilityRoleDto[];
+};
+
