@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleCode {
+  ADMIN
+  PROVIDER
+  RN
+  FRONT_DESK
+  LAB
+  RADIOLOGY
+  PHARMACY
+}
+
+enum DepartmentCode {
+  PRIMARY_CARE
+  LAB
+  RAD
+  PHARM
+  INPATIENT
+}
+
+enum SexAtBirth {
+  M
+  F
+  X
+  U
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  VIEW
+  SEED
+}
+
+model Facility {
+  id        String      @id @default(uuid())
+  code      String      @unique
+  name      String
+  country   String
+  timezone  String
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  departments       Department[]
+  userRoles         UserRole[]
+  patientsRegistered Patient[]  @relation("RegisteredAtFacility")
+  auditLogs         AuditLog[]
+}
+
+model Department {
+  id         String         @id @default(uuid())
+  facilityId String
+  code       DepartmentCode
+  name       String
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  facility  Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  userRoles UserRole[]
+
+  @@unique([facilityId, code])
+}
+
+model Role {
+  id        String    @id @default(uuid())
+  code      RoleCode  @unique
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  userRoles UserRole[]
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  firstName    String
+  lastName     String
+  passwordHash String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  userRoles UserRole[]
+  auditLogs AuditLog[]
+}
+
+model UserRole {
+  id           String     @id @default(uuid())
+  userId       String
+  roleId       String
+  facilityId   String
+  departmentId String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  facility   Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([facilityId])
+  @@index([departmentId])
+  @@unique([userId, roleId, facilityId])
+}
+
+model Patient {
+  id                     String      @id @default(uuid())
+  globalMrn              String      @unique
+  firstName              String
+  lastName               String
+  dob                    DateTime?
+  phone                  String?
+  sexAtBirth             SexAtBirth?
+  nationalId             String?
+  registeredAtFacilityId String
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  registeredAtFacility Facility @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id], onDelete: Restrict)
+  auditLogs             AuditLog[]
+
+  @@index([lastName, firstName])
+  @@index([phone])
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  createdAt  DateTime    @default(now())
+  userId     String?
+  facilityId String?
+  patientId  String?
+  ip         String?
+  userAgent  String?
+  entityType String
+  entityId   String?
+  action     AuditAction
+  metadata   Json?
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  facility Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([facilityId])
+  @@index([createdAt])
+}
+
