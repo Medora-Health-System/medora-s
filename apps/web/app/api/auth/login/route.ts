@@ -2,50 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
-
-function normalizeTokens(response: any): { accessToken: string; refreshToken: string } | null {
-  // Handle various response shapes
-  let accessToken: string | undefined;
-  let refreshToken: string | undefined;
-
-  // Case A: { accessToken, refreshToken }
-  if (response.accessToken && response.refreshToken) {
-    accessToken = response.accessToken;
-    refreshToken = response.refreshToken;
-  }
-  // Case B: { access_token, refresh_token }
-  else if (response.access_token && response.refresh_token) {
-    accessToken = response.access_token;
-    refreshToken = response.refresh_token;
-  }
-  // Case C: { data: { accessToken, refreshToken } }
-  else if (response.data?.accessToken && response.data?.refreshToken) {
-    accessToken = response.data.accessToken;
-    refreshToken = response.data.refreshToken;
-  }
-  // Case D: { data: { access_token, refresh_token } }
-  else if (response.data?.access_token && response.data?.refresh_token) {
-    accessToken = response.data.access_token;
-    refreshToken = response.data.refresh_token;
-  }
-  else {
-    // Log unexpected shape for debugging
-    console.error("Unexpected login response shape:", JSON.stringify(response, null, 2));
-    return null;
-  }
-
-  if (!accessToken || !refreshToken) {
-    return null;
-  }
-
-  return { accessToken, refreshToken };
-}
+const API_URL = process.env.MEDORA_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password } = body;
+    
+    // Parse and map username from various possible fields
+    const username = body.username ?? body.email ?? body.identifier ?? body.user ?? "";
+    const password = body.password ?? "";
 
     if (!username || !password) {
       return NextResponse.json(
@@ -54,59 +19,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call backend login endpoint
-    const backendResponse = await fetch(`${API_BASE_URL}/auth/login`, {
+    // Call API login endpoint
+    const r = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
 
-    if (!backendResponse.ok) {
-      const errorData = await backendResponse.json().catch(() => ({ error: "Login failed" }));
-      // Return "Invalid credentials" for 401 errors
-      const errorMessage = backendResponse.status === 401
-        ? "Invalid credentials"
-        : (errorData.error || errorData.message || "Login failed");
+    if (!r.ok) {
+      const errorData = await r.json().catch(() => ({ error: "Login failed" }));
       return NextResponse.json(
-        { error: errorMessage },
-        { status: backendResponse.status }
+        errorData,
+        { status: r.status }
       );
     }
 
-    const backendData = await backendResponse.json();
-    const tokens = normalizeTokens(backendData);
+    const json = await r.json();
 
-    if (!tokens) {
-      return NextResponse.json(
-        { error: "Invalid response from server" },
-        { status: 500 }
-      );
-    }
-
+    // Set HttpOnly cookies
     const cookieStore = await cookies();
     const isProduction = process.env.NODE_ENV === "production";
 
-    // Set access token cookie (15 minutes = 900 seconds)
-    cookieStore.set("medora_access", tokens.accessToken, {
+    cookieStore.set("accessToken", json.accessToken, {
       httpOnly: true,
-      secure: isProduction,
       sameSite: "lax",
+      secure: isProduction,
       path: "/",
       maxAge: 15 * 60, // 15 minutes
     });
 
-    // Set refresh token cookie (7 days = 604800 seconds)
-    cookieStore.set("medora_refresh", tokens.refreshToken, {
+    cookieStore.set("refreshToken", json.refreshToken, {
       httpOnly: true,
-      secure: isProduction,
       sameSite: "lax",
+      secure: isProduction,
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
-    return NextResponse.json({ success: true, user: backendData.user || null });
+    // Return only user, not tokens
+    return NextResponse.json({ user: json.user });
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(

@@ -23,9 +23,9 @@ describe("Auth (e2e)", () => {
 
     const db: any = {
       user: {
-        findFirst: jest.fn(async ({ where }: any): Promise<any> => {
-          if (where?.email === adminEmail && where?.isActive === true) {
-            return {
+        findFirst: jest.fn(async ({ where, include }: any): Promise<any> => {
+          if (where?.email === adminEmail) {
+            const base: any = {
               id: adminId,
               email: adminEmail,
               firstName: "Admin",
@@ -34,6 +34,21 @@ describe("Auth (e2e)", () => {
               refreshTokenHash: null,
               isActive: true
             };
+            if (include?.userRoles) {
+              base.userRoles = [
+                {
+                  id: "ur_1",
+                  facilityId,
+                  departmentId: null,
+                  isActive: true,
+                  roleId: roleAdminId,
+                  userId: adminId,
+                  role: { id: roleAdminId, code: "ADMIN", name: "Admin" },
+                  facility: { id: facilityId, name: "Test Facility" }
+                }
+              ];
+            }
+            return base;
           }
           return null;
         }),

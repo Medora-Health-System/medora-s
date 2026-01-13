@@ -1,8 +1,8 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException, InternalServerErrorException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
-import crypto from "node:crypto";
+import { randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUserDto, JwtPayload } from "./types";
 
@@ -107,41 +107,77 @@ export class AuthService {
   }
 
   async login(username: string, password: string) {
-    try {
-      const user = await this.validateUser(username, password);
+    // Normalize identifier
+    const id = username.toLowerCase().trim();
 
-      const accessPayload: JwtPayload = {
-        sub: user.id,
-        username: user.email,
-        iss: this.issuer(),
-        type: "access",
-        jti: crypto.randomUUID()
-      };
-
-      const refreshPayload: JwtPayload = {
-        sub: user.id,
-        username: user.email,
-        iss: this.issuer(),
-        type: "refresh",
-        jti: crypto.randomUUID()
-      };
-
-      const accessToken = this.signToken(accessPayload, this.accessSecret(), this.accessTtl());
-      const refreshToken = this.signToken(refreshPayload, this.refreshSecret(), this.refreshTtl());
-
-      await this.setRefreshTokenHash(user.id, refreshToken);
-
-      const userDto = await this.buildAuthUserDto(user.id);
-      return { accessToken, refreshToken, user: userDto };
-    } catch (error) {
-      // Re-throw UnauthorizedException as-is (already handled)
-      if (error instanceof UnauthorizedException) {
-        throw error;
+    // Fetch user by email (User model only has email, not username)
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: id
+      },
+      include: {
+        userRoles: {
+          where: { isActive: true },
+          include: { role: true, facility: true }
+        }
       }
-      // For other errors (DB, JWT, etc.), log and throw generic error
-      console.error("Login error:", error);
+    });
+
+    // Debug logging (dev only)
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[LOGIN DEBUG] Identifier: ${id}`);
+      console.log(`[LOGIN DEBUG] User found: ${user ? "yes" : "no"}`);
+      if (user) {
+        console.log(`[LOGIN DEBUG] User ID: ${user.id}, Email: ${user.email}, Active: ${user.isActive}`);
+      }
+    }
+
+    // Check if user exists and has passwordHash
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException("Invalid credentials");
     }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    // Verify password
+    const ok = await argon2.verify(user.passwordHash, password);
+    if (!ok) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[LOGIN DEBUG] Password verification failed`);
+      }
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[LOGIN DEBUG] Password verification succeeded`);
+    }
+
+    const accessPayload: JwtPayload = {
+      sub: user.id,
+      username: user.email,
+      iss: this.issuer(),
+      type: "access",
+      jti: randomUUID()
+    };
+
+    const refreshPayload: JwtPayload = {
+      sub: user.id,
+      username: user.email,
+      iss: this.issuer(),
+      type: "refresh",
+      jti: randomUUID()
+    };
+
+    const accessToken = this.signToken(accessPayload, this.accessSecret(), this.accessTtl());
+    const refreshToken = this.signToken(refreshPayload, this.refreshSecret(), this.refreshTtl());
+
+    await this.setRefreshTokenHash(user.id, refreshToken);
+
+    const userDto = await this.buildAuthUserDto(user.id);
+    return { accessToken, refreshToken, user: userDto };
   }
 
   async refresh(refreshToken: string) {
@@ -175,14 +211,14 @@ export class AuthService {
       username: user.email,
       iss: this.issuer(),
       type: "access",
-      jti: crypto.randomUUID()
+      jti: randomUUID()
     };
     const newRefreshPayload: JwtPayload = {
       sub: user.id,
       username: user.email,
       iss: this.issuer(),
       type: "refresh",
-      jti: crypto.randomUUID()
+      jti: randomUUID()
     };
 
     const accessToken = this.signToken(newAccessPayload, this.accessSecret(), this.accessTtl());

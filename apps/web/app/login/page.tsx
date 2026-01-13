@@ -36,8 +36,9 @@ export default function LoginPage() {
         return;
       }
 
-      // Success - redirect to /app
+      // Success - redirect to /app and refresh
       router.push("/app");
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
       setLoading(false);
