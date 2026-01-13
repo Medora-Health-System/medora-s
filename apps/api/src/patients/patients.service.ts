@@ -113,8 +113,8 @@ export class PatientsService {
       throw new NotFoundException("Patient not found");
     }
 
-    // Audit view
-    await this.audit.log(AuditAction.PATIENT_VIEW, "PATIENT", {
+    // Audit chart open
+    await this.audit.log(AuditAction.CHART_OPEN, "PATIENT", {
       userId,
       facilityId,
       patientId: patient.id,

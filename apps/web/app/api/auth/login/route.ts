@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-const API_URL = process.env.MEDORA_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,6 +55,18 @@ export async function POST(request: NextRequest) {
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
+
+    // Set facilityId cookie from user's first facility role
+    const defaultFacilityId = json.user?.facilityRoles?.[0]?.facilityId;
+    if (defaultFacilityId) {
+      cookieStore.set("facilityId", defaultFacilityId, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: isProduction,
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+      });
+    }
 
     // Return only user, not tokens
     return NextResponse.json({ user: json.user });

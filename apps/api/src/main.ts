@@ -3,7 +3,14 @@ import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule);
+
+  app.enableCors({
+    origin: ["http://localhost:3002"],   // your Next dev server
+    credentials: true,                   // important since you're using cookies
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-facility-id"],
+  });
   
   // Register global exception filter
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -24,7 +31,7 @@ async function bootstrap() {
   });
 
   const port = Number(process.env.PORT ?? 3001);
-  await app.listen(port);
+  await app.listen(port, "0.0.0.0");
 }
 
 void bootstrap();

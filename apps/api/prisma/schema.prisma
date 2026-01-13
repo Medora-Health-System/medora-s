@@ -15,6 +15,7 @@ enum RoleCode {
   LAB
   RADIOLOGY
   PHARMACY
+  BILLING
 }
 
 enum DepartmentCode {
@@ -30,6 +31,27 @@ enum SexAtBirth {
   F
   X
   U
+}
+
+enum PathwayType {
+  STROKE
+  SEPSIS
+  STEMI
+  TRAUMA
+}
+
+enum PathwayStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum PathwayMilestoneStatus {
+  PENDING
+  MET
+  OVERDUE
+  SKIPPED
 }
 
 enum AuditAction {
@@ -49,6 +71,20 @@ enum AuditAction {
   ORDER_CREATE
   ORDER_CANCEL
   ORDER_VIEW
+  CHART_ACCESS
+  ORDER_UPDATE
+  RESULT_UPLOAD
+  MEDICATION_DISPENSED
+  BILLING_FINALIZED
+  CHART_OPEN
+  TRIAGE_SAVE
+  ORDER_ACK
+  ORDER_START
+  ORDER_COMPLETE
+  RESULT_VERIFY
+  CRITICAL_FLAG
+  PATHWAY_ACTIVATED
+  ORDERS_CREATED
 }
 
 enum EncounterType {
@@ -64,11 +100,24 @@ enum EncounterStatus {
   CANCELLED
 }
 
+enum DischargeStatus {
+  DISCHARGED
+  AMA
+  TRANSFERRED
+  DECEASED
+}
+
 enum OrderStatus {
-  PENDING
+  DRAFT
+  PLACED
+  ACKNOWLEDGED
   IN_PROGRESS
   COMPLETED
+  RESULTED
+  VERIFIED
   CANCELLED
+  PENDING
+  SIGNED
 }
 
 enum OrderPriority {
@@ -94,6 +143,10 @@ model Facility {
   encounters        Encounter[]
   orders            Order[]
   auditLogs         AuditLog[]
+  triages           Triage[]
+  results           Result[]
+  pathwaySessions   PathwaySession[]
+  protocolOrderSets ProtocolOrderSet[]
 }
 
 model Department {
@@ -228,6 +281,11 @@ model Encounter {
   chiefComplaint String?
   triageAcuity   Int?
   vitals         Json?
+  nursingAssessment Json?
+  providerNote   String?
+  disposition    String?
+  dischargeStatus DischargeStatus?
+  dischargedAt   DateTime?
 
   notes         String?
 
@@ -238,9 +296,12 @@ model Encounter {
   facility      Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   orders        Order[]
   auditLogs     AuditLog[]      @relation("EncounterAuditLogs")
+  triage        Triage?
+  pathwaySession PathwaySession?
 
   @@index([facilityId])
   @@index([patientId])
+  @@index([status])
 }
 
 model Order {
@@ -252,6 +313,8 @@ model Order {
   priority    OrderPriority @default(ROUTINE)
   notes       String?
   orderedBy   String?
+  source      String?     // "MANUAL", "PROTOCOL"
+  pathwaySessionId String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -259,6 +322,7 @@ model Order {
   facility    Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Restrict)
   patientId   String
+  pathwaySession PathwaySession? @relation(fields: [pathwaySessionId], references: [id], onDelete: SetNull)
   items       OrderItem[]
   auditLogs   AuditLog[]  @relation("OrderAuditLogs")
 
@@ -266,20 +330,70 @@ model Order {
   @@index([facilityId])
   @@index([patientId])
   @@index([status])
+  @@index([pathwaySessionId])
 }
 
 model OrderItem {
-  id              String   @id @default(uuid())
+  id              String      @id @default(uuid())
   orderId         String
   catalogItemId   String
-  catalogItemType String   // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
+  catalogItemType String      // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
   quantity        Int?
   notes           String?
-  createdAt       DateTime @default(now())
+  status          OrderStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  result          Result?
 
   @@index([orderId])
+  @@index([status])
+  @@index([catalogItemType])
+}
+
+model Triage {
+  id              String    @id @default(uuid())
+  encounterId     String    @unique
+  facilityId      String
+  chiefComplaint  String?
+  onsetAt         DateTime?
+  esi             Int?
+  vitalsJson      Json?
+  strokeScreen    Json?
+  sepsisScreen    Json?
+  triageCompleteAt DateTime?
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  encounter       Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  facility        Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([encounterId])
+}
+
+model Result {
+  id                      String    @id @default(uuid())
+  orderItemId             String    @unique
+  facilityId              String
+  resultData              Json?
+  resultText              String?
+  criticalValue           Boolean   @default(false)
+  verifiedByUserId        String?
+  verifiedAt              DateTime?
+  acknowledgedByProviderAt DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  orderItem               OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  facility                Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([orderItemId])
+  @@index([criticalValue])
 }
 
 model CatalogLabTest {
@@ -310,5 +424,88 @@ model CatalogMedication {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model PathwaySession {
+  id          String          @id @default(uuid())
+  encounterId String          @unique
+  facilityId  String
+  type        PathwayType
+  status      PathwayStatus  @default(ACTIVE)
+  contextJson Json?
+  activatedAt DateTime        @default(now())
+  pausedAt    DateTime?
+  completedAt DateTime?
+  activatedBy String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  encounter   Encounter       @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  facility    Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  milestones  PathwayMilestone[]
+  orders      Order[]
+
+  @@index([encounterId])
+  @@index([facilityId])
+  @@index([type])
+  @@index([status])
+  @@map("PathwaySession")
+}
+
+model PathwayMilestone {
+  id          String                  @id @default(uuid())
+  pathwaySessionId String
+  name        String
+  description String?
+  targetMinutes Int                   // Target time in minutes from activation
+  status      PathwayMilestoneStatus  @default(PENDING)
+  metAt       DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  pathwaySession PathwaySession @relation(fields: [pathwaySessionId], references: [id], onDelete: Cascade)
+
+  @@index([pathwaySessionId])
+  @@index([status])
+  @@map("PathwayMilestone")
+}
+
+model ProtocolOrderSet {
+  id          String      @id @default(uuid())
+  facilityId  String
+  pathwayType PathwayType
+  name        String
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  facility    Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  items       ProtocolOrderSetItem[]
+
+  @@unique([facilityId, pathwayType])
+  @@index([facilityId])
+  @@index([pathwayType])
+  @@index([isActive])
+  @@map("ProtocolOrderSet")
+}
+
+model ProtocolOrderSetItem {
+  id                  String      @id @default(uuid())
+  protocolOrderSetId  String
+  catalogLabTestId    String?
+  catalogImagingStudyId String?
+  catalogMedicationId String?
+  priority            OrderPriority @default(ROUTINE)
+  sequence            Int         // Order within the set
+  notes               String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  protocolOrderSet    ProtocolOrderSet @relation(fields: [protocolOrderSetId], references: [id], onDelete: Cascade)
+
+  @@index([protocolOrderSetId])
+  @@index([sequence])
+  @@map("ProtocolOrderSetItem")
 }
 

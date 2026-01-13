@@ -78,6 +78,7 @@ export default function EncounterDetailPage() {
   const tabs = [
     { id: "summary", label: "Summary" },
     { id: "triage", label: "Triage/Vitals" },
+    { id: "pathways", label: "Pathways" },
     { id: "notes", label: "Notes" },
     { id: "orders", label: "Orders" },
     { id: "results", label: "Results" },
@@ -161,6 +162,7 @@ export default function EncounterDetailPage() {
         <div style={{ padding: 24 }}>
           {activeTab === "summary" && <EncounterSummaryTab encounter={encounter} />}
           {activeTab === "triage" && <TriageVitalsTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
+          {activeTab === "pathways" && <PathwaysTab encounterId={encounterId} encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
           {activeTab === "notes" && <NotesTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
           {activeTab === "orders" && <OrdersTab encounterId={encounterId} facilityId={facilityId} />}
           {activeTab === "results" && <div>Results coming soon</div>}
@@ -223,29 +225,70 @@ function TriageVitalsTab({
   facilityId: string;
   onUpdate: () => void;
 }) {
-  const vitals = (encounter.vitals as any) || {};
+  const [triage, setTriage] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const vitals = (triage?.vitalsJson as any) || {};
   const [formData, setFormData] = useState({
-    chiefComplaint: encounter.chiefComplaint || "",
-    triageAcuity: encounter.triageAcuity || "",
-    tempC: vitals.tempC || "",
-    hr: vitals.hr || "",
-    rr: vitals.rr || "",
-    bpSys: vitals.bpSys || "",
-    bpDia: vitals.bpDia || "",
-    spo2: vitals.spo2 || "",
-    weightKg: vitals.weightKg || "",
-    heightCm: vitals.heightCm || "",
+    chiefComplaint: "",
+    onsetAt: "",
+    esi: "",
+    tempC: "",
+    hr: "",
+    rr: "",
+    bpSys: "",
+    bpDia: "",
+    spo2: "",
+    weightKg: "",
+    heightCm: "",
+    strokeScreen: "",
+    sepsisScreen: "",
+    triageCompleteAt: "",
   });
   const [saving, setSaving] = useState(false);
   const isReadOnly = encounter.status !== "OPEN";
+
+  useEffect(() => {
+    loadTriage();
+  }, [encounter.id, facilityId]);
+
+  const loadTriage = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch(`/encounters/${encounter.id}/triage`, { facilityId });
+      setTriage(data);
+      if (data) {
+        setFormData({
+          chiefComplaint: data.chiefComplaint || "",
+          onsetAt: data.onsetAt ? new Date(data.onsetAt).toISOString().slice(0, 16) : "",
+          esi: data.esi?.toString() || "",
+          tempC: vitals.tempC?.toString() || "",
+          hr: vitals.hr?.toString() || "",
+          rr: vitals.rr?.toString() || "",
+          bpSys: vitals.bpSys?.toString() || "",
+          bpDia: vitals.bpDia?.toString() || "",
+          spo2: vitals.spo2?.toString() || "",
+          weightKg: vitals.weightKg?.toString() || "",
+          heightCm: vitals.heightCm?.toString() || "",
+          strokeScreen: data.strokeScreen ? JSON.stringify(data.strokeScreen, null, 2) : "",
+          sepsisScreen: data.sepsisScreen ? JSON.stringify(data.sepsisScreen, null, 2) : "",
+          triageCompleteAt: data.triageCompleteAt ? new Date(data.triageCompleteAt).toISOString().slice(0, 16) : "",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load triage:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const payload: any = {
         chiefComplaint: formData.chiefComplaint || null,
-        triageAcuity: formData.triageAcuity ? parseInt(formData.triageAcuity) : null,
-        vitals: {
+        onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
+        esi: formData.esi ? parseInt(formData.esi) : null,
+        vitalsJson: {
           tempC: formData.tempC ? parseFloat(formData.tempC) : null,
           hr: formData.hr ? parseInt(formData.hr) : null,
           rr: formData.rr ? parseInt(formData.rr) : null,
@@ -255,27 +298,36 @@ function TriageVitalsTab({
           weightKg: formData.weightKg ? parseFloat(formData.weightKg) : null,
           heightCm: formData.heightCm ? parseFloat(formData.heightCm) : null,
         },
+        strokeScreen: formData.strokeScreen ? JSON.parse(formData.strokeScreen) : null,
+        sepsisScreen: formData.sepsisScreen ? JSON.parse(formData.sepsisScreen) : null,
+        triageCompleteAt: formData.triageCompleteAt ? new Date(formData.triageCompleteAt).toISOString() : null,
       };
-      // Remove null values
-      Object.keys(payload.vitals).forEach((key) => {
-        if (payload.vitals[key] === null) delete payload.vitals[key];
+      // Remove null values from vitalsJson
+      Object.keys(payload.vitalsJson).forEach((key) => {
+        if (payload.vitalsJson[key] === null) delete payload.vitalsJson[key];
       });
-      if (Object.keys(payload.vitals).length === 0) payload.vitals = null;
+      if (Object.keys(payload.vitalsJson).length === 0) payload.vitalsJson = null;
 
-      await apiFetch(`/encounters/${encounter.id}`, {
-        method: "PATCH",
+      await apiFetch(`/encounters/${encounter.id}/triage`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         facilityId,
       });
+      loadTriage();
       onUpdate();
-      alert("Vitals saved");
+      alert("Triage saved");
     } catch (error) {
-      alert("Failed to save vitals");
+      console.error("Save error:", error);
+      alert("Failed to save triage");
     } finally {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return <div>Loading triage data...</div>;
+  }
 
   return (
     <div>
@@ -295,11 +347,23 @@ function TriageVitalsTab({
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            Triage Acuity (1-5)
+            Onset Date/Time
+          </label>
+          <input
+            type="datetime-local"
+            value={formData.onsetAt}
+            onChange={(e) => setFormData({ ...formData, onsetAt: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+            ESI (Emergency Severity Index) 1-5
           </label>
           <select
-            value={formData.triageAcuity}
-            onChange={(e) => setFormData({ ...formData, triageAcuity: e.target.value })}
+            value={formData.esi}
+            onChange={(e) => setFormData({ ...formData, esi: e.target.value })}
             disabled={isReadOnly}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           >
@@ -310,6 +374,18 @@ function TriageVitalsTab({
             <option value="4">4 - Less Urgent</option>
             <option value="5">5 - Non-Urgent</option>
           </select>
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+            Triage Complete At
+          </label>
+          <input
+            type="datetime-local"
+            value={formData.triageCompleteAt}
+            onChange={(e) => setFormData({ ...formData, triageCompleteAt: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
         </div>
       </div>
 
@@ -484,6 +560,298 @@ function NotesTab({
       >
         {saving ? "Saving..." : "Save Notes"}
       </button>
+    </div>
+  );
+}
+
+function PathwaysTab({
+  encounterId,
+  encounter,
+  facilityId,
+  onUpdate,
+}: {
+  encounterId: string;
+  encounter: any;
+  facilityId: string;
+  onUpdate: () => void;
+}) {
+  const [pathway, setPathway] = useState<any>(null);
+  const [timers, setTimers] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activating, setActivating] = useState(false);
+
+  useEffect(() => {
+    loadPathway();
+  }, [encounterId, facilityId]);
+
+  useEffect(() => {
+    if (pathway?.id) {
+      loadTimers();
+      const interval = setInterval(loadTimers, 10000); // Refresh every 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [pathway?.id, facilityId]);
+
+  const loadPathway = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch(`/encounters/${encounterId}/pathways`, { facilityId });
+      setPathway(data);
+      if (data) {
+        loadTimers();
+      }
+    } catch (error) {
+      console.error("Failed to load pathway:", error);
+      setPathway(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTimers = async () => {
+    if (!pathway?.id) return;
+    try {
+      const data = await apiFetch(`/pathways/${pathway.id}/timers`, { facilityId });
+      setTimers(data);
+    } catch (error) {
+      console.error("Failed to load timers:", error);
+    }
+  };
+
+  const handleActivate = async (type: string) => {
+    if (!confirm(`Activate ${type} pathway? This will create protocol orders.`)) return;
+    setActivating(true);
+    try {
+      await apiFetch(`/encounters/${encounterId}/pathways/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+        facilityId,
+      });
+      await loadPathway();
+      onUpdate(); // Refresh encounter
+    } catch (error: any) {
+      alert(`Failed to activate pathway: ${error.message || "Unknown error"}`);
+    } finally {
+      setActivating(false);
+    }
+  };
+
+  const handlePause = async () => {
+    if (!pathway?.id) return;
+    try {
+      await apiFetch(`/pathways/${pathway.id}/pause`, {
+        method: "POST",
+        facilityId,
+      });
+      await loadPathway();
+    } catch (error) {
+      alert("Failed to pause pathway");
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!pathway?.id) return;
+    if (!confirm("Complete this pathway?")) return;
+    try {
+      await apiFetch(`/pathways/${pathway.id}/complete`, {
+        method: "POST",
+        facilityId,
+      });
+      await loadPathway();
+    } catch (error) {
+      alert("Failed to complete pathway");
+    }
+  };
+
+  const handleMarkMilestone = async (milestoneId: string) => {
+    if (!pathway?.id) return;
+    try {
+      await apiFetch(`/pathways/${pathway.id}/milestones/${milestoneId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "MET" }),
+        facilityId,
+      });
+      await loadPathway();
+    } catch (error) {
+      alert("Failed to mark milestone");
+    }
+  };
+
+  if (loading) return <div>Loading pathways...</div>;
+
+  const isReadOnly = encounter.status !== "OPEN";
+
+  return (
+    <div>
+      <h3>ER Pathways</h3>
+      {!pathway ? (
+        <div>
+          <p>No active pathway. Activate a pathway to start protocol orders and timers.</p>
+          <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+            {["STROKE", "SEPSIS", "STEMI", "TRAUMA"].map((type) => (
+              <button
+                key={type}
+                onClick={() => handleActivate(type)}
+                disabled={activating || isReadOnly}
+                style={{
+                  padding: "12px 24px",
+                  backgroundColor: "#1976d2",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 4,
+                  cursor: activating || isReadOnly ? "not-allowed" : "pointer",
+                  fontSize: 14,
+                  opacity: activating || isReadOnly ? 0.6 : 1,
+                }}
+              >
+                Activate {type}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{ marginBottom: 24, padding: 16, backgroundColor: "#f5f5f5", borderRadius: 4 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h4 style={{ margin: "0 0 8px 0" }}>
+                  {pathway.type} Pathway - {pathway.status}
+                </h4>
+                <div style={{ fontSize: 14, color: "#666" }}>
+                  Activated: {new Date(pathway.activatedAt).toLocaleString()}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {pathway.status === "ACTIVE" && (
+                  <button
+                    onClick={handlePause}
+                    disabled={isReadOnly}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#ff9800",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: isReadOnly ? "not-allowed" : "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    Pause
+                  </button>
+                )}
+                {pathway.status !== "COMPLETED" && (
+                  <button
+                    onClick={handleComplete}
+                    disabled={isReadOnly}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#4caf50",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: isReadOnly ? "not-allowed" : "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    Complete
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {timers && (
+            <div>
+              <h4>Timers & Milestones</h4>
+              <div style={{ fontSize: 14, marginBottom: 16, color: "#666" }}>
+                Elapsed: {timers.pathway.elapsedMinutes} minutes
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #ddd" }}>
+                    <th style={{ padding: 12, textAlign: "left" }}>Milestone</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>Target</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>Status</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {timers.timers.map((timer: any) => (
+                    <tr
+                      key={timer.id}
+                      style={{
+                        borderBottom: "1px solid #eee",
+                        backgroundColor: timer.isOverdue ? "#ffebee" : "white",
+                      }}
+                    >
+                      <td style={{ padding: 12 }}>
+                        <div>
+                          <strong>{timer.name}</strong>
+                          {timer.description && (
+                            <div style={{ fontSize: 12, color: "#666" }}>{timer.description}</div>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: 12 }}>{timer.targetMinutes} min</td>
+                      <td style={{ padding: 12 }}>
+                        <span
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: 4,
+                            fontSize: 12,
+                            backgroundColor:
+                              timer.status === "MET"
+                                ? "#4caf50"
+                                : timer.isOverdue
+                                ? "#f44336"
+                                : "#e3f2fd",
+                            color:
+                              timer.status === "MET"
+                                ? "white"
+                                : timer.isOverdue
+                                ? "white"
+                                : "#1976d2",
+                          }}
+                        >
+                          {timer.status}
+                          {timer.isOverdue && " (OVERDUE)"}
+                        </span>
+                        {timer.status === "PENDING" && (
+                          <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                            {timer.remainingMinutes > 0
+                              ? `${timer.remainingMinutes} min remaining`
+                              : "Overdue"}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {timer.status === "PENDING" && !isReadOnly && (
+                          <button
+                            onClick={() => handleMarkMilestone(timer.id)}
+                            style={{
+                              padding: "4px 12px",
+                              backgroundColor: "#4caf50",
+                              color: "white",
+                              border: "none",
+                              borderRadius: 4,
+                              cursor: "pointer",
+                              fontSize: 12,
+                            }}
+                          >
+                            Mark MET
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

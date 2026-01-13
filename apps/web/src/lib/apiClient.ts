@@ -1,14 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
-
-// Get facility ID from cookie
-function getFacilityId(): string | null {
-  if (typeof document === "undefined") return null;
-  const cookieValue = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("medora_facility_id="))
-    ?.split("=")[1];
-  return cookieValue || null;
-}
+const API_BASE = "/api/backend"; // ✅ proxy through Next so cookies can be used server-side
 
 export async function apiFetch(
   path: string,
@@ -16,37 +6,24 @@ export async function apiFetch(
 ): Promise<any> {
   const { facilityId: providedFacilityId, ...fetchOptions } = options;
   
-  const headersInit: HeadersInit = fetchOptions.headers || {};
-  const headers = new Headers(headersInit);
+  const headers = new Headers(fetchOptions.headers);
 
-  // Add facility ID header - use provided or get from cookie
-  const facilityId = providedFacilityId || getFacilityId();
-  if (facilityId) {
-    headers.set("x-facility-id", facilityId);
+  // Facility header passed to proxy (proxy will forward to backend)
+  if (providedFacilityId) {
+    headers.set("x-facility-id", providedFacilityId);
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...fetchOptions,
     headers,
-    credentials: "include", // Include cookies
+    credentials: "include",
   });
 
   if (!response.ok) {
-    let errorMessage: string;
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorData.error || response.statusText;
-    } catch {
-      errorMessage = response.statusText;
-    }
-    throw new Error(errorMessage);
+    const txt = await response.text().catch(() => "");
+    throw new Error(txt || `Request failed: ${response.status}`);
   }
 
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
-    return response.json();
-  }
-
-  return response.text();
+  return response.json();
 }
 

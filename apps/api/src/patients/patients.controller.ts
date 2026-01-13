@@ -11,15 +11,17 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
+import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { PatientsService } from "./patients.service";
 import { EncountersService } from "../encounters/encounters.service";
 import {
   patientCreateDtoSchema,
   patientUpdateDtoSchema,
 } from "@medora/shared";
+import { RoleCode } from "@prisma/client";
 
 @Controller("patients")
-@UseGuards(AuthGuard("jwt"))
+@UseGuards(AuthGuard("jwt"), RolesGuard)
 export class PatientsController {
   constructor(
     private readonly patientsService: PatientsService,
@@ -27,6 +29,7 @@ export class PatientsController {
   ) {}
 
   @Get("search")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async search(
     @Query() query: { q?: string; mrn?: string; phone?: string; dob?: string; limit?: string },
     @Req() req: any
@@ -52,6 +55,7 @@ export class PatientsController {
   }
 
   @Post()
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async create(@Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -73,6 +77,7 @@ export class PatientsController {
   }
 
   @Get(":id")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async findOne(@Param("id") id: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -89,6 +94,7 @@ export class PatientsController {
   }
 
   @Patch(":id")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async update(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -111,6 +117,7 @@ export class PatientsController {
   }
 
   @Get(":id/encounters")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async getEncounters(@Param("id") id: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {

@@ -13,7 +13,8 @@ async function main() {
       { code: RoleCode.FRONT_DESK, name: "Front Desk" },
       { code: RoleCode.LAB, name: "Lab" },
       { code: RoleCode.RADIOLOGY, name: "Radiology" },
-      { code: RoleCode.PHARMACY, name: "Pharmacy" }
+      { code: RoleCode.PHARMACY, name: "Pharmacy" },
+      { code: RoleCode.BILLING, name: "Billing" }
     ] as const).map((r) =>
       prisma.role.upsert({
         where: { code: r.code },

@@ -9,6 +9,7 @@ import { EncountersModule } from "../encounters/encounters.module";
   imports: [PrismaModule, EncountersModule],
   controllers: [PatientsController],
   providers: [PatientsService, AuditService],
+  exports: [PatientsService]
 })
 export class PatientsModule {}
 

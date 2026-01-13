@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
+import { assertCanTransitionEncounter } from "../common/workflow/encounter.transitions";
 import type { EncounterCreateDto, EncounterUpdateDto } from "@medora/shared";
 
 @Injectable()
@@ -161,14 +162,14 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
-    if (encounter.status !== "OPEN") {
-      throw new BadRequestException("Only open encounters can be closed");
-    }
+    // Validate status transition
+    assertCanTransitionEncounter(encounter.status, "CLOSED");
 
     const updated = await this.prisma.encounter.update({
       where: { id },
       data: {
         status: "CLOSED",
+        dischargedAt: new Date(),
       },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },

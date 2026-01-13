@@ -59,7 +59,7 @@ export default function PatientsPage() {
       if (searchQuery.trim()) {
         params.set("q", searchQuery.trim());
       }
-      const data = await apiFetch(`/patients/search?${params.toString()}`, {
+      const data = await apiFetch(`/api/patients/search?${params.toString()}`, {
         facilityId,
       });
       setPatients(data || []);
@@ -227,7 +227,7 @@ function NewPatientModal({
         if (payload[key] === "") delete payload[key];
       });
 
-      await apiFetch("/patients", {
+      await apiFetch("/api/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

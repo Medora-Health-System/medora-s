@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { AuditAction, OrderStatus } from "@prisma/client";
+import { assertCanTransition } from "../common/workflow/status.transitions";
 import type { OrderCreateDto, OrderUpdateDto } from "@medora/shared";
 
 @Injectable()
@@ -48,7 +50,7 @@ export class OrdersService {
       },
     });
 
-    await this.audit.log("ORDER_CREATE", "ORDER", {
+    await this.audit.log(AuditAction.ORDER_CREATE, "ORDER", {
       userId,
       facilityId,
       patientId: encounter.patientId,
@@ -72,7 +74,7 @@ export class OrdersService {
       },
     });
 
-    await this.audit.log("ORDER_CREATE", "ORDER", {
+    await this.audit.log(AuditAction.ORDER_VIEW, "ORDER", {
       userId,
       facilityId,
       encounterId,
@@ -93,7 +95,11 @@ export class OrdersService {
     }
 
     const updateData: any = {};
-    if (data.status !== undefined) updateData.status = data.status;
+    if (data.status !== undefined) {
+      // Validate status transition
+      assertCanTransition(order.status, data.status);
+      updateData.status = data.status;
+    }
     if (data.priority !== undefined) updateData.priority = data.priority;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
@@ -106,7 +112,7 @@ export class OrdersService {
       },
     });
 
-    await this.audit.log("ORDER_CREATE", "ORDER", {
+    await this.audit.log(AuditAction.ORDER_UPDATE, "ORDER", {
       userId,
       facilityId,
       patientId: order.patientId,
@@ -115,6 +121,7 @@ export class OrdersService {
       entityId: order.id,
       ip,
       userAgent,
+      metadata: { changes: Object.keys(data) },
     });
 
     return updated;
@@ -129,9 +136,8 @@ export class OrdersService {
       throw new NotFoundException("Order not found");
     }
 
-    if (order.status === "CANCELLED") {
-      throw new BadRequestException("Order already cancelled");
-    }
+    // Validate transition
+    assertCanTransition(order.status, "CANCELLED");
 
     const updated = await this.prisma.order.update({
       where: { id },
@@ -142,13 +148,171 @@ export class OrdersService {
       },
     });
 
-    await this.audit.log("ORDER_CANCEL", "ORDER", {
+    await this.audit.log(AuditAction.ORDER_CANCEL, "ORDER", {
       userId,
       facilityId,
       patientId: order.patientId,
       encounterId: order.encounterId,
       orderId: order.id,
       entityId: order.id,
+      ip,
+      userAgent,
+    });
+
+    return updated;
+  }
+
+  async acknowledgeOrderItem(
+    facilityId: string,
+    orderItemId: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { facilityId },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: { include: { patient: true } },
+          },
+        },
+      },
+    });
+
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+
+    // Validate transition
+    assertCanTransition(orderItem.status, OrderStatus.ACKNOWLEDGED);
+    
+    // Ensure department ownership: Lab can only acknowledge lab orders
+    if (orderItem.catalogItemType !== "LAB_TEST") {
+      throw new BadRequestException("Lab can only acknowledge lab test orders");
+    }
+
+    const updated = await this.prisma.orderItem.update({
+      where: { id: orderItemId },
+      data: { status: OrderStatus.ACKNOWLEDGED },
+    });
+
+    await this.audit.log(AuditAction.ORDER_ACK, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
+      ip,
+      userAgent,
+    });
+
+    return updated;
+  }
+
+  async startOrderItem(
+    facilityId: string,
+    orderItemId: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { facilityId },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: { include: { patient: true } },
+          },
+        },
+      },
+    });
+
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+
+    // Validate transition
+    assertCanTransition(orderItem.status, OrderStatus.IN_PROGRESS);
+    
+    // Ensure department ownership based on catalog type
+    const allowedTypes = ["LAB_TEST", "IMAGING_STUDY", "MEDICATION"];
+    if (!allowedTypes.includes(orderItem.catalogItemType)) {
+      throw new BadRequestException("Invalid order item type for this operation");
+    }
+
+    const updated = await this.prisma.orderItem.update({
+      where: { id: orderItemId },
+      data: { status: OrderStatus.IN_PROGRESS },
+    });
+
+    await this.audit.log(AuditAction.ORDER_START, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
+      ip,
+      userAgent,
+    });
+
+    return updated;
+  }
+
+  async completeOrderItem(
+    facilityId: string,
+    orderItemId: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { facilityId },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: { include: { patient: true } },
+          },
+        },
+      },
+    });
+
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+
+    // Validate transition
+    assertCanTransition(orderItem.status, OrderStatus.COMPLETED);
+    
+    // Ensure department ownership based on catalog type
+    const allowedTypes = ["LAB_TEST", "IMAGING_STUDY", "MEDICATION"];
+    if (!allowedTypes.includes(orderItem.catalogItemType)) {
+      throw new BadRequestException("Invalid order item type for this operation");
+    }
+
+    const updated = await this.prisma.orderItem.update({
+      where: { id: orderItemId },
+      data: { status: OrderStatus.COMPLETED },
+    });
+
+    await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
       ip,
       userAgent,
     });

@@ -50,16 +50,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     router.push("/login");
   };
 
-  const navItems = [
-    { href: "/app", label: "Dashboard" },
-    { href: "/app/patients", label: "Patients" },
-    { href: "/app/encounters", label: "Encounters" },
-    { href: "/app/orders", label: "Orders" },
-    { href: "/app/results", label: "Results" },
-    { href: "/app/medications", label: "Medications" },
-    { href: "/app/imaging", label: "Imaging" },
-    { href: "/app/admin", label: "Admin" },
+  // Get user roles for active facility
+  const getActiveRoles = (): string[] => {
+    if (!user || !activeFacility) return [];
+    return user.facilityRoles
+      .filter((fr: any) => fr.facilityId === activeFacility)
+      .map((fr: any) => fr.role);
+  };
+
+  // Define nav items with role requirements
+  const allNavItems = [
+    { href: "/app", label: "Track Board", roles: ["ADMIN", "PROVIDER", "RN"] },
+    { href: "/app/registration", label: "Registration", roles: ["FRONT_DESK", "ADMIN"] },
+    { href: "/app/nursing", label: "Nursing", roles: ["RN", "ADMIN"] },
+    { href: "/app/provider", label: "Provider", roles: ["PROVIDER", "ADMIN"] },
+    { href: "/app/patients", label: "Patients", roles: ["RN", "PROVIDER", "ADMIN"] },
+    { href: "/app/encounters", label: "Encounters", roles: ["RN", "PROVIDER", "ADMIN"] },
+    { href: "/app/rad-worklist", label: "Radiology Worklist", roles: ["RADIOLOGY", "ADMIN"] },
+    { href: "/app/lab-worklist", label: "Lab Worklist", roles: ["LAB", "ADMIN"] },
+    { href: "/app/pharmacy-worklist", label: "Pharmacy Worklist", roles: ["PHARMACY", "ADMIN"] },
+    { href: "/app/billing", label: "Billing", roles: ["BILLING", "ADMIN"] },
+    { href: "/app/admin", label: "Admin", roles: ["ADMIN"] },
   ];
+
+  // Filter nav items based on user roles
+  const activeRoles = getActiveRoles();
+  const navItems = allNavItems.filter((item) =>
+    item.roles.some((role) => activeRoles.includes(role))
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
