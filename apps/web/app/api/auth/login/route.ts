@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-const API_URL = process.env.API_URL ?? "http://localhost:3000";
+const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,8 +59,18 @@ export async function POST(request: NextRequest) {
     // Set facilityId cookie from user's first facility role
     const defaultFacilityId = json.user?.facilityRoles?.[0]?.facilityId;
     if (defaultFacilityId) {
+      // Set httpOnly cookie for server-side use
       cookieStore.set("facilityId", defaultFacilityId, {
         httpOnly: true,
+        sameSite: "lax",
+        secure: isProduction,
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+      });
+
+      // Also set client-accessible cookie for UI
+      cookieStore.set("medora_facility_id", defaultFacilityId, {
+        httpOnly: false,
         sameSite: "lax",
         secure: isProduction,
         path: "/",

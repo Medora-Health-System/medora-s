@@ -22,12 +22,12 @@ export default function PatientsPage() {
   const [facilityId, setFacilityId] = useState<string>("");
 
   useEffect(() => {
-    // Get facility ID from cookie
+    // Get facility ID from cookie (check both names for compatibility)
     const cookieValue = document.cookie
       .split("; ")
       .find((row) => row.startsWith("medora_facility_id="))
       ?.split("=")[1];
-    
+
     if (cookieValue) {
       setFacilityId(cookieValue);
     } else {
@@ -59,7 +59,7 @@ export default function PatientsPage() {
       if (searchQuery.trim()) {
         params.set("q", searchQuery.trim());
       }
-      const data = await apiFetch(`/api/patients/search?${params.toString()}`, {
+      const data = await apiFetch(`/patients/search?${params.toString()}`, {
         facilityId,
       });
       setPatients(data || []);
@@ -227,7 +227,7 @@ function NewPatientModal({
         if (payload[key] === "") delete payload[key];
       });
 
-      await apiFetch("/api/patients", {
+      await apiFetch("/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
