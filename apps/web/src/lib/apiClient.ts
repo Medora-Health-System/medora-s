@@ -1,15 +1,26 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
+// Get facility ID from cookie
+function getFacilityId(): string | null {
+  if (typeof document === "undefined") return null;
+  const cookieValue = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("medora_facility_id="))
+    ?.split("=")[1];
+  return cookieValue || null;
+}
+
 export async function apiFetch(
   path: string,
   options: RequestInit & { facilityId?: string } = {}
 ): Promise<any> {
-  const { facilityId, ...fetchOptions } = options;
+  const { facilityId: providedFacilityId, ...fetchOptions } = options;
   
   const headersInit: HeadersInit = fetchOptions.headers || {};
   const headers = new Headers(headersInit);
 
-  // Add facility ID header if provided
+  // Add facility ID header - use provided or get from cookie
+  const facilityId = providedFacilityId || getFacilityId();
   if (facilityId) {
     headers.set("x-facility-id", facilityId);
   }

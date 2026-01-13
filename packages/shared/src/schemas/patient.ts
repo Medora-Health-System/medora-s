@@ -6,7 +6,6 @@ export type SexAtBirth = z.infer<typeof sexAtBirthSchema>;
 export const patientCreateDtoSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  facilityId: z.string().uuid(),
   mrn: z.string().optional(),
   dob: z.coerce.date().optional(),
   phone: z.string().min(5).max(32).optional(),
@@ -43,15 +42,32 @@ export type EncounterType = z.infer<typeof encounterTypeSchema>;
 export const encounterStatusSchema = z.enum(["OPEN", "CLOSED", "CANCELLED"]);
 export type EncounterStatus = z.infer<typeof encounterStatusSchema>;
 
+export const vitalsSchema = z.object({
+  tempC: z.number().optional().nullable(),
+  hr: z.number().int().positive().optional().nullable(),
+  rr: z.number().int().positive().optional().nullable(),
+  bpSys: z.number().int().positive().optional().nullable(),
+  bpDia: z.number().int().positive().optional().nullable(),
+  spo2: z.number().int().min(0).max(100).optional().nullable(),
+  weightKg: z.number().positive().optional().nullable(),
+  heightCm: z.number().positive().optional().nullable(),
+}).optional().nullable();
+
+export type Vitals = z.infer<typeof vitalsSchema>;
+
 export const encounterCreateDtoSchema = z.object({
   type: encounterTypeSchema,
   providerId: z.string().uuid().optional(),
+  chiefComplaint: z.string().optional(),
   notes: z.string().optional(),
 });
 
 export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
 
 export const encounterUpdateDtoSchema = z.object({
+  chiefComplaint: z.string().optional().nullable(),
+  triageAcuity: z.number().int().min(1).max(5).optional().nullable(),
+  vitals: vitalsSchema,
   notes: z.string().optional().nullable(),
 });
 

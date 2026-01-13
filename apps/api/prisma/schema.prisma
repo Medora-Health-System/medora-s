@@ -218,27 +218,29 @@ model AuditLog {
 }
 
 model Encounter {
-  id          String          @id @default(uuid())
-  patientId   String
-  facilityId  String
-  type        EncounterType
-  status      EncounterStatus @default(OPEN)
-  startAt     DateTime        @default(now())
-  endAt       DateTime?
-  providerId  String?
-  notes       String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id            String          @id @default(uuid())
+  facilityId    String
+  patientId     String
+  providerId    String?
+  type          EncounterType
+  status        EncounterStatus @default(OPEN)
 
-  patient     Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  facility    Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  orders      Order[]
-  auditLogs   AuditLog[]      @relation("EncounterAuditLogs")
+  chiefComplaint String?
+  triageAcuity   Int?
+  vitals         Json?
 
-  @@index([patientId])
+  notes         String?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  patient       Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility      Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  orders        Order[]
+  auditLogs     AuditLog[]      @relation("EncounterAuditLogs")
+
   @@index([facilityId])
-  @@index([status])
-  @@index([startAt])
+  @@index([patientId])
 }
 
 model Order {

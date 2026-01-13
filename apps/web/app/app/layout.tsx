@@ -20,8 +20,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setUser(data);
           const facilityIds: string[] = Array.from(new Set(data.facilityRoles.map((fr: any) => String(fr.facilityId))));
           setFacilities(facilityIds);
-          if (facilityIds.length > 0) {
+          
+          // Get facility from cookie or use first one
+          const cookieValue = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("medora_facility_id="))
+            ?.split("=")[1];
+          
+          if (cookieValue && facilityIds.includes(cookieValue)) {
+            setActiveFacility(cookieValue);
+          } else if (facilityIds.length > 0) {
             setActiveFacility(facilityIds[0]);
+            // Set cookie
+            document.cookie = `medora_facility_id=${facilityIds[0]}; path=/; max-age=${365 * 24 * 60 * 60}`;
           }
         }
       })
@@ -69,7 +80,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {facilities.length > 0 && (
             <select
               value={activeFacility}
-              onChange={(e) => setActiveFacility(e.target.value)}
+              onChange={(e) => {
+                const newFacility = e.target.value;
+                setActiveFacility(newFacility);
+                // Update cookie
+                document.cookie = `medora_facility_id=${newFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+                // Refresh page to update all components
+                window.location.reload();
+              }}
               style={{
                 backgroundColor: "#2a2a2a",
                 color: "white",

@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { PatientsService } from "./patients.service";
+import { EncountersService } from "../encounters/encounters.service";
 import {
   patientCreateDtoSchema,
   patientUpdateDtoSchema,
@@ -20,7 +21,10 @@ import {
 @Controller("patients")
 @UseGuards(AuthGuard("jwt"))
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(
+    private readonly patientsService: PatientsService,
+    private readonly encountersService: EncountersService
+  ) {}
 
   @Get("search")
   async search(
@@ -100,6 +104,22 @@ export class PatientsController {
       facilityId,
       id,
       parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Get(":id/encounters")
+  async getEncounters(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+
+    return this.encountersService.findByPatient(
+      id,
+      facilityId,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]

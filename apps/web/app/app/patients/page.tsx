@@ -22,14 +22,26 @@ export default function PatientsPage() {
   const [facilityId, setFacilityId] = useState<string>("");
 
   useEffect(() => {
-    // Get facility ID from user data
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.facilityRoles && data.facilityRoles.length > 0) {
-          setFacilityId(data.facilityRoles[0].facilityId);
-        }
-      });
+    // Get facility ID from cookie
+    const cookieValue = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("medora_facility_id="))
+      ?.split("=")[1];
+    
+    if (cookieValue) {
+      setFacilityId(cookieValue);
+    } else {
+      // Fallback to fetching from user data
+      fetch("/api/auth/me")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.facilityRoles && data.facilityRoles.length > 0) {
+            const firstFacility = data.facilityRoles[0].facilityId;
+            setFacilityId(firstFacility);
+            document.cookie = `medora_facility_id=${firstFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+          }
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -205,12 +217,15 @@ function NewPatientModal({
     try {
       const payload: any = {
         ...formData,
-        facilityId,
       };
       if (formData.dob) {
         payload.dob = new Date(formData.dob).toISOString();
       }
       if (!formData.sexAtBirth) delete payload.sexAtBirth;
+      // Remove empty strings
+      Object.keys(payload).forEach((key) => {
+        if (payload[key] === "") delete payload[key];
+      });
 
       await apiFetch("/patients", {
         method: "POST",

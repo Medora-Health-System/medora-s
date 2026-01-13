@@ -14,13 +14,26 @@ export default function EncounterDetailPage() {
   const [facilityId, setFacilityId] = useState<string>("");
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.facilityRoles && data.facilityRoles.length > 0) {
-          setFacilityId(data.facilityRoles[0].facilityId);
-        }
-      });
+    // Get facility ID from cookie
+    const cookieValue = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("medora_facility_id="))
+      ?.split("=")[1];
+    
+    if (cookieValue) {
+      setFacilityId(cookieValue);
+    } else {
+      // Fallback to fetching from user data
+      fetch("/api/auth/me")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.facilityRoles && data.facilityRoles.length > 0) {
+            const firstFacility = data.facilityRoles[0].facilityId;
+            setFacilityId(firstFacility);
+            document.cookie = `medora_facility_id=${firstFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+          }
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -64,6 +77,7 @@ export default function EncounterDetailPage() {
 
   const tabs = [
     { id: "summary", label: "Summary" },
+    { id: "triage", label: "Triage/Vitals" },
     { id: "notes", label: "Notes" },
     { id: "orders", label: "Orders" },
     { id: "results", label: "Results" },
@@ -97,8 +111,10 @@ export default function EncounterDetailPage() {
                     {encounter.status}
                   </span>
                 </div>
-                <div>Started: {new Date(encounter.startAt).toLocaleString()}</div>
-                {encounter.endAt && <div>Ended: {new Date(encounter.endAt).toLocaleString()}</div>}
+                <div>Started: {new Date(encounter.createdAt).toLocaleString()}</div>
+                {encounter.status === "CLOSED" && encounter.updatedAt && (
+                  <div>Ended: {new Date(encounter.updatedAt).toLocaleString()}</div>
+                )}
               </div>
             </div>
             {encounter.status === "OPEN" && (
@@ -144,6 +160,7 @@ export default function EncounterDetailPage() {
 
         <div style={{ padding: 24 }}>
           {activeTab === "summary" && <EncounterSummaryTab encounter={encounter} />}
+          {activeTab === "triage" && <TriageVitalsTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
           {activeTab === "notes" && <NotesTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
           {activeTab === "orders" && <OrdersTab encounterId={encounterId} facilityId={facilityId} />}
           {activeTab === "results" && <div>Results coming soon</div>}
@@ -167,16 +184,21 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
           <strong>Status:</strong> {encounter.status}
         </div>
         <div>
-          <strong>Started:</strong> {new Date(encounter.startAt).toLocaleString()}
+          <strong>Started:</strong> {new Date(encounter.createdAt).toLocaleString()}
         </div>
-        {encounter.endAt && (
+        {encounter.status === "CLOSED" && encounter.updatedAt && (
           <div>
-            <strong>Ended:</strong> {new Date(encounter.endAt).toLocaleString()}
+            <strong>Ended:</strong> {new Date(encounter.updatedAt).toLocaleString()}
           </div>
         )}
         {encounter.providerId && (
           <div>
             <strong>Provider:</strong> {encounter.providerId}
+          </div>
+        )}
+        {encounter.chiefComplaint && (
+          <div>
+            <strong>Chief Complaint:</strong> {encounter.chiefComplaint}
           </div>
         )}
       </div>
@@ -186,6 +208,222 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
           <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4 }}>
             {encounter.notes}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TriageVitalsTab({
+  encounter,
+  facilityId,
+  onUpdate,
+}: {
+  encounter: any;
+  facilityId: string;
+  onUpdate: () => void;
+}) {
+  const vitals = (encounter.vitals as any) || {};
+  const [formData, setFormData] = useState({
+    chiefComplaint: encounter.chiefComplaint || "",
+    triageAcuity: encounter.triageAcuity || "",
+    tempC: vitals.tempC || "",
+    hr: vitals.hr || "",
+    rr: vitals.rr || "",
+    bpSys: vitals.bpSys || "",
+    bpDia: vitals.bpDia || "",
+    spo2: vitals.spo2 || "",
+    weightKg: vitals.weightKg || "",
+    heightCm: vitals.heightCm || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const isReadOnly = encounter.status !== "OPEN";
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload: any = {
+        chiefComplaint: formData.chiefComplaint || null,
+        triageAcuity: formData.triageAcuity ? parseInt(formData.triageAcuity) : null,
+        vitals: {
+          tempC: formData.tempC ? parseFloat(formData.tempC) : null,
+          hr: formData.hr ? parseInt(formData.hr) : null,
+          rr: formData.rr ? parseInt(formData.rr) : null,
+          bpSys: formData.bpSys ? parseInt(formData.bpSys) : null,
+          bpDia: formData.bpDia ? parseInt(formData.bpDia) : null,
+          spo2: formData.spo2 ? parseInt(formData.spo2) : null,
+          weightKg: formData.weightKg ? parseFloat(formData.weightKg) : null,
+          heightCm: formData.heightCm ? parseFloat(formData.heightCm) : null,
+        },
+      };
+      // Remove null values
+      Object.keys(payload.vitals).forEach((key) => {
+        if (payload.vitals[key] === null) delete payload.vitals[key];
+      });
+      if (Object.keys(payload.vitals).length === 0) payload.vitals = null;
+
+      await apiFetch(`/encounters/${encounter.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        facilityId,
+      });
+      onUpdate();
+      alert("Vitals saved");
+    } catch (error) {
+      alert("Failed to save vitals");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3>Triage & Vitals</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+            Chief Complaint
+          </label>
+          <input
+            type="text"
+            value={formData.chiefComplaint}
+            onChange={(e) => setFormData({ ...formData, chiefComplaint: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+            Triage Acuity (1-5)
+          </label>
+          <select
+            value={formData.triageAcuity}
+            onChange={(e) => setFormData({ ...formData, triageAcuity: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          >
+            <option value="">Select...</option>
+            <option value="1">1 - Resuscitation</option>
+            <option value="2">2 - Emergent</option>
+            <option value="3">3 - Urgent</option>
+            <option value="4">4 - Less Urgent</option>
+            <option value="5">5 - Non-Urgent</option>
+          </select>
+        </div>
+      </div>
+
+      <h4 style={{ marginTop: 24, marginBottom: 16 }}>Vital Signs</h4>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Temp (°C)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={formData.tempC}
+            onChange={(e) => setFormData({ ...formData, tempC: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Heart Rate (bpm)</label>
+          <input
+            type="number"
+            value={formData.hr}
+            onChange={(e) => setFormData({ ...formData, hr: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Respiratory Rate</label>
+          <input
+            type="number"
+            value={formData.rr}
+            onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>BP Systolic</label>
+          <input
+            type="number"
+            value={formData.bpSys}
+            onChange={(e) => setFormData({ ...formData, bpSys: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>BP Diastolic</label>
+          <input
+            type="number"
+            value={formData.bpDia}
+            onChange={(e) => setFormData({ ...formData, bpDia: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>SpO2 (%)</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={formData.spo2}
+            onChange={(e) => setFormData({ ...formData, spo2: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Weight (kg)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={formData.weightKg}
+            onChange={(e) => setFormData({ ...formData, weightKg: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Height (cm)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={formData.heightCm}
+            onChange={(e) => setFormData({ ...formData, heightCm: e.target.value })}
+            disabled={isReadOnly}
+            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+          />
+        </div>
+      </div>
+
+      {!isReadOnly && (
+        <div style={{ marginTop: 24 }}>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#1a1a1a",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor: saving ? "not-allowed" : "pointer",
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving ? "Saving..." : "Save Vitals"}
+          </button>
+        </div>
+      )}
+      {isReadOnly && (
+        <div style={{ marginTop: 16, padding: 12, backgroundColor: "#fff3cd", borderRadius: 4, color: "#856404" }}>
+          Encounter is closed. Vitals are read-only.
         </div>
       )}
     </div>

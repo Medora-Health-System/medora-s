@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { AuditAction } from "@prisma/client";
 import { generateUniqueMrn } from "../utils/mrn";
 import type { PatientCreateDto, PatientUpdateDto } from "@medora/shared";
 
@@ -58,7 +59,7 @@ export class PatientsService {
     });
 
     // Audit view
-    await this.audit.log("PATIENT_VIEW", "PATIENT", {
+    await this.audit.log(AuditAction.PATIENT_VIEW, "PATIENT", {
       userId,
       facilityId,
       ip,
@@ -90,7 +91,7 @@ export class PatientsService {
     });
 
     // Audit create
-    await this.audit.log("PATIENT_CREATE", "PATIENT", {
+    await this.audit.log(AuditAction.PATIENT_CREATE, "PATIENT", {
       userId,
       facilityId,
       patientId: patient.id,
@@ -113,7 +114,7 @@ export class PatientsService {
     }
 
     // Audit view
-    await this.audit.log("PATIENT_VIEW", "PATIENT", {
+    await this.audit.log(AuditAction.PATIENT_VIEW, "PATIENT", {
       userId,
       facilityId,
       patientId: patient.id,
@@ -147,7 +148,7 @@ export class PatientsService {
     });
 
     // Audit update
-    await this.audit.log("PATIENT_UPDATE", "PATIENT", {
+    await this.audit.log(AuditAction.PATIENT_UPDATE, "PATIENT", {
       userId,
       facilityId,
       patientId: patient.id,

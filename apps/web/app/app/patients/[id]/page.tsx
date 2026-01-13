@@ -15,13 +15,26 @@ export default function PatientDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.facilityRoles && data.facilityRoles.length > 0) {
-          setFacilityId(data.facilityRoles[0].facilityId);
-        }
-      });
+    // Get facility ID from cookie
+    const cookieValue = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("medora_facility_id="))
+      ?.split("=")[1];
+    
+    if (cookieValue) {
+      setFacilityId(cookieValue);
+    } else {
+      // Fallback to fetching from user data
+      fetch("/api/auth/me")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.facilityRoles && data.facilityRoles.length > 0) {
+            const firstFacility = data.facilityRoles[0].facilityId;
+            setFacilityId(firstFacility);
+            document.cookie = `medora_facility_id=${firstFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+          }
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -290,7 +303,7 @@ function EncountersTab({ patientId, facilityId }: { patientId: string; facilityI
                     </span>
                   </td>
                   <td style={{ padding: 12 }}>
-                    {new Date(encounter.startAt).toLocaleString()}
+                    {new Date(encounter.createdAt).toLocaleString()}
                   </td>
                   <td style={{ padding: 12 }}>{encounter.providerId || "-"}</td>
                 </tr>
@@ -328,6 +341,7 @@ function CreateEncounterModal({
 }) {
   const [formData, setFormData] = useState({
     type: "OUTPATIENT",
+    chiefComplaint: "",
     notes: "",
   });
   const [loading, setLoading] = useState(false);
@@ -396,6 +410,19 @@ function CreateEncounterModal({
               <option value="EMERGENCY">Emergency</option>
               <option value="URGENT_CARE">Urgent Care</option>
             </select>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+              Chief Complaint
+            </label>
+            <input
+              type="text"
+              value={formData.chiefComplaint}
+              onChange={(e) => setFormData({ ...formData, chiefComplaint: e.target.value })}
+              placeholder="e.g., Chest pain"
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+            />
           </div>
 
           <div style={{ marginBottom: 16 }}>

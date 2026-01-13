@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { AuditAction } from "@prisma/client";
 import type { EncounterCreateDto, EncounterUpdateDto } from "@medora/shared";
 
 @Injectable()
@@ -21,7 +22,7 @@ export class EncountersService {
     }
 
     // Check for existing OPEN encounter
-    const existingOpen = await (this.prisma as any).encounter.findFirst({
+    const existingOpen = await this.prisma.encounter.findFirst({
       where: {
         patientId,
         facilityId,
@@ -33,12 +34,13 @@ export class EncountersService {
       throw new BadRequestException("Patient already has an open encounter");
     }
 
-    const encounter = await (this.prisma as any).encounter.create({
+    const encounter = await this.prisma.encounter.create({
       data: {
         patientId,
         facilityId,
         type: data.type,
         providerId: data.providerId || userId,
+        chiefComplaint: data.chiefComplaint,
         notes: data.notes,
         status: "OPEN",
       },
@@ -47,7 +49,7 @@ export class EncountersService {
       },
     });
 
-    await this.audit.log("ENCOUNTER_CREATE", "ENCOUNTER", {
+    await this.audit.log(AuditAction.ENCOUNTER_CREATE, "ENCOUNTER", {
       userId,
       facilityId,
       patientId,
@@ -61,15 +63,24 @@ export class EncountersService {
   }
 
   async findByPatient(patientId: string, facilityId: string, userId?: string, ip?: string, userAgent?: string) {
-    const encounters = await (this.prisma as any).encounter.findMany({
+    // Verify patient exists and belongs to facility
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, facilityId },
+    });
+
+    if (!patient) {
+      throw new NotFoundException("Patient not found");
+    }
+
+    const encounters = await this.prisma.encounter.findMany({
       where: { patientId, facilityId },
-      orderBy: { startAt: "desc" },
+      orderBy: { createdAt: "desc" },
       include: {
         patient: { select: { firstName: true, lastName: true, mrn: true } },
       },
     });
 
-    await this.audit.log("ENCOUNTER_VIEW", "ENCOUNTER", {
+    await this.audit.log(AuditAction.ENCOUNTER_VIEW, "ENCOUNTER", {
       userId,
       facilityId,
       patientId,
@@ -81,7 +92,7 @@ export class EncountersService {
   }
 
   async findOne(facilityId: string, id: string, userId?: string, ip?: string, userAgent?: string) {
-    const encounter = await (this.prisma as any).encounter.findFirst({
+    const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true, dob: true, sexAtBirth: true } },
@@ -92,7 +103,7 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
-    await this.audit.log("ENCOUNTER_VIEW", "ENCOUNTER", {
+    await this.audit.log(AuditAction.ENCOUNTER_VIEW, "ENCOUNTER", {
       userId,
       facilityId,
       patientId: encounter.patientId,
@@ -106,7 +117,7 @@ export class EncountersService {
   }
 
   async update(facilityId: string, id: string, data: EncounterUpdateDto, userId?: string, ip?: string, userAgent?: string) {
-    const encounter = await (this.prisma as any).encounter.findFirst({
+    const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
     });
 
@@ -114,17 +125,21 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
+    const updateData: any = {};
+    if (data.chiefComplaint !== undefined) updateData.chiefComplaint = data.chiefComplaint;
+    if (data.triageAcuity !== undefined) updateData.triageAcuity = data.triageAcuity;
+    if (data.vitals !== undefined) updateData.vitals = data.vitals;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+
     const updated = await this.prisma.encounter.update({
       where: { id },
-      data: {
-        notes: data.notes !== undefined ? data.notes : undefined,
-      },
+      data: updateData,
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
       },
     });
 
-    await this.audit.log("ENCOUNTER_UPDATE", "ENCOUNTER", {
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
       userId,
       facilityId,
       patientId: encounter.patientId,
@@ -138,7 +153,7 @@ export class EncountersService {
   }
 
   async close(facilityId: string, id: string, userId?: string, ip?: string, userAgent?: string) {
-    const encounter = await (this.prisma as any).encounter.findFirst({
+    const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
     });
 
@@ -150,18 +165,17 @@ export class EncountersService {
       throw new BadRequestException("Only open encounters can be closed");
     }
 
-    const updated = await (this.prisma as any).encounter.update({
+    const updated = await this.prisma.encounter.update({
       where: { id },
       data: {
         status: "CLOSED",
-        endAt: new Date(),
       },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
       },
     });
 
-    await this.audit.log("ENCOUNTER_CLOSE", "ENCOUNTER", {
+    await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {
       userId,
       facilityId,
       patientId: encounter.patientId,
