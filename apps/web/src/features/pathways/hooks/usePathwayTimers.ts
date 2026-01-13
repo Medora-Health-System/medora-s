@@ -8,6 +8,8 @@ import {
   metOnTime,
   secondsRemaining,
   MilestoneStatus,
+  sortByDueTime,
+  pickNextDue,
 } from "../utils/timer";
 
 // Match your API DTO shape (adjust names if needed)
@@ -18,6 +20,7 @@ export type PathwayMilestoneDTO = {
   targetMinutes: number; // API returns minutes, we convert to seconds
   status: PathwayMilestoneStatus;
   metAt?: string | Date | null;
+  code?: string; // Optional code field
 };
 
 export type PathwayMilestoneStatus = "PENDING" | "MET" | "OVERDUE" | "SKIPPED";
@@ -41,6 +44,7 @@ export type PathwaySessionDTO = {
 export type MilestoneTimerView = {
   id: string;
   name: string;
+  code?: string;
   description?: string | null;
   targetSeconds: number;
   // Raw server status
@@ -56,6 +60,28 @@ export type MilestoneTimerView = {
   badgeClass: string;
   // Helpful flags
   metOnTime: boolean | null;
+};
+
+export type PathwaySessionSummary = {
+  total: number;
+  met: number;
+  pending: number;
+  overdue: number;
+  missed: number;
+  waivedOrCancelled: number;
+
+  // "Next due" milestone (still pending)
+  nextDue: {
+    id: string;
+    name: string;
+    code?: string;
+    remainingSeconds: number;
+    remainingLabel: string;
+  } | null;
+
+  // For header display
+  elapsedSeconds: number;
+  elapsedLabel: string;
 };
 
 type Options = {
@@ -85,8 +111,10 @@ export function usePathwayTimers(session: PathwaySessionDTO | null, options?: Op
     };
   }, [shouldTick, tickMs]);
 
-  const milestoneViews: MilestoneTimerView[] = useMemo(() => {
-    if (!session) return [];
+  const { milestoneViews, summary } = useMemo(() => {
+    if (!session) {
+      return { milestoneViews: [] as MilestoneTimerView[], summary: null as PathwaySessionSummary | null };
+    }
 
     const startedAt = session.activatedAt;
 
@@ -98,7 +126,12 @@ export function usePathwayTimers(session: PathwaySessionDTO | null, options?: Op
           ? new Date(session.completedAt).getTime()
           : nowMs;
 
-    return session.milestones.map((m) => {
+    const elapsedSeconds = Math.max(
+      0,
+      Math.floor((effectiveNowMs - new Date(startedAt).getTime()) / 1000)
+    );
+
+    const unsorted: MilestoneTimerView[] = session.milestones.map((m) => {
       // Convert targetMinutes to targetSeconds
       const targetSeconds = m.targetMinutes * 60;
 
@@ -166,6 +199,7 @@ export function usePathwayTimers(session: PathwaySessionDTO | null, options?: Op
       return {
         id: m.id,
         name: m.name,
+        code: m.code,
         description: m.description,
         targetSeconds,
         serverStatus: m.status,
@@ -178,12 +212,52 @@ export function usePathwayTimers(session: PathwaySessionDTO | null, options?: Op
         metOnTime: onTime,
       };
     });
+
+    // ✅ Sort by due time for clinical order
+    const milestoneViews = [...unsorted].sort(sortByDueTime);
+
+    // ✅ Summary counts (based on uiStatus)
+    const total = milestoneViews.length;
+    const met = milestoneViews.filter((m) => m.uiStatus === "MET").length;
+    const pending = milestoneViews.filter((m) => m.uiStatus === "PENDING").length;
+    const missed = milestoneViews.filter((m) => m.uiStatus === "MISSED").length;
+    const waivedOrCancelled = milestoneViews.filter(
+      (m) => m.uiStatus === "WAIVED" || m.uiStatus === "CANCELLED"
+    ).length;
+
+    // Overdue = pending with remaining < 0 (not counting MISSED unless you want it)
+    const overdue = milestoneViews.filter((m) => m.uiStatus === "PENDING" && m.remainingSeconds < 0).length;
+
+    const next = pickNextDue(milestoneViews);
+
+    const summary: PathwaySessionSummary = {
+      total,
+      met,
+      pending,
+      overdue,
+      missed,
+      waivedOrCancelled,
+      nextDue: next
+        ? {
+            id: next.id,
+            name: next.name,
+            code: next.code,
+            remainingSeconds: next.remainingSeconds,
+            remainingLabel: next.remainingLabel,
+          }
+        : null,
+      elapsedSeconds,
+      elapsedLabel: formatDuration(elapsedSeconds),
+    };
+
+    return { milestoneViews, summary };
   }, [session, nowMs, autoMarkMissedInUI]);
 
   return {
     nowMs,
     shouldTick,
     milestoneViews,
+    summary,
   };
 }
 

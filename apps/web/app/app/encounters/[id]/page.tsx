@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
 import { usePathwayTimers } from "@/features/pathways/hooks/usePathwayTimers";
 import { PathwayMilestoneRow } from "@/features/pathways/components/PathwayMilestoneRow";
+import { PathwaySessionSummaryBar } from "@/features/pathways/components/PathwaySessionSummary";
 
 export default function EncounterDetailPage() {
   const params = useParams();
@@ -580,9 +581,11 @@ function PathwaysTab({
   const [pathway, setPathway] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Use the timer hook - no more polling needed!
-  const { milestoneViews } = usePathwayTimers(pathway, {
+  const { milestoneViews, summary } = usePathwayTimers(pathway, {
     autoMarkMissedInUI: true,
   });
 
@@ -662,6 +665,22 @@ function PathwaysTab({
     } catch (error) {
       alert("Failed to mark milestone");
     }
+  };
+
+  const jumpToNextDue = () => {
+    if (!summary?.nextDue) return;
+    const nextDueId = summary.nextDue.id;
+    const el = rowRefs.current[nextDueId];
+    if (!el) return;
+
+    // Set flash state
+    setFlashId(nextDueId);
+    setTimeout(() => {
+      setFlashId((cur) => (cur === nextDueId ? null : cur));
+    }, 1500);
+
+    // Scroll to element
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   if (loading) return <div>Loading pathways...</div>;
@@ -749,24 +768,25 @@ function PathwaysTab({
 
           <div>
             <h4 style={{ marginBottom: 16 }}>Timers & Milestones</h4>
-            {pathway.status === "COMPLETED" || pathway.status === "CANCELLED" ? (
-              <div style={{ padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, marginBottom: 16 }}>
-                <div style={{ fontSize: 14, color: "#666" }}>
-                  Pathway {pathway.status.toLowerCase()}. Timers frozen at completion.
-                </div>
-              </div>
-            ) : (
-              <div style={{ fontSize: 14, color: "#666", marginBottom: 16 }}>
-                Elapsed: {Math.floor((Date.now() - new Date(pathway.activatedAt).getTime()) / (1000 * 60))} minutes
-              </div>
+            {summary && (
+              <PathwaySessionSummaryBar
+                summary={summary}
+                pathwayStatus={pathway.status}
+                onJumpToNextDue={jumpToNextDue}
+              />
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
               {milestoneViews.map((milestone) => (
                 <PathwayMilestoneRow
                   key={milestone.id}
+                  ref={(el) => {
+                    rowRefs.current[milestone.id] = el;
+                  }}
                   milestone={milestone}
                   pathwayStatus={pathway.status}
                   onMarkMet={handleMarkMilestone}
+                  isNextDue={summary?.nextDue?.id === milestone.id}
+                  isFlashing={flashId === milestone.id}
                 />
               ))}
             </div>

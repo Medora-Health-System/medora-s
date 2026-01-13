@@ -53,3 +53,19 @@ export function metOnTime(params: {
   return occMs <= dueMs;
 }
 
+/** Sort milestones by clinical sequence (targetSeconds asc), stable tie-breaker by name/code. */
+export function sortByDueTime<T extends { targetSeconds: number; name?: string; code?: string }>(
+  a: T,
+  b: T
+): number {
+  if (a.targetSeconds !== b.targetSeconds) return a.targetSeconds - b.targetSeconds;
+  const an = (a.name ?? a.code ?? "").toLowerCase();
+  const bn = (b.name ?? b.code ?? "").toLowerCase();
+  return an.localeCompare(bn);
+}
+
+/** Return the first milestone that is still actionable (PENDING) in sorted order. */
+export function pickNextDue<T extends { uiStatus: MilestoneStatus }>(milestones: T[]): T | null {
+  return milestones.find((m) => m.uiStatus === "PENDING") ?? null;
+}
+
