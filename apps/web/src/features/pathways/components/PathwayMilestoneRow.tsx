@@ -8,9 +8,12 @@ type Props = {
   milestone: MilestoneTimerView;
   pathwayStatus: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
   onMarkMet: (milestoneId: string) => Promise<void> | void;
+  isNextDue?: boolean;
+  isFlashing?: boolean;
 };
 
-export function PathwayMilestoneRow({ milestone, pathwayStatus, onMarkMet }: Props) {
+export const PathwayMilestoneRow = React.forwardRef<HTMLDivElement, Props>(
+  ({ milestone, pathwayStatus, onMarkMet, isNextDue = false, isFlashing = false }, ref) => {
   const disabled =
     pathwayStatus !== "ACTIVE" ||
     milestone.uiStatus === "MET" ||
@@ -29,6 +32,10 @@ export function PathwayMilestoneRow({ milestone, pathwayStatus, onMarkMet }: Pro
                      milestone.rowClass.includes("amber") ? "#fffbeb" :
                      milestone.rowClass.includes("rose") ? "#fff1f2" :
                      "#f9fafb",
+    // Add ring for next due / flash
+    outline: isFlashing ? "4px solid #f59e0b" : isNextDue ? "2px solid #fcd34d" : "none",
+    outlineOffset: (isFlashing || isNextDue) ? 2 : 0,
+    transition: isFlashing ? "outline 0.2s ease-in-out" : "outline 0.3s ease-in-out",
   };
 
   const badgeStyles: React.CSSProperties = {
@@ -49,7 +56,7 @@ export function PathwayMilestoneRow({ milestone, pathwayStatus, onMarkMet }: Pro
   };
 
   return (
-    <div style={rowStyles}>
+    <div ref={ref} style={rowStyles}>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -96,5 +103,7 @@ export function PathwayMilestoneRow({ milestone, pathwayStatus, onMarkMet }: Pro
       </div>
     </div>
   );
-}
+});
+
+PathwayMilestoneRow.displayName = "PathwayMilestoneRow";
 
