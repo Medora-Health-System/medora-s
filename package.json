@@ -1,28 +1,17 @@
 {
   "name": "medora-s",
   "private": true,
-  "packageManager": "pnpm@10.26.0",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm -r dev",
-    "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@nestjs/core",
-      "@prisma/client",
-      "@prisma/engines",
-      "argon2",
-      "esbuild",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev --workspace=@medora/web",
+    "dev:api": "npm run dev --workspace=@medora/api",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
   }
 }
 

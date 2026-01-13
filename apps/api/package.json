@@ -18,7 +18,7 @@
     "seed": "ts-node --transpile-only prisma/seed.ts"
   },
   "dependencies": {
-    "@medora/shared": "workspace:*",
+    "@medora/shared": "*",
     "@nestjs/common": "^11.0.7",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.7",

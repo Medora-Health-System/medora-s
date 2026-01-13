@@ -10,7 +10,7 @@
     "test": "echo \"no tests yet\""
   },
   "dependencies": {
-    "@medora/shared": "workspace:*",
+    "@medora/shared": "*",
     "next": "^15.1.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
