@@ -29,13 +29,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd apps/api && npm run dev & cd apps/web && npm run dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev:api & npm run dev:web & wait"
+waitForPort = 5000
 
 [[ports]]
 localPort = 3001
@@ -44,3 +44,8 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "cd apps/api && npm run start & cd apps/web && npm run start"]
+build = ["bash", "-c", "npm install && cd packages/shared && npm run build && cd ../../apps/api && npm run build && cd ../web && npm run build"]
