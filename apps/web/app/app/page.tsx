@@ -32,7 +32,7 @@ export default function TrackBoardPage() {
     if (!facilityId) return;
     setLoading(true);
     try {
-      const data = await apiFetch("/trackboard?status=OPEN", { facilityId });
+      const data = await apiFetch("/api/backend/trackboard?status=OPEN", { facilityId });
       setEncounters(data || []);
     } catch (error) {
       console.error("Failed to load track board:", error);
