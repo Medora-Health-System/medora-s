@@ -10,3 +10,37 @@ channel = "stable-25_05"
 [userenv.shared]
 JWT_SECRET = "dev-secret-key-change-in-production"
 NEXT_PUBLIC_API_BASE_URL = "http://localhost:3001"
+JWT_ACCESS_SECRET = "dev-access-secret-change-in-production-12345"
+JWT_REFRESH_SECRET = "dev-refresh-secret-change-in-production-67890"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/api && npm run dev & cd apps/web && npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
