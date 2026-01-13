@@ -35,17 +35,32 @@ export class AuthService {
   }
 
   async validateUser(username: string, password: string) {
-    // In Sprint 0 schema, we authenticate by email. We treat "username" as the email identifier.
-    const user = await this.prisma.user.findFirst({
-      where: { email: username, isActive: true }
-    });
+    try {
+      // Treat "username" as email - normalize with toLowerCase and trim
+      const email = username.toLowerCase().trim();
+      const user = await this.prisma.user.findUnique({
+        where: { email }
+      });
 
-    if (!user) throw new UnauthorizedException("Invalid credentials");
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
-    const ok = await argon2.verify(user.passwordHash, password);
-    if (!ok) throw new UnauthorizedException("Invalid credentials");
+      const ok = await argon2.verify(user.passwordHash, password);
+      if (!ok) {
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
-    return user;
+      return user;
+    } catch (error) {
+      // Re-throw UnauthorizedException as-is
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // For database or other errors, log and throw generic unauthorized
+      console.error("validateUser error:", error);
+      throw new UnauthorizedException("Invalid credentials");
+    }
   }
 
   private async buildAuthUserDto(userId: string): Promise<AuthUserDto> {
@@ -92,31 +107,41 @@ export class AuthService {
   }
 
   async login(username: string, password: string) {
-    const user = await this.validateUser(username, password);
+    try {
+      const user = await this.validateUser(username, password);
 
-    const accessPayload: JwtPayload = {
-      sub: user.id,
-      username: user.email,
-      iss: this.issuer(),
-      type: "access",
-      jti: crypto.randomUUID()
-    };
+      const accessPayload: JwtPayload = {
+        sub: user.id,
+        username: user.email,
+        iss: this.issuer(),
+        type: "access",
+        jti: crypto.randomUUID()
+      };
 
-    const refreshPayload: JwtPayload = {
-      sub: user.id,
-      username: user.email,
-      iss: this.issuer(),
-      type: "refresh",
-      jti: crypto.randomUUID()
-    };
+      const refreshPayload: JwtPayload = {
+        sub: user.id,
+        username: user.email,
+        iss: this.issuer(),
+        type: "refresh",
+        jti: crypto.randomUUID()
+      };
 
-    const accessToken = this.signToken(accessPayload, this.accessSecret(), this.accessTtl());
-    const refreshToken = this.signToken(refreshPayload, this.refreshSecret(), this.refreshTtl());
+      const accessToken = this.signToken(accessPayload, this.accessSecret(), this.accessTtl());
+      const refreshToken = this.signToken(refreshPayload, this.refreshSecret(), this.refreshTtl());
 
-    await this.setRefreshTokenHash(user.id, refreshToken);
+      await this.setRefreshTokenHash(user.id, refreshToken);
 
-    const userDto = await this.buildAuthUserDto(user.id);
-    return { accessToken, refreshToken, user: userDto };
+      const userDto = await this.buildAuthUserDto(user.id);
+      return { accessToken, refreshToken, user: userDto };
+    } catch (error) {
+      // Re-throw UnauthorizedException as-is (already handled)
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // For other errors (DB, JWT, etc.), log and throw generic error
+      console.error("Login error:", error);
+      throw new UnauthorizedException("Invalid credentials");
+    }
   }
 
   async refresh(refreshToken: string) {

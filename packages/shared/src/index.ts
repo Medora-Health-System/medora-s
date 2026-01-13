@@ -1,6 +1,6 @@
-export * from "./constants/roles";
-export * from "./constants/languages";
+export * from "./constants/roles.js";
+export * from "./constants/languages.js";
 
-export * from "./schemas/auth";
-export * from "./schemas/patient";
+export * from "./schemas/auth.js";
+export * from "./schemas/patient.js";
 

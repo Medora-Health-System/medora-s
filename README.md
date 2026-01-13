@@ -29,11 +29,27 @@ pnpm --filter @medora/api prisma:seed
 pnpm --filter @medora/api dev
 ```
 
-API health: `GET http://localhost:3001/health`
+API runs on: `http://localhost:3000`
+API health: `GET http://localhost:3000/health`
 
 ### Web
 
 ```bash
-pnpm --filter @medora/web dev
+PORT=3002 pnpm --filter @medora/web dev
+```
+
+Web runs on: `http://localhost:3002`
+
+### Default Credentials
+
+- Email: `admin@medora.local`
+- Password: `Admin123!`
+
+### Create Admin User
+
+To create or update the admin user:
+
+```bash
+ADMIN_EMAIL=admin@medora.local ADMIN_PASSWORD=Admin123! pnpm --filter @medora/api create-admin
 ```
 

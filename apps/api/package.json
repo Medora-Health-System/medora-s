@@ -10,7 +10,9 @@
     "test": "jest --config jest.config.cjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "prisma:seed-catalogs": "ts-node --transpile-only prisma/seed-catalogs.ts",
+    "create-admin": "ts-node --transpile-only scripts/create-admin.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

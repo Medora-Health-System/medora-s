@@ -39,6 +39,42 @@ enum AuditAction {
   UPDATE
   VIEW
   SEED
+  PATIENT_CREATE
+  PATIENT_UPDATE
+  PATIENT_VIEW
+  ENCOUNTER_CREATE
+  ENCOUNTER_UPDATE
+  ENCOUNTER_CLOSE
+  ENCOUNTER_VIEW
+  ORDER_CREATE
+  ORDER_CANCEL
+  ORDER_VIEW
+}
+
+enum EncounterType {
+  OUTPATIENT
+  INPATIENT
+  EMERGENCY
+  URGENT_CARE
+}
+
+enum EncounterStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderPriority {
+  ROUTINE
+  URGENT
+  STAT
 }
 
 model Facility {
@@ -54,6 +90,9 @@ model Facility {
   departments       Department[]
   userRoles         UserRole[]
   patientsRegistered Patient[]  @relation("RegisteredAtFacility")
+  patients          Patient[]   @relation("PatientFacility")
+  encounters        Encounter[]
+  orders            Order[]
   auditLogs         AuditLog[]
 }
 
@@ -120,22 +159,35 @@ model UserRole {
 
 model Patient {
   id                     String      @id @default(uuid())
+  facilityId             String
+  mrn                    String?
   globalMrn              String      @unique
   firstName              String
   lastName               String
   dob                    DateTime?
   phone                  String?
+  email                  String?
   sexAtBirth             SexAtBirth?
   nationalId             String?
+  address                String?
+  city                   String?
+  country                String?
+  language               String?
   registeredAtFacilityId String
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
-  registeredAtFacility Facility @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id], onDelete: Restrict)
-  auditLogs             AuditLog[]
+  facility               Facility    @relation("PatientFacility", fields: [facilityId], references: [id], onDelete: Restrict)
+  registeredAtFacility   Facility    @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id], onDelete: Restrict)
+  encounters             Encounter[]
+  orders                 Order[]
+  auditLogs              AuditLog[]
 
+  @@index([facilityId])
   @@index([lastName, firstName])
   @@index([phone])
+  @@index([mrn])
+  @@unique([facilityId, mrn])
 }
 
 model AuditLog {
@@ -151,12 +203,110 @@ model AuditLog {
   action     AuditAction
   metadata   Json?
 
-  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  facility Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
-  patient  Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  facility Facility?   @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  patient  Patient?    @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  encounter Encounter? @relation("EncounterAuditLogs", fields: [encounterId], references: [id], onDelete: SetNull)
+  order    Order?      @relation("OrderAuditLogs", fields: [orderId], references: [id], onDelete: SetNull)
+  encounterId String?
+  orderId    String?
 
   @@index([userId])
   @@index([facilityId])
   @@index([createdAt])
+  @@index([encounterId])
+}
+
+model Encounter {
+  id          String          @id @default(uuid())
+  patientId   String
+  facilityId  String
+  type        EncounterType
+  status      EncounterStatus @default(OPEN)
+  startAt     DateTime        @default(now())
+  endAt       DateTime?
+  providerId  String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  patient     Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility    Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  orders      Order[]
+  auditLogs   AuditLog[]      @relation("EncounterAuditLogs")
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([status])
+  @@index([startAt])
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  encounterId String
+  facilityId  String
+  type        String      // "LAB", "IMAGING", "MEDICATION"
+  status      OrderStatus @default(PENDING)
+  priority    OrderPriority @default(ROUTINE)
+  notes       String?
+  orderedBy   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  encounter   Encounter   @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility    Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  patientId   String
+  items       OrderItem[]
+  auditLogs   AuditLog[]  @relation("OrderAuditLogs")
+
+  @@index([encounterId])
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([status])
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  catalogItemId   String
+  catalogItemType String   // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
+  quantity        Int?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model CatalogLabTest {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CatalogImagingStudy {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CatalogMedication {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 

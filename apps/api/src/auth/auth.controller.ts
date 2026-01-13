@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Req, UseGuards, BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { loginDtoSchema } from "@medora/shared";
 import { AuthService } from "./auth.service";
@@ -9,14 +9,24 @@ export class AuthController {
 
   @Post("login")
   async login(@Body() body: unknown): Promise<any> {
-    const parsed = loginDtoSchema.safeParse(body);
-    if (!parsed.success) {
-      return { error: "Invalid payload", issues: parsed.error.issues };
-    }
+    try {
+      const parsed = loginDtoSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new BadRequestException("Invalid payload");
+      }
 
-    const { username, password } = parsed.data;
-    // TODO (Epic 0D): write AuditAction.LOGIN
-    return this.auth.login(username, password);
+      const { username, password } = parsed.data;
+      // TODO (Epic 0D): write AuditAction.LOGIN
+      return await this.auth.login(username, password);
+    } catch (error) {
+      // Re-throw HttpExceptions (BadRequestException, UnauthorizedException) as-is
+      if (error instanceof BadRequestException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // For unexpected errors, log and throw generic unauthorized
+      console.error("Login controller error:", error);
+      throw new UnauthorizedException("Invalid credentials");
+    }
   }
 
   @Post("refresh")

@@ -1,12 +1,15 @@
-import { ROLE_CODES } from "@medora/shared";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
-export default function HomePage() {
-  return (
-    <main style={{ padding: 24 }}>
-      <h1 style={{ marginTop: 0 }}>Medora S</h1>
-      <p>Web scaffold is running.</p>
-      <p style={{ color: "#555" }}>Shared roles: {ROLE_CODES.join(", ")}</p>
-    </main>
-  );
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("medora_access");
+
+  // Redirect to /app if authenticated, otherwise to /login
+  if (accessToken) {
+    redirect("/app");
+  } else {
+    redirect("/login");
+  }
 }
 
