@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
+import { usePathwayTimers } from "@/features/pathways/hooks/usePathwayTimers";
+import { PathwayMilestoneRow } from "@/features/pathways/components/PathwayMilestoneRow";
 
 export default function EncounterDetailPage() {
   const params = useParams();
@@ -576,45 +578,28 @@ function PathwaysTab({
   onUpdate: () => void;
 }) {
   const [pathway, setPathway] = useState<any>(null);
-  const [timers, setTimers] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
+
+  // Use the timer hook - no more polling needed!
+  const { milestoneViews } = usePathwayTimers(pathway, {
+    autoMarkMissedInUI: true,
+  });
 
   useEffect(() => {
     loadPathway();
   }, [encounterId, facilityId]);
-
-  useEffect(() => {
-    if (pathway?.id) {
-      loadTimers();
-      const interval = setInterval(loadTimers, 10000); // Refresh every 10 seconds
-      return () => clearInterval(interval);
-    }
-  }, [pathway?.id, facilityId]);
 
   const loadPathway = async () => {
     setLoading(true);
     try {
       const data = await apiFetch(`/encounters/${encounterId}/pathways`, { facilityId });
       setPathway(data);
-      if (data) {
-        loadTimers();
-      }
     } catch (error) {
       console.error("Failed to load pathway:", error);
       setPathway(null);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadTimers = async () => {
-    if (!pathway?.id) return;
-    try {
-      const data = await apiFetch(`/pathways/${pathway.id}/timers`, { facilityId });
-      setTimers(data);
-    } catch (error) {
-      console.error("Failed to load timers:", error);
     }
   };
 
@@ -762,94 +747,30 @@ function PathwaysTab({
             </div>
           </div>
 
-          {timers && (
-            <div>
-              <h4>Timers & Milestones</h4>
-              <div style={{ fontSize: 14, marginBottom: 16, color: "#666" }}>
-                Elapsed: {timers.pathway.elapsedMinutes} minutes
+          <div>
+            <h4 style={{ marginBottom: 16 }}>Timers & Milestones</h4>
+            {pathway.status === "COMPLETED" || pathway.status === "CANCELLED" ? (
+              <div style={{ padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, marginBottom: 16 }}>
+                <div style={{ fontSize: 14, color: "#666" }}>
+                  Pathway {pathway.status.toLowerCase()}. Timers frozen at completion.
+                </div>
               </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #ddd" }}>
-                    <th style={{ padding: 12, textAlign: "left" }}>Milestone</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>Target</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>Status</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {timers.timers.map((timer: any) => (
-                    <tr
-                      key={timer.id}
-                      style={{
-                        borderBottom: "1px solid #eee",
-                        backgroundColor: timer.isOverdue ? "#ffebee" : "white",
-                      }}
-                    >
-                      <td style={{ padding: 12 }}>
-                        <div>
-                          <strong>{timer.name}</strong>
-                          {timer.description && (
-                            <div style={{ fontSize: 12, color: "#666" }}>{timer.description}</div>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: 12 }}>{timer.targetMinutes} min</td>
-                      <td style={{ padding: 12 }}>
-                        <span
-                          style={{
-                            padding: "4px 8px",
-                            borderRadius: 4,
-                            fontSize: 12,
-                            backgroundColor:
-                              timer.status === "MET"
-                                ? "#4caf50"
-                                : timer.isOverdue
-                                ? "#f44336"
-                                : "#e3f2fd",
-                            color:
-                              timer.status === "MET"
-                                ? "white"
-                                : timer.isOverdue
-                                ? "white"
-                                : "#1976d2",
-                          }}
-                        >
-                          {timer.status}
-                          {timer.isOverdue && " (OVERDUE)"}
-                        </span>
-                        {timer.status === "PENDING" && (
-                          <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-                            {timer.remainingMinutes > 0
-                              ? `${timer.remainingMinutes} min remaining`
-                              : "Overdue"}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: 12 }}>
-                        {timer.status === "PENDING" && !isReadOnly && (
-                          <button
-                            onClick={() => handleMarkMilestone(timer.id)}
-                            style={{
-                              padding: "4px 12px",
-                              backgroundColor: "#4caf50",
-                              color: "white",
-                              border: "none",
-                              borderRadius: 4,
-                              cursor: "pointer",
-                              fontSize: 12,
-                            }}
-                          >
-                            Mark MET
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            ) : (
+              <div style={{ fontSize: 14, color: "#666", marginBottom: 16 }}>
+                Elapsed: {Math.floor((Date.now() - new Date(pathway.activatedAt).getTime()) / (1000 * 60))} minutes
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {milestoneViews.map((milestone) => (
+                <PathwayMilestoneRow
+                  key={milestone.id}
+                  milestone={milestone}
+                  pathwayStatus={pathway.status}
+                  onMarkMet={handleMarkMilestone}
+                />
+              ))}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
