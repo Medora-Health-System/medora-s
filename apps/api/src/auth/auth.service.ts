@@ -1,8 +1,8 @@
-import { Injectable, UnauthorizedException, InternalServerErrorException } from "@nestjs/common";
+import { Injectable, UnauthorizedException, BadRequestException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUserDto, JwtPayload } from "./types";
 
@@ -25,7 +25,8 @@ export class AuthService {
     return s;
   }
   private accessTtl() {
-    return this.config.get<string>("JWT_ACCESS_TTL") ?? "15m";
+    /** Durée de session API alignée sur l’usage clinique (rafraîchissement côté web si besoin). */
+    return this.config.get<string>("JWT_ACCESS_TTL") ?? "8h";
   }
   private refreshTtl() {
     return this.config.get<string>("JWT_REFRESH_TTL") ?? "14d";
@@ -69,23 +70,27 @@ export class AuthService {
       include: {
         userRoles: {
           where: { isActive: true },
-          include: { role: true }
-        }
+          include: { role: true, facility: { select: { name: true } } },
+        },
       }
     });
 
     if (!user) throw new UnauthorizedException("User not found");
 
+    const sortedRoles = [...user.userRoles].sort((a, b) =>
+      a.facilityId.localeCompare(b.facilityId, "en")
+    );
     return {
       id: user.id,
       username: user.email,
       fullName: `${user.firstName} ${user.lastName}`.trim(),
-      preferredLang: "en",
-      facilityRoles: user.userRoles.map((ur) => ({
+      preferredLang: "fr",
+      facilityRoles: sortedRoles.map((ur) => ({
         facilityId: ur.facilityId,
+        facilityName: ur.facility?.name,
         role: ur.role.code,
-        departmentId: ur.departmentId ?? null
-      }))
+        departmentId: ur.departmentId ?? null,
+      })),
     };
   }
 
@@ -240,6 +245,85 @@ export class AuthService {
 
   async me(userId: string) {
     return this.buildAuthUserDto(userId);
+  }
+
+  /** Base URL for password reset links (e.g. https://app.medora.local or http://localhost:3000) */
+  private resetPasswordBaseUrl(): string {
+    return this.config.get<string>("RESET_PASSWORD_BASE_URL") ?? "http://localhost:3000";
+  }
+
+  /** Expiry for password reset tokens (1 hour) */
+  private static readonly RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const normalized = email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalized },
+      select: { id: true, isActive: true },
+    });
+
+    if (!user || !user.isActive) {
+      return { message: "Si ce compte existe, un lien de réinitialisation a été envoyé." };
+    }
+
+    const plainToken = randomBytes(32).toString("hex");
+    const tokenHash = await argon2.hash(plainToken);
+    const expiresAt = new Date(Date.now() + AuthService.RESET_TOKEN_EXPIRY_MS);
+
+    await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+
+    const row = await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    const baseUrl = this.resetPasswordBaseUrl().replace(/\/$/, "");
+    const resetLink = `${baseUrl}/reinitialiser-mot-de-passe?id=${row.id}&token=${plainToken}`;
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[FORGOT-PASSWORD] Reset link (dev only):", resetLink);
+    }
+    // TODO: when email is configured, send email with resetLink instead of/in addition to logging
+
+    return { message: "Si ce compte existe, un lien de réinitialisation a été envoyé." };
+  }
+
+  async resetPassword(id: string, token: string, newPassword: string): Promise<{ message: string }> {
+    const row = await this.prisma.passwordResetToken.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, isActive: true } } },
+    });
+
+    if (
+      !row ||
+      row.usedAt ||
+      row.expiresAt < new Date() ||
+      !row.user.isActive
+    ) {
+      throw new BadRequestException("Lien invalide ou expiré. Demandez un nouveau lien.");
+    }
+
+    const valid = await argon2.verify(row.tokenHash, token);
+    if (!valid) {
+      throw new BadRequestException("Lien invalide ou expiré. Demandez un nouveau lien.");
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: row.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: row.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { message: "Mot de passe réinitialisé. Vous pouvez vous connecter." };
   }
 }
 

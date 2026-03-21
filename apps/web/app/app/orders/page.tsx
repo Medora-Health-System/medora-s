@@ -1,9 +1,8 @@
 export default function OrdersPage() {
   return (
     <>
-      <h1>Orders</h1>
-      <p>Clinical orders will be managed here.</p>
+      <h1>Ordres</h1>
+      <p>La gestion centralisée des ordres cliniques sera disponible ici.</p>
     </>
   );
 }
-

@@ -1,143 +1,764 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/apiClient";
+import Link from "next/link";
+import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
+import { MEDORA_PATIENT_VITALS_UPDATED, hasVitalsJson, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { usePathwayTimers } from "@/features/pathways/hooks/usePathwayTimers";
 import { PathwayMilestoneRow } from "@/features/pathways/components/PathwayMilestoneRow";
 import { PathwaySessionSummaryBar } from "@/features/pathways/components/PathwaySessionSummary";
+import {
+  COMMON_VISIT_REASONS,
+  COMMON_NOTE_SNIPPETS,
+  PROVIDER_IMPRESSION_SNIPPETS,
+  PROVIDER_PLAN_SNIPPETS,
+} from "@/constants/clinicalTemplates";
+import { CreateOrderModal } from "@/components/orders";
+import { printRx } from "@/components/pharmacy/RxPrintLayout";
+import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import {
+  getEncounterStatusLabelFr,
+  getEncounterTypeLabelFr,
+  getOrderPriorityLabelFr,
+  getPathwayTypeLabelFr,
+  getPatientSexLabelFr,
+} from "@/lib/uiLabels";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { calculateAge } from "@/lib/patientDisplay";
+import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
+import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
+import {
+  nursingAssessmentDisplayLines,
+  nursingAssessmentSignatureLineFr,
+} from "@/components/patient-chart/patientChartHelpers";
+import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
+import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
+
+function getPathwayStatusLabelFr(status: string): string {
+  if (status === "ACTIVE") return "Actif";
+  if (status === "PAUSED") return "En pause";
+  if (status === "COMPLETED") return "Terminé";
+  if (status === "CANCELLED") return "Annulé";
+  return status;
+}
+
+function formatLatestVitalsLineFr(
+  vitals: Record<string, number | string | null | undefined>,
+  esi?: number | null
+): string {
+  const parts: string[] = [];
+  if (vitals.bpSys != null && vitals.bpDia != null && vitals.bpSys !== "" && vitals.bpDia !== "") {
+    parts.push(`TA : ${vitals.bpSys}/${vitals.bpDia}`);
+  }
+  if (vitals.hr != null && vitals.hr !== "") parts.push(`FC : ${vitals.hr}/min`);
+  if (vitals.rr != null && vitals.rr !== "") parts.push(`FR : ${vitals.rr}/min`);
+  if (vitals.tempC != null && vitals.tempC !== "") parts.push(`Température : ${vitals.tempC} °C`);
+  if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO₂ : ${vitals.spo2} %`);
+  if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Poids : ${vitals.weightKg} kg`);
+  if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Taille : ${vitals.heightCm} cm`);
+  if (esi != null) parts.push(`ESI : ${esi}`);
+  return parts.length ? parts.join(" · ") : "Aucun signe vital enregistré";
+}
+
+const ENCOUNTER_TAB_IDS = new Set([
+  "summary",
+  "triage",
+  "nursing",
+  "clinic",
+  "diagnostics",
+  "orders",
+  "results",
+  "notes",
+  "pathways",
+]);
 
 export default function EncounterDetailPage() {
   const params = useParams();
   const router = useRouter();
   const encounterId = params.id as string;
+  const { facilityId: facilityIdFromHook, canPrescribe, roles, ready: rolesReady } = useFacilityAndRoles();
   const [encounter, setEncounter] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
   const [facilityId, setFacilityId] = useState<string>("");
+  const [tabBootstrapped, setTabBootstrapped] = useState(false);
+  const [quickTriage, setQuickTriage] = useState<any>(null);
+  const [quickOrders, setQuickOrders] = useState<any[]>([]);
+  const [quickDiagnosisCount, setQuickDiagnosisCount] = useState<number | null>(null);
+  const [quickContextLoading, setQuickContextLoading] = useState(false);
+  const [medicationModalRequestTick, setMedicationModalRequestTick] = useState(0);
+  const [encounterResultsRefresh, setEncounterResultsRefresh] = useState(0);
+  const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
+  const [closingEncounter, setClosingEncounter] = useState(false);
+  const [showDischargeModal, setShowDischargeModal] = useState(false);
+  const [pendingDischarge, setPendingDischarge] = useState<Record<string, string> | null>(null);
+  const [dischargeForm, setDischargeForm] = useState({
+    disposition: "",
+    exitCondition: "",
+    dischargeInstructions: "",
+    medicationsGiven: "",
+    followUp: "",
+    returnIfWorse: "",
+  });
+
+  /** Aligné sur GET /encounters/:id (inclut lab / imagerie / pharmacie pour les liens depuis les files). */
+  const canViewEncounterDetail =
+    roles.includes("RN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("ADMIN") ||
+    roles.includes("BILLING") ||
+    roles.includes("FRONT_DESK") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY") ||
+    roles.includes("PHARMACY");
+
+  const canFetchEncounterTriage =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canFetchEncounterOrders =
+    roles.includes("RN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY") ||
+    roles.includes("PHARMACY") ||
+    roles.includes("ADMIN");
+  const canFetchPatientDiagnosesList = canFetchEncounterTriage;
+  const canManageEncounterClosure =
+    roles.includes("PROVIDER") || roles.includes("ADMIN") || roles.includes("RN");
 
   useEffect(() => {
-    // Get facility ID from cookie
     const cookieValue = document.cookie
       .split("; ")
       .find((row) => row.startsWith("medora_facility_id="))
       ?.split("=")[1];
-    
     if (cookieValue) {
       setFacilityId(cookieValue);
+    } else if (facilityIdFromHook) {
+      setFacilityId(facilityIdFromHook);
     } else {
-      // Fallback to fetching from user data
       fetch("/api/auth/me")
-        .then((res) => res.json())
+        .then((res) => parseApiResponse(res))
         .then((data) => {
-          if (data.facilityRoles && data.facilityRoles.length > 0) {
-            const firstFacility = data.facilityRoles[0].facilityId;
-            setFacilityId(firstFacility);
-            document.cookie = `medora_facility_id=${firstFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+          const d = data && typeof data === "object" && !Array.isArray(data) ? (data as { facilityRoles?: { facilityId?: string }[] }) : null;
+          if (d?.facilityRoles?.length) {
+            const firstFacility = d.facilityRoles[0].facilityId;
+            if (firstFacility) {
+              setFacilityId(firstFacility);
+              document.cookie = `medora_facility_id=${firstFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+            }
           }
         });
     }
-  }, []);
+  }, [facilityIdFromHook]);
 
   useEffect(() => {
-    if (encounterId && facilityId) {
-      loadEncounter();
-    }
-  }, [encounterId, facilityId]);
+    setTabBootstrapped(false);
+  }, [encounterId]);
 
-  const loadEncounter = async () => {
+  useEffect(() => {
+    if (!showCloseConfirmModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !closingEncounter) setShowCloseConfirmModal(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showCloseConfirmModal, closingEncounter]);
+
+  useEffect(() => {
+    if (!encounterId || !facilityId || !rolesReady) return;
+    if (!canViewEncounterDetail) {
+      setEncounter(null);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
     setLoading(true);
+    (async () => {
+      const cacheKey = `encounter:${facilityId}:${encounterId}`;
+      try {
+        const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+        const enc = asApiObject(data);
+        if (!cancelled) setEncounter(enc);
+        if (enc) {
+          void setCachedRecord("encounter_summaries", cacheKey, enc, {
+            facilityId,
+            encounterId,
+            patientId: (enc as { patient?: { id?: string } }).patient?.id ?? undefined,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load encounter:", error);
+        const cached = await getCachedRecord<any>("encounter_summaries", cacheKey);
+        if (!cancelled) setEncounter(cached?.data ?? null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, facilityId, rolesReady, canViewEncounterDetail]);
+
+  useEffect(() => {
+    if (!encounter || !facilityId || !rolesReady || tabBootstrapped) return;
+    const tabParam =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
+    if (tabParam && ENCOUNTER_TAB_IDS.has(tabParam)) {
+      setActiveTab(tabParam);
+    } else if (roles.includes("PROVIDER") || roles.includes("ADMIN")) {
+      setActiveTab("clinic");
+    } else if (roles.includes("RN")) {
+      setActiveTab("triage");
+    } else if (roles.includes("FRONT_DESK")) {
+      setActiveTab("summary");
+    }
+    setTabBootstrapped(true);
+  }, [encounter, facilityId, rolesReady, roles, tabBootstrapped]);
+
+  const loadQuickContext = useCallback(async () => {
+    if (!encounter?.id || !facilityId || !rolesReady) return;
+    setQuickContextLoading(true);
+    const patientId = encounter.patient?.id as string;
+    const triageCacheKey = `encounter-triage:${facilityId}:${encounter.id}`;
+    const ordersCacheKey = `encounter-orders:${facilityId}:${encounter.id}`;
+    const triageP = canFetchEncounterTriage
+      ? apiFetch(`/encounters/${encounter.id}/triage`, { facilityId }).catch(() => null)
+      : Promise.resolve(null);
+    const ordersP = canFetchEncounterOrders
+      ? apiFetch(`/encounters/${encounter.id}/orders`, { facilityId }).catch(() => [])
+      : Promise.resolve([]);
+    const dxP =
+      canFetchPatientDiagnosesList && patientId
+        ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId }).catch(() => null)
+        : Promise.resolve(null);
+    const [tri, ords, dx] = await Promise.all([triageP, ordersP, dxP]);
+    setQuickTriage(tri);
+    setQuickOrders(Array.isArray(ords) ? ords : []);
+    if (tri) {
+      void setCachedRecord("latest_vitals", triageCacheKey, tri, {
+        facilityId,
+        encounterId: encounter.id,
+        patientId,
+      });
+    }
+    if (Array.isArray(ords)) {
+      void setCachedRecord("encounter_summaries", ordersCacheKey, ords, {
+        facilityId,
+        encounterId: encounter.id,
+        patientId,
+      });
+    }
+    if (dx && typeof dx === "object" && Array.isArray((dx as any).items)) {
+      const n = (dx as { items: Array<{ encounterId?: string }> }).items.filter(
+        (d) => d.encounterId === encounter.id
+      ).length;
+      setQuickDiagnosisCount(n);
+    } else {
+      setQuickDiagnosisCount(null);
+    }
+    if (!tri && Array.isArray(ords) && ords.length === 0) {
+      const [cachedTri, cachedOrders] = await Promise.all([
+        getCachedRecord<any>("latest_vitals", triageCacheKey),
+        getCachedRecord<any[]>("encounter_summaries", ordersCacheKey),
+      ]);
+      if (cachedTri?.data) setQuickTriage(cachedTri.data);
+      if (cachedOrders?.data) setQuickOrders(cachedOrders.data);
+    }
+    setQuickContextLoading(false);
+  }, [
+    encounter?.id,
+    facilityId,
+    encounter?.patient?.id,
+    rolesReady,
+    canFetchEncounterTriage,
+    canFetchEncounterOrders,
+    canFetchPatientDiagnosesList,
+  ]);
+
+  useEffect(() => {
+    if (!encounter?.id || !facilityId || !rolesReady) return;
+    void loadQuickContext();
+  }, [encounter?.id, encounter?.updatedAt, facilityId, rolesReady, loadQuickContext]);
+
+  useEffect(() => {
+    if (!encounter?.patient?.id) return;
+    const onVitalsUpdated = (ev: Event) => {
+      const e = ev as CustomEvent<{ patientId?: string }>;
+      if (e.detail?.patientId !== encounter.patient.id) return;
+      void loadQuickContext();
+    };
+    window.addEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitalsUpdated);
+    return () => window.removeEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitalsUpdated);
+  }, [encounter?.patient?.id, loadQuickContext]);
+
+  const refreshQuickOrdersOnly = useCallback(async () => {
+    if (!encounter?.id || !facilityId || !canFetchEncounterOrders) return;
+    try {
+      const ords = await apiFetch(`/encounters/${encounter.id}/orders`, { facilityId });
+      setQuickOrders(Array.isArray(ords) ? ords : []);
+    } catch {
+      /* ignore */
+    }
+  }, [encounter?.id, facilityId, canFetchEncounterOrders]);
+
+  const mergeEncounterFromOperationalPatch = useCallback((patch: Record<string, unknown>) => {
+    setEncounter((prev: any) => {
+      if (!prev) return prev;
+      return { ...prev, ...patch };
+    });
+  }, []);
+
+  const loadEncounter = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!canViewEncounterDetail) return;
+    if (!opts?.silent) setLoading(true);
     try {
       const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
-      setEncounter(data);
+      setEncounter(asApiObject(data));
     } catch (error) {
       console.error("Failed to load encounter:", error);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
+  }, [canViewEncounterDetail, encounterId, facilityId]);
+
+  useEffect(() => {
+    if (!encounter?.id || !encounter?.patient?.id) return;
+    const onResultSaved = (ev: Event) => {
+      const e = ev as CustomEvent<{ patientId?: string; encounterId?: string }>;
+      if (e.detail?.patientId && e.detail.patientId !== encounter.patient.id) return;
+      if (e.detail?.encounterId && e.detail.encounterId !== encounter.id) return;
+      void refreshQuickOrdersOnly();
+      void loadEncounter({ silent: true });
+      setEncounterResultsRefresh((t) => t + 1);
+    };
+    window.addEventListener(MEDORA_CHART_RESULT_UPDATED, onResultSaved);
+    return () => window.removeEventListener(MEDORA_CHART_RESULT_UPDATED, onResultSaved);
+  }, [encounter?.id, encounter?.patient?.id, loadEncounter, refreshQuickOrdersOnly]);
+
+  const openCloseConfirmModal = () => {
+    setPendingDischarge(null);
+    setShowCloseConfirmModal(true);
   };
 
-  const handleCloseEncounter = async () => {
-    if (!confirm("Close this encounter?")) return;
+  const openDischargeThenClose = () => {
+    setShowDischargeModal(true);
+  };
+
+  const submitDischargeAndConfirmClose = () => {
+    setPendingDischarge({ ...dischargeForm });
+    setShowDischargeModal(false);
+    setShowCloseConfirmModal(true);
+  };
+
+  const confirmCloseEncounter = async () => {
+    setClosingEncounter(true);
     try {
+      const trimmed = pendingDischarge
+        ? {
+            disposition: pendingDischarge.disposition.trim() || undefined,
+            exitCondition: pendingDischarge.exitCondition.trim() || undefined,
+            dischargeInstructions: pendingDischarge.dischargeInstructions.trim() || undefined,
+            medicationsGiven: pendingDischarge.medicationsGiven.trim() || undefined,
+            followUp: pendingDischarge.followUp.trim() || undefined,
+            returnIfWorse: pendingDischarge.returnIfWorse.trim() || undefined,
+          }
+        : undefined;
       await apiFetch(`/encounters/${encounterId}/close`, {
         method: "POST",
         facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          trimmed && Object.values(trimmed).some(Boolean) ? { discharge: trimmed } : {}
+        ),
       });
-      loadEncounter();
-    } catch (error) {
-      alert("Failed to close encounter");
+      setShowCloseConfirmModal(false);
+      setPendingDischarge(null);
+      await loadEncounter();
+    } catch {
+      alert("Impossible de fermer la consultation");
+    } finally {
+      setClosingEncounter(false);
     }
   };
 
-  if (loading) {
-    return <div style={{ padding: 24 }}>Loading...</div>;
+  if (!facilityId || !encounterId) {
+    return <div style={{ padding: 24 }}>Chargement…</div>;
+  }
+
+  if (!rolesReady || loading) {
+    return <div style={{ padding: 24 }}>Chargement…</div>;
+  }
+
+  if (!canViewEncounterDetail) {
+    return (
+      <div style={{ padding: 24, maxWidth: 520 }}>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Accès restreint</p>
+        <p style={{ margin: "12px 0 0 0", color: "#555", lineHeight: 1.5 }}>
+          Votre rôle ne permet pas d&apos;ouvrir le dossier de cette consultation. Utilisez un compte clinique ou
+          facturation, ou restez sur la fiche patient (liste des consultations).
+        </p>
+      </div>
+    );
   }
 
   if (!encounter) {
-    return <div style={{ padding: 24 }}>Encounter not found</div>;
+    return <div style={{ padding: 24 }}>Consultation introuvable</div>;
   }
 
+  const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const isRNOnly = roles.includes("RN") && !isProviderLike;
+  const showNursingTab = roles.includes("RN") || roles.includes("ADMIN") || roles.includes("PROVIDER");
+  const canEditOperational = roles.includes("FRONT_DESK") || roles.includes("RN") || roles.includes("ADMIN");
+  const patient = encounter.patient;
+  const motif =
+    (encounter.visitReason || encounter.chiefComplaint || quickTriage?.chiefComplaint || "").trim() || "—";
+  const vitalsJson = (quickTriage?.vitalsJson || {}) as Record<string, number | string | null | undefined>;
+  const vitalsAtRaw = quickTriage?.triageCompleteAt || quickTriage?.updatedAt || null;
+  const vitalsAt = vitalsAtRaw ? new Date(vitalsAtRaw).toLocaleString("fr-FR") : null;
+  const vitalsLine = hasVitalsJson(vitalsJson)
+    ? formatLatestVitalsLineFr(vitalsJson, quickTriage?.esi ?? null)
+    : "Aucun signe vital enregistré";
+  const medOrderCount = quickOrders.filter((o) => o.type === "MEDICATION").length;
+  const totalOrderCount = quickOrders.length;
+  const ageText =
+    patient?.dob && !Number.isNaN(new Date(patient.dob).getTime()) ? `${calculateAge(patient.dob)} ans` : "—";
+  const sexText = getPatientSexLabelFr(patient?.sex ?? null, patient?.sexAtBirth ?? null);
+  const patientDob =
+    patient?.dob != null
+      ? new Date(patient.dob).toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : null;
+
+  const quickBtn: React.CSSProperties = {
+    padding: "6px 12px",
+    fontSize: 13,
+    border: "1px solid #ccc",
+    borderRadius: 6,
+    background: "#fafafa",
+    cursor: "pointer",
+    fontWeight: 500,
+  };
+
   const tabs = [
-    { id: "summary", label: "Summary" },
-    { id: "triage", label: "Triage/Vitals" },
-    { id: "pathways", label: "Pathways" },
-    { id: "notes", label: "Notes" },
-    { id: "orders", label: "Orders" },
-    { id: "results", label: "Results" },
-    { id: "medications", label: "Medications" },
-    { id: "imaging", label: "Imaging" },
+    { id: "summary", label: "Résumé de la consultation" },
+    { id: "triage", label: "Signes vitaux" },
+    ...(showNursingTab ? [{ id: "nursing", label: "Évaluation infirmière" }] : []),
+    { id: "clinic", label: "Évaluation médicale" },
+    { id: "diagnostics", label: "Diagnostics" },
+    { id: "orders", label: "Ordres" },
+    { id: "results", label: "Résultats" },
+    { id: "notes", label: "Notes inf." },
+    { id: "pathways", label: "Parcours cliniques" },
   ];
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ backgroundColor: "white", padding: 24, borderRadius: 8, border: "1px solid #ddd" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-            <div>
-              <h1 style={{ margin: "0 0 8px 0" }}>
-                {encounter.patient.firstName} {encounter.patient.lastName}
+      <div style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            backgroundColor: "white",
+            padding: "20px 24px",
+            borderRadius: 8,
+            border: "1px solid #e0e0e0",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 16,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+              <h1 style={{ margin: "0 0 6px 0", fontSize: 22, lineHeight: 1.25 }}>
+                {patient.firstName} {patient.lastName}
               </h1>
-              <div style={{ color: "#666", fontSize: 14 }}>
-                <div>MRN: {encounter.patient.mrn || "-"}</div>
-                <div>Type: {encounter.type}</div>
+              <div style={{ color: "#444", fontSize: 14, lineHeight: 1.5 }}>
                 <div>
-                  Status:{" "}
+                  <span style={{ color: "#757575" }}>Âge :</span> {ageText}
+                </div>
+                <div>
+                  <span style={{ color: "#757575" }}>Sexe :</span> {sexText}
+                </div>
+                {patientDob && (
+                  <div>
+                    <span style={{ color: "#757575" }}>Date de naissance :</span> {patientDob}
+                  </div>
+                )}
+                <div>
+                  <span style={{ color: "#757575" }}>NIR / MRN :</span> {patient.mrn || "—"}
+                </div>
+                <div>
+                  <span style={{ color: "#757575" }}>Type de consultation :</span>{" "}
+                  {getEncounterTypeLabelFr(encounter.type)}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 4 }}>
+                  <span style={{ color: "#757575" }}>Statut :</span>
                   <span
                     style={{
-                      padding: "4px 8px",
+                      padding: "2px 10px",
                       borderRadius: 4,
                       fontSize: 12,
+                      fontWeight: 600,
                       backgroundColor: encounter.status === "OPEN" ? "#e3f2fd" : "#f5f5f5",
-                      color: encounter.status === "OPEN" ? "#1976d2" : "#666",
+                      color: encounter.status === "OPEN" ? "#1565c0" : "#616161",
                     }}
                   >
-                    {encounter.status}
+                    {getEncounterStatusLabelFr(encounter.status)}
                   </span>
                 </div>
-                <div>Started: {new Date(encounter.createdAt).toLocaleString()}</div>
+                <div style={{ marginTop: 4 }}>
+                  <span style={{ color: "#757575" }}>Ouverture :</span>{" "}
+                  {new Date(encounter.createdAt).toLocaleString("fr-FR")}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  <span style={{ color: "#757575" }}>Salle :</span>{" "}
+                  {encounter.roomLabel?.trim() || "—"}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
+                  {encounter.physicianAssigned
+                    ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
+                    : "—"}
+                </div>
                 {encounter.status === "CLOSED" && encounter.updatedAt && (
-                  <div>Ended: {new Date(encounter.updatedAt).toLocaleString()}</div>
+                  <div>
+                    <span style={{ color: "#757575" }}>Clôture :</span>{" "}
+                    {new Date(encounter.updatedAt).toLocaleString("fr-FR")}
+                  </div>
                 )}
               </div>
             </div>
-            {encounter.status === "OPEN" && (
-              <button
-                onClick={handleCloseEncounter}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+              <Link
+                href={`/app/patients/${patient.id}`}
                 style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#d32f2f",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  fontSize: 14,
+                  padding: "8px 12px",
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: "#1a1a1a",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  background: "#fff",
                 }}
               >
-                Close Encounter
-              </button>
-            )}
+                Retour au dossier patient
+              </Link>
+              {encounter.status === "OPEN" && canManageEncounterClosure && (
+                <>
+                  <button
+                    type="button"
+                    onClick={openDischargeThenClose}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#37474f",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Dossier de sortie
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openCloseConfirmModal}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#c62828",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Terminer la consultation
+                  </button>
+                </>
+              )}
+            </div>
           </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: "1px solid #eee",
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#424242", marginBottom: 8, letterSpacing: 0.02 }}>
+              Derniers signes vitaux
+            </div>
+            <div style={{ fontSize: 13, color: "#333", lineHeight: 1.55 }}>
+              {quickContextLoading ? "Chargement…" : vitalsLine}
+              {vitalsAt && <div style={{ color: "#757575" }}>Relevé : {vitalsAt}</div>}
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: "1px solid #eee",
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#424242", marginBottom: 8, letterSpacing: 0.02 }}>
+              Résumé rapide de la consultation
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: "8px 16px",
+                fontSize: 13,
+                color: "#333",
+              }}
+            >
+              <div>
+                <span style={{ color: "#757575" }}>Motif :</span>{" "}
+                <span style={{ wordBreak: "break-word" }}>{motif}</span>
+              </div>
+              <div>
+                <span style={{ color: "#757575" }}>Diagnostics (visite) :</span>{" "}
+                {quickContextLoading ? "…" : quickDiagnosisCount !== null ? quickDiagnosisCount : "—"}
+              </div>
+              <div>
+                <span style={{ color: "#757575" }}>Ordonnances :</span>{" "}
+                {quickContextLoading ? "…" : medOrderCount}
+                {totalOrderCount > 0 && (
+                  <span style={{ color: "#757575" }}> · Ordres : {totalOrderCount}</span>
+                )}
+              </div>
+              {encounter.followUpDate && (
+                <div>
+                  <span style={{ color: "#757575" }}>Suivi :</span>{" "}
+                  {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
+                </div>
+              )}
+              <div>
+                <span style={{ color: "#757575" }}>Salle :</span>{" "}
+                {encounter.roomLabel?.trim() || "—"}
+              </div>
+              <div>
+                <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
+                {encounter.physicianAssigned
+                  ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: "1px solid #eee",
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#424242", marginBottom: 8, letterSpacing: 0.02 }}>
+              Actions rapides
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {isRNOnly && (
+                <>
+                  <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
+                    Saisir les signes vitaux
+                  </button>
+                  <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
+                    Voir l&apos;évaluation médicale
+                  </button>
+                  <button type="button" style={quickBtn} onClick={() => setActiveTab("orders")}>
+                    Voir les ordres
+                  </button>
+                  {encounter.status === "OPEN" && canManageEncounterClosure ? (
+                    <>
+                      <button
+                        type="button"
+                        style={{
+                          ...quickBtn,
+                          backgroundColor: "#37474f",
+                          color: "#fff",
+                          borderColor: "#37474f",
+                        }}
+                        onClick={openDischargeThenClose}
+                      >
+                        Dossier de sortie
+                      </button>
+                      <button type="button" style={{ ...quickBtn, borderColor: "#c62828", color: "#c62828" }} onClick={openCloseConfirmModal}>
+                        Terminer la consultation
+                      </button>
+                    </>
+                  ) : null}
+                  <Link href={`/app/patients/${patient.id}`} style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}>
+                    Retour au dossier patient
+                  </Link>
+                </>
+              )}
+              {isProviderLike && (
+                <>
+                  <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
+                    Évaluation médicale
+                  </button>
+                  <button
+                    type="button"
+                    style={quickBtn}
+                    onClick={() => setActiveTab("diagnostics")}
+                  >
+                    Ajouter un diagnostic
+                  </button>
+                  {canPrescribe ? (
+                    <button
+                      type="button"
+                      style={quickBtn}
+                      onClick={() => {
+                        setActiveTab("orders");
+                        setMedicationModalRequestTick((t) => t + 1);
+                      }}
+                    >
+                      Créer une ordonnance
+                    </button>
+                  ) : null}
+                  <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
+                    Voir les signes vitaux
+                  </button>
+                </>
+              )}
+              {!isRNOnly && !isProviderLike && (
+                <>
+                  <button type="button" style={quickBtn} onClick={() => setActiveTab("summary")}>
+                    Résumé de la consultation
+                  </button>
+                  <Link href={`/app/patients/${patient.id}`} style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}>
+                    Retour au dossier patient
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+          <EncounterOperationalPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            canEdit={canEditOperational && encounter.status === "OPEN"}
+            roomLabel={encounter.roomLabel}
+            physicianAssigned={encounter.physicianAssigned}
+            onSaved={mergeEncounterFromOperationalPatch}
+            onUpdated={() => void loadEncounter({ silent: true })}
+          />
         </div>
       </div>
 
@@ -164,56 +785,573 @@ export default function EncounterDetailPage() {
 
         <div style={{ padding: 24 }}>
           {activeTab === "summary" && <EncounterSummaryTab encounter={encounter} />}
+          {activeTab === "clinic" && (
+            <ClinicVisitTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />
+          )}
           {activeTab === "triage" && <TriageVitalsTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
+          {activeTab === "nursing" && showNursingTab && (
+            <NursingAssessmentTab
+              encounterId={encounterId}
+              facilityId={facilityId}
+              encounter={encounter}
+              onUpdate={loadEncounter}
+            />
+          )}
+          {activeTab === "diagnostics" && (
+            <EncounterDiagnosticsTab
+              encounterId={encounter.id}
+              patientId={patient.id}
+              facilityId={facilityId}
+              canPrescribe={canPrescribe}
+              onGoPatientChart={() => router.push(`/app/patients/${patient.id}`)}
+            />
+          )}
           {activeTab === "pathways" && <PathwaysTab encounterId={encounterId} encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
           {activeTab === "notes" && <NotesTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
-          {activeTab === "orders" && <OrdersTab encounterId={encounterId} facilityId={facilityId} />}
-          {activeTab === "results" && <div>Results coming soon</div>}
-          {activeTab === "medications" && <div>Medications coming soon</div>}
-          {activeTab === "imaging" && <div>Imaging coming soon</div>}
+          {activeTab === "orders" && (
+            <OrdersTab
+              encounterId={encounterId}
+              encounter={encounter}
+              facilityId={facilityId}
+              canPrescribe={canPrescribe}
+              medicationModalRequestTick={medicationModalRequestTick}
+              onOrdersUpdated={refreshQuickOrdersOnly}
+            />
+          )}
+          {activeTab === "results" && (
+            <EncounterResultsTab
+              encounterId={encounterId}
+              facilityId={facilityId}
+              refreshToken={encounterResultsRefresh}
+            />
+          )}
         </div>
       </div>
+
+      {showDischargeModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2100,
+            padding: 16,
+          }}
+          onClick={() => setShowDischargeModal(false)}
+          role="presentation"
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              maxWidth: 520,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="discharge-title"
+          >
+            <h2 id="discharge-title" style={{ margin: "0 0 16px 0", fontSize: 18 }}>
+              Dossier de sortie
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {(
+                [
+                  ["disposition", "Disposition"],
+                  ["exitCondition", "État à la sortie"],
+                  ["dischargeInstructions", "Instructions de sortie"],
+                  ["medicationsGiven", "Médicaments remis / prescrits"],
+                  ["followUp", "Suivi recommandé"],
+                  ["returnIfWorse", "Retour si aggravation"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                  <span style={{ fontWeight: 600 }}>{label}</span>
+                  <textarea
+                    value={dischargeForm[key]}
+                    onChange={(e) => setDischargeForm((f) => ({ ...f, [key]: e.target.value }))}
+                    rows={key === "dischargeInstructions" || key === "medicationsGiven" ? 3 : 2}
+                    style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  />
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+              <button
+                type="button"
+                onClick={() => setShowDischargeModal(false)}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                  background: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={submitDischargeAndConfirmClose}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "none",
+                  borderRadius: 6,
+                  background: "#37474f",
+                  color: "white",
+                  cursor: "pointer",
+                }}
+              >
+                Continuer vers la clôture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCloseConfirmModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2000,
+            padding: 16,
+          }}
+          onClick={() => !closingEncounter && setShowCloseConfirmModal(false)}
+          role="presentation"
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              maxWidth: 420,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="close-encounter-confirm-title"
+          >
+            <h2 id="close-encounter-confirm-title" style={{ margin: "0 0 12px 0", fontSize: 18 }}>
+              Terminer la consultation
+            </h2>
+            <p style={{ margin: "0 0 24px 0", fontSize: 14, color: "#333", lineHeight: 1.5 }}>
+              Êtes-vous sûr de vouloir terminer la consultation ?
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                disabled={closingEncounter}
+                onClick={() => {
+                  setShowCloseConfirmModal(false);
+                  setPendingDischarge(null);
+                }}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                  background: "#fff",
+                  cursor: closingEncounter ? "not-allowed" : "pointer",
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={closingEncounter}
+                onClick={() => void confirmCloseEncounter()}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "none",
+                  borderRadius: 6,
+                  background: "#c62828",
+                  color: "white",
+                  cursor: closingEncounter ? "not-allowed" : "pointer",
+                  opacity: closingEncounter ? 0.85 : 1,
+                }}
+              >
+                {closingEncounter ? "…" : "Terminer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function EncounterSummaryTab({ encounter }: { encounter: any }) {
+  const reason = encounter.visitReason || encounter.chiefComplaint;
+  const nursingLines = nursingAssessmentDisplayLines(encounter?.nursingAssessment);
+  const nursingSig = nursingAssessmentSignatureLineFr(encounter?.nursingAssessment);
   return (
     <div>
-      <h3>Encounter Details</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div>
-          <strong>Type:</strong> {encounter.type}
-        </div>
-        <div>
-          <strong>Status:</strong> {encounter.status}
-        </div>
-        <div>
-          <strong>Started:</strong> {new Date(encounter.createdAt).toLocaleString()}
-        </div>
-        {encounter.status === "CLOSED" && encounter.updatedAt && (
-          <div>
-            <strong>Ended:</strong> {new Date(encounter.updatedAt).toLocaleString()}
-          </div>
-        )}
+      <h3>Résumé de la consultation</h3>
+      <p style={{ color: "#757575", fontSize: 13, marginTop: -4, marginBottom: 16 }}>
+        Synthèse clinique — les détails sont dans les onglets Signes vitaux et Évaluation médicale.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14 }}>
         {encounter.providerId && (
-          <div>
-            <strong>Provider:</strong> {encounter.providerId}
+          <div style={{ gridColumn: "1 / -1" }}>
+            <strong>Médecin assigné :</strong> {encounter.providerId}
           </div>
         )}
-        {encounter.chiefComplaint && (
-          <div>
-            <strong>Chief Complaint:</strong> {encounter.chiefComplaint}
+        {reason && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <strong>Motif :</strong> {reason}
+          </div>
+        )}
+        {nursingLines.length > 0 && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <strong>Évaluation infirmière (synthèse)</strong>
+            <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, color: "#37474f", lineHeight: 1.5 }}>
+              {nursingLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+            {nursingSig ? (
+              <div style={{ fontSize: 12, color: "#546e7a", marginTop: 8, fontStyle: "italic" }}>{nursingSig}</div>
+            ) : null}
+          </div>
+        )}
+        {encounter.followUpDate && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <strong>Date de suivi :</strong>{" "}
+            {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
           </div>
         )}
       </div>
+      {(encounter.clinicianImpression || encounter.providerNote) && (
+        <div style={{ marginTop: 16 }}>
+          <strong>Impression clinique / Note médecin</strong>
+          <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, whiteSpace: "pre-wrap" }}>
+            {encounter.clinicianImpression || encounter.providerNote}
+          </div>
+        </div>
+      )}
+      {encounter.treatmentPlan && (
+        <div style={{ marginTop: 16 }}>
+          <strong>Plan de traitement</strong>
+          <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f0f7ff", borderRadius: 4, whiteSpace: "pre-wrap" }}>
+            {encounter.treatmentPlan}
+          </div>
+        </div>
+      )}
       {encounter.notes && (
         <div style={{ marginTop: 16 }}>
-          <strong>Notes:</strong>
-          <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4 }}>
+          <strong>Notes infirmier/ère, autres</strong>
+          <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, whiteSpace: "pre-wrap" }}>
             {encounter.notes}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function EncounterDiagnosticsTab({
+  encounterId,
+  patientId,
+  facilityId,
+  canPrescribe,
+  onGoPatientChart,
+}: {
+  encounterId: string;
+  patientId: string;
+  facilityId: string;
+  canPrescribe: boolean;
+  onGoPatientChart: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<Array<{ id: string; code: string; description: string | null; onsetDate: string | null }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const data = await apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId });
+        const items = Array.isArray((data as any)?.items) ? (data as any).items : [];
+        const forEncounter = items
+          .filter((d: any) => d.encounterId === encounterId)
+          .map((d: any) => ({
+            id: d.id,
+            code: d.code,
+            description: d.description ?? null,
+            onsetDate: d.onsetDate ?? null,
+          }));
+        if (!cancelled) setRows(forEncounter);
+      } catch {
+        if (!cancelled) setRows([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, patientId, facilityId]);
+
+  if (loading) return <div>Chargement des diagnostics…</div>;
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
+        <h3 style={{ margin: 0 }}>Diagnostics de la consultation</h3>
+        {canPrescribe ? (
+          <button
+            type="button"
+            onClick={onGoPatientChart}
+            style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 6, background: "#fafafa", cursor: "pointer" }}
+          >
+            Ajouter un diagnostic
+          </button>
+        ) : null}
+      </div>
+      {rows.length === 0 ? (
+        <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 6, background: "#fafafa", color: "#555" }}>
+          Aucun diagnostic enregistré pour cette consultation.
+        </div>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <thead>
+            <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <th style={{ padding: "10px 12px", textAlign: "left" }}>Code</th>
+              <th style={{ padding: "10px 12px", textAlign: "left" }}>Libellé</th>
+              <th style={{ padding: "10px 12px", textAlign: "left" }}>Début</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
+                <td style={{ padding: "10px 12px" }}>{r.code}</td>
+                <td style={{ padding: "10px 12px" }}>{r.description || "—"}</td>
+                <td style={{ padding: "10px 12px" }}>
+                  {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString("fr-FR") : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function ClinicVisitTab({
+  encounter,
+  facilityId,
+  onUpdate,
+}: {
+  encounter: any;
+  facilityId: string;
+  onUpdate: () => void;
+}) {
+  const [visitReason, setVisitReason] = useState(encounter.visitReason || encounter.chiefComplaint || "");
+  const [impression, setImpression] = useState(encounter.clinicianImpression || encounter.providerNote || "");
+  const [plan, setPlan] = useState(encounter.treatmentPlan || "");
+  const [followUp, setFollowUp] = useState(
+    encounter.followUpDate ? new Date(encounter.followUpDate).toISOString().slice(0, 10) : ""
+  );
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const readOnly = encounter.status !== "OPEN";
+
+  useEffect(() => {
+    setVisitReason(encounter.visitReason || encounter.chiefComplaint || "");
+    setImpression(encounter.clinicianImpression || encounter.providerNote || "");
+    setPlan(encounter.treatmentPlan || "");
+    setFollowUp(encounter.followUpDate ? new Date(encounter.followUpDate).toISOString().slice(0, 10) : "");
+  }, [encounter.id, encounter.visitReason, encounter.chiefComplaint, encounter.clinicianImpression, encounter.providerNote, encounter.treatmentPlan, encounter.followUpDate]);
+
+  const save = async () => {
+    setMessage(null);
+    setSaving(true);
+    try {
+      await apiFetch(`/encounters/${encounter.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitReason: visitReason.trim() || null,
+          clinicianImpression: impression.trim() || null,
+          treatmentPlan: plan.trim() || null,
+          followUpDate: followUp ? new Date(followUp + "T12:00:00").toISOString() : null,
+        }),
+        facilityId,
+      });
+      setMessage({ type: "ok", text: "Évaluation médicale enregistrée." });
+      onUpdate();
+    } catch (e: any) {
+      setMessage({
+        type: "err",
+        text: normalizeUserFacingError(e?.message) || "Enregistrement impossible.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <h3 style={{ marginTop: 0 }}>Évaluation médicale</h3>
+      <p style={{ color: "#757575", fontSize: 13 }}>
+        {readOnly
+          ? "Consultation clôturée — lecture seule."
+          : "Motif, impression, plan et date de suivi — enregistrement partagé avec le dossier patient."}
+      </p>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Motif de visite</label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+          <select
+            disabled={readOnly}
+            value=""
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) setVisitReason(v);
+            }}
+            style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 4, fontSize: 14, minWidth: 200 }}
+            aria-label="Choisir un motif courant"
+          >
+            <option value="">— Motifs courants —</option>
+            {COMMON_VISIT_REASONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+        <input
+          disabled={readOnly}
+          value={visitReason}
+          onChange={(e) => setVisitReason(e.target.value)}
+          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          placeholder="Pourquoi le patient est-il là aujourd'hui ?"
+        />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Impression clinique</label>
+        {!readOnly && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>Insérer :</span>
+            {PROVIDER_IMPRESSION_SNIPPETS.slice(0, 5).map((snippet) => (
+              <button
+                key={snippet.slice(0, 24)}
+                type="button"
+                onClick={() => setImpression((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
+                style={{
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  border: "1px solid #ccc",
+                  borderRadius: 4,
+                  background: "#f9f9f9",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  maxWidth: 280,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={snippet}
+              >
+                {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
+              </button>
+            ))}
+          </div>
+        )}
+        <textarea
+          disabled={readOnly}
+          value={impression}
+          onChange={(e) => setImpression(e.target.value)}
+          rows={4}
+          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          placeholder="Bilan / impression clinique"
+        />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Plan de traitement</label>
+        {!readOnly && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>Insérer :</span>
+            {PROVIDER_PLAN_SNIPPETS.slice(0, 5).map((snippet) => (
+              <button
+                key={snippet.slice(0, 24)}
+                type="button"
+                onClick={() => setPlan((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
+                style={{
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  border: "1px solid #ccc",
+                  borderRadius: 4,
+                  background: "#f9f9f9",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  maxWidth: 280,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={snippet}
+              >
+                {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
+              </button>
+            ))}
+          </div>
+        )}
+        <textarea
+          disabled={readOnly}
+          value={plan}
+          onChange={(e) => setPlan(e.target.value)}
+          rows={5}
+          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          placeholder="Médicaments, éducation, examens demandés, précautions de retour…"
+        />
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Date de suivi</label>
+        <input
+          type="date"
+          disabled={readOnly}
+          value={followUp}
+          onChange={(e) => setFollowUp(e.target.value)}
+          style={{ padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+        />
+      </div>
+      {message && (
+        <p style={{ color: message.type === "ok" ? "#2e7d32" : "#c62828", marginBottom: 12 }}>{message.text}</p>
+      )}
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          style={{
+            padding: "10px 24px",
+            backgroundColor: "#1a1a1a",
+            color: "white",
+            border: "none",
+            borderRadius: 4,
+            cursor: saving ? "wait" : "pointer",
+          }}
+        >
+          {saving ? "Enregistrement…" : "Enregistrer la visite"}
+        </button>
       )}
     </div>
   );
@@ -248,6 +1386,7 @@ function TriageVitalsTab({
     triageCompleteAt: "",
   });
   const [saving, setSaving] = useState(false);
+  const [saveInfo, setSaveInfo] = useState<string>("");
   const isReadOnly = encounter.status !== "OPEN";
 
   useEffect(() => {
@@ -260,18 +1399,19 @@ function TriageVitalsTab({
       const data = await apiFetch(`/encounters/${encounter.id}/triage`, { facilityId });
       setTriage(data);
       if (data) {
+        const v = (data.vitalsJson || {}) as Record<string, number | string | null>;
         setFormData({
           chiefComplaint: data.chiefComplaint || "",
           onsetAt: data.onsetAt ? new Date(data.onsetAt).toISOString().slice(0, 16) : "",
           esi: data.esi?.toString() || "",
-          tempC: vitals.tempC?.toString() || "",
-          hr: vitals.hr?.toString() || "",
-          rr: vitals.rr?.toString() || "",
-          bpSys: vitals.bpSys?.toString() || "",
-          bpDia: vitals.bpDia?.toString() || "",
-          spo2: vitals.spo2?.toString() || "",
-          weightKg: vitals.weightKg?.toString() || "",
-          heightCm: vitals.heightCm?.toString() || "",
+          tempC: v.tempC?.toString() ?? "",
+          hr: v.hr?.toString() ?? "",
+          rr: v.rr?.toString() ?? "",
+          bpSys: v.bpSys?.toString() ?? "",
+          bpDia: v.bpDia?.toString() ?? "",
+          spo2: v.spo2?.toString() ?? "",
+          weightKg: v.weightKg?.toString() ?? "",
+          heightCm: v.heightCm?.toString() ?? "",
           strokeScreen: data.strokeScreen ? JSON.stringify(data.strokeScreen, null, 2) : "",
           sepsisScreen: data.sepsisScreen ? JSON.stringify(data.sepsisScreen, null, 2) : "",
           triageCompleteAt: data.triageCompleteAt ? new Date(data.triageCompleteAt).toISOString().slice(0, 16) : "",
@@ -286,6 +1426,7 @@ function TriageVitalsTab({
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveInfo("");
     try {
       const payload: any = {
         chiefComplaint: formData.chiefComplaint || null,
@@ -311,34 +1452,63 @@ function TriageVitalsTab({
       });
       if (Object.keys(payload.vitalsJson).length === 0) payload.vitalsJson = null;
 
-      await apiFetch(`/encounters/${encounter.id}/triage`, {
+      const res = await apiFetch(`/encounters/${encounter.id}/triage`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         facilityId,
       });
+
+      const patientIdForEvent = encounter.patient?.id as string | undefined;
+      let supersededSnapshot: PatientTriageVitalsSnapshot | null = null;
+      if (
+        patientIdForEvent &&
+        triage &&
+        hasVitalsJson(triage.vitalsJson) &&
+        triage.id
+      ) {
+        const u = triage.updatedAt;
+        supersededSnapshot = {
+          encounterId: encounter.id,
+          encounterType: encounter.type ?? "—",
+          triageId: triage.id,
+          updatedAt: typeof u === "string" ? u : new Date(u).toISOString(),
+          triageCompleteAt: triage.triageCompleteAt
+            ? new Date(triage.triageCompleteAt).toISOString()
+            : null,
+          vitalsJson: { ...(triage.vitalsJson as object) } as Record<string, unknown>,
+        };
+      }
+      if (patientIdForEvent && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(MEDORA_PATIENT_VITALS_UPDATED, {
+            detail: { patientId: patientIdForEvent, supersededSnapshot },
+          })
+        );
+      }
+
       loadTriage();
       onUpdate();
-      alert("Triage saved");
+      setSaveInfo((res as any)?.queued ? "En attente de synchronisation" : "Signes vitaux enregistrés");
     } catch (error) {
       console.error("Save error:", error);
-      alert("Failed to save triage");
+      setSaveInfo("Impossible d'enregistrer les signes vitaux");
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div>Loading triage data...</div>;
+    return <div>Chargement des signes vitaux…</div>;
   }
 
   return (
     <div>
-      <h3>Triage & Vitals</h3>
+      <h3>Signes vitaux</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            Chief Complaint
+            Motif principal
           </label>
           <input
             type="text"
@@ -350,7 +1520,7 @@ function TriageVitalsTab({
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            Onset Date/Time
+            Date / heure de début
           </label>
           <input
             type="datetime-local"
@@ -362,7 +1532,7 @@ function TriageVitalsTab({
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            ESI (Emergency Severity Index) 1-5
+            ESI (indice de gravité) 1-5
           </label>
           <select
             value={formData.esi}
@@ -370,17 +1540,17 @@ function TriageVitalsTab({
             disabled={isReadOnly}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           >
-            <option value="">Select...</option>
-            <option value="1">1 - Resuscitation</option>
-            <option value="2">2 - Emergent</option>
+            <option value="">Choisir…</option>
+            <option value="1">1 - Réanimation</option>
+            <option value="2">2 - Émergent</option>
             <option value="3">3 - Urgent</option>
-            <option value="4">4 - Less Urgent</option>
-            <option value="5">5 - Non-Urgent</option>
+            <option value="4">4 - Moins urgent</option>
+            <option value="5">5 - Non urgent</option>
           </select>
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            Triage Complete At
+            Complété à
           </label>
           <input
             type="datetime-local"
@@ -392,10 +1562,10 @@ function TriageVitalsTab({
         </div>
       </div>
 
-      <h4 style={{ marginTop: 24, marginBottom: 16 }}>Vital Signs</h4>
+      <h4 style={{ marginTop: 24, marginBottom: 16 }}>Valeurs</h4>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Temp (°C)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Temp. (°C)</label>
           <input
             type="number"
             step="0.1"
@@ -406,7 +1576,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Heart Rate (bpm)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Fréquence cardiaque (bpm)</label>
           <input
             type="number"
             value={formData.hr}
@@ -416,7 +1586,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Respiratory Rate</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Fréquence respiratoire</label>
           <input
             type="number"
             value={formData.rr}
@@ -426,7 +1596,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>BP Systolic</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>TA systolique</label>
           <input
             type="number"
             value={formData.bpSys}
@@ -436,7 +1606,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>BP Diastolic</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>TA diastolique</label>
           <input
             type="number"
             value={formData.bpDia}
@@ -458,7 +1628,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Weight (kg)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Poids (kg)</label>
           <input
             type="number"
             step="0.1"
@@ -469,7 +1639,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Height (cm)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Taille (cm)</label>
           <input
             type="number"
             step="0.1"
@@ -483,6 +1653,11 @@ function TriageVitalsTab({
 
       {!isReadOnly && (
         <div style={{ marginTop: 24 }}>
+          {saveInfo && (
+            <div style={{ marginBottom: 10, color: saveInfo.includes("Impossible") ? "#c62828" : "#2e7d32", fontSize: 13 }}>
+              {saveInfo}
+            </div>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -496,13 +1671,13 @@ function TriageVitalsTab({
               opacity: saving ? 0.6 : 1,
             }}
           >
-            {saving ? "Saving..." : "Save Vitals"}
+            {saving ? "Enregistrement…" : "Enregistrer les signes vitaux"}
           </button>
         </div>
       )}
       {isReadOnly && (
         <div style={{ marginTop: 16, padding: 12, backgroundColor: "#fff3cd", borderRadius: 4, color: "#856404" }}>
-          Encounter is closed. Vitals are read-only.
+          La consultation est fermée. Les signes vitaux sont en lecture seule.
         </div>
       )}
     </div>
@@ -531,9 +1706,9 @@ function NotesTab({
         facilityId,
       });
       onUpdate();
-      alert("Notes saved");
+      alert("Notes enregistrées");
     } catch (error) {
-      alert("Failed to save notes");
+      alert("Impossible d'enregistrer les notes");
     } finally {
       setSaving(false);
     }
@@ -541,12 +1716,38 @@ function NotesTab({
 
   return (
     <div>
-      <h3>Encounter Notes</h3>
+      <h3>Notes de consultation</h3>
+      <p style={{ fontSize: 12, color: "#9e9e9e", marginBottom: 8 }}>Raccourcis ci-dessous.</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+        {COMMON_NOTE_SNIPPETS.slice(0, 6).map((snippet) => (
+          <button
+            key={snippet.slice(0, 20)}
+            type="button"
+            onClick={() => setNotes((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
+            style={{
+              padding: "6px 10px",
+              fontSize: 12,
+              border: "1px solid #ccc",
+              borderRadius: 4,
+              background: "#f5f5f5",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              maxWidth: 260,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+            title={snippet}
+          >
+            {snippet.length > 32 ? snippet.slice(0, 31) + "…" : snippet}
+          </button>
+        ))}
+      </div>
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={10}
         style={{ width: "100%", padding: 12, border: "1px solid #ddd", borderRadius: 4, marginBottom: 16 }}
+        placeholder="Notes infirmières ou médicales…"
       />
       <button
         onClick={handleSave}
@@ -561,7 +1762,7 @@ function NotesTab({
           opacity: saving ? 0.6 : 1,
         }}
       >
-        {saving ? "Saving..." : "Save Notes"}
+        {saving ? "Enregistrement…" : "Enregistrer les notes"}
       </button>
     </div>
   );
@@ -597,7 +1798,7 @@ function PathwaysTab({
     setLoading(true);
     try {
       const data = await apiFetch(`/encounters/${encounterId}/pathways`, { facilityId });
-      setPathway(data);
+      setPathway(data && typeof data === "object" && !Array.isArray(data) ? data : null);
     } catch (error) {
       console.error("Failed to load pathway:", error);
       setPathway(null);
@@ -607,7 +1808,7 @@ function PathwaysTab({
   };
 
   const handleActivate = async (type: string) => {
-    if (!confirm(`Activate ${type} pathway? This will create protocol orders.`)) return;
+    if (!confirm(`Activer le parcours ${getPathwayTypeLabelFr(type)} ? Des ordres de protocole seront créés.`)) return;
     setActivating(true);
     try {
       await apiFetch(`/encounters/${encounterId}/pathways/activate`, {
@@ -619,7 +1820,9 @@ function PathwaysTab({
       await loadPathway();
       onUpdate(); // Refresh encounter
     } catch (error: any) {
-      alert(`Failed to activate pathway: ${error.message || "Unknown error"}`);
+      alert(
+        `Impossible d'activer le parcours : ${normalizeUserFacingError(error?.message) || "erreur inconnue"}`
+      );
     } finally {
       setActivating(false);
     }
@@ -634,13 +1837,13 @@ function PathwaysTab({
       });
       await loadPathway();
     } catch (error) {
-      alert("Failed to pause pathway");
+      alert("Impossible de mettre le parcours en pause");
     }
   };
 
   const handleComplete = async () => {
     if (!pathway?.id) return;
-    if (!confirm("Complete this pathway?")) return;
+    if (!confirm("Clôturer ce parcours ?")) return;
     try {
       await apiFetch(`/pathways/${pathway.id}/complete`, {
         method: "POST",
@@ -648,7 +1851,7 @@ function PathwaysTab({
       });
       await loadPathway();
     } catch (error) {
-      alert("Failed to complete pathway");
+      alert("Impossible de clôturer le parcours");
     }
   };
 
@@ -663,7 +1866,7 @@ function PathwaysTab({
       });
       await loadPathway();
     } catch (error) {
-      alert("Failed to mark milestone");
+      alert("Impossible de valider le jalon");
     }
   };
 
@@ -683,16 +1886,16 @@ function PathwaysTab({
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  if (loading) return <div>Loading pathways...</div>;
+  if (loading) return <div>Chargement des parcours…</div>;
 
   const isReadOnly = encounter.status !== "OPEN";
 
   return (
     <div>
-      <h3>ER Pathways</h3>
+      <h3>Parcours urgences</h3>
       {!pathway ? (
         <div>
-          <p>No active pathway. Activate a pathway to start protocol orders and timers.</p>
+          <p>Aucun parcours actif. Activez un parcours pour lancer les ordres de protocole et les chronos.</p>
           <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
             {["STROKE", "SEPSIS", "STEMI", "TRAUMA"].map((type) => (
               <button
@@ -710,7 +1913,7 @@ function PathwaysTab({
                   opacity: activating || isReadOnly ? 0.6 : 1,
                 }}
               >
-                Activate {type}
+                Activer {getPathwayTypeLabelFr(type)}
               </button>
             ))}
           </div>
@@ -721,10 +1924,10 @@ function PathwaysTab({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h4 style={{ margin: "0 0 8px 0" }}>
-                  {pathway.type} Pathway - {pathway.status}
+                  Parcours {getPathwayTypeLabelFr(pathway.type)} – {getPathwayStatusLabelFr(pathway.status)}
                 </h4>
                 <div style={{ fontSize: 14, color: "#666" }}>
-                  Activated: {new Date(pathway.activatedAt).toLocaleString()}
+                  Activé le : {new Date(pathway.activatedAt).toLocaleString()}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -742,7 +1945,7 @@ function PathwaysTab({
                       fontSize: 14,
                     }}
                   >
-                    Pause
+                    Mettre en pause
                   </button>
                 )}
                 {pathway.status !== "COMPLETED" && (
@@ -759,7 +1962,7 @@ function PathwaysTab({
                       fontSize: 14,
                     }}
                   >
-                    Complete
+                    Terminer
                   </button>
                 )}
               </div>
@@ -767,7 +1970,7 @@ function PathwaysTab({
           </div>
 
           <div>
-            <h4 style={{ marginBottom: 16 }}>Timers & Milestones</h4>
+            <h4 style={{ marginBottom: 16 }}>Chronos et jalons</h4>
             {summary && (
               <PathwaySessionSummaryBar
                 summary={summary}
@@ -776,7 +1979,7 @@ function PathwaysTab({
               />
             )}
             <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-              {milestoneViews.map((milestone) => (
+              {(Array.isArray(milestoneViews) ? milestoneViews : []).map((milestone) => (
                 <PathwayMilestoneRow
                   key={milestone.id}
                   ref={(el) => {
@@ -797,10 +2000,50 @@ function PathwaysTab({
   );
 }
 
-function OrdersTab({ encounterId, facilityId }: { encounterId: string; facilityId: string }) {
+function formatOrderItemLineFr(it: any): string {
+  return getOrderItemDisplayLabelFr(it);
+}
+
+function medicationIntentLabelFr(intent: string | null | undefined): string {
+  if (intent === "ADMINISTER_CHART") return "À administrer au patient";
+  return "À envoyer à la pharmacie";
+}
+
+function OrdersTab({
+  encounterId,
+  encounter,
+  facilityId,
+  canPrescribe,
+  medicationModalRequestTick = 0,
+  onOrdersUpdated,
+}: {
+  encounterId: string;
+  encounter: any;
+  facilityId: string;
+  canPrescribe: boolean;
+  medicationModalRequestTick?: number;
+  onOrdersUpdated?: () => void | Promise<void>;
+}) {
+  const { roles } = useFacilityAndRoles();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createModalInitialTab, setCreateModalInitialTab] = useState<"LAB" | "IMAGING" | "MEDICATION">("LAB");
+  const isRn = roles.includes("RN") || roles.includes("ADMIN");
+
+  const handlePrintRx = (order: any) => {
+    if (order.type !== "MEDICATION") return;
+    printRx({
+      order: {
+        createdAt: order.createdAt,
+        prescriberName: order.prescriberName,
+        prescriberLicense: order.prescriberLicense,
+        prescriberContact: order.prescriberContact,
+        items: order.items || [],
+      },
+      patient: encounter?.patient ?? {},
+    });
+  };
 
   useEffect(() => {
     if (facilityId) {
@@ -812,39 +2055,87 @@ function OrdersTab({ encounterId, facilityId }: { encounterId: string; facilityI
     setLoading(true);
     try {
       const data = await apiFetch(`/encounters/${encounterId}/orders`, { facilityId });
-      setOrders(data || []);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load orders:", error);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div>Loading orders...</div>;
+  useEffect(() => {
+    if (medicationModalRequestTick <= 0 || !canPrescribe) return;
+    setCreateModalInitialTab("MEDICATION");
+    setShowCreateModal(true);
+  }, [medicationModalRequestTick, canPrescribe]);
+
+  const nurseComplete = async (itemId: string) => {
+    try {
+      await apiFetch(`/orders/items/${itemId}/nurse-complete`, { method: "POST", facilityId });
+      await loadOrders();
+      await onOrdersUpdated?.();
+    } catch {
+      alert("Impossible de marquer cette ligne comme administrée.");
+    }
+  };
+
+  const nurseAck = async (itemId: string) => {
+    try {
+      await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
+      await loadOrders();
+      await onOrdersUpdated?.();
+    } catch {
+      alert("Impossible d’accuser réception.");
+    }
+  };
+
+  const nurseStart = async (itemId: string) => {
+    try {
+      await apiFetch(`/orders/items/${itemId}/start`, { method: "POST", facilityId });
+      await loadOrders();
+      await onOrdersUpdated?.();
+    } catch {
+      alert("Impossible de démarrer la ligne.");
+    }
+  };
+
+  if (loading) return <div>Chargement des ordres…</div>;
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <h3 style={{ margin: 0 }}>Orders</h3>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#1a1a1a",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 14,
-          }}
-        >
-          Create Order
-        </button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, gap: 16 }}>
+        <div>
+          <h3 style={{ margin: 0 }}>Ordres</h3>
+          <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#9e9e9e", maxWidth: 480 }}>
+            Analyses, imagerie, ordonnances — prescription médicamenteuse : médecins / administrateurs.
+          </p>
+        </div>
+        {canPrescribe ? (
+          <button
+            onClick={() => {
+              setCreateModalInitialTab("LAB");
+              setShowCreateModal(true);
+            }}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#1a1a1a",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 14,
+              flexShrink: 0,
+            }}
+          >
+            Créer un ordre
+          </button>
+        ) : null}
       </div>
 
       {orders.length === 0 ? (
         <div style={{ padding: 20, textAlign: "center", color: "#666" }}>
-          No orders found
+          Aucun ordre trouvé
         </div>
       ) : (
         <div style={{ border: "1px solid #ddd", borderRadius: 4, overflow: "hidden" }}>
@@ -852,17 +2143,46 @@ function OrdersTab({ encounterId, facilityId }: { encounterId: string; facilityI
             <thead>
               <tr style={{ backgroundColor: "#f5f5f5" }}>
                 <th style={{ padding: 12, textAlign: "left" }}>Type</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Status</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Priority</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Items</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Created</th>
+                <th style={{ padding: 12, textAlign: "left" }}>Statut</th>
+                <th style={{ padding: 12, textAlign: "left" }}>Priorité</th>
+                <th style={{ padding: 12, textAlign: "left" }}>Détail clinique</th>
+                <th style={{ padding: 12, textAlign: "left" }}>Créé le</th>
+                {(canPrescribe || isRn) && <th style={{ padding: 12, textAlign: "left" }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id} style={{ borderTop: "1px solid #eee" }}>
-                  <td style={{ padding: 12 }}>{order.type}</td>
-                  <td style={{ padding: 12 }}>
+                  <td style={{ padding: 12, verticalAlign: "top" }}>
+                    {order.type === "LAB" ? (
+                      <>
+                        <div style={{ fontWeight: 600 }}>Laboratoire</div>
+                        <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
+                          <strong>Analyses demandées :</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                        </div>
+                      </>
+                    ) : order.type === "IMAGING" ? (
+                      <>
+                        <div style={{ fontWeight: 600 }}>Imagerie</div>
+                        <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
+                          <strong>Imagerie demandée :</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                        </div>
+                      </>
+                    ) : order.type === "MEDICATION" ? (
+                      <>
+                        <div style={{ fontWeight: 600 }}>Médicaments</div>
+                        <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
+                          <strong>Médicaments :</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                        </div>
+                      </>
+                    ) : (
+                      <span>{String(order.type)}</span>
+                    )}
+                  </td>
+                  <td style={{ padding: 12, verticalAlign: "top" }}>
                     <span
                       style={{
                         padding: "4px 8px",
@@ -882,12 +2202,108 @@ function OrdersTab({ encounterId, facilityId }: { encounterId: string; facilityI
                             : "#666",
                       }}
                     >
-                      {order.status}
+                      {getOrderItemStatusLabel(order.status)}
                     </span>
                   </td>
-                  <td style={{ padding: 12 }}>{order.priority}</td>
-                  <td style={{ padding: 12 }}>{order.items?.length || 0}</td>
-                  <td style={{ padding: 12 }}>{new Date(order.createdAt).toLocaleString()}</td>
+                  <td style={{ padding: 12, verticalAlign: "top" }}>{getOrderPriorityLabelFr(order.priority)}</td>
+                  <td style={{ padding: 12, verticalAlign: "top", fontSize: 13 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {(order.items || []).map((it: any) => (
+                        <li key={it.id} style={{ marginBottom: 8 }}>
+                          <strong>{formatOrderItemLineFr(it)}</strong>
+                          {order.type === "MEDICATION" ? (
+                            <div style={{ fontSize: 12, color: "#555" }}>
+                              {medicationIntentLabelFr(it.medicationFulfillmentIntent)} · Qté : {it.quantity ?? "—"}
+                              {it.refillCount != null ? ` · Renouvellements : ${it.refillCount}` : ""}
+                              {it.notes ? ` · Posologie : ${it.notes}` : ""}
+                            </div>
+                          ) : null}
+                          {it.completedAt && it.completedByNurse ? (
+                            <div style={{ fontSize: 12, color: "#2e7d32" }}>
+                              Administré par {it.completedByNurse.firstName} {it.completedByNurse.lastName} le{" "}
+                              {new Date(it.completedAt).toLocaleString("fr-FR")}
+                            </div>
+                          ) : null}
+                          {isRn &&
+                          it.catalogItemType === "MEDICATION" &&
+                          it.medicationFulfillmentIntent === "ADMINISTER_CHART" &&
+                          it.status !== "COMPLETED" &&
+                          it.status !== "CANCELLED" ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                              {(it.status === "PLACED" || it.status === "PENDING") && (
+                                <button
+                                  type="button"
+                                  onClick={() => void nurseAck(it.id)}
+                                  style={{
+                                    padding: "4px 10px",
+                                    fontSize: 12,
+                                    cursor: "pointer",
+                                    borderRadius: 4,
+                                    border: "1px solid #1565c0",
+                                    background: "#fff",
+                                    color: "#1565c0",
+                                  }}
+                                >
+                                  Accuser réception
+                                </button>
+                              )}
+                              {it.status === "ACKNOWLEDGED" && (
+                                <button
+                                  type="button"
+                                  onClick={() => void nurseStart(it.id)}
+                                  style={{
+                                    padding: "4px 10px",
+                                    fontSize: 12,
+                                    cursor: "pointer",
+                                    borderRadius: 4,
+                                    border: "1px solid #1565c0",
+                                    background: "#fff",
+                                    color: "#1565c0",
+                                  }}
+                                >
+                                  Démarrer
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => void nurseComplete(it.id)}
+                                style={{
+                                  padding: "4px 10px",
+                                  fontSize: 12,
+                                  cursor: "pointer",
+                                  borderRadius: 4,
+                                  border: "1px solid #2e7d32",
+                                  background: "#fff",
+                                  color: "#2e7d32",
+                                }}
+                              >
+                                Marquer comme administré
+                              </button>
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                  <td style={{ padding: 12, verticalAlign: "top", whiteSpace: "nowrap" }}>
+                    {new Date(order.createdAt).toLocaleString("fr-FR")}
+                  </td>
+                  {(canPrescribe || isRn) && (
+                    <td style={{ padding: 12, verticalAlign: "top" }}>
+                      {canPrescribe && order.type === "MEDICATION" ? (
+                        <button
+                          type="button"
+                          onClick={() => handlePrintRx(order)}
+                          style={{ padding: "4px 12px", fontSize: 13, cursor: "pointer", border: "1px solid #ddd", borderRadius: 4 }}
+                        >
+                          Imprimer
+                        </button>
+                      ) : null}
+                      {order.type === "MEDICATION" && order.prescriberName ? (
+                        <div style={{ fontSize: 12, color: "#555", marginTop: 8 }}>Prescripteur : {order.prescriberName}</div>
+                      ) : null}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -897,12 +2313,17 @@ function OrdersTab({ encounterId, facilityId }: { encounterId: string; facilityI
 
       {showCreateModal && (
         <CreateOrderModal
+          key={`${encounterId}-${createModalInitialTab}-${medicationModalRequestTick}`}
           encounterId={encounterId}
           facilityId={facilityId}
+          canPrescribe={canPrescribe}
+          encounter={encounter}
+          initialOrderTab={createModalInitialTab}
           onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
             setShowCreateModal(false);
-            loadOrders();
+            await loadOrders();
+            await onOrdersUpdated?.();
           }}
         />
       )}
@@ -910,227 +2331,4 @@ function OrdersTab({ encounterId, facilityId }: { encounterId: string; facilityI
   );
 }
 
-function CreateOrderModal({
-  encounterId,
-  facilityId,
-  onClose,
-  onSuccess,
-}: {
-  encounterId: string;
-  facilityId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [activeTab, setActiveTab] = useState<"LAB" | "IMAGING" | "MEDICATION">("LAB");
-  const [formData, setFormData] = useState({
-    type: "LAB" as "LAB" | "IMAGING" | "MEDICATION",
-    priority: "ROUTINE" as "ROUTINE" | "URGENT" | "STAT",
-    notes: "",
-    items: [] as Array<{ catalogItemId: string; catalogItemType: string; quantity?: number; notes?: string }>,
-  });
-  const [catalog, setCatalog] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Load catalog based on active tab
-    loadCatalog();
-  }, [activeTab]);
-
-  const loadCatalog = async () => {
-    // For now, use mock data. In production, this would fetch from /catalog/lab-tests, etc.
-    const mockCatalog = [
-      { id: "1", code: "CBC", name: "Complete Blood Count" },
-      { id: "2", code: "CMP", name: "Comprehensive Metabolic Panel" },
-      { id: "3", code: "XRAY", name: "Chest X-Ray" },
-      { id: "4", code: "CT", name: "CT Scan" },
-      { id: "5", code: "ASPIRIN", name: "Aspirin 81mg" },
-      { id: "6", code: "IBUPROFEN", name: "Ibuprofen 200mg" },
-    ];
-    setCatalog(mockCatalog);
-  };
-
-  const handleAddItem = (item: any) => {
-    setFormData({
-      ...formData,
-      items: [
-        ...formData.items,
-        {
-          catalogItemId: item.id,
-          catalogItemType:
-            activeTab === "LAB"
-              ? "LAB_TEST"
-              : activeTab === "IMAGING"
-              ? "IMAGING_STUDY"
-              : "MEDICATION",
-        },
-      ],
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.items.length === 0) {
-      setError("Please add at least one item");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await apiFetch(`/encounters/${encounterId}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-        facilityId,
-      });
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create order");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: 24,
-          borderRadius: 8,
-          maxWidth: 700,
-          width: "90%",
-          maxHeight: "90vh",
-          overflow: "auto",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 style={{ marginTop: 0 }}>Create Order</h2>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid #ddd" }}>
-          {(["LAB", "IMAGING", "MEDICATION"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => {
-                setActiveTab(tab);
-                setFormData({ ...formData, type: tab });
-              }}
-              style={{
-                padding: "8px 16px",
-                border: "none",
-                backgroundColor: activeTab === tab ? "#1a1a1a" : "transparent",
-                color: activeTab === tab ? "white" : "#666",
-                cursor: "pointer",
-                borderBottom: activeTab === tab ? "2px solid #1a1a1a" : "2px solid transparent",
-              }}
-            >
-              {tab === "LAB" ? "Labs" : tab === "IMAGING" ? "Imaging" : "Meds"}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Priority</label>
-            <select
-              value={formData.priority}
-              onChange={(e) =>
-                setFormData({ ...formData, priority: e.target.value as "ROUTINE" | "URGENT" | "STAT" })
-              }
-              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-            >
-              <option value="ROUTINE">Routine</option>
-              <option value="URGENT">Urgent</option>
-              <option value="STAT">Stat</option>
-            </select>
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Search Catalog</label>
-            <input
-              type="text"
-              placeholder={`Search ${activeTab.toLowerCase()}...`}
-              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-            />
-            <div style={{ marginTop: 8, maxHeight: 200, overflow: "auto", border: "1px solid #ddd", borderRadius: 4 }}>
-              {catalog.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleAddItem(item)}
-                  style={{
-                    padding: 8,
-                    cursor: "pointer",
-                    borderBottom: "1px solid #eee",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f5f5f5";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "white";
-                  }}
-                >
-                  {item.name} ({item.code})
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {formData.items.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <strong>Selected Items:</strong>
-              <ul>
-                {formData.items.map((item, idx) => (
-                  <li key={idx}>{item.catalogItemId}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ padding: 12, backgroundColor: "#fee", color: "#c33", borderRadius: 4, marginBottom: 16 }}>
-              {error}
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-            <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "1px solid #ddd", borderRadius: 4, cursor: "pointer" }}>
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#1a1a1a",
-                color: "white",
-                border: "none",
-                borderRadius: 4,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              {loading ? "Creating..." : "Create Order"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 

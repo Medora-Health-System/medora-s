@@ -18,7 +18,7 @@ export class ResultsController {
   ) {
     const facilityId = req.facilityId;
     if (!facilityId) {
-      throw new BadRequestException("Facility ID required");
+      throw new BadRequestException("Établissement requis");
     }
 
     return this.resultsService.updateResult(
@@ -40,7 +40,7 @@ export class ResultsController {
   ) {
     const facilityId = req.facilityId;
     if (!facilityId) {
-      throw new BadRequestException("Facility ID required");
+      throw new BadRequestException("Établissement requis");
     }
 
     return this.resultsService.setCriticalFlag(

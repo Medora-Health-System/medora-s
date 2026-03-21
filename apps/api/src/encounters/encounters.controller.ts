@@ -5,6 +5,7 @@ import {
   Patch,
   Param,
   Body,
+  Query,
   Req,
   UseGuards,
   BadRequestException,
@@ -12,13 +13,50 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { EncountersService } from "./encounters.service";
-import { encounterCreateDtoSchema, encounterUpdateDtoSchema } from "@medora/shared";
+import { DiagnosesService } from "../diagnoses/diagnoses.service";
+import { createDiagnosisDtoSchema } from "../diagnoses/dto";
+import {
+  encounterCloseDtoSchema,
+  encounterCreateDtoSchema,
+  encounterOperationalUpdateDtoSchema,
+  encounterOutpatientCreateDtoSchema,
+  encounterUpdateDtoSchema,
+} from "@medora/shared";
+import { listPatientEncountersQuerySchema } from "./dto";
 import { RoleCode } from "@prisma/client";
 
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class EncountersController {
-  constructor(private readonly encountersService: EncountersService) {}
+  constructor(
+    private readonly encountersService: EncountersService,
+    private readonly diagnosesService: DiagnosesService
+  ) {}
+
+  @Post("patients/:patientId/encounters/outpatient")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async createOutpatientVisit(
+    @Param("patientId") patientId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterOutpatientCreateDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.createOutpatientVisit(
+      patientId,
+      facilityId,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
 
   @Post("patients/:patientId/encounters")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
@@ -44,11 +82,19 @@ export class EncountersController {
   }
 
   @Get("patients/:patientId/encounters")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
-  async findByPatient(@Param("patientId") patientId: string, @Req() req: any) {
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async findByPatient(
+    @Param("patientId") patientId: string,
+    @Query() query: Record<string, string>,
+    @Req() req: any
+  ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
+    }
+    const q = listPatientEncountersQuerySchema.safeParse(query);
+    if (!q.success) {
+      throw new BadRequestException("Invalid query", { cause: q.error });
     }
 
     return this.encountersService.findByPatient(
@@ -56,12 +102,57 @@ export class EncountersController {
       facilityId,
       req.user?.userId,
       req.ip,
+      req.headers["user-agent"],
+      Object.keys(q.data).length ? q.data : undefined
+    );
+  }
+
+  @Post("encounters/:encounterId/diagnoses")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async createDiagnosis(
+    @Param("encounterId") encounterId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = createDiagnosisDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.diagnosesService.create(
+      encounterId,
+      facilityId,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
       req.headers["user-agent"]
     );
   }
 
+  @Get("roster/providers")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async listProviders(@Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.listProviders(facilityId);
+  }
+
   @Get("encounters/:id")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.BILLING, RoleCode.ADMIN)
+  @RequireRoles(
+    RoleCode.FRONT_DESK,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.PHARMACY,
+    RoleCode.ADMIN
+  )
   async findOne(@Param("id") id: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -71,6 +162,29 @@ export class EncountersController {
     return this.encountersService.findOne(
       facilityId,
       id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Patch("encounters/:id/operational")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.ADMIN)
+  async updateOperational(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+
+    const parsed = encounterOperationalUpdateDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+
+    return this.encountersService.updateOperational(
+      facilityId,
+      id,
+      parsed.data,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]
@@ -102,15 +216,21 @@ export class EncountersController {
 
   @Post("encounters/:id/close")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
-  async close(@Param("id") id: string, @Req() req: any) {
+  async close(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
 
+    const parsed = encounterCloseDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+
     return this.encountersService.close(
       facilityId,
       id,
+      parsed.data,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]

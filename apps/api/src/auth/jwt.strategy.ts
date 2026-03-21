@@ -42,6 +42,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException("User not found");
     }
 
+    // [DEV] Log successful JWT validation for auth debugging (local dev only)
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[nest auth] JWT validation succeeded", { userId: payload.sub, username: payload.username });
+    }
+
     // What gets attached to req.user:
     return {
       userId: payload.sub,

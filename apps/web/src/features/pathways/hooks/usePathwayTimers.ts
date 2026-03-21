@@ -131,7 +131,8 @@ export function usePathwayTimers(session: PathwaySessionDTO | null, options?: Op
       Math.floor((effectiveNowMs - new Date(startedAt).getTime()) / 1000)
     );
 
-    const unsorted: MilestoneTimerView[] = session.milestones.map((m) => {
+    const milestones = Array.isArray(session.milestones) ? session.milestones : [];
+    const unsorted: MilestoneTimerView[] = milestones.map((m) => {
       // Convert targetMinutes to targetSeconds
       const targetSeconds = m.targetMinutes * 60;
 

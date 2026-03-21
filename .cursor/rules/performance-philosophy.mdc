@@ -1,0 +1,29 @@
+---
+description: Medora-S stays lightweight—simple REST, efficient queries, pagination, no heavy FE or streaming by default
+alwaysApply: true
+---
+
+# Performance philosophy (Medora-S)
+
+Medora-S must remain **lightweight**. Default choices should favor simplicity and predictable cost.
+
+## Avoid (unless there is a strong, scoped reason)
+
+- Heavy frontend frameworks or stacks that add large bundle/runtime cost
+- **Excessive API calls** (chatty UIs, redundant refetches without need)
+- **Complex joins on every request** — prefer targeted queries and bounded includes
+- **Deep nested data fetching** — fetch what the screen needs; avoid N+1 and huge graphs per click
+- **Real-time streaming infrastructure** (WebSockets, SSE fleets, etc.) as a default pattern
+
+## Prefer
+
+- **Simple REST APIs** — clear resources, standard verbs
+- **Predictable database queries** — explicit selects, indexes in mind, avoid accidental full scans
+- **Paginated list endpoints** (`limit` / `offset` or cursor where appropriate)
+- **Efficient chart-summary aggregation** — dedicated summary endpoints or aggregated reads instead of many round-trips
+
+## When proposing features
+
+- Prefer fewer, well-shaped endpoints over many tiny ones.
+- Prefer pagination for lists that can grow.
+- Call out any deviation (e.g. “this adds polling or extra joins”) explicitly.

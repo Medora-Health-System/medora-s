@@ -3,6 +3,7 @@
 
 import React from "react";
 import type { PathwaySessionSummary } from "../hooks/usePathwayTimers";
+import { ui } from "@/lib/uiLabels";
 
 export function PathwaySessionSummaryBar({
   summary,
@@ -17,34 +18,42 @@ export function PathwaySessionSummaryBar({
     <div style={{ marginTop: 12, borderRadius: 8, border: "1px solid #e5e7eb", backgroundColor: "white", padding: 12 }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, fontSize: 14 }}>
-          <span style={{ fontWeight: 600 }}>Milestones</span>
-          <span style={{ borderRadius: 4, backgroundColor: "#f3f4f6", padding: "2px 8px" }}>Total: {summary.total}</span>
+          <span style={{ fontWeight: 600 }}>Jalons</span>
+          <span style={{ borderRadius: 4, backgroundColor: "#f3f4f6", padding: "2px 8px" }}>Total : {summary.total}</span>
           <span style={{ borderRadius: 4, backgroundColor: "#d1fae5", padding: "2px 8px", color: "#065f46" }}>
-            Met: {summary.met}
+            Atteint : {summary.met}
           </span>
           <span style={{ borderRadius: 4, backgroundColor: "#fef3c7", padding: "2px 8px", color: "#92400e" }}>
-            Pending: {summary.pending}
+            En attente : {summary.pending}
           </span>
           <span style={{ borderRadius: 4, backgroundColor: "#ffe4e6", padding: "2px 8px", color: "#991b1b" }}>
-            Overdue: {summary.overdue}
+            En retard : {summary.overdue}
           </span>
           {summary.missed > 0 && (
             <span style={{ borderRadius: 4, backgroundColor: "#ffe4e6", padding: "2px 8px", color: "#991b1b" }}>
-              Missed: {summary.missed}
+              Manqué : {summary.missed}
             </span>
           )}
           {summary.waivedOrCancelled > 0 && (
             <span style={{ borderRadius: 4, backgroundColor: "#e5e7eb", padding: "2px 8px", color: "#374151" }}>
-              Waived/Cancelled: {summary.waivedOrCancelled}
+              Reporté/Annulé : {summary.waivedOrCancelled}
             </span>
           )}
         </div>
 
         <div style={{ fontSize: 14 }}>
-          <span style={{ color: "#6b7280" }}>Elapsed:</span>{" "}
+          <span style={{ color: "#6b7280" }}>Écoulé :</span>{" "}
           <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{summary.elapsedLabel}</span>
           <span style={{ marginLeft: 8, borderRadius: 4, backgroundColor: "#f3f4f6", padding: "2px 8px", fontSize: 12 }}>
-            {pathwayStatus}
+            {pathwayStatus === "ACTIVE"
+              ? "Actif"
+              : pathwayStatus === "PAUSED"
+                ? "En pause"
+                : pathwayStatus === "COMPLETED"
+                  ? "Terminé"
+                  : pathwayStatus === "CANCELLED"
+                    ? "Annulé"
+                    : "—"}
           </span>
         </div>
       </div>
@@ -52,7 +61,7 @@ export function PathwaySessionSummaryBar({
       <div style={{ marginTop: 8, fontSize: 14 }}>
         {summary.nextDue ? (
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-            <span style={{ color: "#6b7280" }}>Next due:</span>
+            <span style={{ color: "#6b7280" }}>Prochain jalon :</span>
             <span
               style={{
                 borderRadius: 12,
@@ -63,7 +72,7 @@ export function PathwaySessionSummaryBar({
                 color: summary.nextDue.remainingSeconds < 0 ? "#991b1b" : "#92400e",
               }}
             >
-              NEXT
+              {ui.pathway.nextMilestoneBadge}
             </span>
             <span style={{ fontWeight: 500 }}>
               {summary.nextDue.name}{" "}
@@ -106,12 +115,12 @@ export function PathwaySessionSummaryBar({
                   e.currentTarget.style.backgroundColor = "white";
                 }}
               >
-                Jump to Next Due
+                Aller au prochain jalon
               </button>
             )}
           </div>
         ) : (
-          <div style={{ color: "#6b7280" }}>No pending milestones remaining.</div>
+          <div style={{ color: "#6b7280" }}>Plus aucun jalon en attente.</div>
         )}
       </div>
     </div>

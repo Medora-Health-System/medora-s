@@ -1,9 +1,8 @@
 export default function UsersPage() {
   return (
     <>
-      <h1>Users</h1>
-      <p>Admin user management will live here.</p>
+      <h1>Utilisateurs</h1>
+      <p>La gestion des utilisateurs administrateurs sera disponible ici.</p>
     </>
   );
 }
-

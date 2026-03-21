@@ -10,3 +10,12 @@ coverage
 apps/api/prisma/dev.db
 apps/api/prisma/dev.db-journal
 
+.pnpm-store/
+*.tsbuildinfo
+apps/web/.next/
+.env.*
+!.env.example
+
+.pnpm-store/
+apps/web/.next/
+node_modules/

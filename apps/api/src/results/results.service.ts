@@ -1,7 +1,66 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, OrderStatus } from "@prisma/client";
+import { assertCanTransition } from "../common/workflow/status.transitions";
+
+const MAX_TOTAL_RESULT_CHARS = 2_500_000;
+const MAX_SINGLE_BASE64_CHARS = 2_400_000;
+
+function mergeResultData(existing: unknown, incoming: unknown): unknown {
+  if (incoming === undefined) return existing;
+  if (incoming === null) return null;
+  if (typeof incoming !== "object" || incoming === null || Array.isArray(incoming)) {
+    return incoming;
+  }
+  const ex =
+    typeof existing === "object" && existing !== null && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
+  const inc = incoming as Record<string, unknown>;
+  const merged: Record<string, unknown> = { ...ex };
+  for (const key of Object.keys(inc)) {
+    if (key === "attachments" && Array.isArray(ex["attachments"]) && Array.isArray(inc["attachments"])) {
+      merged["attachments"] = [...(ex["attachments"] as unknown[]), ...(inc["attachments"] as unknown[])];
+    } else {
+      merged[key] = inc[key];
+    }
+  }
+  return merged;
+}
+
+function hasReportableContent(resultText?: string | null, resultData?: unknown): boolean {
+  if (resultText?.trim()) return true;
+  if (!resultData || typeof resultData !== "object" || Array.isArray(resultData)) return false;
+  const att = (resultData as Record<string, unknown>)["attachments"];
+  return Array.isArray(att) && att.length > 0;
+}
+
+function assertPayloadSize(resultText: string | undefined | null, resultData: unknown) {
+  const t = resultText ?? "";
+  const d = resultData === undefined || resultData === null ? "" : JSON.stringify(resultData);
+  if (t.length + d.length > MAX_TOTAL_RESULT_CHARS) {
+    throw new BadRequestException(
+      "Données de résultat trop volumineuses. Réduisez la taille des fichiers ou du texte."
+    );
+  }
+  if (resultData && typeof resultData === "object" && !Array.isArray(resultData)) {
+    const att = (resultData as Record<string, unknown>)["attachments"];
+    if (Array.isArray(att)) {
+      for (const a of att) {
+        if (a && typeof a === "object" && "dataBase64" in (a as object)) {
+          const b64 = String((a as Record<string, unknown>)["dataBase64"] ?? "");
+          if (b64.length > MAX_SINGLE_BASE64_CHARS) {
+            throw new BadRequestException(
+              "Fichier joint trop volumineux (limite d’environ 1,5 Mo par fichier)."
+            );
+          }
+        }
+      }
+    }
+  }
+}
 
 @Injectable()
 export class ResultsService {
@@ -22,6 +81,17 @@ export class ResultsService {
     ip?: string,
     userAgent?: string
   ) {
+    const hasIncomingPayload =
+      data.resultText !== undefined ||
+      data.resultData !== undefined ||
+      data.criticalValue !== undefined;
+
+    if (!hasIncomingPayload) {
+      throw new BadRequestException(
+        "Aucune donnée à enregistrer. Saisissez un texte de résultat, joignez un fichier ou modifiez un champ (ex. valeur critique)."
+      );
+    }
+
     const orderItem = await this.prisma.orderItem.findFirst({
       where: {
         id: orderItemId,
@@ -43,36 +113,89 @@ export class ResultsService {
     });
 
     if (!orderItem) {
-      throw new NotFoundException("Order item not found");
+      throw new NotFoundException("Ligne de commande introuvable.");
     }
 
-    const result = await this.prisma.result.upsert({
-      where: { orderItemId },
-      update: {
-        resultData: data.resultData,
-        resultText: data.resultText,
-        criticalValue: data.criticalValue ?? false,
-        verifiedByUserId: userId,
-        verifiedAt: data.resultText || data.resultData ? new Date() : undefined,
-      },
-      create: {
-        orderItemId,
-        facilityId,
-        resultData: data.resultData,
-        resultText: data.resultText,
-        criticalValue: data.criticalValue ?? false,
-        verifiedByUserId: userId,
-        verifiedAt: data.resultText || data.resultData ? new Date() : undefined,
-      },
-    });
+    const existingResult = await this.prisma.result.findUnique({ where: { orderItemId } });
 
-    // Update order item status to RESULTED if result is entered
-    if (data.resultText || data.resultData) {
-      await this.prisma.orderItem.update({
-        where: { id: orderItemId },
-        data: { status: OrderStatus.RESULTED },
+    const mergedResultData =
+      data.resultData !== undefined
+        ? mergeResultData(existingResult?.resultData ?? null, data.resultData)
+        : undefined;
+
+    const nextText = data.resultText !== undefined ? data.resultText : existingResult?.resultText;
+    const nextData =
+      mergedResultData !== undefined ? mergedResultData : existingResult?.resultData ?? undefined;
+
+    assertPayloadSize(nextText, nextData ?? null);
+
+    const substantive = hasReportableContent(nextText, nextData);
+    const shouldStampVerification =
+      substantive && (data.resultText !== undefined || data.resultData !== undefined);
+
+    const initialJson =
+      mergedResultData !== undefined ? mergedResultData : data.resultData ?? undefined;
+
+    const updateFields: Prisma.ResultUpdateInput = {};
+    if (data.resultText !== undefined) updateFields.resultText = data.resultText;
+    if (data.criticalValue !== undefined) updateFields.criticalValue = data.criticalValue;
+    if (mergedResultData !== undefined) updateFields.resultData = mergedResultData as Prisma.InputJsonValue;
+    if (shouldStampVerification) {
+      updateFields.verifiedByUserId = userId ?? undefined;
+      updateFields.verifiedAt = new Date();
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      throw new BadRequestException(
+        "Mise à jour impossible : aucun champ de résultat à enregistrer. Vérifiez le texte ou les pièces jointes."
+      );
+    }
+
+    const createData: Prisma.ResultCreateInput = {
+      orderItem: { connect: { id: orderItemId } },
+      facility: { connect: { id: facilityId } },
+      resultText: data.resultText ?? null,
+      criticalValue: data.criticalValue ?? false,
+      verifiedByUserId: shouldStampVerification ? userId : undefined,
+      verifiedAt: shouldStampVerification ? new Date() : undefined,
+      ...(initialJson !== undefined && initialJson !== null
+        ? { resultData: initialJson as Prisma.InputJsonValue }
+        : {}),
+    };
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.result.upsert({
+        where: { orderItemId },
+        update: updateFields,
+        create: createData,
       });
-    }
+
+      if (shouldStampVerification) {
+        let st = orderItem.status;
+        if (st !== OrderStatus.RESULTED && st !== OrderStatus.VERIFIED) {
+          if (st === OrderStatus.IN_PROGRESS) {
+            await tx.orderItem.update({
+              where: { id: orderItemId },
+              data: { status: OrderStatus.COMPLETED },
+            });
+            st = OrderStatus.COMPLETED;
+          }
+          try {
+            assertCanTransition(st, OrderStatus.RESULTED);
+          } catch {
+            throw new BadRequestException(
+              "Impossible d’enregistrer le résultat : la ligne doit être au statut « Terminé » (bouton « Terminer » après accusé réception et démarrage), ou en cours si vous enregistrez depuis une ligne déjà démarrée."
+            );
+          }
+          await tx.orderItem.update({
+            where: { id: orderItemId },
+            data: { status: OrderStatus.RESULTED },
+          });
+        }
+      }
+
+      return row;
+    });
 
     await this.audit.log(AuditAction.RESULT_VERIFY, "RESULT", {
       userId,
@@ -103,7 +226,7 @@ export class ResultsService {
         order: {
           facilityId,
         },
-        catalogItemType: "LAB_TEST", // Only lab can set critical
+        catalogItemType: "LAB_TEST",
       },
       include: {
         order: {
@@ -119,7 +242,7 @@ export class ResultsService {
     });
 
     if (!orderItem) {
-      throw new NotFoundException("Order item not found or not a lab test");
+      throw new NotFoundException("Analyse introuvable ou non laboratoire.");
     }
 
     const result = await this.prisma.result.upsert({
@@ -149,4 +272,3 @@ export class ResultsService {
     return result;
   }
 }
-

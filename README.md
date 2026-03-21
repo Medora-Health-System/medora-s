@@ -45,6 +45,15 @@ Web runs on: `http://localhost:3002`
 - Email: `admin@medora.local`
 - Password: `Admin123!`
 
+### Forgot password (local testing)
+
+1. Apply the password-reset migration if not already done:  
+   `pnpm --filter @medora/api prisma:migrate`
+2. Set `RESET_PASSWORD_BASE_URL` in `apps/api/.env` to your web app URL (e.g. `http://localhost:3002`).
+3. Open the login page, click **« Mot de passe oublié ? »**, enter an email (e.g. `admin@medora.local`) and submit.
+4. In **development**, the reset link is printed in the API process stdout (e.g. `[FORGOT-PASSWORD] Reset link (dev only): http://...`). Copy that URL into the browser to open the reset page.
+5. Set a new password and confirm; then use the new password to log in.
+
 ### Create Admin User
 
 To create or update the admin user:

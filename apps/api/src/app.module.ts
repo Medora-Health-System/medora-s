@@ -13,10 +13,15 @@ import { TriageModule } from "./triage/triage.module";
 import { WorklistsModule } from "./worklists/worklists.module";
 import { ResultsModule } from "./results/results.module";
 import { PathwaysModule } from "./pathways/pathways.module";
+import { PharmacyInventoryModule } from "./pharmacy-inventory/pharmacy-inventory.module";
+import { PharmacyDispenseModule } from "./pharmacy-dispense/pharmacy-dispense.module";
+import { MedicationCatalogModule } from "./medication-catalog/medication-catalog.module";
+import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
+import { PublicHealthModule } from "./public-health/public-health.module";
+import { DiagnosesModule } from "./diagnoses/diagnoses.module";
+import { FollowUpsModule } from "./follow-ups/follow-ups.module";
 import { DebugModule } from "./debug/debug.module";
-import { APP_GUARD } from "@nestjs/core";
-import { RolesGuard } from "./common/auth/roles.guard";
-import { Reflector } from "@nestjs/core";
+import { AdminModule } from "./admin/admin.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -32,6 +37,14 @@ const imports = [
   WorklistsModule,
   ResultsModule,
   PathwaysModule,
+  PharmacyInventoryModule,
+  PharmacyDispenseModule,
+  MedicationCatalogModule,
+  OrderCatalogModule,
+  PublicHealthModule,
+  DiagnosesModule,
+  FollowUpsModule,
+  AdminModule,
 ];
 
 // Only include DebugModule in non-production environments
@@ -42,13 +55,6 @@ if (process.env.NODE_ENV !== "production") {
 @Module({
   imports,
   controllers: [AppController],
-  providers: [
-    Reflector,
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
-  ],
 })
 export class AppModule {}
 

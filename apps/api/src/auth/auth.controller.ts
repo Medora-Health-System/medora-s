@@ -2,6 +2,8 @@ import { Body, Controller, Get, Post, Req, UseGuards, BadRequestException, Unaut
 import { AuthGuard } from "@nestjs/passport";
 import { loginDtoSchema } from "@medora/shared";
 import { AuthService } from "./auth.service";
+import { forgotPasswordDtoSchema } from "./dto/forgot-password.dto";
+import { resetPasswordDtoSchema } from "./dto/reset-password.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -47,6 +49,26 @@ export class AuthController {
   @UseGuards(AuthGuard("jwt"))
   async me(@Req() req: any) {
     return this.auth.me(req.user.userId);
+  }
+
+  @Post("forgot-password")
+  async forgotPassword(@Body() body: unknown) {
+    const parsed = forgotPasswordDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.errors?.[0]?.message ?? "Email invalide.");
+    }
+    return this.auth.forgotPassword(parsed.data.email);
+  }
+
+  @Post("reset-password")
+  async resetPassword(@Body() body: unknown) {
+    const parsed = resetPasswordDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      const msg = parsed.error.errors?.[0]?.message ?? "Données invalides.";
+      throw new BadRequestException(msg);
+    }
+    const { id, token, newPassword } = parsed.data;
+    return this.auth.resetPassword(id, token, newPassword);
   }
 }
 

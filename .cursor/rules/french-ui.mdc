@@ -1,0 +1,26 @@
+---
+description: Medora-S product UI French-only; code and dev discussion may be English
+globs: apps/web/**/*.tsx
+alwaysApply: true
+---
+
+# Language: Medora-S (French-only product UI)
+
+- **Discussion & implementation** (with AI, in code comments, internal docs): may be **English**.
+- **User-facing product text** in Medora-S: **French only**. No bilingual UI—do not mix French and English on the same screen for end users.
+- **Internal code identifiers** (filenames, variables, routes, DB fields): may stay **English**.
+
+## Must be French (visible to users)
+
+- Navigation, page titles, buttons, labels, placeholders
+- Table headers, empty states, loading text, helper text
+- Validation, success, and error messages shown in the UI
+- Dashboard copy; map raw API enums to French labels when displayed
+
+## May stay English
+
+- Code, APIs, Prisma, logs, commit messages (optional)
+
+## Examples
+
+- UI: “Chargement…”, “Annuler”, “Aucun résultat”—not “Loading…”, “Cancel”, “No results.”

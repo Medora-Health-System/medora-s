@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import * as crypto from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 
 export type RandomBytesFn = (size: number) => Buffer;

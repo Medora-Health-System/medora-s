@@ -10,7 +10,7 @@ export class TrackboardController {
   constructor(private readonly trackboardService: TrackboardService) {}
 
   @Get()
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async getActiveEncounters(@Query("status") status: string, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {

@@ -1,0 +1,37 @@
+---
+description: Scope locked to Phase 1 Clinic MVP; later phases are out of scope unless labeled as future-only
+alwaysApply: true
+---
+
+# Phase lock — Medora-S
+
+## Current phase (in scope)
+
+**Phase 1 — Clinic MVP**
+
+Propose and implement only what supports this phase. Stay aligned with existing MVP modules (e.g. clinic workflows, patients, encounters, pharmacy, follow-ups, public-health modules already in the repo as scoped for MVP).
+
+## Out of scope (do not implement now)
+
+Unless the user explicitly asks to plan ahead, **do not** introduce or build:
+
+| Phase | Topic (postponed) |
+|-------|-------------------|
+| **Phase 3** | Public health expansion **beyond** current modules |
+| **Phase 4** | Offline sync architecture |
+| **Phase 5** | Analytics dashboards |
+| **Phase 6** | Multi-facility deployment |
+| **Phase 7** | National platform |
+
+## If something clearly belongs to a later phase
+
+State it exactly as:
+
+**Future Phase Suggestion — Do Not Implement Now**
+
+Then briefly name which phase (3–7) it maps to. Do not implement it unless the user explicitly overrides.
+
+## Default behavior
+
+- Prefer minimal, MVP-safe changes.
+- Do not expand product scope into postponed phases “while we’re at it.”

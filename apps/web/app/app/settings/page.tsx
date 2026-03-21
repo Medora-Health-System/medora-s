@@ -1,9 +1,8 @@
 export default function SettingsPage() {
   return (
     <>
-      <h1>Settings</h1>
-      <p>Application settings will be configured here.</p>
+      <h1>Paramètres</h1>
+      <p>Les paramètres de l’application seront configurés ici.</p>
     </>
   );
 }
-

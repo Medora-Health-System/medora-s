@@ -1,21 +1,44 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { OrderStatus } from "@prisma/client";
+import { MedicationFulfillmentIntent, OrderStatus, Prisma } from "@prisma/client";
+import { OrdersService } from "../orders/orders.service";
+import type { OrderWithItems } from "../orders/orders.types";
+
+/** Inclut SIGNED / RESULTED pour ne pas masquer des ordres médecin encore hors flux « traité » par le labo. */
+const WORKLIST_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.PLACED,
+  OrderStatus.SIGNED,
+  OrderStatus.ACKNOWLEDGED,
+  OrderStatus.IN_PROGRESS,
+  OrderStatus.COMPLETED,
+  OrderStatus.RESULTED,
+];
+
+const PHARMACY_ITEM_INTENT_FILTER: Pick<Prisma.OrderItemWhereInput, "OR"> = {
+  OR: [
+    { medicationFulfillmentIntent: null },
+    { medicationFulfillmentIntent: MedicationFulfillmentIntent.PHARMACY_DISPENSE },
+  ],
+};
 
 @Injectable()
 export class WorklistsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ordersService: OrdersService
+  ) {}
 
   async getLabWorklist(facilityId: string) {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         facilityId,
         type: "LAB",
-        status: { in: [OrderStatus.PLACED, OrderStatus.ACKNOWLEDGED, OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED] },
+        status: { in: WORKLIST_ORDER_STATUSES },
         items: {
           some: {
             catalogItemType: "LAB_TEST",
-            status: { in: [OrderStatus.PLACED, OrderStatus.ACKNOWLEDGED, OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED] },
+            status: { in: WORKLIST_ORDER_STATUSES },
           },
         },
       },
@@ -50,23 +73,21 @@ export class WorklistsService {
           },
         },
       },
-      orderBy: [
-        { priority: "asc" },
-        { createdAt: "asc" },
-      ],
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
+    return this.ordersService.enrichOrderItemsForDisplay(orders as unknown as OrderWithItems[]);
   }
 
   async getRadiologyWorklist(facilityId: string) {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         facilityId,
         type: "IMAGING",
-        status: { in: [OrderStatus.PLACED, OrderStatus.ACKNOWLEDGED, OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED] },
+        status: { in: WORKLIST_ORDER_STATUSES },
         items: {
           some: {
             catalogItemType: "IMAGING_STUDY",
-            status: { in: [OrderStatus.PLACED, OrderStatus.ACKNOWLEDGED, OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED] },
+            status: { in: WORKLIST_ORDER_STATUSES },
           },
         },
       },
@@ -101,23 +122,22 @@ export class WorklistsService {
           },
         },
       },
-      orderBy: [
-        { priority: "asc" },
-        { createdAt: "asc" },
-      ],
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
+    return this.ordersService.enrichOrderItemsForDisplay(orders as unknown as OrderWithItems[]);
   }
 
   async getPharmacyWorklist(facilityId: string) {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         facilityId,
         type: "MEDICATION",
-        status: { in: [OrderStatus.PLACED, OrderStatus.ACKNOWLEDGED, OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED] },
+        status: { in: WORKLIST_ORDER_STATUSES },
         items: {
           some: {
             catalogItemType: "MEDICATION",
-            status: { in: [OrderStatus.PLACED, OrderStatus.ACKNOWLEDGED, OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED] },
+            status: { in: WORKLIST_ORDER_STATUSES },
+            ...PHARMACY_ITEM_INTENT_FILTER,
           },
         },
       },
@@ -146,18 +166,16 @@ export class WorklistsService {
         items: {
           where: {
             catalogItemType: "MEDICATION",
+            ...PHARMACY_ITEM_INTENT_FILTER,
           },
         },
       },
-      orderBy: [
-        { priority: "asc" },
-        { createdAt: "asc" },
-      ],
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
+    return this.ordersService.enrichOrderItemsForDisplay(orders as unknown as OrderWithItems[]);
   }
 
   async getBillingWorklist(facilityId: string) {
-    // Return closed encounters that need billing
     return this.prisma.encounter.findMany({
       where: {
         facilityId,
@@ -190,4 +208,3 @@ export class WorklistsService {
     });
   }
 }
-

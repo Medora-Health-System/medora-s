@@ -31,7 +31,7 @@ export class QueuesController {
   }
 
   @Get("billing/queue")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getBillingQueue(@Req() req: any) {
     const facilityId = req.facilityId;
     return this.queuesService.getBillingQueue(facilityId);

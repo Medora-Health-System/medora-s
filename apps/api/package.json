@@ -11,6 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
+    "seed": "prisma db seed",
     "prisma:seed-catalogs": "ts-node --transpile-only prisma/seed-catalogs.ts",
     "prisma:seed-pathways": "ts-node --transpile-only prisma/seed-pathways.ts",
     "create-admin": "ts-node --transpile-only scripts/create-admin.ts"
@@ -19,7 +20,7 @@
     "seed": "ts-node --transpile-only prisma/seed.ts"
   },
   "dependencies": {
-    "@medora/shared": "*",
+    "@medora/shared": "workspace:*",
     "@nestjs/common": "^11.0.7",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.7",
@@ -28,15 +29,18 @@
     "@nestjs/platform-express": "^11.0.7",
     "@prisma/client": "^6.2.1",
     "argon2": "^0.44.0",
+    "body-parser": "^1.20.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.7",
+    "@types/body-parser": "^1.19.5",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.4",
     "@types/passport-jwt": "^4.0.1",

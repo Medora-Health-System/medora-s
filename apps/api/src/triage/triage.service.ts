@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
+import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 
 @Injectable()
 export class TriageService {
@@ -75,6 +76,16 @@ export class TriageService {
       update: triageData,
       create: triageData,
     });
+
+    if (data.vitalsJson !== undefined && hasNonEmptyVitalsJson(data.vitalsJson)) {
+      await this.prisma.patient.update({
+        where: { id: encounter.patientId },
+        data: {
+          latestVitalsJson: data.vitalsJson as object,
+          latestVitalsAt: new Date(),
+        },
+      });
+    }
 
     await this.audit.log(AuditAction.TRIAGE_SAVE, "TRIAGE", {
       userId,

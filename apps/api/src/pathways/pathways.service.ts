@@ -1,7 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, PathwayType, PathwayStatus, PathwayMilestoneStatus, OrderStatus, OrderPriority } from "@prisma/client";
+import {
+  AuditAction,
+  PathwayType,
+  PathwayStatus,
+  PathwayMilestoneStatus,
+  OrderStatus,
+  OrderPriority,
+  MedicationFulfillmentIntent,
+} from "@prisma/client";
 
 @Injectable()
 export class PathwaysService {
@@ -134,18 +142,25 @@ export class PathwaysService {
             pathwaySessionId: pathwaySession.id,
             orderedBy: userId,
             items: {
-              create: items.map((item) => ({
-                catalogItemId:
-                  item.catalogLabTestId || item.catalogImagingStudyId || item.catalogMedicationId || "",
-                catalogItemType: item.catalogLabTestId
+              create: items.map((item) => {
+                const catalogItemType = item.catalogLabTestId
                   ? "LAB_TEST"
                   : item.catalogImagingStudyId
                   ? "IMAGING_STUDY"
-                  : "MEDICATION",
-                quantity: 1,
-                status: OrderStatus.PLACED,
-                notes: item.notes,
-              })),
+                  : "MEDICATION";
+                return {
+                  catalogItemId:
+                    item.catalogLabTestId || item.catalogImagingStudyId || item.catalogMedicationId || "",
+                  catalogItemType,
+                  quantity: 1,
+                  status: OrderStatus.PLACED,
+                  notes: item.notes,
+                  medicationFulfillmentIntent:
+                    catalogItemType === "MEDICATION"
+                      ? MedicationFulfillmentIntent.PHARMACY_DISPENSE
+                      : undefined,
+                };
+              }),
             },
           },
         });

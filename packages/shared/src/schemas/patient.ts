@@ -3,14 +3,23 @@ import { z } from "zod";
 export const sexAtBirthSchema = z.enum(["M", "F", "X", "U"]);
 export type SexAtBirth = z.infer<typeof sexAtBirthSchema>;
 
+/** Inscription : envoyé par le client ; mappé côté API vers Prisma `SexAtBirth` + `PatientSex`. L’âge n’est jamais persisté. */
+export const patientRegistrationSexSchema = z.enum(["HOMME", "FEMME", "AUTRE", "INCONNU"], {
+  errorMap: () => ({ message: "Sexe invalide" }),
+});
+
 export const patientCreateDtoSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
+  firstName: z.string().min(1, "Le prénom est requis"),
+  lastName: z.string().min(1, "Le nom est requis"),
   mrn: z.string().optional(),
-  dob: z.coerce.date().optional(),
+  /** ISO date string (e.g. YYYY-MM-DD); stored as `dob` in DB. Age is never stored. */
+  dateOfBirth: z
+    .string()
+    .min(1, "La date de naissance est requise")
+    .refine((s) => !Number.isNaN(Date.parse(s.trim())), "Date de naissance invalide"),
+  sex: patientRegistrationSexSchema,
   phone: z.string().min(5).max(32).optional(),
   email: z.string().email().optional(),
-  sexAtBirth: sexAtBirthSchema.optional(),
   nationalId: z.string().min(3).max(64).optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -58,20 +67,69 @@ export type Vitals = z.infer<typeof vitalsSchema>;
 export const encounterCreateDtoSchema = z.object({
   type: encounterTypeSchema,
   providerId: z.string().uuid().optional(),
-  chiefComplaint: z.string().optional(),
-  notes: z.string().optional(),
+  /** Reason for visit (clinic); stored as chiefComplaint */
+  visitReason: z.string().max(4000).optional(),
+  chiefComplaint: z.string().max(4000).optional(),
+  notes: z.string().max(16000).optional(),
+  /** Salle / lieu de consultation (accueil) */
+  roomLabel: z.string().max(64).optional().nullable(),
 });
 
 export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
 
+export const encounterOutpatientCreateDtoSchema = z.object({
+  visitReason: z.string().max(4000).optional(),
+  notes: z.string().max(16000).optional(),
+});
+
+export type EncounterOutpatientCreateDto = z.infer<
+  typeof encounterOutpatientCreateDtoSchema
+>;
+
 export const encounterUpdateDtoSchema = z.object({
-  chiefComplaint: z.string().optional().nullable(),
+  visitReason: z.string().max(4000).optional().nullable(),
+  chiefComplaint: z.string().max(4000).optional().nullable(),
   triageAcuity: z.number().int().min(1).max(5).optional().nullable(),
   vitals: vitalsSchema,
-  notes: z.string().optional().nullable(),
+  notes: z.string().max(16000).optional().nullable(),
+  /** Clinician impression; stored as providerNote */
+  clinicianImpression: z.string().max(16000).optional().nullable(),
+  providerNote: z.string().max(16000).optional().nullable(),
+  treatmentPlan: z.string().max(32000).optional().nullable(),
+  followUpDate: z.coerce.date().optional().nullable(),
+  /** Structured nursing assessment (e.g. Évaluation infirmière sections) */
+  nursingAssessment: z.any().optional().nullable(),
+  dischargeSummaryJson: z.any().optional().nullable(),
+  roomLabel: z.string().max(64).optional().nullable(),
+  physicianAssignedUserId: z.string().uuid().optional().nullable(),
 });
 
 export type EncounterUpdateDto = z.infer<typeof encounterUpdateDtoSchema>;
+
+/** Accueil / infirmière : salle et médecin attribué uniquement */
+export const encounterOperationalUpdateDtoSchema = z.object({
+  roomLabel: z.string().max(64).optional().nullable(),
+  physicianAssignedUserId: z.string().uuid().optional().nullable(),
+});
+
+export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalUpdateDtoSchema>;
+
+export const encounterDischargeFieldsSchema = z.object({
+  disposition: z.string().max(4000).optional(),
+  exitCondition: z.string().max(4000).optional(),
+  dischargeInstructions: z.string().max(8000).optional(),
+  medicationsGiven: z.string().max(8000).optional(),
+  followUp: z.string().max(4000).optional(),
+  returnIfWorse: z.string().max(4000).optional(),
+});
+
+export type EncounterDischargeFields = z.infer<typeof encounterDischargeFieldsSchema>;
+
+export const encounterCloseDtoSchema = z.object({
+  discharge: encounterDischargeFieldsSchema.optional(),
+});
+
+export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;
 
 export const orderStatusSchema = z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
@@ -79,21 +137,113 @@ export type OrderStatus = z.infer<typeof orderStatusSchema>;
 export const orderPrioritySchema = z.enum(["ROUTINE", "URGENT", "STAT"]);
 export type OrderPriority = z.infer<typeof orderPrioritySchema>;
 
+/** Single line item for POST /encounters/:id/orders — persisted fields depend on order `type` (service strips Rx-only fields for LAB/IMAGING). */
+export const medicationFulfillmentIntentSchema = z.enum(["ADMINISTER_CHART", "PHARMACY_DISPENSE"]);
+export type MedicationFulfillmentIntent = z.infer<typeof medicationFulfillmentIntentSchema>;
+
 export const orderItemCreateDtoSchema = z.object({
-  catalogItemId: z.string().uuid(),
+  /** Absent ou null si saisie manuelle (`manualLabel` requis). */
+  catalogItemId: z.string().uuid().optional().nullable(),
   catalogItemType: z.enum(["LAB_TEST", "IMAGING_STUDY", "MEDICATION"]),
+  /** Libellé libre lorsque l’article n’est pas au catalogue. */
+  manualLabel: z.string().min(1).max(512).optional(),
+  manualSecondaryText: z.string().max(2000).optional(),
   quantity: z.number().int().positive().optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(8000).optional(),
+  /** Prescription-only: ignored for LAB / IMAGING at persistence. */
+  strength: z.string().max(512).optional(),
+  /** Prescription-only: ignored for LAB / IMAGING at persistence. */
+  refillCount: z.number().int().min(0).max(99).optional(),
+  /** MEDICATION only: default PHARMACY_DISPENSE when omitted (server). */
+  medicationFulfillmentIntent: medicationFulfillmentIntentSchema.optional(),
 });
 
-export const orderCreateDtoSchema = z.object({
-  type: z.enum(["LAB", "IMAGING", "MEDICATION"]),
-  priority: orderPrioritySchema.optional(),
-  notes: z.string().optional(),
-  items: z.array(orderItemCreateDtoSchema).min(1),
-});
+export type OrderItemCreateDto = z.infer<typeof orderItemCreateDtoSchema>;
 
+export const orderCreateDtoSchema = z
+  .object({
+    type: z.enum(["LAB", "IMAGING", "MEDICATION"]),
+    priority: orderPrioritySchema.optional(),
+    notes: z.string().max(16000).optional(),
+    prescriberName: z.string().max(256).optional(),
+    prescriberLicense: z.string().max(128).optional(),
+    prescriberContact: z.string().max(256).optional(),
+    items: z.array(orderItemCreateDtoSchema).min(1),
+  })
+  .superRefine((data, ctx) => {
+    data.items.forEach((it, i) => {
+      const hasCatalog = Boolean(it.catalogItemId);
+      const hasManual = Boolean(it.manualLabel?.trim());
+      if (!hasCatalog && !hasManual) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Chaque ligne doit référencer le catalogue ou un libellé manuel.",
+          path: ["items", i, "manualLabel"],
+        });
+      }
+      if (hasCatalog && hasManual) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Ne pas combiner catalogue et libellé manuel sur la même ligne.",
+          path: ["items", i, "manualLabel"],
+        });
+      }
+    });
+    if (data.type === "LAB") {
+      data.items.forEach((it, i) => {
+        if (it.catalogItemType !== "LAB_TEST") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Chaque ligne doit être une analyse (LAB_TEST).",
+            path: ["items", i, "catalogItemType"],
+          });
+        }
+      });
+      return;
+    }
+    if (data.type === "IMAGING") {
+      data.items.forEach((it, i) => {
+        if (it.catalogItemType !== "IMAGING_STUDY") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Chaque ligne doit être un examen d'imagerie (IMAGING_STUDY).",
+            path: ["items", i, "catalogItemType"],
+          });
+        }
+      });
+      return;
+    }
+    if (!data.prescriberName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Le prescripteur est requis pour une ordonnance.",
+        path: ["prescriberName"],
+      });
+    }
+    data.items.forEach((it, i) => {
+      if (it.catalogItemType !== "MEDICATION") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Chaque ligne doit être un médicament (MEDICATION).",
+          path: ["items", i, "catalogItemType"],
+        });
+        return;
+      }
+      if (it.quantity == null || it.quantity < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La quantité est requise pour chaque médicament.",
+          path: ["items", i, "quantity"],
+        });
+      }
+    });
+  });
+
+/** Inferred from `orderCreateDtoSchema` — canonical API shape for order creation. */
 export type OrderCreateDto = z.infer<typeof orderCreateDtoSchema>;
+
+/** Alias matching API docs / frontend naming. */
+export type CreateOrderDto = OrderCreateDto;
 
 export const orderUpdateDtoSchema = z.object({
   status: orderStatusSchema.optional(),

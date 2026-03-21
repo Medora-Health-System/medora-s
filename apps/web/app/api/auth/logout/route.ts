@@ -6,14 +6,15 @@ export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
   const isProduction = process.env.NODE_ENV === "production";
 
-  // Clear both cookies by setting empty value + maxAge: 0
-  cookieStore.set("accessToken", "", {
+  const clearOpts = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     secure: isProduction,
     path: "/",
     maxAge: 0,
-  });
+  };
+  cookieStore.set("medora_session", "", clearOpts);
+  cookieStore.set("accessToken", "", clearOpts);
 
   cookieStore.set("refreshToken", "", {
     httpOnly: true,

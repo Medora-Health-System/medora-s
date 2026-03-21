@@ -1,9 +1,8 @@
 export default function ImagingPage() {
   return (
     <>
-      <h1>Imaging</h1>
-      <p>Medical imaging will be managed here.</p>
+      <h1>Imagerie</h1>
+      <p>L’imagerie médicale sera gérée ici.</p>
     </>
   );
 }
-

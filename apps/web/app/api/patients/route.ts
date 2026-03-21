@@ -14,7 +14,8 @@ async function getFacilityId(req: NextRequest): Promise<string | null> {
   if (cookieFacilityId) return cookieFacilityId;
 
   // Fallback: try to get from /auth/me
-  const accessToken = cookieStore.get("accessToken")?.value;
+  const accessToken =
+    cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
   if (accessToken) {
     try {
       const meResponse = await fetch(`${API_URL}/auth/me`, {
@@ -48,15 +49,16 @@ async function getFacilityId(req: NextRequest): Promise<string | null> {
 export async function POST(req: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
+    const accessToken =
+      cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
 
     if (!accessToken) {
-      return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
+      return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
     }
 
     const facilityId = await getFacilityId(req);
     if (!facilityId) {
-      return NextResponse.json({ message: "No facility selected" }, { status: 400 });
+      return NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
     }
 
     const body = await req.json();
@@ -74,22 +76,26 @@ export async function POST(req: NextRequest) {
     const data = await r.json().catch(() => ({}));
     return NextResponse.json(data, { status: r.status });
   } catch (e: any) {
-    return NextResponse.json({ message: "Proxy error", error: String(e?.message ?? e) }, { status: 500 });
+    return NextResponse.json(
+      { message: "Erreur de communication avec le serveur.", error: String(e?.message ?? e) },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
+    const accessToken =
+      cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
 
     if (!accessToken) {
-      return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
+      return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
     }
 
     const facilityId = await getFacilityId(req);
     if (!facilityId) {
-      return NextResponse.json({ message: "No facility selected" }, { status: 400 });
+      return NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -108,7 +114,10 @@ export async function GET(req: NextRequest) {
     const data = await r.json().catch(() => ({}));
     return NextResponse.json(data, { status: r.status });
   } catch (e: any) {
-    return NextResponse.json({ message: "Proxy error", error: String(e?.message ?? e) }, { status: 500 });
+    return NextResponse.json(
+      { message: "Erreur de communication avec le serveur.", error: String(e?.message ?? e) },
+      { status: 500 }
+    );
   }
 }
 

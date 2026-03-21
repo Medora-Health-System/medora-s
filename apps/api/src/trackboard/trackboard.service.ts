@@ -34,6 +34,9 @@ export class TrackboardService {
             mrn: true,
           },
         },
+        physicianAssigned: {
+          select: { id: true, firstName: true, lastName: true },
+        },
         triage: {
           select: {
             esi: true,

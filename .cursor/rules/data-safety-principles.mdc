@@ -1,0 +1,23 @@
+---
+description: Clinical data safety—no accidental patient deletes, safe FKs, audit logs, facility isolation on chart summary
+alwaysApply: true
+---
+
+# Data safety principles (Medora-S)
+
+Clinical data must always be handled safely. **Data integrity is more important than convenience.**
+
+## Rules
+
+1. **Patient records** — Must **never** be accidentally deleted. Prefer soft-delete, explicit archival flows, or hard-delete only behind strict admin controls and safeguards—not casual `onDelete: Cascade` from parent records that could wipe patients.
+
+2. **Foreign keys** — Prefer **`RESTRICT`** or **`SET NULL`** over **`CASCADE`** where a delete could remove clinical or identity data unintentionally. Use CASCADE only when the child is truly owned disposable data and the cascade is explicit and reviewed.
+
+3. **Audit logs** — Should record **key clinical actions** (e.g. encounter open/close, diagnosis changes, sensitive reads where policy requires, medication dispense, etc.). When adding clinical write paths, consider whether an audit event is required.
+
+4. **Chart summary** — Must **never** expose records from **another facility**. Every query for patient chart / summary must be scoped by `facilityId` (or equivalent tenant boundary) and verified against the patient’s facility membership.
+
+## Implementation stance
+
+- Question patterns that favor “easy deletes” or “cascade everything.”
+- Default to **scoped, explicit** data access for multi-tenant clinical data.

@@ -1,83 +1,77 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { apiFetch } from "@/lib/apiClient";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
+import { OpenEncountersTable } from "@/components/clinical/OpenEncountersTable";
+import { ui } from "@/lib/uiLabels";
+
+const btn: React.CSSProperties = {
+  display: "inline-block",
+  padding: "10px 18px",
+  backgroundColor: "#1a1a1a",
+  color: "white",
+  borderRadius: 6,
+  textDecoration: "none",
+  fontSize: 14,
+  fontWeight: 500,
+};
 
 export default function NursingPage() {
-  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const { facilityId, ready } = useFacilityAndRoles();
   const [encounters, setEncounters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const cookieValue = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("medora_facility_id="))
-      ?.split("=")[1];
-    setFacilityId(cookieValue || null);
-  }, []);
-
-  useEffect(() => {
-    if (!facilityId) return;
-    // Load open encounters for nursing workflow
-    loadEncounters();
-  }, [facilityId]);
-
-  const loadEncounters = async () => {
+  const loadEncounters = useCallback(async () => {
     if (!facilityId) return;
     setLoading(true);
     try {
-      // For now, we'll need to add an endpoint for open encounters
-      // For now, show a placeholder
+      setEncounters(await fetchOpenEncounters(facilityId));
+    } catch {
       setEncounters([]);
-    } catch (error) {
-      console.error("Failed to load encounters:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [facilityId]);
+
+  useEffect(() => {
+    if (ready && facilityId) loadEncounters();
+  }, [ready, facilityId, loadEncounters]);
+
+  if (!ready) {
+    return <p>{ui.common.loading}</p>;
+  }
 
   return (
     <div>
-      <h1>Nursing</h1>
-      <p>Nursing workflow and patient care management.</p>
-      {loading ? (
-        <p>Loading...</p>
-      ) : encounters.length === 0 ? (
-        <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>No open encounters requiring nursing attention.</p>
-        </div>
-      ) : (
-        <div style={{ marginTop: 24 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>Patient</th>
-                <th style={{ padding: 12, textAlign: "left" }}>MRN</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Type</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Status</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {encounters.map((encounter) => (
-                <tr key={encounter.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: 12 }}>
-                    {encounter.patient?.firstName} {encounter.patient?.lastName}
-                  </td>
-                  <td style={{ padding: 12 }}>{encounter.patient?.mrn}</td>
-                  <td style={{ padding: 12 }}>{encounter.type}</td>
-                  <td style={{ padding: 12 }}>{encounter.status}</td>
-                  <td style={{ padding: 12 }}>
-                    <Link href={`/app/encounters/${encounter.id}`}>View</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <h1 style={{ marginTop: 0 }}>Soins infirmiers</h1>
+      <p style={{ color: "#555", maxWidth: 720, lineHeight: 1.5 }}>
+        Accédez aux mêmes dossiers et consultations que le reste de l&apos;équipe clinique : dossier patient, signes vitaux et
+        actions dans la consultation ouverte.
+      </p>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20, marginBottom: 8 }}>
+        <Link href="/app/patients" style={btn}>
+          Patients à voir
+        </Link>
+        <Link href="/app/encounters" style={{ ...btn, backgroundColor: "#37474f" }}>
+          Liste des consultations
+        </Link>
+        <Link href="/app/trackboard" style={{ ...btn, backgroundColor: "#455a64" }}>
+          Tableau de bord des consultations
+        </Link>
+      </div>
+
+      <h2 style={{ marginTop: 28, fontSize: 18 }}>Consultations ouvertes</h2>
+      <p style={{ color: "#666", fontSize: 14, marginTop: 0 }}>
+        Ouvrez le dossier pour le contexte complet, ou la consultation pour les signes vitaux et la suite des soins.
+      </p>
+      <OpenEncountersTable
+        encounters={encounters}
+        loading={loading}
+        emptyMessage="Aucune consultation ouverte pour le moment. Utilisez « Patients à voir » pour trouver un patient et ouvrir une consultation."
+      />
     </div>
   );
 }
-

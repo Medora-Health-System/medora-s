@@ -1,53 +1,70 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { applyAuthCookiesToResponse, refreshAccessTokenFromCookies } from "@/lib/server/refreshAccessToken";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
+    let accessToken =
+      cookieStore.get("accessToken")?.value ?? cookieStore.get("medora_session")?.value;
 
     if (!accessToken) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
     }
 
-    // Call backend /auth/me endpoint
-    const backendResponse = await fetch(`${API_URL}/auth/me`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const fetchMe = (token: string) =>
+      fetch(`${API_URL}/auth/me`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+    let backendResponse = await fetchMe(accessToken);
+    let refreshedTokens: Awaited<ReturnType<typeof refreshAccessTokenFromCookies>> = null;
+
+    if (backendResponse.status === 401) {
+      refreshedTokens = await refreshAccessTokenFromCookies();
+      if (refreshedTokens) {
+        accessToken = refreshedTokens.accessToken;
+        backendResponse = await fetchMe(accessToken);
+      }
+    }
 
     if (!backendResponse.ok) {
-      // If 401, might need to try refresh - but for now just return error
       if (backendResponse.status === 401) {
-        return NextResponse.json(
-          { error: "Unauthorized" },
-          { status: 401 }
-        );
+        return NextResponse.json({ error: "Session expirée. Reconnectez-vous." }, { status: 401 });
       }
-      const errorData = await backendResponse.json().catch(() => ({ error: "Request failed" }));
+      const errorData = await backendResponse.json().catch(() => ({ error: "Échec de la requête" }));
       return NextResponse.json(
-        { error: errorData.error || errorData.message || "Request failed" },
+        {
+          error:
+            typeof errorData.error === "string"
+              ? errorData.error
+              : typeof errorData.message === "string"
+                ? errorData.message
+                : "Échec de la requête",
+        },
         { status: backendResponse.status }
       );
     }
 
     const userData = await backendResponse.json();
-    return NextResponse.json(userData);
+    const res = NextResponse.json(userData);
+
+    if (refreshedTokens) {
+      applyAuthCookiesToResponse(res, refreshedTokens);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[auth/me] session renouvelée, cookies mis à jour");
+      }
+    }
+
+    return res;
   } catch (error) {
     console.error("Me endpoint error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erreur interne du serveur." }, { status: 500 });
   }
 }
-

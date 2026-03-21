@@ -3,20 +3,21 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const accessToken = request.cookies.get("accessToken");
+  const sessionCookie =
+    request.cookies.get("medora_session")?.value ?? request.cookies.get("accessToken")?.value;
 
-  // Allow /login and /api/auth/* routes
-  if (pathname === "/login" || pathname.startsWith("/api/auth/")) {
-    // Redirect authenticated users away from /login to /app
-    if (pathname === "/login" && accessToken) {
+  // Allow login, forgot/reset password, and /api/auth/* routes
+  const publicAuthPaths = ["/login", "/mot-de-passe-oublie", "/reinitialiser-mot-de-passe"];
+  if (publicAuthPaths.includes(pathname) || pathname.startsWith("/api/auth/")) {
+    if (pathname === "/login" && sessionCookie) {
       return NextResponse.redirect(new URL("/app", request.url));
     }
     return NextResponse.next();
   }
 
-  // Protect /app routes - redirect to /login if no access token
+  // Protect /app routes - redirect to /login if no session
   if (pathname.startsWith("/app")) {
-    if (!accessToken) {
+    if (!sessionCookie) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
@@ -27,6 +28,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/login", "/api/auth/:path*"],
+  matcher: ["/app/:path*", "/login", "/mot-de-passe-oublie", "/reinitialiser-mot-de-passe", "/api/auth/:path*"],
 };
 

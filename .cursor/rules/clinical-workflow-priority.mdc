@@ -1,0 +1,32 @@
+---
+description: Medora-S optimized for real clinic workflows; support the standard encounter sequence with minimal friction
+alwaysApply: true
+---
+
+# Clinical workflow priority (Medora-S)
+
+Medora-S must support **real healthcare workflows**, not theoretical software design.
+
+## Typical clinic sequence (target flow)
+
+1. Patient arrives  
+2. Registration or patient lookup  
+3. Start encounter  
+4. Document visit  
+5. Add diagnoses  
+6. Prescribe or dispense medication  
+7. Record vaccinations (if applicable)  
+8. Record disease reports (if applicable)  
+9. Schedule follow-up  
+10. Review chart summary  
+
+## Product implications
+
+- **UI and API design** should make this sequence **efficient**: few steps, clear next actions, sensible defaults.
+- **Avoid** unnecessary extra screens, deep navigation chains, or flows that fight this order.
+- Prefer **short paths** from patient → encounter → documentation → orders/diagnostics → follow-up → summary.
+- When adding features, ask: *does this help a clinician move through the steps above faster or safer?*
+
+## Out of scope for this rule
+
+- Phase-lock and French-only UI rules still apply separately.

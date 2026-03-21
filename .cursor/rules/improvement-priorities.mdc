@@ -1,0 +1,22 @@
+---
+description: When suggesting Medora-S improvements, prioritize workload, errors, reliability, workflows—not cosmetics
+alwaysApply: true
+---
+
+# How to prioritize improvement suggestions (Medora-S)
+
+When proposing changes, **order value roughly as follows** (higher first):
+
+1. **Reduce clinician workload** — fewer clicks, less duplicate entry, less hunting in the UI, faster common tasks.
+2. **Reduce errors** — validation, guardrails, clearer confirmations, safer defaults, less ambiguous data entry.
+3. **Increase system reliability** — fewer failures, predictable performance, correct data boundaries (e.g. facility scope), recoverable edge cases.
+4. **Simplify workflows** — align with the clinical sequence; remove unnecessary steps or navigation.
+
+## Deprioritize
+
+- **Cosmetic improvements** that do not measurably affect clinical care (pure styling churn, rebranding-only tweaks, “nice to have” polish with no workflow or safety impact).
+
+## Default stance
+
+- Prefer suggestions that a busy clinician or desk staff would notice on a hard day.
+- If an idea is mostly visual with no care impact, skip it or label it low priority explicitly.

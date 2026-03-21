@@ -1,0 +1,27 @@
+---
+description: Medora-S UI for clinicians with minimal training—simple forms, tables, shallow nav, few modals
+globs: apps/web/**/*.tsx
+alwaysApply: true
+---
+
+# UI simplicity (Medora-S)
+
+The interface must be usable by **clinicians with minimal training**.
+
+## Prefer
+
+- **Simple forms** — few fields per step, obvious labels (French per product language rule)
+- **Clear tables** — readable columns, obvious actions
+- **Minimal modals** — use only when necessary; prefer inline or dedicated pages when flow is heavy
+- **Few navigation layers** — shallow menus; user reaches task in few clicks
+
+## Avoid
+
+- **Complex dashboard widgets** (heavy charts, dense “command center” layouts) unless clearly MVP-needed
+- **Excessive filtering** — many simultaneous filters, advanced query builders
+- **Deep nested navigation** — menus within menus, long drill-downs
+
+## When adding UI
+
+- Ask: *Can someone learn this in one short walkthrough?*
+- Default to **boring and clear** over clever and dense.

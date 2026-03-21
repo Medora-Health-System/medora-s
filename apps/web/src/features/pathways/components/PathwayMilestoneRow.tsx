@@ -68,13 +68,23 @@ export const PathwayMilestoneRow = React.forwardRef<HTMLDivElement, Props>(
         )}
         <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={badgeStyles}>
-            {milestone.uiStatus}
+            {milestone.uiStatus === "PENDING"
+              ? "En attente"
+              : milestone.uiStatus === "MET"
+                ? "Atteint"
+                : milestone.uiStatus === "WAIVED"
+                  ? "Reporté"
+                  : milestone.uiStatus === "CANCELLED"
+                    ? "Annulé"
+                    : milestone.uiStatus === "MISSED"
+                      ? "Manqué"
+                      : "—"}
           </span>
           {milestone.overdue && milestone.uiStatus === "PENDING" && (
-            <span style={{ fontSize: 12, fontWeight: 500, color: "#be123c" }}>OVERDUE</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: "#be123c" }}>EN RETARD</span>
           )}
           {milestone.uiStatus === "MET" && milestone.metOnTime === false && (
-            <span style={{ fontSize: 12, fontWeight: 500, color: "#be123c" }}>MET LATE</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: "#be123c" }}>Atteint en retard</span>
           )}
         </div>
       </div>
@@ -98,7 +108,7 @@ export const PathwayMilestoneRow = React.forwardRef<HTMLDivElement, Props>(
           disabled={disabled}
           onClick={() => onMarkMet(milestone.id)}
         >
-          Mark Met
+          Marquer atteint
         </button>
       </div>
     </div>

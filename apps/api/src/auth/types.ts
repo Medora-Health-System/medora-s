@@ -8,6 +8,8 @@ export type JwtPayload = {
 
 export type FacilityRoleDto = {
   facilityId: string;
+  /** Nom de l’établissement (pour l’UI ; optionnel pour rétrocompatibilité). */
+  facilityName?: string;
   role: string;
   departmentId: string | null;
 };

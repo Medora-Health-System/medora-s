@@ -1,8 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction } from "@prisma/client";
+import { AuditAction, SexAtBirth } from "@prisma/client";
 import { generateUniqueMrn } from "../utils/mrn";
+import {
+  REGISTRATION_SEX_TO_PATIENT_SEX,
+  REGISTRATION_SEX_TO_SEX_AT_BIRTH,
+  sexAtBirthToPatientSex,
+} from "../utils/patient-sex-map";
 import type { PatientCreateDto, PatientUpdateDto } from "@medora/shared";
 
 @Injectable()
@@ -54,6 +59,7 @@ export class PatientsService {
         phone: true,
         email: true,
         sexAtBirth: true,
+        sex: true,
         createdAt: true,
       },
     });
@@ -71,9 +77,22 @@ export class PatientsService {
   }
 
   async create(facilityId: string, data: PatientCreateDto, userId?: string, ip?: string, userAgent?: string) {
-    // Enforce facilityId from scope
+    const { dateOfBirth, sex, ...rest } = data;
+    const dob = new Date(dateOfBirth.trim());
+    if (Number.isNaN(dob.getTime())) {
+      throw new BadRequestException("dateOfBirth invalide");
+    }
+    const sexAtBirth = REGISTRATION_SEX_TO_SEX_AT_BIRTH[sex];
+    const patientSex = REGISTRATION_SEX_TO_PATIENT_SEX[sex];
+    if (!sexAtBirth || !patientSex) {
+      throw new BadRequestException("sex invalide");
+    }
+
     const createData: any = {
-      ...data,
+      ...rest,
+      dob,
+      sexAtBirth,
+      sex: patientSex,
       facilityId,
       registeredAtFacilityId: facilityId,
     };
@@ -141,6 +160,10 @@ export class PatientsService {
         updateData[key] = data[key as keyof PatientUpdateDto];
       }
     });
+
+    if (Object.prototype.hasOwnProperty.call(updateData, "sexAtBirth")) {
+      updateData.sex = sexAtBirthToPatientSex(updateData.sexAtBirth as SexAtBirth | null);
+    }
 
     const updated = await this.prisma.patient.update({
       where: { id },

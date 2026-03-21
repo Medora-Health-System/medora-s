@@ -3,8 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderPriorityLabelFr, getPathwayTypeLabelFr, ui } from "@/lib/uiLabels";
+import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { worklistItemIsTerminal, worklistItemNeedsAcknowledge } from "@/lib/worklistLabRadUi";
 
 export default function LabWorklistPage() {
+  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,22 +20,22 @@ export default function LabWorklistPage() {
       .split("; ")
       .find((row) => row.startsWith("medora_facility_id="))
       ?.split("=")[1];
-    setFacilityId(cookieValue || null);
-  }, []);
+    setFacilityId(cookieValue || facilityIdFromHook || null);
+  }, [facilityIdFromHook]);
 
   useEffect(() => {
-    if (!facilityId) return;
+    if (!ready || !facilityId) return;
     loadQueue();
     const interval = setInterval(loadQueue, 10000);
     return () => clearInterval(interval);
-  }, [facilityId]);
+  }, [ready, facilityId]);
 
   const loadQueue = async () => {
     if (!facilityId) return;
     setLoading(true);
     try {
       const data = await apiFetch("/worklists/lab", { facilityId });
-      setQueue(data || []);
+      setQueue(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load lab worklist:", error);
       setQueue([]);
@@ -47,7 +53,7 @@ export default function LabWorklistPage() {
       });
       loadQueue();
     } catch (error) {
-      alert("Failed to acknowledge");
+      alert("Impossible d'acquitter");
     }
   };
 
@@ -60,7 +66,7 @@ export default function LabWorklistPage() {
       });
       loadQueue();
     } catch (error) {
-      alert("Failed to start");
+      alert("Impossible de démarrer");
     }
   };
 
@@ -73,44 +79,44 @@ export default function LabWorklistPage() {
       });
       loadQueue();
     } catch (error) {
-      alert("Failed to complete");
+      alert("Impossible de terminer");
     }
   };
 
   return (
     <div>
-      <h1>Lab Worklist</h1>
-      <p>Laboratory orders requiring attention.</p>
+      <h1>Liste laboratoire</h1>
+      <p>Ordres de laboratoire à traiter.</p>
       {loading && queue.length === 0 ? (
-        <p>Loading...</p>
+        <p>{ui.common.loading}</p>
       ) : queue.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>No lab orders in worklist.</p>
+          <p>Aucun ordre labo dans la liste.</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>Patient</th>
-                <th style={{ padding: 12, textAlign: "left" }}>MRN</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Test</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Priority</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Status</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Actions</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.test}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
               </tr>
             </thead>
             <tbody>
-              {queue.map((order) =>
-                order.items?.map((item: any) => (
+              {(Array.isArray(queue) ? queue : []).map((order) =>
+                (Array.isArray(order.items) ? order.items : []).map((item: any) => (
                   <tr key={item.id} style={{ borderBottom: "1px solid #eee" }}>
                     <td style={{ padding: 12 }}>
                       {order.encounter?.patient?.firstName} {order.encounter?.patient?.lastName}
                     </td>
                     <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn}</td>
-                    <td style={{ padding: 12 }}>{item.catalogItemId}</td>
+                    <td style={{ padding: 12 }}>{getOrderItemDisplayLabelFr(item)}</td>
                     <td style={{ padding: 12 }}>
-                      {order.priority}
+                      {getOrderPriorityLabelFr(order.priority)}
                       {order.pathwaySession && (
                         <span
                           style={{
@@ -122,37 +128,61 @@ export default function LabWorklistPage() {
                             fontSize: 11,
                           }}
                         >
-                          {order.pathwaySession.type}
+                          {getPathwayTypeLabelFr(order.pathwaySession.type)}
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: 12 }}>{item.status}</td>
+                    <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
                     <td style={{ padding: 12 }}>
-                      {item.status === "PLACED" && (
-                        <button
-                          onClick={() => handleAcknowledge(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px" }}
+                      {worklistItemIsTerminal(item.status) ? (
+                        <Link
+                          href={`/app/lab-worklist/commande/${order.id}?ligne=${item.id}`}
+                          style={{
+                            display: "inline-block",
+                            padding: "6px 12px",
+                            background: "#1a1a1a",
+                            color: "#fff",
+                            borderRadius: 4,
+                            textDecoration: "none",
+                            fontSize: 13,
+                          }}
                         >
-                          Acknowledge
-                        </button>
+                          {ui.common.view}
+                        </Link>
+                      ) : (
+                        <>
+                          {worklistItemNeedsAcknowledge(item.status) && (
+                            <button
+                              type="button"
+                              onClick={() => void handleAcknowledge(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              {ui.lab.acknowledge}
+                            </button>
+                          )}
+                          {item.status === "ACKNOWLEDGED" && (
+                            <button
+                              type="button"
+                              onClick={() => void handleStart(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              {ui.lab.start}
+                            </button>
+                          )}
+                          {item.status === "IN_PROGRESS" && (
+                            <button
+                              type="button"
+                              onClick={() => void handleComplete(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              {ui.lab.complete}
+                            </button>
+                          )}
+                          <Link href={`/app/lab-worklist/commande/${order.id}?ligne=${item.id}`} style={{ marginLeft: 4, fontSize: 13 }}>
+                            {ui.common.view}
+                          </Link>
+                        </>
                       )}
-                      {item.status === "ACKNOWLEDGED" && (
-                        <button
-                          onClick={() => handleStart(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px" }}
-                        >
-                          Start
-                        </button>
-                      )}
-                      {item.status === "IN_PROGRESS" && (
-                        <button
-                          onClick={() => handleComplete(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px" }}
-                        >
-                          Complete
-                        </button>
-                      )}
-                      <Link href={`/app/encounters/${order.encounterId}`}>View</Link>
                     </td>
                   </tr>
                 ))

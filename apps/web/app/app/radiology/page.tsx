@@ -3,8 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderPriorityLabelFr, ui } from "@/lib/uiLabels";
+
+const R = ui.radiology;
 
 export default function RadiologyPage() {
+  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,13 +20,13 @@ export default function RadiologyPage() {
       .split("; ")
       .find((row) => row.startsWith("medora_facility_id="))
       ?.split("=")[1];
-    setFacilityId(cookieValue || null);
-  }, []);
+    setFacilityId(cookieValue || facilityIdFromHook || null);
+  }, [facilityIdFromHook]);
 
   useEffect(() => {
-    if (!facilityId) return;
+    if (!ready || !facilityId) return;
     loadQueue();
-  }, [facilityId]);
+  }, [ready, facilityId]);
 
   const loadQueue = async () => {
     if (!facilityId) return;
@@ -45,32 +51,32 @@ export default function RadiologyPage() {
         facilityId,
       });
       loadQueue();
-    } catch (error) {
-      alert("Failed to update status");
+    } catch {
+      alert(R.updateStatusFailed);
     }
   };
 
   return (
     <div>
-      <h1>Radiology Queue</h1>
-      <p>Imaging orders requiring attention.</p>
+      <h1>{R.title}</h1>
+      <p>{R.subtitle}</p>
       {loading ? (
-        <p>Loading...</p>
+        <p>{ui.common.loading}</p>
       ) : queue.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>No imaging orders in queue.</p>
+          <p>{R.empty}</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>Patient</th>
-                <th style={{ padding: 12, textAlign: "left" }}>MRN</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Study</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Priority</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Status</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Actions</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.study}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -80,28 +86,30 @@ export default function RadiologyPage() {
                     <td style={{ padding: 12 }}>
                       {order.encounter?.patient?.firstName} {order.encounter?.patient?.lastName}
                     </td>
-                    <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn}</td>
+                    <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? ui.common.dash}</td>
                     <td style={{ padding: 12 }}>{item.catalogItemId}</td>
-                    <td style={{ padding: 12 }}>{order.priority}</td>
-                    <td style={{ padding: 12 }}>{item.status}</td>
+                    <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(order.priority)}</td>
+                    <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
                     <td style={{ padding: 12 }}>
                       {item.status === "PENDING" && (
                         <button
+                          type="button"
                           onClick={() => handleUpdateStatus(item.id, "IN_PROGRESS")}
-                          style={{ marginRight: 8, padding: "4px 8px" }}
+                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                         >
-                          Start
+                          {R.start}
                         </button>
                       )}
                       {item.status === "IN_PROGRESS" && (
                         <button
+                          type="button"
                           onClick={() => handleUpdateStatus(item.id, "COMPLETED")}
-                          style={{ marginRight: 8, padding: "4px 8px" }}
+                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                         >
-                          Complete
+                          {R.complete}
                         </button>
                       )}
-                      <Link href={`/app/encounters/${order.encounterId}`}>View Encounter</Link>
+                      <Link href={`/app/encounters/${order.encounterId}`}>{R.viewEncounter}</Link>
                     </td>
                   </tr>
                 ))
@@ -113,4 +121,3 @@ export default function RadiologyPage() {
     </div>
   );
 }
-

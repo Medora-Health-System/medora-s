@@ -26,11 +26,20 @@ enum DepartmentCode {
   INPATIENT
 }
 
+/// Clinical / legacy shorthand stored alongside `Patient.sex` (canonical demographic enum).
 enum SexAtBirth {
   M
   F
   X
   U
+}
+
+/// Canonical patient demographic sex for APIs, search, and offline snapshots (no age stored).
+enum PatientSex {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
 }
 
 enum PathwayType {
@@ -126,27 +135,65 @@ enum OrderPriority {
   STAT
 }
 
+/// Med order intent: RN executes in-chart vs pharmacy fulfills for outpatient / discharge.
+enum MedicationFulfillmentIntent {
+  ADMINISTER_CHART
+  PHARMACY_DISPENSE
+}
+
+enum DiagnosisStatus {
+  ACTIVE
+  RESOLVED
+}
+
+enum InventoryTransactionType {
+  RECEIPT
+  DISPENSE
+  ADJUSTMENT
+  WASTE
+}
+
+enum DiseaseCaseStatus {
+  SUSPECTED
+  CONFIRMED
+  RULED_OUT
+}
+
+enum FollowUpStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
 model Facility {
-  id        String      @id @default(uuid())
-  code      String      @unique
+  id        String   @id @default(uuid())
+  code      String   @unique
   name      String
   country   String
   timezone  String
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  departments       Department[]
-  userRoles         UserRole[]
-  patientsRegistered Patient[]  @relation("RegisteredAtFacility")
-  patients          Patient[]   @relation("PatientFacility")
-  encounters        Encounter[]
-  orders            Order[]
-  auditLogs         AuditLog[]
-  triages           Triage[]
-  results           Result[]
-  pathwaySessions   PathwaySession[]
-  protocolOrderSets ProtocolOrderSet[]
+  departments            Department[]
+  userRoles              UserRole[]
+  patientsRegistered     Patient[]               @relation("RegisteredAtFacility")
+  patients               Patient[]               @relation("PatientFacility")
+  encounters             Encounter[]
+  orders                 Order[]
+  auditLogs              AuditLog[]
+  triages                Triage[]
+  results                Result[]
+  pathwaySessions        PathwaySession[]
+  protocolOrderSets      ProtocolOrderSet[]
+  diagnoses              Diagnosis[]
+  medicationDispenses    MedicationDispense[]
+  inventoryItems             InventoryItem[]
+  inventoryTransactions      InventoryTransaction[]
+  facilityMedicationUsages   FacilityMedicationUsage[]
+  vaccineAdministrations     VaccineAdministration[]
+  diseaseCaseReports         DiseaseCaseReport[]
+  followUps                  FollowUp[]
 }
 
 model Department {
@@ -158,58 +205,82 @@ model Department {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  facility  Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  facility  Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   userRoles UserRole[]
 
   @@unique([facilityId, code])
 }
 
 model Role {
-  id        String    @id @default(uuid())
-  code      RoleCode  @unique
+  id        String   @id @default(uuid())
+  code      RoleCode @unique
   name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userRoles UserRole[]
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  firstName    String
-  lastName     String
-  passwordHash String
+  id               String   @id @default(uuid())
+  email            String   @unique
+  firstName        String
+  lastName         String
+  passwordHash     String
   refreshTokenHash String?
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  userRoles UserRole[]
-  auditLogs AuditLog[]
+  userRoles              UserRole[]
+  auditLogs              AuditLog[]
+  medicationDispenses    MedicationDispense[]
+  inventoryTransactions  InventoryTransaction[]
+  vaccineAdministrations VaccineAdministration[]
+  diseaseCaseReports     DiseaseCaseReport[]
+  followUpsCreated      FollowUp[]
+  passwordResetTokens   PasswordResetToken[]
+
+  encountersAsAssignedPhysician Encounter[] @relation("EncounterPhysicianAssigned")
+  orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
 }
 
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String
+  expiresAt  DateTime
+  usedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Facility-scoped role assignment (user + Role row + facility). Same idea as a dedicated `FacilityUserRole` model.
 model UserRole {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
   userId       String
   roleId       String
   facilityId   String
   departmentId String?
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  user       User       @relation(fields: [userId], references: [id], onDelete: Restrict)
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  facility   Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role       Role        @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  facility   Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
 
+  @@unique([userId, roleId, facilityId])
   @@index([userId])
   @@index([facilityId])
+  @@index([facilityId, roleId])
   @@index([departmentId])
-  @@unique([userId, roleId, facilityId])
 }
 
+/// Demographics: date of birth is `dob` only (age is always derived). `sex` is canonical; `sexAtBirth` kept for legacy/API parity.
 model Patient {
   id                     String      @id @default(uuid())
   facilityId             String
@@ -221,26 +292,35 @@ model Patient {
   phone                  String?
   email                  String?
   sexAtBirth             SexAtBirth?
+  sex                    PatientSex  @default(UNKNOWN)
   nationalId             String?
   address                String?
   city                   String?
   country                String?
   language               String?
   registeredAtFacilityId String
+  /// Denormalized latest vitals JSON for chart header / offline read models; updated when triage or encounter vitals are saved.
+  latestVitalsJson       Json?
+  latestVitalsAt         DateTime?
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
-  facility               Facility    @relation("PatientFacility", fields: [facilityId], references: [id], onDelete: Restrict)
-  registeredAtFacility   Facility    @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id], onDelete: Restrict)
+  facility               Facility                @relation("PatientFacility", fields: [facilityId], references: [id], onDelete: Restrict)
+  registeredAtFacility   Facility                @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id], onDelete: Restrict)
   encounters             Encounter[]
   orders                 Order[]
   auditLogs              AuditLog[]
+  diagnoses              Diagnosis[]
+  medicationDispenses    MedicationDispense[]
+  vaccineAdministrations VaccineAdministration[]
+  diseaseCaseReports     DiseaseCaseReport[]
+  followUps              FollowUp[]
 
+  @@unique([facilityId, mrn])
   @@index([facilityId])
   @@index([lastName, firstName])
   @@index([phone])
   @@index([mrn])
-  @@unique([facilityId, mrn])
 }
 
 model AuditLog {
@@ -256,13 +336,13 @@ model AuditLog {
   action     AuditAction
   metadata   Json?
 
-  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  facility Facility?   @relation(fields: [facilityId], references: [id], onDelete: SetNull)
-  patient  Patient?    @relation(fields: [patientId], references: [id], onDelete: SetNull)
-  encounter Encounter? @relation("EncounterAuditLogs", fields: [encounterId], references: [id], onDelete: SetNull)
-  order    Order?      @relation("OrderAuditLogs", fields: [orderId], references: [id], onDelete: SetNull)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  facility    Facility?  @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  patient     Patient?   @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  encounter   Encounter? @relation("EncounterAuditLogs", fields: [encounterId], references: [id], onDelete: SetNull)
+  order       Order?     @relation("OrderAuditLogs", fields: [orderId], references: [id], onDelete: SetNull)
   encounterId String?
-  orderId    String?
+  orderId     String?
 
   @@index([userId])
   @@index([facilityId])
@@ -271,60 +351,80 @@ model AuditLog {
 }
 
 model Encounter {
-  id            String          @id @default(uuid())
-  facilityId    String
-  patientId     String
-  providerId    String?
-  type          EncounterType
-  status        EncounterStatus @default(OPEN)
+  id         String          @id @default(uuid())
+  facilityId String
+  patientId  String
+  providerId String?
+  type       EncounterType
+  status     EncounterStatus @default(OPEN)
 
-  chiefComplaint String?
-  triageAcuity   Int?
-  vitals         Json?
+  chiefComplaint    String?
+  triageAcuity      Int?
+  vitals            Json?
   nursingAssessment Json?
-  providerNote   String?
-  disposition    String?
-  dischargeStatus DischargeStatus?
-  dischargedAt   DateTime?
+  providerNote      String?
+  /// Outpatient / clinic: structured treatment summary (distinct from free-text notes)
+  treatmentPlan     String?
+  followUpDate      DateTime?
+  disposition       String?
+  dischargeStatus   DischargeStatus?
+  dischargedAt      DateTime?
 
-  notes         String?
+  /// French-facing room label: "Salle d'attente" or "1"…"30"
+  roomLabel               String?
+  /// Assigned attending physician (display name only in UI; never use for nurse attribution)
+  physicianAssignedUserId String?
+  physicianAssigned       User?   @relation("EncounterPhysicianAssigned", fields: [physicianAssignedUserId], references: [id], onDelete: SetNull)
+  /// Structured discharge summary (French UI keys / values); saved before closing when using discharge flow
+  dischargeSummaryJson    Json?
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  notes String?
 
-  patient       Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  facility      Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  orders        Order[]
-  auditLogs     AuditLog[]      @relation("EncounterAuditLogs")
-  triage        Triage?
-  pathwaySession PathwaySession?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient                Patient                 @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility               Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  orders                 Order[]
+  auditLogs              AuditLog[]              @relation("EncounterAuditLogs")
+  triage                 Triage?
+  pathwaySession         PathwaySession?
+  diagnoses              Diagnosis[]
+  medicationDispenses    MedicationDispense[]
+  vaccineAdministrations VaccineAdministration[]
+  diseaseCaseReports     DiseaseCaseReport[]
+  followUps              FollowUp[]
 
   @@index([facilityId])
   @@index([patientId])
   @@index([status])
+  @@index([physicianAssignedUserId])
 }
 
 model Order {
-  id          String      @id @default(uuid())
-  encounterId String
-  facilityId  String
-  type        String      // "LAB", "IMAGING", "MEDICATION"
-  status      OrderStatus @default(PENDING)
-  priority    OrderPriority @default(ROUTINE)
-  notes       String?
-  orderedBy   String?
-  source      String?     // "MANUAL", "PROTOCOL"
-  pathwaySessionId String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                 String        @id @default(uuid())
+  encounterId        String
+  facilityId         String
+  type               String // "LAB", "IMAGING", "MEDICATION"
+  status             OrderStatus   @default(PENDING)
+  priority           OrderPriority @default(ROUTINE)
+  notes              String?
+  orderedBy          String?
+  source             String? // "MANUAL", "PROTOCOL"
+  pathwaySessionId   String?
+  prescriberName     String?
+  prescriberLicense  String?
+  prescriberContact  String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  encounter   Encounter   @relation(fields: [encounterId], references: [id], onDelete: Restrict)
-  facility    Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  patientId   String
+  encounter      Encounter       @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility       Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  patientId      String
   pathwaySession PathwaySession? @relation(fields: [pathwaySessionId], references: [id], onDelete: SetNull)
-  items       OrderItem[]
-  auditLogs   AuditLog[]  @relation("OrderAuditLogs")
+  items          OrderItem[]
+  auditLogs      AuditLog[]      @relation("OrderAuditLogs")
 
   @@index([encounterId])
   @@index([facilityId])
@@ -336,114 +436,203 @@ model Order {
 model OrderItem {
   id              String      @id @default(uuid())
   orderId         String
-  catalogItemId   String
-  catalogItemType String      // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
+  /// Référence catalogue (nullable si saisie manuelle — `manualLabel` requis dans ce cas).
+  catalogItemId   String?
+  catalogItemType String // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
+  /// Libellé saisi à la main lorsque l’article n’existe pas au catalogue (analyse, examen, médicament).
+  manualLabel          String?
+  /// Précision (ex. région imagerie) ou texte secondaire d’affichage.
+  manualSecondaryText  String?
   quantity        Int?
   notes           String?
+  strength        String?     // e.g. "500 mg" for medication
+  refillCount     Int?        // number of refills for Rx
+  medicationFulfillmentIntent MedicationFulfillmentIntent?
+  completedAt     DateTime?
+  completedByUserId String?
+  completedByNurse User?     @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
   status          OrderStatus @default(PENDING)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  result          Result?
+  order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  result Result?
+  pharmacyDispenseRecord MedicationDispense?
 
   @@index([orderId])
   @@index([status])
   @@index([catalogItemType])
+  @@index([catalogItemId])
+  @@index([completedByUserId])
+  @@index([medicationFulfillmentIntent])
 }
 
 model Triage {
-  id              String    @id @default(uuid())
-  encounterId     String    @unique
-  facilityId      String
-  chiefComplaint  String?
-  onsetAt         DateTime?
-  esi             Int?
-  vitalsJson      Json?
-  strokeScreen    Json?
-  sepsisScreen    Json?
+  id               String    @id @default(uuid())
+  encounterId      String    @unique
+  facilityId       String
+  chiefComplaint   String?
+  onsetAt          DateTime?
+  esi              Int?
+  vitalsJson       Json?
+  strokeScreen     Json?
+  sepsisScreen     Json?
   triageCompleteAt DateTime?
-  createdByUserId String?
-  updatedByUserId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdByUserId  String?
+  updatedByUserId  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  encounter       Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  facility        Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
 
   @@index([facilityId])
   @@index([encounterId])
 }
 
 model Result {
-  id                      String    @id @default(uuid())
-  orderItemId             String    @unique
-  facilityId              String
-  resultData              Json?
-  resultText              String?
-  criticalValue           Boolean   @default(false)
-  verifiedByUserId        String?
-  verifiedAt              DateTime?
+  id                       String    @id @default(uuid())
+  orderItemId              String    @unique
+  facilityId               String
+  resultData               Json?
+  resultText               String?
+  criticalValue            Boolean   @default(false)
+  verifiedByUserId         String?
+  verifiedAt               DateTime?
   acknowledgedByProviderAt DateTime?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  orderItem               OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  facility                Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
 
   @@index([facilityId])
   @@index([orderItemId])
   @@index([criticalValue])
 }
 
+/// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
 model CatalogLabTest {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  displayNameFr String?
+  description   String?
+  searchText    String?
+  sortPriority  Int      @default(0)
+  isEssential   Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  aliases LabTestAlias[]
 }
 
+model LabTestAlias {
+  id               String   @id @default(uuid())
+  catalogLabTestId String
+  alias            String
+  language         String?
+  createdAt        DateTime @default(now())
+
+  catalogLabTest CatalogLabTest @relation(fields: [catalogLabTestId], references: [id], onDelete: Cascade)
+
+  @@index([catalogLabTestId])
+  @@index([alias])
+  @@unique([catalogLabTestId, alias])
+}
+
+/// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
 model CatalogImagingStudy {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  displayNameFr String?
+  description   String?
+  modality      String?
+  bodyRegion    String?
+  searchText    String?
+  sortPriority  Int      @default(0)
+  isEssential   Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  aliases ImagingStudyAlias[]
 }
 
+model ImagingStudyAlias {
+  id                     String   @id @default(uuid())
+  catalogImagingStudyId  String
+  alias                  String
+  language               String?
+  createdAt              DateTime @default(now())
+
+  catalogImagingStudy CatalogImagingStudy @relation(fields: [catalogImagingStudyId], references: [id], onDelete: Cascade)
+
+  @@index([catalogImagingStudyId])
+  @@index([alias])
+  @@unique([catalogImagingStudyId, alias])
+}
+
+/// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
 model CatalogMedication {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  description       String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  genericName       String?
+  displayNameFr     String?
+  strength          String?
+  dosageForm        String?
+  route             String?
+  therapeuticClass  String?
+  sortPriority      Int      @default(0)
+  isEssential       Boolean  @default(false)
+  searchText        String?
+
+  inventoryItems         InventoryItem[]
+  medicationDispenses    MedicationDispense[]
+  aliases                MedicationAlias[]
+  facilityMedicationUsages FacilityMedicationUsage[]
+}
+
+model MedicationAlias {
+  id                 String   @id @default(uuid())
+  catalogMedicationId String
+  alias              String
+  language           String?
+  isPrimary          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  catalogMedication CatalogMedication @relation(fields: [catalogMedicationId], references: [id], onDelete: Cascade)
+
+  @@index([catalogMedicationId])
+  @@index([alias])
+  @@unique([catalogMedicationId, alias])
 }
 
 model PathwaySession {
-  id          String          @id @default(uuid())
-  encounterId String          @unique
+  id          String        @id @default(uuid())
+  encounterId String        @unique
   facilityId  String
   type        PathwayType
-  status      PathwayStatus  @default(ACTIVE)
+  status      PathwayStatus @default(ACTIVE)
   contextJson Json?
-  activatedAt DateTime        @default(now())
+  activatedAt DateTime      @default(now())
   pausedAt    DateTime?
   completedAt DateTime?
   activatedBy String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  encounter   Encounter       @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  facility    Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  milestones  PathwayMilestone[]
-  orders      Order[]
+  encounter  Encounter          @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  facility   Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  milestones PathwayMilestone[]
+  orders     Order[]
 
   @@index([encounterId])
   @@index([facilityId])
@@ -453,15 +642,15 @@ model PathwaySession {
 }
 
 model PathwayMilestone {
-  id          String                  @id @default(uuid())
+  id               String                 @id @default(uuid())
   pathwaySessionId String
-  name        String
-  description String?
-  targetMinutes Int                   // Target time in minutes from activation
-  status      PathwayMilestoneStatus  @default(PENDING)
-  metAt       DateTime?
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
+  name             String
+  description      String?
+  targetMinutes    Int // Target time in minutes from activation
+  status           PathwayMilestoneStatus @default(PENDING)
+  metAt            DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   pathwaySession PathwaySession @relation(fields: [pathwaySessionId], references: [id], onDelete: Cascade)
 
@@ -480,8 +669,8 @@ model ProtocolOrderSet {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  facility    Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  items       ProtocolOrderSetItem[]
+  facility Facility               @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  items    ProtocolOrderSetItem[]
 
   @@unique([facilityId, pathwayType])
   @@index([facilityId])
@@ -491,21 +680,247 @@ model ProtocolOrderSet {
 }
 
 model ProtocolOrderSetItem {
-  id                  String      @id @default(uuid())
-  protocolOrderSetId  String
-  catalogLabTestId    String?
+  id                    String        @id @default(uuid())
+  protocolOrderSetId    String
+  catalogLabTestId      String?
   catalogImagingStudyId String?
-  catalogMedicationId String?
-  priority            OrderPriority @default(ROUTINE)
-  sequence            Int         // Order within the set
-  notes               String?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  catalogMedicationId   String?
+  priority              OrderPriority @default(ROUTINE)
+  sequence              Int // Order within the set
+  notes                 String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
-  protocolOrderSet    ProtocolOrderSet @relation(fields: [protocolOrderSetId], references: [id], onDelete: Cascade)
+  protocolOrderSet ProtocolOrderSet @relation(fields: [protocolOrderSetId], references: [id], onDelete: Cascade)
 
   @@index([protocolOrderSetId])
   @@index([sequence])
   @@map("ProtocolOrderSetItem")
 }
 
+// --- Medora Core: continuity / diagnoses ---
+model Diagnosis {
+  id           String          @id @default(uuid())
+  patientId    String
+  encounterId  String
+  facilityId   String
+  code         String
+  description  String?
+  status       DiagnosisStatus @default(ACTIVE)
+  onsetDate    DateTime?
+  resolvedDate DateTime?
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([facilityId])
+  @@index([status])
+  @@index([code])
+}
+
+// --- Medora Pharmacy: inventory + dispensing ---
+model InventoryItem {
+  id                  String    @id @default(uuid())
+  facilityId          String
+  catalogMedicationId String
+  sku                 String
+  lotNumber           String?
+  expirationDate      DateTime?
+  quantityOnHand      Int       @default(0)
+  reorderLevel        Int       @default(0)
+  unit                String?
+  isActive            Boolean   @default(true)
+  isFavorite          Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  facility            Facility               @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  catalogMedication   CatalogMedication      @relation(fields: [catalogMedicationId], references: [id], onDelete: Restrict)
+  medicationDispenses MedicationDispense[]
+  transactions        InventoryTransaction[]
+
+  @@unique([facilityId, sku])
+  @@index([facilityId])
+  @@index([catalogMedicationId])
+  @@index([isActive])
+  @@index([isFavorite])
+}
+
+model FacilityMedicationUsage {
+  id                  String   @id @default(uuid())
+  facilityId          String
+  catalogMedicationId String
+  inventoryAddsCount  Int      @default(0)
+  dispenseCount       Int      @default(0)
+  lastUsedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  facility          Facility          @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  catalogMedication CatalogMedication @relation(fields: [catalogMedicationId], references: [id], onDelete: Cascade)
+
+  @@unique([facilityId, catalogMedicationId])
+  @@index([facilityId, lastUsedAt])
+  @@index([facilityId, dispenseCount])
+}
+
+model InventoryTransaction {
+  id                String                   @id @default(uuid())
+  inventoryItemId   String
+  facilityId        String
+  type              InventoryTransactionType
+  quantity          Int
+  performedByUserId String
+  patientId         String?
+  encounterId       String?
+  notes             String?
+  createdAt         DateTime                 @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  facility      Facility      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  performedBy   User          @relation(fields: [performedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([inventoryItemId])
+  @@index([facilityId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model MedicationDispense {
+  id                  String   @id @default(uuid())
+  patientId           String
+  encounterId         String
+  facilityId          String
+  /// Null si dispensation liée à une ligne d’ordonnance sans entrée catalogue (saisie manuelle).
+  catalogMedicationId String?
+  /// Libellé figé lorsque `catalogMedicationId` est absent (même source que `OrderItem.manualLabel`).
+  manualMedicationLabel String?
+  /// When null, dispense is documentation-only (no stock movement), e.g. ordonnance remise.
+  inventoryItemId     String?
+  orderItemId         String?  @unique
+  quantityDispensed   Int
+  dosageInstructions  String?
+  dispensedByUserId   String
+  dispensedAt         DateTime @default(now())
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  patient           Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter         Encounter          @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility          Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  catalogMedication CatalogMedication? @relation(fields: [catalogMedicationId], references: [id], onDelete: Restrict)
+  inventoryItem     InventoryItem?    @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  orderItem         OrderItem?        @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  dispensedBy       User              @relation(fields: [dispensedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([facilityId])
+  @@index([inventoryItemId])
+  @@index([dispensedAt])
+}
+
+// --- Medora Public Health: vaccination + disease reporting ---
+model VaccineCatalog {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  description  String?
+  manufacturer String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vaccineAdministrations VaccineAdministration[]
+}
+
+model VaccineAdministration {
+  id                   String    @id @default(uuid())
+  patientId            String
+  facilityId           String
+  encounterId          String?
+  vaccineCatalogId     String
+  doseNumber           Int?
+  lotNumber            String?
+  administeredAt       DateTime  @default(now())
+  administeredByUserId String?
+  nextDueAt            DateTime?
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  patient        Patient        @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility       Facility       @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter      Encounter?     @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  vaccineCatalog VaccineCatalog @relation(fields: [vaccineCatalogId], references: [id], onDelete: Restrict)
+  administeredBy User?          @relation(fields: [administeredByUserId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([encounterId])
+  @@index([vaccineCatalogId])
+  @@index([administeredAt])
+}
+
+model DiseaseCaseReport {
+  id               String            @id @default(uuid())
+  patientId        String?
+  facilityId       String
+  encounterId      String?
+  diseaseCode      String
+  diseaseName      String
+  status           DiseaseCaseStatus
+  reportedAt       DateTime          @default(now())
+  onsetDate        DateTime?
+  commune          String?
+  department       String?
+  notes            String?
+  reportedByUserId String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  patient    Patient?   @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  facility   Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter  Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  reportedBy User?      @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([diseaseCode])
+  @@index([status])
+  @@index([reportedAt])
+}
+
+/// FRONT_DESK (and others) create via API; `encounterId` optional for registration desk follow-ups.
+model FollowUp {
+  id               String         @id @default(uuid())
+  patientId        String
+  facilityId       String
+  encounterId      String?
+  dueDate          DateTime
+  reason           String?
+  status           FollowUpStatus  @default(OPEN)
+  notes            String?
+  createdByUserId  String?
+  completedAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility  Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  createdBy User?      @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([facilityId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([facilityId, status, dueDate])
+}
