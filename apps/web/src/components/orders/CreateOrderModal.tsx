@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { apiFetch, parseApiResponse } from "@/lib/apiClient";
-import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
+import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
 import type { OrderCreateDto } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -123,6 +123,8 @@ export function CreateOrderModal({
   initialOrderTab = "LAB",
   onClose,
   onSuccess,
+  /** Après constat serveur « consultation fermée », re-synchronise l’état parent (évite badge Ouverte obsolète). */
+  onRefetchEncounter,
 }: {
   encounterId: string;
   facilityId: string;
@@ -131,6 +133,7 @@ export function CreateOrderModal({
   initialOrderTab?: OrderModalTab;
   onClose: () => void;
   onSuccess: () => void;
+  onRefetchEncounter?: () => Promise<void>;
 }) {
   const firstTab: OrderModalTab =
     !canPrescribe && initialOrderTab === "MEDICATION" ? "LAB" : initialOrderTab;
@@ -291,6 +294,24 @@ export function CreateOrderModal({
     );
 
     try {
+      /**
+       * Cause du décalage UI / API : l’en-tête peut afficher « Ouverte » depuis un cache offline
+       * (`encounter_summaries`) ou un état React non rafraîchi alors que le serveur a déjà clôturé.
+       * Re-vérification synchrone avec la source de vérité avant POST (même règle que l’API).
+       */
+      try {
+        const latestRaw = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+        const latest = asApiObject(latestRaw) as { status?: string } | null;
+        // Ne bloquer que si la source de vérité indique explicitement un statut autre qu’OPEN.
+        if (latest && typeof latest.status === "string" && latest.status !== "OPEN") {
+          await onRefetchEncounter?.();
+          setError("Impossible de créer un ordre : la consultation doit être ouverte.");
+          return;
+        }
+      } catch {
+        /* re-vérification indisponible : l’API tranchera au POST */
+      }
+
       const res = (await apiFetch(`/encounters/${encounterId}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -314,6 +335,10 @@ export function CreateOrderModal({
         setOrderSuccess(true);
       }
     } catch (err) {
+      const raw = err instanceof Error ? err.message : "";
+      if (isEncounterMustBeOpenForOrderError(raw)) {
+        await onRefetchEncounter?.();
+      }
       setError(mapOrderCreateError(err));
     } finally {
       setLoading(false);
@@ -394,8 +419,25 @@ export function CreateOrderModal({
 
         {rxSuccess && createdOrder && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>Ordonnance envoyée à la pharmacie</p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {(() => {
+              const items = formData.items;
+              const intents = items.map(
+                (it) => it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE"
+              );
+              const allAdminister =
+                items.length > 0 && intents.every((x) => x === "ADMINISTER_CHART");
+              const allPharmacy =
+                items.length > 0 && intents.every((x) => x === "PHARMACY_DISPENSE");
+              return (
+                <>
+                  <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>
+                    {allAdminister
+                      ? "Ordonnance enregistrée — à administrer au patient (dossier de soins)."
+                      : allPharmacy
+                        ? "Ordonnance enregistrée — à préparer en pharmacie."
+                        : "Ordonnance enregistrée — certaines lignes sont à administrer au patient, d’autres à la pharmacie."}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => {
@@ -437,6 +479,7 @@ export function CreateOrderModal({
               >
                 Imprimer l&apos;ordonnance
               </button>
+              {!allAdminister ? (
               <Link
                 href="/app/pharmacy-worklist"
                 style={{
@@ -452,6 +495,7 @@ export function CreateOrderModal({
               >
                 Voir la file pharmacie
               </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -472,9 +516,12 @@ export function CreateOrderModal({
               </button>
             </div>
             <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
-              Date d&apos;envoi :{" "}
+              Date d&apos;enregistrement :{" "}
               {createdOrder.createdAt ? new Date(createdOrder.createdAt).toLocaleString("fr-FR") : "—"}
             </p>
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -642,7 +689,13 @@ export function CreateOrderModal({
                     fontSize: 14,
                   }}
                 >
-                  {loading ? "Envoi…" : activeTab === "MEDICATION" ? "Envoyer à la pharmacie" : "Créer l'ordre"}
+                  {loading
+                    ? activeTab === "MEDICATION"
+                      ? "Enregistrement…"
+                      : "Envoi…"
+                    : activeTab === "MEDICATION"
+                      ? "Enregistrer l'ordonnance"
+                      : "Créer l'ordre"}
                 </button>
               </div>
             </form>
