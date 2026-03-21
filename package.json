@@ -6,6 +6,10 @@
     "packages/*"
   ],
   "scripts": {
+    "verify": "bash scripts/verify-stability.sh",
+    "verify:shared": "pnpm --filter @medora/shared build",
+    "verify:web": "pnpm --filter @medora/web exec tsc --noEmit",
+    "verify:api": "pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json",
     "db:clear:patients": "pnpm --filter @medora/api run db:clear:patients",
     "dev": "npm run dev --workspaces --if-present",
     "dev:web": "npm run dev --workspace=@medora/web",

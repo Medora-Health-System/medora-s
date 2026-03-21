@@ -2,6 +2,19 @@
 
 Sprint 0 monorepo scaffold (API + Web + shared package).
 
+### Stability & process
+
+- **Workflow, branches, recovery, local startup**: [docs/STABILITY_WORKFLOW.md](docs/STABILITY_WORKFLOW.md)
+- **Git / GitHub discipline** (branches, PRs, recovery): [docs/GIT_GITHUB_WORKFLOW.md](docs/GIT_GITHUB_WORKFLOW.md)
+- **Checkpoints & stability tags**: [docs/RELEASE_CHECKPOINTS.md](docs/RELEASE_CHECKPOINTS.md) · `./scripts/create-stability-tag.sh`
+- **Recover files / compare branches**: [docs/RECOVERY_PLAYBOOK.md](docs/RECOVERY_PLAYBOOK.md)
+- **Before merging to main**: [docs/PRE_MERGE_GATE.md](docs/PRE_MERGE_GATE.md)
+- **Repo root, lockfile, Prisma, `.next`**: [docs/STARTUP_RULES.md](docs/STARTUP_RULES.md)
+- **Smoke tests by role** (FRONT_DESK, RN, PROVIDER, PHARMACY, LAB, RADIOLOGY, BILLING, ADMIN): [docs/SMOKE_TEST_CHECKLIST.md](docs/SMOKE_TEST_CHECKLIST.md)
+- **Clinical regression matrix** (manual QA before demos/releases): [docs/CLINICAL_REGRESSION_MATRIX.md](docs/CLINICAL_REGRESSION_MATRIX.md)
+- **Doctor / clinic demo process** (stable branch, smoke, pre-demo commands): [docs/DOCTOR_DEMO_MODE.md](docs/DOCTOR_DEMO_MODE.md)
+- **Scripts**: `./scripts/check-workspace-root.sh`, `./scripts/verify-stability.sh` / `pnpm verify`, `./scripts/start-medora-dev.sh`, `./scripts/dev-reset.sh`, `./scripts/pre-change-checkpoint.sh`, `./scripts/post-change-smoke-check.sh`
+
 ## Quick start
 
 ### Install
