@@ -16,6 +16,7 @@ import {
   PROVIDER_PLAN_SNIPPETS,
 } from "@/constants/clinicalTemplates";
 import { CreateOrderModal } from "@/components/orders";
+import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
@@ -116,6 +117,8 @@ export default function EncounterDetailPage() {
   /** Signes vitaux / ordres / diagnostics : échec partiel sans quitter la route. */
   const [quickContextNotice, setQuickContextNotice] = useState<string | null>(null);
   const [medicationModalRequestTick, setMedicationModalRequestTick] = useState(0);
+  const [careModalRequestTick, setCareModalRequestTick] = useState(0);
+  const [careModalPresetLabel, setCareModalPresetLabel] = useState<string | null>(null);
   const [encounterResultsRefresh, setEncounterResultsRefresh] = useState(0);
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [closingEncounter, setClosingEncounter] = useState(false);
@@ -956,16 +959,51 @@ export default function EncounterDetailPage() {
                     Ajouter un diagnostic
                   </button>
                   {canPrescribe ? (
-                    <button
-                      type="button"
-                      style={quickBtn}
-                      onClick={() => {
-                        setActiveTab("orders");
-                        setMedicationModalRequestTick((t) => t + 1);
-                      }}
-                    >
-                      Créer une ordonnance
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        style={quickBtn}
+                        onClick={() => {
+                          setActiveTab("orders");
+                          setMedicationModalRequestTick((t) => t + 1);
+                        }}
+                      >
+                        Créer une ordonnance
+                      </button>
+                      <button
+                        type="button"
+                        style={quickBtn}
+                        onClick={() => {
+                          setActiveTab("orders");
+                          setCareModalPresetLabel("Pose de voie IV");
+                          setCareModalRequestTick((t) => t + 1);
+                        }}
+                      >
+                        Prescrire voie IV
+                      </button>
+                      <button
+                        type="button"
+                        style={quickBtn}
+                        onClick={() => {
+                          setActiveTab("orders");
+                          setCareModalPresetLabel("Administration d'oxygène");
+                          setCareModalRequestTick((t) => t + 1);
+                        }}
+                      >
+                        Prescrire oxygène
+                      </button>
+                      <button
+                        type="button"
+                        style={quickBtn}
+                        onClick={() => {
+                          setActiveTab("orders");
+                          setCareModalPresetLabel("Pansement / soin de plaie");
+                          setCareModalRequestTick((t) => t + 1);
+                        }}
+                      >
+                        Prescrire soin de plaie
+                      </button>
+                    </>
                   ) : null}
                   {canAdmitPatient ? (
                     <button
@@ -1070,6 +1108,8 @@ export default function EncounterDetailPage() {
               facilityId={facilityId}
               canPrescribe={canPrescribe}
               medicationModalRequestTick={medicationModalRequestTick}
+              careModalRequestTick={careModalRequestTick}
+              careModalPresetLabel={careModalPresetLabel}
               onOrdersUpdated={refreshQuickOrdersOnly}
               onRefetchEncounter={() => loadEncounter({ silent: true })}
             />
@@ -2650,6 +2690,8 @@ function OrdersTab({
   facilityId,
   canPrescribe,
   medicationModalRequestTick = 0,
+  careModalRequestTick = 0,
+  careModalPresetLabel = null,
   onOrdersUpdated,
   onRefetchEncounter,
 }: {
@@ -2658,6 +2700,8 @@ function OrdersTab({
   facilityId: string;
   canPrescribe: boolean;
   medicationModalRequestTick?: number;
+  careModalRequestTick?: number;
+  careModalPresetLabel?: string | null;
   onOrdersUpdated?: () => void | Promise<void>;
   onRefetchEncounter?: () => Promise<void>;
 }) {
@@ -2665,7 +2709,9 @@ function OrdersTab({
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createModalInitialTab, setCreateModalInitialTab] = useState<"LAB" | "IMAGING" | "MEDICATION">("LAB");
+  const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
+  /** Libellé CARE à injecter uniquement à l’ouverture via action rapide (évite de réutiliser un ancien preset avec une ordonnance). */
+  const [carePresetForOpenModal, setCarePresetForOpenModal] = useState<string | null>(null);
   const isRn = roles.includes("RN") || roles.includes("ADMIN");
 
   const handlePrintRx = (order: any) => {
@@ -2704,8 +2750,16 @@ function OrdersTab({
   useEffect(() => {
     if (medicationModalRequestTick <= 0 || !canPrescribe) return;
     setCreateModalInitialTab("MEDICATION");
+    setCarePresetForOpenModal(null);
     setShowCreateModal(true);
   }, [medicationModalRequestTick, canPrescribe]);
+
+  useEffect(() => {
+    if (careModalRequestTick <= 0 || !canPrescribe) return;
+    setCreateModalInitialTab("CARE");
+    setCarePresetForOpenModal(careModalPresetLabel?.trim() ?? null);
+    setShowCreateModal(true);
+  }, [careModalRequestTick, canPrescribe, careModalPresetLabel]);
 
   const nurseComplete = async (itemId: string) => {
     try {
@@ -2812,6 +2866,14 @@ function OrdersTab({
                         <div style={{ fontWeight: 600 }}>Médicaments</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
                           <strong>Médicaments :</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                        </div>
+                      </>
+                    ) : order.type === "CARE" ? (
+                      <>
+                        <div style={{ fontWeight: 600 }}>Soins / procédures</div>
+                        <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
+                          <strong>Soins demandés :</strong>{" "}
                           {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
                         </div>
                       </>
@@ -2950,12 +3012,13 @@ function OrdersTab({
 
       {showCreateModal && (
         <CreateOrderModal
-          key={`${encounterId}-${createModalInitialTab}-${medicationModalRequestTick}`}
+          key={`${encounterId}-${createModalInitialTab}-${medicationModalRequestTick}-${careModalRequestTick}-${carePresetForOpenModal ?? ""}`}
           encounterId={encounterId}
           facilityId={facilityId}
           canPrescribe={canPrescribe}
           encounter={encounter}
           initialOrderTab={createModalInitialTab}
+          initialCareManualLabel={carePresetForOpenModal}
           onClose={() => setShowCreateModal(false)}
           onRefetchEncounter={onRefetchEncounter}
           onSuccess={async () => {

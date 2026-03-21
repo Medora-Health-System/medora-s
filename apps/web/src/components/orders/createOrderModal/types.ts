@@ -1,6 +1,6 @@
-export type OrderModalTab = "LAB" | "IMAGING" | "MEDICATION";
+export type OrderModalTab = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 
-export type OrderLineCatalogType = "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION";
+export type OrderLineCatalogType = "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" | "CARE";
 
 export function newOrderLineId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {

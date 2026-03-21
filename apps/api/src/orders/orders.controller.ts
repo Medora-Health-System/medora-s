@@ -46,7 +46,8 @@ export class OrdersController {
 
     const data = assertZodBody(orderCreateDtoSchema.safeParse(body));
 
-    if (data.type === "MEDICATION") {
+    const orderType = data.type as string;
+    if (orderType === "MEDICATION" || orderType === "CARE") {
       const userId = req.user?.userId;
       if (!userId) throw new ForbiddenException("Authentification requise");
       const userRoles = await this.prisma.userRole.findMany({
@@ -55,7 +56,11 @@ export class OrdersController {
       });
       const codes = userRoles.map((ur) => ur.role.code);
       if (!codes.includes(RoleCode.PROVIDER) && !codes.includes(RoleCode.ADMIN)) {
-        throw new ForbiddenException("Seuls les médecins peuvent prescrire des médicaments.");
+        throw new ForbiddenException(
+          orderType === "MEDICATION"
+            ? "Seuls les médecins peuvent prescrire des médicaments."
+            : "Seuls les médecins peuvent créer des ordres de soins.",
+        );
       }
     }
 
@@ -173,7 +178,7 @@ export class OrdersController {
   }
 
   @Post("orders/items/:id/complete")
-  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
   async completeOrderItem(@Param("id") orderItemId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {

@@ -18,6 +18,18 @@ import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
 import type { CreateOrderLineItem, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
 
+/** Préréglages — ordre type CARE, ligne catalogItemType CARE + manualLabel. */
+const CARE_PROCEDURE_PRESETS_FR = [
+  "Pose de voie IV",
+  "Administration d'oxygène",
+  "Pansement / soin de plaie",
+  "Nébulisation",
+  "Pose de sonde urinaire",
+  "Aspiration",
+  "Surveillance",
+  "Autre soin infirmier",
+] as const;
+
 function mapOrderCreateError(err: unknown): string {
   const msg = err instanceof Error ? err.message : "";
   return normalizeUserFacingError(msg.trim() || null) || "Impossible de créer l'ordre.";
@@ -83,6 +95,20 @@ function buildPayload(
     };
   }
 
+  if (type === "CARE") {
+    return {
+      type: "CARE",
+      priority,
+      notes: rootNotes,
+      items: items.map((it) => ({
+        catalogItemId: null,
+        catalogItemType: "CARE" as const,
+        manualLabel: (it.manualLabel ?? it._label).trim(),
+        notes: it.notes?.trim() || undefined,
+      })),
+    };
+  }
+
   return {
     type: "MEDICATION",
     priority,
@@ -125,18 +151,35 @@ export function CreateOrderModal({
   onSuccess,
   /** Après constat serveur « consultation fermée », re-synchronise l’état parent (évite badge Ouverte obsolète). */
   onRefetchEncounter,
+  /** Si onglet initial CARE : préremplit une ligne manuelle (ex. action rapide). */
+  initialCareManualLabel,
 }: {
   encounterId: string;
   facilityId: string;
   canPrescribe: boolean;
   encounter?: { patient?: { firstName?: string; lastName?: string; mrn?: string } };
   initialOrderTab?: OrderModalTab;
+  initialCareManualLabel?: string | null;
   onClose: () => void;
   onSuccess: () => void;
   onRefetchEncounter?: () => Promise<void>;
 }) {
   const firstTab: OrderModalTab =
-    !canPrescribe && initialOrderTab === "MEDICATION" ? "LAB" : initialOrderTab;
+    !canPrescribe && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE") ? "LAB" : initialOrderTab;
+
+  const carePresetItems = (): CreateOrderLineItem[] => {
+    if (firstTab !== "CARE" || !initialCareManualLabel?.trim()) return [];
+    const label = initialCareManualLabel.trim();
+    return [
+      {
+        _lineId: newOrderLineId(),
+        isManual: true,
+        catalogItemType: "CARE",
+        manualLabel: label,
+        _label: label,
+      },
+    ];
+  };
 
   const [activeTab, setActiveTab] = useState<OrderModalTab>(firstTab);
   const [rxSuccess, setRxSuccess] = useState(false);
@@ -156,10 +199,12 @@ export function CreateOrderModal({
     prescriberName: "",
     prescriberLicense: "",
     prescriberContact: "",
-    items: [] as CreateOrderLineItem[],
+    items: carePresetItems(),
   });
 
-  const orderTypes: OrderModalTab[] = canPrescribe ? ["LAB", "IMAGING", "MEDICATION"] : ["LAB", "IMAGING"];
+  const orderTypes: OrderModalTab[] = canPrescribe
+    ? ["LAB", "IMAGING", "MEDICATION", "CARE"]
+    : ["LAB", "IMAGING"];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queuedSync, setQueuedSync] = useState(false);
@@ -195,8 +240,25 @@ export function CreateOrderModal({
     return "MEDICATION";
   };
 
+  const addCarePreset = (label: string) => {
+    setFormData((fd) => ({
+      ...fd,
+      items: [
+        ...fd.items,
+        {
+          _lineId: newOrderLineId(),
+          isManual: true,
+          catalogItemType: "CARE",
+          manualLabel: label,
+          _label: label,
+        },
+      ],
+    }));
+  };
+
   const handleSelectItem = (item: CatalogSearchItem) => {
     const tab = activeTab;
+    if (tab === "CARE") return;
     if (tab === "LAB" || tab === "IMAGING") {
       const catalogItemType = tab === "LAB" ? "LAB_TEST" : "IMAGING_STUDY";
       setFormData((fd) => {
@@ -358,7 +420,9 @@ export function CreateOrderModal({
       ? "Rechercher une analyse (2 caractères min.)"
       : activeTab === "IMAGING"
         ? "Rechercher un examen d'imagerie…"
-        : "Rechercher un médicament…";
+        : activeTab === "CARE"
+          ? ""
+          : "Rechercher un médicament…";
 
   return (
     <div
@@ -565,19 +629,59 @@ export function CreateOrderModal({
                   backgroundColor: "#fafafa",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
-                  Recherche et ajout
-                </div>
-                <SharedCatalogAutocomplete
-                  catalogType={catalogTypeForTab(activeTab)}
-                  label=""
-                  placeholder={searchPlaceholder}
-                  facilityId={facilityId}
-                  onSelect={handleSelectItem}
-                  favoritesFirst={activeTab === "MEDICATION"}
-                  minChars={activeTab === "MEDICATION" ? 2 : 2}
-                />
-                <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />
+                {activeTab === "CARE" ? (
+                  <>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#666",
+                        marginBottom: 10,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Soins / procédures
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                      {CARE_PROCEDURE_PRESETS_FR.map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => addCarePreset(label)}
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 13,
+                            border: "1px solid #00695c",
+                            borderRadius: 6,
+                            background: "#fff",
+                            color: "#004d40",
+                            cursor: "pointer",
+                            fontWeight: 500,
+                            textAlign: "left",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
+                      Recherche et ajout
+                    </div>
+                    <SharedCatalogAutocomplete
+                      catalogType={catalogTypeForTab(activeTab)}
+                      label=""
+                      placeholder={searchPlaceholder}
+                      facilityId={facilityId}
+                      onSelect={handleSelectItem}
+                      favoritesFirst={activeTab === "MEDICATION"}
+                      minChars={activeTab === "MEDICATION" ? 2 : 2}
+                    />
+                    <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />
+                  </>
+                )}
               </div>
 
               <div
@@ -595,9 +699,18 @@ export function CreateOrderModal({
                 {activeTab === "MEDICATION" && (
                   <SelectedMedicationItems items={formData.items} onPatch={patchMedItem} onRemove={removeItem} />
                 )}
+                {activeTab === "CARE" && (
+                  <SelectedLabItems
+                    listHeading="Soins sélectionnés"
+                    items={formData.items}
+                    onRemove={removeItem}
+                  />
+                )}
                 {formData.items.length === 0 && (
                   <p style={{ margin: "8px 0 12px", fontSize: 13, color: "#999" }}>
-                    Aucun élément — recherchez ci-dessus pour ajouter.
+                    {activeTab === "CARE"
+                      ? "Aucun soin — choisissez un préréglage ci-dessus."
+                      : "Aucun élément — recherchez ci-dessus pour ajouter."}
                   </p>
                 )}
               </div>
@@ -695,7 +808,9 @@ export function CreateOrderModal({
                       : "Envoi…"
                     : activeTab === "MEDICATION"
                       ? "Enregistrer l'ordonnance"
-                      : "Créer l'ordre"}
+                      : activeTab === "CARE"
+                        ? "Créer l'ordre de soins"
+                        : "Créer l'ordre"}
                 </button>
               </div>
             </form>

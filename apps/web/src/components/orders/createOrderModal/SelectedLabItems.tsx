@@ -16,16 +16,19 @@ const rowStyle: React.CSSProperties = {
 export function SelectedLabItems({
   items,
   onRemove,
+  listHeading = "Analyses sélectionnées",
 }: {
   items: CreateOrderLineItem[];
   onRemove: (index: number) => void;
+  /** Surcharge du titre (ex. onglet soins). */
+  listHeading?: string;
 }) {
   if (items.length === 0) return null;
 
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-        Analyses sélectionnées
+        {listHeading}
       </div>
       <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0 }}>
         {items.map((item, idx) => (

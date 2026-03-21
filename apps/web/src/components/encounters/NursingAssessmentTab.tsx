@@ -273,6 +273,9 @@ export function NursingAssessmentTab({
         <p style={{ fontSize: 13, color: "#555", marginTop: 0, lineHeight: 1.45 }}>
           Saisie rapide au lit — pose de voie IV pour l&apos;instant ; d&apos;autres procédures pourront s&apos;ajouter.
         </p>
+        <p style={{ fontSize: 12, color: "#616161", margin: "8px 0 0 0", lineHeight: 1.45 }}>
+          Si une voie IV a été prescrite, terminez aussi l&apos;ordre dans l&apos;onglet Ordres.
+        </p>
         <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, cursor: "pointer" }}>
           <input
             type="checkbox"

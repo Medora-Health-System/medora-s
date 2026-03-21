@@ -76,6 +76,7 @@ function orderTypeHeadingFr(orderType: string): string {
     LAB: "Analyses demandées",
     IMAGING: "Imagerie demandée",
     MEDICATION: "Médicaments prescrits",
+    CARE: "Soins / procédures demandés",
   };
   return m[orderType] ?? "Ordres";
 }

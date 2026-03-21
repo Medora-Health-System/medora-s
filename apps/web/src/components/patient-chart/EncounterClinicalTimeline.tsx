@@ -73,6 +73,7 @@ function orderTypeHeadingFr(orderType: string): string {
     LAB: "Analyses demandées",
     IMAGING: "Imagerie demandée",
     MEDICATION: "Médicaments prescrits",
+    CARE: "Soins / procédures demandés",
   };
   return m[orderType] ?? "Ordres";
 }
@@ -178,6 +179,7 @@ export function EncounterClinicalTimeline({
         const labItems = items.filter((i) => i.catalogItemType === "LAB_TEST");
         const imgItems = items.filter((i) => i.catalogItemType === "IMAGING_STUDY");
         const medItems = items.filter((i) => i.catalogItemType === "MEDICATION");
+        const careItems = items.filter((i) => i.catalogItemType === "CARE");
         const resultItemsPreview = items.filter((it) => {
           if (it.catalogItemType !== "LAB_TEST" && it.catalogItemType !== "IMAGING_STUDY") return false;
           return !!(
@@ -342,7 +344,10 @@ export function EncounterClinicalTimeline({
               </>
             )}
 
-            {items.length > 0 && (
+            {(labItems.length > 0 ||
+              imgItems.length > 0 ||
+              medItems.length > 0 ||
+              careItems.length > 0) && (
               <>
                 <div style={subTitle}>Ordres</div>
                 {labItems.length > 0 && (
@@ -370,6 +375,16 @@ export function EncounterClinicalTimeline({
                     <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeadingFr("MEDICATION")}</div>
                     <ul style={listStyle}>
                       {medItems.map((it) => (
+                        <OrderItemLine key={it.id} it={it} showMode="request" />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {careItems.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeadingFr("CARE")}</div>
+                    <ul style={listStyle}>
+                      {careItems.map((it) => (
                         <OrderItemLine key={it.id} it={it} showMode="request" />
                       ))}
                     </ul>

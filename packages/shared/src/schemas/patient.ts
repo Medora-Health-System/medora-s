@@ -183,7 +183,7 @@ export type MedicationFulfillmentIntent = z.infer<typeof medicationFulfillmentIn
 export const orderItemCreateDtoSchema = z.object({
   /** Absent ou null si saisie manuelle (`manualLabel` requis). */
   catalogItemId: z.string().uuid().optional().nullable(),
-  catalogItemType: z.enum(["LAB_TEST", "IMAGING_STUDY", "MEDICATION"]),
+  catalogItemType: z.enum(["LAB_TEST", "IMAGING_STUDY", "MEDICATION", "CARE"]),
   /** Libellé libre lorsque l’article n’est pas au catalogue. */
   manualLabel: z.string().min(1).max(512).optional(),
   manualSecondaryText: z.string().max(2000).optional(),
@@ -201,7 +201,7 @@ export type OrderItemCreateDto = z.infer<typeof orderItemCreateDtoSchema>;
 
 export const orderCreateDtoSchema = z
   .object({
-    type: z.enum(["LAB", "IMAGING", "MEDICATION"]),
+    type: z.enum(["LAB", "IMAGING", "MEDICATION", "CARE"]),
     priority: orderPrioritySchema.optional(),
     notes: z.string().max(16000).optional(),
     prescriberName: z.string().max(256).optional(),
@@ -247,6 +247,25 @@ export const orderCreateDtoSchema = z
             code: z.ZodIssueCode.custom,
             message: "Chaque ligne doit être un examen d'imagerie (IMAGING_STUDY).",
             path: ["items", i, "catalogItemType"],
+          });
+        }
+      });
+      return;
+    }
+    if (data.type === "CARE") {
+      data.items.forEach((it, i) => {
+        if (it.catalogItemType !== "CARE") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Chaque ligne doit être un soin (CARE).",
+            path: ["items", i, "catalogItemType"],
+          });
+        }
+        if (!it.manualLabel?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Libellé requis pour chaque ligne de soin.",
+            path: ["items", i, "manualLabel"],
           });
         }
       });

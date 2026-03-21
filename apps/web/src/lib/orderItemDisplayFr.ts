@@ -99,5 +99,6 @@ function typeFallbackFr(t: string | null): string {
   if (t === "LAB_TEST") return "Analyse (libellé indisponible)";
   if (t === "IMAGING_STUDY") return "Imagerie (libellé indisponible)";
   if (t === "MEDICATION") return "Médicament (libellé indisponible)";
+  if (t === "CARE") return "Soin (libellé indisponible)";
   return "—";
 }

@@ -26,6 +26,7 @@ function orderTypeFr(t: string): string {
   if (t === "LAB") return "Laboratoire";
   if (t === "IMAGING") return "Imagerie";
   if (t === "MEDICATION") return "Médicaments";
+  if (t === "CARE") return "Soins / procédures";
   return "Autre";
 }
 
