@@ -36,6 +36,7 @@ const encounterChartSelect = {
   dischargedAt: true,
   dischargeStatus: true,
   roomLabel: true,
+  physicianAssignedUserId: true,
   nursingAssessment: true,
   dischargeSummaryJson: true,
   physicianAssigned: {
@@ -90,18 +91,23 @@ function attachmentsForChartUi(resultData: unknown): Array<{
 }
 
 function orderItemDisplayLabel(item: OrderItemWithCatalogMedication): string {
-  /** Libellé enrichi (inclut saisie manuelle). */
+  /** Libellé enrichi (API) puis repli catalogue / manuel — même priorité que `OrdersService.displayLabelFrForItem`. */
   if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
   if (item.catalogItemType === "LAB_TEST") {
-    const fr = item.catalogLabTest?.displayNameFr?.trim();
-    if (fr) return fr;
+    const lab = frCatalogLabel(item.catalogLabTest ?? null);
+    if (lab) return lab;
+  } else if (item.catalogItemType === "IMAGING_STUDY") {
+    const img = frCatalogLabel(item.catalogImagingStudy ?? null);
+    if (img) return img;
+  } else if (item.catalogItemType === "MEDICATION") {
+    const med = frCatalogLabel(item.catalogMedication ?? null);
+    if (med) return med;
   }
-  const lab = frCatalogLabel(item.catalogLabTest ?? null);
-  if (lab) return lab;
-  const img = frCatalogLabel(item.catalogImagingStudy ?? null);
-  if (img) return img;
-  const med = frCatalogLabel(item.catalogMedication ?? null);
-  if (med) return med;
+  const manual = item.manualLabel?.trim();
+  if (manual) {
+    const sec = item.manualSecondaryText?.trim();
+    return sec ? `${manual} — ${sec}` : manual;
+  }
   const fallback: Record<string, string> = {
     LAB_TEST: "Analyse (libellé indisponible)",
     IMAGING_STUDY: "Imagerie (libellé indisponible)",
@@ -401,6 +407,7 @@ export class ChartSummaryService {
         dischargedAt: e.dischargedAt,
         dischargeStatus: e.dischargeStatus,
         roomLabel: e.roomLabel,
+        physicianAssignedUserId: e.physicianAssignedUserId,
         nursingAssessment: e.nursingAssessment,
         dischargeSummaryJson: e.dischargeSummaryJson,
         physicianAssigned: e.physicianAssigned,

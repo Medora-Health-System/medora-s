@@ -6,17 +6,90 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode } from "@prisma/client";
+import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode, type Prisma } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
 import type { OrderCreateDto, OrderUpdateDto } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
+  stripUndefinedDeep,
+  stripUndefinedKeys,
   type CatalogImagingStudyEnrichment,
   type CatalogLabTestEnrichment,
   type CatalogMedicationEnrichment,
   type OrderWithEnrichedItems,
   type OrderWithItems,
 } from "./orders.types";
+
+/** Logs diagnostic (BigInt → string) — uniquement pour inspection Prisma. */
+function jsonSafeForOrderCreateLog(value: unknown): unknown {
+  try {
+    return JSON.parse(JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
+  } catch {
+    return String(value);
+  }
+}
+
+function splitOrderCreateForLog(data: Prisma.OrderCreateInput): {
+  parentPayload: Record<string, unknown>;
+  nestedItemsPayload: unknown[];
+} {
+  const { items, ...rest } = data as Record<string, unknown>;
+  let nestedItemsPayload: unknown[] = [];
+  if (
+    items &&
+    typeof items === "object" &&
+    items !== null &&
+    "create" in items &&
+    Array.isArray((items as { create: unknown[] }).create)
+  ) {
+    nestedItemsPayload = (items as { create: unknown[] }).create;
+  }
+  return { parentPayload: rest, nestedItemsPayload };
+}
+
+/**
+ * TEMPORARY — retirer ce repli une fois la migration appliquée en base
+ * (`OrderItem.manualLabel`, `OrderItem.manualSecondaryText`, ex. `20260322120000_order_item_manual_entries`
+ * ou `20260322150000_order_item_manual_columns_repair`) et `prisma migrate deploy` exécuté.
+ *
+ * Si la base n’a pas encore ces colonnes (P2022), définir `MEDORA_ORDER_ITEM_MANUAL_COLUMNS=0` :
+ * on n’envoie pas `manualLabel` / `manualSecondaryText` à Prisma et on fusionne leur texte dans `notes`
+ * pour ne pas perdre les saisies manuelles en attendant la migration.
+ * Par défaut (variable absente ou ≠ 0/false) : comportement normal (colonnes utilisées).
+ */
+function isOrderItemManualColumnsAvailable(): boolean {
+  const v = process.env.MEDORA_ORDER_ITEM_MANUAL_COLUMNS;
+  if (v === undefined || v === "") return true;
+  const lower = v.trim().toLowerCase();
+  return lower !== "0" && lower !== "false";
+}
+
+function applyTemporaryOrderItemManualColumnFallback(data: Prisma.OrderCreateInput): Prisma.OrderCreateInput {
+  if (isOrderItemManualColumnsAvailable()) return data;
+  const items = data.items;
+  if (!items || typeof items !== "object" || !("create" in items)) return data;
+  const create = (items as { create: unknown }).create;
+  if (!Array.isArray(create)) return data;
+
+  const nextCreate = create.map((row) => {
+    if (!row || typeof row !== "object") return row;
+    const r = row as Record<string, unknown>;
+    const ml = r.manualLabel;
+    const ms = r.manualSecondaryText;
+    const labelStr = ml != null && String(ml).trim() ? String(ml).trim() : "";
+    const secStr = ms != null && String(ms).trim() ? String(ms).trim() : "";
+    const prevNotes = r.notes != null && String(r.notes).trim() ? String(r.notes) : "";
+    const { manualLabel: _ml, manualSecondaryText: _ms, ...rest } = r;
+    if (!labelStr && !secStr) {
+      return rest;
+    }
+    const manualBlock = [labelStr, secStr].filter(Boolean).join(" — ");
+    const mergedNotes = [manualBlock, prevNotes].filter(Boolean).join("\n\n");
+    return { ...rest, notes: mergedNotes || undefined };
+  });
+
+  return { ...data, items: { create: nextCreate } } as Prisma.OrderCreateInput;
+}
 
 const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
   id: true,
@@ -108,31 +181,65 @@ export class OrdersService {
       throw new BadRequestException("Can only create orders for open encounters");
     }
 
-    const order = await this.prisma.order.create({
-      data: {
+    const orderCreateDataRaw = {
+      ...stripUndefinedKeys({
         encounterId,
         facilityId,
         patientId: encounter.patientId,
         type: data.type,
         status: OrderStatus.PLACED,
         priority: data.priority || "ROUTINE",
-        notes: data.notes,
+        notes: data.notes?.trim() || undefined,
         orderedBy: userId,
         prescriberName: data.prescriberName?.trim() || undefined,
         prescriberLicense: data.prescriberLicense?.trim() || undefined,
         prescriberContact: data.prescriberContact?.trim() || undefined,
-        items: {
-          create: data.items.map((item) => ({
-            ...buildOrderItemCreateInput(item, data.type),
-            status: OrderStatus.PLACED,
-          })),
-        },
+      } as Record<string, unknown>),
+      items: {
+        create: data.items.map((item) => ({
+          ...buildOrderItemCreateInput(item, data.type),
+          status: OrderStatus.PLACED,
+        })),
       },
-      include: {
-        items: true,
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
-      },
+    } as Prisma.OrderCreateInput;
+
+    let orderCreateData = stripUndefinedDeep(orderCreateDataRaw) as Prisma.OrderCreateInput;
+    orderCreateData = applyTemporaryOrderItemManualColumnFallback(orderCreateData);
+    orderCreateData = stripUndefinedDeep(orderCreateData) as Prisma.OrderCreateInput;
+
+    const { parentPayload, nestedItemsPayload } = splitOrderCreateForLog(orderCreateData);
+    console.error("[order.create] Prisma payload (before create)", {
+      encounterId,
+      facilityId,
+      orderType: data.type,
+      parentPayload: jsonSafeForOrderCreateLog(parentPayload),
+      nestedItemsPayload: jsonSafeForOrderCreateLog(nestedItemsPayload),
     });
+
+    let order;
+    try {
+      order = await this.prisma.order.create({
+        data: orderCreateData,
+        include: {
+          items: true,
+          patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        },
+      });
+    } catch (err: unknown) {
+      const code = err && typeof err === "object" && "code" in err ? (err as { code?: unknown }).code : undefined;
+      const meta = err && typeof err === "object" && "meta" in err ? (err as { meta?: unknown }).meta : undefined;
+      console.error("[order.create] Prisma order.create failed", {
+        encounterId,
+        facilityId,
+        orderType: data.type,
+        name: err instanceof Error ? err.name : typeof err,
+        message: err instanceof Error ? err.message : String(err),
+        ...(typeof code === "string" ? { code } : {}),
+        ...(meta !== undefined ? { meta } : {}),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+      throw err;
+    }
 
     await this.audit.log(AuditAction.ORDER_CREATE, "ORDER", {
       userId,
@@ -258,6 +365,10 @@ export class OrdersService {
     return withSig;
   }
 
+  /**
+   * Libellé affiché par ligne — aligné sur le client (`orderItemDisplayFr`) :
+   * catalogue (displayNameFr / name) d’abord si référence catalogue, puis saisie manuelle, puis repli FR.
+   */
   private displayLabelFrForItem(
     it: OrderItem,
     catalogLabTest: CatalogLabTestEnrichment | null | undefined,
@@ -265,32 +376,39 @@ export class OrdersService {
     catalogMedication: CatalogMedicationEnrichment | null | undefined
   ): string {
     const manual = it.manualLabel?.trim();
-    if (manual) {
-      const sec = it.manualSecondaryText?.trim();
-      return sec ? `${manual} — ${sec}` : manual;
-    }
+    const manualSec = it.manualSecondaryText?.trim();
+    const manualLine = manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
+
     if (it.catalogItemType === "LAB_TEST") {
       const fr = catalogLabTest?.displayNameFr?.trim();
       const n = catalogLabTest?.name?.trim();
       if (fr) return fr;
       if (n) return n;
+      if (manualLine) return manualLine;
       return "Analyse (libellé indisponible)";
     }
     if (it.catalogItemType === "IMAGING_STUDY") {
       const fr = catalogImagingStudy?.displayNameFr?.trim();
       const n = catalogImagingStudy?.name?.trim();
-      if (fr) return fr;
-      if (n) return n;
+      const base = fr || n;
+      if (base) {
+        const mod = catalogImagingStudy?.modality?.trim();
+        return mod ? `${base} (${mod})` : base;
+      }
+      if (manualLine) return manualLine;
       return "Imagerie (libellé indisponible)";
     }
     if (it.catalogItemType === "MEDICATION") {
       const base =
-        catalogMedication?.displayNameFr?.trim() ||
-        catalogMedication?.name?.trim() ||
-        "Médicament (libellé indisponible)";
-      const str = (it.strength ?? catalogMedication?.strength)?.trim();
-      return str ? `${base} ${str}` : base;
+        catalogMedication?.displayNameFr?.trim() || catalogMedication?.name?.trim() || null;
+      if (base) {
+        const str = (it.strength ?? catalogMedication?.strength)?.trim();
+        return str ? `${base} ${str}` : base;
+      }
+      if (manualLine) return manualLine;
+      return "Médicament (libellé indisponible)";
     }
+    if (manualLine) return manualLine;
     return "Article prescrit";
   }
 
