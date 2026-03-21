@@ -25,7 +25,7 @@ export class AuthService {
     return s;
   }
   private accessTtl() {
-    /** Durée de session API alignée sur l’usage clinique (rafraîchissement côté web si besoin). */
+    /** Aligner apps/web JWT_ACCESS_TTL (cookies + accessTokenTtlSeconds) sur cette valeur — même chaîne (ex. 8h, 15m). */
     return this.config.get<string>("JWT_ACCESS_TTL") ?? "8h";
   }
   private refreshTtl() {

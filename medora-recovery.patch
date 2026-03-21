@@ -1,0 +1,2529 @@
+diff --git a/apps/api/.env.example b/apps/api/.env.example
+index b92c6060..d45efe19 100644
+--- a/apps/api/.env.example
++++ b/apps/api/.env.example
+@@ -1,4 +1,6 @@
+ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/medora?schema=public"
++# TEMP : si la base n’a pas encore OrderItem.manualLabel / manualSecondaryText, mettre 0 jusqu’à migrate deploy — retirer le repli côté code ensuite.
++# MEDORA_ORDER_ITEM_MANUAL_COLUMNS=0
+ PORT=3001
+ 
+ # Origines additionnelles CORS (séparées par des virgules). Par défaut : http://localhost:3002 et :3003
+@@ -6,7 +8,7 @@ PORT=3001
+ 
+ JWT_ACCESS_SECRET=change_me_access
+ JWT_REFRESH_SECRET=change_me_refresh
+-# Durée de vie du jeton d’accès (aligner apps/web JWT_ACCESS_TTL pour les cookies). Recommandé prod : 8h.
++# Durée de vie du jeton d’accès — doit être identique à JWT_ACCESS_TTL dans apps/web/.env (cookies + intervalle de refresh UI).
+ JWT_ACCESS_TTL=8h
+ JWT_REFRESH_TTL=14d
+ TOKEN_ISSUER=medora-s
+diff --git a/apps/api/src/auth/auth.service.ts b/apps/api/src/auth/auth.service.ts
+index 469c2569..0f3bba42 100644
+--- a/apps/api/src/auth/auth.service.ts
++++ b/apps/api/src/auth/auth.service.ts
+@@ -25,7 +25,7 @@ export class AuthService {
+     return s;
+   }
+   private accessTtl() {
+-    /** Durée de session API alignée sur l’usage clinique (rafraîchissement côté web si besoin). */
++    /** Aligner apps/web JWT_ACCESS_TTL (cookies + accessTokenTtlSeconds) sur cette valeur — même chaîne (ex. 8h, 15m). */
+     return this.config.get<string>("JWT_ACCESS_TTL") ?? "8h";
+   }
+   private refreshTtl() {
+diff --git a/apps/api/src/encounters/dto/list-patient-encounters-query.dto.ts b/apps/api/src/encounters/dto/list-patient-encounters-query.dto.ts
+index ec3d783d..1d0b2ec8 100644
+--- a/apps/api/src/encounters/dto/list-patient-encounters-query.dto.ts
++++ b/apps/api/src/encounters/dto/list-patient-encounters-query.dto.ts
+@@ -1,10 +1,30 @@
+ import { z } from "zod";
+ import { EncounterType } from "@prisma/client";
+ 
+-export const listPatientEncountersQuerySchema = z.object({
+-  type: z.nativeEnum(EncounterType).optional(),
+-  limit: z.coerce.number().int().positive().max(100).optional(),
+-});
++/**
++ * Nest/Express envoie les query en chaînes ; `type=` ou `limit=` vides ne sont pas `undefined`
++ * et faisaient échouer `z.optional()` / `coerce.number()` (400 « Bad Request »).
++ * Dupliquer une clé peut produire un tableau — on prend la première valeur scalaire.
++ */
++function normalizePatientEncountersQuery(raw: unknown): Record<string, unknown> {
++  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
++  const out: Record<string, unknown> = {};
++  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
++    if (k !== "type" && k !== "limit") continue;
++    const first = Array.isArray(v) ? v[0] : v;
++    if (first === "" || first === null || first === undefined) continue;
++    out[k] = first;
++  }
++  return out;
++}
++
++export const listPatientEncountersQuerySchema = z.preprocess(
++  normalizePatientEncountersQuery,
++  z.object({
++    type: z.nativeEnum(EncounterType).optional(),
++    limit: z.coerce.number().int().positive().max(100).optional(),
++  })
++);
+ 
+ export type ListPatientEncountersQuery = z.infer<
+   typeof listPatientEncountersQuerySchema
+diff --git a/apps/api/src/encounters/encounters.service.ts b/apps/api/src/encounters/encounters.service.ts
+index 38cfd612..241aae40 100644
+--- a/apps/api/src/encounters/encounters.service.ts
++++ b/apps/api/src/encounters/encounters.service.ts
+@@ -15,6 +15,16 @@ import type {
+ import type { ListPatientEncountersQuery } from "./dto";
+ import { toEncounterClinicResponse } from "./encounter-response.util";
+ 
++/** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
++const encounterDetailPatientSelect = {
++  id: true,
++  firstName: true,
++  lastName: true,
++  mrn: true,
++  dob: true,
++  sexAtBirth: true,
++} as const;
++
+ @Injectable()
+ export class EncountersService {
+   constructor(
+@@ -169,7 +179,7 @@ export class EncountersService {
+     const encounter = await this.prisma.encounter.findFirst({
+       where: { id, facilityId },
+       include: {
+-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true, dob: true, sexAtBirth: true } },
++        patient: { select: encounterDetailPatientSelect },
+         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+       },
+     });
+@@ -249,7 +259,7 @@ export class EncountersService {
+       where: { id },
+       data: updateData,
+       include: {
+-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
++        patient: { select: encounterDetailPatientSelect },
+         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+       },
+     });
+@@ -304,11 +314,24 @@ export class EncountersService {
+         updateData.physicianAssignedUserId = data.physicianAssignedUserId;
+       }
+     }
++    if (Object.keys(updateData).length === 0) {
++      const unchanged = await this.prisma.encounter.findFirst({
++        where: { id, facilityId },
++        include: {
++          patient: { select: encounterDetailPatientSelect },
++          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
++        },
++      });
++      if (!unchanged) {
++        throw new NotFoundException("Encounter not found");
++      }
++      return toEncounterClinicResponse(unchanged);
++    }
+     const updated = await this.prisma.encounter.update({
+       where: { id },
+       data: updateData,
+       include: {
+-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
++        patient: { select: encounterDetailPatientSelect },
+         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+       },
+     });
+@@ -398,7 +421,7 @@ export class EncountersService {
+       where: { id },
+       data: closePayload as Prisma.EncounterUpdateInput,
+       include: {
+-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
++        patient: { select: encounterDetailPatientSelect },
+         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+       },
+     });
+diff --git a/apps/api/src/orders/orders.service.ts b/apps/api/src/orders/orders.service.ts
+index 430ea342..26292e6e 100644
+--- a/apps/api/src/orders/orders.service.ts
++++ b/apps/api/src/orders/orders.service.ts
+@@ -6,11 +6,13 @@ import {
+ } from "@nestjs/common";
+ import { PrismaService } from "../prisma/prisma.service";
+ import { AuditService } from "../common/services/audit.service";
+-import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode } from "@prisma/client";
++import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode, type Prisma } from "@prisma/client";
+ import { assertCanTransition } from "../common/workflow/status.transitions";
+ import type { OrderCreateDto, OrderUpdateDto } from "@medora/shared";
+ import {
+   buildOrderItemCreateInput,
++  stripUndefinedDeep,
++  stripUndefinedKeys,
+   type CatalogImagingStudyEnrichment,
+   type CatalogLabTestEnrichment,
+   type CatalogMedicationEnrichment,
+@@ -18,6 +20,77 @@ import {
+   type OrderWithItems,
+ } from "./orders.types";
+ 
++/** Logs diagnostic (BigInt → string) — uniquement pour inspection Prisma. */
++function jsonSafeForOrderCreateLog(value: unknown): unknown {
++  try {
++    return JSON.parse(JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
++  } catch {
++    return String(value);
++  }
++}
++
++function splitOrderCreateForLog(data: Prisma.OrderCreateInput): {
++  parentPayload: Record<string, unknown>;
++  nestedItemsPayload: unknown[];
++} {
++  const { items, ...rest } = data as Record<string, unknown>;
++  let nestedItemsPayload: unknown[] = [];
++  if (
++    items &&
++    typeof items === "object" &&
++    items !== null &&
++    "create" in items &&
++    Array.isArray((items as { create: unknown[] }).create)
++  ) {
++    nestedItemsPayload = (items as { create: unknown[] }).create;
++  }
++  return { parentPayload: rest, nestedItemsPayload };
++}
++
++/**
++ * TEMPORARY — retirer ce repli une fois la migration appliquée en base
++ * (`OrderItem.manualLabel`, `OrderItem.manualSecondaryText`, ex. `20260322120000_order_item_manual_entries`
++ * ou `20260322150000_order_item_manual_columns_repair`) et `prisma migrate deploy` exécuté.
++ *
++ * Si la base n’a pas encore ces colonnes (P2022), définir `MEDORA_ORDER_ITEM_MANUAL_COLUMNS=0` :
++ * on n’envoie pas `manualLabel` / `manualSecondaryText` à Prisma et on fusionne leur texte dans `notes`
++ * pour ne pas perdre les saisies manuelles en attendant la migration.
++ * Par défaut (variable absente ou ≠ 0/false) : comportement normal (colonnes utilisées).
++ */
++function isOrderItemManualColumnsAvailable(): boolean {
++  const v = process.env.MEDORA_ORDER_ITEM_MANUAL_COLUMNS;
++  if (v === undefined || v === "") return true;
++  const lower = v.trim().toLowerCase();
++  return lower !== "0" && lower !== "false";
++}
++
++function applyTemporaryOrderItemManualColumnFallback(data: Prisma.OrderCreateInput): Prisma.OrderCreateInput {
++  if (isOrderItemManualColumnsAvailable()) return data;
++  const items = data.items;
++  if (!items || typeof items !== "object" || !("create" in items)) return data;
++  const create = (items as { create: unknown }).create;
++  if (!Array.isArray(create)) return data;
++
++  const nextCreate = create.map((row) => {
++    if (!row || typeof row !== "object") return row;
++    const r = row as Record<string, unknown>;
++    const ml = r.manualLabel;
++    const ms = r.manualSecondaryText;
++    const labelStr = ml != null && String(ml).trim() ? String(ml).trim() : "";
++    const secStr = ms != null && String(ms).trim() ? String(ms).trim() : "";
++    const prevNotes = r.notes != null && String(r.notes).trim() ? String(r.notes) : "";
++    const { manualLabel: _ml, manualSecondaryText: _ms, ...rest } = r;
++    if (!labelStr && !secStr) {
++      return rest;
++    }
++    const manualBlock = [labelStr, secStr].filter(Boolean).join(" — ");
++    const mergedNotes = [manualBlock, prevNotes].filter(Boolean).join("\n\n");
++    return { ...rest, notes: mergedNotes || undefined };
++  });
++
++  return { ...data, items: { create: nextCreate } } as Prisma.OrderCreateInput;
++}
++
+ const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
+   id: true,
+   code: true,
+@@ -108,32 +181,66 @@ export class OrdersService {
+       throw new BadRequestException("Can only create orders for open encounters");
+     }
+ 
+-    const order = await this.prisma.order.create({
+-      data: {
++    const orderCreateDataRaw = {
++      ...stripUndefinedKeys({
+         encounterId,
+         facilityId,
+         patientId: encounter.patientId,
+         type: data.type,
+         status: OrderStatus.PLACED,
+         priority: data.priority || "ROUTINE",
+-        notes: data.notes,
++        notes: data.notes?.trim() || undefined,
+         orderedBy: userId,
+         prescriberName: data.prescriberName?.trim() || undefined,
+         prescriberLicense: data.prescriberLicense?.trim() || undefined,
+         prescriberContact: data.prescriberContact?.trim() || undefined,
+-        items: {
+-          create: data.items.map((item) => ({
+-            ...buildOrderItemCreateInput(item, data.type),
+-            status: OrderStatus.PLACED,
+-          })),
+-        },
+-      },
+-      include: {
+-        items: true,
+-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
++      } as Record<string, unknown>),
++      items: {
++        create: data.items.map((item) => ({
++          ...buildOrderItemCreateInput(item, data.type),
++          status: OrderStatus.PLACED,
++        })),
+       },
++    } as Prisma.OrderCreateInput;
++
++    let orderCreateData = stripUndefinedDeep(orderCreateDataRaw) as Prisma.OrderCreateInput;
++    orderCreateData = applyTemporaryOrderItemManualColumnFallback(orderCreateData);
++    orderCreateData = stripUndefinedDeep(orderCreateData) as Prisma.OrderCreateInput;
++
++    const { parentPayload, nestedItemsPayload } = splitOrderCreateForLog(orderCreateData);
++    console.error("[order.create] Prisma payload (before create)", {
++      encounterId,
++      facilityId,
++      orderType: data.type,
++      parentPayload: jsonSafeForOrderCreateLog(parentPayload),
++      nestedItemsPayload: jsonSafeForOrderCreateLog(nestedItemsPayload),
+     });
+ 
++    let order;
++    try {
++      order = await this.prisma.order.create({
++        data: orderCreateData,
++        include: {
++          items: true,
++          patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
++        },
++      });
++    } catch (err: unknown) {
++      const code = err && typeof err === "object" && "code" in err ? (err as { code?: unknown }).code : undefined;
++      const meta = err && typeof err === "object" && "meta" in err ? (err as { meta?: unknown }).meta : undefined;
++      console.error("[order.create] Prisma order.create failed", {
++        encounterId,
++        facilityId,
++        orderType: data.type,
++        name: err instanceof Error ? err.name : typeof err,
++        message: err instanceof Error ? err.message : String(err),
++        ...(typeof code === "string" ? { code } : {}),
++        ...(meta !== undefined ? { meta } : {}),
++        stack: err instanceof Error ? err.stack : undefined,
++      });
++      throw err;
++    }
++
+     await this.audit.log(AuditAction.ORDER_CREATE, "ORDER", {
+       userId,
+       facilityId,
+@@ -258,6 +365,10 @@ export class OrdersService {
+     return withSig;
+   }
+ 
++  /**
++   * Libellé affiché par ligne — aligné sur le client (`orderItemDisplayFr`) :
++   * catalogue (displayNameFr / name) d’abord si référence catalogue, puis saisie manuelle, puis repli FR.
++   */
+   private displayLabelFrForItem(
+     it: OrderItem,
+     catalogLabTest: CatalogLabTestEnrichment | null | undefined,
+@@ -265,32 +376,39 @@ export class OrdersService {
+     catalogMedication: CatalogMedicationEnrichment | null | undefined
+   ): string {
+     const manual = it.manualLabel?.trim();
+-    if (manual) {
+-      const sec = it.manualSecondaryText?.trim();
+-      return sec ? `${manual} — ${sec}` : manual;
+-    }
++    const manualSec = it.manualSecondaryText?.trim();
++    const manualLine = manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
++
+     if (it.catalogItemType === "LAB_TEST") {
+       const fr = catalogLabTest?.displayNameFr?.trim();
+       const n = catalogLabTest?.name?.trim();
+       if (fr) return fr;
+       if (n) return n;
++      if (manualLine) return manualLine;
+       return "Analyse (libellé indisponible)";
+     }
+     if (it.catalogItemType === "IMAGING_STUDY") {
+       const fr = catalogImagingStudy?.displayNameFr?.trim();
+       const n = catalogImagingStudy?.name?.trim();
+-      if (fr) return fr;
+-      if (n) return n;
++      const base = fr || n;
++      if (base) {
++        const mod = catalogImagingStudy?.modality?.trim();
++        return mod ? `${base} (${mod})` : base;
++      }
++      if (manualLine) return manualLine;
+       return "Imagerie (libellé indisponible)";
+     }
+     if (it.catalogItemType === "MEDICATION") {
+       const base =
+-        catalogMedication?.displayNameFr?.trim() ||
+-        catalogMedication?.name?.trim() ||
+-        "Médicament (libellé indisponible)";
+-      const str = (it.strength ?? catalogMedication?.strength)?.trim();
+-      return str ? `${base} ${str}` : base;
++        catalogMedication?.displayNameFr?.trim() || catalogMedication?.name?.trim() || null;
++      if (base) {
++        const str = (it.strength ?? catalogMedication?.strength)?.trim();
++        return str ? `${base} ${str}` : base;
++      }
++      if (manualLine) return manualLine;
++      return "Médicament (libellé indisponible)";
+     }
++    if (manualLine) return manualLine;
+     return "Article prescrit";
+   }
+ 
+diff --git a/apps/api/src/orders/orders.types.ts b/apps/api/src/orders/orders.types.ts
+index b129c072..4aede465 100644
+--- a/apps/api/src/orders/orders.types.ts
++++ b/apps/api/src/orders/orders.types.ts
+@@ -65,26 +65,72 @@ export type OrderItemNestedCreate = {
+   medicationFulfillmentIntent?: MedicationFulfillmentIntent;
+ };
+ 
++/**
++ * Prisma 6 : les écritures imbriquées (`order.create` → `items.create`) valident la présence
++ * explicite de `undefined` sur les champs optionnels — PrismaClientValidationError → HTTP 500.
++ * Il faut omettre les clés plutôt que `undefined` — `null`, `false`, `0` sont conservés.
++ */
++export function stripUndefinedKeys<T extends Record<string, unknown>>(obj: T): T {
++  const out = {} as T;
++  for (const key of Object.keys(obj) as (keyof T)[]) {
++    const v = obj[key];
++    if (v !== undefined) {
++      (out as Record<string, unknown>)[key as string] = v;
++    }
++  }
++  return out;
++}
++
++/**
++ * Supprime récursivement les clés `undefined` (objets simples et tableaux).
++ * Préserve `null`, `false`, `0`, enums — nécessaire pour `order.create` + `items.create`.
++ */
++export function stripUndefinedDeep(value: unknown): unknown {
++  if (value === undefined) return undefined;
++  if (value === null || typeof value !== "object") return value;
++  if (Array.isArray(value)) {
++    return value.map((el) => stripUndefinedDeep(el));
++  }
++  const out: Record<string, unknown> = {};
++  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
++    if (v === undefined) continue;
++    const deep = stripUndefinedDeep(v);
++    if (deep === undefined) continue;
++    out[k] = deep;
++  }
++  return out;
++}
++
++/** Chaîne optionnelle : `""` ou blanc seul → omis (`undefined`), sinon trim. */
++function optionalTrimmedString(s: string | undefined | null): string | undefined {
++  if (s == null) return undefined;
++  const t = s.trim();
++  return t.length > 0 ? t : undefined;
++}
++
+ export function buildOrderItemCreateInput(item: OrderItemCreateDto, orderType: OrderCreateDto["type"]): OrderItemNestedCreate {
+   const manualLabel = item.manualLabel?.trim() || null;
+   const manualSecondaryText = item.manualSecondaryText?.trim() || null;
+-  const base: OrderItemNestedCreate = {
++  const base: Record<string, unknown> = {
+     catalogItemId: item.catalogItemId ?? null,
+     catalogItemType: item.catalogItemType,
+     manualLabel,
+     manualSecondaryText,
+-    notes: item.notes,
++    notes: optionalTrimmedString(item.notes ?? undefined),
+     quantity: item.quantity,
+   };
+   if (orderType !== "MEDICATION") {
+-    return base;
++    return stripUndefinedKeys(base) as OrderItemNestedCreate;
+   }
+   const intent: MedicationFulfillmentIntent =
+     item.medicationFulfillmentIntent === "ADMINISTER_CHART" ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE";
+-  return {
++  const refill =
++    item.refillCount !== undefined && item.refillCount !== null ? item.refillCount : undefined;
++  const med: Record<string, unknown> = {
+     ...base,
+-    strength: item.strength,
+-    refillCount: item.refillCount,
++    strength: optionalTrimmedString(item.strength ?? undefined),
++    refillCount: refill,
+     medicationFulfillmentIntent: intent,
+   };
++  return stripUndefinedKeys(med) as OrderItemNestedCreate;
+ }
+diff --git a/apps/api/src/patients/chart-summary.service.ts b/apps/api/src/patients/chart-summary.service.ts
+index 8a127d0c..8689324d 100644
+--- a/apps/api/src/patients/chart-summary.service.ts
++++ b/apps/api/src/patients/chart-summary.service.ts
+@@ -36,6 +36,7 @@ const encounterChartSelect = {
+   dischargedAt: true,
+   dischargeStatus: true,
+   roomLabel: true,
++  physicianAssignedUserId: true,
+   nursingAssessment: true,
+   dischargeSummaryJson: true,
+   physicianAssigned: {
+@@ -90,18 +91,23 @@ function attachmentsForChartUi(resultData: unknown): Array<{
+ }
+ 
+ function orderItemDisplayLabel(item: OrderItemWithCatalogMedication): string {
+-  /** Libellé enrichi (inclut saisie manuelle). */
++  /** Libellé enrichi (API) puis repli catalogue / manuel — même priorité que `OrdersService.displayLabelFrForItem`. */
+   if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
+   if (item.catalogItemType === "LAB_TEST") {
+-    const fr = item.catalogLabTest?.displayNameFr?.trim();
+-    if (fr) return fr;
++    const lab = frCatalogLabel(item.catalogLabTest ?? null);
++    if (lab) return lab;
++  } else if (item.catalogItemType === "IMAGING_STUDY") {
++    const img = frCatalogLabel(item.catalogImagingStudy ?? null);
++    if (img) return img;
++  } else if (item.catalogItemType === "MEDICATION") {
++    const med = frCatalogLabel(item.catalogMedication ?? null);
++    if (med) return med;
++  }
++  const manual = item.manualLabel?.trim();
++  if (manual) {
++    const sec = item.manualSecondaryText?.trim();
++    return sec ? `${manual} — ${sec}` : manual;
+   }
+-  const lab = frCatalogLabel(item.catalogLabTest ?? null);
+-  if (lab) return lab;
+-  const img = frCatalogLabel(item.catalogImagingStudy ?? null);
+-  if (img) return img;
+-  const med = frCatalogLabel(item.catalogMedication ?? null);
+-  if (med) return med;
+   const fallback: Record<string, string> = {
+     LAB_TEST: "Analyse (libellé indisponible)",
+     IMAGING_STUDY: "Imagerie (libellé indisponible)",
+@@ -401,6 +407,7 @@ export class ChartSummaryService {
+         dischargedAt: e.dischargedAt,
+         dischargeStatus: e.dischargeStatus,
+         roomLabel: e.roomLabel,
++        physicianAssignedUserId: e.physicianAssignedUserId,
+         nursingAssessment: e.nursingAssessment,
+         dischargeSummaryJson: e.dischargeSummaryJson,
+         physicianAssigned: e.physicianAssigned,
+diff --git a/apps/web/.env.example b/apps/web/.env.example
+index b16c67a8..0e777512 100644
+--- a/apps/web/.env.example
++++ b/apps/web/.env.example
+@@ -1,8 +1,11 @@
+ # URL de l’API Nest (proxy Next → API)
+ API_URL=http://localhost:3001
+ 
+-# Durée du jeton d’accès — doit correspondre à JWT_ACCESS_TTL côté apps/api (cookies de session).
++# Durée du jeton d’accès — DOIT être la même valeur que JWT_ACCESS_TTL dans apps/api/.env (Nest).
++# Utilisée par les routes Next pour maxAge des cookies d’accès et pour accessTokenTtlSeconds (GET /api/auth/me),
++# ce qui pilote le rafraîchissement proactif de session dans l’interface (sans dépendre d’un TTL « supposé » dans le bundle).
+ JWT_ACCESS_TTL=8h
+ 
+-# Même valeur que JWT_ACCESS_TTL de l’API (injectée au build). Utilisée par le client pour l’intervalle de refresh proactif.
+-NEXT_PUBLIC_JWT_ACCESS_TTL=8h
++# Optionnel : repli uniquement si le client ne reçoit pas accessTokenTtlSeconds (ex. vieux déploiement).
++# Si défini, doit rester identique à JWT_ACCESS_TTL ci-dessus et à l’API — sinon dérive possible avant cette correction.
++# NEXT_PUBLIC_JWT_ACCESS_TTL=8h
+diff --git a/apps/web/app/api/auth/me/route.ts b/apps/web/app/api/auth/me/route.ts
+index 6bed51a4..ab0bc65e 100644
+--- a/apps/web/app/api/auth/me/route.ts
++++ b/apps/web/app/api/auth/me/route.ts
+@@ -1,6 +1,7 @@
+ import { NextResponse } from "next/server";
+ import { cookies } from "next/headers";
+ import { applyAuthCookiesToResponse, refreshAccessTokenFromCookies } from "@/lib/server/refreshAccessToken";
++import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
+ 
+ const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
+ 
+@@ -53,7 +54,11 @@ export async function GET() {
+     }
+ 
+     const userData = await backendResponse.json();
+-    const res = NextResponse.json(userData);
++    /** Même base que les cookies d’accès (JWT_ACCESS_TTL apps/web) — évite un décalage avec NEXT_PUBLIC côté client. */
++    const res = NextResponse.json({
++      ...(typeof userData === "object" && userData !== null && !Array.isArray(userData) ? userData : {}),
++      accessTokenTtlSeconds: jwtAccessTtlSeconds(),
++    });
+ 
+     if (refreshedTokens) {
+       applyAuthCookiesToResponse(res, refreshedTokens);
+diff --git a/apps/web/app/app/encounters/[id]/page.tsx b/apps/web/app/app/encounters/[id]/page.tsx
+index 6345acde..90bd3ac5 100644
+--- a/apps/web/app/app/encounters/[id]/page.tsx
++++ b/apps/web/app/app/encounters/[id]/page.tsx
+@@ -27,6 +27,7 @@ import {
+ } from "@/lib/uiLabels";
+ import { normalizeUserFacingError } from "@/lib/userFacingError";
+ import { calculateAge } from "@/lib/patientDisplay";
++import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
+ import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
+ import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+ import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
+@@ -82,6 +83,7 @@ export default function EncounterDetailPage() {
+   const encounterId = params.id as string;
+   const { facilityId: facilityIdFromHook, canPrescribe, roles, ready: rolesReady } = useFacilityAndRoles();
+   const [encounter, setEncounter] = useState<any>(null);
++  const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [activeTab, setActiveTab] = useState("summary");
+   const [facilityId, setFacilityId] = useState<string>("");
+@@ -90,6 +92,8 @@ export default function EncounterDetailPage() {
+   const [quickOrders, setQuickOrders] = useState<any[]>([]);
+   const [quickDiagnosisCount, setQuickDiagnosisCount] = useState<number | null>(null);
+   const [quickContextLoading, setQuickContextLoading] = useState(false);
++  /** Signes vitaux / ordres / diagnostics : échec partiel sans quitter la route. */
++  const [quickContextNotice, setQuickContextNotice] = useState<string | null>(null);
+   const [medicationModalRequestTick, setMedicationModalRequestTick] = useState(0);
+   const [encounterResultsRefresh, setEncounterResultsRefresh] = useState(0);
+   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
+@@ -104,6 +108,8 @@ export default function EncounterDetailPage() {
+     followUp: "",
+     returnIfWorse: "",
+   });
++  /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
++  const encounterHasLoadedOnceRef = useRef(false);
+ 
+   /** Aligné sur GET /encounters/:id (inclut lab / imagerie / pharmacie pour les liens depuis les files). */
+   const canViewEncounterDetail =
+@@ -156,6 +162,7 @@ export default function EncounterDetailPage() {
+ 
+   useEffect(() => {
+     setTabBootstrapped(false);
++    encounterHasLoadedOnceRef.current = false;
+   }, [encounterId]);
+ 
+   useEffect(() => {
+@@ -176,12 +183,16 @@ export default function EncounterDetailPage() {
+     }
+     let cancelled = false;
+     setLoading(true);
++    setEncounterFetchError(null);
+     (async () => {
+       const cacheKey = `encounter:${facilityId}:${encounterId}`;
+       try {
+         const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+         const enc = asApiObject(data);
+-        if (!cancelled) setEncounter(enc);
++        if (!cancelled) {
++          setEncounter(enc);
++          if (enc) encounterHasLoadedOnceRef.current = true;
++        }
+         if (enc) {
+           void setCachedRecord("encounter_summaries", cacheKey, enc, {
+             facilityId,
+@@ -191,8 +202,16 @@ export default function EncounterDetailPage() {
+         }
+       } catch (error) {
+         console.error("Failed to load encounter:", error);
++        if (process.env.NODE_ENV === "development") {
++          console.warn("[encounterDetail] échec chargement consultation", { encounterId, facilityId, error });
++        }
++        const msg = normalizeUserFacingError(error instanceof Error ? error.message : null);
++        if (!cancelled) setEncounterFetchError(msg || "Impossible de charger la consultation.");
+         const cached = await getCachedRecord<any>("encounter_summaries", cacheKey);
+-        if (!cancelled) setEncounter(cached?.data ?? null);
++        if (!cancelled) {
++          setEncounter(cached?.data ?? null);
++          if (cached?.data) encounterHasLoadedOnceRef.current = true;
++        }
+       } finally {
+         if (!cancelled) setLoading(false);
+       }
+@@ -221,20 +240,30 @@ export default function EncounterDetailPage() {
+   const loadQuickContext = useCallback(async () => {
+     if (!encounter?.id || !facilityId || !rolesReady) return;
+     setQuickContextLoading(true);
++    setQuickContextNotice(null);
+     const patientId = encounter.patient?.id as string;
+     const triageCacheKey = `encounter-triage:${facilityId}:${encounter.id}`;
+     const ordersCacheKey = `encounter-orders:${facilityId}:${encounter.id}`;
+     const triageP = canFetchEncounterTriage
+-      ? apiFetch(`/encounters/${encounter.id}/triage`, { facilityId }).catch(() => null)
++      ? apiFetch(`/encounters/${encounter.id}/triage`, { facilityId })
+       : Promise.resolve(null);
+     const ordersP = canFetchEncounterOrders
+-      ? apiFetch(`/encounters/${encounter.id}/orders`, { facilityId }).catch(() => [])
++      ? apiFetch(`/encounters/${encounter.id}/orders`, { facilityId })
+       : Promise.resolve([]);
+     const dxP =
+       canFetchPatientDiagnosesList && patientId
+-        ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId }).catch(() => null)
++        ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId })
+         : Promise.resolve(null);
+-    const [tri, ords, dx] = await Promise.all([triageP, ordersP, dxP]);
++    const [triRes, ordRes, dxRes] = await Promise.allSettled([triageP, ordersP, dxP]);
++    const tri = triRes.status === "fulfilled" ? triRes.value : null;
++    const ords = ordRes.status === "fulfilled" ? ordRes.value : null;
++    const dx = dxRes.status === "fulfilled" ? dxRes.value : null;
++
++    const failedLabels: string[] = [];
++    if (canFetchEncounterTriage && triRes.status === "rejected") failedLabels.push("signes vitaux");
++    if (canFetchEncounterOrders && ordRes.status === "rejected") failedLabels.push("ordres");
++    if (canFetchPatientDiagnosesList && patientId && dxRes.status === "rejected") failedLabels.push("liste de diagnostics");
++
+     setQuickTriage(tri);
+     setQuickOrders(Array.isArray(ords) ? ords : []);
+     if (tri) {
+@@ -259,13 +288,18 @@ export default function EncounterDetailPage() {
+     } else {
+       setQuickDiagnosisCount(null);
+     }
+-    if (!tri && Array.isArray(ords) && ords.length === 0) {
++    if (!tri || !Array.isArray(ords) || ords.length === 0) {
+       const [cachedTri, cachedOrders] = await Promise.all([
+         getCachedRecord<any>("latest_vitals", triageCacheKey),
+         getCachedRecord<any[]>("encounter_summaries", ordersCacheKey),
+       ]);
+-      if (cachedTri?.data) setQuickTriage(cachedTri.data);
+-      if (cachedOrders?.data) setQuickOrders(cachedOrders.data);
++      if (!tri && cachedTri?.data) setQuickTriage(cachedTri.data);
++      if ((!Array.isArray(ords) || ords.length === 0) && cachedOrders?.data) setQuickOrders(cachedOrders.data);
++    }
++    if (failedLabels.length > 0) {
++      setQuickContextNotice(
++        `Certaines données complémentaires n’ont pas pu être chargées (${failedLabels.join(", ")}). Le dossier de consultation reste disponible.`
++      );
+     }
+     setQuickContextLoading(false);
+   }, [
+@@ -307,7 +341,22 @@ export default function EncounterDetailPage() {
+   const mergeEncounterFromOperationalPatch = useCallback((patch: Record<string, unknown>) => {
+     setEncounter((prev: any) => {
+       if (!prev) return prev;
+-      return { ...prev, ...patch };
++      const next: Record<string, unknown> = { ...prev, ...patch };
++      const patchPatient = patch.patient;
++      if (prev.patient && patchPatient && typeof patchPatient === "object" && !Array.isArray(patchPatient)) {
++        next.patient = { ...prev.patient, ...patchPatient };
++      }
++      const uid = patch.physicianAssignedUserId as string | null | undefined;
++      const rel = patch.physicianAssigned as typeof prev.physicianAssigned | null | undefined;
++      if (
++        uid &&
++        uid === prev.physicianAssigned?.id &&
++        rel === null &&
++        prev.physicianAssigned
++      ) {
++        next.physicianAssigned = prev.physicianAssigned;
++      }
++      return next;
+     });
+   }, []);
+ 
+@@ -316,7 +365,9 @@ export default function EncounterDetailPage() {
+     if (!opts?.silent) setLoading(true);
+     try {
+       const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+-      setEncounter(asApiObject(data));
++      const enc = asApiObject(data);
++      setEncounter(enc);
++      if (enc) encounterHasLoadedOnceRef.current = true;
+     } catch (error) {
+       console.error("Failed to load encounter:", error);
+     } finally {
+@@ -388,14 +439,29 @@ export default function EncounterDetailPage() {
+     return <div style={{ padding: 24 }}>Chargement…</div>;
+   }
+ 
+-  if (!rolesReady || loading) {
++  if (!rolesReady) {
++    return <div style={{ padding: 24 }}>Chargement…</div>;
++  }
++
++  if (loading && canViewEncounterDetail) {
++    return (
++      <div style={{ padding: 24 }}>
++        {encounterHasLoadedOnceRef.current ? "Chargement…" : "Ouverture de la consultation…"}
++      </div>
++    );
++  }
++
++  if (loading) {
+     return <div style={{ padding: 24 }}>Chargement…</div>;
+   }
+ 
+   if (!canViewEncounterDetail) {
++    if (process.env.NODE_ENV === "development") {
++      console.warn("[encounterDetail] accès refusé (rôle)", { encounterId, roles });
++    }
+     return (
+       <div style={{ padding: 24, maxWidth: 520 }}>
+-        <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Accès restreint</p>
++        <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Accès restreint.</p>
+         <p style={{ margin: "12px 0 0 0", color: "#555", lineHeight: 1.5 }}>
+           Votre rôle ne permet pas d&apos;ouvrir le dossier de cette consultation. Utilisez un compte clinique ou
+           facturation, ou restez sur la fiche patient (liste des consultations).
+@@ -405,7 +471,25 @@ export default function EncounterDetailPage() {
+   }
+ 
+   if (!encounter) {
+-    return <div style={{ padding: 24 }}>Consultation introuvable</div>;
++    return (
++      <div style={{ padding: 24, maxWidth: 520 }}>
++        {encounterFetchError ? (
++          <>
++            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Impossible de charger la consultation.</p>
++            {encounterFetchError.trim() !== "Impossible de charger la consultation." ? (
++              <p style={{ margin: "12px 0 0 0", color: "#b71c1c", lineHeight: 1.5 }}>{encounterFetchError}</p>
++            ) : null}
++          </>
++        ) : (
++          <>
++            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Consultation introuvable</p>
++            <p style={{ margin: "12px 0 0 0", color: "#555" }}>
++              Cette consultation n&apos;existe pas, a été supprimée, ou vous n&apos;avez pas accès à cet établissement.
++            </p>
++          </>
++        )}
++      </div>
++    );
+   }
+ 
+   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
+@@ -453,12 +537,29 @@ export default function EncounterDetailPage() {
+     { id: "diagnostics", label: "Diagnostics" },
+     { id: "orders", label: "Ordres" },
+     { id: "results", label: "Résultats" },
+-    { id: "notes", label: "Notes inf." },
++    { id: "notes", label: "Notes Inf." },
+     { id: "pathways", label: "Parcours cliniques" },
+   ];
+ 
+   return (
+     <div>
++      {quickContextNotice ? (
++        <div
++          role="alert"
++          style={{
++            marginBottom: 12,
++            padding: "10px 14px",
++            borderRadius: 8,
++            border: "1px solid #ffcc80",
++            backgroundColor: "#fff8e1",
++            fontSize: 13,
++            color: "#5d4037",
++            lineHeight: 1.45,
++          }}
++        >
++          {quickContextNotice}
++        </div>
++      ) : null}
+       <div style={{ marginBottom: 16 }}>
+         <div
+           style={{
+@@ -525,9 +626,7 @@ export default function EncounterDetailPage() {
+                 </div>
+                 <div style={{ marginTop: 4 }}>
+                   <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
+-                  {encounter.physicianAssigned
+-                    ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
+-                    : "—"}
++                  {formatEncounterPhysicianAssignedFr(encounter)}
+                 </div>
+                 {encounter.status === "CLOSED" && encounter.updatedAt && (
+                   <div>
+@@ -656,9 +755,7 @@ export default function EncounterDetailPage() {
+               </div>
+               <div>
+                 <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
+-                {encounter.physicianAssigned
+-                  ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
+-                  : "—"}
++                {formatEncounterPhysicianAssignedFr(encounter)}
+               </div>
+             </div>
+           </div>
+@@ -816,6 +913,7 @@ export default function EncounterDetailPage() {
+               canPrescribe={canPrescribe}
+               medicationModalRequestTick={medicationModalRequestTick}
+               onOrdersUpdated={refreshQuickOrdersOnly}
++              onRefetchEncounter={() => loadEncounter({ silent: true })}
+             />
+           )}
+           {activeTab === "results" && (
+@@ -1013,9 +1111,7 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
+         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14 }}>
+         <div style={{ gridColumn: "1 / -1" }}>
+           <strong>Médecin attribué :</strong>{" "}
+-          {encounter.physicianAssigned
+-            ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
+-            : "—"}
++          {formatEncounterPhysicianAssignedFr(encounter)}
+         </div>
+         {reason && (
+           <div style={{ gridColumn: "1 / -1" }}>
+@@ -1060,7 +1156,7 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
+       )}
+       {encounter.notes && (
+         <div style={{ marginTop: 16 }}>
+-          <strong>Notes infirmier/ère, autres</strong>
++          <strong>Note infirmière, autres</strong>
+           <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, whiteSpace: "pre-wrap" }}>
+             {encounter.notes}
+           </div>
+@@ -1717,7 +1813,7 @@ function NotesTab({
+ 
+   return (
+     <div>
+-      <h3>Notes de consultation</h3>
++      <h3>Notes Inf.</h3>
+       <p style={{ fontSize: 12, color: "#9e9e9e", marginBottom: 8 }}>Raccourcis ci-dessous.</p>
+       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+         {COMMON_NOTE_SNIPPETS.slice(0, 6).map((snippet) => (
+@@ -2017,6 +2113,7 @@ function OrdersTab({
+   canPrescribe,
+   medicationModalRequestTick = 0,
+   onOrdersUpdated,
++  onRefetchEncounter,
+ }: {
+   encounterId: string;
+   encounter: any;
+@@ -2024,6 +2121,7 @@ function OrdersTab({
+   canPrescribe: boolean;
+   medicationModalRequestTick?: number;
+   onOrdersUpdated?: () => void | Promise<void>;
++  onRefetchEncounter?: () => Promise<void>;
+ }) {
+   const { roles } = useFacilityAndRoles();
+   const [orders, setOrders] = useState<any[]>([]);
+@@ -2321,6 +2419,7 @@ function OrdersTab({
+           encounter={encounter}
+           initialOrderTab={createModalInitialTab}
+           onClose={() => setShowCreateModal(false)}
++          onRefetchEncounter={onRefetchEncounter}
+           onSuccess={async () => {
+             setShowCreateModal(false);
+             await loadOrders();
+diff --git a/apps/web/app/app/lab-worklist/commande/[orderId]/page.tsx b/apps/web/app/app/lab-worklist/commande/[orderId]/page.tsx
+index 2a529091..9a79191c 100644
+--- a/apps/web/app/app/lab-worklist/commande/[orderId]/page.tsx
++++ b/apps/web/app/app/lab-worklist/commande/[orderId]/page.tsx
+@@ -19,9 +19,13 @@ export default function LabOrderDetailPage() {
+     setFacilityId(cookieValue || facilityIdFromHook || null);
+   }, [facilityIdFromHook]);
+ 
++  /** Évite le premier rendu avec facilityId=null alors que le hook a déjà l’établissement (sinon « Établissement requis » et pas de chargement). */
++  const effectiveFacilityId =
++    facilityId ?? (facilityIdFromHook?.trim() ? facilityIdFromHook : null);
++
+   if (!ready) return <p style={{ padding: 24 }}>Chargement…</p>;
+ 
+   return (
+-    <DepartmentOrderDetail kind="lab" orderId={orderId} listHref="/app/lab-worklist" facilityId={facilityId} />
++    <DepartmentOrderDetail kind="lab" orderId={orderId} listHref="/app/lab-worklist" facilityId={effectiveFacilityId} />
+   );
+ }
+diff --git a/apps/web/app/app/layout.tsx b/apps/web/app/app/layout.tsx
+index f4e26f00..5ec7cf32 100644
+--- a/apps/web/app/app/layout.tsx
++++ b/apps/web/app/app/layout.tsx
+@@ -2,26 +2,30 @@
+ 
+ import React, { useState, useEffect } from "react";
+ import { useRouter, usePathname } from "next/navigation";
+-import Link from "next/link";
+-import { getRouteGuardRedirect } from "@/lib/landingRoute";
+-import { ui } from "@/lib/uiLabels";
++import { getRouteGuardRedirect, isEncounterDetailPathname } from "@/lib/landingRoute";
+ import { parseApiResponse } from "@/lib/apiClient";
+-import { getProactiveRefreshIntervalMs, parseJwtAccessTtlSeconds } from "@/lib/jwtAccessTtl";
+ import {
+-  NAV_ACCENT,
+-  NAV_GROUP_ORDER,
+-  NAV_GROUP_TITLE,
+-  SidebarNavIcon,
+-  type SidebarNavItem,
+-} from "@/components/app-shell";
++  getEffectiveAccessTtlSecondsForProactiveRefresh,
++  getProactiveRefreshIntervalMs,
++} from "@/lib/jwtAccessTtl";
++/**
++ * Shell authentifié unique : `AppShell` + nav (`sidebarNavConfig`).
++ * Imports directs vers les fichiers (pas de barrel `app-shell/index`) — évite manifest / chunks client incorrects.
++ */
++import { AppShell } from "@/components/app-shell/AppShell";
++import { SIDEBAR_NAV_ITEMS, groupSidebarNavItems } from "@/components/app-shell/sidebarNavConfig";
+ 
+ export default function AppLayout({ children }: { children: React.ReactNode }) {
+   const router = useRouter();
+   const [user, setUser] = useState<any>(null);
+-  const [facilities, setFacilities] = useState<any[]>([]);
++  const [facilities, setFacilities] = useState<string[]>([]);
+   const [activeFacility, setActiveFacility] = useState<string>("");
+   const [showUserMenu, setShowUserMenu] = useState(false);
+   const [routeRedirecting, setRouteRedirecting] = useState(false);
++  /** Après la 1re réponse /api/auth/me : évite de rendre le menu avec 0 entrée (user encore null). */
++  const [sessionReady, setSessionReady] = useState(false);
++  /** TTL d’accès (secondes) tel que renvoyé par GET /api/auth/me — aligné sur JWT_ACCESS_TTL (cookies), pas sur NEXT_PUBLIC seul. */
++  const [sessionAccessTtlSec, setSessionAccessTtlSec] = useState<number | null>(null);
+ 
+   useEffect(() => {
+     let cancelled = false;
+@@ -34,10 +38,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+         }
+         const data = await parseApiResponse(res);
+         if (cancelled) return;
+-        const d = data && typeof data === "object" && !Array.isArray(data) ? (data as { facilityRoles?: unknown }) : null;
++        const d =
++          data && typeof data === "object" && !Array.isArray(data)
++            ? (data as { facilityRoles?: unknown; accessTokenTtlSeconds?: unknown })
++            : null;
++        if (
++          d &&
++          typeof d.accessTokenTtlSeconds === "number" &&
++          Number.isFinite(d.accessTokenTtlSeconds) &&
++          d.accessTokenTtlSeconds > 0
++        ) {
++          setSessionAccessTtlSec(Math.floor(d.accessTokenTtlSeconds));
++        }
+         const frs = d && Array.isArray(d.facilityRoles) ? d.facilityRoles : [];
+-        if (frs.length > 0) {
+-          setUser(d);
++        if (frs.length > 0 && d) {
++          const { accessTokenTtlSeconds: _ttlIgnored, ...userPayload } = d;
++          setUser(userPayload);
+           const facilityIds: string[] = Array.from(new Set(frs.map((fr: any) => String(fr.facilityId))));
+           setFacilities(facilityIds);
+ 
+@@ -56,6 +72,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+       } catch (err) {
+         console.error("Failed to fetch user:", err);
+         router.replace("/login");
++      } finally {
++        if (!cancelled) setSessionReady(true);
+       }
+     };
+     void load();
+@@ -64,20 +82,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+     };
+   }, [router]);
+ 
+-  /** Renouvellement proactif : intervalle dérivé du TTL (NEXT_PUBLIC_JWT_ACCESS_TTL = JWT_ACCESS_TTL API), toujours avant expiration du jeton. */
++  /** Session résolue sans rôle établissement : aligné sur la garde d’accès (pas de shell « vide » durable). */
++  useEffect(() => {
++    if (!sessionReady || user) return;
++    router.replace("/login");
++  }, [sessionReady, user, router]);
++
++  /**
++   * Renouvellement proactif : intervalle dérivé du TTL réel (réponse /api/auth/me = même base que les cookies JWT_ACCESS_TTL).
++   * Repli : getEffectiveAccessTtlSecondsForProactiveRefresh (NEXT_PUBLIC ou plafond prudent).
++   */
+   useEffect(() => {
+     if (!user) return;
+-    const ttlSec = parseJwtAccessTtlSeconds(process.env.NEXT_PUBLIC_JWT_ACCESS_TTL);
++    const ttlSec = sessionAccessTtlSec ?? getEffectiveAccessTtlSecondsForProactiveRefresh();
+     const intervalMs = getProactiveRefreshIntervalMs(ttlSec);
+     if (process.env.NODE_ENV === "development") {
+-      if (!process.env.NEXT_PUBLIC_JWT_ACCESS_TTL?.trim()) {
++      if (sessionAccessTtlSec == null && !process.env.NEXT_PUBLIC_JWT_ACCESS_TTL?.trim()) {
+         console.warn(
+-          "[session] NEXT_PUBLIC_JWT_ACCESS_TTL est absent : défaut 8h côté client. Alignez sur JWT_ACCESS_TTL de l’API en production."
++          "[session] accessTokenTtlSeconds absent et NEXT_PUBLIC_JWT_ACCESS_TTL absent : repli sur intervalle prudent (plafond 5 min). Définissez JWT_ACCESS_TTL dans apps/web (aligné sur l’API)."
+         );
+       }
+       if (intervalMs >= ttlSec * 1000) {
+         console.warn(
+-          "[session] Intervalle de refresh >= TTL d’accès — vérifiez NEXT_PUBLIC_JWT_ACCESS_TTL et getProactiveRefreshIntervalMs."
++          "[session] Intervalle de refresh >= TTL d’accès — vérifiez JWT_ACCESS_TTL et getProactiveRefreshIntervalMs."
+         );
+       }
+     }
+@@ -85,7 +112,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+       void fetch("/api/auth/refresh", { method: "POST", credentials: "include" }).catch(() => {});
+     }, intervalMs);
+     return () => window.clearInterval(id);
+-  }, [user]);
++  }, [user, sessionAccessTtlSec]);
+ 
+   const handleLogout = async () => {
+     try {
+@@ -106,76 +133,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+       .map((fr: any) => fr.role);
+   };
+ 
+-  // Liens + rôles inchangés ; couleur / groupe = rendu uniquement (voir sidebarNavConfig).
+-  const n = ui.nav;
+-  const allNavItems: SidebarNavItem[] = [
+-    { href: "/app/trackboard", label: n.trackboard, roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate" },
+-    { href: "/app/registration", label: n.registration, roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
+-    { href: "/app/nursing", label: n.nursing, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
+-    { href: "/app/provider", label: n.provider, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
+-    { href: "/app/patients", label: n.patients, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+-    { href: "/app/encounters", label: n.encounters, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+-    { href: "/app/follow-ups", label: n.followUps, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+-    { href: "/app/rad-worklist", label: n.radWorklist, roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
+-    { href: "/app/lab-worklist", label: n.labWorklist, roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },
+-    { href: "/app/pharmacy", label: n.pharmacyQueue, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
+-    { href: "/app/pharmacy-worklist", label: n.pharmacyWorklist, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
+-    {
+-      href: "/app/pharmacy/inventory",
+-      label: n.pharmacyInventory,
+-      roles: ["PHARMACY", "ADMIN"],
+-      group: "pharmacie",
+-      accent: "green",
+-    },
+-    {
+-      href: "/app/pharmacy/dispense",
+-      label: n.pharmacyDispense,
+-      roles: ["PHARMACY", "ADMIN"],
+-      group: "pharmacie",
+-      accent: "green",
+-    },
+-    {
+-      href: "/app/pharmacy/low-stock",
+-      label: n.pharmacyLowStock,
+-      roles: ["PHARMACY", "ADMIN"],
+-      group: "pharmacie",
+-      accent: "green",
+-    },
+-    {
+-      href: "/app/pharmacy/expiring",
+-      label: n.pharmacyExpiring,
+-      roles: ["PHARMACY", "ADMIN"],
+-      group: "pharmacie",
+-      accent: "green",
+-    },
+-    { href: "/app/billing", label: n.billing, roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo" },
+-    { href: "/app/fracture", label: n.fracture, roles: ["FRONT_DESK", "ADMIN"], group: "facturation", accent: "slate" },
+-    {
+-      href: "/app/public-health/summary",
+-      label: n.publicHealth,
+-      roles: ["RN", "PROVIDER", "ADMIN"],
+-      group: "sante_publique",
+-      accent: "orange",
+-    },
+-    {
+-      href: "/app/public-health/vaccinations",
+-      label: n.vaccinations,
+-      roles: ["RN", "PROVIDER", "ADMIN"],
+-      group: "sante_publique",
+-      accent: "orange",
+-    },
+-    {
+-      href: "/app/public-health/disease-reports",
+-      label: n.diseaseReports,
+-      roles: ["RN", "PROVIDER", "ADMIN"],
+-      group: "sante_publique",
+-      accent: "orange",
+-    },
+-    { href: "/app/admin", label: n.admin, roles: ["ADMIN"], group: "admin", accent: "redGray" },
+-    { href: "/app/admin/users", label: n.adminUsers, roles: ["ADMIN"], group: "admin", accent: "redGray" },
+-  ];
+-
+-  // Filter nav items based on user roles. Registration (FRONT_DESK only) and Pharmacy get restricted dashboards.
+   const activeRoles = getActiveRoles();
+   const clinicalRoles = ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "BILLING"];
+   const isRegistrationOnly = activeRoles.includes("FRONT_DESK") && !activeRoles.some((r) => clinicalRoles.includes(r));
+@@ -197,18 +154,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+     "/app/pharmacy/expiring",
+   ]);
+ 
+-  let navItems = allNavItems.filter((item) => item.roles.some((role) => activeRoles.includes(role)));
++  let navItems = SIDEBAR_NAV_ITEMS.filter((item) => item.roles.some((role) => activeRoles.includes(role)));
+   if (isRegistrationOnly) {
+     navItems = navItems.filter((item) => registrationNavHrefs.has(item.href));
+   } else if (isPharmacyOnly) {
+     navItems = navItems.filter((item) => pharmacyNavHrefs.has(item.href));
+   }
+ 
+-  const groupedNavSections = NAV_GROUP_ORDER.map((gid) => ({
+-    groupId: gid,
+-    title: NAV_GROUP_TITLE[gid],
+-    items: navItems.filter((item) => item.group === gid),
+-  })).filter((section) => section.items.length > 0);
++  const groupedNavSections = groupSidebarNavItems(navItems);
+ 
+   const pathname = usePathname();
+   useEffect(() => {
+@@ -216,9 +169,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+       setRouteRedirecting(false);
+       return;
+     }
++    /** Détail consultation : pas de `replace` depuis le layout — la page gère le RBAC (évite flash / rebond vers l’accueil). */
++    if (isEncounterDetailPathname(pathname)) {
++      setRouteRedirecting(false);
++      return;
++    }
+     const roles = getActiveRoles();
++    const frs = Array.isArray(user.facilityRoles) ? user.facilityRoles : [];
++    const hasAnyFacilityRole = frs.length > 0;
++    // Évite un faux « non autorisé » si cookie / établissement actif pas encore alignés avec l’entrée facilityRoles (course au chargement).
++    if (hasAnyFacilityRole && roles.length === 0) {
++      if (process.env.NODE_ENV === "development") {
++        console.warn("[routeGuard] skip redirect: rôles vides pour l’établissement actif (attente alignement)", {
++          activeFacility,
++          pathname,
++        });
++      }
++      setRouteRedirecting(false);
++      return;
++    }
+     const target = getRouteGuardRedirect(pathname, roles);
+     if (target) {
++      if (process.env.NODE_ENV === "development") {
++        console.warn("[routeGuard] redirect", { from: pathname, to: target, roles });
++      }
+       setRouteRedirecting(true);
+       router.replace(target);
+     } else {
+@@ -227,227 +201,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
+   }, [user, pathname, activeFacility, router]);
+ 
+   return (
+-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+-      {/* Topbar */}
+-      <header
+-        style={{
+-          backgroundColor: "#1a1a1a",
+-          color: "white",
+-          padding: "12px 24px",
+-          display: "flex",
+-          justifyContent: "space-between",
+-          alignItems: "center",
+-          borderBottom: "1px solid #333",
+-        }}
+-      >
+-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+-          <h1 style={{ margin: 0, fontSize: 20 }}>Medora S</h1>
+-          {facilities.length > 0 && (
+-            <select
+-              value={activeFacility}
+-              onChange={(e) => {
+-                const newFacility = e.target.value;
+-                setActiveFacility(newFacility);
+-                // Update cookie
+-                document.cookie = `medora_facility_id=${newFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+-                // Refresh page to update all components
+-                window.location.reload();
+-              }}
+-              style={{
+-                backgroundColor: "#2a2a2a",
+-                color: "white",
+-                border: "1px solid #444",
+-                padding: "6px 12px",
+-                borderRadius: 4,
+-                fontSize: 14,
+-                cursor: "pointer",
+-              }}
+-            >
+-              {facilities.map((facilityId) => (
+-                <option key={facilityId} value={facilityId}>
+-                  {ui.common.facilityPrefix} {facilityId.slice(0, 8)}
+-                </option>
+-              ))}
+-            </select>
+-          )}
+-        </div>
+-
+-        <div style={{ position: "relative" }}>
+-          <button
+-            onClick={() => setShowUserMenu(!showUserMenu)}
+-            style={{
+-              backgroundColor: "transparent",
+-              border: "1px solid #444",
+-              color: "white",
+-              padding: "8px 16px",
+-              borderRadius: 4,
+-              cursor: "pointer",
+-              fontSize: 14,
+-              display: "flex",
+-              alignItems: "center",
+-              gap: 8,
+-            }}
+-          >
+-            {user?.fullName || ui.common.userFallback}
+-            <span>▼</span>
+-          </button>
+-          {showUserMenu && (
+-            <div
+-              style={{
+-                position: "absolute",
+-                top: "100%",
+-                right: 0,
+-                marginTop: 8,
+-                backgroundColor: "#2a2a2a",
+-                border: "1px solid #444",
+-                borderRadius: 4,
+-                minWidth: 200,
+-                boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+-                zIndex: 1000,
+-              }}
+-            >
+-              <div style={{ padding: "12px 16px", borderBottom: "1px solid #444" }}>
+-                <div style={{ fontSize: 14, fontWeight: 500 }}>{user?.fullName || ui.common.userFallback}</div>
+-                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+-                  {user?.username || ""}
+-                </div>
+-              </div>
+-              <button
+-                onClick={handleLogout}
+-                style={{
+-                  width: "100%",
+-                  textAlign: "left",
+-                  padding: "12px 16px",
+-                  backgroundColor: "transparent",
+-                  border: "none",
+-                  color: "white",
+-                  cursor: "pointer",
+-                  fontSize: 14,
+-                }}
+-                onMouseEnter={(e) => {
+-                  e.currentTarget.style.backgroundColor = "#333";
+-                }}
+-                onMouseLeave={(e) => {
+-                  e.currentTarget.style.backgroundColor = "transparent";
+-                }}
+-              >
+-                {ui.common.logout}
+-              </button>
+-            </div>
+-          )}
+-        </div>
+-      </header>
+-
+-      <div style={{ display: "flex", flex: 1 }}>
+-        {/* Sidebar */}
+-        <aside
+-          style={{
+-            width: 244,
+-            background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+-            color: "#f8fafc",
+-            padding: "18px 12px 24px",
+-            display: "flex",
+-            flexDirection: "column",
+-            borderRight: "1px solid rgba(148,163,184,0.12)",
+-            boxShadow: "4px 0 20px rgba(15,23,42,0.35)",
+-          }}
+-        >
+-          <nav style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+-            {groupedNavSections.map((section, si) => (
+-              <div key={section.groupId} style={{ marginTop: si > 0 ? 16 : 0 }}>
+-                <div
+-                  style={{
+-                    fontSize: 11,
+-                    fontWeight: 700,
+-                    letterSpacing: "0.06em",
+-                    textTransform: "uppercase",
+-                    color: "rgba(248,250,252,0.42)",
+-                    padding: "0 10px 8px",
+-                    borderBottom: "1px solid rgba(148,163,184,0.12)",
+-                    marginBottom: 8,
+-                  }}
+-                >
+-                  {section.title}
+-                </div>
+-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+-                  {section.items.map((item) => {
+-                    const accent = NAV_ACCENT[item.accent];
+-                    const active =
+-                      pathname === item.href ||
+-                      (item.href !== "/app" && pathname?.startsWith(item.href + "/"));
+-                    return (
+-                      <Link
+-                        key={item.href}
+-                        href={item.href}
+-                        style={{
+-                          color: active ? "#fff" : "rgba(248,250,252,0.9)",
+-                          textDecoration: "none",
+-                          padding: "9px 10px",
+-                          borderRadius: 8,
+-                          fontSize: 13,
+-                          fontWeight: active ? 600 : 500,
+-                          transition: "background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease",
+-                          display: "flex",
+-                          alignItems: "center",
+-                          gap: 10,
+-                          backgroundColor: active ? accent.activeBg : "rgba(15,23,42,0.38)",
+-                          boxShadow: active ? `inset 3px 0 0 ${accent.border}` : "inset 3px 0 0 transparent",
+-                          border: "1px solid rgba(148,163,184,0.1)",
+-                        }}
+-                        onMouseEnter={(e) => {
+-                          if (!active) {
+-                            e.currentTarget.style.backgroundColor = accent.hoverBg;
+-                            e.currentTarget.style.boxShadow = `inset 3px 0 0 ${accent.border}`;
+-                          }
+-                        }}
+-                        onMouseLeave={(e) => {
+-                          if (!active) {
+-                            e.currentTarget.style.backgroundColor = "rgba(15,23,42,0.38)";
+-                            e.currentTarget.style.boxShadow = "inset 3px 0 0 transparent";
+-                          }
+-                        }}
+-                      >
+-                        <span
+-                          style={{
+-                            display: "inline-flex",
+-                            alignItems: "center",
+-                            justifyContent: "center",
+-                            width: 28,
+-                            height: 28,
+-                            borderRadius: 6,
+-                            backgroundColor: active ? accent.pillBg : "rgba(15,23,42,0.35)",
+-                            flexShrink: 0,
+-                          }}
+-                        >
+-                          <SidebarNavIcon href={item.href} accent={item.accent} />
+-                        </span>
+-                        <span style={{ lineHeight: 1.3 }}>{item.label}</span>
+-                      </Link>
+-                    );
+-                  })}
+-                </div>
+-              </div>
+-            ))}
+-          </nav>
+-        </aside>
+-
+-        {/* Main content */}
+-        <main style={{ flex: 1, padding: 24, background: "linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%)" }}>
+-          {routeRedirecting ? (
+-            <div style={{ padding: 24 }}>
+-              <p style={{ margin: 0 }}>{ui.common.redirecting}</p>
+-              {pathname !== "/app" && (
+-                <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#666" }}>
+-                  {ui.common.unauthorizedRedirect}
+-                </p>
+-              )}
+-            </div>
+-          ) : (
+-            children
+-          )}
+-        </main>
+-      </div>
+-    </div>
++    <AppShell
++      pathname={pathname}
++      routeRedirecting={routeRedirecting}
++      bootstrapping={!sessionReady || !user}
++      facilities={facilities}
++      activeFacility={activeFacility}
++      onFacilityChange={(newFacility) => {
++        setActiveFacility(newFacility);
++        document.cookie = `medora_facility_id=${newFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
++        window.location.reload();
++      }}
++      userFullName={user?.fullName ?? ""}
++      userUsername={user?.username}
++      showUserMenu={showUserMenu}
++      onToggleUserMenu={() => setShowUserMenu(!showUserMenu)}
++      onLogout={handleLogout}
++      groupedNavSections={groupedNavSections}
++    >
++      {children}
++    </AppShell>
+   );
+ }
+-
+diff --git a/apps/web/app/app/patients/[id]/page.tsx b/apps/web/app/app/patients/[id]/page.tsx
+index 0876aaf7..3bc2fd12 100644
+--- a/apps/web/app/app/patients/[id]/page.tsx
++++ b/apps/web/app/app/patients/[id]/page.tsx
+@@ -82,13 +82,17 @@ export default function PatientDetailPage() {
+     roles.includes("FRONT_DESK") && !isProviderLike && !roles.includes("RN");
+   const isBillingOnlyQuick =
+     rolesReady && roles.includes("BILLING") && !clinicalChartAccess && !isFrontDeskQuick;
+-  /** Ouverture de la page consultation clinique `/app/encounters/:id` — jamais pour l’accueil seul. */
++  /**
++   * Liens « Ouvrir la consultation » — aligné sur `canViewEncounterDetail` de `/app/encounters/[id]`.
++   * (L’en-tête accueil seul masque toujours le lien via `administrativePatientShellOnly`.)
++   */
+   const canOpenClinicalEncounterDetail =
+     rolesReady &&
+     (roles.includes("RN") ||
+       roles.includes("PROVIDER") ||
+       roles.includes("ADMIN") ||
+       roles.includes("BILLING") ||
++      roles.includes("FRONT_DESK") ||
+       roles.includes("LAB") ||
+       roles.includes("RADIOLOGY") ||
+       roles.includes("PHARMACY"));
+diff --git a/apps/web/app/app/patients/page.tsx b/apps/web/app/app/patients/page.tsx
+index d29b86fa..e2800c7f 100644
+--- a/apps/web/app/app/patients/page.tsx
++++ b/apps/web/app/app/patients/page.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import React, { useState, useEffect, Suspense } from "react";
++import Link from "next/link";
+ import { useRouter, useSearchParams } from "next/navigation";
+ import { apiFetch, parseApiResponse } from "@/lib/apiClient";
+ import { formatAgeFr, formatAgeYearsSexFr } from "@/lib/patientDisplay";
+@@ -120,12 +121,17 @@ function PatientsPageContent() {
+       roles.includes("RN") ||
+       roles.includes("PROVIDER") ||
+       roles.includes("ADMIN"));
++  /** Aligné sur la page `/app/encounters/[id]` (GET consultation autorisé). */
+   const canOpenEncounterDetail =
+     rolesReady &&
+     (roles.includes("RN") ||
+       roles.includes("PROVIDER") ||
+       roles.includes("ADMIN") ||
+-      roles.includes("BILLING"));
++      roles.includes("BILLING") ||
++      roles.includes("FRONT_DESK") ||
++      roles.includes("LAB") ||
++      roles.includes("RADIOLOGY") ||
++      roles.includes("PHARMACY"));
+ 
+   const formatDate = (dateStr: string | null) => {
+     if (!dateStr) return "";
+@@ -794,13 +800,19 @@ function CreateConsultationModal({
+             <div style={{ display: "flex", gap: 10 }}>
+               {!created.queued && created.id && (
+                 canOpenEncounterDetail ? (
+-                  <a href={`/app/encounters/${created.id}`} style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13 }}>
++                  <Link
++                    href={`/app/encounters/${created.id}`}
++                    style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
++                  >
+                     Ouvrir la consultation
+-                  </a>
++                  </Link>
+                 ) : (
+-                  <a href={`/app/patients/${patient.id}`} style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13 }}>
++                  <Link
++                    href={`/app/patients/${patient.id}`}
++                    style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
++                  >
+                     Ouvrir le dossier
+-                  </a>
++                  </Link>
+                 )
+               )}
+               <button type="button" onClick={onClose} style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer" }}>
+diff --git a/apps/web/app/app/pharmacy-worklist/commande/[orderId]/page.tsx b/apps/web/app/app/pharmacy-worklist/commande/[orderId]/page.tsx
+index 637045f2..743b355a 100644
+--- a/apps/web/app/app/pharmacy-worklist/commande/[orderId]/page.tsx
++++ b/apps/web/app/app/pharmacy-worklist/commande/[orderId]/page.tsx
+@@ -19,6 +19,9 @@ export default function PharmacyOrderDetailPage() {
+     setFacilityId(cookieValue || facilityIdFromHook || null);
+   }, [facilityIdFromHook]);
+ 
++  const effectiveFacilityId =
++    facilityId ?? (facilityIdFromHook?.trim() ? facilityIdFromHook : null);
++
+   if (!ready) return <p style={{ padding: 24 }}>Chargement…</p>;
+ 
+   return (
+@@ -26,7 +29,7 @@ export default function PharmacyOrderDetailPage() {
+       kind="pharmacy"
+       orderId={orderId}
+       listHref="/app/pharmacy-worklist"
+-      facilityId={facilityId}
++      facilityId={effectiveFacilityId}
+     />
+   );
+ }
+diff --git a/apps/web/app/app/rad-worklist/commande/[orderId]/page.tsx b/apps/web/app/app/rad-worklist/commande/[orderId]/page.tsx
+index 21c5b43a..e15bd941 100644
+--- a/apps/web/app/app/rad-worklist/commande/[orderId]/page.tsx
++++ b/apps/web/app/app/rad-worklist/commande/[orderId]/page.tsx
+@@ -19,9 +19,12 @@ export default function RadOrderDetailPage() {
+     setFacilityId(cookieValue || facilityIdFromHook || null);
+   }, [facilityIdFromHook]);
+ 
++  const effectiveFacilityId =
++    facilityId ?? (facilityIdFromHook?.trim() ? facilityIdFromHook : null);
++
+   if (!ready) return <p style={{ padding: 24 }}>Chargement…</p>;
+ 
+   return (
+-    <DepartmentOrderDetail kind="radiology" orderId={orderId} listHref="/app/rad-worklist" facilityId={facilityId} />
++    <DepartmentOrderDetail kind="radiology" orderId={orderId} listHref="/app/rad-worklist" facilityId={effectiveFacilityId} />
+   );
+ }
+diff --git a/apps/web/src/components/app-shell/SidebarNavIcons.tsx b/apps/web/src/components/app-shell/SidebarNavIcons.tsx
+index 1dfe752f..945e3570 100644
+--- a/apps/web/src/components/app-shell/SidebarNavIcons.tsx
++++ b/apps/web/src/components/app-shell/SidebarNavIcons.tsx
+@@ -4,7 +4,12 @@ import React from "react";
+ import type { NavAccent } from "./sidebarNavConfig";
+ import { NAV_ACCENT } from "./sidebarNavConfig";
+ 
+-const o = { width: 18, height: 18, display: "block" as const, flexShrink: 0 };
++/** Props communes SVG — flexShrink/display uniquement dans `style` (évite fuites d’attributs DOM invalides). */
++const ICON_SVG_PROPS = {
++  width: 18,
++  height: 18,
++  style: { display: "block", flexShrink: 0 } as React.CSSProperties,
++};
+ 
+ /**
+  * Icônes SVG légères (pas de dépendance externe), couleur = accent du module.
+@@ -14,7 +19,7 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+ 
+   if (href === "/app/trackboard")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <rect x="3" y="3" width="7" height="7" rx="1" />
+         <rect x="14" y="3" width="7" height="7" rx="1" />
+         <rect x="3" y="14" width="7" height="7" rx="1" />
+@@ -23,27 +28,27 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/registration")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+         <path d="M9 22V12h6v10" />
+       </svg>
+     );
+   if (href === "/app/nursing")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+       </svg>
+     );
+   if (href === "/app/provider")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+         <path d="M9 12h6M12 9v6" />
+       </svg>
+     );
+   if (href === "/app/patients")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+         <circle cx="9" cy="7" r="4" />
+         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+@@ -52,7 +57,7 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/encounters")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+         <path d="M16 2v4M8 2v4M3 10h18" />
+         <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+@@ -60,14 +65,14 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/follow-ups")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <circle cx="12" cy="12" r="10" />
+         <path d="M12 6v6l4 2" />
+       </svg>
+     );
+   if (href === "/app/rad-worklist")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <rect x="3" y="3" width="18" height="18" rx="2" />
+         <circle cx="8.5" cy="8.5" r="1.5" />
+         <path d="M21 15l-5-5L5 21" />
+@@ -75,7 +80,7 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/lab-worklist")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M9 3h6l2 4v12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7l2-4z" />
+         <path d="M9 11h6" />
+         <path d="M10 15h4" />
+@@ -83,7 +88,7 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/pharmacy")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M4 6h16" />
+         <path d="M6 6v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" />
+         <path d="M10 10h4" />
+@@ -91,7 +96,7 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/pharmacy-worklist")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M8 6h13" />
+         <path d="M8 12h13" />
+         <path d="M8 18h13" />
+@@ -100,7 +105,7 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/pharmacy/inventory")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+         <path d="M3.27 6.96L12 12.01l8.73-5.05" />
+         <path d="M12 22.08V12" />
+@@ -108,21 +113,21 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/pharmacy/dispense")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M10.5 20.5l10-10a2.2 2.2 0 0 0-3-3l-10 10-4 8 8-4z" />
+         <circle cx="8" cy="8" r="1.5" fill="none" stroke={stroke} />
+       </svg>
+     );
+   if (href === "/app/pharmacy/low-stock")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+         <path d="M12 9v4M12 17h.01" />
+       </svg>
+     );
+   if (href === "/app/pharmacy/expiring")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <rect x="3" y="4" width="18" height="18" rx="2" />
+         <path d="M16 2v4M8 2v4M3 10h18" />
+         <path d="M12 14v4M12 18h.01" />
+@@ -130,28 +135,28 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/billing")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <rect x="1" y="4" width="22" height="16" rx="2" />
+         <path d="M1 10h22" />
+       </svg>
+     );
+   if (href === "/app/fracture")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M14.5 2H17a2 2 0 0 1 2 2v3M2 7h4M2 11h4M2 15h4M2 19h4" />
+         <path d="M7 2v20M9 7l6-3 6 3v12l-6 3-6-3V7z" />
+       </svg>
+     );
+   if (href === "/app/public-health/summary")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M3 3v18h18" />
+         <path d="M7 16l4-4 4 4 5-7" />
+       </svg>
+     );
+   if (href === "/app/public-health/vaccinations")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M18 2l4 4" />
+         <path d="M17 7l3-3" />
+         <path d="M19 9L9 19l-4 4-4-4 4-4 10-10z" />
+@@ -159,21 +164,21 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+   if (href === "/app/public-health/disease-reports")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+         <path d="M14 2v6h6M12 18v-2M12 12h.01" />
+       </svg>
+     );
+   if (href === "/app/admin")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <circle cx="12" cy="12" r="3" />
+         <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.66l1.42-1.42" />
+       </svg>
+     );
+   if (href === "/app/admin/users")
+     return (
+-      <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++      <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+         <circle cx="9" cy="7" r="4" />
+         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+@@ -182,7 +187,7 @@ export function SidebarNavIcon({ href, accent }: { href: string; accent: NavAcce
+     );
+ 
+   return (
+-    <svg {...o} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
++    <svg {...ICON_SVG_PROPS} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" aria-hidden>
+       <circle cx="12" cy="12" r="10" />
+       <path d="M12 16v-4M12 8h.01" />
+     </svg>
+diff --git a/apps/web/src/components/app-shell/index.ts b/apps/web/src/components/app-shell/index.ts
+deleted file mode 100644
+index eb0d8112..00000000
+--- a/apps/web/src/components/app-shell/index.ts
++++ /dev/null
+@@ -1,2 +0,0 @@
+-export { NAV_ACCENT, NAV_GROUP_ORDER, NAV_GROUP_TITLE, type NavAccent, type NavGroupId, type SidebarNavItem } from "./sidebarNavConfig";
+-export { SidebarNavIcon } from "./SidebarNavIcons";
+diff --git a/apps/web/src/components/app-shell/sidebarNavConfig.ts b/apps/web/src/components/app-shell/sidebarNavConfig.ts
+index 973057a3..c1f7ae73 100644
+--- a/apps/web/src/components/app-shell/sidebarNavConfig.ts
++++ b/apps/web/src/components/app-shell/sidebarNavConfig.ts
+@@ -1,8 +1,10 @@
+ /**
+- * Navigation latérale : couleurs par module, regroupements (FR), clés d’icônes.
+- * Utilisé uniquement pour le rendu — la logique de rôles reste dans layout.tsx.
++ * Menu latéral du shell authentifié — consommé uniquement via `AppShell` (`app/app/layout.tsx`).
++ * Couleurs / regroupements (FR) ; le filtrage RBAC reste dans `app/app/layout.tsx`.
+  */
+ 
++import { ui } from "@/lib/uiLabels";
++
+ export type NavAccent =
+   | "slate"
+   | "teal"
+@@ -122,3 +124,91 @@ export const NAV_GROUP_ORDER: NavGroupId[] = [
+   "sante_publique",
+   "admin",
+ ];
++
++const n = ui.nav;
++
++/**
++ * Menu latéral complet (libellés FR) — source unique pour le shell Medora.
++ * Filtrer selon les rôles actifs avant affichage.
++ */
++export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
++  { href: "/app/trackboard", label: n.trackboard, roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate" },
++  { href: "/app/registration", label: n.registration, roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
++  { href: "/app/nursing", label: n.nursing, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
++  { href: "/app/provider", label: n.provider, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
++  { href: "/app/patients", label: n.patients, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
++  { href: "/app/encounters", label: n.encounters, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
++  { href: "/app/follow-ups", label: n.followUps, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
++  { href: "/app/rad-worklist", label: n.radWorklist, roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
++  { href: "/app/lab-worklist", label: n.labWorklist, roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },
++  { href: "/app/pharmacy", label: n.pharmacyQueue, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
++  { href: "/app/pharmacy-worklist", label: n.pharmacyWorklist, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
++  {
++    href: "/app/pharmacy/inventory",
++    label: n.pharmacyInventory,
++    roles: ["PHARMACY", "ADMIN"],
++    group: "pharmacie",
++    accent: "green",
++  },
++  {
++    href: "/app/pharmacy/dispense",
++    label: n.pharmacyDispense,
++    roles: ["PHARMACY", "ADMIN"],
++    group: "pharmacie",
++    accent: "green",
++  },
++  {
++    href: "/app/pharmacy/low-stock",
++    label: n.pharmacyLowStock,
++    roles: ["PHARMACY", "ADMIN"],
++    group: "pharmacie",
++    accent: "green",
++  },
++  {
++    href: "/app/pharmacy/expiring",
++    label: n.pharmacyExpiring,
++    roles: ["PHARMACY", "ADMIN"],
++    group: "pharmacie",
++    accent: "green",
++  },
++  { href: "/app/billing", label: n.billing, roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo" },
++  { href: "/app/fracture", label: n.fracture, roles: ["FRONT_DESK", "ADMIN"], group: "facturation", accent: "slate" },
++  {
++    href: "/app/public-health/summary",
++    label: n.publicHealth,
++    roles: ["RN", "PROVIDER", "ADMIN"],
++    group: "sante_publique",
++    accent: "orange",
++  },
++  {
++    href: "/app/public-health/vaccinations",
++    label: n.vaccinations,
++    roles: ["RN", "PROVIDER", "ADMIN"],
++    group: "sante_publique",
++    accent: "orange",
++  },
++  {
++    href: "/app/public-health/disease-reports",
++    label: n.diseaseReports,
++    roles: ["RN", "PROVIDER", "ADMIN"],
++    group: "sante_publique",
++    accent: "orange",
++  },
++  { href: "/app/admin", label: n.admin, roles: ["ADMIN"], group: "admin", accent: "redGray" },
++  { href: "/app/admin/users", label: n.adminUsers, roles: ["ADMIN"], group: "admin", accent: "redGray" },
++];
++
++export type GroupedSidebarSection = {
++  groupId: NavGroupId;
++  title: string;
++  items: SidebarNavItem[];
++};
++
++/** Regroupe les entrées filtrées selon `NAV_GROUP_ORDER` (sections vides exclues). */
++export function groupSidebarNavItems(items: SidebarNavItem[]): GroupedSidebarSection[] {
++  return NAV_GROUP_ORDER.map((gid) => ({
++    groupId: gid,
++    title: NAV_GROUP_TITLE[gid],
++    items: items.filter((item) => item.group === gid),
++  })).filter((section) => section.items.length > 0);
++}
+diff --git a/apps/web/src/components/encounters/EncounterOperationalPanel.tsx b/apps/web/src/components/encounters/EncounterOperationalPanel.tsx
+index fc350257..2f0df8b8 100644
+--- a/apps/web/src/components/encounters/EncounterOperationalPanel.tsx
++++ b/apps/web/src/components/encounters/EncounterOperationalPanel.tsx
+@@ -1,6 +1,6 @@
+ "use client";
+ 
+-import React, { useCallback, useEffect, useState } from "react";
++import React, { useCallback, useEffect, useMemo, useState } from "react";
+ import { apiFetch } from "@/lib/apiClient";
+ import { normalizeUserFacingError } from "@/lib/userFacingError";
+ 
+@@ -56,6 +56,30 @@ export function EncounterOperationalPanel({
+     };
+   }, [facilityId, canEdit]);
+ 
++  /** Inclut le médecin courant si absent du roster (évite l’affichage d’UUID brut dans le `<select>`). */
++  const providersForSelect = useMemo(() => {
++    const list = [...providers];
++    const effectiveId = (physicianId || physicianAssigned?.id || "").trim();
++    if (!effectiveId) return list;
++    if (list.some((p) => p.id === effectiveId)) return list;
++    if (physicianAssigned && physicianAssigned.id === effectiveId) {
++      return [
++        {
++          id: physicianAssigned.id,
++          firstName: physicianAssigned.firstName,
++          lastName: physicianAssigned.lastName,
++        },
++        ...list,
++      ];
++    }
++    return [{ id: effectiveId, firstName: "", lastName: "" }, ...list];
++  }, [providers, physicianId, physicianAssigned]);
++
++  const providerOptionLabel = useCallback((p: ProviderRow) => {
++    const s = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
++    return s || "Médecin attribué";
++  }, []);
++
+   const save = useCallback(async () => {
+     if (!canEdit) return;
+     setSaving(true);
+@@ -127,9 +151,9 @@ export function EncounterOperationalPanel({
+             style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #ccc", minWidth: 220 }}
+           >
+             <option value="">—</option>
+-            {providers.map((p) => (
++            {providersForSelect.map((p) => (
+               <option key={p.id} value={p.id}>
+-                {p.firstName} {p.lastName}
++                {providerOptionLabel(p)}
+               </option>
+             ))}
+           </select>
+diff --git a/apps/web/src/components/encounters/NursingAssessmentTab.tsx b/apps/web/src/components/encounters/NursingAssessmentTab.tsx
+index 5141c01b..0306d997 100644
+--- a/apps/web/src/components/encounters/NursingAssessmentTab.tsx
++++ b/apps/web/src/components/encounters/NursingAssessmentTab.tsx
+@@ -81,7 +81,7 @@ const SECTIONS: SectionDef[] = [
+   },
+   {
+     id: "notesInfirmieresLibres",
+-    label: "Notes infirmières libres",
++    label: "Note infirmière, autres",
+     chips: [],
+   },
+ ];
+diff --git a/apps/web/src/components/orders/CreateOrderModal.tsx b/apps/web/src/components/orders/CreateOrderModal.tsx
+index b8ff5d2a..b98d7c38 100644
+--- a/apps/web/src/components/orders/CreateOrderModal.tsx
++++ b/apps/web/src/components/orders/CreateOrderModal.tsx
+@@ -2,8 +2,8 @@
+ 
+ import React, { useState, useEffect, useRef } from "react";
+ import Link from "next/link";
+-import { apiFetch, parseApiResponse } from "@/lib/apiClient";
+-import { normalizeUserFacingError } from "@/lib/userFacingError";
++import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
++import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
+ import type { OrderCreateDto } from "@medora/shared";
+ import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
+ import { printRx } from "@/components/pharmacy/RxPrintLayout";
+@@ -123,6 +123,8 @@ export function CreateOrderModal({
+   initialOrderTab = "LAB",
+   onClose,
+   onSuccess,
++  /** Après constat serveur « consultation fermée », re-synchronise l’état parent (évite badge Ouverte obsolète). */
++  onRefetchEncounter,
+ }: {
+   encounterId: string;
+   facilityId: string;
+@@ -131,6 +133,7 @@ export function CreateOrderModal({
+   initialOrderTab?: OrderModalTab;
+   onClose: () => void;
+   onSuccess: () => void;
++  onRefetchEncounter?: () => Promise<void>;
+ }) {
+   const firstTab: OrderModalTab =
+     !canPrescribe && initialOrderTab === "MEDICATION" ? "LAB" : initialOrderTab;
+@@ -291,6 +294,24 @@ export function CreateOrderModal({
+     );
+ 
+     try {
++      /**
++       * Cause du décalage UI / API : l’en-tête peut afficher « Ouverte » depuis un cache offline
++       * (`encounter_summaries`) ou un état React non rafraîchi alors que le serveur a déjà clôturé.
++       * Re-vérification synchrone avec la source de vérité avant POST (même règle que l’API).
++       */
++      try {
++        const latestRaw = await apiFetch(`/encounters/${encounterId}`, { facilityId });
++        const latest = asApiObject(latestRaw) as { status?: string } | null;
++        // Ne bloquer que si la source de vérité indique explicitement un statut autre qu’OPEN.
++        if (latest && typeof latest.status === "string" && latest.status !== "OPEN") {
++          await onRefetchEncounter?.();
++          setError("Impossible de créer un ordre : la consultation doit être ouverte.");
++          return;
++        }
++      } catch {
++        /* re-vérification indisponible : l’API tranchera au POST */
++      }
++
+       const res = (await apiFetch(`/encounters/${encounterId}/orders`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+@@ -314,6 +335,10 @@ export function CreateOrderModal({
+         setOrderSuccess(true);
+       }
+     } catch (err) {
++      const raw = err instanceof Error ? err.message : "";
++      if (isEncounterMustBeOpenForOrderError(raw)) {
++        await onRefetchEncounter?.();
++      }
+       setError(mapOrderCreateError(err));
+     } finally {
+       setLoading(false);
+@@ -394,8 +419,25 @@ export function CreateOrderModal({
+ 
+         {rxSuccess && createdOrder && (
+           <div style={{ marginBottom: 20 }}>
+-            <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>Ordonnance envoyée à la pharmacie</p>
+-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
++            {(() => {
++              const items = formData.items;
++              const intents = items.map(
++                (it) => it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE"
++              );
++              const allAdminister =
++                items.length > 0 && intents.every((x) => x === "ADMINISTER_CHART");
++              const allPharmacy =
++                items.length > 0 && intents.every((x) => x === "PHARMACY_DISPENSE");
++              return (
++                <>
++                  <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>
++                    {allAdminister
++                      ? "Ordonnance enregistrée — à administrer au patient (dossier de soins)."
++                      : allPharmacy
++                        ? "Ordonnance enregistrée — à préparer en pharmacie."
++                        : "Ordonnance enregistrée — certaines lignes sont à administrer au patient, d’autres à la pharmacie."}
++                  </p>
++                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+               <button
+                 type="button"
+                 onClick={() => {
+@@ -437,6 +479,7 @@ export function CreateOrderModal({
+               >
+                 Imprimer l&apos;ordonnance
+               </button>
++              {!allAdminister ? (
+               <Link
+                 href="/app/pharmacy-worklist"
+                 style={{
+@@ -452,6 +495,7 @@ export function CreateOrderModal({
+               >
+                 Voir la file pharmacie
+               </Link>
++              ) : null}
+               <button
+                 type="button"
+                 onClick={() => {
+@@ -472,9 +516,12 @@ export function CreateOrderModal({
+               </button>
+             </div>
+             <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
+-              Date d&apos;envoi :{" "}
++              Date d&apos;enregistrement :{" "}
+               {createdOrder.createdAt ? new Date(createdOrder.createdAt).toLocaleString("fr-FR") : "—"}
+             </p>
++                </>
++              );
++            })()}
+           </div>
+         )}
+ 
+@@ -642,7 +689,13 @@ export function CreateOrderModal({
+                     fontSize: 14,
+                   }}
+                 >
+-                  {loading ? "Envoi…" : activeTab === "MEDICATION" ? "Envoyer à la pharmacie" : "Créer l'ordre"}
++                  {loading
++                    ? activeTab === "MEDICATION"
++                      ? "Enregistrement…"
++                      : "Envoi…"
++                    : activeTab === "MEDICATION"
++                      ? "Enregistrer l'ordonnance"
++                      : "Créer l'ordre"}
+                 </button>
+               </div>
+             </form>
+diff --git a/apps/web/src/components/patient-chart/PatientConsultationsTab.tsx b/apps/web/src/components/patient-chart/PatientConsultationsTab.tsx
+index 8004e063..1751ace6 100644
+--- a/apps/web/src/components/patient-chart/PatientConsultationsTab.tsx
++++ b/apps/web/src/components/patient-chart/PatientConsultationsTab.tsx
+@@ -211,29 +211,38 @@ export function PatientConsultationsTab({
+ }) {
+   const [encounters, setEncounters] = useState<any[]>([]);
+   const [loading, setLoading] = useState(true);
++  const [loadError, setLoadError] = useState<string | null>(null);
+   const [showCreateModal, setShowCreateModal] = useState(false);
+   const [outpatientOnly, setOutpatientOnly] = useState(false);
+ 
+   const loadEncounters = async () => {
+     setLoading(true);
++    setLoadError(null);
+     try {
+       const path = outpatientOnly
+         ? `/patients/${patientId}/encounters?type=OUTPATIENT&limit=50`
+         : `/patients/${patientId}/encounters?limit=50`;
+       const data = await apiFetch(path, { facilityId });
+       setEncounters(Array.isArray(data) ? data : []);
+-    } catch {
++    } catch (e) {
+       setEncounters([]);
+-      if (!administrativeOnly) {
+-        // Erreur réseau / RBAC inattendu — éviter le bruit pour l’accueil (chargement attendu sans détail clinique).
+-      }
++      const msg =
++        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
++        "Impossible de charger la liste des consultations.";
++      setLoadError(msg);
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
+   useEffect(() => {
+-    if (facilityId) loadEncounters();
++    if (!facilityId?.trim()) {
++      setLoading(false);
++      setEncounters([]);
++      setLoadError(null);
++      return;
++    }
++    void loadEncounters();
+   }, [patientId, facilityId, outpatientOnly]);
+ 
+   useEffect(() => {
+@@ -245,6 +254,38 @@ export function PatientConsultationsTab({
+ 
+   if (loading) return <div style={{ padding: 12, color: "#666" }}>Chargement des consultations…</div>;
+ 
++  if (!facilityId?.trim()) {
++    return (
++      <div style={{ padding: 12, color: "#666", fontSize: 14 }}>
++        Établissement non disponible. Rechargez la page ou sélectionnez un établissement dans l&apos;en-tête.
++      </div>
++    );
++  }
++
++  if (loadError) {
++    return (
++      <div style={{ padding: 12 }}>
++        <p style={{ margin: 0, color: "#b71c1c", fontSize: 14, lineHeight: 1.5 }}>{loadError}</p>
++        <button
++          type="button"
++          onClick={() => void loadEncounters()}
++          style={{
++            marginTop: 12,
++            padding: "8px 14px",
++            backgroundColor: "#1a1a1a",
++            color: "#fff",
++            border: "none",
++            borderRadius: 6,
++            cursor: "pointer",
++            fontSize: 13,
++          }}
++        >
++          Réessayer
++        </button>
++      </div>
++    );
++  }
++
+   return (
+     <div>
+       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+diff --git a/apps/web/src/components/patient-chart/patientChartHelpers.ts b/apps/web/src/components/patient-chart/patientChartHelpers.ts
+index 6f9ffa63..64039b87 100644
+--- a/apps/web/src/components/patient-chart/patientChartHelpers.ts
++++ b/apps/web/src/components/patient-chart/patientChartHelpers.ts
+@@ -14,7 +14,7 @@ export const NURSING_ASSESSMENT_SECTION_LABELS_FR: Record<string, string> = {
+   securite: "Risques / sécurité",
+   observationsInfirmieres: "Observations infirmières",
+   interventionsInfirmieres: "Interventions infirmières",
+-  notesInfirmieresLibres: "Notes infirmières libres",
++  notesInfirmieresLibres: "Note infirmière, autres",
+   notesInfirmieres: "Observations infirmières",
+ };
+ 
+diff --git a/apps/web/src/lib/chartApi.ts b/apps/web/src/lib/chartApi.ts
+index 3441ed9e..90e3e22b 100644
+--- a/apps/web/src/lib/chartApi.ts
++++ b/apps/web/src/lib/chartApi.ts
+@@ -65,6 +65,7 @@ export type ChartSummaryEncounter = {
+   dischargedAt: string | null;
+   dischargeStatus: string | null;
+   roomLabel?: string | null;
++  physicianAssignedUserId?: string | null;
+   physicianAssigned?: { id: string; firstName: string; lastName: string } | null;
+   nursingAssessment?: unknown;
+   dischargeSummaryJson?: unknown;
+diff --git a/apps/web/src/lib/jwtAccessTtl.ts b/apps/web/src/lib/jwtAccessTtl.ts
+index c5a855ea..774bc5d4 100644
+--- a/apps/web/src/lib/jwtAccessTtl.ts
++++ b/apps/web/src/lib/jwtAccessTtl.ts
+@@ -1,6 +1,8 @@
+ /**
+  * Durée du jeton d’accès — même format que Nest/jsonwebtoken : "15m", "8h", "7d", "120s".
+- * Utilisable côté client (NEXT_PUBLIC_JWT_ACCESS_TTL) et serveur (JWT_ACCESS_TTL).
++ * Côté apps/web : `JWT_ACCESS_TTL` (serveur Next) pilote les cookies et doit correspondre à `JWT_ACCESS_TTL` (Nest).
++ * Le client utilise en priorité `accessTokenTtlSeconds` renvoyé par GET /api/auth/me (même calcul que les cookies).
++ * `NEXT_PUBLIC_JWT_ACCESS_TTL` sert uniquement de repli si ce champ est absent.
+  * Défaut 8h (identique à apps/api/src/auth/auth.service.ts).
+  */
+ export function parseJwtAccessTtlSeconds(raw?: string | null): number {
+@@ -32,3 +34,19 @@ export function getProactiveRefreshIntervalMs(ttlSeconds: number): number {
+   }
+   return ms;
+ }
++
++/**
++ * Repli pour le timer de `POST /api/auth/refresh` proactif (`app/app/layout.tsx`) lorsque
++ * GET /api/auth/me ne fournit pas `accessTokenTtlSeconds` (ancien build).
++ *
++ * Cause historique des déconnexions : intervalle basé sur un TTL client (8h par défaut) alors que
++ * les cookies et le JWT Nest suivaient `JWT_ACCESS_TTL` plus court — le refresh arrivait trop tard.
++ * Sans NEXT_PUBLIC, on plafonne à 5 min pour rester sous une durée d’accès courte en dev.
++ */
++export function getEffectiveAccessTtlSecondsForProactiveRefresh(): number {
++  const raw = process.env.NEXT_PUBLIC_JWT_ACCESS_TTL?.trim();
++  if (raw) return parseJwtAccessTtlSeconds(raw);
++  const longDefault = parseJwtAccessTtlSeconds(undefined);
++  const conservativeCap = 5 * 60;
++  return Math.min(longDefault, conservativeCap);
++}
+diff --git a/apps/web/src/lib/landingRoute.ts b/apps/web/src/lib/landingRoute.ts
+index d62b411a..5f319a28 100644
+--- a/apps/web/src/lib/landingRoute.ts
++++ b/apps/web/src/lib/landingRoute.ts
+@@ -69,10 +69,13 @@ const APP_ROUTE_RULES: RouteRule[] = [
+   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
+   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
+   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
+-  /** Détail consultation = dossier clinique : pas d’accueil (FRONT_DESK). La liste /app/encounters reste autorisée (exact). */
++  /**
++   * Détail consultation — aligné sur `canViewEncounterDetail` (page consultation) et liens « Ouvrir la consultation ».
++   * FRONT_DESK : liste exacte `/app/encounters` + accueil ; le détail doit rester accessible (réception / suivi).
++   */
+   {
+     prefix: "/app/encounters/",
+-    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],
++    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY", "FRONT_DESK"],
+   },
+   { prefix: "/app/encounters", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"], exact: true },
+   { prefix: "/app/patients", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
+@@ -93,6 +96,16 @@ const APP_ROUTE_RULES: RouteRule[] = [
+   { prefix: "/app/settings", roles: ["ADMIN", "PROVIDER", "RN"] },
+ ];
+ 
++/**
++ * Détail consultation `/app/encounters/:id` (un seul segment après `encounters`).
++ * Aligné avec le garde du layout (`app/app/layout.tsx`) : ne pas appliquer `getRouteGuardRedirect` ici
++ * pour éviter un rebond silencieux vers le tableau de bord — la page consultation applique le RBAC.
++ */
++export function isEncounterDetailPathname(pathname: string | null | undefined): boolean {
++  if (!pathname) return false;
++  return /^\/app\/encounters\/[^/]+$/.test(pathname);
++}
++
+ function normalizeRoleSet(roles: string[]): Set<string> {
+   return new Set(roles.map((r) => (r ?? "").toUpperCase().trim()).filter(Boolean));
+ }
+diff --git a/apps/web/src/lib/orderItemDisplayFr.ts b/apps/web/src/lib/orderItemDisplayFr.ts
+index 830295c4..de1e6af0 100644
+--- a/apps/web/src/lib/orderItemDisplayFr.ts
++++ b/apps/web/src/lib/orderItemDisplayFr.ts
+@@ -1,6 +1,8 @@
+ /**
+  * Libellé affichable pour une ligne d’ordre (priorité alignée sur l’API enrichOrderItemsForDisplay).
+  * Ne jamais exposer catalogItemId dans l’UI.
++ *
++ * Priorité : displayLabelFr → catalogue (displayNameFr / name selon le type) → manualLabel (+ secondaire) → repli FR.
+  */
+ export function getOrderItemDisplayLabelFr(item: {
+   displayLabelFr?: string | null;
+@@ -20,18 +22,54 @@ export function getOrderItemDisplayLabelFr(item: {
+   notes?: string | null;
+ }): string {
+   if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
++
++  const resolvedType = resolveCatalogItemType(item);
++  const fromCatalog = catalogDisplayLabelFr(item, resolvedType);
++  if (fromCatalog) return fromCatalog;
++
+   const man = item.manualLabel?.trim();
+   if (man) {
+     const sec = item.manualSecondaryText?.trim();
+     return sec ? `${man} — ${sec}` : man;
+   }
+-  const t = item.catalogItemType;
++
++  return typeFallbackFr(resolvedType);
++}
++
++function resolveCatalogItemType(item: {
++  catalogItemType?: string | null;
++  catalogLabTest?: unknown;
++  catalogImagingStudy?: unknown;
++  catalogMedication?: unknown;
++}): string | null {
++  const t = item.catalogItemType?.trim();
++  if (t) return t;
++  if (item.catalogLabTest) return "LAB_TEST";
++  if (item.catalogImagingStudy) return "IMAGING_STUDY";
++  if (item.catalogMedication) return "MEDICATION";
++  return null;
++}
++
++function catalogDisplayLabelFr(
++  item: {
++    catalogLabTest?: { displayNameFr?: string | null; name?: string | null } | null;
++    catalogImagingStudy?: { displayNameFr?: string | null; name?: string | null; modality?: string | null } | null;
++    catalogMedication?: {
++      displayNameFr?: string | null;
++      name?: string | null;
++      strength?: string | null;
++      dosageForm?: string | null;
++      route?: string | null;
++    } | null;
++    strength?: string | null;
++  },
++  t: string | null
++): string | null {
+   if (t === "LAB_TEST") {
+     const c = item.catalogLabTest;
+-    /** Libellé catalogue FR en priorité (évite un displayLabelFr dérivé du nom anglais). */
+     if (c?.displayNameFr?.trim()) return c.displayNameFr.trim();
+     if (c?.name?.trim()) return c.name.trim();
+-    return "Analyse (libellé indisponible)";
++    return null;
+   }
+   if (t === "IMAGING_STUDY") {
+     const c = item.catalogImagingStudy;
+@@ -40,7 +78,7 @@ export function getOrderItemDisplayLabelFr(item: {
+       const mod = c?.modality ? ` (${c.modality})` : "";
+       return `${base}${mod}`;
+     }
+-    return "Imagerie (libellé indisponible)";
++    return null;
+   }
+   if (t === "MEDICATION") {
+     const c = item.catalogMedication;
+@@ -52,7 +90,14 @@ export function getOrderItemDisplayLabelFr(item: {
+       c?.route,
+     ].filter(Boolean);
+     if (parts.length) return parts.join(" · ");
+-    return "Médicament (libellé indisponible)";
++    return null;
+   }
++  return null;
++}
++
++function typeFallbackFr(t: string | null): string {
++  if (t === "LAB_TEST") return "Analyse (libellé indisponible)";
++  if (t === "IMAGING_STUDY") return "Imagerie (libellé indisponible)";
++  if (t === "MEDICATION") return "Médicament (libellé indisponible)";
+   return "—";
+ }
+diff --git a/apps/web/src/lib/userFacingError.ts b/apps/web/src/lib/userFacingError.ts
+index a085c6df..c7587add 100644
+--- a/apps/web/src/lib/userFacingError.ts
++++ b/apps/web/src/lib/userFacingError.ts
+@@ -19,6 +19,10 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string }> = [
+   { test: (s) => /invalid credentials/i.test(s), fr: "Identifiants invalides." },
+   { test: (s) => /encounter not found/i.test(s), fr: "Consultation introuvable." },
+   { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable." },
++  {
++    test: (s) => /patient already has an open encounter/i.test(s),
++    fr: "Une consultation est déjà ouverte pour ce patient. Fermez-la ou ouvrez-la avant d’en créer une nouvelle.",
++  },
+   { test: (s) => /order not found/i.test(s), fr: "Ordre introuvable." },
+   {
+     test: (s) => /payload too large|request entity too large|413/i.test(s),
+@@ -61,3 +65,13 @@ export function normalizeUserFacingError(message: string | undefined | null): st
+ export function genericUserFacingError(): string {
+   return "Une erreur s'est produite.";
+ }
++
++/** Erreur API « ordre uniquement si consultation ouverte » (message brut EN ou déjà normalisé FR). */
++export function isEncounterMustBeOpenForOrderError(message: string | undefined | null): boolean {
++  if (message == null) return false;
++  const s = String(message);
++  return (
++    /can only create orders for open encounters/i.test(s) ||
++    /consultation doit être ouverte/i.test(s)
++  );
++}
+diff --git a/apps/web/tsconfig.json b/apps/web/tsconfig.json
+index 5356f712..fdb13593 100644
+--- a/apps/web/tsconfig.json
++++ b/apps/web/tsconfig.json
+@@ -1,7 +1,11 @@
+ {
+   "compilerOptions": {
+     "target": "ES2022",
+-    "lib": ["dom", "dom.iterable", "es2022"],
++    "lib": [
++      "dom",
++      "dom.iterable",
++      "es2022"
++    ],
+     "allowJs": false,
+     "skipLibCheck": true,
+     "strict": true,
+@@ -13,12 +17,25 @@
+     "isolatedModules": true,
+     "jsx": "preserve",
+     "incremental": true,
+-    "plugins": [{ "name": "next" }],
++    "plugins": [
++      {
++        "name": "next"
++      }
++    ],
+     "paths": {
+-      "@/*": ["./src/*", "./*"]
++      "@/*": [
++        "./src/*",
++        "./*"
++      ]
+     }
+   },
+-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+-  "exclude": ["node_modules"]
++  "include": [
++    "**/*.ts",
++    "**/*.tsx",
++    "next-env.d.ts",
++    ".next/types/**/*.ts"
++  ],
++  "exclude": [
++    "node_modules"
++  ]
+ }
+-
+diff --git a/docs/SESSION.md b/docs/SESSION.md
+index 8019e114..b4db93e3 100644
+--- a/docs/SESSION.md
++++ b/docs/SESSION.md
+@@ -18,7 +18,7 @@
+ 
+ - **`JWT_ACCESS_TTL` partagé** : `apps/web` lit `JWT_ACCESS_TTL` (via `jwtAccessTtlSeconds()`) pour la `maxAge` des cookies de session au login et au refresh — **même valeur que l’API** recommandée dans `apps/api/.env.example` (`8h`).
+ - **Proxy** (`nestApiProxy`) : tentative de **refresh une fois** si l’établissement ne peut pas être résolu (souvent jeton expiré), puis nouvelle tentative ; si la requête Nest renvoie **401**, refresh puis **une** nouvelle tentative. Les cookies sont mis à jour via `Set-Cookie` quand un refresh a lieu.
+-- **Layout `/app`** : `GET /api/auth/me` exige `res.ok` (sinon redirection vers `/login`) ; **intervalle de refresh proactif** = `getProactiveRefreshIntervalMs(parseJwtAccessTtlSeconds(NEXT_PUBLIC_JWT_ACCESS_TTL))` (~40 % du TTL, borné pour rester avant expiration du jeton). En dev, avertissements si `NEXT_PUBLIC_JWT_ACCESS_TTL` est absent ou si l’intervalle est incohérent.
++- **Layout `/app`** : `GET /api/auth/me` exige `res.ok` (sinon redirection vers `/login`) ; **intervalle de refresh proactif** = `getProactiveRefreshIntervalMs(getEffectiveAccessTtlSecondsForProactiveRefresh())` (~40 % du TTL, borné pour rester avant expiration du jeton). Si `NEXT_PUBLIC_JWT_ACCESS_TTL` est absent, le TTL utilisé pour l’intervalle est **plafonné à 5 min** (évite un intervalle ~3 h basé sur le défaut 8 h alors que l’API signe un JWT court). En dev, avertissements si `NEXT_PUBLIC_JWT_ACCESS_TTL` est absent ou si l’intervalle est incohérent.
+ - **Hook** `useFacilityAndRoles` : même logique `res.ok` + `credentials: "include"`.
+ 
+ ## Comportement attendu
+diff --git a/packages/shared/src/schemas/patient.ts b/packages/shared/src/schemas/patient.ts
+index 267646d4..95293bee 100644
+--- a/packages/shared/src/schemas/patient.ts
++++ b/packages/shared/src/schemas/patient.ts
+@@ -64,28 +64,37 @@ export const vitalsSchema = z.object({
+ 
+ export type Vitals = z.infer<typeof vitalsSchema>;
+ 
++/** Corps JSON : `""` sur champs optionnels doit être traité comme absent (sinon `uuid` / contraintes Zod échouent). */
++const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
++
+ export const encounterCreateDtoSchema = z.object({
+   type: encounterTypeSchema,
+   /** @deprecated Préférer physicianAssignedUserId — conservé pour compat ; sinon copié vers médecin attribué si fourni. */
+-  providerId: z.string().uuid().optional(),
++  providerId: z.preprocess(emptyStrToUndefined, z.union([z.string().uuid(), z.null()]).optional()),
+   /** Médecin attribué (référence User) — source canonique d’affichage dossier / trackboard. */
+-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
++  physicianAssignedUserId: z.preprocess(
++    emptyStrToUndefined,
++    z.union([z.string().uuid(), z.null()]).optional()
++  ),
+   /** Reason for visit (clinic); stored as chiefComplaint */
+-  visitReason: z.string().max(4000).optional(),
+-  chiefComplaint: z.string().max(4000).optional(),
+-  notes: z.string().max(16000).optional(),
++  visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
++  chiefComplaint: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
++  notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
+   /** Salle / lieu de consultation (accueil) */
+-  roomLabel: z.string().max(64).optional().nullable(),
++  roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
+ });
+ 
+ export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
+ 
+ export const encounterOutpatientCreateDtoSchema = z.object({
+-  visitReason: z.string().max(4000).optional(),
+-  notes: z.string().max(16000).optional(),
+-  roomLabel: z.string().max(64).optional().nullable(),
+-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
+-  providerId: z.string().uuid().optional(),
++  visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
++  notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
++  roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
++  physicianAssignedUserId: z.preprocess(
++    emptyStrToUndefined,
++    z.union([z.string().uuid(), z.null()]).optional()
++  ),
++  providerId: z.preprocess(emptyStrToUndefined, z.union([z.string().uuid(), z.null()]).optional()),
+ });
+ 
+ export type EncounterOutpatientCreateDto = z.infer<
+@@ -113,9 +122,13 @@ export const encounterUpdateDtoSchema = z.object({
+ export type EncounterUpdateDto = z.infer<typeof encounterUpdateDtoSchema>;
+ 
+ /** Accueil / infirmière : salle et médecin attribué uniquement */
++const emptyStrToNull = (v: unknown) => (v === "" ? null : v);
+ export const encounterOperationalUpdateDtoSchema = z.object({
+-  roomLabel: z.string().max(64).optional().nullable(),
+-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
++  roomLabel: z.preprocess(emptyStrToNull, z.union([z.string().max(64), z.null()]).optional()),
++  physicianAssignedUserId: z.preprocess(
++    emptyStrToNull,
++    z.union([z.string().uuid(), z.null()]).optional()
++  ),
+ });
+ 
+ export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalUpdateDtoSchema>;

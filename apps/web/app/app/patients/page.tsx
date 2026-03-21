@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { formatAgeFr, formatAgeYearsSexFr } from "@/lib/patientDisplay";
@@ -120,12 +121,17 @@ function PatientsPageContent() {
       roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN"));
+  /** Aligné sur la page `/app/encounters/[id]` (GET consultation autorisé). */
   const canOpenEncounterDetail =
     rolesReady &&
     (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
-      roles.includes("BILLING"));
+      roles.includes("BILLING") ||
+      roles.includes("FRONT_DESK") ||
+      roles.includes("LAB") ||
+      roles.includes("RADIOLOGY") ||
+      roles.includes("PHARMACY"));
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "";
@@ -794,13 +800,19 @@ function CreateConsultationModal({
             <div style={{ display: "flex", gap: 10 }}>
               {!created.queued && created.id && (
                 canOpenEncounterDetail ? (
-                  <a href={`/app/encounters/${created.id}`} style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13 }}>
+                  <Link
+                    href={`/app/encounters/${created.id}`}
+                    style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
+                  >
                     Ouvrir la consultation
-                  </a>
+                  </Link>
                 ) : (
-                  <a href={`/app/patients/${patient.id}`} style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13 }}>
+                  <Link
+                    href={`/app/patients/${patient.id}`}
+                    style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
+                  >
                     Ouvrir le dossier
-                  </a>
+                  </Link>
                 )
               )}
               <button type="button" onClick={onClose} style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer" }}>

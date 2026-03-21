@@ -15,6 +15,16 @@ import type {
 import type { ListPatientEncountersQuery } from "./dto";
 import { toEncounterClinicResponse } from "./encounter-response.util";
 
+/** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
+const encounterDetailPatientSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  mrn: true,
+  dob: true,
+  sexAtBirth: true,
+} as const;
+
 @Injectable()
 export class EncountersService {
   constructor(
@@ -169,7 +179,7 @@ export class EncountersService {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true, dob: true, sexAtBirth: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -249,7 +259,7 @@ export class EncountersService {
       where: { id },
       data: updateData,
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -304,11 +314,24 @@ export class EncountersService {
         updateData.physicianAssignedUserId = data.physicianAssignedUserId;
       }
     }
+    if (Object.keys(updateData).length === 0) {
+      const unchanged = await this.prisma.encounter.findFirst({
+        where: { id, facilityId },
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      if (!unchanged) {
+        throw new NotFoundException("Encounter not found");
+      }
+      return toEncounterClinicResponse(unchanged);
+    }
     const updated = await this.prisma.encounter.update({
       where: { id },
       data: updateData,
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -398,7 +421,7 @@ export class EncountersService {
       where: { id },
       data: closePayload as Prisma.EncounterUpdateInput,
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });

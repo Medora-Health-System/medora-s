@@ -65,6 +65,7 @@ export type ChartSummaryEncounter = {
   dischargedAt: string | null;
   dischargeStatus: string | null;
   roomLabel?: string | null;
+  physicianAssignedUserId?: string | null;
   physicianAssigned?: { id: string; firstName: string; lastName: string } | null;
   nursingAssessment?: unknown;
   dischargeSummaryJson?: unknown;

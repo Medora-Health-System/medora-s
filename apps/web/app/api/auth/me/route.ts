@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { applyAuthCookiesToResponse, refreshAccessTokenFromCookies } from "@/lib/server/refreshAccessToken";
+import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
 
@@ -53,7 +54,11 @@ export async function GET() {
     }
 
     const userData = await backendResponse.json();
-    const res = NextResponse.json(userData);
+    /** Même base que les cookies d’accès (JWT_ACCESS_TTL apps/web) — évite un décalage avec NEXT_PUBLIC côté client. */
+    const res = NextResponse.json({
+      ...(typeof userData === "object" && userData !== null && !Array.isArray(userData) ? userData : {}),
+      accessTokenTtlSeconds: jwtAccessTtlSeconds(),
+    });
 
     if (refreshedTokens) {
       applyAuthCookiesToResponse(res, refreshedTokens);

@@ -1,6 +1,8 @@
 /**
  * Durée du jeton d’accès — même format que Nest/jsonwebtoken : "15m", "8h", "7d", "120s".
- * Utilisable côté client (NEXT_PUBLIC_JWT_ACCESS_TTL) et serveur (JWT_ACCESS_TTL).
+ * Côté apps/web : `JWT_ACCESS_TTL` (serveur Next) pilote les cookies et doit correspondre à `JWT_ACCESS_TTL` (Nest).
+ * Le client utilise en priorité `accessTokenTtlSeconds` renvoyé par GET /api/auth/me (même calcul que les cookies).
+ * `NEXT_PUBLIC_JWT_ACCESS_TTL` sert uniquement de repli si ce champ est absent.
  * Défaut 8h (identique à apps/api/src/auth/auth.service.ts).
  */
 export function parseJwtAccessTtlSeconds(raw?: string | null): number {
@@ -31,4 +33,20 @@ export function getProactiveRefreshIntervalMs(ttlSeconds: number): number {
     ms = Math.max(10_000, Math.floor(ttlMs * 0.25));
   }
   return ms;
+}
+
+/**
+ * Repli pour le timer de `POST /api/auth/refresh` proactif (`app/app/layout.tsx`) lorsque
+ * GET /api/auth/me ne fournit pas `accessTokenTtlSeconds` (ancien build).
+ *
+ * Cause historique des déconnexions : intervalle basé sur un TTL client (8h par défaut) alors que
+ * les cookies et le JWT Nest suivaient `JWT_ACCESS_TTL` plus court — le refresh arrivait trop tard.
+ * Sans NEXT_PUBLIC, on plafonne à 5 min pour rester sous une durée d’accès courte en dev.
+ */
+export function getEffectiveAccessTtlSecondsForProactiveRefresh(): number {
+  const raw = process.env.NEXT_PUBLIC_JWT_ACCESS_TTL?.trim();
+  if (raw) return parseJwtAccessTtlSeconds(raw);
+  const longDefault = parseJwtAccessTtlSeconds(undefined);
+  const conservativeCap = 5 * 60;
+  return Math.min(longDefault, conservativeCap);
 }

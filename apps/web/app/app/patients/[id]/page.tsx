@@ -82,13 +82,17 @@ export default function PatientDetailPage() {
     roles.includes("FRONT_DESK") && !isProviderLike && !roles.includes("RN");
   const isBillingOnlyQuick =
     rolesReady && roles.includes("BILLING") && !clinicalChartAccess && !isFrontDeskQuick;
-  /** Ouverture de la page consultation clinique `/app/encounters/:id` — jamais pour l’accueil seul. */
+  /**
+   * Liens « Ouvrir la consultation » — aligné sur `canViewEncounterDetail` de `/app/encounters/[id]`.
+   * (L’en-tête accueil seul masque toujours le lien via `administrativePatientShellOnly`.)
+   */
   const canOpenClinicalEncounterDetail =
     rolesReady &&
     (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
       roles.includes("BILLING") ||
+      roles.includes("FRONT_DESK") ||
       roles.includes("LAB") ||
       roles.includes("RADIOLOGY") ||
       roles.includes("PHARMACY"));

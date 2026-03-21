@@ -18,7 +18,7 @@
 
 - **`JWT_ACCESS_TTL` partagé** : `apps/web` lit `JWT_ACCESS_TTL` (via `jwtAccessTtlSeconds()`) pour la `maxAge` des cookies de session au login et au refresh — **même valeur que l’API** recommandée dans `apps/api/.env.example` (`8h`).
 - **Proxy** (`nestApiProxy`) : tentative de **refresh une fois** si l’établissement ne peut pas être résolu (souvent jeton expiré), puis nouvelle tentative ; si la requête Nest renvoie **401**, refresh puis **une** nouvelle tentative. Les cookies sont mis à jour via `Set-Cookie` quand un refresh a lieu.
-- **Layout `/app`** : `GET /api/auth/me` exige `res.ok` (sinon redirection vers `/login`) ; **intervalle de refresh proactif** = `getProactiveRefreshIntervalMs(parseJwtAccessTtlSeconds(NEXT_PUBLIC_JWT_ACCESS_TTL))` (~40 % du TTL, borné pour rester avant expiration du jeton). En dev, avertissements si `NEXT_PUBLIC_JWT_ACCESS_TTL` est absent ou si l’intervalle est incohérent.
+- **Layout `/app`** : `GET /api/auth/me` exige `res.ok` (sinon redirection vers `/login`) ; **intervalle de refresh proactif** = `getProactiveRefreshIntervalMs(getEffectiveAccessTtlSecondsForProactiveRefresh())` (~40 % du TTL, borné pour rester avant expiration du jeton). Si `NEXT_PUBLIC_JWT_ACCESS_TTL` est absent, le TTL utilisé pour l’intervalle est **plafonné à 5 min** (évite un intervalle ~3 h basé sur le défaut 8 h alors que l’API signe un JWT court). En dev, avertissements si `NEXT_PUBLIC_JWT_ACCESS_TTL` est absent ou si l’intervalle est incohérent.
 - **Hook** `useFacilityAndRoles` : même logique `res.ok` + `credentials: "include"`.
 
 ## Comportement attendu

@@ -64,28 +64,37 @@ export const vitalsSchema = z.object({
 
 export type Vitals = z.infer<typeof vitalsSchema>;
 
+/** Corps JSON : `""` sur champs optionnels doit être traité comme absent (sinon `uuid` / contraintes Zod échouent). */
+const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
 export const encounterCreateDtoSchema = z.object({
   type: encounterTypeSchema,
   /** @deprecated Préférer physicianAssignedUserId — conservé pour compat ; sinon copié vers médecin attribué si fourni. */
-  providerId: z.string().uuid().optional(),
+  providerId: z.preprocess(emptyStrToUndefined, z.union([z.string().uuid(), z.null()]).optional()),
   /** Médecin attribué (référence User) — source canonique d’affichage dossier / trackboard. */
-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
+  physicianAssignedUserId: z.preprocess(
+    emptyStrToUndefined,
+    z.union([z.string().uuid(), z.null()]).optional()
+  ),
   /** Reason for visit (clinic); stored as chiefComplaint */
-  visitReason: z.string().max(4000).optional(),
-  chiefComplaint: z.string().max(4000).optional(),
-  notes: z.string().max(16000).optional(),
+  visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
+  chiefComplaint: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
   /** Salle / lieu de consultation (accueil) */
-  roomLabel: z.string().max(64).optional().nullable(),
+  roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
 });
 
 export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
 
 export const encounterOutpatientCreateDtoSchema = z.object({
-  visitReason: z.string().max(4000).optional(),
-  notes: z.string().max(16000).optional(),
-  roomLabel: z.string().max(64).optional().nullable(),
-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
-  providerId: z.string().uuid().optional(),
+  visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
+  roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
+  physicianAssignedUserId: z.preprocess(
+    emptyStrToUndefined,
+    z.union([z.string().uuid(), z.null()]).optional()
+  ),
+  providerId: z.preprocess(emptyStrToUndefined, z.union([z.string().uuid(), z.null()]).optional()),
 });
 
 export type EncounterOutpatientCreateDto = z.infer<
@@ -113,9 +122,13 @@ export const encounterUpdateDtoSchema = z.object({
 export type EncounterUpdateDto = z.infer<typeof encounterUpdateDtoSchema>;
 
 /** Accueil / infirmière : salle et médecin attribué uniquement */
+const emptyStrToNull = (v: unknown) => (v === "" ? null : v);
 export const encounterOperationalUpdateDtoSchema = z.object({
-  roomLabel: z.string().max(64).optional().nullable(),
-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
+  roomLabel: z.preprocess(emptyStrToNull, z.union([z.string().max(64), z.null()]).optional()),
+  physicianAssignedUserId: z.preprocess(
+    emptyStrToNull,
+    z.union([z.string().uuid(), z.null()]).optional()
+  ),
 });
 
 export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalUpdateDtoSchema>;

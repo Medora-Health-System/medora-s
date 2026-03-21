@@ -69,10 +69,13 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
-  /** Détail consultation = dossier clinique : pas d’accueil (FRONT_DESK). La liste /app/encounters reste autorisée (exact). */
+  /**
+   * Détail consultation — aligné sur `canViewEncounterDetail` (page consultation) et liens « Ouvrir la consultation ».
+   * FRONT_DESK : liste exacte `/app/encounters` + accueil ; le détail doit rester accessible (réception / suivi).
+   */
   {
     prefix: "/app/encounters/",
-    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],
+    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY", "FRONT_DESK"],
   },
   { prefix: "/app/encounters", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"], exact: true },
   { prefix: "/app/patients", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
@@ -92,6 +95,16 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/medications", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/settings", roles: ["ADMIN", "PROVIDER", "RN"] },
 ];
+
+/**
+ * Détail consultation `/app/encounters/:id` (un seul segment après `encounters`).
+ * Aligné avec le garde du layout (`app/app/layout.tsx`) : ne pas appliquer `getRouteGuardRedirect` ici
+ * pour éviter un rebond silencieux vers le tableau de bord — la page consultation applique le RBAC.
+ */
+export function isEncounterDetailPathname(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return /^\/app\/encounters\/[^/]+$/.test(pathname);
+}
 
 function normalizeRoleSet(roles: string[]): Set<string> {
   return new Set(roles.map((r) => (r ?? "").toUpperCase().trim()).filter(Boolean));
