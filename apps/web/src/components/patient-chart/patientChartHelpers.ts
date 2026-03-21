@@ -14,7 +14,7 @@ export const NURSING_ASSESSMENT_SECTION_LABELS_FR: Record<string, string> = {
   securite: "Risques / sécurité",
   observationsInfirmieres: "Observations infirmières",
   interventionsInfirmieres: "Interventions infirmières",
-  notesInfirmieresLibres: "Notes infirmières libres",
+  notesInfirmieresLibres: "Note infirmière, autres",
   notesInfirmieres: "Observations infirmières",
 };
 

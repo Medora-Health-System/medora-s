@@ -19,9 +19,12 @@ export default function RadOrderDetailPage() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
+  const effectiveFacilityId =
+    facilityId ?? (facilityIdFromHook?.trim() ? facilityIdFromHook : null);
+
   if (!ready) return <p style={{ padding: 24 }}>Chargement…</p>;
 
   return (
-    <DepartmentOrderDetail kind="radiology" orderId={orderId} listHref="/app/rad-worklist" facilityId={facilityId} />
+    <DepartmentOrderDetail kind="radiology" orderId={orderId} listHref="/app/rad-worklist" facilityId={effectiveFacilityId} />
   );
 }

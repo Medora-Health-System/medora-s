@@ -19,6 +19,9 @@ export default function PharmacyOrderDetailPage() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
+  const effectiveFacilityId =
+    facilityId ?? (facilityIdFromHook?.trim() ? facilityIdFromHook : null);
+
   if (!ready) return <p style={{ padding: 24 }}>Chargement…</p>;
 
   return (
@@ -26,7 +29,7 @@ export default function PharmacyOrderDetailPage() {
       kind="pharmacy"
       orderId={orderId}
       listHref="/app/pharmacy-worklist"
-      facilityId={facilityId}
+      facilityId={effectiveFacilityId}
     />
   );
 }

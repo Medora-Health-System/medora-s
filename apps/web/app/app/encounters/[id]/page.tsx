@@ -27,6 +27,7 @@ import {
 } from "@/lib/uiLabels";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { calculateAge } from "@/lib/patientDisplay";
+import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
@@ -82,6 +83,7 @@ export default function EncounterDetailPage() {
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, canPrescribe, roles, ready: rolesReady } = useFacilityAndRoles();
   const [encounter, setEncounter] = useState<any>(null);
+  const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
   const [facilityId, setFacilityId] = useState<string>("");
@@ -90,6 +92,8 @@ export default function EncounterDetailPage() {
   const [quickOrders, setQuickOrders] = useState<any[]>([]);
   const [quickDiagnosisCount, setQuickDiagnosisCount] = useState<number | null>(null);
   const [quickContextLoading, setQuickContextLoading] = useState(false);
+  /** Signes vitaux / ordres / diagnostics : échec partiel sans quitter la route. */
+  const [quickContextNotice, setQuickContextNotice] = useState<string | null>(null);
   const [medicationModalRequestTick, setMedicationModalRequestTick] = useState(0);
   const [encounterResultsRefresh, setEncounterResultsRefresh] = useState(0);
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
@@ -104,6 +108,8 @@ export default function EncounterDetailPage() {
     followUp: "",
     returnIfWorse: "",
   });
+  /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
+  const encounterHasLoadedOnceRef = useRef(false);
 
   /** Aligné sur GET /encounters/:id (inclut lab / imagerie / pharmacie pour les liens depuis les files). */
   const canViewEncounterDetail =
@@ -156,6 +162,7 @@ export default function EncounterDetailPage() {
 
   useEffect(() => {
     setTabBootstrapped(false);
+    encounterHasLoadedOnceRef.current = false;
   }, [encounterId]);
 
   useEffect(() => {
@@ -176,12 +183,16 @@ export default function EncounterDetailPage() {
     }
     let cancelled = false;
     setLoading(true);
+    setEncounterFetchError(null);
     (async () => {
       const cacheKey = `encounter:${facilityId}:${encounterId}`;
       try {
         const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
         const enc = asApiObject(data);
-        if (!cancelled) setEncounter(enc);
+        if (!cancelled) {
+          setEncounter(enc);
+          if (enc) encounterHasLoadedOnceRef.current = true;
+        }
         if (enc) {
           void setCachedRecord("encounter_summaries", cacheKey, enc, {
             facilityId,
@@ -191,8 +202,16 @@ export default function EncounterDetailPage() {
         }
       } catch (error) {
         console.error("Failed to load encounter:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[encounterDetail] échec chargement consultation", { encounterId, facilityId, error });
+        }
+        const msg = normalizeUserFacingError(error instanceof Error ? error.message : null);
+        if (!cancelled) setEncounterFetchError(msg || "Impossible de charger la consultation.");
         const cached = await getCachedRecord<any>("encounter_summaries", cacheKey);
-        if (!cancelled) setEncounter(cached?.data ?? null);
+        if (!cancelled) {
+          setEncounter(cached?.data ?? null);
+          if (cached?.data) encounterHasLoadedOnceRef.current = true;
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -221,20 +240,30 @@ export default function EncounterDetailPage() {
   const loadQuickContext = useCallback(async () => {
     if (!encounter?.id || !facilityId || !rolesReady) return;
     setQuickContextLoading(true);
+    setQuickContextNotice(null);
     const patientId = encounter.patient?.id as string;
     const triageCacheKey = `encounter-triage:${facilityId}:${encounter.id}`;
     const ordersCacheKey = `encounter-orders:${facilityId}:${encounter.id}`;
     const triageP = canFetchEncounterTriage
-      ? apiFetch(`/encounters/${encounter.id}/triage`, { facilityId }).catch(() => null)
+      ? apiFetch(`/encounters/${encounter.id}/triage`, { facilityId })
       : Promise.resolve(null);
     const ordersP = canFetchEncounterOrders
-      ? apiFetch(`/encounters/${encounter.id}/orders`, { facilityId }).catch(() => [])
+      ? apiFetch(`/encounters/${encounter.id}/orders`, { facilityId })
       : Promise.resolve([]);
     const dxP =
       canFetchPatientDiagnosesList && patientId
-        ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId }).catch(() => null)
+        ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId })
         : Promise.resolve(null);
-    const [tri, ords, dx] = await Promise.all([triageP, ordersP, dxP]);
+    const [triRes, ordRes, dxRes] = await Promise.allSettled([triageP, ordersP, dxP]);
+    const tri = triRes.status === "fulfilled" ? triRes.value : null;
+    const ords = ordRes.status === "fulfilled" ? ordRes.value : null;
+    const dx = dxRes.status === "fulfilled" ? dxRes.value : null;
+
+    const failedLabels: string[] = [];
+    if (canFetchEncounterTriage && triRes.status === "rejected") failedLabels.push("signes vitaux");
+    if (canFetchEncounterOrders && ordRes.status === "rejected") failedLabels.push("ordres");
+    if (canFetchPatientDiagnosesList && patientId && dxRes.status === "rejected") failedLabels.push("liste de diagnostics");
+
     setQuickTriage(tri);
     setQuickOrders(Array.isArray(ords) ? ords : []);
     if (tri) {
@@ -259,13 +288,18 @@ export default function EncounterDetailPage() {
     } else {
       setQuickDiagnosisCount(null);
     }
-    if (!tri && Array.isArray(ords) && ords.length === 0) {
+    if (!tri || !Array.isArray(ords) || ords.length === 0) {
       const [cachedTri, cachedOrders] = await Promise.all([
         getCachedRecord<any>("latest_vitals", triageCacheKey),
         getCachedRecord<any[]>("encounter_summaries", ordersCacheKey),
       ]);
-      if (cachedTri?.data) setQuickTriage(cachedTri.data);
-      if (cachedOrders?.data) setQuickOrders(cachedOrders.data);
+      if (!tri && cachedTri?.data) setQuickTriage(cachedTri.data);
+      if ((!Array.isArray(ords) || ords.length === 0) && cachedOrders?.data) setQuickOrders(cachedOrders.data);
+    }
+    if (failedLabels.length > 0) {
+      setQuickContextNotice(
+        `Certaines données complémentaires n’ont pas pu être chargées (${failedLabels.join(", ")}). Le dossier de consultation reste disponible.`
+      );
     }
     setQuickContextLoading(false);
   }, [
@@ -307,7 +341,22 @@ export default function EncounterDetailPage() {
   const mergeEncounterFromOperationalPatch = useCallback((patch: Record<string, unknown>) => {
     setEncounter((prev: any) => {
       if (!prev) return prev;
-      return { ...prev, ...patch };
+      const next: Record<string, unknown> = { ...prev, ...patch };
+      const patchPatient = patch.patient;
+      if (prev.patient && patchPatient && typeof patchPatient === "object" && !Array.isArray(patchPatient)) {
+        next.patient = { ...prev.patient, ...patchPatient };
+      }
+      const uid = patch.physicianAssignedUserId as string | null | undefined;
+      const rel = patch.physicianAssigned as typeof prev.physicianAssigned | null | undefined;
+      if (
+        uid &&
+        uid === prev.physicianAssigned?.id &&
+        rel === null &&
+        prev.physicianAssigned
+      ) {
+        next.physicianAssigned = prev.physicianAssigned;
+      }
+      return next;
     });
   }, []);
 
@@ -316,7 +365,9 @@ export default function EncounterDetailPage() {
     if (!opts?.silent) setLoading(true);
     try {
       const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
-      setEncounter(asApiObject(data));
+      const enc = asApiObject(data);
+      setEncounter(enc);
+      if (enc) encounterHasLoadedOnceRef.current = true;
     } catch (error) {
       console.error("Failed to load encounter:", error);
     } finally {
@@ -388,14 +439,29 @@ export default function EncounterDetailPage() {
     return <div style={{ padding: 24 }}>Chargement…</div>;
   }
 
-  if (!rolesReady || loading) {
+  if (!rolesReady) {
+    return <div style={{ padding: 24 }}>Chargement…</div>;
+  }
+
+  if (loading && canViewEncounterDetail) {
+    return (
+      <div style={{ padding: 24 }}>
+        {encounterHasLoadedOnceRef.current ? "Chargement…" : "Ouverture de la consultation…"}
+      </div>
+    );
+  }
+
+  if (loading) {
     return <div style={{ padding: 24 }}>Chargement…</div>;
   }
 
   if (!canViewEncounterDetail) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[encounterDetail] accès refusé (rôle)", { encounterId, roles });
+    }
     return (
       <div style={{ padding: 24, maxWidth: 520 }}>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Accès restreint</p>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Accès restreint.</p>
         <p style={{ margin: "12px 0 0 0", color: "#555", lineHeight: 1.5 }}>
           Votre rôle ne permet pas d&apos;ouvrir le dossier de cette consultation. Utilisez un compte clinique ou
           facturation, ou restez sur la fiche patient (liste des consultations).
@@ -405,7 +471,25 @@ export default function EncounterDetailPage() {
   }
 
   if (!encounter) {
-    return <div style={{ padding: 24 }}>Consultation introuvable</div>;
+    return (
+      <div style={{ padding: 24, maxWidth: 520 }}>
+        {encounterFetchError ? (
+          <>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Impossible de charger la consultation.</p>
+            {encounterFetchError.trim() !== "Impossible de charger la consultation." ? (
+              <p style={{ margin: "12px 0 0 0", color: "#b71c1c", lineHeight: 1.5 }}>{encounterFetchError}</p>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Consultation introuvable</p>
+            <p style={{ margin: "12px 0 0 0", color: "#555" }}>
+              Cette consultation n&apos;existe pas, a été supprimée, ou vous n&apos;avez pas accès à cet établissement.
+            </p>
+          </>
+        )}
+      </div>
+    );
   }
 
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
@@ -453,12 +537,29 @@ export default function EncounterDetailPage() {
     { id: "diagnostics", label: "Diagnostics" },
     { id: "orders", label: "Ordres" },
     { id: "results", label: "Résultats" },
-    { id: "notes", label: "Notes inf." },
+    { id: "notes", label: "Notes Inf." },
     { id: "pathways", label: "Parcours cliniques" },
   ];
 
   return (
     <div>
+      {quickContextNotice ? (
+        <div
+          role="alert"
+          style={{
+            marginBottom: 12,
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #ffcc80",
+            backgroundColor: "#fff8e1",
+            fontSize: 13,
+            color: "#5d4037",
+            lineHeight: 1.45,
+          }}
+        >
+          {quickContextNotice}
+        </div>
+      ) : null}
       <div style={{ marginBottom: 16 }}>
         <div
           style={{
@@ -525,9 +626,7 @@ export default function EncounterDetailPage() {
                 </div>
                 <div style={{ marginTop: 4 }}>
                   <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
-                  {encounter.physicianAssigned
-                    ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
-                    : "—"}
+                  {formatEncounterPhysicianAssignedFr(encounter)}
                 </div>
                 {encounter.status === "CLOSED" && encounter.updatedAt && (
                   <div>
@@ -656,9 +755,7 @@ export default function EncounterDetailPage() {
               </div>
               <div>
                 <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
-                {encounter.physicianAssigned
-                  ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
-                  : "—"}
+                {formatEncounterPhysicianAssignedFr(encounter)}
               </div>
             </div>
           </div>
@@ -816,6 +913,7 @@ export default function EncounterDetailPage() {
               canPrescribe={canPrescribe}
               medicationModalRequestTick={medicationModalRequestTick}
               onOrdersUpdated={refreshQuickOrdersOnly}
+              onRefetchEncounter={() => loadEncounter({ silent: true })}
             />
           )}
           {activeTab === "results" && (
@@ -1013,9 +1111,7 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14 }}>
         <div style={{ gridColumn: "1 / -1" }}>
           <strong>Médecin attribué :</strong>{" "}
-          {encounter.physicianAssigned
-            ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
-            : "—"}
+          {formatEncounterPhysicianAssignedFr(encounter)}
         </div>
         {reason && (
           <div style={{ gridColumn: "1 / -1" }}>
@@ -1060,7 +1156,7 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
       )}
       {encounter.notes && (
         <div style={{ marginTop: 16 }}>
-          <strong>Notes infirmier/ère, autres</strong>
+          <strong>Note infirmière, autres</strong>
           <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, whiteSpace: "pre-wrap" }}>
             {encounter.notes}
           </div>
@@ -1717,7 +1813,7 @@ function NotesTab({
 
   return (
     <div>
-      <h3>Notes de consultation</h3>
+      <h3>Notes Inf.</h3>
       <p style={{ fontSize: 12, color: "#9e9e9e", marginBottom: 8 }}>Raccourcis ci-dessous.</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
         {COMMON_NOTE_SNIPPETS.slice(0, 6).map((snippet) => (
@@ -2017,6 +2113,7 @@ function OrdersTab({
   canPrescribe,
   medicationModalRequestTick = 0,
   onOrdersUpdated,
+  onRefetchEncounter,
 }: {
   encounterId: string;
   encounter: any;
@@ -2024,6 +2121,7 @@ function OrdersTab({
   canPrescribe: boolean;
   medicationModalRequestTick?: number;
   onOrdersUpdated?: () => void | Promise<void>;
+  onRefetchEncounter?: () => Promise<void>;
 }) {
   const { roles } = useFacilityAndRoles();
   const [orders, setOrders] = useState<any[]>([]);
@@ -2321,6 +2419,7 @@ function OrdersTab({
           encounter={encounter}
           initialOrderTab={createModalInitialTab}
           onClose={() => setShowCreateModal(false)}
+          onRefetchEncounter={onRefetchEncounter}
           onSuccess={async () => {
             setShowCreateModal(false);
             await loadOrders();

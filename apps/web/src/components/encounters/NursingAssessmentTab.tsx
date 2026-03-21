@@ -81,7 +81,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     id: "notesInfirmieresLibres",
-    label: "Notes infirmières libres",
+    label: "Note infirmière, autres",
     chips: [],
   },
 ];
