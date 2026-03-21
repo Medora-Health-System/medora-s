@@ -39,6 +39,8 @@ const encounterChartSelect = {
   physicianAssignedUserId: true,
   nursingAssessment: true,
   dischargeSummaryJson: true,
+  admissionSummaryJson: true,
+  admittedAt: true,
   physicianAssigned: {
     select: { id: true, firstName: true, lastName: true },
   },
@@ -410,6 +412,8 @@ export class ChartSummaryService {
         physicianAssignedUserId: e.physicianAssignedUserId,
         nursingAssessment: e.nursingAssessment,
         dischargeSummaryJson: e.dischargeSummaryJson,
+        admissionSummaryJson: e.admissionSummaryJson,
+        admittedAt: e.admittedAt,
         physicianAssigned: e.physicianAssigned,
         encounterDiagnoses: diagnosesByEncounter.get(e.id) ?? [],
         orders: compactOrders,

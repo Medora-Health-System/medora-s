@@ -17,6 +17,7 @@ import {
 } from "@/constants/clinicalTemplates";
 import { CreateOrderModal } from "@/components/orders";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
+import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import {
   getEncounterStatusLabelFr,
@@ -32,9 +33,27 @@ import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import {
+  diagnosisDisplayFr,
   nursingAssessmentDisplayLines,
   nursingAssessmentSignatureLineFr,
+  parseAdmissionSummaryForChart,
+  parseDischargeSummaryForChart,
 } from "@/components/patient-chart/patientChartHelpers";
+import {
+  admissionFormToPayload,
+  CARE_LEVEL_OPTIONS_FR,
+  emptyAdmissionForm,
+  formatPhysicianName,
+  hydrateAdmissionFormFromEncounterJson,
+  type AdmissionFormState,
+} from "@/lib/encounterAdmission";
+import {
+  DISCHARGE_MODE_OPTIONS_FR,
+  emptyDischargeForm,
+  hydrateDischargeFormFromEncounterJson,
+  mergeDischargeForSave,
+  type DischargeFormState,
+} from "@/lib/encounterDischarge";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
@@ -81,7 +100,7 @@ export default function EncounterDetailPage() {
   const params = useParams();
   const router = useRouter();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, canPrescribe, roles, ready: rolesReady } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
   const [encounter, setEncounter] = useState<any>(null);
   const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,6 +110,8 @@ export default function EncounterDetailPage() {
   const [quickTriage, setQuickTriage] = useState<any>(null);
   const [quickOrders, setQuickOrders] = useState<any[]>([]);
   const [quickDiagnosisCount, setQuickDiagnosisCount] = useState<number | null>(null);
+  /** Premier diagnostic de la consultation (liste déjà chargée) — pour impression sortie sans fetch supplémentaire. */
+  const [quickPrimaryDiagnosis, setQuickPrimaryDiagnosis] = useState<string | null>(null);
   const [quickContextLoading, setQuickContextLoading] = useState(false);
   /** Signes vitaux / ordres / diagnostics : échec partiel sans quitter la route. */
   const [quickContextNotice, setQuickContextNotice] = useState<string | null>(null);
@@ -99,15 +120,12 @@ export default function EncounterDetailPage() {
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [closingEncounter, setClosingEncounter] = useState(false);
   const [showDischargeModal, setShowDischargeModal] = useState(false);
+  /** Objet fusionné enregistré avant la modale de confirmation finale (ou null si clôture sans étape dossier). */
   const [pendingDischarge, setPendingDischarge] = useState<Record<string, string> | null>(null);
-  const [dischargeForm, setDischargeForm] = useState({
-    disposition: "",
-    exitCondition: "",
-    dischargeInstructions: "",
-    medicationsGiven: "",
-    followUp: "",
-    returnIfWorse: "",
-  });
+  const [dischargeForm, setDischargeForm] = useState<DischargeFormState>(() => emptyDischargeForm());
+  const [showAdmissionModal, setShowAdmissionModal] = useState(false);
+  const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
+  const [savingAdmission, setSavingAdmission] = useState(false);
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
 
@@ -134,6 +152,9 @@ export default function EncounterDetailPage() {
   const canFetchPatientDiagnosesList = canFetchEncounterTriage;
   const canManageEncounterClosure =
     roles.includes("PROVIDER") || roles.includes("ADMIN") || roles.includes("RN");
+
+  const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
+  const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -173,6 +194,17 @@ export default function EncounterDetailPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showCloseConfirmModal, closingEncounter]);
+
+  useEffect(() => {
+    if (!showDischargeModal || !encounter) return;
+    setDischargeForm(hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson));
+  }, [showDischargeModal, encounter?.id]);
+
+  useEffect(() => {
+    if (!showAdmissionModal || !encounter) return;
+    const def = formatPhysicianName(encounter.physicianAssigned);
+    setAdmissionForm(hydrateAdmissionFormFromEncounterJson(encounter.admissionSummaryJson, def));
+  }, [showAdmissionModal, encounter?.id, encounter?.physicianAssigned]);
 
   useEffect(() => {
     if (!encounterId || !facilityId || !rolesReady) return;
@@ -281,12 +313,16 @@ export default function EncounterDetailPage() {
       });
     }
     if (dx && typeof dx === "object" && Array.isArray((dx as any).items)) {
-      const n = (dx as { items: Array<{ encounterId?: string }> }).items.filter(
+      const items = (dx as { items: Array<{ encounterId?: string; description?: string | null; code: string }> }).items.filter(
         (d) => d.encounterId === encounter.id
-      ).length;
-      setQuickDiagnosisCount(n);
+      );
+      setQuickDiagnosisCount(items.length);
+      setQuickPrimaryDiagnosis(
+        items.length > 0 ? diagnosisDisplayFr(items[0].description, items[0].code) : null
+      );
     } else {
       setQuickDiagnosisCount(null);
+      setQuickPrimaryDiagnosis(null);
     }
     if (!tri || !Array.isArray(ords) || ords.length === 0) {
       const [cachedTri, cachedOrders] = await Promise.all([
@@ -375,6 +411,21 @@ export default function EncounterDetailPage() {
     }
   }, [canViewEncounterDetail, encounterId, facilityId]);
 
+  const handlePrintDischarge = useCallback(() => {
+    if (!encounter?.patient) return;
+    const facilityName = facilities.find((f) => f.id === facilityId)?.name;
+    printDischarge({
+      patient: encounter.patient,
+      encounter: {
+        createdAt: encounter.createdAt,
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        physicianAssigned: encounter.physicianAssigned ?? null,
+      },
+      facilityName: facilityName ?? null,
+      primaryDiagnosis: quickPrimaryDiagnosis,
+    });
+  }, [encounter, facilityId, facilities, quickPrimaryDiagnosis]);
+
   useEffect(() => {
     if (!encounter?.id || !encounter?.patient?.id) return;
     const onResultSaved = (ev: Event) => {
@@ -398,31 +449,73 @@ export default function EncounterDetailPage() {
     setShowDischargeModal(true);
   };
 
-  const submitDischargeAndConfirmClose = () => {
-    setPendingDischarge({ ...dischargeForm });
-    setShowDischargeModal(false);
-    setShowCloseConfirmModal(true);
+  const submitAdmission = async () => {
+    if (!encounter) return;
+    const payload = admissionFormToPayload(admissionForm);
+    if (Object.keys(payload).length === 0) {
+      alert("Veuillez renseigner au moins un champ du dossier d'admission.");
+      return;
+    }
+    setSavingAdmission(true);
+    try {
+      await apiFetch(`/encounters/${encounterId}`, {
+        method: "PATCH",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admissionSummaryJson: payload }),
+      });
+      await loadEncounter({ silent: true });
+      setShowAdmissionModal(false);
+    } catch (e) {
+      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
+      alert(msg || "Impossible d'enregistrer le dossier d'admission.");
+    } finally {
+      setSavingAdmission(false);
+    }
+  };
+
+  const submitDischargeAndConfirmClose = async () => {
+    if (!encounter) return;
+    const merged = mergeDischargeForSave(
+      encounter.dischargeSummaryJson,
+      dischargeForm,
+      canEditNursingDischarge,
+      canEditMedicalDischarge
+    );
+    try {
+      if (merged !== null) {
+        await apiFetch(`/encounters/${encounterId}`, {
+          method: "PATCH",
+          facilityId,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dischargeSummaryJson: merged }),
+        });
+        await loadEncounter({ silent: true });
+      }
+      setPendingDischarge(merged);
+      setShowDischargeModal(false);
+      setShowCloseConfirmModal(true);
+    } catch {
+      alert("Impossible d'enregistrer le dossier de sortie.");
+    }
   };
 
   const confirmCloseEncounter = async () => {
     setClosingEncounter(true);
     try {
-      const trimmed = pendingDischarge
-        ? {
-            disposition: pendingDischarge.disposition.trim() || undefined,
-            exitCondition: pendingDischarge.exitCondition.trim() || undefined,
-            dischargeInstructions: pendingDischarge.dischargeInstructions.trim() || undefined,
-            medicationsGiven: pendingDischarge.medicationsGiven.trim() || undefined,
-            followUp: pendingDischarge.followUp.trim() || undefined,
-            returnIfWorse: pendingDischarge.returnIfWorse.trim() || undefined,
-          }
-        : undefined;
+      const dischargePayload: Record<string, string> = {};
+      if (pendingDischarge) {
+        for (const [k, v] of Object.entries(pendingDischarge)) {
+          const t = typeof v === "string" ? v.trim() : "";
+          if (t) dischargePayload[k] = t;
+        }
+      }
       await apiFetch(`/encounters/${encounterId}/close`, {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          trimmed && Object.values(trimmed).some(Boolean) ? { discharge: trimmed } : {}
+          Object.keys(dischargePayload).length > 0 ? { discharge: dischargePayload } : {}
         ),
       });
       setShowCloseConfirmModal(false);
@@ -496,6 +589,8 @@ export default function EncounterDetailPage() {
   const isRNOnly = roles.includes("RN") && !isProviderLike;
   const showNursingTab = roles.includes("RN") || roles.includes("ADMIN") || roles.includes("PROVIDER");
   const canEditOperational = roles.includes("FRONT_DESK") || roles.includes("RN") || roles.includes("ADMIN");
+  /** Admission depuis la consultation — réservé médecin / admin (aligné sur `canPrescribe`). */
+  const canAdmitPatient = canPrescribe && encounter.status === "OPEN";
   const patient = encounter.patient;
   const motif =
     (encounter.visitReason || encounter.chiefComplaint || quickTriage?.chiefComplaint || "").trim() || "—";
@@ -518,6 +613,10 @@ export default function EncounterDetailPage() {
           year: "numeric",
         })
       : null;
+
+  const dischargePreviewForPrint = parseDischargeSummaryForChart(encounter.dischargeSummaryJson);
+  const showPrintDischarge =
+    encounter.status === "OPEN" || dischargePreviewForPrint !== null;
 
   const quickBtn: React.CSSProperties = {
     padding: "6px 12px",
@@ -615,6 +714,25 @@ export default function EncounterDetailPage() {
                   >
                     {getEncounterStatusLabelFr(encounter.status)}
                   </span>
+                  {encounter.admittedAt || parseAdmissionSummaryForChart(encounter.admissionSummaryJson) ? (
+                    <span
+                      style={{
+                        padding: "2px 10px",
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        backgroundColor: "#f3e5f5",
+                        color: "#6a1b9a",
+                      }}
+                      title={
+                        encounter.admittedAt
+                          ? `Décision d'admission le ${new Date(encounter.admittedAt).toLocaleString("fr-FR")}`
+                          : "Dossier d'admission enregistré"
+                      }
+                    >
+                      Patient admis (hospitalisation)
+                    </span>
+                  ) : null}
                 </div>
                 <div style={{ marginTop: 4 }}>
                   <span style={{ color: "#757575" }}>Ouverture :</span>{" "}
@@ -652,6 +770,25 @@ export default function EncounterDetailPage() {
               >
                 Retour au dossier patient
               </Link>
+              {canAdmitPatient && (
+                <button
+                  type="button"
+                  onClick={() => setShowAdmissionModal(true)}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#6a1b9a",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  Admettre le patient
+                </button>
+              )}
               {encounter.status === "OPEN" && canManageEncounterClosure && (
                 <>
                   <button
@@ -830,6 +967,21 @@ export default function EncounterDetailPage() {
                       Créer une ordonnance
                     </button>
                   ) : null}
+                  {canAdmitPatient ? (
+                    <button
+                      type="button"
+                      style={{
+                        ...quickBtn,
+                        backgroundColor: "#f3e5f5",
+                        borderColor: "#6a1b9a",
+                        color: "#4a148c",
+                        fontWeight: 600,
+                      }}
+                      onClick={() => setShowAdmissionModal(true)}
+                    >
+                      Admettre le patient
+                    </button>
+                  ) : null}
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
                     Voir les signes vitaux
                   </button>
@@ -881,7 +1033,13 @@ export default function EncounterDetailPage() {
         </div>
 
         <div style={{ padding: 24 }}>
-          {activeTab === "summary" && <EncounterSummaryTab encounter={encounter} />}
+          {activeTab === "summary" && (
+            <EncounterSummaryTab
+              encounter={encounter}
+              showPrintDischarge={showPrintDischarge}
+              onPrintDischarge={handlePrintDischarge}
+            />
+          )}
           {activeTab === "clinic" && (
             <ClinicVisitTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />
           )}
@@ -960,27 +1118,78 @@ export default function EncounterDetailPage() {
             <h2 id="discharge-title" style={{ margin: "0 0 16px 0", fontSize: 18 }}>
               Dossier de sortie
             </h2>
+            <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#555", lineHeight: 1.45 }}>
+              Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin :
+              disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(
                 [
-                  ["disposition", "Disposition"],
-                  ["exitCondition", "État à la sortie"],
-                  ["dischargeInstructions", "Instructions de sortie"],
-                  ["medicationsGiven", "Médicaments remis / prescrits"],
-                  ["followUp", "Suivi recommandé"],
-                  ["returnIfWorse", "Retour si aggravation"],
+                  ["disposition", "Disposition", "medical", 2],
+                  ["exitCondition", "État à la sortie", "nursing", 2],
+                  ["dischargeInstructions", "Instructions de sortie", "medical", 3],
+                  ["medicationsGiven", "Médicaments remis / prescrits", "medical", 3],
+                  ["followUp", "Suivi recommandé", "medical", 2],
+                  ["returnIfWorse", "Retour si aggravation", "nursing", 2],
+                  ["patientDestination", "Destination du patient", "nursing", 2],
                 ] as const
-              ).map(([key, label]) => (
-                <label key={key} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                  <span style={{ fontWeight: 600 }}>{label}</span>
-                  <textarea
-                    value={dischargeForm[key]}
-                    onChange={(e) => setDischargeForm((f) => ({ ...f, [key]: e.target.value }))}
-                    rows={key === "dischargeInstructions" || key === "medicationsGiven" ? 3 : 2}
-                    style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
-                  />
-                </label>
-              ))}
+              ).map(([key, label, kind, rows]) => {
+                const editable =
+                  (kind === "nursing" && canEditNursingDischarge) ||
+                  (kind === "medical" && canEditMedicalDischarge);
+                const k = key as keyof DischargeFormState;
+                return (
+                  <label key={key} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                    <span style={{ fontWeight: 600 }}>
+                      {label}
+                      {!editable ? (
+                        <span style={{ fontWeight: 400, color: "#757575", marginLeft: 6 }}>(lecture seule)</span>
+                      ) : null}
+                    </span>
+                    <textarea
+                      readOnly={!editable}
+                      value={dischargeForm[k] as string}
+                      onChange={(e) => setDischargeForm((f) => ({ ...f, [k]: e.target.value }))}
+                      rows={rows}
+                      style={{
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1px solid #ccc",
+                        fontSize: 14,
+                        background: editable ? "#fff" : "#f5f5f5",
+                        cursor: editable ? "text" : "not-allowed",
+                      }}
+                    />
+                  </label>
+                );
+              })}
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>
+                  Mode de sortie
+                  {!canEditNursingDischarge ? (
+                    <span style={{ fontWeight: 400, color: "#757575", marginLeft: 6 }}>(lecture seule)</span>
+                  ) : null}
+                </span>
+                <select
+                  disabled={!canEditNursingDischarge}
+                  value={dischargeForm.dischargeMode}
+                  onChange={(e) => setDischargeForm((f) => ({ ...f, dischargeMode: e.target.value }))}
+                  style={{
+                    padding: 8,
+                    borderRadius: 6,
+                    border: "1px solid #ccc",
+                    fontSize: 14,
+                    background: canEditNursingDischarge ? "#fff" : "#f5f5f5",
+                  }}
+                >
+                  <option value="">— Sélectionner —</option>
+                  {DISCHARGE_MODE_OPTIONS_FR.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
               <button
@@ -1012,6 +1221,156 @@ export default function EncounterDetailPage() {
                 }}
               >
                 Continuer vers la clôture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAdmissionModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2150,
+            padding: 16,
+          }}
+          onClick={() => !savingAdmission && setShowAdmissionModal(false)}
+          role="presentation"
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              maxWidth: 560,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admission-title"
+          >
+            <h2 id="admission-title" style={{ margin: "0 0 12px 0", fontSize: 18, color: "#4a148c" }}>
+              Dossier d&apos;admission
+            </h2>
+            <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#555", lineHeight: 1.45 }}>
+              Documentez la décision d&apos;hospitalisation depuis cette consultation. La{" "}
+              <strong>sortie de consultation</strong> (autre flux) clôt la visite ; l&apos;
+              <strong>admission</strong> enregistre la décision et le plan initial dans ce même dossier.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>Motif d&apos;admission</span>
+                <textarea
+                  value={admissionForm.admissionReason}
+                  onChange={(e) => setAdmissionForm((f) => ({ ...f, admissionReason: e.target.value }))}
+                  rows={2}
+                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>Service / unité</span>
+                <input
+                  type="text"
+                  value={admissionForm.serviceUnit}
+                  onChange={(e) => setAdmissionForm((f) => ({ ...f, serviceUnit: e.target.value }))}
+                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>Diagnostic d&apos;admission</span>
+                <textarea
+                  value={admissionForm.admissionDiagnosis}
+                  onChange={(e) => setAdmissionForm((f) => ({ ...f, admissionDiagnosis: e.target.value }))}
+                  rows={2}
+                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>Niveau de soins</span>
+                <input
+                  type="text"
+                  list="medora-care-level-suggestions"
+                  placeholder="Saisie libre ou choix parmi les suggestions"
+                  value={admissionForm.careLevel}
+                  onChange={(e) => setAdmissionForm((f) => ({ ...f, careLevel: e.target.value }))}
+                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                />
+                <datalist id="medora-care-level-suggestions">
+                  {CARE_LEVEL_OPTIONS_FR.map((opt) => (
+                    <option key={opt} value={opt} />
+                  ))}
+                </datalist>
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>Condition à l&apos;admission</span>
+                <textarea
+                  value={admissionForm.conditionAtAdmission}
+                  onChange={(e) => setAdmissionForm((f) => ({ ...f, conditionAtAdmission: e.target.value }))}
+                  rows={3}
+                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>Plan initial</span>
+                <textarea
+                  value={admissionForm.initialPlan}
+                  onChange={(e) => setAdmissionForm((f) => ({ ...f, initialPlan: e.target.value }))}
+                  rows={3}
+                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                <span style={{ fontWeight: 600 }}>Médecin responsable</span>
+                <input
+                  type="text"
+                  value={admissionForm.responsiblePhysicianName}
+                  onChange={(e) => setAdmissionForm((f) => ({ ...f, responsiblePhysicianName: e.target.value }))}
+                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                />
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+              <button
+                type="button"
+                disabled={savingAdmission}
+                onClick={() => setShowAdmissionModal(false)}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                  background: "#fff",
+                  cursor: savingAdmission ? "not-allowed" : "pointer",
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={savingAdmission}
+                onClick={() => void submitAdmission()}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "none",
+                  borderRadius: 6,
+                  background: "#6a1b9a",
+                  color: "white",
+                  cursor: savingAdmission ? "not-allowed" : "pointer",
+                  opacity: savingAdmission ? 0.85 : 1,
+                }}
+              >
+                {savingAdmission ? "…" : "Enregistrer le dossier d'admission"}
               </button>
             </div>
           </div>
@@ -1098,10 +1457,20 @@ export default function EncounterDetailPage() {
   );
 }
 
-function EncounterSummaryTab({ encounter }: { encounter: any }) {
+function EncounterSummaryTab({
+  encounter,
+  showPrintDischarge,
+  onPrintDischarge,
+}: {
+  encounter: any;
+  showPrintDischarge: boolean;
+  onPrintDischarge: () => void;
+}) {
   const reason = encounter.visitReason || encounter.chiefComplaint;
   const nursingLines = nursingAssessmentDisplayLines(encounter?.nursingAssessment);
   const nursingSig = nursingAssessmentSignatureLineFr(encounter?.nursingAssessment);
+  const dischargePreview = parseDischargeSummaryForChart(encounter?.dischargeSummaryJson);
+  const admissionPreview = parseAdmissionSummaryForChart(encounter?.admissionSummaryJson);
   return (
     <div>
       <h3>Résumé de la consultation</h3>
@@ -1152,6 +1521,175 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
           <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f0f7ff", borderRadius: 4, whiteSpace: "pre-wrap" }}>
             {encounter.treatmentPlan}
           </div>
+        </div>
+      )}
+      {(admissionPreview || encounter.admittedAt) && (
+        <div style={{ marginTop: 16 }}>
+          <strong style={{ color: "#4a148c" }}>Décision d&apos;admission (hospitalisation)</strong>
+          {encounter.admittedAt ? (
+            <div style={{ fontSize: 12, color: "#757575", marginTop: 4 }}>
+              Enregistrée le {new Date(encounter.admittedAt).toLocaleString("fr-FR")}
+            </div>
+          ) : null}
+          {admissionPreview ? (
+            <div
+              style={{
+                marginTop: 8,
+                padding: 12,
+                backgroundColor: "#f3e5f5",
+                borderRadius: 4,
+                fontSize: 14,
+                lineHeight: 1.5,
+                color: "#263238",
+                borderLeft: "4px solid #6a1b9a",
+              }}
+            >
+              {admissionPreview.admissionReason ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Motif d&apos;admission : </span>
+                  {admissionPreview.admissionReason}
+                </div>
+              ) : null}
+              {admissionPreview.serviceUnit ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Service / unité : </span>
+                  {admissionPreview.serviceUnit}
+                </div>
+              ) : null}
+              {admissionPreview.admissionDiagnosis ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Diagnostic d&apos;admission : </span>
+                  {admissionPreview.admissionDiagnosis}
+                </div>
+              ) : null}
+              {admissionPreview.careLevel ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Niveau de soins : </span>
+                  {admissionPreview.careLevel}
+                </div>
+              ) : null}
+              {admissionPreview.conditionAtAdmission ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Condition à l&apos;admission : </span>
+                  <span style={{ whiteSpace: "pre-wrap" }}>{admissionPreview.conditionAtAdmission}</span>
+                </div>
+              ) : null}
+              {admissionPreview.initialPlan ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Plan initial : </span>
+                  <span style={{ whiteSpace: "pre-wrap" }}>{admissionPreview.initialPlan}</span>
+                </div>
+              ) : null}
+              {admissionPreview.responsiblePhysicianName ? (
+                <div>
+                  <span style={{ fontWeight: 600 }}>Médecin responsable : </span>
+                  {admissionPreview.responsiblePhysicianName}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#757575" }}>
+              Décision d&apos;admission enregistrée — détail à compléter depuis le bouton « Admettre le patient ».
+            </p>
+          )}
+        </div>
+      )}
+      {showPrintDischarge && (
+        <div style={{ marginTop: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 8,
+            }}
+          >
+            <strong>Sortie de consultation</strong>
+            <button
+              type="button"
+              onClick={onPrintDischarge}
+              style={{
+                padding: "6px 12px",
+                fontSize: 13,
+                border: "1px solid #000",
+                borderRadius: 4,
+                background: "#fff",
+                color: "#000",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Imprimer la sortie
+            </button>
+          </div>
+          {dischargePreview ? (
+            <div
+              style={{
+                marginTop: 4,
+                padding: 12,
+                backgroundColor: "#eceff1",
+                borderRadius: 4,
+                fontSize: 14,
+                lineHeight: 1.5,
+                color: "#263238",
+              }}
+            >
+              {dischargePreview.disposition ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Disposition : </span>
+                  {dischargePreview.disposition}
+                </div>
+              ) : null}
+              {dischargePreview.exitCondition ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>État à la sortie : </span>
+                  {dischargePreview.exitCondition}
+                </div>
+              ) : null}
+              {dischargePreview.dischargeInstructions ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Instructions de sortie : </span>
+                  {dischargePreview.dischargeInstructions}
+                </div>
+              ) : null}
+              {dischargePreview.medicationsGiven ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Médicaments remis / prescrits : </span>
+                  {dischargePreview.medicationsGiven}
+                </div>
+              ) : null}
+              {dischargePreview.followUp ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Suivi recommandé : </span>
+                  {dischargePreview.followUp}
+                </div>
+              ) : null}
+              {dischargePreview.returnIfWorse ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Retour si aggravation : </span>
+                  {dischargePreview.returnIfWorse}
+                </div>
+              ) : null}
+              {dischargePreview.patientDestination ? (
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>Destination du patient : </span>
+                  {dischargePreview.patientDestination}
+                </div>
+              ) : null}
+              {dischargePreview.dischargeMode ? (
+                <div>
+                  <span style={{ fontWeight: 600 }}>Mode de sortie : </span>
+                  {dischargePreview.dischargeMode}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#757575" }}>
+              Aucun résumé de sortie structuré enregistré pour l&apos;instant — vous pouvez tout de même imprimer un
+              document avec l&apos;identité patient et les informations de consultation.
+            </p>
+          )}
         </div>
       )}
       {encounter.notes && (

@@ -101,6 +101,20 @@ export type EncounterOutpatientCreateDto = z.infer<
   typeof encounterOutpatientCreateDtoSchema
 >;
 
+/** Dossier d'admission depuis la consultation (MVP — une entrée par encounter) */
+export const admissionSummaryFieldsSchema = z.object({
+  admissionReason: z.string().max(4000).optional(),
+  serviceUnit: z.string().max(512).optional(),
+  admissionDiagnosis: z.string().max(4000).optional(),
+  careLevel: z.string().max(256).optional(),
+  conditionAtAdmission: z.string().max(8000).optional(),
+  initialPlan: z.string().max(8000).optional(),
+  /** Nom affiché du médecin responsable (MVP texte libre) */
+  responsiblePhysicianName: z.string().max(256).optional(),
+});
+
+export type AdmissionSummaryFields = z.infer<typeof admissionSummaryFieldsSchema>;
+
 export const encounterUpdateDtoSchema = z.object({
   visitReason: z.string().max(4000).optional().nullable(),
   chiefComplaint: z.string().max(4000).optional().nullable(),
@@ -115,6 +129,8 @@ export const encounterUpdateDtoSchema = z.object({
   /** Structured nursing assessment (e.g. Évaluation infirmière sections) */
   nursingAssessment: z.any().optional().nullable(),
   dischargeSummaryJson: z.any().optional().nullable(),
+  /** Décision d'admission structurée (JSON) — `admittedAt` défini côté API à la 1re sauvegarde */
+  admissionSummaryJson: z.any().optional().nullable(),
   roomLabel: z.string().max(64).optional().nullable(),
   physicianAssignedUserId: z.string().uuid().optional().nullable(),
 });
@@ -140,6 +156,10 @@ export const encounterDischargeFieldsSchema = z.object({
   medicationsGiven: z.string().max(8000).optional(),
   followUp: z.string().max(4000).optional(),
   returnIfWorse: z.string().max(4000).optional(),
+  /** Destination du patient (domicile, famille, autre établissement, etc.) */
+  patientDestination: z.string().max(4000).optional(),
+  /** Libellé français (ex. Domicile, Transfert, Admission) — souvent choisi dans une liste */
+  dischargeMode: z.string().max(256).optional(),
 });
 
 export type EncounterDischargeFields = z.infer<typeof encounterDischargeFieldsSchema>;

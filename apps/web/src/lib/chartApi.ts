@@ -69,6 +69,9 @@ export type ChartSummaryEncounter = {
   physicianAssigned?: { id: string; firstName: string; lastName: string } | null;
   nursingAssessment?: unknown;
   dischargeSummaryJson?: unknown;
+  /** Dossier d'admission (depuis la consultation) */
+  admissionSummaryJson?: unknown;
+  admittedAt?: string | null;
   /** Présents côté API récent ; optionnel pour vieux caches hors-ligne. */
   encounterDiagnoses?: ChartEncounterDiagnosis[];
   orders?: ChartSummaryOrder[];

@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
@@ -202,6 +203,14 @@ export class EncountersController {
     const parsed = encounterUpdateDtoSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+
+    if (parsed.data.admissionSummaryJson !== undefined) {
+      if (req.userRole !== RoleCode.PROVIDER && req.userRole !== RoleCode.ADMIN) {
+        throw new ForbiddenException(
+          "Le dossier d'admission est réservé aux médecins et aux administrateurs."
+        );
+      }
     }
 
     return this.encountersService.update(

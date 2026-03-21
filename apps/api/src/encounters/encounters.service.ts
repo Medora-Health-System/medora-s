@@ -2,16 +2,59 @@ import { Injectable, NotFoundException, BadRequestException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, Prisma, RoleCode } from "@prisma/client";
+import { AuditAction, EncounterStatus, EncounterType, Prisma, RoleCode } from "@prisma/client";
 import { isEncounterType } from "../common/utils/prisma-query-enum-guards";
 import { assertCanTransitionEncounter } from "../common/workflow/encounter.transitions";
-import type {
-  EncounterCloseDto,
-  EncounterCreateDto,
-  EncounterOperationalUpdateDto,
-  EncounterOutpatientCreateDto,
-  EncounterUpdateDto,
+import {
+  admissionSummaryFieldsSchema,
+  type EncounterCloseDto,
+  type EncounterCreateDto,
+  type EncounterOperationalUpdateDto,
+  type EncounterOutpatientCreateDto,
+  type EncounterUpdateDto,
 } from "@medora/shared";
+
+/** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
+const DISCHARGE_SUMMARY_KEYS = [
+  "disposition",
+  "exitCondition",
+  "dischargeInstructions",
+  "medicationsGiven",
+  "followUp",
+  "returnIfWorse",
+  "patientDestination",
+  "dischargeMode",
+] as const;
+
+function admissionSummaryHasContent(data: Record<string, unknown>): boolean {
+  return Object.values(data).some((v) => typeof v === "string" && v.trim().length > 0);
+}
+
+function mergeDischargeSummaryJson(
+  existing: unknown,
+  incoming: EncounterCloseDto["discharge"]
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+    const o = existing as Record<string, unknown>;
+    for (const k of DISCHARGE_SUMMARY_KEYS) {
+      const v = o[k];
+      if (typeof v === "string" && v.trim()) {
+        out[k] = v.trim();
+      }
+    }
+  }
+  if (incoming) {
+    const inc = incoming as Record<string, unknown>;
+    for (const k of DISCHARGE_SUMMARY_KEYS) {
+      const v = inc[k];
+      if (v !== undefined && String(v).trim() !== "") {
+        out[k] = String(v).trim();
+      }
+    }
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 import type { ListPatientEncountersQuery } from "./dto";
 import { toEncounterClinicResponse } from "./encounter-response.util";
 
@@ -242,6 +285,33 @@ export class EncountersService {
     if (data.dischargeSummaryJson !== undefined) {
       updateData.dischargeSummaryJson = data.dischargeSummaryJson;
     }
+    if (data.admissionSummaryJson !== undefined) {
+      if (encounter.status !== EncounterStatus.OPEN) {
+        throw new BadRequestException(
+          "L'admission ne peut être modifiée que sur une consultation ouverte."
+        );
+      }
+      if (data.admissionSummaryJson === null) {
+        updateData.admissionSummaryJson = null;
+        updateData.admittedAt = null;
+      } else {
+        const parsedAdmission = admissionSummaryFieldsSchema.safeParse(data.admissionSummaryJson);
+        if (!parsedAdmission.success) {
+          throw new BadRequestException("Dossier d'admission invalide.");
+        }
+        const asRecord = parsedAdmission.data as Record<string, unknown>;
+        if (!admissionSummaryHasContent(asRecord)) {
+          throw new BadRequestException("Renseignez au moins un champ du dossier d'admission.");
+        }
+        updateData.admissionSummaryJson = parsedAdmission.data;
+        if (!encounter.admittedAt) {
+          updateData.admittedAt = new Date();
+        }
+        if (encounter.type !== EncounterType.INPATIENT) {
+          updateData.type = EncounterType.INPATIENT;
+        }
+      }
+    }
     if (data.roomLabel !== undefined) {
       updateData.roomLabel =
         data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
@@ -413,8 +483,9 @@ export class EncountersService {
       status: "CLOSED",
       dischargedAt: new Date(),
     };
-    if (data?.discharge && Object.values(data.discharge).some((v) => v !== undefined && String(v).trim() !== "")) {
-      closePayload.dischargeSummaryJson = data.discharge as object;
+    const mergedDischarge = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, data?.discharge);
+    if (mergedDischarge) {
+      closePayload.dischargeSummaryJson = mergedDischarge;
     }
 
     const updated = await this.prisma.encounter.update({

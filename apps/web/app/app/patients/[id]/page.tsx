@@ -58,7 +58,7 @@ export default function PatientDetailPage() {
   const [vitalsTimeline, setVitalsTimeline] = useState<PatientTriageVitalsResponse | null>(null);
   const [vitalsLoading, setVitalsLoading] = useState(false);
   const [supersededVitals, setSupersededVitals] = useState<PatientTriageVitalsSnapshot[]>([]);
-  const { canPrescribe, roles, ready: rolesReady } = useFacilityAndRoles();
+  const { canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
   const triageLoadFailedRef = useRef(false);
 
   useEffect(() => {
@@ -411,30 +411,6 @@ export default function PatientDetailPage() {
           onEditPatient={() => setShowEditModal(true)}
           onPendingCreateEncounter={() => setPendingOpenCreateEncounter(true)}
         />
-        {clinicalChartAccess && chartSummary && (
-          <div style={{ marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={() =>
-                printPatientChart(
-                  getPatientChartPrintHtml({ chartSummary, followUps: followUps ?? [] })
-                )
-              }
-              style={{
-                padding: "10px 16px",
-                border: "1px solid #37474f",
-                borderRadius: 6,
-                background: "#fff",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 14,
-                color: "#263238",
-              }}
-            >
-              Imprimer le dossier
-            </button>
-          </div>
-        )}
       </div>
 
       <div
@@ -496,6 +472,18 @@ export default function PatientDetailPage() {
               followUpsLoading={followUpsLoading}
               onRefreshFollowUps={loadFollowUps}
               onAddFollowUp={() => setShowAddFollowUpModal(true)}
+              onPrintMedicalRecord={
+                chartSummary
+                  ? () =>
+                      printPatientChart(
+                        getPatientChartPrintHtml({
+                          chartSummary,
+                          followUps: followUps ?? [],
+                          facilityName: facilities.find((f) => f.id === facilityId)?.name,
+                        })
+                      )
+                  : undefined
+              }
             />
           )}
           {activeTab === "summary" && !clinicalChartAccess && (

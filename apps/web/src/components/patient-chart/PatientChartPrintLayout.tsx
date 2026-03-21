@@ -1,19 +1,27 @@
 /**
- * Impression navigateur du dossier patient (aperçu synthétique).
- * Données issues du résumé dossier (GET chart-summary) + identité patient.
+ * Impression navigateur du dossier médical patient (résumé chart-summary + suivis).
+ * Données déjà chargées — aucun fetch. Libellés FR, pas d’UUID dans le HTML.
  */
 
-import type { ChartSummary } from "@/lib/chartApi";
+import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
 import type { FollowUpRow } from "@/lib/followUpsApi";
-import { getEncounterStatusLabelFr, getEncounterTypeLabelFr, getFollowUpStatusLabelFr, getPatientSexLabelFr } from "@/lib/uiLabels";
+import {
+  getEncounterStatusLabelFr,
+  getEncounterTypeLabelFr,
+  getFollowUpStatusLabelFr,
+  getPatientSexLabelFr,
+} from "@/lib/uiLabels";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
+import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import {
   diagnosisDisplayFr,
   parseDischargeSummaryForChart,
   parseNursingAssessmentSectionsForChart,
+  nirMrnDisplay,
   type DischargeSummaryFieldsFr,
 } from "./patientChartHelpers";
+import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 
 function esc(s: string): string {
   return String(s)
@@ -32,13 +40,24 @@ function fmtDt(iso: string | null | undefined): string {
   }
 }
 
+function fmtShort(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return "—";
+  }
+}
+
 const DISCHARGE_LABELS: Record<keyof DischargeSummaryFieldsFr, string> = {
   disposition: "Disposition",
   exitCondition: "État à la sortie",
-  dischargeInstructions: "Consignes de sortie",
-  medicationsGiven: "Médicaments administrés",
-  followUp: "Suivi",
-  returnIfWorse: "Réconsultation si aggravation",
+  dischargeInstructions: "Instructions de sortie",
+  medicationsGiven: "Médicaments remis / prescrits",
+  followUp: "Suivi recommandé",
+  returnIfWorse: "Retour si aggravation",
+  patientDestination: "Destination du patient",
+  dischargeMode: "Mode de sortie",
 };
 
 function dischargeFieldsHtml(d: DischargeSummaryFieldsFr): string {
@@ -46,88 +65,211 @@ function dischargeFieldsHtml(d: DischargeSummaryFieldsFr): string {
   (Object.keys(DISCHARGE_LABELS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
     const v = d[k];
     if (typeof v === "string" && v.trim()) {
-      parts.push(`<div><strong>${esc(DISCHARGE_LABELS[k])}</strong> ${esc(v)}</div>`);
+      parts.push(`<div style="margin:2px 0;"><strong>${esc(DISCHARGE_LABELS[k])}</strong> ${esc(v)}</div>`);
     }
   });
-  return parts.length ? `<div style="font-size:12px;">${parts.join("")}</div>` : "—";
+  return parts.length ? parts.join("") : "";
 }
 
+function orderTypeHeadingFr(orderType: string): string {
+  const m: Record<string, string> = {
+    LAB: "Analyses demandées",
+    IMAGING: "Imagerie demandée",
+    MEDICATION: "Médicaments prescrits",
+  };
+  return m[orderType] ?? "Ordres";
+}
+
+function physicianName(u: { firstName: string; lastName: string } | null | undefined): string {
+  if (!u) return "—";
+  const s = `${u.firstName} ${u.lastName}`.trim();
+  return s || "—";
+}
+
+function flattenOrderItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] {
+  const orders = enc.orders ?? [];
+  const items: ChartSummaryOrderItem[] = [];
+  for (const o of orders) {
+    for (const it of o.items || []) items.push(it);
+  }
+  return items;
+}
+
+function resultSnippet(it: ChartSummaryOrderItem): string {
+  const parts: string[] = [];
+  if (it.result?.resultText?.trim()) parts.push(it.result.resultText.trim().slice(0, 500));
+  if (it.result?.attachmentSummaryFr?.trim()) parts.push(it.result.attachmentSummaryFr.trim());
+  if (it.result?.verifiedAt) parts.push(`Validé le ${fmtShort(it.result.verifiedAt)}`);
+  return parts.join(" — ") || "—";
+}
+
+function isResultLike(it: ChartSummaryOrderItem): boolean {
+  if (it.catalogItemType !== "LAB_TEST" && it.catalogItemType !== "IMAGING_STUDY") return false;
+  return !!(
+    it.result?.resultText?.trim() ||
+    it.result?.attachmentSummaryFr ||
+    it.result?.verifiedAt ||
+    it.status === "RESULTED" ||
+    it.status === "VERIFIED"
+  );
+}
+
+/**
+ * HTML d’impression du dossier (identité, vitaux, historique, diagnostics, résultats, médicaments, sorties, suivis).
+ */
 export function getPatientChartPrintHtml(params: {
   chartSummary: ChartSummary;
-  /** Optionnel : libellé établissement */
   facilityName?: string;
-  /** Suivis programmés (résumé) */
   followUps?: FollowUpRow[];
 }): string {
   const { chartSummary, facilityName, followUps } = params;
   const p = chartSummary.patient;
   const age = p.dob ? calculateAge(p.dob) : null;
   const sex = getPatientSexLabelFr(undefined, p.sexAtBirth ?? null);
+  const ids = nirMrnDisplay({
+    nationalId: undefined,
+    mrn: p.mrn,
+    globalMrn: p.globalMrn,
+  });
 
-  const encBlocks = [...(chartSummary.recentEncounters ?? [])]
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  const latestVitalsJson = p.latestVitalsJson as Record<string, number | string | null | undefined> | null | undefined;
+  const latestVitalsLine =
+    latestVitalsJson && Object.keys(latestVitalsJson).length > 0
+      ? formatVitalsHeaderLine(latestVitalsJson)
+      : "—";
+  const latestVitalsWhen = p.latestVitalsAt ? fmtDt(p.latestVitalsAt) : null;
+
+  const encounters = [...(chartSummary.recentEncounters ?? [])].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const encBlocks = encounters
     .map((enc) => {
       const vitalsJson = enc.triage?.vitalsJson as Record<string, number | string | null | undefined> | null | undefined;
       const vitalsLine = vitalsJson ? formatVitalsHeaderLine(vitalsJson) : "—";
-      const dx = (enc.encounterDiagnoses ?? [])
+      const dxVisit = (enc.encounterDiagnoses ?? [])
         .map((d) => diagnosisDisplayFr(d.description, d.code))
-        .join("; ");
+        .join(" ; ");
+
+      const nursingLines = [
+        ...parseNursingAssessmentSectionsForChart(enc.nursingAssessment),
+        ...parseNursingProceduresForChart(enc.nursingAssessment),
+      ];
+      const nursingHtml =
+        nursingLines.length > 0
+          ? `<ul style="margin:4px 0 0 16px;">${nursingLines
+              .map((s) => `<li><strong>${esc(s.labelFr)}</strong> — ${esc(s.text)}</li>`)
+              .join("")}</ul>`
+          : `<p style="margin:4px 0; color:#000;">—</p>`;
+
       const ordersHtml = (enc.orders ?? [])
         .map((o) => {
           const items = (o.items ?? [])
-            .map((it) => `<li>${esc(it.displayLabel)} — ${esc(it.status)}${it.result?.resultText ? ` — ${esc(String(it.result.resultText).slice(0, 400))}` : ""}</li>`)
+            .map((it) => {
+              const label = esc(it.displayLabel || "—");
+              const st = esc(getOrderItemStatusLabel(it.status));
+              return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
+            })
             .join("");
-          return `<div style="margin:6px 0;"><strong>${esc(o.type)}</strong> (${esc(o.status)})<ul style="margin:4px 0 0 16px;">${items}</ul></div>`;
+          return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeadingFr(o.type))}</strong><ul style="margin:4px 0 0 16px;">${items || "<li>—</li>"}</ul></div>`;
         })
         .join("");
 
-      const nursingLines = parseNursingAssessmentSectionsForChart(enc.nursingAssessment);
-      const nursingHtml =
-        nursingLines.length > 0
-          ? `<ul style="margin:4px 0 0 16px;">${nursingLines.map((s) => `<li><strong>${esc(s.labelFr)}</strong> — ${esc(s.text)}</li>`).join("")}</ul>`
-          : "—";
-
-      const discharge = parseDischargeSummaryForChart(enc.dischargeSummaryJson);
-      const dischargeHtml = discharge ? dischargeFieldsHtml(discharge) : "—";
+      const itemsFlat = flattenOrderItems(enc);
+      const adminLines = itemsFlat.filter((it) => it.catalogItemType === "MEDICATION" && it.completedAt);
+      const adminHtml =
+        adminLines.length > 0
+          ? `<ul style="margin:4px 0 0 16px;">${adminLines
+              .map((it) => {
+                const who = it.completedBy
+                  ? esc(`${it.completedBy.firstName} ${it.completedBy.lastName}`.trim())
+                  : "—";
+                return `<li>${esc(it.displayLabel)} — ${fmtShort(it.completedAt)} — ${who}</li>`;
+              })
+              .join("")}</ul>`
+          : `<p style="margin:4px 0;">—</p>`;
 
       const disp = (enc.encounterMedicationDispenses ?? [])
         .map(
           (d) =>
-            `<li>${esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name)} × ${d.quantityDispensed} — ${fmtDt(d.dispensedAt)}</li>`
+            `<li>${esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name)} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt)}</li>`
         )
         .join("");
 
       return `
-        <section style="margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid #ccc;">
-          <h3 style="margin:0 0 8px 0; font-size:15px;">${esc(getEncounterTypeLabelFr(enc.type))} — ${esc(getEncounterStatusLabelFr(enc.status))} — ${fmtDt(enc.createdAt)}</h3>
-          <div style="font-size:12px; line-height:1.45;">
-            <div><strong>Motif :</strong> ${esc(enc.visitReason ?? enc.chiefComplaint ?? "—")}</div>
-            <div><strong>Salle :</strong> ${esc(enc.roomLabel?.trim() || "—")} · <strong>Médecin attribué :</strong> ${esc(enc.physicianAssigned ? `${enc.physicianAssigned.firstName} ${enc.physicianAssigned.lastName}`.trim() : "—")}</div>
-            <div><strong>Signes vitaux :</strong> ${esc(vitalsLine)}</div>
-            <div><strong>Évaluation infirmière :</strong></div>
+        <section style="margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #000;">
+          <h3 style="margin:0 0 8px 0; font-size:14px; font-weight:700;">${esc(getEncounterTypeLabelFr(enc.type))} — ${esc(
+        getEncounterStatusLabelFr(enc.status)
+      )} — ${fmtShort(enc.createdAt)}</h3>
+          <div style="font-size:12px; line-height:1.5; color:#000;">
+            <p style="margin:4px 0;"><strong>Motif :</strong> ${esc(enc.visitReason ?? enc.chiefComplaint ?? "—")}</p>
+            <p style="margin:4px 0;"><strong>Salle :</strong> ${esc(enc.roomLabel?.trim() || "—")} · <strong>Médecin attribué :</strong> ${esc(
+        physicianName(enc.physicianAssigned ?? null)
+      )}</p>
+            <p style="margin:4px 0;"><strong>Signes vitaux (accueil) :</strong> ${esc(vitalsLine)}</p>
+            <p style="margin:8px 0 4px 0;"><strong>Évaluation infirmière</strong></p>
             ${nursingHtml}
-            <div><strong>Impression / plan :</strong> ${esc(enc.clinicianImpressionPreview ?? "—")}</div>
-            <div><strong>Plan :</strong> ${esc(enc.treatmentPlanPreview ?? "—")}</div>
-            <div><strong>Diagnostics (visite) :</strong> ${esc(dx || "—")}</div>
-            <div><strong>Ordres & résultats :</strong></div>
-            ${ordersHtml || "—"}
-            <div><strong>Dispensations (visite) :</strong></div>
+            <p style="margin:8px 0 4px 0;"><strong>Évaluation médicale</strong></p>
+            <p style="margin:4px 0;"><strong>Impression clinique :</strong> ${esc(enc.clinicianImpressionPreview ?? "—")}</p>
+            <p style="margin:4px 0;"><strong>Plan thérapeutique :</strong> ${esc(enc.treatmentPlanPreview ?? "—")}</p>
+            <p style="margin:4px 0;"><strong>Diagnostics (cette visite) :</strong> ${esc(dxVisit || "—")}</p>
+            <p style="margin:8px 0 4px 0;"><strong>Ordres</strong></p>
+            ${ordersHtml || "<p style=\"margin:4px 0;\">—</p>"}
+            <p style="margin:8px 0 4px 0;"><strong>Administrations (médicaments)</strong></p>
+            ${adminHtml}
+            <p style="margin:8px 0 4px 0;"><strong>Dispensation (cette visite)</strong></p>
             <ul style="margin:4px 0 0 16px;">${disp || "<li>—</li>"}</ul>
-            <div><strong>Sortie :</strong> ${dischargeHtml}</div>
           </div>
         </section>`;
     })
     .join("");
 
   const activeDx = (chartSummary.activeDiagnoses ?? [])
-    .map((d) => `<li>${esc(diagnosisDisplayFr(d.description, d.code))} (${fmtDt(d.createdAt)})</li>`)
-    .join("");
-
-  const dispAll = (chartSummary.recentMedicationDispenses ?? [])
     .map(
       (d) =>
-        `<li>${esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name)} × ${d.quantityDispensed} — ${fmtDt(d.dispensedAt)}</li>`
+        `<li>${esc(diagnosisDisplayFr(d.description, d.code))}${
+          d.onsetDate ? ` <span style="color:#333;">(début ${esc(fmtDt(d.onsetDate))})</span>` : ""
+        }</li>`
     )
+    .join("");
+
+  const resultsLines: string[] = [];
+  for (const enc of encounters) {
+    const when = fmtShort(enc.createdAt);
+    const typeLbl = getEncounterTypeLabelFr(enc.type);
+    for (const it of flattenOrderItems(enc)) {
+      if (!isResultLike(it)) continue;
+      const label = esc(it.displayLabel || "—");
+      const snip = esc(resultSnippet(it));
+      resultsLines.push(
+        `<li><strong>${typeLbl}</strong> (${when}) — ${label}<br/><span style="font-size:11px;">${snip}</span></li>`
+      );
+    }
+  }
+
+  const dispAll = (chartSummary.recentMedicationDispenses ?? [])
+    .map((d) => {
+      const med = esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name);
+      const by = d.dispensedBy
+        ? esc(`${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim())
+        : "—";
+      return `<li>${med} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt)} — ${by}${
+        d.dosageInstructions ? ` — ${esc(d.dosageInstructions)}` : ""
+      }</li>`;
+    })
+    .join("");
+
+  const sortieBlocks = encounters
+    .map((enc) => {
+      const d = parseDischargeSummaryForChart(enc.dischargeSummaryJson);
+      if (!d) return "";
+      const inner = dischargeFieldsHtml(d);
+      if (!inner.trim()) return "";
+      return `<div style="margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #ccc;">
+        <p style="margin:0 0 6px 0; font-weight:700;">${esc(getEncounterTypeLabelFr(enc.type))} — ${fmtShort(enc.createdAt)}</p>
+        ${inner}
+      </div>`;
+    })
     .join("");
 
   const followUpsHtml = (followUps ?? [])
@@ -146,33 +288,55 @@ export function getPatientChartPrintHtml(params: {
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Dossier patient — ${esc([p.firstName, p.lastName].filter(Boolean).join(" "))}</title>
+  <title>Dossier médical — ${esc([p.firstName, p.lastName].filter(Boolean).join(" "))}</title>
   <style>
-    body { font-family: system-ui, sans-serif; padding: 20px; font-size: 13px; color: #111; max-width: 800px; margin: 0 auto; }
-    h1 { font-size: 20px; margin: 0 0 8px 0; }
-    h2 { font-size: 15px; margin: 20px 0 8px 0; border-bottom: 1px solid #333; padding-bottom: 4px; }
-    .meta { color: #444; line-height: 1.5; margin-bottom: 16px; }
+    body { font-family: Georgia, "Times New Roman", serif; padding: 20px; font-size: 13px; color: #000; background: #fff; max-width: 820px; margin: 0 auto; }
+    h1 { font-size: 18px; margin: 0 0 10px 0; font-weight: 700; }
+    h2 { font-size: 14px; margin: 22px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px; }
+    .meta p { margin: 4px 0; line-height: 1.45; }
+    ul { margin: 6px 0 0 0; padding-left: 18px; }
     @media print { body { padding: 12px; } }
   </style>
 </head>
 <body>
-  <h1>Dossier patient</h1>
-  ${facilityName ? `<div class="meta"><strong>Établissement :</strong> ${esc(facilityName)}</div>` : ""}
+  <h1>Dossier médical</h1>
+  ${facilityName ? `<div class="meta"><p><strong>Établissement</strong> ${esc(facilityName)}</p></div>` : ""}
+
+  <h2>Identité patient</h2>
   <div class="meta">
-    <strong>${esc([p.firstName, p.lastName].filter(Boolean).join(" "))}</strong><br />
-    NIR / MRN : ${esc(p.mrn ?? "—")}<br />
-    Date de naissance : ${p.dob ? fmtDt(p.dob) : "—"} · Âge : ${age != null ? `${age} ans` : "—"} · Sexe : ${esc(sex)}<br />
-    Téléphone : ${esc(p.phone ?? "—")}
+    <p><strong>Nom</strong> ${esc([p.firstName, p.lastName].filter(Boolean).join(" ") || "—")}</p>
+    <p><strong>NIR / MRN</strong> ${esc(ids)}</p>
+    <p><strong>Date de naissance</strong> ${p.dob ? fmtDt(p.dob) : "—"} · <strong>Âge</strong> ${age != null ? `${age} ans` : "—"} · <strong>Sexe</strong> ${esc(sex)}</p>
+    <p><strong>Téléphone</strong> ${esc(p.phone ?? "—")}</p>
+    ${p.address || p.city ? `<p><strong>Adresse</strong> ${esc([p.address, p.city, p.country].filter(Boolean).join(", ") || "—")}</p>` : ""}
   </div>
-  <h2>Consultations (fil chronologique)</h2>
+
+  <h2>Signes vitaux</h2>
+  <div class="meta">
+    <p><strong>Dernier relevé</strong> ${esc(latestVitalsLine)}</p>
+    ${latestVitalsWhen ? `<p><strong>Date du relevé</strong> ${esc(latestVitalsWhen)}</p>` : ""}
+  </div>
+
+  <h2>Historique clinique par consultation</h2>
   ${encBlocks || "<p>—</p>"}
-  <h2>Diagnostics actifs</h2>
-  <ul style="margin:0; padding-left:18px;">${activeDx || "<li>—</li>"}</ul>
-  <h2>Dispensations récentes (synthèse)</h2>
-  <ul style="margin:0; padding-left:18px;">${dispAll || "<li>—</li>"}</ul>
+
+  <h2>Diagnostics</h2>
+  <ul>${activeDx || "<li>—</li>"}</ul>
+
+  <h2>Résultats</h2>
+  <ul>${resultsLines.length ? resultsLines.join("") : "<li>—</li>"}</ul>
+
+  <h2>Médicaments</h2>
+  <p style="font-size:12px; margin:0 0 6px 0;">Dispensations récentes (toutes consultations)</p>
+  <ul>${dispAll || "<li>—</li>"}</ul>
+
+  <h2>Sortie</h2>
+  ${sortieBlocks.trim() ? sortieBlocks : "<p>—</p>"}
+
   <h2>Suivis</h2>
-  <ul style="margin:0; padding-left:18px;">${followUpsHtml || "<li>—</li>"}</ul>
-  <p style="margin-top:24px; font-size:11px; color:#666;">Document généré le ${esc(printedAt)} — impression à usage de démonstration.</p>
+  <ul>${followUpsHtml || "<li>—</li>"}</ul>
+
+  <p style="margin-top:24px; font-size:11px; color:#000;">Document généré le ${esc(printedAt)} — Medora-S</p>
 </body>
 </html>`;
 }

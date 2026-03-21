@@ -378,6 +378,11 @@ model Encounter {
   /// Structured discharge summary (French UI keys / values); saved before closing when using discharge flow
   dischargeSummaryJson    Json?
 
+  /// Synthèse structurée d'admission (hospitalisation depuis la consultation) — MVP, une décision par visite
+  admissionSummaryJson Json?
+  /// Horodatage de la décision d'admission (rempli côté serveur à la 1re sauvegarde du dossier d'admission)
+  admittedAt           DateTime?
+
   notes String?
 
   createdAt DateTime @default(now())

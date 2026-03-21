@@ -7,9 +7,11 @@ import type { FollowUpRow } from "@/lib/followUpsApi";
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
 import {
   diagnosisDisplayFr,
+  parseAdmissionSummaryForChart,
   parseDischargeSummaryForChart,
   parseNursingAssessmentSectionsForChart,
 } from "./patientChartHelpers";
+import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import {
   getEncounterStatusLabelFr,
@@ -169,7 +171,9 @@ export function EncounterClinicalTimeline({
       {encounters.map((enc) => {
         const consultWhen = formatShortDateTime(enc.createdAt);
         const nursingSections = parseNursingAssessmentSectionsForChart(enc.nursingAssessment);
+        const nursingProcedureSections = parseNursingProceduresForChart(enc.nursingAssessment);
         const discharge = parseDischargeSummaryForChart(enc.dischargeSummaryJson);
+        const admission = parseAdmissionSummaryForChart(enc.admissionSummaryJson);
         const items = flattenOrderItems(enc);
         const labItems = items.filter((i) => i.catalogItemType === "LAB_TEST");
         const imgItems = items.filter((i) => i.catalogItemType === "IMAGING_STUDY");
@@ -213,6 +217,14 @@ export function EncounterClinicalTimeline({
                 {getEncounterStatusLabelFr(enc.status)}
                 {esi ? ` · ${esi}` : null}
               </div>
+              {enc.admittedAt ? (
+                <div style={{ fontSize: 12, color: "#6a1b9a", fontWeight: 600, marginTop: 6 }}>
+                  Hospitalisation — décision enregistrée le{" "}
+                  {formatShortDateTime(
+                    typeof enc.admittedAt === "string" ? enc.admittedAt : String(enc.admittedAt ?? "")
+                  )}
+                </div>
+              ) : null}
             </div>
 
             {hasTriageBlock && (
@@ -233,12 +245,18 @@ export function EncounterClinicalTimeline({
               </>
             )}
 
-            {nursingSections.length > 0 && (
+            {(nursingSections.length > 0 || nursingProcedureSections.length > 0) && (
               <>
                 <div style={subTitle}>Évaluation infirmière</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {nursingSections.map((s) => (
-                    <div key={s.labelFr}>
+                  {nursingSections.map((s, i) => (
+                    <div key={`nsec-${i}`}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
+                      <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{s.text}</div>
+                    </div>
+                  ))}
+                  {nursingProcedureSections.map((s) => (
+                    <div key="proc-iv">
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
                       <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{s.text}</div>
                     </div>
@@ -271,6 +289,56 @@ export function EncounterClinicalTimeline({
                     ))}
                   </ul>
                 ) : null}
+              </>
+            )}
+
+            {admission && (
+              <>
+                <div style={subTitle}>Décision d&apos;admission (hospitalisation)</div>
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {admission.admissionReason ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Motif d&apos;admission : </span>
+                      {admission.admissionReason}
+                    </div>
+                  ) : null}
+                  {admission.serviceUnit ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Service / unité : </span>
+                      {admission.serviceUnit}
+                    </div>
+                  ) : null}
+                  {admission.admissionDiagnosis ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Diagnostic d&apos;admission : </span>
+                      {admission.admissionDiagnosis}
+                    </div>
+                  ) : null}
+                  {admission.careLevel ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Niveau de soins : </span>
+                      {admission.careLevel}
+                    </div>
+                  ) : null}
+                  {admission.conditionAtAdmission ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Condition à l&apos;admission : </span>
+                      <span style={{ whiteSpace: "pre-wrap" }}>{admission.conditionAtAdmission}</span>
+                    </div>
+                  ) : null}
+                  {admission.initialPlan ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Plan initial : </span>
+                      <span style={{ whiteSpace: "pre-wrap" }}>{admission.initialPlan}</span>
+                    </div>
+                  ) : null}
+                  {admission.responsiblePhysicianName ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Médecin responsable : </span>
+                      {admission.responsiblePhysicianName}
+                    </div>
+                  ) : null}
+                </div>
               </>
             )}
 
@@ -359,7 +427,7 @@ export function EncounterClinicalTimeline({
 
             {discharge && (
               <>
-                <div style={subTitle}>Résumé de sortie</div>
+                <div style={subTitle}>Sortie de consultation</div>
                 <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
                   {discharge.disposition ? (
                     <div>
@@ -395,6 +463,18 @@ export function EncounterClinicalTimeline({
                     <div>
                       <span style={{ fontWeight: 600, color: "#546e7a" }}>Retour si aggravation : </span>
                       {discharge.returnIfWorse}
+                    </div>
+                  ) : null}
+                  {discharge.patientDestination ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Destination du patient : </span>
+                      {discharge.patientDestination}
+                    </div>
+                  ) : null}
+                  {discharge.dischargeMode ? (
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Mode de sortie : </span>
+                      {discharge.dischargeMode}
                     </div>
                   ) : null}
                 </div>
