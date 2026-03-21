@@ -5,6 +5,7 @@ import { AuditService } from "../common/services/audit.service";
 import { AuditAction, OrderStatus } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
 
+/** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
 const MAX_SINGLE_BASE64_CHARS = 2_400_000;
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getRouteGuardRedirect } from "@/lib/landingRoute";
 import { ui } from "@/lib/uiLabels";
 import { parseApiResponse } from "@/lib/apiClient";
+import { getProactiveRefreshIntervalMs, parseJwtAccessTtlSeconds } from "@/lib/jwtAccessTtl";
 import {
   NAV_ACCENT,
   NAV_GROUP_ORDER,
@@ -63,10 +64,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  /** Renouvellement proactif du jeton d’accès (évite expiration pendant une longue session sans appel API). */
+  /** Renouvellement proactif : intervalle dérivé du TTL (NEXT_PUBLIC_JWT_ACCESS_TTL = JWT_ACCESS_TTL API), toujours avant expiration du jeton. */
   useEffect(() => {
     if (!user) return;
-    const intervalMs = 4 * 60 * 1000;
+    const ttlSec = parseJwtAccessTtlSeconds(process.env.NEXT_PUBLIC_JWT_ACCESS_TTL);
+    const intervalMs = getProactiveRefreshIntervalMs(ttlSec);
+    if (process.env.NODE_ENV === "development") {
+      if (!process.env.NEXT_PUBLIC_JWT_ACCESS_TTL?.trim()) {
+        console.warn(
+          "[session] NEXT_PUBLIC_JWT_ACCESS_TTL est absent : défaut 8h côté client. Alignez sur JWT_ACCESS_TTL de l’API en production."
+        );
+      }
+      if (intervalMs >= ttlSec * 1000) {
+        console.warn(
+          "[session] Intervalle de refresh >= TTL d’accès — vérifiez NEXT_PUBLIC_JWT_ACCESS_TTL et getProactiveRefreshIntervalMs."
+        );
+      }
+    }
     const id = window.setInterval(() => {
       void fetch("/api/auth/refresh", { method: "POST", credentials: "include" }).catch(() => {});
     }, intervalMs);

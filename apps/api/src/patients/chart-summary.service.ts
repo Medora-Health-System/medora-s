@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
@@ -10,10 +11,45 @@ import type {
 } from "../orders/orders.types";
 
 const RECENT_ENCOUNTERS = 10;
+/** Consultations hors « top 10 » mais avec résultat lab/imagerie enregistré — visibilité clinique sans tout charger. */
+const MAX_EXTRA_RESULT_ENCOUNTERS = 20;
+/**
+ * Borne le nombre de groupes renvoyés par l’agrégation SQL (filtre ensuite hors top 10).
+ * Évite de parcourir l’historique complet pour un patient très suivi.
+ */
+const RESULT_ENCOUNTER_GROUP_SCAN_LIMIT = 200;
 const RECENT_DISPENSES = 20;
 const RECENT_VACCINATIONS = 20;
 /** Cap per-patient dispenses tied to the listed encounters (timeline). */
 const DISPENSES_PER_TIMELINE = 80;
+
+/** Select identique pour les consultations « top N » et les consultations ajoutées pour visibilité des résultats. */
+const encounterChartSelect = {
+  id: true,
+  type: true,
+  status: true,
+  chiefComplaint: true,
+  providerNote: true,
+  treatmentPlan: true,
+  followUpDate: true,
+  createdAt: true,
+  dischargedAt: true,
+  dischargeStatus: true,
+  roomLabel: true,
+  nursingAssessment: true,
+  dischargeSummaryJson: true,
+  physicianAssigned: {
+    select: { id: true, firstName: true, lastName: true },
+  },
+  triage: {
+    select: {
+      vitalsJson: true,
+      triageCompleteAt: true,
+      chiefComplaint: true,
+      esi: true,
+    },
+  },
+} satisfies Prisma.EncounterSelect;
 
 function frCatalogLabel(
   row: { displayNameFr?: string | null; name: string } | null | undefined
@@ -157,38 +193,13 @@ export class ChartSummaryService {
       userAgent,
     });
 
-    const [encounters, activeDiagnoses, recentDispenses, recentVaccinations] =
+    const [topEncounters, activeDiagnoses, recentDispenses, recentVaccinations] =
       await Promise.all([
         this.prisma.encounter.findMany({
           where: { patientId, facilityId },
           orderBy: { createdAt: "desc" },
           take: RECENT_ENCOUNTERS,
-          select: {
-            id: true,
-            type: true,
-            status: true,
-            chiefComplaint: true,
-            providerNote: true,
-            treatmentPlan: true,
-            followUpDate: true,
-            createdAt: true,
-            dischargedAt: true,
-            dischargeStatus: true,
-            roomLabel: true,
-            nursingAssessment: true,
-            dischargeSummaryJson: true,
-            physicianAssigned: {
-              select: { id: true, firstName: true, lastName: true },
-            },
-            triage: {
-              select: {
-                vitalsJson: true,
-                triageCompleteAt: true,
-                chiefComplaint: true,
-                esi: true,
-              },
-            },
-          },
+          select: encounterChartSelect,
         }),
         this.prisma.diagnosis.findMany({
           where: { patientId, facilityId, status: "ACTIVE" },
@@ -235,7 +246,50 @@ export class ChartSummaryService {
         }),
       ]);
 
-    const encounterIds = encounters.map((e) => e.id);
+    const topEncounterIds = new Set(topEncounters.map((e) => e.id));
+
+    const resultActivityRows =
+      topEncounters.length === 0
+        ? []
+        : await this.prisma.$queryRaw<Array<{ encounterId: string; activityAt: Date }>>(
+            Prisma.sql`
+              SELECT o."encounterId",
+                     MAX(COALESCE(r."verifiedAt", r."updatedAt")) AS "activityAt"
+              FROM "OrderItem" oi
+              INNER JOIN "Order" o ON o.id = oi."orderId"
+              INNER JOIN "Result" r ON r."orderItemId" = oi.id
+              WHERE o."patientId" = ${patientId}
+                AND o."facilityId" = ${facilityId}
+                AND oi."catalogItemType" IN ('LAB_TEST', 'IMAGING_STUDY')
+              GROUP BY o."encounterId"
+              ORDER BY "activityAt" DESC
+              LIMIT ${RESULT_ENCOUNTER_GROUP_SCAN_LIMIT}
+            `
+          );
+
+    const extraEncounterIdsOrdered = resultActivityRows
+      .filter((row) => !topEncounterIds.has(row.encounterId))
+      .slice(0, MAX_EXTRA_RESULT_ENCOUNTERS)
+      .map((row) => row.encounterId);
+
+    let encountersForChart = topEncounters;
+    if (extraEncounterIdsOrdered.length > 0) {
+      const extraEncounters = await this.prisma.encounter.findMany({
+        where: {
+          id: { in: extraEncounterIdsOrdered },
+          patientId,
+          facilityId,
+        },
+        select: encounterChartSelect,
+      });
+      const byId = new Map(extraEncounters.map((e) => [e.id, e]));
+      const extrasOrdered = extraEncounterIdsOrdered
+        .map((id) => byId.get(id))
+        .filter((e): e is NonNullable<typeof e> => e !== undefined);
+      encountersForChart = [...topEncounters, ...extrasOrdered];
+    }
+
+    const encounterIds = encountersForChart.map((e) => e.id);
 
     const [ordersRaw, encounterDiagnosesRows, encounterDispensesRows] =
       encounterIds.length === 0
@@ -317,7 +371,7 @@ export class ChartSummaryService {
       dispensesByEncounter.set(d.encounterId, list);
     }
 
-    const recentEncounters = encounters.map((e) => {
+    const recentEncounters = encountersForChart.map((e) => {
       const tp = e.treatmentPlan?.trim();
       const treatmentPlanPreview =
         tp && tp.length > 120 ? `${tp.slice(0, 120).trim()}…` : tp || null;

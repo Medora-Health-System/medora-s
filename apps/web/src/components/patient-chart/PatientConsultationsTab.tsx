@@ -23,9 +23,26 @@ function CreateEncounterModal({
     visitReason: "",
     notes: "",
     roomLabel: DEFAULT_ENCOUNTER_ROOM_LABEL,
+    physicianAssignedUserId: "",
   });
+  const [providers, setProviders] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiFetch("/roster/providers", { facilityId });
+        if (!cancelled && Array.isArray(data)) setProviders(data);
+      } catch {
+        if (!cancelled) setProviders([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +57,7 @@ function CreateEncounterModal({
           visitReason: formData.visitReason.trim() || undefined,
           notes: formData.notes.trim() || undefined,
           roomLabel: formData.roomLabel.trim() || DEFAULT_ENCOUNTER_ROOM_LABEL,
+          physicianAssignedUserId: formData.physicianAssignedUserId.trim() || undefined,
         }),
         facilityId,
       });
@@ -106,6 +124,21 @@ function CreateEncounterModal({
               {ENCOUNTER_ROOM_OPTIONS.map((r) => (
                 <option key={r} value={r}>
                   {r}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Médecin attribué (optionnel)</label>
+            <select
+              value={formData.physicianAssignedUserId}
+              onChange={(e) => setFormData({ ...formData, physicianAssignedUserId: e.target.value })}
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+            >
+              <option value="">—</option>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}
                 </option>
               ))}
             </select>

@@ -66,7 +66,10 @@ export type Vitals = z.infer<typeof vitalsSchema>;
 
 export const encounterCreateDtoSchema = z.object({
   type: encounterTypeSchema,
+  /** @deprecated Préférer physicianAssignedUserId — conservé pour compat ; sinon copié vers médecin attribué si fourni. */
   providerId: z.string().uuid().optional(),
+  /** Médecin attribué (référence User) — source canonique d’affichage dossier / trackboard. */
+  physicianAssignedUserId: z.string().uuid().optional().nullable(),
   /** Reason for visit (clinic); stored as chiefComplaint */
   visitReason: z.string().max(4000).optional(),
   chiefComplaint: z.string().max(4000).optional(),
@@ -80,6 +83,9 @@ export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
 export const encounterOutpatientCreateDtoSchema = z.object({
   visitReason: z.string().max(4000).optional(),
   notes: z.string().max(16000).optional(),
+  roomLabel: z.string().max(64).optional().nullable(),
+  physicianAssignedUserId: z.string().uuid().optional().nullable(),
+  providerId: z.string().uuid().optional(),
 });
 
 export type EncounterOutpatientCreateDto = z.infer<

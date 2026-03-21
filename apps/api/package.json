@@ -14,7 +14,8 @@
     "seed": "prisma db seed",
     "prisma:seed-catalogs": "ts-node --transpile-only prisma/seed-catalogs.ts",
     "prisma:seed-pathways": "ts-node --transpile-only prisma/seed-pathways.ts",
-    "create-admin": "ts-node --transpile-only scripts/create-admin.ts"
+    "create-admin": "ts-node --transpile-only scripts/create-admin.ts",
+    "db:clear:patients": "ts-node --transpile-only scripts/clearPatientData.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

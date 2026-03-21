@@ -19,3 +19,6 @@ apps/web/.next/
 .pnpm-store/
 apps/web/.next/
 node_modules/
+.pnpm-store/
+node_modules/
+.next/

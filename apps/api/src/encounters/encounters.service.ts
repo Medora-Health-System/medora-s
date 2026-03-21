@@ -55,15 +55,24 @@ export class EncountersService {
         ? String(data.roomLabel).trim().slice(0, 64)
         : "Salle d'attente";
 
+    /** Médecin attribué (FK) — canonique pour dossier / trackboard ; providerId reste trace créateur / compat. */
+    let physicianAssignedUserId: string | null = null;
+    const physicianCandidate = data.physicianAssignedUserId ?? data.providerId ?? null;
+    if (physicianCandidate) {
+      await this.assertProviderAtFacility(facilityId, physicianCandidate);
+      physicianAssignedUserId = physicianCandidate;
+    }
+
     const encounter = await this.prisma.encounter.create({
       data: {
         patientId,
         facilityId,
         type: data.type,
-        providerId: data.providerId || userId,
+        providerId: data.providerId ?? userId,
         chiefComplaint: chief,
         notes: data.notes?.trim() || undefined,
         roomLabel,
+        physicianAssignedUserId,
         status: "OPEN",
       },
       include: {
@@ -99,6 +108,9 @@ export class EncountersService {
         type: "OUTPATIENT",
         visitReason: data.visitReason,
         notes: data.notes,
+        roomLabel: data.roomLabel,
+        physicianAssignedUserId: data.physicianAssignedUserId,
+        providerId: data.providerId,
       },
       userId,
       ip,

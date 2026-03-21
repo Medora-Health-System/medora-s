@@ -677,9 +677,26 @@ function CreateConsultationModal({
   const [type, setType] = useState<"OUTPATIENT" | "URGENT_CARE" | "EMERGENCY">("OUTPATIENT");
   const [visitReason, setVisitReason] = useState("");
   const [roomLabel, setRoomLabel] = useState(DEFAULT_ENCOUNTER_ROOM_LABEL);
+  const [physicianAssignedUserId, setPhysicianAssignedUserId] = useState("");
+  const [providers, setProviders] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ id: string; queued?: boolean } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiFetch("/roster/providers", { facilityId });
+        if (!cancelled && Array.isArray(data)) setProviders(data);
+      } catch {
+        if (!cancelled) setProviders([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
 
   const createEncounter = async () => {
     if (!facilityId || !patient?.id) return;
@@ -693,6 +710,7 @@ function CreateConsultationModal({
           type,
           visitReason: visitReason.trim() || undefined,
           roomLabel: roomLabel.trim() || DEFAULT_ENCOUNTER_ROOM_LABEL,
+          physicianAssignedUserId: physicianAssignedUserId.trim() || undefined,
         }),
         facilityId,
       });
@@ -732,6 +750,19 @@ function CreateConsultationModal({
               {ENCOUNTER_ROOM_OPTIONS.map((r) => (
                 <option key={r} value={r}>
                   {r}
+                </option>
+              ))}
+            </select>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Médecin attribué (optionnel)</label>
+            <select
+              value={physicianAssignedUserId}
+              onChange={(e) => setPhysicianAssignedUserId(e.target.value)}
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, marginBottom: 12 }}
+            >
+              <option value="">—</option>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.lastName} {p.firstName}
                 </option>
               ))}
             </select>

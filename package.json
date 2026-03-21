@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "scripts": {
+    "db:clear:patients": "pnpm --filter @medora/api run db:clear:patients",
     "dev": "npm run dev --workspaces --if-present",
     "dev:web": "npm run dev --workspace=@medora/web",
     "dev:api": "npm run dev --workspace=@medora/api",

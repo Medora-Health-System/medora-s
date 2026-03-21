@@ -12,10 +12,41 @@ import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { attachmentsFromResultDataAll, clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
+import {
+  collectResultUploadFiles,
+  validateResultUploadPreflight,
+  MAX_RAW_BYTES_PER_FILE,
+  RESULT_UPLOAD_HINT_FR,
+} from "@/lib/resultUploadLimits";
 
 export type WorklistDeptKind = "lab" | "radiology" | "pharmacy";
 
 type AttachmentMeta = { fileName?: string; mimeType?: string; dataBase64?: string };
+
+/** Statuts où texte / fichiers peuvent être enregistrés (aligné backend + flux accusé → démarrage → examen). */
+function statusAllowsSubstantiveResultEntry(itemStatus: string): boolean {
+  return (
+    itemStatus === "COMPLETED" ||
+    itemStatus === "RESULTED" ||
+    itemStatus === "VERIFIED" ||
+    itemStatus === "IN_PROGRESS"
+  );
+}
+
+/** Message affiché tant que la ligne n’est pas prête pour un résultat (texte / pièces). */
+function getWorkflowBlockMessageFr(itemStatus: string): string | null {
+  if (statusAllowsSubstantiveResultEntry(itemStatus)) return null;
+  if (itemStatus === "ACKNOWLEDGED") {
+    return "Démarrez l’examen avant d’ajouter un résultat (texte ou fichiers). Ensuite vous pouvez enregistrer pendant « En cours » ou après « Terminer ».";
+  }
+  if (itemStatus === "PLACED" || itemStatus === "PENDING" || itemStatus === "SIGNED") {
+    return "Accusez réception, démarrez l’examen avant d’ajouter un résultat (texte ou fichiers). Ensuite vous pouvez enregistrer pendant « En cours » ou après « Terminer ».";
+  }
+  if (itemStatus === "CANCELLED" || itemStatus === "DRAFT") {
+    return "Cette ligne ne permet pas la saisie de résultat avec ce statut.";
+  }
+  return "Complétez le flux (accusé réception, démarrage) avant d’ajouter un résultat (texte ou fichiers).";
+}
 
 function readFileAsAttachment(file: File): Promise<AttachmentMeta> {
   return new Promise((resolve, reject) => {
@@ -423,12 +454,8 @@ function LineCard({
     (a) => a.dataBase64 && String(a.dataBase64).length > 0
   );
 
-  /** Statuts où un résultat texte / fichiers peut être enregistré (aligné API : IN_PROGRESS est complété puis passé en RESULTED). */
-  const statusAllowsSubstantiveResult =
-    item.status === "COMPLETED" ||
-    item.status === "RESULTED" ||
-    item.status === "VERIFIED" ||
-    item.status === "IN_PROGRESS";
+  const statusAllowsSubstantiveResult = statusAllowsSubstantiveResultEntry(item.status);
+  const workflowBlockMessage = canResult ? getWorkflowBlockMessageFr(item.status) : null;
 
   const criticalChanged = critical !== !!item.result?.criticalValue;
   const hasNewFiles = (pdfFiles?.length ?? 0) > 0 || (imgFiles?.length ?? 0) > 0;
@@ -494,8 +521,20 @@ function LineCard({
       setFeedback({
         type: "err",
         text:
-          "Pour enregistrer un texte ou des fichiers, utilisez d’abord les boutons du flux : accusé réception, démarrage, puis « Terminer » (ou enregistrez depuis une ligne déjà « En cours » / « Terminé »).",
+          getWorkflowBlockMessageFr(item.status) ||
+          "Pour enregistrer un texte ou des fichiers, complétez d’abord le flux (accusé réception, démarrage).",
       });
+      return;
+    }
+
+    const newFiles = collectResultUploadFiles(pdfFiles, imgFiles);
+    const preflight = validateResultUploadPreflight({
+      resultText,
+      existingResultData: item.result?.resultData,
+      newFiles,
+    });
+    if (!preflight.ok) {
+      setFeedback({ type: "err", text: preflight.messageFr });
       return;
     }
 
@@ -631,8 +670,9 @@ function LineCard({
 
       {canResult ? (
         <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #eee" }}>
-          {substantiveBlocked ? (
+          {workflowBlockMessage ? (
             <div
+              id={`workflow-result-hint-${item.id}`}
               role="status"
               style={{
                 marginBottom: 12,
@@ -642,10 +682,10 @@ function LineCard({
                 borderRadius: 8,
                 fontSize: 13,
                 color: "#5d4037",
+                lineHeight: 1.45,
               }}
             >
-              <strong>Flux requis :</strong> pour saisir un texte ou téléverser des fichiers, la ligne doit être au moins
-              « En cours » ou « Terminé » (boutons ci-dessus : accusé réception → démarrage → terminer).
+              <strong>Étape requise :</strong> {workflowBlockMessage}
             </div>
           ) : null}
           {feedback ? (
@@ -696,25 +736,21 @@ function LineCard({
           </div>
           <button
             type="button"
-            disabled={saving || substantiveBlocked}
-            title={
-              substantiveBlocked
-                ? "Terminez le flux (accusé réception, démarrage, terminer) avant d’enregistrer texte ou fichiers."
-                : undefined
-            }
+            disabled={saving}
+            aria-describedby={workflowBlockMessage ? `workflow-result-hint-${item.id}` : undefined}
             onClick={() => void submitResult()}
             style={{
               marginTop: 12,
               padding: "8px 14px",
-              cursor: saving || substantiveBlocked ? "not-allowed" : "pointer",
+              cursor: saving ? "not-allowed" : "pointer",
               fontWeight: 600,
-              opacity: substantiveBlocked ? 0.65 : 1,
             }}
           >
             {saving ? "Enregistrement…" : labels.submitResult}
           </button>
           <p style={{ fontSize: 12, color: "#757575", marginTop: 8 }}>
-            Les fichiers sont ajoutés aux pièces existantes. La date et l’auteur de saisie sont enregistrées automatiquement.
+            {RESULT_UPLOAD_HINT_FR} Les fichiers sont ajoutés aux pièces existantes. La date et l’auteur de saisie sont
+            enregistrées automatiquement.
           </p>
         </div>
       ) : null}

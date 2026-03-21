@@ -1010,12 +1010,13 @@ function EncounterSummaryTab({ encounter }: { encounter: any }) {
       <p style={{ color: "#757575", fontSize: 13, marginTop: -4, marginBottom: 16 }}>
         Synthèse clinique — les détails sont dans les onglets Signes vitaux et Évaluation médicale.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14 }}>
-        {encounter.providerId && (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <strong>Médecin assigné :</strong> {encounter.providerId}
-          </div>
-        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14 }}>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <strong>Médecin attribué :</strong>{" "}
+          {encounter.physicianAssigned
+            ? `${encounter.physicianAssigned.firstName} ${encounter.physicianAssigned.lastName}`.trim()
+            : "—"}
+        </div>
         {reason && (
           <div style={{ gridColumn: "1 / -1" }}>
             <strong>Motif :</strong> {reason}
