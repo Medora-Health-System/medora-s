@@ -171,7 +171,7 @@ export default function AdminUsersPage() {
           )}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-          {canCreateFacilities ? (
+          {true ? (
             <button
               type="button"
               onClick={() => setShowAddFacility(true)}

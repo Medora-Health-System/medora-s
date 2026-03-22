@@ -5,7 +5,7 @@
  * Ne pas dupliquer ce marquage ailleurs : monté une seule fois depuis `app/app/layout.tsx`.
  * L’auth / garde de route reste dans ce layout.
  */
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ui } from "@/lib/uiLabels";
 import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
@@ -44,6 +44,12 @@ export function AppShell({
   onLogout,
   groupedNavSections,
 }: AppShellProps) {
+  /** Évite écart SSR/hydratation sur le style « actif » lié à `pathname`. */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <header
@@ -194,7 +200,9 @@ export function AppShell({
                   {section.items.map((item) => {
                     const accent = NAV_ACCENT[item.accent];
                     const active =
-                      pathname === item.href || (item.href !== "/app" && pathname.startsWith(item.href + "/"));
+                      mounted &&
+                      (pathname === item.href ||
+                        (item.href !== "/app" && pathname.startsWith(item.href + "/")));
                     return (
                       <Link
                         key={item.href}
