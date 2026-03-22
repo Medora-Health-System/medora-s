@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
-import { apiFetch, parseApiResponse } from "@/lib/apiClient";
+import { apiFetch } from "@/lib/apiClient";
 import { fetchChartSummary, createDiagnosis, type ChartSummary } from "@/lib/chartApi";
 import { fetchPatientFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
 import { ChartSection, tableStyles, btnPrimary, btnSecondary } from "@/components/chart/ChartSection";
@@ -46,7 +46,6 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
-  const [facilityId, setFacilityId] = useState<string>("");
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddDiagnosisModal, setShowAddDiagnosisModal] = useState(false);
   const [showAddFollowUpModal, setShowAddFollowUpModal] = useState(false);
@@ -58,7 +57,7 @@ export default function PatientDetailPage() {
   const [vitalsTimeline, setVitalsTimeline] = useState<PatientTriageVitalsResponse | null>(null);
   const [vitalsLoading, setVitalsLoading] = useState(false);
   const [supersededVitals, setSupersededVitals] = useState<PatientTriageVitalsSnapshot[]>([]);
-  const { canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
+  const { facilityId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
   const triageLoadFailedRef = useRef(false);
 
   useEffect(() => {
@@ -96,27 +95,6 @@ export default function PatientDetailPage() {
       roles.includes("LAB") ||
       roles.includes("RADIOLOGY") ||
       roles.includes("PHARMACY"));
-
-  useEffect(() => {
-    const cookieValue = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("medora_facility_id="))
-      ?.split("=")[1];
-    if (cookieValue) {
-      setFacilityId(cookieValue);
-    } else {
-      fetch("/api/auth/me")
-        .then((res) => parseApiResponse(res))
-        .then((data) => {
-          const d = data && typeof data === "object" && !Array.isArray(data) ? (data as { facilityRoles?: { facilityId?: string }[] }) : null;
-          const fid = d?.facilityRoles?.[0]?.facilityId;
-          if (fid) {
-            setFacilityId(fid);
-            document.cookie = `medora_facility_id=${fid}; path=/; max-age=${365 * 24 * 60 * 60}`;
-          }
-        });
-    }
-  }, []);
 
   const loadPatient = useCallback(async () => {
     if (!facilityId) return;

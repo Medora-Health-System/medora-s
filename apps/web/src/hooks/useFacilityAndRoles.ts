@@ -14,9 +14,10 @@ export function useFacilityAndRoles() {
   useEffect(() => {
     const apply = (fid: string, user: any) => {
       setFacilityId(fid);
+      const fidKey = String(fid);
       const r =
         user?.facilityRoles
-          ?.filter((fr: any) => fr.facilityId === fid)
+          ?.filter((fr: any) => String(fr.facilityId) === fidKey)
           .map((fr: any) => fr.role) ?? [];
       setRoles(r);
       const map = new Map<string, string>();

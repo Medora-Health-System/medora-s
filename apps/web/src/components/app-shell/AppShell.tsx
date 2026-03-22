@@ -13,7 +13,8 @@ import { SidebarNavIcon } from "./SidebarNavIcons";
 
 export type AppShellProps = {
   children: React.ReactNode;
-  pathname: string | null;
+  /** Toujours une chaîne (évite écart SSR / hydratation si `usePathname()` est null). */
+  pathname: string;
   routeRedirecting: boolean;
   /** Session en cours de résolution : même cadre visuel, sans menu ni contenu (évite barre latérale vide = impression d’ancienne UI). */
   bootstrapping?: boolean;
@@ -193,7 +194,7 @@ export function AppShell({
                   {section.items.map((item) => {
                     const accent = NAV_ACCENT[item.accent];
                     const active =
-                      pathname === item.href || (item.href !== "/app" && pathname?.startsWith(item.href + "/"));
+                      pathname === item.href || (item.href !== "/app" && pathname.startsWith(item.href + "/"));
                     return (
                       <Link
                         key={item.href}

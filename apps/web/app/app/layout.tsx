@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { getRouteGuardRedirect, isEncounterDetailPathname } from "@/lib/landingRoute";
+import { getRouteGuardRedirect } from "@/lib/landingRoute";
 import { parseApiResponse } from "@/lib/apiClient";
 import {
   getEffectiveAccessTtlSecondsForProactiveRefresh,
@@ -134,16 +134,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const activeRoles = getActiveRoles();
-  const clinicalRoles = ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "BILLING"];
-  const isRegistrationOnly = activeRoles.includes("FRONT_DESK") && !activeRoles.some((r) => clinicalRoles.includes(r));
+  /** Rôles « soins / technique » — FRONT_DESK + BILLING reste menu accueil restreint (facturation autorisée). */
+  const clinicalCareRoles = ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "PHARMACY"];
+  const isFrontDeskNavRestricted =
+    activeRoles.includes("FRONT_DESK") && !activeRoles.some((r) => clinicalCareRoles.includes(r));
   const isPharmacyOnly = activeRoles.includes("PHARMACY") && !activeRoles.includes("ADMIN") && !activeRoles.some((r) => ["PROVIDER", "RN"].includes(r));
   const registrationNavHrefs = new Set([
     "/app/registration",
     "/app/patients",
-    "/app/encounters",
     "/app/follow-ups",
     "/app/billing",
-    "/app/fracture",
   ]);
   const pharmacyNavHrefs = new Set([
     "/app/pharmacy",
@@ -155,7 +155,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ]);
 
   let navItems = SIDEBAR_NAV_ITEMS.filter((item) => item.roles.some((role) => activeRoles.includes(role)));
-  if (isRegistrationOnly) {
+  if (isFrontDeskNavRestricted) {
     navItems = navItems.filter((item) => registrationNavHrefs.has(item.href));
   } else if (isPharmacyOnly) {
     navItems = navItems.filter((item) => pharmacyNavHrefs.has(item.href));
@@ -163,14 +163,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const groupedNavSections = groupSidebarNavItems(navItems);
 
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   useEffect(() => {
     if (!user || !activeFacility || !pathname || !pathname.startsWith("/app")) {
-      setRouteRedirecting(false);
-      return;
-    }
-    /** Détail consultation : pas de `replace` depuis le layout — la page gère le RBAC (évite flash / rebond vers l’accueil). */
-    if (isEncounterDetailPathname(pathname)) {
       setRouteRedirecting(false);
       return;
     }

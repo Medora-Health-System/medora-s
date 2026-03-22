@@ -111,16 +111,9 @@ function PatientsPageContent() {
     }
   };
 
-  const handleRowClick = (patientId: string) => {
-    router.push(`/app/patients/${patientId}`);
-  };
-
   const canCreateConsultation =
     rolesReady &&
-    (roles.includes("FRONT_DESK") ||
-      roles.includes("RN") ||
-      roles.includes("PROVIDER") ||
-      roles.includes("ADMIN"));
+    (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
   /** Aligné sur la page `/app/encounters/[id]` (GET consultation autorisé). */
   const canOpenEncounterDetail =
     rolesReady &&
@@ -128,10 +121,24 @@ function PatientsPageContent() {
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
       roles.includes("BILLING") ||
-      roles.includes("FRONT_DESK") ||
       roles.includes("LAB") ||
       roles.includes("RADIOLOGY") ||
       roles.includes("PHARMACY"));
+  /** Dossier patient hors liste — pas pour accueil seul. */
+  const canOpenPatientDossier =
+    rolesReady &&
+    (roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN") ||
+      roles.includes("BILLING") ||
+      roles.includes("LAB") ||
+      roles.includes("RADIOLOGY") ||
+      roles.includes("PHARMACY"));
+
+  const handleRowClick = (patientId: string) => {
+    if (!canOpenPatientDossier) return;
+    router.push(`/app/patients/${patientId}`);
+  };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "";
@@ -229,7 +236,16 @@ function PatientsPageContent() {
                           ev.stopPropagation();
                           handleRowClick(patient.id);
                         }}
-                        style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer", fontSize: 12 }}
+                        disabled={!canOpenPatientDossier}
+                        style={{
+                          padding: "6px 10px",
+                          border: "1px solid #ddd",
+                          borderRadius: 4,
+                          background: "#fff",
+                          cursor: canOpenPatientDossier ? "pointer" : "not-allowed",
+                          fontSize: 12,
+                          opacity: canOpenPatientDossier ? 1 : 0.55,
+                        }}
                       >
                         Ouvrir le dossier
                       </button>

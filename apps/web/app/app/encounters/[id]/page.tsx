@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
+import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { MEDORA_PATIENT_VITALS_UPDATED, hasVitalsJson, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { usePathwayTimers } from "@/features/pathways/hooks/usePathwayTimers";
@@ -101,12 +101,11 @@ export default function EncounterDetailPage() {
   const params = useParams();
   const router = useRouter();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
+  const { facilityId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
   const [encounter, setEncounter] = useState<any>(null);
   const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
-  const [facilityId, setFacilityId] = useState<string>("");
   const [tabBootstrapped, setTabBootstrapped] = useState(false);
   const [quickTriage, setQuickTriage] = useState<any>(null);
   const [quickOrders, setQuickOrders] = useState<any[]>([]);
@@ -158,31 +157,6 @@ export default function EncounterDetailPage() {
 
   const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
   const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
-
-  useEffect(() => {
-    const cookieValue = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("medora_facility_id="))
-      ?.split("=")[1];
-    if (cookieValue) {
-      setFacilityId(cookieValue);
-    } else if (facilityIdFromHook) {
-      setFacilityId(facilityIdFromHook);
-    } else {
-      fetch("/api/auth/me")
-        .then((res) => parseApiResponse(res))
-        .then((data) => {
-          const d = data && typeof data === "object" && !Array.isArray(data) ? (data as { facilityRoles?: { facilityId?: string }[] }) : null;
-          if (d?.facilityRoles?.length) {
-            const firstFacility = d.facilityRoles[0].facilityId;
-            if (firstFacility) {
-              setFacilityId(firstFacility);
-              document.cookie = `medora_facility_id=${firstFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
-            }
-          }
-        });
-    }
-  }, [facilityIdFromHook]);
 
   useEffect(() => {
     setTabBootstrapped(false);

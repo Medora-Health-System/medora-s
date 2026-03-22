@@ -137,7 +137,7 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
   { href: "/app/nursing", label: n.nursing, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
   { href: "/app/provider", label: n.provider, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
   { href: "/app/patients", label: n.patients, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
-  { href: "/app/encounters", label: n.encounters, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+  { href: "/app/encounters", label: n.encounters, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate" },
   { href: "/app/follow-ups", label: n.followUps, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
   { href: "/app/rad-worklist", label: n.radWorklist, roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
   { href: "/app/lab-worklist", label: n.labWorklist, roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },
@@ -172,7 +172,7 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
     accent: "green",
   },
   { href: "/app/billing", label: n.billing, roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo" },
-  { href: "/app/fracture", label: n.fracture, roles: ["FRONT_DESK", "ADMIN"], group: "facturation", accent: "slate" },
+  { href: "/app/fracture", label: n.fracture, roles: ["ADMIN"], group: "facturation", accent: "slate" },
   {
     href: "/app/public-health/summary",
     label: n.publicHealth,

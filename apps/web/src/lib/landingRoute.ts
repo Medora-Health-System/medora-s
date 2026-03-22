@@ -69,21 +69,22 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
-  /**
-   * Détail consultation — aligné sur `canViewEncounterDetail` (page consultation) et liens « Ouvrir la consultation ».
-   * FRONT_DESK : liste exacte `/app/encounters` + accueil ; le détail doit rester accessible (réception / suivi).
-   */
+  /** Dossier patient (hors liste) — pas d’accès accueil seul (FRONT_DESK : liste `/app/patients` seulement). */
+  {
+    prefix: "/app/patients/",
+    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],
+  },
+  { prefix: "/app/patients", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"], exact: true },
   {
     prefix: "/app/encounters/",
-    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY", "FRONT_DESK"],
+    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],
   },
-  { prefix: "/app/encounters", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"], exact: true },
-  { prefix: "/app/patients", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
+  { prefix: "/app/encounters", roles: ["ADMIN", "PROVIDER", "RN", "BILLING"], exact: true },
   { prefix: "/app/provider", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/nursing", roles: ["ADMIN", "PROVIDER", "RN"] },
-  { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
+  { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
-  { prefix: "/app/fracture", roles: ["ADMIN", "FRONT_DESK"] },
+  { prefix: "/app/fracture", roles: ["ADMIN"] },
   { prefix: "/app/admin", roles: ["ADMIN"] },
   { prefix: "/app/admin/users", roles: ["ADMIN"] },
   { prefix: "/app/users", roles: ["ADMIN"] },
