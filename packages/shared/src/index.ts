@@ -4,4 +4,5 @@ export * from "./constants/languages.js";
 export * from "./schemas/auth.js";
 export * from "./schemas/patient.js";
 export * from "./schemas/adminUsers.js";
+export * from "./schemas/facilities.js";
 

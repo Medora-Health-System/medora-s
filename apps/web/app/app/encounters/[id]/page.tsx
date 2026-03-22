@@ -58,6 +58,7 @@ import {
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
+import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 
 function getPathwayStatusLabelFr(status: string): string {
   if (status === "ACTIVE") return "Actif";
@@ -102,6 +103,7 @@ export default function EncounterDetailPage() {
   const router = useRouter();
   const encounterId = params.id as string;
   const { facilityId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
+  const encounterDetailPath = `/app/encounters/${encounterId}`;
   const [encounter, setEncounter] = useState<any>(null);
   const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,7 +139,6 @@ export default function EncounterDetailPage() {
     roles.includes("PROVIDER") ||
     roles.includes("ADMIN") ||
     roles.includes("BILLING") ||
-    roles.includes("FRONT_DESK") ||
     roles.includes("LAB") ||
     roles.includes("RADIOLOGY") ||
     roles.includes("PHARMACY");
@@ -162,6 +163,13 @@ export default function EncounterDetailPage() {
     setTabBootstrapped(false);
     encounterHasLoadedOnceRef.current = false;
   }, [encounterId]);
+
+  useEffect(() => {
+    if (!rolesReady) return;
+    if (!isAppPathAllowedForRoles(encounterDetailPath, roles)) {
+      router.replace(getLandingRouteForRoles(roles));
+    }
+  }, [rolesReady, encounterDetailPath, roles, router]);
 
   useEffect(() => {
     if (!showCloseConfirmModal) return;
@@ -240,8 +248,6 @@ export default function EncounterDetailPage() {
       setActiveTab("clinic");
     } else if (roles.includes("RN")) {
       setActiveTab("triage");
-    } else if (roles.includes("FRONT_DESK")) {
-      setActiveTab("summary");
     }
     setTabBootstrapped(true);
   }, [encounter, facilityId, rolesReady, roles, tabBootstrapped]);
@@ -565,7 +571,7 @@ export default function EncounterDetailPage() {
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const isRNOnly = roles.includes("RN") && !isProviderLike;
   const showNursingTab = roles.includes("RN") || roles.includes("ADMIN") || roles.includes("PROVIDER");
-  const canEditOperational = roles.includes("FRONT_DESK") || roles.includes("RN") || roles.includes("ADMIN");
+  const canEditOperational = roles.includes("RN") || roles.includes("ADMIN");
   /** Admission depuis la consultation — réservé médecin / admin (aligné sur `canPrescribe`). */
   const canAdmitPatient = canPrescribe && encounter.status === "OPEN";
   const patient = encounter.patient;

@@ -1,6 +1,7 @@
 /**
  * Central role → landing and route guard for /app.
  * Priority for default home (first matching role wins): ADMIN > PROVIDER > RN > PHARMACY > FRONT_DESK > LAB > RADIOLOGY > BILLING.
+ * FRONT_DESK (seul) : accueil administratif — inscription, liste patients, suivis, facturation uniquement (voir APP_ROUTE_RULES).
  * Backend RBAC unchanged; this avoids pointless 403s in the UI.
  *
  * `APP_ROLE_CODES` must stay aligned with Prisma `RoleCode` and admin user assignment.
@@ -69,7 +70,7 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
-  /** Dossier patient (hors liste) — pas d’accès accueil seul (FRONT_DESK : liste `/app/patients` seulement). */
+  /** Dossier patient (hors liste) — pas d’accès FRONT_DESK (liste `/app/patients` seulement). */
   {
     prefix: "/app/patients/",
     roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],

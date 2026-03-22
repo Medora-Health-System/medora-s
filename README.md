@@ -10,6 +10,7 @@ Sprint 0 monorepo scaffold (API + Web + shared package).
 - **Recover files / compare branches**: [docs/RECOVERY_PLAYBOOK.md](docs/RECOVERY_PLAYBOOK.md)
 - **Before merging to main**: [docs/PRE_MERGE_GATE.md](docs/PRE_MERGE_GATE.md)
 - **Repo root, lockfile, Prisma, `.next`**: [docs/STARTUP_RULES.md](docs/STARTUP_RULES.md)
+- **Ops (manual SQL, e.g. facility creation owner flag)**: [docs/OPS.md](docs/OPS.md)
 - **Smoke tests by role** (FRONT_DESK, RN, PROVIDER, PHARMACY, LAB, RADIOLOGY, BILLING, ADMIN): [docs/SMOKE_TEST_CHECKLIST.md](docs/SMOKE_TEST_CHECKLIST.md)
 - **Clinical regression matrix** (manual QA before demos/releases): [docs/CLINICAL_REGRESSION_MATRIX.md](docs/CLINICAL_REGRESSION_MATRIX.md)
 - **Doctor / clinic demo process** (stable branch, smoke, pre-demo commands): [docs/DOCTOR_DEMO_MODE.md](docs/DOCTOR_DEMO_MODE.md)

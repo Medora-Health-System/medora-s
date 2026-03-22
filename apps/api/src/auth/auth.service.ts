@@ -85,6 +85,7 @@ export class AuthService {
       username: user.email,
       fullName: `${user.firstName} ${user.lastName}`.trim(),
       preferredLang: "fr",
+      canCreateFacilities: user.canCreateFacilities === true,
       facilityRoles: sortedRoles.map((ur) => ({
         facilityId: ur.facilityId,
         facilityName: ur.facility?.name,

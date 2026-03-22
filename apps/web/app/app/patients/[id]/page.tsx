@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { apiFetch } from "@/lib/apiClient";
 import { fetchChartSummary, createDiagnosis, type ChartSummary } from "@/lib/chartApi";
 import { fetchPatientFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
@@ -40,7 +41,9 @@ import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 
 export default function PatientDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const patientId = params.id as string;
+  const patientDetailPath = `/app/patients/${patientId}`;
   const [patient, setPatient] = useState<any>(null);
   const [chartSummary, setChartSummary] = useState<ChartSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,30 +71,21 @@ export default function PatientDetailPage() {
   const clinicalChartAccess =
     rolesReady &&
     (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
-  /** Accueil seul (pas ADMIN / RN / PROVIDER) : coquille administrative patient, pas de dossier clinique. */
-  const administrativePatientShellOnly =
-    rolesReady &&
-    roles.includes("FRONT_DESK") &&
-    !roles.includes("ADMIN") &&
-    !roles.includes("PROVIDER") &&
-    !roles.includes("RN");
+  const canAccessPatientDetail =
+    rolesReady && isAppPathAllowedForRoles(patientDetailPath, roles);
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const isRNOnly = roles.includes("RN") && !isProviderLike;
-  const isFrontDeskQuick =
-    roles.includes("FRONT_DESK") && !isProviderLike && !roles.includes("RN");
+  /** Accueil seul n’a pas accès à `/app/patients/[id]` — pas de parcours « accueil » sur cette route. */
+  const isFrontDeskQuick = false;
   const isBillingOnlyQuick =
-    rolesReady && roles.includes("BILLING") && !clinicalChartAccess && !isFrontDeskQuick;
-  /**
-   * Liens « Ouvrir la consultation » — aligné sur `canViewEncounterDetail` de `/app/encounters/[id]`.
-   * (L’en-tête accueil seul masque toujours le lien via `administrativePatientShellOnly`.)
-   */
+    rolesReady && roles.includes("BILLING") && !clinicalChartAccess;
+  /** Liens « Ouvrir la consultation » — aligné sur `canViewEncounterDetail` de `/app/encounters/[id]`. */
   const canOpenClinicalEncounterDetail =
     rolesReady &&
     (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
       roles.includes("BILLING") ||
-      roles.includes("FRONT_DESK") ||
       roles.includes("LAB") ||
       roles.includes("RADIOLOGY") ||
       roles.includes("PHARMACY"));
@@ -218,13 +212,21 @@ export default function PatientDetailPage() {
   }, [clinicalChartAccess, chartSummary, patientId]);
 
   useEffect(() => {
-    if (patientId && facilityId) {
-      loadPatient();
+    if (!rolesReady) return;
+    if (!isAppPathAllowedForRoles(patientDetailPath, roles)) {
+      setLoading(false);
+      router.replace("/app/patients");
     }
-  }, [patientId, facilityId, loadPatient]);
+  }, [rolesReady, patientDetailPath, roles, router]);
 
   useEffect(() => {
-    if (!patientId || !facilityId || !rolesReady) return;
+    if (patientId && facilityId && canAccessPatientDetail) {
+      loadPatient();
+    }
+  }, [patientId, facilityId, canAccessPatientDetail, loadPatient]);
+
+  useEffect(() => {
+    if (!patientId || !facilityId || !canAccessPatientDetail) return;
     if (clinicalChartAccess) {
       loadChartSummary();
     } else {
@@ -235,7 +237,7 @@ export default function PatientDetailPage() {
   }, [
     patientId,
     facilityId,
-    rolesReady,
+    canAccessPatientDetail,
     clinicalChartAccess,
     loadChartSummary,
     loadDeskEncounters,
@@ -243,13 +245,13 @@ export default function PatientDetailPage() {
   ]);
 
   useEffect(() => {
-    if (!patientId || !facilityId || !rolesReady || !clinicalChartAccess) {
+    if (!patientId || !facilityId || !canAccessPatientDetail || !clinicalChartAccess) {
       setVitalsTimeline(null);
       setSupersededVitals([]);
       return;
     }
     loadPatientTriageVitals();
-  }, [patientId, facilityId, rolesReady, clinicalChartAccess, loadPatientTriageVitals]);
+  }, [patientId, facilityId, canAccessPatientDetail, clinicalChartAccess, loadPatientTriageVitals]);
 
   useEffect(() => {
     const onVitalsUpdated = (ev: Event) => {
@@ -276,12 +278,6 @@ export default function PatientDetailPage() {
       setActiveTab("summary");
     }
   }, [rolesReady, clinicalChartAccess, activeTab]);
-
-  useEffect(() => {
-    if (!rolesReady || !administrativePatientShellOnly) return;
-    const forbidden = new Set(["notes", "orders", "results", "medications", "imaging", "vaccinations"]);
-    if (forbidden.has(activeTab)) setActiveTab("summary");
-  }, [rolesReady, administrativePatientShellOnly, activeTab]);
 
   useEffect(() => {
     if (!clinicalChartAccess) return;
@@ -327,10 +323,11 @@ export default function PatientDetailPage() {
 
   const canEditPatient =
     rolesReady &&
-    (roles.includes("FRONT_DESK") ||
-      roles.includes("RN") ||
-      roles.includes("PROVIDER") ||
-      roles.includes("ADMIN"));
+    (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
+
+  if (rolesReady && !canAccessPatientDetail) {
+    return <div style={{ padding: 24 }}>Chargement…</div>;
+  }
 
   if (loading) {
     return <div style={{ padding: 24 }}>Chargement…</div>;
@@ -340,21 +337,16 @@ export default function PatientDetailPage() {
     return <div style={{ padding: 24 }}>Patient introuvable</div>;
   }
 
-  const tabs = administrativePatientShellOnly
-    ? [
-        { id: "summary", label: "Administratif" },
-        { id: "encounters", label: "Visites" },
-      ]
-    : [
-        { id: "summary", label: "Résumé du patient" },
-        { id: "encounters", label: "Consultations" },
-        ...(clinicalChartAccess ? [{ id: "vaccinations", label: "Vaccinations" as const }] : []),
-        { id: "notes", label: "Notes" },
-        { id: "orders", label: "Ordres" },
-        { id: "results", label: "Résultats" },
-        { id: "medications", label: "Médicaments" },
-        { id: "imaging", label: "Imagerie" },
-      ];
+  const tabs = [
+    { id: "summary", label: "Résumé du patient" },
+    { id: "encounters", label: "Consultations" },
+    ...(clinicalChartAccess ? [{ id: "vaccinations", label: "Vaccinations" as const }] : []),
+    { id: "notes", label: "Notes" },
+    { id: "orders", label: "Ordres" },
+    { id: "results", label: "Résultats" },
+    { id: "medications", label: "Médicaments" },
+    { id: "imaging", label: "Imagerie" },
+  ];
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 8px 32px" }}>
@@ -366,7 +358,7 @@ export default function PatientDetailPage() {
           hasVitals={hasHeaderVitals}
           openEncounter={openEncounter ?? null}
           canOpenEncounterDetail={canOpenClinicalEncounterDetail}
-          administrativeShell={administrativePatientShellOnly}
+          administrativeShell={false}
           showEditButton={canEditPatient}
           onEditClick={() => setShowEditModal(true)}
         />
@@ -476,7 +468,7 @@ export default function PatientDetailPage() {
               patientId={patientId}
               facilityId={facilityId}
               canOpenEncounterDetail={canOpenClinicalEncounterDetail}
-              administrativeOnly={administrativePatientShellOnly}
+              administrativeOnly={false}
               pendingOpenCreateEncounter={pendingOpenCreateEncounter}
               onConsumedPendingOpenCreate={() => setPendingOpenCreateEncounter(false)}
               onEncounterCreated={() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getRouteGuardRedirect } from "@/lib/landingRoute";
 import { parseApiResponse } from "@/lib/apiClient";
@@ -27,60 +27,78 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   /** TTL d’accès (secondes) tel que renvoyé par GET /api/auth/me — aligné sur JWT_ACCESS_TTL (cookies), pas sur NEXT_PUBLIC seul. */
   const [sessionAccessTtlSec, setSessionAccessTtlSec] = useState<number | null>(null);
 
+  const isMountedRef = useRef(true);
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        if (!res.ok) {
-          router.replace("/login");
-          return;
-        }
-        const data = await parseApiResponse(res);
-        if (cancelled) return;
-        const d =
-          data && typeof data === "object" && !Array.isArray(data)
-            ? (data as { facilityRoles?: unknown; accessTokenTtlSeconds?: unknown })
-            : null;
-        if (
-          d &&
-          typeof d.accessTokenTtlSeconds === "number" &&
-          Number.isFinite(d.accessTokenTtlSeconds) &&
-          d.accessTokenTtlSeconds > 0
-        ) {
-          setSessionAccessTtlSec(Math.floor(d.accessTokenTtlSeconds));
-        }
-        const frs = d && Array.isArray(d.facilityRoles) ? d.facilityRoles : [];
-        if (frs.length > 0 && d) {
-          const { accessTokenTtlSeconds: _ttlIgnored, ...userPayload } = d;
-          setUser(userPayload);
-          const facilityIds: string[] = Array.from(new Set(frs.map((fr: any) => String(fr.facilityId))));
-          setFacilities(facilityIds);
-
-          const cookieValue = document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("medora_facility_id="))
-            ?.split("=")[1];
-
-          if (cookieValue && facilityIds.includes(cookieValue)) {
-            setActiveFacility(cookieValue);
-          } else if (facilityIds.length > 0) {
-            setActiveFacility(facilityIds[0]);
-            document.cookie = `medora_facility_id=${facilityIds[0]}; path=/; max-age=${365 * 24 * 60 * 60}`;
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch user:", err);
-        router.replace("/login");
-      } finally {
-        if (!cancelled) setSessionReady(true);
-      }
-    };
-    void load();
+    isMountedRef.current = true;
     return () => {
-      cancelled = true;
+      isMountedRef.current = false;
     };
+  }, []);
+
+  const loadSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (!isMountedRef.current) return;
+      if (!res.ok) {
+        router.replace("/login");
+        return;
+      }
+      const data = await parseApiResponse(res);
+      if (!isMountedRef.current) return;
+      const d =
+        data && typeof data === "object" && !Array.isArray(data)
+          ? (data as { facilityRoles?: unknown; accessTokenTtlSeconds?: unknown })
+          : null;
+      if (
+        d &&
+        typeof d.accessTokenTtlSeconds === "number" &&
+        Number.isFinite(d.accessTokenTtlSeconds) &&
+        d.accessTokenTtlSeconds > 0
+      ) {
+        setSessionAccessTtlSec(Math.floor(d.accessTokenTtlSeconds));
+      }
+      const frs = d && Array.isArray(d.facilityRoles) ? d.facilityRoles : [];
+      if (frs.length > 0 && d) {
+        const { accessTokenTtlSeconds: _ttlIgnored, ...userPayload } = d;
+        setUser(userPayload);
+        const facilityIds: string[] = Array.from(new Set(frs.map((fr: any) => String(fr.facilityId))));
+        setFacilities(facilityIds);
+
+        const cookieValue = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("medora_facility_id="))
+          ?.split("=")[1];
+
+        if (cookieValue && facilityIds.includes(cookieValue)) {
+          setActiveFacility(cookieValue);
+        } else if (facilityIds.length > 0) {
+          setActiveFacility(facilityIds[0]);
+          document.cookie = `medora_facility_id=${facilityIds[0]}; path=/; max-age=${365 * 24 * 60 * 60}`;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+      if (isMountedRef.current) {
+        router.replace("/login");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setSessionReady(true);
+      }
+    }
   }, [router]);
+
+  useEffect(() => {
+    void loadSession();
+  }, [loadSession]);
+
+  useEffect(() => {
+    const onSessionRefresh = () => {
+      void loadSession();
+    };
+    window.addEventListener("medora:session-refresh", onSessionRefresh);
+    return () => window.removeEventListener("medora:session-refresh", onSessionRefresh);
+  }, [loadSession]);
 
   /** Session résolue sans rôle établissement : aligné sur la garde d’accès (pas de shell « vide » durable). */
   useEffect(() => {
@@ -134,7 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const activeRoles = getActiveRoles();
-  /** Rôles « soins / technique » — FRONT_DESK + BILLING reste menu accueil restreint (facturation autorisée). */
+  /** Rôles « soins / technique » — accueil seul (FRONT_DESK sans ces rôles) : menu limité à inscription / liste patients / suivis / facturation. */
   const clinicalCareRoles = ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "PHARMACY"];
   const isFrontDeskNavRestricted =
     activeRoles.includes("FRONT_DESK") && !activeRoles.some((r) => clinicalCareRoles.includes(r));

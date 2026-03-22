@@ -11,6 +11,7 @@ import { useFacilityAndRoles, type UserFacilityOption } from "@/hooks/useFacilit
 import {
   fetchAdminUsers,
   createAdminUser,
+  createAdminFacility,
   patchAdminUserProfile,
   patchAdminUserRoles,
   patchAdminUserStatus,
@@ -64,11 +65,12 @@ function rolesListFr(codes: string[]): string {
 }
 
 export default function AdminUsersPage() {
-  const { facilityId, facilities, roles, ready } = useFacilityAndRoles();
+  const { facilityId, facilities, roles, ready, refreshFromMe, canCreateFacilities } = useFacilityAndRoles();
   const [items, setItems] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(null);
+  const [showAddFacility, setShowAddFacility] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
   const [profileUser, setProfileUser] = useState<AdminUserRow | null>(null);
@@ -161,21 +163,40 @@ export default function AdminUsersPage() {
             dans d&apos;autres établissements ne sont pas modifiés par cette page.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          style={{
-            padding: "10px 18px",
-            background: "#1a1a1a",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Créer un utilisateur
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+          {canCreateFacilities ? (
+            <button
+              type="button"
+              onClick={() => setShowAddFacility(true)}
+              style={{
+                padding: "10px 18px",
+                background: "#fff",
+                color: "#1a1a1a",
+                border: "1px solid #1a1a1a",
+                borderRadius: 4,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Ajouter un établissement
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            style={{
+              padding: "10px 18px",
+              background: "#1a1a1a",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Créer un utilisateur
+          </button>
+        </div>
       </div>
       <p style={{ fontSize: 13, color: "#666", marginTop: 12 }}>
         <Link href="/app/admin" style={{ color: "#1565c0" }}>
@@ -342,6 +363,24 @@ export default function AdminUsersPage() {
         </table>
       )}
 
+      {showAddFacility && facilityId && canCreateFacilities && (
+        <AddFacilityModal
+          facilityId={facilityId}
+          onClose={() => setShowAddFacility(false)}
+          onSuccess={async () => {
+            try {
+              await refreshFromMe();
+            } catch {
+              /* session inchangée ; événement ci-dessous pour le shell */
+            }
+            window.dispatchEvent(new Event("medora:session-refresh"));
+            setShowAddFacility(false);
+            setToast({ message: "Établissement créé.", ok: true });
+          }}
+          onError={(m) => setToast({ message: m, ok: false })}
+        />
+      )}
+
       {showCreate && facilityId && (
         <CreateUserModal
           facilities={facilities}
@@ -384,6 +423,121 @@ export default function AdminUsersPage() {
           onError={(m) => setToast({ message: m, ok: false })}
         />
       )}
+    </div>
+  );
+}
+
+function AddFacilityModal({
+  facilityId,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  facilityId: string;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+  onError: (m: string) => void;
+}) {
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      onError("Le nom de l’établissement est requis.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createAdminFacility(facilityId, { name: name.trim() });
+      await onSuccess();
+    } catch (err: unknown) {
+      onError(
+        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
+          "Impossible de créer l’établissement."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1500,
+        padding: 16,
+      }}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        style={{
+          background: "white",
+          borderRadius: 8,
+          padding: 24,
+          maxWidth: 440,
+          width: "100%",
+          maxHeight: "90vh",
+          overflow: "auto",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="add-facility-title"
+      >
+        <h2 id="add-facility-title" style={{ marginTop: 0 }}>
+          Ajouter un établissement
+        </h2>
+        <form onSubmit={submit}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              Nom de l’établissement *
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+              autoComplete="organization"
+            />
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "1px solid #ccc",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: submitting ? "default" : "pointer",
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: 4,
+                background: "#1a1a1a",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: submitting ? "default" : "pointer",
+              }}
+            >
+              {submitting ? "Création…" : "Créer"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

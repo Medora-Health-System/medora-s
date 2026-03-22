@@ -130,3 +130,16 @@ export async function patchAdminUserStatus(
     facilityId,
   }) as Promise<AdminUserRow>;
 }
+
+/** POST /admin/facilities — crée un établissement et rattache l’admin courant (côté API). */
+export async function createAdminFacility(
+  facilityId: string,
+  body: { name: string }
+): Promise<{ id: string; name: string }> {
+  return adminApiFetch("/facilities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId,
+  }) as Promise<{ id: string; name: string }>;
+}
