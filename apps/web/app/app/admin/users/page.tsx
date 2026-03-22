@@ -118,7 +118,7 @@ export default function AdminUsersPage() {
     return <div style={{ padding: 24 }}>Chargement…</div>;
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && !canCreateFacilities) {
     return (
       <div style={{ padding: 24 }}>
         <p>Accès réservé aux administrateurs.</p>
@@ -157,11 +157,18 @@ export default function AdminUsersPage() {
       >
         <div>
           <h1 style={{ margin: "0 0 8px 0" }}>Utilisateurs et accès</h1>
-          <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
-            Établissement géré : <strong>{currentFacilityName}</strong>. Les comptes listés ont au moins un lien avec cet
-            établissement. Les rôles ci-dessous sont ceux <strong>pour cet établissement uniquement</strong> ; les accès
-            dans d&apos;autres établissements ne sont pas modifiés par cette page.
-          </p>
+          {isAdmin ? (
+            <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
+              Établissement géré : <strong>{currentFacilityName}</strong>. Les comptes listés ont au moins un lien avec cet
+              établissement. Les rôles ci-dessous sont ceux <strong>pour cet établissement uniquement</strong> ; les accès
+              dans d&apos;autres établissements ne sont pas modifiés par cette page.
+            </p>
+          ) : (
+            <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
+              La gestion des utilisateurs de cet établissement est réservée aux comptes avec le rôle Administrateur pour
+              l&apos;établissement affiché. Vous pouvez toutefois ajouter un établissement si votre compte y est autorisé.
+            </p>
+          )}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
           {canCreateFacilities ? (
@@ -181,21 +188,23 @@ export default function AdminUsersPage() {
               Ajouter un établissement
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => setShowCreate(true)}
-            style={{
-              padding: "10px 18px",
-              background: "#1a1a1a",
-              color: "white",
-              border: "none",
-              borderRadius: 4,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Créer un utilisateur
-          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              style={{
+                padding: "10px 18px",
+                background: "#1a1a1a",
+                color: "white",
+                border: "none",
+                borderRadius: 4,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Créer un utilisateur
+            </button>
+          ) : null}
         </div>
       </div>
       <p style={{ fontSize: 13, color: "#666", marginTop: 12 }}>
@@ -204,24 +213,25 @@ export default function AdminUsersPage() {
         </Link>
       </p>
 
-      {loading ? (
-        <p style={{ marginTop: 24 }}>Chargement…</p>
-      ) : items.length === 0 ? (
-        <div
-          style={{
-            marginTop: 24,
-            padding: 24,
-            background: "#fafafa",
-            border: "1px solid #eee",
-            borderRadius: 8,
-            color: "#555",
-            fontSize: 14,
-          }}
-        >
-          Aucun utilisateur lié à cet établissement. Utilisez « Créer un utilisateur » pour ajouter un compte.
-        </div>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 14 }}>
+      {isAdmin ? (
+        loading ? (
+          <p style={{ marginTop: 24 }}>Chargement…</p>
+        ) : items.length === 0 ? (
+          <div
+            style={{
+              marginTop: 24,
+              padding: 24,
+              background: "#fafafa",
+              border: "1px solid #eee",
+              borderRadius: 8,
+              color: "#555",
+              fontSize: 14,
+            }}
+          >
+            Aucun utilisateur lié à cet établissement. Utilisez « Créer un utilisateur » pour ajouter un compte.
+          </div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid #ddd" }}>
               <th style={{ textAlign: "left", padding: 10 }}>Nom</th>
@@ -361,7 +371,8 @@ export default function AdminUsersPage() {
             ))}
           </tbody>
         </table>
-      )}
+        )
+      ) : null}
 
       {showAddFacility && facilityId && canCreateFacilities && (
         <AddFacilityModal
@@ -381,7 +392,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {showCreate && facilityId && (
+      {showCreate && facilityId && isAdmin && (
         <CreateUserModal
           facilities={facilities}
           defaultFacilityId={facilityId}
@@ -395,7 +406,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {editUser && facilityId && (
+      {editUser && facilityId && isAdmin && (
         <EditRolesModal
           facilityId={facilityId}
           facilityDisplayName={currentFacilityName}
@@ -410,7 +421,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {profileUser && facilityId && (
+      {profileUser && facilityId && isAdmin && (
         <EditProfileModal
           facilityId={facilityId}
           user={profileUser}

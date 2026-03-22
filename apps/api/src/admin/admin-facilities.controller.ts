@@ -6,12 +6,12 @@ import { createFacilityDtoSchema } from "@medora/shared";
 import { AdminFacilitiesService } from "./admin-facilities.service";
 
 @Controller("admin")
-@UseGuards(AuthGuard("jwt"), RolesGuard)
 export class AdminFacilitiesController {
   constructor(private readonly facilities: AdminFacilitiesService) {}
 
+  /** Création d’établissement : JWT + `User.canCreateFacilities` (service) — pas de rôle ADMIN par établissement courant. */
   @Post("facilities")
-  @RequireRoles(RoleCode.ADMIN)
+  @UseGuards(AuthGuard("jwt"))
   async create(@Body() body: unknown, @Req() req: { user: { userId: string } }) {
     const parsed = createFacilityDtoSchema.safeParse(body);
     if (!parsed.success) {
@@ -23,6 +23,7 @@ export class AdminFacilitiesController {
   }
 
   @Get("facilities")
+  @UseGuards(AuthGuard("jwt"), RolesGuard)
   @RequireRoles(RoleCode.ADMIN)
   async list() {
     return this.facilities.list();
