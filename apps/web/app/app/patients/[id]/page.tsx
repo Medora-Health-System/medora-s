@@ -229,6 +229,7 @@ export default function PatientDetailPage() {
     if (!patientId || !facilityId || !canAccessPatientDetail) return;
     if (clinicalChartAccess) {
       loadChartSummary();
+      loadDeskEncounters();
     } else {
       setChartSummary(null);
       loadDeskEncounters();
@@ -296,10 +297,12 @@ export default function PatientDetailPage() {
     return new Date(dateStr).toLocaleDateString("fr-FR");
   };
 
-  const openEncounter =
+  const openEncounterFromChart =
     clinicalChartAccess && chartSummary
       ? chartSummary.recentEncounters.find((e) => e.status === "OPEN")
-      : deskEncounters.find((e: { status?: string }) => e.status === "OPEN");
+      : undefined;
+  const openEncounterFromDesk = deskEncounters.find((e: { status?: string }) => e.status === "OPEN");
+  const openEncounter = openEncounterFromChart ?? openEncounterFromDesk;
 
   const latestVitalsJson = vitalsTimeline?.latest?.vitalsJson as
     | Record<string, number | string | null | undefined>

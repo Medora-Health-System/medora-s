@@ -115,6 +115,7 @@ function normalizeRoleSet(roles: string[]): Set<string> {
 function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
   const { prefix, exact } = rule;
   if (exact) return pathname === prefix;
+  if (prefix.endsWith("/")) return pathname.startsWith(prefix);
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 

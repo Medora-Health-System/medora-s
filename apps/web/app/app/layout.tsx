@@ -192,20 +192,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const hasAnyFacilityRole = frs.length > 0;
     // Évite un faux « non autorisé » si cookie / établissement actif pas encore alignés avec l’entrée facilityRoles (course au chargement).
     if (hasAnyFacilityRole && roles.length === 0) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn("[routeGuard] skip redirect: rôles vides pour l’établissement actif (attente alignement)", {
-          activeFacility,
-          pathname,
-        });
-      }
       setRouteRedirecting(false);
       return;
     }
     const target = getRouteGuardRedirect(pathname, roles);
     if (target) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn("[routeGuard] redirect", { from: pathname, to: target, roles });
-      }
       setRouteRedirecting(true);
       router.replace(target);
     } else {

@@ -113,7 +113,10 @@ function PatientsPageContent() {
 
   const canCreateConsultation =
     rolesReady &&
-    (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
+    (roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN") ||
+      roles.includes("FRONT_DESK"));
   /** Aligné sur la page `/app/encounters/[id]` (GET consultation autorisé). */
   const canOpenEncounterDetail =
     rolesReady &&

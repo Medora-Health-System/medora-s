@@ -14,6 +14,9 @@ pnpm --filter @medora/shared build
 echo "→ @medora/web tsc --noEmit"
 pnpm --filter @medora/web exec tsc --noEmit
 
+echo "→ @medora/web vitest"
+pnpm --filter @medora/web exec vitest run
+
 echo "→ prisma generate (@medora/api) — ensures client types for API typecheck"
 pnpm --filter @medora/api exec prisma generate
 
