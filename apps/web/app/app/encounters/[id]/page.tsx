@@ -39,6 +39,7 @@ import {
   nursingAssessmentSignatureLineFr,
   parseAdmissionSummaryForChart,
   parseDischargeSummaryForChart,
+  parsePhysicianEvalV1ForChart,
 } from "@/components/patient-chart/patientChartHelpers";
 import {
   admissionFormToPayload,
@@ -1494,6 +1495,7 @@ function EncounterSummaryTab({
   const reason = encounter.visitReason || encounter.chiefComplaint;
   const nursingLines = nursingAssessmentDisplayLines(encounter?.nursingAssessment);
   const nursingSig = nursingAssessmentSignatureLineFr(encounter?.nursingAssessment);
+  const physicianDocSections = parsePhysicianEvalV1ForChart(encounter?.nursingAssessment);
   const dischargePreview = parseDischargeSummaryForChart(encounter?.dischargeSummaryJson);
   const admissionPreview = parseAdmissionSummaryForChart(encounter?.admissionSummaryJson);
   return (
@@ -1532,6 +1534,19 @@ function EncounterSummaryTab({
           </div>
         )}
       </div>
+      {physicianDocSections.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <strong>Documentation médicale (HPI / ROS / examen / MDM)</strong>
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+            {physicianDocSections.map((s, i) => (
+              <div key={i}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
+                <div style={{ fontSize: 14, whiteSpace: "pre-wrap", color: "#263238", marginTop: 4 }}>{s.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {(encounter.clinicianImpression || encounter.providerNote) && (
         <div style={{ marginTop: 16 }}>
           <strong>Impression clinique / Note médecin</strong>
@@ -1819,6 +1834,30 @@ function EncounterDiagnosticsTab({
   );
 }
 
+function parsePhysicianEvalV1FromEncounter(enc: { nursingAssessment?: unknown } | null | undefined): {
+  hpi: string;
+  ros: string;
+  physicalExam: string;
+  mdm: string;
+} {
+  const raw = enc?.nursingAssessment;
+  const pe =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as { physicianEvalV1?: unknown }).physicianEvalV1
+      : null;
+  if (!pe || typeof pe !== "object" || Array.isArray(pe)) {
+    return { hpi: "", ros: "", physicalExam: "", mdm: "" };
+  }
+  const o = pe as Record<string, unknown>;
+  const s = (v: unknown) => (typeof v === "string" ? v : "");
+  return {
+    hpi: s(o.hpi),
+    ros: s(o.ros),
+    physicalExam: s(o.physicalExam),
+    mdm: s(o.mdm),
+  };
+}
+
 function ClinicVisitTab({
   encounter,
   facilityId,
@@ -1834,6 +1873,10 @@ function ClinicVisitTab({
   const [followUp, setFollowUp] = useState(
     encounter.followUpDate ? new Date(encounter.followUpDate).toISOString().slice(0, 10) : ""
   );
+  const [hpi, setHpi] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).hpi);
+  const [ros, setRos] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).ros);
+  const [physicalExam, setPhysicalExam] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).physicalExam);
+  const [mdm, setMdm] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).mdm);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const readOnly = encounter.status !== "OPEN";
@@ -1843,21 +1886,56 @@ function ClinicVisitTab({
     setImpression(encounter.clinicianImpression || encounter.providerNote || "");
     setPlan(encounter.treatmentPlan || "");
     setFollowUp(encounter.followUpDate ? new Date(encounter.followUpDate).toISOString().slice(0, 10) : "");
-  }, [encounter.id, encounter.visitReason, encounter.chiefComplaint, encounter.clinicianImpression, encounter.providerNote, encounter.treatmentPlan, encounter.followUpDate]);
+    const pe = parsePhysicianEvalV1FromEncounter(encounter);
+    setHpi(pe.hpi);
+    setRos(pe.ros);
+    setPhysicalExam(pe.physicalExam);
+    setMdm(pe.mdm);
+  }, [
+    encounter.id,
+    encounter.updatedAt,
+    encounter.visitReason,
+    encounter.chiefComplaint,
+    encounter.clinicianImpression,
+    encounter.providerNote,
+    encounter.treatmentPlan,
+    encounter.followUpDate,
+    encounter.nursingAssessment,
+  ]);
 
   const save = async () => {
     setMessage(null);
     setSaving(true);
     try {
+      const prevNav = encounter.nursingAssessment;
+      const prevObj =
+        prevNav && typeof prevNav === "object" && !Array.isArray(prevNav)
+          ? { ...(prevNav as Record<string, unknown>) }
+          : {};
+      const physicianEvalV1: Record<string, string> = {};
+      if (hpi.trim()) physicianEvalV1.hpi = hpi.trim();
+      if (ros.trim()) physicianEvalV1.ros = ros.trim();
+      if (physicalExam.trim()) physicianEvalV1.physicalExam = physicalExam.trim();
+      if (mdm.trim()) physicianEvalV1.mdm = mdm.trim();
+      const mergedNav: Record<string, unknown> = { ...prevObj };
+      if (Object.keys(physicianEvalV1).length > 0) mergedNav.physicianEvalV1 = physicianEvalV1;
+      else delete mergedNav.physicianEvalV1;
+
+      const prevKeys = prevObj && typeof prevObj === "object" ? Object.keys(prevObj as object) : [];
+      const shouldPatchNav =
+        Object.keys(mergedNav).length > 0 || prevKeys.length > 0;
+
+      const payload: Record<string, unknown> = {
+        visitReason: visitReason.trim() || null,
+        clinicianImpression: impression.trim() || null,
+        treatmentPlan: plan.trim() || null,
+        followUpDate: followUp ? new Date(followUp + "T12:00:00").toISOString() : null,
+      };
+      if (shouldPatchNav) payload.nursingAssessment = mergedNav;
+
       await apiFetch(`/encounters/${encounter.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visitReason: visitReason.trim() || null,
-          clinicianImpression: impression.trim() || null,
-          treatmentPlan: plan.trim() || null,
-          followUpDate: followUp ? new Date(followUp + "T12:00:00").toISOString() : null,
-        }),
+        body: JSON.stringify(payload),
         facilityId,
       });
       setMessage({ type: "ok", text: "Évaluation médicale enregistrée." });
@@ -1878,7 +1956,7 @@ function ClinicVisitTab({
       <p style={{ color: "#757575", fontSize: 13 }}>
         {readOnly
           ? "Consultation clôturée — lecture seule."
-          : "Motif, impression, plan et date de suivi — enregistrement partagé avec le dossier patient."}
+          : "HPI, ROS, examen, aide à la décision, impression, plan et suivi — enregistrement partagé avec le dossier patient."}
       </p>
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Motif de visite</label>
@@ -1905,6 +1983,50 @@ function ClinicVisitTab({
           onChange={(e) => setVisitReason(e.target.value)}
           style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
           placeholder="Pourquoi le patient est-il là aujourd'hui ?"
+        />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Histoire de la maladie actuelle (HPI)</label>
+        <textarea
+          disabled={readOnly}
+          value={hpi}
+          onChange={(e) => setHpi(e.target.value)}
+          rows={4}
+          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          placeholder="Histoire de la plainte actuelle"
+        />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Revue des systèmes (ROS)</label>
+        <textarea
+          disabled={readOnly}
+          value={ros}
+          onChange={(e) => setRos(e.target.value)}
+          rows={4}
+          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          placeholder="Revue par systèmes"
+        />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Examen physique</label>
+        <textarea
+          disabled={readOnly}
+          value={physicalExam}
+          onChange={(e) => setPhysicalExam(e.target.value)}
+          rows={4}
+          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          placeholder="Constatations à l’examen"
+        />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Aide à la décision médicale (MDM)</label>
+        <textarea
+          disabled={readOnly}
+          value={mdm}
+          onChange={(e) => setMdm(e.target.value)}
+          rows={4}
+          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          placeholder="Complexité, données, risque, synthèse décisionnelle"
         />
       </div>
       <div style={{ marginBottom: 16 }}>

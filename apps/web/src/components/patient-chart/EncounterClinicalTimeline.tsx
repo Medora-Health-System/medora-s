@@ -10,6 +10,7 @@ import {
   parseAdmissionSummaryForChart,
   parseDischargeSummaryForChart,
   parseNursingAssessmentSectionsForChart,
+  parsePhysicianEvalV1ForChart,
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
@@ -173,6 +174,7 @@ export function EncounterClinicalTimeline({
         const consultWhen = formatShortDateTime(enc.createdAt);
         const nursingSections = parseNursingAssessmentSectionsForChart(enc.nursingAssessment);
         const nursingProcedureSections = parseNursingProceduresForChart(enc.nursingAssessment);
+        const physicianDocSections = parsePhysicianEvalV1ForChart(enc.nursingAssessment);
         const discharge = parseDischargeSummaryForChart(enc.dischargeSummaryJson);
         const admission = parseAdmissionSummaryForChart(enc.admissionSummaryJson);
         const items = flattenOrderItems(enc);
@@ -259,6 +261,20 @@ export function EncounterClinicalTimeline({
                   ))}
                   {nursingProcedureSections.map((s) => (
                     <div key="proc-iv">
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
+                      <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{s.text}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {physicianDocSections.length > 0 && (
+              <>
+                <div style={subTitle}>Documentation médicale</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {physicianDocSections.map((s, i) => (
+                    <div key={`pev-${i}`}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
                       <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{s.text}</div>
                     </div>

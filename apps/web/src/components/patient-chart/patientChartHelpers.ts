@@ -81,6 +81,30 @@ export function nursingAssessmentDisplayLines(raw: unknown): string[] {
   return [...base, ...proc];
 }
 
+/** Champs non vides de `nursingAssessment.physicianEvalV1` pour affichage résumé / timeline. */
+export function parsePhysicianEvalV1ForChart(
+  raw: unknown
+): { labelFr: string; text: string }[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const o = raw as Record<string, unknown>;
+  const pe = o.physicianEvalV1;
+  if (!pe || typeof pe !== "object" || Array.isArray(pe)) return [];
+  const p = pe as Record<string, unknown>;
+  const pairs: [string, string][] = [
+    ["hpi", "HPI"],
+    ["ros", "ROS"],
+    ["physicalExam", "Examen physique"],
+    ["mdm", "MDM"],
+  ];
+  const out: { labelFr: string; text: string }[] = [];
+  for (const [key, labelFr] of pairs) {
+    const v = p[key];
+    if (typeof v !== "string" || !v.trim()) continue;
+    out.push({ labelFr, text: v.trim() });
+  }
+  return out;
+}
+
 export type DischargeSummaryFieldsFr = {
   disposition?: string;
   exitCondition?: string;
