@@ -825,6 +825,11 @@ export default function EncounterDetailPage() {
             </div>
             <div style={{ fontSize: 13, color: "#333", lineHeight: 1.55 }}>
               {quickContextLoading ? "Chargement…" : vitalsLine}
+              {vitalsJson?.allergyNote && String(vitalsJson.allergyNote).trim() !== "" && (
+                <div style={{ marginTop: 6, color: "#c62828", fontWeight: 700 }}>
+                  ⚠️ Allergie : {String(vitalsJson.allergyNote).trim()}
+                </div>
+              )}
               {vitalsAt && <div style={{ color: "#757575" }}>Relevé : {vitalsAt}</div>}
             </div>
           </div>
@@ -2036,6 +2041,7 @@ function TriageVitalsTab({
     spo2: "",
     weightKg: "",
     heightCm: "",
+    allergyNote: "",
     strokeScreen: "",
     sepsisScreen: "",
     triageCompleteAt: "",
@@ -2067,6 +2073,8 @@ function TriageVitalsTab({
           spo2: v.spo2?.toString() ?? "",
           weightKg: v.weightKg?.toString() ?? "",
           heightCm: v.heightCm?.toString() ?? "",
+          allergyNote:
+            (data.vitalsJson as { allergyNote?: string | null } | null | undefined)?.allergyNote ?? "",
           strokeScreen: data.strokeScreen ? JSON.stringify(data.strokeScreen, null, 2) : "",
           sepsisScreen: data.sepsisScreen ? JSON.stringify(data.sepsisScreen, null, 2) : "",
           triageCompleteAt: data.triageCompleteAt ? new Date(data.triageCompleteAt).toISOString().slice(0, 16) : "",
@@ -2082,6 +2090,35 @@ function TriageVitalsTab({
   const handleSave = async () => {
     setSaving(true);
     setSaveInfo("");
+
+    let strokeScreenParsed: unknown = null;
+    if (formData.strokeScreen.trim()) {
+      try {
+        strokeScreenParsed = JSON.parse(formData.strokeScreen);
+      } catch {
+        const m =
+          "strokeScreen : JSON invalide. Corrigez le texte ou videz-le avant d'enregistrer.";
+        setSaveInfo(m);
+        alert(m);
+        setSaving(false);
+        return;
+      }
+    }
+
+    let sepsisScreenParsed: unknown = null;
+    if (formData.sepsisScreen.trim()) {
+      try {
+        sepsisScreenParsed = JSON.parse(formData.sepsisScreen);
+      } catch {
+        const m =
+          "sepsisScreen : JSON invalide. Corrigez le texte ou videz-le avant d'enregistrer.";
+        setSaveInfo(m);
+        alert(m);
+        setSaving(false);
+        return;
+      }
+    }
+
     try {
       const payload: any = {
         chiefComplaint: formData.chiefComplaint || null,
@@ -2096,9 +2133,13 @@ function TriageVitalsTab({
           spo2: formData.spo2 ? parseInt(formData.spo2) : null,
           weightKg: formData.weightKg ? parseFloat(formData.weightKg) : null,
           heightCm: formData.heightCm ? parseFloat(formData.heightCm) : null,
+          allergyNote: (() => {
+            const t = formData.allergyNote.trim();
+            return t.length > 0 ? t.slice(0, 2000) : null;
+          })(),
         },
-        strokeScreen: formData.strokeScreen ? JSON.parse(formData.strokeScreen) : null,
-        sepsisScreen: formData.sepsisScreen ? JSON.parse(formData.sepsisScreen) : null,
+        strokeScreen: strokeScreenParsed,
+        sepsisScreen: sepsisScreenParsed,
         triageCompleteAt: formData.triageCompleteAt ? new Date(formData.triageCompleteAt).toISOString() : null,
       };
       // Remove null values from vitalsJson
@@ -2304,6 +2345,18 @@ function TriageVitalsTab({
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Allergie</label>
+        <textarea
+          value={formData.allergyNote}
+          onChange={(e) => setFormData({ ...formData, allergyNote: e.target.value })}
+          disabled={isReadOnly}
+          maxLength={2000}
+          rows={4}
+          style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, minHeight: 80 }}
+        />
       </div>
 
       {!isReadOnly && (

@@ -1,19 +1,23 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { EncounterStatus } from "@prisma/client";
+import { EncounterStatus, EncounterType } from "@prisma/client";
 
 @Injectable()
 export class TrackboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getActiveEncounters(facilityId: string, status?: string) {
+  async getActiveEncounters(facilityId: string, status?: string, type?: string) {
     const where: any = {
       facilityId,
       status: status === "OPEN" ? EncounterStatus.OPEN : undefined,
     };
 
-    // Filter to today's encounters if status is OPEN
-    if (status === "OPEN") {
+    if (type === "INPATIENT") {
+      where.type = EncounterType.INPATIENT;
+    }
+
+    // Filter to today's encounters if status is OPEN (routine trackboard), not for INPATIENT board
+    if (status === "OPEN" && type !== "INPATIENT") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       where.createdAt = {

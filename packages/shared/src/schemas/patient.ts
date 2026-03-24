@@ -60,6 +60,7 @@ export const vitalsSchema = z.object({
   spo2: z.number().int().min(0).max(100).optional().nullable(),
   weightKg: z.number().positive().optional().nullable(),
   heightCm: z.number().positive().optional().nullable(),
+  allergyNote: z.string().max(2000).optional().nullable(),
 }).optional().nullable();
 
 export type Vitals = z.infer<typeof vitalsSchema>;

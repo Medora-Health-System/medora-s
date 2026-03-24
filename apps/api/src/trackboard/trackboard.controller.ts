@@ -11,13 +11,17 @@ export class TrackboardController {
 
   @Get()
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
-  async getActiveEncounters(@Query("status") status: string, @Req() req: any) {
+  async getActiveEncounters(
+    @Query("status") status: string,
+    @Query("type") type: string | undefined,
+    @Req() req: any
+  ) {
     const facilityId = req.facilityId;
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
 
-    return this.trackboardService.getActiveEncounters(facilityId, status);
+    return this.trackboardService.getActiveEncounters(facilityId, status, type);
   }
 }
 

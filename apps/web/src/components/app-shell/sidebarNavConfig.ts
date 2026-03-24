@@ -138,6 +138,13 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
   { href: "/app/provider", label: n.provider, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
   { href: "/app/patients", label: n.patients, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
   { href: "/app/encounters", label: n.encounters, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate" },
+  {
+    href: "/app/hospitalisation",
+    label: n.hospitalisation,
+    roles: ["ADMIN", "PROVIDER", "RN"],
+    group: "soins_dossiers",
+    accent: "slate",
+  },
   { href: "/app/follow-ups", label: n.followUps, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
   { href: "/app/rad-worklist", label: n.radWorklist, roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
   { href: "/app/lab-worklist", label: n.labWorklist, roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },

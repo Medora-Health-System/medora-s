@@ -55,6 +55,7 @@ const fr = {
     provider: "Médecin",
     patients: "Patients",
     encounters: "Consultations",
+    hospitalisation: "Hospitalisation",
     followUps: "Suivis",
     radWorklist: "Liste imagerie",
     labWorklist: "Liste laboratoire",
