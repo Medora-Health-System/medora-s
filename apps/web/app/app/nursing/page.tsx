@@ -7,7 +7,14 @@ import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import { OpenEncountersTable } from "@/components/clinical/OpenEncountersTable";
 import { ui } from "@/lib/uiLabels";
 
-const btn: React.CSSProperties = {
+const linkRow: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 12,
+  marginBottom: 24,
+};
+
+const linkStyle: React.CSSProperties = {
   display: "inline-block",
   padding: "10px 18px",
   backgroundColor: "#1a1a1a",
@@ -36,7 +43,8 @@ export default function NursingPage() {
   }, [facilityId]);
 
   useEffect(() => {
-    if (ready && facilityId) loadEncounters();
+    if (!ready || !facilityId) return;
+    void loadEncounters();
   }, [ready, facilityId, loadEncounters]);
 
   if (!ready) {
@@ -45,32 +53,60 @@ export default function NursingPage() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Soins infirmiers</h1>
-      <p style={{ color: "#555", maxWidth: 720, lineHeight: 1.5 }}>
-        Accédez aux mêmes dossiers et consultations que le reste de l&apos;équipe clinique : dossier patient, signes vitaux et
-        actions dans la consultation ouverte.
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <h1 style={{ marginTop: 0 }}>Soins infirmiers</h1>
+        <button
+          type="button"
+          onClick={() => void loadEncounters()}
+          disabled={loading}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#1a1a1a",
+            color: "white",
+            border: "none",
+            borderRadius: 4,
+            cursor: loading ? "not-allowed" : "pointer",
+            fontSize: 14,
+          }}
+        >
+          {loading ? ui.common.loading : ui.common.refresh}
+        </button>
+      </div>
+
+      <p style={{ color: "#555", maxWidth: 720, lineHeight: 1.5, marginBottom: 20 }}>
+        Accès rapide aux consultations ouvertes du jour pour la suite des soins au chevet du patient.
       </p>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20, marginBottom: 8 }}>
-        <Link href="/app/patients" style={btn}>
+      <div style={linkRow}>
+        <Link href="/app/patients" style={linkStyle}>
           Patients à voir
         </Link>
-        <Link href="/app/encounters" style={{ ...btn, backgroundColor: "#37474f" }}>
+        <Link href="/app/encounters" style={{ ...linkStyle, backgroundColor: "#37474f" }}>
           Liste des consultations
         </Link>
-        <Link href="/app/trackboard" style={{ ...btn, backgroundColor: "#455a64" }}>
+        <Link href="/app/trackboard" style={{ ...linkStyle, backgroundColor: "#455a64" }}>
           Tableau de bord des consultations
         </Link>
       </div>
 
-      <h2 style={{ marginTop: 28, fontSize: 18 }}>Consultations ouvertes</h2>
-      <p style={{ color: "#666", fontSize: 14, marginTop: 0 }}>
-        Ouvrez le dossier pour le contexte complet, ou la consultation pour les signes vitaux et la suite des soins.
+      <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 18 }}>Consultations ouvertes</h2>
+      <p style={{ color: "#666", fontSize: 14, marginTop: 0, marginBottom: 12 }}>
+        Ouvrez le dossier patient ou la consultation depuis le tableau ci-dessous.
       </p>
+
       <OpenEncountersTable
         encounters={encounters}
         loading={loading}
-        emptyMessage="Aucune consultation ouverte pour le moment. Utilisez « Patients à voir » pour trouver un patient et ouvrir une consultation."
+        emptyMessage="Aucune consultation ouverte pour le moment. Utilisez le tableau clinique ou la liste des patients pour retrouver une consultation."
       />
     </div>
   );
