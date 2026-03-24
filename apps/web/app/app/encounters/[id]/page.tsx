@@ -2091,17 +2091,15 @@ function TriageVitalsTab({
     setSaving(true);
     setSaveInfo("");
 
+    const screenWarnings: string[] = [];
+
     let strokeScreenParsed: unknown = null;
     if (formData.strokeScreen.trim()) {
       try {
         strokeScreenParsed = JSON.parse(formData.strokeScreen);
       } catch {
-        const m =
-          "strokeScreen : JSON invalide. Corrigez le texte ou videz-le avant d'enregistrer.";
-        setSaveInfo(m);
-        alert(m);
-        setSaving(false);
-        return;
+        strokeScreenParsed = null;
+        screenWarnings.push("strokeScreen : JSON invalide, champ ignoré.");
       }
     }
 
@@ -2110,12 +2108,8 @@ function TriageVitalsTab({
       try {
         sepsisScreenParsed = JSON.parse(formData.sepsisScreen);
       } catch {
-        const m =
-          "sepsisScreen : JSON invalide. Corrigez le texte ou videz-le avant d'enregistrer.";
-        setSaveInfo(m);
-        alert(m);
-        setSaving(false);
-        return;
+        sepsisScreenParsed = null;
+        screenWarnings.push("sepsisScreen : JSON invalide, champ ignoré.");
       }
     }
 
@@ -2185,7 +2179,10 @@ function TriageVitalsTab({
 
       loadTriage();
       onUpdate();
-      setSaveInfo((res as any)?.queued ? "En attente de synchronisation" : "Signes vitaux enregistrés");
+      const baseMsg = (res as any)?.queued ? "En attente de synchronisation" : "Signes vitaux enregistrés";
+      setSaveInfo(
+        screenWarnings.length ? `${baseMsg} ${screenWarnings.join(" ")}` : baseMsg
+      );
     } catch (error) {
       console.error("Save error:", error);
       setSaveInfo("Impossible d'enregistrer les signes vitaux");

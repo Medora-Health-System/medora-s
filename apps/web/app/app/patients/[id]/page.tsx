@@ -320,7 +320,7 @@ export default function PatientDetailPage() {
     ? buildVitalsTimelineNewestFirst(
         vitalsTimeline?.latest ?? null,
         vitalsTimeline?.history ?? [],
-        supersededVitals
+        vitalsTimeline ? [] : supersededVitals
       )
     : [];
 

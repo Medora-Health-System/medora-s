@@ -194,6 +194,7 @@ model Facility {
   vaccineAdministrations     VaccineAdministration[]
   diseaseCaseReports         DiseaseCaseReport[]
   followUps                  FollowUp[]
+  triageVitalsReadings       TriageVitalsReading[]
 }
 
 model Department {
@@ -317,6 +318,7 @@ model Patient {
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
+  triageVitalsReadings   TriageVitalsReading[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -401,6 +403,7 @@ model Encounter {
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
+  triageVitalsReadings   TriageVitalsReading[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -492,9 +495,32 @@ model Triage {
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  triageVitalsReadings TriageVitalsReading[]
 
   @@index([facilityId])
   @@index([encounterId])
+}
+
+/// Append-only vitals readings per triage save (Signes vitaux); `Triage.vitalsJson` remains current row.
+model TriageVitalsReading {
+  id               String    @id @default(uuid())
+  facilityId       String
+  patientId        String
+  encounterId      String
+  triageId         String
+  vitalsJson       Json
+  triageCompleteAt DateTime?
+  recordedAt       DateTime  @default(now())
+
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  triage    Triage    @relation(fields: [triageId], references: [id], onDelete: Restrict)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([patientId, recordedAt])
+  @@index([encounterId])
+  @@index([triageId])
 }
 
 model Result {

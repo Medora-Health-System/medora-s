@@ -78,6 +78,16 @@ export class TriageService {
     });
 
     if (data.vitalsJson !== undefined && hasNonEmptyVitalsJson(data.vitalsJson)) {
+      await this.prisma.triageVitalsReading.create({
+        data: {
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId,
+          triageId: triage.id,
+          vitalsJson: data.vitalsJson as object,
+          triageCompleteAt: data.triageCompleteAt ?? null,
+        },
+      });
       await this.prisma.patient.update({
         where: { id: encounter.patientId },
         data: {

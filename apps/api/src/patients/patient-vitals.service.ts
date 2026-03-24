@@ -21,7 +21,7 @@ export class PatientVitalsService {
 
   /**
    * Latest triage vitals across all encounters for the patient, plus older snapshots (no duplicate: history excludes latest).
-   * Sort DESC by triage.updatedAt.
+   * Sort DESC by recorded time (append-only readings).
    */
   async getTriageVitalsTimeline(
     patientId: string,
@@ -35,25 +35,22 @@ export class PatientVitalsService {
       throw new NotFoundException("Patient not found");
     }
 
-    const encounters = await this.prisma.encounter.findMany({
+    const readings = await this.prisma.triageVitalsReading.findMany({
       where: { patientId, facilityId },
-      include: { triage: true },
+      orderBy: { recordedAt: "desc" },
+      include: { encounter: { select: { type: true } } },
     });
 
-    const snapshots: PatientTriageVitalsSnapshot[] = encounters
-      .filter((e) => e.triage && hasVitalsJson(e.triage.vitalsJson))
-      .map((e) => {
-        const t = e.triage!;
-        return {
-          encounterId: e.id,
-          encounterType: e.type,
-          triageId: t.id,
-          updatedAt: t.updatedAt.toISOString(),
-          triageCompleteAt: t.triageCompleteAt ? t.triageCompleteAt.toISOString() : null,
-          vitalsJson: (t.vitalsJson ?? {}) as Record<string, unknown>,
-        };
-      })
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const snapshots: PatientTriageVitalsSnapshot[] = readings
+      .filter((r) => hasVitalsJson(r.vitalsJson))
+      .map((r) => ({
+        encounterId: r.encounterId,
+        encounterType: r.encounter.type,
+        triageId: r.triageId,
+        updatedAt: r.recordedAt.toISOString(),
+        triageCompleteAt: r.triageCompleteAt ? r.triageCompleteAt.toISOString() : null,
+        vitalsJson: (r.vitalsJson ?? {}) as Record<string, unknown>,
+      }));
 
     const latest = snapshots[0] ?? null;
     const history = snapshots.slice(1);
