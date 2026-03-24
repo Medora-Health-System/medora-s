@@ -238,11 +238,21 @@ export function NursingAssessmentTab({
         /* repli */
       }
       const body = buildPayload(state, savedByDisplayName, ivState);
+      const prevNav = encounter?.nursingAssessment;
+      const prevObj =
+        prevNav && typeof prevNav === "object" && !Array.isArray(prevNav)
+          ? { ...(prevNav as Record<string, unknown>) }
+          : {};
+      const inner = body.nursingAssessment;
+      const mergedNav =
+        inner && typeof inner === "object" && !Array.isArray(inner)
+          ? { ...prevObj, ...inner }
+          : prevObj;
       await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         facilityId,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ nursingAssessment: mergedNav }),
       });
       setOk(true);
       onUpdate();
@@ -251,7 +261,7 @@ export function NursingAssessmentTab({
     } finally {
       setSaving(false);
     }
-  }, [encounterId, facilityId, onUpdate, state, ivState]);
+  }, [encounterId, facilityId, encounter?.nursingAssessment, onUpdate, state, ivState]);
 
   return (
     <div>

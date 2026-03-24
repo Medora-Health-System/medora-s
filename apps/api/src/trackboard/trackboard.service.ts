@@ -14,15 +14,8 @@ export class TrackboardService {
 
     if (type === "INPATIENT") {
       where.type = EncounterType.INPATIENT;
-    }
-
-    // Filter to today's encounters if status is OPEN (routine trackboard), not for INPATIENT board
-    if (status === "OPEN" && type !== "INPATIENT") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      where.createdAt = {
-        gte: today,
-      };
+    } else if (status === "OPEN") {
+      where.type = { not: EncounterType.INPATIENT };
     }
 
     return this.prisma.encounter.findMany({
