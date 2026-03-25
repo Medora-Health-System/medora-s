@@ -107,6 +107,7 @@ export default function NursingPage() {
         encounters={encounters}
         loading={loading}
         emptyMessage="Aucune consultation ouverte pour le moment. Utilisez le tableau clinique ou la liste des patients pour retrouver une consultation."
+        showMarLink
       />
     </div>
   );

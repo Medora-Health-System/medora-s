@@ -21,10 +21,12 @@ export function OpenEncountersTable({
   encounters,
   loading,
   emptyMessage,
+  showMarLink,
 }: {
   encounters: Row[];
   loading: boolean;
   emptyMessage: string;
+  showMarLink?: boolean;
 }) {
   if (loading) {
     return <p>{ui.common.loading}</p>;
@@ -88,6 +90,14 @@ export function OpenEncountersTable({
                     >
                       Ouvrir la consultation
                     </Link>
+                    {showMarLink ? (
+                      <Link
+                        href={`/app/encounters/${encounter.id}?tab=mar`}
+                        style={{ fontSize: 14, color: "#2e7d32", fontWeight: 500 }}
+                      >
+                        Administration médicamenteuse
+                      </Link>
+                    ) : null}
                   </div>
                 </td>
               </tr>

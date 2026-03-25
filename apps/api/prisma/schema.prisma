@@ -867,15 +867,16 @@ model MedicationDispense {
 
 /// Append-only bedside medication administrations (MAR log); does not replace OrderItem lifecycle.
 model MedicationAdministration {
-  id                   String   @id @default(uuid())
-  facilityId           String
-  patientId            String
-  encounterId          String
-  orderItemId          String?
-  administeredAt       DateTime @default(now())
-  administeredByUserId String
-  notes                String?
-  createdAt            DateTime @default(now())
+  id                      String   @id @default(uuid())
+  facilityId              String
+  patientId               String
+  encounterId             String
+  orderItemId             String?
+  medicationLabelSnapshot String?
+  administeredAt          DateTime @default(now())
+  administeredByUserId    String
+  notes                   String?
+  createdAt               DateTime @default(now())
 
   facility       Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
