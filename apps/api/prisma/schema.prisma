@@ -188,6 +188,7 @@ model Facility {
   protocolOrderSets      ProtocolOrderSet[]
   diagnoses              Diagnosis[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   inventoryItems             InventoryItem[]
   inventoryTransactions      InventoryTransaction[]
   facilityMedicationUsages   FacilityMedicationUsage[]
@@ -238,6 +239,7 @@ model User {
   userRoles              UserRole[]
   auditLogs              AuditLog[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   inventoryTransactions  InventoryTransaction[]
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
@@ -315,6 +317,7 @@ model Patient {
   auditLogs              AuditLog[]
   diagnoses              Diagnosis[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
@@ -400,6 +403,7 @@ model Encounter {
   pathwaySession         PathwaySession?
   diagnoses              Diagnosis[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
@@ -468,6 +472,7 @@ model OrderItem {
   order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   result Result?
   pharmacyDispenseRecord MedicationDispense?
+  medicationAdministrations MedicationAdministration[]
 
   @@index([orderId])
   @@index([status])
@@ -858,6 +863,31 @@ model MedicationDispense {
   @@index([facilityId])
   @@index([inventoryItemId])
   @@index([dispensedAt])
+}
+
+/// Append-only bedside medication administrations (MAR log); does not replace OrderItem lifecycle.
+model MedicationAdministration {
+  id                   String   @id @default(uuid())
+  facilityId           String
+  patientId            String
+  encounterId          String
+  orderItemId          String?
+  administeredAt       DateTime @default(now())
+  administeredByUserId String
+  notes                String?
+  createdAt            DateTime @default(now())
+
+  facility       Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter      Encounter  @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  orderItem      OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  administeredBy User       @relation(fields: [administeredByUserId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([orderItemId])
+  @@index([administeredAt])
 }
 
 // --- Medora Public Health: vaccination + disease reporting ---

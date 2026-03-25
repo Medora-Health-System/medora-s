@@ -22,6 +22,7 @@ import { DiagnosesModule } from "./diagnoses/diagnoses.module";
 import { FollowUpsModule } from "./follow-ups/follow-ups.module";
 import { DebugModule } from "./debug/debug.module";
 import { AdminModule } from "./admin/admin.module";
+import { MedicationAdministrationModule } from "./medication-administration/medication-administration.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -45,6 +46,7 @@ const imports = [
   DiagnosesModule,
   FollowUpsModule,
   AdminModule,
+  MedicationAdministrationModule,
 ];
 
 // Only include DebugModule in non-production environments
