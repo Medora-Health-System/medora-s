@@ -116,28 +116,32 @@ function buildPayload(
     prescriberName: prescriberName.trim(),
     prescriberLicense: prescriberLicense.trim() || undefined,
     prescriberContact: prescriberContact.trim() || undefined,
-    items: items.map((it) =>
-      it.isManual || !it.catalogItemId
-        ? {
-            catalogItemId: null,
-            catalogItemType: "MEDICATION" as const,
-            manualLabel: (it.manualLabel ?? it._label).trim(),
-            quantity: it.quantity!,
-            notes: it.notes?.trim() || undefined,
-            strength: it.strength?.trim() || undefined,
-            refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
-            medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
-          }
-        : {
-            catalogItemId: it.catalogItemId,
-            catalogItemType: "MEDICATION" as const,
-            quantity: it.quantity!,
-            notes: it.notes?.trim() || undefined,
-            strength: it.strength?.trim() || undefined,
-            refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
-            medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
-          }
-    ),
+    items: items.map((it) => {
+      const raw = it.intendedAdministrationAt?.trim();
+      const intendedDate = raw ? new Date(raw) : undefined;
+      const baseManual = {
+        catalogItemId: null,
+        catalogItemType: "MEDICATION" as const,
+        manualLabel: (it.manualLabel ?? it._label).trim(),
+        quantity: it.quantity!,
+        notes: it.notes?.trim() || undefined,
+        strength: it.strength?.trim() || undefined,
+        refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
+        medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
+        ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
+      };
+      const baseCatalog = {
+        catalogItemId: it.catalogItemId!,
+        catalogItemType: "MEDICATION" as const,
+        quantity: it.quantity!,
+        notes: it.notes?.trim() || undefined,
+        strength: it.strength?.trim() || undefined,
+        refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
+        medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
+        ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
+      };
+      return it.isManual || !it.catalogItemId ? baseManual : baseCatalog;
+    }),
   };
 }
 

@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
+import { fetchOpenEncounters, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
+import { countPendingNurseMedicationLines } from "@/lib/nurseMedicationWorkload";
 import { OpenEncountersTable } from "@/components/clinical/OpenEncountersTable";
 import { ui } from "@/lib/uiLabels";
 
@@ -34,7 +35,21 @@ export default function NursingPage() {
     if (!facilityId) return;
     setLoading(true);
     try {
-      setEncounters(await fetchOpenEncounters(facilityId));
+      const open = await fetchOpenEncounters(facilityId);
+      const withWorkload = await Promise.all(
+        open.map(async (enc: { id: string }) => {
+          try {
+            const orders = await fetchOrdersForEncounter(facilityId, enc.id);
+            return {
+              ...enc,
+              pendingMedicationCount: countPendingNurseMedicationLines(orders),
+            };
+          } catch {
+            return { ...enc };
+          }
+        })
+      );
+      setEncounters(withWorkload);
     } catch {
       setEncounters([]);
     } finally {

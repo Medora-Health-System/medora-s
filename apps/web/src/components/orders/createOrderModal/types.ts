@@ -28,6 +28,8 @@ export type CreateOrderLineItem = {
   refillCount?: number;
   /** MEDICATION: intent for routing (nursing vs pharmacy). */
   medicationFulfillmentIntent?: "ADMINISTER_CHART" | "PHARMACY_DISPENSE";
+  /** MEDICATION: valeur datetime-local (optionnel) → API `intendedAdministrationAt`. */
+  intendedAdministrationAt?: string;
   _label: string;
   _dosageForm?: string;
   _route?: string;

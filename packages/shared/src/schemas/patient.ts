@@ -196,6 +196,8 @@ export const orderItemCreateDtoSchema = z.object({
   refillCount: z.number().int().min(0).max(99).optional(),
   /** MEDICATION only: default PHARMACY_DISPENSE when omitted (server). */
   medicationFulfillmentIntent: medicationFulfillmentIntentSchema.optional(),
+  /** MEDICATION only: horaire d’administration prévu (optionnel). */
+  intendedAdministrationAt: z.coerce.date().optional().nullable(),
 });
 
 export type OrderItemCreateDto = z.infer<typeof orderItemCreateDtoSchema>;
@@ -311,4 +313,13 @@ export const orderUpdateDtoSchema = z.object({
 });
 
 export type OrderUpdateDto = z.infer<typeof orderUpdateDtoSchema>;
+
+/** POST /encounters/:encounterId/medication-administrations — append-only MAR log. */
+export const medicationAdministrationCreateDtoSchema = z.object({
+  orderItemId: z.string().uuid().optional(),
+  administeredAt: z.coerce.date().optional(),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+});
+
+export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
 

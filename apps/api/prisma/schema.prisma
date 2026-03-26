@@ -462,6 +462,8 @@ model OrderItem {
   strength        String?     // e.g. "500 mg" for medication
   refillCount     Int?        // number of refills for Rx
   medicationFulfillmentIntent MedicationFulfillmentIntent?
+  /// Administration prévue (information clinique, pas planification récurrente).
+  intendedAdministrationAt DateTime?
   completedAt     DateTime?
   completedByUserId String?
   completedByNurse User?     @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)

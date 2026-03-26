@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { ui } from "@/lib/uiLabels";
 
 type AdminRow = {
@@ -14,9 +15,69 @@ type AdminRow = {
   administeredBy: { id: string; firstName: string; lastName: string };
 };
 
-function formatDatetimeLocalValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+type OrderItemApi = {
+  id?: string;
+  catalogItemType?: string | null;
+  medicationFulfillmentIntent?: string | null;
+  status?: string | null;
+  intendedAdministrationAt?: string | null;
+  catalogMedication?: { route?: string | null } | null;
+};
+
+const RECENT_MS = 24 * 60 * 60 * 1000;
+
+/** Fenêtre avant l’heure prévue : affichage « bientôt dû » (jaune), sans logique de planification. */
+const INTENDED_DUE_SOON_BEFORE_MS = 60 * 60 * 1000;
+
+type IntendedUrgency = "overdue" | "dueSoon";
+
+function intendedTimingUrgency(
+  intendedAtIso: string | null | undefined,
+  nowMs: number,
+  isAdministered: boolean
+): IntendedUrgency | null {
+  if (isAdministered) return null;
+  const raw = intendedAtIso != null ? String(intendedAtIso).trim() : "";
+  if (!raw) return null;
+  const due = new Date(raw).getTime();
+  if (Number.isNaN(due)) return null;
+  if (nowMs > due) return "overdue";
+  const msUntil = due - nowMs;
+  if (msUntil >= 0 && msUntil <= INTENDED_DUE_SOON_BEFORE_MS) return "dueSoon";
+  return null;
+}
+
+type MarAction = "administered" | "refused" | "not_available" | "md_changed";
+
+function actionLabelFr(a: MarAction): string {
+  switch (a) {
+    case "administered":
+      return "Administré";
+    case "refused":
+      return "Patient refusé";
+    case "not_available":
+      return "Non disponible";
+    case "md_changed":
+      return "Modifié par le médecin";
+    default:
+      return "";
+  }
+}
+
+function buildMarNotes(action: MarAction, routeLine: string | undefined, userNotes: string): string {
+  const lines = [`Action : ${actionLabelFr(action)}`];
+  if (routeLine?.trim()) lines.push(`Voie : ${routeLine.trim()}`);
+  const n = userNotes.trim();
+  if (n) lines.push(n);
+  return lines.join("\n");
+}
+
+/** Latest MAR indicates « administré » (aligné sur la 1re ligne « Action : … »). */
+function latestMarIsAdministered(latest: AdminRow | undefined): boolean {
+  const t = latest?.notes?.trim();
+  if (!t) return false;
+  const m = t.match(/^Action\s*:\s*(.+)$/im);
+  return m?.[1]?.trim().startsWith("Administré") ?? false;
 }
 
 export function MedicationAdministrationTab({
@@ -28,86 +89,117 @@ export function MedicationAdministrationTab({
   facilityId: string;
   encounterStatus: string;
 }) {
-  const [rows, setRows] = useState<AdminRow[]>([]);
+  const [orders, setOrders] = useState<unknown[]>([]);
+  const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [medicationOptions, setMedicationOptions] = useState<{ id: string; label: string }[]>([]);
-  const [orderItemId, setOrderItemId] = useState("");
-  const [notes, setNotes] = useState("");
-  const [administeredAt, setAdministeredAt] = useState(() => formatDatetimeLocalValue(new Date()));
   const [submitting, setSubmitting] = useState(false);
 
-  const loadOrdersForDropdown = useCallback(async () => {
-    try {
-      const orders = await apiFetch(`/encounters/${encounterId}/orders`, { facilityId });
-      const opts: { id: string; label: string }[] = [];
-      if (Array.isArray(orders)) {
-        for (const o of orders) {
-          const items = (o as { items?: unknown[] }).items ?? [];
-          for (const it of items) {
-            const row = it as { id?: string; catalogItemType?: string };
-            if (row.catalogItemType === "MEDICATION" && row.id) {
-              opts.push({ id: row.id, label: getOrderItemDisplayLabelFr(it as Parameters<typeof getOrderItemDisplayLabelFr>[0]) });
-            }
-          }
-        }
-      }
-      setMedicationOptions(opts);
-    } catch {
-      setMedicationOptions([]);
-    }
-  }, [encounterId, facilityId]);
+  const [modalItem, setModalItem] = useState<{
+    orderItemId: string;
+    label: string;
+    routeHint: string;
+  } | null>(null);
+  const [modalAction, setModalAction] = useState<MarAction>("administered");
+  const [modalRoute, setModalRoute] = useState("");
+  const [modalNotes, setModalNotes] = useState("");
 
-  const loadList = useCallback(async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId });
-      setRows(Array.isArray(data) ? (data as AdminRow[]) : []);
+      const [o, a] = await Promise.all([
+        apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
+        apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
+      ]);
+      setOrders(Array.isArray(o) ? o : []);
+      setAdmins(Array.isArray(a) ? (a as AdminRow[]) : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Chargement impossible.");
-      setRows([]);
+      setOrders([]);
+      setAdmins([]);
     } finally {
       setLoading(false);
     }
   }, [encounterId, facilityId]);
 
   useEffect(() => {
-    void loadList();
-    void loadOrdersForDropdown();
-  }, [loadList, loadOrdersForDropdown]);
+    void loadAll();
+  }, [loadAll]);
 
-  const labelByOrderItemId = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const o of medicationOptions) {
-      m.set(o.id, o.label);
+  const adminsByOrderItemId = useMemo(() => {
+    const m = new Map<string, AdminRow[]>();
+    for (const r of admins) {
+      if (!r.orderItemId) continue;
+      const list = m.get(r.orderItemId) ?? [];
+      list.push(r);
+      m.set(r.orderItemId, list);
+    }
+    for (const [k, list] of m.entries()) {
+      list.sort((a, b) => new Date(b.administeredAt).getTime() - new Date(a.administeredAt).getTime());
+      m.set(k, list);
     }
     return m;
-  }, [medicationOptions]);
+  }, [admins]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (encounterStatus !== "OPEN") return;
+  const taskRows = useMemo(() => {
+    const rows: {
+      orderItemId: string;
+      label: string;
+      routeHint: string;
+      intendedAt?: string | null;
+    }[] = [];
+    for (const order of orders) {
+      const items = (order as { items?: OrderItemApi[] }).items ?? [];
+      for (const it of items) {
+        if (!it.id) continue;
+        if (!isOrderItemPendingNurseMedication(it)) continue;
+        rows.push({
+          orderItemId: it.id,
+          label: getOrderItemDisplayLabelFr(it as Parameters<typeof getOrderItemDisplayLabelFr>[0]),
+          routeHint: it.catalogMedication?.route?.trim() || "",
+          intendedAt: it.intendedAdministrationAt ?? null,
+        });
+      }
+    }
+    return rows;
+  }, [orders]);
+
+  const openModal = (row: (typeof taskRows)[0]) => {
+    setModalItem({
+      orderItemId: row.orderItemId,
+      label: row.label,
+      routeHint: row.routeHint,
+    });
+    setModalAction("administered");
+    setModalRoute(row.routeHint);
+    setModalNotes("");
+  };
+
+  const closeModal = () => {
+    if (submitting) return;
+    setModalItem(null);
+  };
+
+  const submitModal = async () => {
+    if (!modalItem || encounterStatus !== "OPEN") return;
     setSubmitting(true);
     setError(null);
     try {
+      const routeLine = modalRoute.trim() || modalItem.routeHint;
       const body: Record<string, unknown> = {
-        administeredAt: new Date(administeredAt).toISOString(),
+        orderItemId: modalItem.orderItemId,
+        administeredAt: new Date().toISOString(),
+        notes: buildMarNotes(modalAction, routeLine, modalNotes),
       };
-      const n = notes.trim();
-      if (n) body.notes = n;
-      if (orderItemId) body.orderItemId = orderItemId;
       await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      setNotes("");
-      setOrderItemId("");
-      setAdministeredAt(formatDatetimeLocalValue(new Date()));
-      await loadList();
-      void loadOrdersForDropdown();
+      setModalItem(null);
+      await loadAll();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Enregistrement impossible.");
     } finally {
@@ -115,121 +207,363 @@ export function MedicationAdministrationTab({
     }
   };
 
+  const isOpen = encounterStatus === "OPEN";
+
   return (
-    <div>
+    <div style={{ maxWidth: 900 }}>
       {error ? (
         <p style={{ color: "#c62828", fontSize: 14, marginTop: 0 }} role="alert">
           {error}
         </p>
       ) : null}
 
-      <form
-        onSubmit={(ev) => void handleSubmit(ev)}
-        style={{
-          marginBottom: 24,
-          padding: 16,
-          backgroundColor: "#fafafa",
-          borderRadius: 8,
-          border: "1px solid #eee",
-          maxWidth: 560,
-        }}
-      >
-        <h3 style={{ margin: "0 0 12px 0", fontSize: 16 }}>Nouvelle administration</h3>
-        {encounterStatus !== "OPEN" ? (
-          <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{ui.mar.closedHint}</p>
-        ) : null}
-        <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600 }}>
-          {ui.mar.orderLineOptional}
-        </label>
-        <select
-          value={orderItemId}
-          onChange={(e) => setOrderItemId(e.target.value)}
-          disabled={encounterStatus !== "OPEN" || submitting}
-          style={{ width: "100%", padding: 8, marginBottom: 12, borderRadius: 4, border: "1px solid #ccc" }}
-        >
-          <option value="">—</option>
-          {medicationOptions.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600 }}>
-          {ui.mar.datetimeLabel}
-        </label>
-        <input
-          type="datetime-local"
-          value={administeredAt}
-          onChange={(e) => setAdministeredAt(e.target.value)}
-          disabled={encounterStatus !== "OPEN" || submitting}
-          style={{ width: "100%", padding: 8, marginBottom: 12, borderRadius: 4, border: "1px solid #ccc" }}
-        />
-        <label style={{ display: "block", marginBottom: 8, fontSize: 13, fontWeight: 600 }}>
-          {ui.mar.notesLabel}
-        </label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={3}
-          disabled={encounterStatus !== "OPEN" || submitting}
-          style={{ width: "100%", padding: 8, marginBottom: 12, borderRadius: 4, border: "1px solid #ccc", resize: "vertical" }}
-        />
-        <button
-          type="submit"
-          disabled={encounterStatus !== "OPEN" || submitting}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: encounterStatus === "OPEN" ? "#1a1a1a" : "#9e9e9e",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: encounterStatus === "OPEN" && !submitting ? "pointer" : "not-allowed",
-            fontSize: 14,
-          }}
-        >
-          {submitting ? ui.common.loading : ui.mar.submit}
-        </button>
-      </form>
+      <h3 style={{ margin: "0 0 8px 0", fontSize: 16 }}>Médicaments à suivre</h3>
+      {!isOpen ? <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{ui.mar.closedHint}</p> : null}
 
-      <h3 style={{ margin: "0 0 12px 0", fontSize: 16 }}>Historique</h3>
       {loading ? (
         <p>{ui.common.loading}</p>
-      ) : rows.length === 0 ? (
-        <p style={{ color: "#666", fontSize: 14 }}>{ui.mar.empty}</p>
+      ) : taskRows.length === 0 ? (
+        <p style={{ color: "#666", fontSize: 14 }}>Aucune ligne médicament « à administrer au patient » pour cette consultation.</p>
       ) : (
-        <div style={{ overflowX: "auto", backgroundColor: "white", borderRadius: 8, border: "1px solid #eee" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              minWidth: 280,
+              backgroundColor: "white",
+              borderRadius: 8,
+              border: "1px solid #eee",
+            }}
+          >
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd", backgroundColor: "#f5f5f5" }}>
-                <th style={{ padding: 10, textAlign: "left", fontSize: 13 }}>{ui.common.medication}</th>
-                <th style={{ padding: 10, textAlign: "left", fontSize: 13 }}>{ui.mar.columnWhen}</th>
-                <th style={{ padding: 10, textAlign: "left", fontSize: 13 }}>{ui.mar.columnNurse}</th>
-                <th style={{ padding: 10, textAlign: "left", fontSize: 13 }}>{ui.mar.columnNotes}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{ui.common.medication}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>Statut</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{ui.mar.columnWhen}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{ui.common.actions}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
-                const medName =
-                  row.medicationLabelSnapshot?.trim() ||
-                  (row.orderItemId
-                    ? labelByOrderItemId.get(row.orderItemId) ?? ui.common.dash
-                    : ui.mar.noLinkedOrder);
-                const nurse = `${row.administeredBy.firstName} ${row.administeredBy.lastName}`.trim() || ui.common.dash;
+              {(() => {
+                const nowMs = Date.now();
+                return taskRows.map((row) => {
+                const list = adminsByOrderItemId.get(row.orderItemId) ?? [];
+                const latest = list[0];
+                const latestTime = latest ? new Date(latest.administeredAt).getTime() : 0;
+                const marSaysAdministered = latestMarIsAdministered(latest);
+                const recent =
+                  !marSaysAdministered && latestTime > 0 && nowMs - latestTime < RECENT_MS;
+
+                let statusCell: React.ReactNode;
+                if (marSaysAdministered) {
+                  statusCell = (
+                    <span title="Journal : action administré">
+                      🟢 Administré
+                    </span>
+                  );
+                } else if (recent) {
+                  statusCell = <span title="Activité récente dans le journal">🟡 Récent</span>;
+                } else {
+                  statusCell = <span title="À traiter">🔴 En attente</span>;
+                }
+
+                const timeCell = latest
+                  ? new Date(latest.administeredAt).toLocaleString("fr-FR")
+                  : ui.common.dash;
+
+                const displayName =
+                  latest?.medicationLabelSnapshot?.trim() || row.label;
+
+                const intendedLine =
+                  row.intendedAt != null && String(row.intendedAt).trim() !== ""
+                    ? new Date(row.intendedAt as string).toLocaleString("fr-FR")
+                    : null;
+
+                const intendedUrgency = intendedLine
+                  ? intendedTimingUrgency(row.intendedAt, nowMs, marSaysAdministered)
+                  : null;
+                const intendedLineStyle: React.CSSProperties =
+                  intendedUrgency === "overdue"
+                    ? {
+                        fontSize: 12,
+                        marginTop: 4,
+                        padding: "6px 8px",
+                        borderRadius: 4,
+                        color: "#b71c1c",
+                        backgroundColor: "#ffebee",
+                        fontWeight: 600,
+                      }
+                    : intendedUrgency === "dueSoon"
+                      ? {
+                          fontSize: 12,
+                          marginTop: 4,
+                          padding: "6px 8px",
+                          borderRadius: 4,
+                          color: "#e65100",
+                          backgroundColor: "#fff8e1",
+                          fontWeight: 600,
+                        }
+                      : { fontSize: 12, color: "#424242", marginTop: 4 };
+
                 return (
-                  <tr key={row.id} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={{ padding: 10, fontSize: 14 }}>{medName}</td>
-                    <td style={{ padding: 10, fontSize: 14 }}>
-                      {new Date(row.administeredAt).toLocaleString("fr-FR")}
+                  <tr key={row.orderItemId} style={{ borderBottom: "1px solid #eee", verticalAlign: "top" }}>
+                    <td style={{ padding: "12px 8px", fontSize: 14, wordBreak: "break-word" }}>
+                      <div style={{ fontWeight: 600 }}>{displayName}</div>
+                      {intendedLine ? (
+                        <div
+                          style={intendedLineStyle}
+                          title={
+                            intendedUrgency === "overdue"
+                              ? "Heure prévue dépassée"
+                              : intendedUrgency === "dueSoon"
+                                ? "Heure prévue dans moins d’une heure"
+                                : undefined
+                          }
+                        >
+                          Prévu : {intendedLine}
+                        </div>
+                      ) : null}
+                      {row.routeHint ? (
+                        <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>Voie : {row.routeHint}</div>
+                      ) : null}
                     </td>
-                    <td style={{ padding: 10, fontSize: 14 }}>{nurse}</td>
-                    <td style={{ padding: 10, fontSize: 14, wordBreak: "break-word" }}>{row.notes?.trim() || ui.common.dash}</td>
+                    <td style={{ padding: "12px 8px", fontSize: 14 }}>{statusCell}</td>
+                    <td style={{ padding: "12px 8px", fontSize: 14, whiteSpace: "nowrap" }}>{timeCell}</td>
+                    <td style={{ padding: "12px 8px" }}>
+                      <button
+                        type="button"
+                        disabled={!isOpen || submitting || marSaysAdministered}
+                        onClick={() => openModal(row)}
+                        style={{
+                          padding: "10px 14px",
+                          fontSize: 14,
+                          minHeight: 44,
+                          width: "100%",
+                          maxWidth: 200,
+                          backgroundColor: isOpen && !marSaysAdministered ? "#2e7d32" : "#bdbdbd",
+                          color: "white",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: isOpen && !marSaysAdministered ? "pointer" : "not-allowed",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Administrer
+                      </button>
+                    </td>
                   </tr>
                 );
-              })}
+              });
+              })()}
             </tbody>
           </table>
         </div>
       )}
+
+      <h3 style={{ margin: "24px 0 8px 0", fontSize: 16 }}>Historique des enregistrements</h3>
+      {loading ? null : admins.length === 0 ? (
+        <p style={{ color: "#666", fontSize: 14 }}>{ui.mar.empty}</p>
+      ) : (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {admins
+            .slice()
+            .sort((a, b) => new Date(b.administeredAt).getTime() - new Date(a.administeredAt).getTime())
+            .map((r) => {
+              const oid = r.orderItemId;
+              const label =
+                r.medicationLabelSnapshot?.trim() ||
+                (oid
+                  ? taskRows.find((t) => t.orderItemId === oid)?.label ?? ui.common.dash
+                  : ui.mar.noLinkedOrder);
+              return (
+                <li
+                  key={r.id}
+                  style={{
+                    padding: "12px 14px",
+                    marginBottom: 8,
+                    backgroundColor: "#fafafa",
+                    borderRadius: 8,
+                    border: "1px solid #eee",
+                    fontSize: 14,
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>{label}</div>
+                  <div style={{ color: "#555", marginTop: 4 }}>
+                    {new Date(r.administeredAt).toLocaleString("fr-FR")} · {r.administeredBy.firstName}{" "}
+                    {r.administeredBy.lastName}
+                  </div>
+                  {r.notes?.trim() ? (
+                    <pre
+                      style={{
+                        margin: "8px 0 0 0",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        fontFamily: "inherit",
+                        fontSize: 13,
+                        color: "#333",
+                      }}
+                    >
+                      {r.notes.trim()}
+                    </pre>
+                  ) : null}
+                </li>
+              );
+            })}
+        </ul>
+      )}
+
+      {modalItem ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mar-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            padding: 12,
+            boxSizing: "border-box",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              maxWidth: 480,
+              width: "100%",
+              maxHeight: "90vh",
+              overflow: "auto",
+              padding: 16,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 id="mar-modal-title" style={{ margin: "0 0 12px 0", fontSize: 17 }}>
+              Enregistrer une administration
+            </h4>
+            <p style={{ margin: "0 0 12px 0", fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>{modalItem.label}</p>
+
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>Voie (optionnel)</label>
+            <input
+              type="text"
+              value={modalRoute}
+              onChange={(e) => setModalRoute(e.target.value)}
+              placeholder={modalItem.routeHint || "ex. Orale, IV…"}
+              disabled={submitting}
+              style={{
+                width: "100%",
+                padding: 12,
+                marginBottom: 14,
+                borderRadius: 8,
+                border: "1px solid #ccc",
+                fontSize: 16,
+                boxSizing: "border-box",
+              }}
+            />
+
+            <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>Action</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+              {(
+                [
+                  "administered",
+                  "refused",
+                  "not_available",
+                  "md_changed",
+                ] as const
+              ).map((a) => (
+                <label
+                  key={a}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontSize: 15,
+                    padding: "10px 8px",
+                    borderRadius: 8,
+                    border: modalAction === a ? "2px solid #2e7d32" : "1px solid #ddd",
+                    cursor: submitting ? "default" : "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="mar-action"
+                    checked={modalAction === a}
+                    onChange={() => setModalAction(a)}
+                    disabled={submitting}
+                  />
+                  {actionLabelFr(a)}
+                </label>
+              ))}
+            </div>
+
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>{ui.mar.notesLabel}</label>
+            <textarea
+              value={modalNotes}
+              onChange={(e) => setModalNotes(e.target.value)}
+              rows={3}
+              disabled={submitting}
+              style={{
+                width: "100%",
+                padding: 12,
+                marginBottom: 8,
+                borderRadius: 8,
+                border: "1px solid #ccc",
+                fontSize: 16,
+                resize: "vertical",
+                boxSizing: "border-box",
+              }}
+            />
+            <p style={{ margin: "0 0 14px 0", fontSize: 12, color: "#666" }}>
+              L’horodatage enregistré sera celui du moment où vous validez.
+            </p>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={closeModal}
+                disabled={submitting}
+                style={{
+                  padding: "12px 18px",
+                  fontSize: 15,
+                  borderRadius: 8,
+                  border: "1px solid #ccc",
+                  background: "#fff",
+                  cursor: submitting ? "not-allowed" : "pointer",
+                  minHeight: 44,
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitModal()}
+                disabled={submitting}
+                style={{
+                  padding: "12px 18px",
+                  fontSize: 15,
+                  borderRadius: 8,
+                  border: "none",
+                  background: "#1a1a1a",
+                  color: "white",
+                  fontWeight: 600,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                  minHeight: 44,
+                }}
+              >
+                {submitting ? ui.common.loading : "Enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

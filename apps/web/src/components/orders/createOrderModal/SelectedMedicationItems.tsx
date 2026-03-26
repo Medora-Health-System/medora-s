@@ -153,6 +153,19 @@ export function SelectedMedicationItems({
                   style={inputSm}
                 />
               </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <span style={labelSm}>Administration prévue (optionnel)</span>
+                <input
+                  type="datetime-local"
+                  value={item.intendedAdministrationAt ?? ""}
+                  onChange={(e) =>
+                    onPatch(idx, {
+                      intendedAdministrationAt: e.target.value ? e.target.value : undefined,
+                    })
+                  }
+                  style={inputSm}
+                />
+              </div>
             </div>
             <button
               type="button"
