@@ -8,11 +8,40 @@ import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import { getOrderPriorityLabelFr, getPathwayTypeLabelFr, ui } from "@/lib/uiLabels";
+import {
+  getEncounterPatientLabelFromCache,
+  getPendingPharmacyMedicationOrderRowsForFacility,
+  type PendingFacilityQueueRow,
+} from "@/lib/offline/pendingEncounterOrders";
+
+function PendingEncounterPatientCells({
+  facilityId,
+  encounterId,
+}: {
+  facilityId: string;
+  encounterId: string;
+}) {
+  const [name, setName] = useState("…");
+  const [mrn, setMrn] = useState("—");
+  useEffect(() => {
+    void getEncounterPatientLabelFromCache(facilityId, encounterId).then((p) => {
+      setName(p.label);
+      setMrn(p.mrn);
+    });
+  }, [facilityId, encounterId]);
+  return (
+    <>
+      <td style={{ padding: 12 }}>{name}</td>
+      <td style={{ padding: 12 }}>{mrn}</td>
+    </>
+  );
+}
 
 export default function PharmacyWorklistPage() {
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
+  const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [recordModal, setRecordModal] = useState<{
     orderItemId: string;
@@ -42,15 +71,17 @@ export default function PharmacyWorklistPage() {
   const loadQueue = async () => {
     if (!facilityId) return;
     setLoading(true);
+    const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId);
     try {
       const data = await apiFetch("/worklists/pharmacy", { facilityId });
       setQueue(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load pharmacy worklist:", error);
       setQueue([]);
-    } finally {
-      setLoading(false);
     }
+    const pendingRows = await pendingP;
+    setPendingLocal(pendingRows);
+    setLoading(false);
   };
 
   const handleAcknowledge = async (itemId: string) => {
@@ -151,14 +182,15 @@ export default function PharmacyWorklistPage() {
     <div>
       <h1>Liste pharmacie</h1>
       <p>Ordres de médicaments à vérifier et dispenser.</p>
-      {loading && queue.length === 0 ? (
+      {loading && queue.length === 0 && pendingLocal.length === 0 ? (
         <p>Chargement…</p>
-      ) : queue.length === 0 ? (
+      ) : queue.length === 0 && pendingLocal.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
           <p>Aucun ordre médicament dans la liste.</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
+          {queue.length > 0 ? (
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
@@ -265,6 +297,56 @@ export default function PharmacyWorklistPage() {
               )}
             </tbody>
           </table>
+          ) : null}
+          {pendingLocal.length > 0 ? (
+            <div style={{ marginTop: queue.length > 0 ? 28 : 0 }}>
+              <h2 style={{ fontSize: 16, marginBottom: 8 }}>En attente de synchronisation</h2>
+              <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>
+                Ordres créés sur cet appareil, non encore synchronisés avec le serveur.
+              </p>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  backgroundColor: "#fff8e1",
+                  border: "1px solid #ffe082",
+                  borderRadius: 8,
+                }}
+              >
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #ddd" }}>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.date}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingLocal.map((row) => (
+                    <tr key={row.queueItemId} style={{ borderBottom: "1px solid #eee" }}>
+                      <PendingEncounterPatientCells facilityId={row.facilityId} encounterId={row.encounterId} />
+                      <td style={{ padding: 12 }}>
+                        {row.itemLabels.filter(Boolean).join(", ") || "—"}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {new Date(row.createdAt).toLocaleString("fr-FR")}
+                      </td>
+                      <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(row.priority)}</td>
+                      <td style={{ padding: 12 }}>En attente de synchronisation</td>
+                      <td style={{ padding: 12 }}>
+                        <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>
+                          Consultation
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       )}
 
