@@ -31,6 +31,7 @@ import {
   type PatientTriageVitalsSnapshot,
   hasVitalsJson,
   buildVitalsTimelineNewestFirst,
+  hasServerVitalsTimelineData,
   snapshotKey,
   vitalsTimelineFallbackFromChartSummary,
 } from "@/lib/patientVitals";
@@ -320,7 +321,7 @@ export default function PatientDetailPage() {
     ? buildVitalsTimelineNewestFirst(
         vitalsTimeline?.latest ?? null,
         vitalsTimeline?.history ?? [],
-        vitalsTimeline ? [] : supersededVitals
+        hasServerVitalsTimelineData(vitalsTimeline) ? [] : supersededVitals
       )
     : [];
 
