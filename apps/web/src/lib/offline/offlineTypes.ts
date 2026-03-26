@@ -18,6 +18,10 @@ export type OfflineQueueItemType =
   | "create_followup"
   | "update_followup_status"
   | "create_order"
+  | "medication_administration"
+  | "close_encounter"
+  | "patch_encounter"
+  | "order_item_action"
   | "pharmacy_stock_add"
   | "pharmacy_dispense"
   | "patch_encounter_operational";

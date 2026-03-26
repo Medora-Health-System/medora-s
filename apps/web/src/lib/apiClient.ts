@@ -50,6 +50,15 @@ function queueTypeForRequest(path: string, method: string): OfflineQueueItemType
   if (m === "POST" && path === "/follow-ups") return "create_followup";
   if (m === "POST" && /^\/follow-ups\/[^/]+\/(complete|cancel)$/.test(path)) return "update_followup_status";
   if (m === "POST" && /\/encounters\/[^/]+\/orders$/.test(path)) return "create_order";
+  if (m === "POST" && /^\/encounters\/[^/]+\/medication-administrations$/.test(path)) return "medication_administration";
+  if (m === "POST" && /^\/encounters\/[^/]+\/close$/.test(path)) return "close_encounter";
+  if (
+    m === "POST" &&
+    /^\/orders\/items\/[^/]+\/(acknowledge|start|complete)$/.test(path)
+  ) {
+    return "order_item_action";
+  }
+  if (m === "PATCH" && /^\/encounters\/[^/]+$/.test(path)) return "patch_encounter";
   if (m === "PATCH" && /\/encounters\/[^/]+\/operational$/.test(path)) return "patch_encounter_operational";
   if (m === "POST" && (/^\/pharmacy\/inventory\/[^/]+\/receive$/.test(path) || path === "/pharmacy/inventory"))
     return "pharmacy_stock_add";
