@@ -58,6 +58,7 @@ import {
 } from "@/lib/encounterDischarge";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
+import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 
@@ -94,6 +95,7 @@ const ENCOUNTER_TAB_IDS = new Set([
   "clinic",
   "diagnostics",
   "orders",
+  "mar",
   "results",
   "notes",
   "pathways",
@@ -154,6 +156,8 @@ export default function EncounterDetailPage() {
     roles.includes("PHARMACY") ||
     roles.includes("ADMIN");
   const canFetchPatientDiagnosesList = canFetchEncounterTriage;
+  const canFetchMarTab =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canManageEncounterClosure =
     roles.includes("PROVIDER") || roles.includes("ADMIN") || roles.includes("RN");
 
@@ -619,6 +623,7 @@ export default function EncounterDetailPage() {
     { id: "clinic", label: "Évaluation médicale" },
     { id: "diagnostics", label: "Diagnostics" },
     { id: "orders", label: "Ordres" },
+    ...(canFetchMarTab ? [{ id: "mar" as const, label: "Administration médicamenteuse" }] : []),
     { id: "results", label: "Résultats" },
     { id: "notes", label: "Notes Inf." },
     { id: "pathways", label: "Parcours cliniques" },
@@ -1098,6 +1103,13 @@ export default function EncounterDetailPage() {
               careModalPresetLabel={careModalPresetLabel}
               onOrdersUpdated={refreshQuickOrdersOnly}
               onRefetchEncounter={() => loadEncounter({ silent: true })}
+            />
+          )}
+          {activeTab === "mar" && canFetchMarTab && (
+            <MedicationAdministrationTab
+              encounterId={encounterId}
+              facilityId={facilityId}
+              encounterStatus={encounter.status}
             />
           )}
           {activeTab === "results" && (
@@ -2913,36 +2925,6 @@ function OrdersTab({
     setShowCreateModal(true);
   }, [careModalRequestTick, canPrescribe, careModalPresetLabel]);
 
-  const nurseComplete = async (itemId: string) => {
-    try {
-      await apiFetch(`/orders/items/${itemId}/nurse-complete`, { method: "POST", facilityId });
-      await loadOrders();
-      await onOrdersUpdated?.();
-    } catch {
-      alert("Impossible de marquer cette ligne comme administrée.");
-    }
-  };
-
-  const nurseAck = async (itemId: string) => {
-    try {
-      await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
-      await loadOrders();
-      await onOrdersUpdated?.();
-    } catch {
-      alert("Impossible d’accuser réception.");
-    }
-  };
-
-  const nurseStart = async (itemId: string) => {
-    try {
-      await apiFetch(`/orders/items/${itemId}/start`, { method: "POST", facilityId });
-      await loadOrders();
-      await onOrdersUpdated?.();
-    } catch {
-      alert("Impossible de démarrer la ligne.");
-    }
-  };
-
   if (loading) return <div>Chargement des ordres…</div>;
 
   return (
@@ -3073,63 +3055,6 @@ function OrdersTab({
                             <div style={{ fontSize: 12, color: "#2e7d32" }}>
                               Administré par {it.completedByNurse.firstName} {it.completedByNurse.lastName} le{" "}
                               {new Date(it.completedAt).toLocaleString("fr-FR")}
-                            </div>
-                          ) : null}
-                          {isRn &&
-                          it.catalogItemType === "MEDICATION" &&
-                          it.medicationFulfillmentIntent === "ADMINISTER_CHART" &&
-                          it.status !== "COMPLETED" &&
-                          it.status !== "CANCELLED" ? (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                              {(it.status === "PLACED" || it.status === "PENDING") && (
-                                <button
-                                  type="button"
-                                  onClick={() => void nurseAck(it.id)}
-                                  style={{
-                                    padding: "4px 10px",
-                                    fontSize: 12,
-                                    cursor: "pointer",
-                                    borderRadius: 4,
-                                    border: "1px solid #1565c0",
-                                    background: "#fff",
-                                    color: "#1565c0",
-                                  }}
-                                >
-                                  Accuser réception
-                                </button>
-                              )}
-                              {it.status === "ACKNOWLEDGED" && (
-                                <button
-                                  type="button"
-                                  onClick={() => void nurseStart(it.id)}
-                                  style={{
-                                    padding: "4px 10px",
-                                    fontSize: 12,
-                                    cursor: "pointer",
-                                    borderRadius: 4,
-                                    border: "1px solid #1565c0",
-                                    background: "#fff",
-                                    color: "#1565c0",
-                                  }}
-                                >
-                                  Démarrer
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => void nurseComplete(it.id)}
-                                style={{
-                                  padding: "4px 10px",
-                                  fontSize: 12,
-                                  cursor: "pointer",
-                                  borderRadius: 4,
-                                  border: "1px solid #2e7d32",
-                                  background: "#fff",
-                                  color: "#2e7d32",
-                                }}
-                              >
-                                Marquer comme administré
-                              </button>
                             </div>
                           ) : null}
                         </li>

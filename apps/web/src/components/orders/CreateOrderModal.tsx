@@ -730,10 +730,19 @@ export function CreateOrderModal({
                     <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12 }}>Prescripteur</label>
                     <input
                       type="text"
+                      readOnly
+                      aria-readonly="true"
                       value={formData.prescriberName}
-                      onChange={(e) => setFormData((fd) => ({ ...fd, prescriberName: e.target.value }))}
-                      placeholder="Nom du prescripteur"
-                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #ccc", borderRadius: 4, fontSize: 14 }}
+                      placeholder="Chargement…"
+                      style={{
+                        width: "100%",
+                        padding: "8px 10px",
+                        border: "1px solid #ccc",
+                        borderRadius: 4,
+                        fontSize: 14,
+                        backgroundColor: "#f5f5f5",
+                        cursor: "default",
+                      }}
                     />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
