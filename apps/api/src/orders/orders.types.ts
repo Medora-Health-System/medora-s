@@ -63,6 +63,7 @@ export type OrderItemNestedCreate = {
   strength?: string;
   refillCount?: number;
   medicationFulfillmentIntent?: MedicationFulfillmentIntent;
+  intendedAdministrationAt?: Date;
 };
 
 /**
@@ -88,6 +89,7 @@ export function stripUndefinedKeys<T extends Record<string, unknown>>(obj: T): T
 export function stripUndefinedDeep(value: unknown): unknown {
   if (value === undefined) return undefined;
   if (value === null || typeof value !== "object") return value;
+  if (value instanceof Date) return value;
   if (Array.isArray(value)) {
     return value.map((el) => stripUndefinedDeep(el));
   }
@@ -131,6 +133,8 @@ export function buildOrderItemCreateInput(item: OrderItemCreateDto, orderType: O
     strength: optionalTrimmedString(item.strength ?? undefined),
     refillCount: refill,
     medicationFulfillmentIntent: intent,
+    intendedAdministrationAt:
+      item.intendedAdministrationAt != null ? new Date(item.intendedAdministrationAt) : undefined,
   };
   return stripUndefinedKeys(med) as OrderItemNestedCreate;
 }
