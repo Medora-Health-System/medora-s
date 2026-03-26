@@ -187,6 +187,11 @@ export const orderItemCreateDtoSchema = z.object({
   catalogItemType: z.enum(["LAB_TEST", "IMAGING_STUDY", "MEDICATION", "CARE"]),
   /** Libellé libre lorsque l’article n’est pas au catalogue. */
   manualLabel: z.string().min(1).max(512).optional(),
+  /**
+   * Snapshot libellé affiché (ex. client hors-ligne) — non persisté en base ; ignoré côté API à l’écriture Prisma.
+   * Accepté pour les lignes catalogue LAB / IMAGING afin que la file d’attente locale affiche le nom exact.
+   */
+  displayLabelFr: z.string().max(512).optional(),
   manualSecondaryText: z.string().max(2000).optional(),
   quantity: z.number().int().positive().optional(),
   notes: z.string().max(8000).optional(),

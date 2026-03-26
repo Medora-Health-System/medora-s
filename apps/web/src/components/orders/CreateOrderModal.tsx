@@ -68,6 +68,7 @@ function buildPayload(
           : {
               catalogItemId: it.catalogItemId,
               catalogItemType: "LAB_TEST" as const,
+              ...(it._label?.trim() ? { displayLabelFr: it._label.trim() } : {}),
             }
       ),
     };
@@ -90,6 +91,7 @@ function buildPayload(
           : {
               catalogItemId: it.catalogItemId,
               catalogItemType: "IMAGING_STUDY" as const,
+              ...(it._label?.trim() ? { displayLabelFr: it._label.trim() } : {}),
             }
       ),
     };
