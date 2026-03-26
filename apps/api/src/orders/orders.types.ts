@@ -50,6 +50,8 @@ export type OrderWithItems = Order & {
 
 export type OrderWithEnrichedItems = Omit<OrderWithItems, "items"> & {
   items: OrderItemWithCatalogMedication[];
+  /** Utilisateur ayant créé l’ordre côté système (`Order.orderedBy`) — enrichi pour l’UI. */
+  orderedByDisplayFr?: string | null;
 };
 
 /** Prisma nested create payload for order items — Rx fields only for MEDICATION orders. */

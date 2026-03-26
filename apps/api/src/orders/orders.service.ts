@@ -291,7 +291,32 @@ export class OrdersService {
     });
 
     const enriched = await this.enrichOrderItemsForDisplay(orders);
-    return this.attachEnteredByDisplayOnOrders(enriched);
+    const withResultLabels = await this.attachEnteredByDisplayOnOrders(enriched);
+    return this.attachOrderedByDisplayOnOrders(withResultLabels);
+  }
+
+  /**
+   * Ajoute `orderedByDisplayFr` sur chaque commande à partir de `Order.orderedBy` (user id).
+   */
+  async attachOrderedByDisplayOnOrders(orders: OrderWithEnrichedItems[]): Promise<OrderWithEnrichedItems[]> {
+    const ids = [...new Set(orders.map((o) => o.orderedBy).filter((x): x is string => Boolean(x)))];
+    if (ids.length === 0) {
+      return orders;
+    }
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    const umap = new Map(users.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()]));
+    return orders.map((o) => {
+      if (!o.orderedBy) {
+        return o;
+      }
+      return {
+        ...o,
+        orderedByDisplayFr: umap.get(o.orderedBy) ?? null,
+      };
+    }) as OrderWithEnrichedItems[];
   }
 
   /**

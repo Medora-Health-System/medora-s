@@ -735,10 +735,13 @@ export default function EncounterDetailPage() {
                   <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
                   {formatEncounterPhysicianAssignedFr(encounter)}
                 </div>
-                {encounter.status === "CLOSED" && encounter.updatedAt && (
-                  <div>
-                    <span style={{ color: "#757575" }}>Clôture :</span>{" "}
-                    {new Date(encounter.updatedAt).toLocaleString("fr-FR")}
+                {encounter.status === "CLOSED" && (encounter.dischargedAt || encounter.updatedAt) && (
+                  <div style={{ color: "#424242", fontSize: 14 }}>
+                    {encounter.closedByDisplayFr?.trim()
+                      ? `Fermé par ${encounter.closedByDisplayFr.trim()} — ${new Date(
+                          encounter.dischargedAt ?? encounter.updatedAt
+                        ).toLocaleString("fr-FR")}`
+                      : `Fermé le ${new Date(encounter.dischargedAt ?? encounter.updatedAt).toLocaleString("fr-FR")}`}
                   </div>
                 )}
               </div>
@@ -2329,9 +2332,19 @@ function TriageVitalsTab({
     return <div>Chargement des signes vitaux…</div>;
   }
 
+  const triageUpdatedLine =
+    triage?.updatedByDisplayFr?.trim() && triage.updatedAt
+      ? `Dernière mise à jour par ${triage.updatedByDisplayFr.trim()} — ${new Date(triage.updatedAt).toLocaleString("fr-FR")}`
+      : null;
+
   return (
     <div>
-      <h3>Signes vitaux</h3>
+      <h3 style={{ marginBottom: triageUpdatedLine ? 8 : undefined }}>
+        Signes vitaux
+      </h3>
+      {triageUpdatedLine ? (
+        <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#424242" }}>{triageUpdatedLine}</p>
+      ) : null}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
@@ -2971,7 +2984,7 @@ function OrdersTab({
                 <th style={{ padding: 12, textAlign: "left" }}>Statut</th>
                 <th style={{ padding: 12, textAlign: "left" }}>Priorité</th>
                 <th style={{ padding: 12, textAlign: "left" }}>Détail clinique</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Créé le</th>
+                <th style={{ padding: 12, textAlign: "left" }}>Saisie de l&apos;ordre</th>
                 {(canPrescribe || isRn) && <th style={{ padding: 12, textAlign: "left" }}>Actions</th>}
               </tr>
             </thead>
@@ -3061,8 +3074,10 @@ function OrdersTab({
                       ))}
                     </ul>
                   </td>
-                  <td style={{ padding: 12, verticalAlign: "top", whiteSpace: "nowrap" }}>
-                    {new Date(order.createdAt).toLocaleString("fr-FR")}
+                  <td style={{ padding: 12, verticalAlign: "top", whiteSpace: "normal", fontSize: 13 }}>
+                    {order.orderedByDisplayFr?.trim()
+                      ? `Ordre saisi par ${order.orderedByDisplayFr.trim()} — ${new Date(order.createdAt).toLocaleString("fr-FR")}`
+                      : new Date(order.createdAt).toLocaleString("fr-FR")}
                   </td>
                   {(canPrescribe || isRn) && (
                     <td style={{ padding: 12, verticalAlign: "top" }}>

@@ -241,7 +241,31 @@ export class EncountersService {
       userAgent,
     });
 
-    return toEncounterClinicResponse(encounter);
+    let closedByDisplayFr: string | null = null;
+    if (encounter.status === EncounterStatus.CLOSED) {
+      const closeLog = await this.prisma.auditLog.findFirst({
+        where: {
+          action: AuditAction.ENCOUNTER_CLOSE,
+          entityId: encounter.id,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (closeLog?.userId) {
+        const closer = await this.prisma.user.findUnique({
+          where: { id: closeLog.userId },
+          select: { firstName: true, lastName: true },
+        });
+        if (closer) {
+          closedByDisplayFr = `${closer.firstName} ${closer.lastName}`.trim();
+        }
+      }
+    }
+
+    const res = toEncounterClinicResponse(encounter);
+
+    return encounter.status === EncounterStatus.CLOSED
+      ? { ...res, closedByDisplayFr }
+      : res;
   }
 
   async update(facilityId: string, id: string, data: EncounterUpdateDto, userId?: string, ip?: string, userAgent?: string) {

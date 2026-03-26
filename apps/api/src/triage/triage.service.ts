@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction } from "@prisma/client";
+import { AuditAction, type Triage } from "@prisma/client";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 
 @Injectable()
@@ -20,9 +20,28 @@ export class TriageService {
       throw new NotFoundException("Encounter not found");
     }
 
-    return this.prisma.triage.findUnique({
+    const row = await this.prisma.triage.findUnique({
       where: { encounterId },
     });
+    return this.enrichTriageWithDisplay(row);
+  }
+
+  /** Ajoute `updatedByDisplayFr` pour l’UI (sans changement de schéma). */
+  private async enrichTriageWithDisplay(triage: Triage | null) {
+    if (!triage) {
+      return null;
+    }
+    if (!triage.updatedByUserId) {
+      return triage;
+    }
+    const u = await this.prisma.user.findUnique({
+      where: { id: triage.updatedByUserId },
+      select: { firstName: true, lastName: true },
+    });
+    if (!u) {
+      return { ...triage, updatedByDisplayFr: null };
+    }
+    return { ...triage, updatedByDisplayFr: `${u.firstName} ${u.lastName}`.trim() };
   }
 
   async upsertTriage(
@@ -108,7 +127,7 @@ export class TriageService {
       metadata: { esi: data.esi, complete: !!data.triageCompleteAt },
     });
 
-    return triage;
+    return this.enrichTriageWithDisplay(triage);
   }
 }
 
