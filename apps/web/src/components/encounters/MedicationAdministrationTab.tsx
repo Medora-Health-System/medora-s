@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
+import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
+import { listQueueItems } from "@/lib/offline/offlineQueue";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { ui } from "@/lib/uiLabels";
@@ -13,6 +15,7 @@ type AdminRow = {
   administeredAt: string;
   notes: string | null;
   administeredBy: { id: string; firstName: string; lastName: string };
+  pendingSync?: boolean;
 };
 
 type OrderItemApi = {
@@ -80,6 +83,40 @@ function latestMarIsAdministered(latest: AdminRow | undefined): boolean {
   return m?.[1]?.trim().startsWith("Administré") ?? false;
 }
 
+async function getPendingMedicationAdminsFromQueue(
+  facilityId: string,
+  encounterId: string
+): Promise<AdminRow[]> {
+  const endpoint = `/encounters/${encounterId}/medication-administrations`;
+  const all = await listQueueItems();
+  const out: AdminRow[] = [];
+  for (const item of all) {
+    if (item.type !== "medication_administration") continue;
+    if (item.facilityId !== facilityId) continue;
+    if (item.endpoint !== endpoint) continue;
+    const payload =
+      item.payload && typeof item.payload === "object" && !Array.isArray(item.payload)
+        ? (item.payload as Record<string, unknown>)
+        : {};
+    const rawOid = payload.orderItemId;
+    const orderItemId =
+      typeof rawOid === "string" ? rawOid : typeof rawOid === "number" ? String(rawOid) : null;
+    const administeredAt =
+      typeof payload.administeredAt === "string" ? payload.administeredAt : item.createdAt;
+    const notes = typeof payload.notes === "string" ? payload.notes : null;
+    out.push({
+      id: `local:${item.id}`,
+      orderItemId,
+      medicationLabelSnapshot: null,
+      administeredAt,
+      notes,
+      administeredBy: { id: "pending-sync", firstName: "En attente", lastName: "de synchronisation" },
+      pendingSync: true,
+    });
+  }
+  return out;
+}
+
 export function MedicationAdministrationTab({
   encounterId,
   facilityId,
@@ -107,17 +144,27 @@ export function MedicationAdministrationTab({
   const loadAll = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    const [pendingAdmins, pendingOrders] = await Promise.all([
+      getPendingMedicationAdminsFromQueue(facilityId, encounterId).catch(() => [] as AdminRow[]),
+      getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(() => [] as Record<string, unknown>[]),
+    ]);
+
     try {
       const [o, a] = await Promise.all([
         apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
       ]);
-      setOrders(Array.isArray(o) ? o : []);
-      setAdmins(Array.isArray(a) ? (a as AdminRow[]) : []);
+
+      const serverOrders = Array.isArray(o) ? o : [];
+      const serverAdmins = Array.isArray(a) ? (a as AdminRow[]) : [];
+
+      setOrders(mergeOrders(serverOrders, pendingOrders));
+      setAdmins([...serverAdmins, ...pendingAdmins]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Chargement impossible.");
-      setOrders([]);
-      setAdmins([]);
+      setOrders(mergeOrders([], pendingOrders));
+      setAdmins(pendingAdmins);
     } finally {
       setLoading(false);
     }
@@ -208,6 +255,7 @@ export function MedicationAdministrationTab({
   };
 
   const isOpen = encounterStatus === "OPEN";
+  const nowMs = Date.now();
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -245,9 +293,7 @@ export function MedicationAdministrationTab({
               </tr>
             </thead>
             <tbody>
-              {(() => {
-                const nowMs = Date.now();
-                return taskRows.map((row) => {
+              {taskRows.map((row) => {
                 const list = adminsByOrderItemId.get(row.orderItemId) ?? [];
                 const latest = list[0];
                 const latestTime = latest ? new Date(latest.administeredAt).getTime() : 0;
@@ -256,16 +302,28 @@ export function MedicationAdministrationTab({
                   !marSaysAdministered && latestTime > 0 && nowMs - latestTime < RECENT_MS;
 
                 let statusCell: React.ReactNode;
-                if (marSaysAdministered) {
+
+                if (latest?.pendingSync) {
                   statusCell = (
-                    <span title="Journal : action administré">
-                      🟢 Administré
+                    <span
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 4,
+                        fontSize: 12,
+                        backgroundColor: "#fff3cd",
+                        color: "#856404",
+                        fontWeight: 600,
+                      }}
+                    >
+                      En attente de synchronisation
                     </span>
                   );
+                } else if (marSaysAdministered) {
+                  statusCell = <span>🟢 Administré</span>;
                 } else if (recent) {
-                  statusCell = <span title="Activité récente dans le journal">🟡 Récent</span>;
+                  statusCell = <span>🟡 Récent</span>;
                 } else {
-                  statusCell = <span title="À traiter">🔴 En attente</span>;
+                  statusCell = <span>🔴 En attente</span>;
                 }
 
                 const timeCell = latest
@@ -307,7 +365,14 @@ export function MedicationAdministrationTab({
                       : { fontSize: 12, color: "#424242", marginTop: 4 };
 
                 return (
-                  <tr key={row.orderItemId} style={{ borderBottom: "1px solid #eee", verticalAlign: "top" }}>
+                  <tr
+                    key={row.orderItemId}
+                    style={{
+                      borderBottom: "1px solid #eee",
+                      verticalAlign: "top",
+                      backgroundColor: latest?.pendingSync ? "#fff8e1" : undefined,
+                    }}
+                  >
                     <td style={{ padding: "12px 8px", fontSize: 14, wordBreak: "break-word" }}>
                       <div style={{ fontWeight: 600 }}>{displayName}</div>
                       {intendedLine ? (
@@ -354,8 +419,7 @@ export function MedicationAdministrationTab({
                     </td>
                   </tr>
                 );
-              });
-              })()}
+              })}
             </tbody>
           </table>
         </div>

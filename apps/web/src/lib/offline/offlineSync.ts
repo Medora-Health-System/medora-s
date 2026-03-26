@@ -4,6 +4,37 @@ import type { ConnectivityStatus } from "./offlineTypes";
 const OFFLINE_SYNC_EVENT = "medora:offline-sync-status";
 let syncing = false;
 
+/** Same 401 + POST /api/auth/refresh + one retry as apiFetch (avoids importing apiClient → circular dependency). */
+async function replayQueueItemRequest(
+  endpoint: string,
+  method: string,
+  facilityId: string,
+  body: string
+): Promise<Response> {
+  const doFetch = () =>
+    fetch(`/api/backend${endpoint}`, {
+      method,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "x-facility-id": facilityId,
+      },
+      body,
+    });
+  let attempt = 0;
+  let response!: Response;
+  while (attempt < 2) {
+    response = await doFetch();
+    if (response.status !== 401 || attempt === 1) break;
+    const skipRefresh = endpoint.startsWith("/auth/") || endpoint.includes("/auth/");
+    if (skipRefresh || typeof window === "undefined") break;
+    const ref = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+    if (!ref.ok) break;
+    attempt++;
+  }
+  return response;
+}
+
 function emitStatus(status: ConnectivityStatus, pendingCount: number) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
@@ -27,7 +58,16 @@ export async function processOfflineQueueOnce(): Promise<void> {
   syncing = true;
   try {
     const items = await listQueueItems();
-    const active = items.filter((i) => i.status === "pending" || i.status === "failed");
+    for (const row of items) {
+      if (row.status === "syncing") {
+        await patchQueueItem(row.id, {
+          status: "pending",
+          lastError: null,
+        });
+      }
+    }
+    const itemsAfterReset = await listQueueItems();
+    const active = itemsAfterReset.filter((i) => i.status === "pending" || i.status === "failed");
     if (!active.length) {
       emitStatus("online", 0);
       return;
@@ -36,15 +76,12 @@ export async function processOfflineQueueOnce(): Promise<void> {
     for (const item of active) {
       await patchQueueItem(item.id, { status: "syncing" });
       try {
-        const res = await fetch(`/api/backend${item.endpoint}`, {
-          method: item.method,
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "x-facility-id": item.facilityId,
-          },
-          body: JSON.stringify(item.payload ?? {}),
-        });
+        const res = await replayQueueItemRequest(
+          item.endpoint,
+          item.method,
+          item.facilityId,
+          JSON.stringify(item.payload ?? {})
+        );
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(txt || `HTTP ${res.status}`);

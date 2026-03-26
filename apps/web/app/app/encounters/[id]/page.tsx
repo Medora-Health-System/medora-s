@@ -31,6 +31,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
+import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import {
@@ -274,7 +275,10 @@ export default function EncounterDetailPage() {
       canFetchPatientDiagnosesList && patientId
         ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId })
         : Promise.resolve(null);
-    const [triRes, ordRes, dxRes] = await Promise.allSettled([triageP, ordersP, dxP]);
+    const [[triRes, ordRes, dxRes], pendingOrders] = await Promise.all([
+      Promise.allSettled([triageP, ordersP, dxP]),
+      getPendingCreateOrdersForEncounter(facilityId, encounter.id).catch(() => [] as Record<string, unknown>[]),
+    ]);
     const tri = triRes.status === "fulfilled" ? triRes.value : null;
     const ords = ordRes.status === "fulfilled" ? ordRes.value : null;
     const dx = dxRes.status === "fulfilled" ? dxRes.value : null;
@@ -284,21 +288,32 @@ export default function EncounterDetailPage() {
     if (canFetchEncounterOrders && ordRes.status === "rejected") failedLabels.push("ordres");
     if (canFetchPatientDiagnosesList && patientId && dxRes.status === "rejected") failedLabels.push("liste de diagnostics");
 
-    setQuickTriage(tri);
-    setQuickOrders(Array.isArray(ords) ? ords : []);
+    let mergedQuickOrders = mergeOrders(Array.isArray(ords) ? ords : [], pendingOrders);
+    if (mergedQuickOrders.length === 0) {
+      const cachedOrders = await getCachedRecord<any[]>("encounter_summaries", ordersCacheKey);
+      if (cachedOrders?.data && Array.isArray(cachedOrders.data)) {
+        mergedQuickOrders = mergeOrders(cachedOrders.data, pendingOrders);
+      }
+    }
+    setQuickOrders(mergedQuickOrders);
+    if (mergedQuickOrders.length > 0) {
+      void setCachedRecord("encounter_summaries", ordersCacheKey, mergedQuickOrders, {
+        facilityId,
+        encounterId: encounter.id,
+        patientId,
+      });
+    }
+
     if (tri) {
       void setCachedRecord("latest_vitals", triageCacheKey, tri, {
         facilityId,
         encounterId: encounter.id,
         patientId,
       });
-    }
-    if (Array.isArray(ords)) {
-      void setCachedRecord("encounter_summaries", ordersCacheKey, ords, {
-        facilityId,
-        encounterId: encounter.id,
-        patientId,
-      });
+      setQuickTriage(tri);
+    } else {
+      const cachedTri = await getCachedRecord<any>("latest_vitals", triageCacheKey);
+      setQuickTriage(cachedTri?.data ?? null);
     }
     if (dx && typeof dx === "object" && Array.isArray((dx as any).items)) {
       const items = (dx as { items: Array<{ encounterId?: string; description?: string | null; code: string }> }).items.filter(
@@ -311,14 +326,6 @@ export default function EncounterDetailPage() {
     } else {
       setQuickDiagnosisCount(null);
       setQuickPrimaryDiagnosis(null);
-    }
-    if (!tri || !Array.isArray(ords) || ords.length === 0) {
-      const [cachedTri, cachedOrders] = await Promise.all([
-        getCachedRecord<any>("latest_vitals", triageCacheKey),
-        getCachedRecord<any[]>("encounter_summaries", ordersCacheKey),
-      ]);
-      if (!tri && cachedTri?.data) setQuickTriage(cachedTri.data);
-      if ((!Array.isArray(ords) || ords.length === 0) && cachedOrders?.data) setQuickOrders(cachedOrders.data);
     }
     if (failedLabels.length > 0) {
       setQuickContextNotice(
@@ -354,11 +361,14 @@ export default function EncounterDetailPage() {
 
   const refreshQuickOrdersOnly = useCallback(async () => {
     if (!encounter?.id || !facilityId || !canFetchEncounterOrders) return;
+    const pendingOrders = await getPendingCreateOrdersForEncounter(facilityId, encounter.id).catch(
+      () => [] as Record<string, unknown>[]
+    );
     try {
       const ords = await apiFetch(`/encounters/${encounter.id}/orders`, { facilityId });
-      setQuickOrders(Array.isArray(ords) ? ords : []);
+      setQuickOrders(mergeOrders(Array.isArray(ords) ? ords : [], pendingOrders));
     } catch {
-      /* ignore */
+      setQuickOrders(pendingOrders);
     }
   }, [encounter?.id, facilityId, canFetchEncounterOrders]);
 
@@ -2913,12 +2923,16 @@ function OrdersTab({
 
   const loadOrders = async () => {
     setLoading(true);
+    const pending = await getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(
+      () => [] as Record<string, unknown>[]
+    );
     try {
       const data = await apiFetch(`/encounters/${encounterId}/orders`, { facilityId });
-      setOrders(Array.isArray(data) ? data : []);
+      const server = Array.isArray(data) ? data : [];
+      setOrders(mergeOrders(server, pending));
     } catch (error) {
       console.error("Failed to load orders:", error);
-      setOrders([]);
+      setOrders(mergeOrders([], pending));
     } finally {
       setLoading(false);
     }
@@ -2990,8 +3004,30 @@ function OrdersTab({
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id} style={{ borderTop: "1px solid #eee" }}>
+                <tr
+                  key={order.id}
+                  style={{
+                    borderTop: "1px solid #eee",
+                    backgroundColor: (order as { pendingSync?: boolean }).pendingSync ? "#fff8e1" : undefined,
+                  }}
+                >
                   <td style={{ padding: 12, verticalAlign: "top" }}>
+                    {(order as { pendingSync?: boolean }).pendingSync ? (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#856404",
+                          marginBottom: 8,
+                          padding: "4px 8px",
+                          backgroundColor: "#fff3cd",
+                          borderRadius: 4,
+                          display: "inline-block",
+                        }}
+                      >
+                        En attente de synchronisation
+                      </div>
+                    ) : null}
                     {order.type === "LAB" ? (
                       <>
                         <div style={{ fontWeight: 600 }}>Laboratoire</div>
@@ -3081,7 +3117,7 @@ function OrdersTab({
                   </td>
                   {(canPrescribe || isRn) && (
                     <td style={{ padding: 12, verticalAlign: "top" }}>
-                      {canPrescribe && order.type === "MEDICATION" ? (
+                      {canPrescribe && order.type === "MEDICATION" && !(order as { pendingSync?: boolean }).pendingSync ? (
                         <button
                           type="button"
                           onClick={() => handlePrintRx(order)}
