@@ -58,6 +58,7 @@ function queueTypeForRequest(path: string, method: string): OfflineQueueItemType
   ) {
     return "order_item_action";
   }
+  if (m === "PUT" && /^\/orders\/[^/]+\/result$/.test(path)) return "order_item_result";
   if (m === "PATCH" && /^\/encounters\/[^/]+$/.test(path)) return "patch_encounter";
   if (m === "PATCH" && /\/encounters\/[^/]+\/operational$/.test(path)) return "patch_encounter_operational";
   if (m === "POST" && (/^\/pharmacy\/inventory\/[^/]+\/receive$/.test(path) || path === "/pharmacy/inventory"))

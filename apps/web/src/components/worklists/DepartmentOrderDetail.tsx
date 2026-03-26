@@ -563,9 +563,19 @@ function LineCard({
         body: JSON.stringify(body),
       });
       if (res && typeof res === "object" && (res as { queued?: boolean }).queued === true) {
+        setPdfFiles(null);
+        setImgFiles(null);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(MEDORA_CHART_RESULT_UPDATED, {
+              detail: { patientId: order.encounter?.patient?.id, encounterId: order.encounterId },
+            })
+          );
+        }
         setFeedback({
-          type: "err",
-          text: "Connexion instable : l’enregistrement n’a pas été envoyé au serveur. Vérifiez la connexion et réessayez.",
+          type: "ok",
+          text:
+            "Résultat enregistré localement. En attente de synchronisation — visible sur cet appareil (dossier patient, onglet Résultats) jusqu’à l’envoi au serveur.",
         });
         return;
       }

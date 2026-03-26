@@ -22,6 +22,7 @@ export type OfflineQueueItemType =
   | "close_encounter"
   | "patch_encounter"
   | "order_item_action"
+  | "order_item_result"
   | "pharmacy_stock_add"
   | "pharmacy_dispense"
   | "patch_encounter_operational";
