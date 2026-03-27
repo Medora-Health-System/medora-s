@@ -480,14 +480,21 @@ export default function EncounterDetailPage() {
     }
     setSavingAdmission(true);
     try {
-      await apiFetch(`/encounters/${encounterId}`, {
+      const res = await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         facilityId,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ admissionSummaryJson: payload }),
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       await loadEncounter({ silent: true });
       setShowAdmissionModal(false);
+      if (queued) {
+        alert(
+          "Le dossier d'admission a été enregistré sur cet appareil et est en attente de synchronisation. Il n'est pas encore confirmé côté serveur."
+        );
+      }
     } catch (e) {
       const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
       alert(msg || "Impossible d'enregistrer le dossier d'admission.");
@@ -1985,7 +1992,7 @@ function ClinicVisitTab({
   const [physicalExam, setPhysicalExam] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).physicalExam);
   const [mdm, setMdm] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).mdm);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "ok" | "queued" | "err"; text: string } | null>(null);
   const readOnly = encounter.status !== "OPEN";
 
   useEffect(() => {
@@ -2040,12 +2047,19 @@ function ClinicVisitTab({
       };
       if (shouldPatchNav) payload.nursingAssessment = mergedNav;
 
-      await apiFetch(`/encounters/${encounter.id}`, {
+      const res = await apiFetch(`/encounters/${encounter.id}`, {
         method: "PATCH",
         body: JSON.stringify(payload),
         facilityId,
       });
-      setMessage({ type: "ok", text: "Évaluation médicale enregistrée." });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setMessage({
+        type: queued ? "queued" : "ok",
+        text: queued
+          ? "Évaluation médicale enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : "Évaluation médicale enregistrée.",
+      });
       onUpdate();
     } catch (e: any) {
       setMessage({
@@ -2223,7 +2237,18 @@ function ClinicVisitTab({
         />
       </div>
       {message && (
-        <p style={{ color: message.type === "ok" ? "#2e7d32" : "#c62828", marginBottom: 12 }}>{message.text}</p>
+        <p
+          role={message.type === "queued" ? "alert" : undefined}
+          style={{
+            color:
+              message.type === "ok" ? "#2e7d32" : message.type === "queued" ? "#b71c1c" : "#c62828",
+            marginBottom: 12,
+            fontWeight: message.type === "queued" ? 600 : undefined,
+            lineHeight: 1.45,
+          }}
+        >
+          {message.text}
+        </p>
       )}
       {!readOnly && (
         <button
@@ -2643,14 +2668,20 @@ function NotesTab({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiFetch(`/encounters/${encounter.id}`, {
+      const res = await apiFetch(`/encounters/${encounter.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes }),
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       onUpdate();
-      alert("Notes enregistrées");
+      alert(
+        queued
+          ? "Notes enregistrées sur cet appareil, en attente de synchronisation. Pas encore confirmées côté serveur."
+          : "Notes enregistrées"
+      );
     } catch (error) {
       alert("Impossible d'enregistrer les notes");
     } finally {

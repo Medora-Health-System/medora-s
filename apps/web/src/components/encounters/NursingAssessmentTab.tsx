@@ -203,6 +203,8 @@ export function NursingAssessmentTab({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  /** true si le PATCH est seulement mis en file (pas encore confirmé serveur). */
+  const [queuedLocalSave, setQueuedLocalSave] = useState(false);
 
   React.useEffect(() => {
     setState(parseAssessment(encounter?.nursingAssessment));
@@ -225,6 +227,7 @@ export function NursingAssessmentTab({
     setSaving(true);
     setError(null);
     setOk(false);
+    setQueuedLocalSave(false);
     try {
       let savedByDisplayName = "Professionnel";
       try {
@@ -248,13 +251,21 @@ export function NursingAssessmentTab({
         inner && typeof inner === "object" && !Array.isArray(inner)
           ? { ...prevObj, ...inner }
           : prevObj;
-      await apiFetch(`/encounters/${encounterId}`, {
+      const res = await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         facilityId,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nursingAssessment: mergedNav }),
       });
-      setOk(true);
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      if (queued) {
+        setQueuedLocalSave(true);
+        setOk(false);
+      } else {
+        setOk(true);
+        setQueuedLocalSave(false);
+      }
       onUpdate();
     } catch (e) {
       setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'enregistrer.");
@@ -437,6 +448,26 @@ export function NursingAssessmentTab({
         </button>
         {ok && !error && <span style={{ color: "#2e7d32", fontSize: 14 }}>Enregistré.</span>}
       </div>
+      {queuedLocalSave && !error ? (
+        <div
+          role="alert"
+          style={{
+            marginTop: 12,
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#b71c1c",
+            lineHeight: 1.5,
+            maxWidth: 560,
+          }}
+        >
+          L&apos;évaluation infirmière a été enregistrée sur cet appareil et est en attente de synchronisation avec le
+          serveur. Elle n&apos;est pas encore confirmée côté serveur.
+        </div>
+      ) : null}
       {error && (
         <p style={{ color: "#c62828", marginTop: 12 }} role="alert">
           {error}
