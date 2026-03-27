@@ -1,5 +1,6 @@
 import { listQueueItems, patchQueueItem, removeQueueItem } from "./offlineQueue";
-import type { ConnectivityStatus } from "./offlineTypes";
+import { idbGet, idbSet } from "./offlineDb";
+import type { ConnectivityStatus, OfflineCacheRecord } from "./offlineTypes";
 
 const OFFLINE_SYNC_EVENT = "medora:offline-sync-status";
 /** Cross-tab exclusive replay (Web Locks); same name in every tab/window. */
@@ -55,6 +56,74 @@ export async function getQueuePendingCount(): Promise<number> {
   return rows.filter((r) => r.status === "pending" || r.status === "failed" || r.status === "syncing").length;
 }
 
+/** Après replay réussi de create_patient : mappe id temporaire client → id serveur (Phase 2 offline). */
+async function persistTempPatientIdAfterCreatePatientReplay(
+  item: { type: string; payload: unknown; facilityId: string },
+  res: Response
+): Promise<void> {
+  if (item.type !== "create_patient") return;
+  const raw = item.payload;
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return;
+  const clientTempId = (raw as Record<string, unknown>).clientTempId;
+  if (typeof clientTempId !== "string" || !clientTempId.trim()) return;
+
+  const text = await res.text();
+  let realId: string | null = null;
+  try {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const json = JSON.parse(trimmed) as unknown;
+    if (json !== null && typeof json === "object" && !Array.isArray(json) && "id" in json) {
+      const id = (json as { id: unknown }).id;
+      if (typeof id === "string" && id.length > 0) realId = id;
+    }
+  } catch {
+    return;
+  }
+  if (!realId) return;
+
+  const tempKey = `temp-${clientTempId.trim()}`;
+  const row: OfflineCacheRecord<{ realPatientId: string }> = {
+    localKey: tempKey,
+    updatedAt: new Date().toISOString(),
+    facilityId: item.facilityId,
+    patientId: realId,
+    data: { realPatientId: realId },
+  };
+  await idbSet("patient_summaries", row);
+}
+
+/** POST /patients/:id/encounters ou …/encounters/outpatient — aligné sur queueTypeForRequest (apiClient). */
+const CREATE_ENCOUNTER_PATH_RE = /^\/patients\/([^/]+)(\/encounters(?:\/outpatient)?)$/;
+
+/**
+ * Pour create_encounter avec patient temporaire : réécrit l’URL avec l’id serveur si la map existe.
+ * Si patient temp et map absente : différer (le patient n’est pas encore synchronisé).
+ */
+async function resolveCreateEncounterEndpointForReplay(item: {
+  type: string;
+  endpoint: string;
+}): Promise<{ endpoint: string } | { defer: true }> {
+  if (item.type !== "create_encounter") {
+    return { endpoint: item.endpoint };
+  }
+  const m = item.endpoint.match(CREATE_ENCOUNTER_PATH_RE);
+  if (!m) {
+    return { endpoint: item.endpoint };
+  }
+  const patientSegment = m[1];
+  const suffix = m[2];
+  if (!patientSegment.startsWith("temp-")) {
+    return { endpoint: item.endpoint };
+  }
+  const row = await idbGet<OfflineCacheRecord<{ realPatientId: string }>>("patient_summaries", patientSegment);
+  const realId = row?.patientId ?? row?.data?.realPatientId;
+  if (typeof realId !== "string" || !realId) {
+    return { defer: true };
+  }
+  return { endpoint: `/patients/${realId}${suffix}` };
+}
+
 async function runOfflineQueueReplayBody(): Promise<void> {
   const items = await listQueueItems();
   for (const row of items) {
@@ -75,8 +144,14 @@ async function runOfflineQueueReplayBody(): Promise<void> {
   for (const item of active) {
     await patchQueueItem(item.id, { status: "syncing" });
     try {
+      const resolved = await resolveCreateEncounterEndpointForReplay(item);
+      if ("defer" in resolved) {
+        await patchQueueItem(item.id, { status: "pending", lastError: null });
+        continue;
+      }
+      const endpointToReplay = resolved.endpoint;
       const res = await replayQueueItemRequest(
-        item.endpoint,
+        endpointToReplay,
         item.method,
         item.facilityId,
         JSON.stringify(item.payload ?? {})
@@ -84,6 +159,13 @@ async function runOfflineQueueReplayBody(): Promise<void> {
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
         throw new Error(txt || `HTTP ${res.status}`);
+      }
+      if (item.type === "create_patient") {
+        try {
+          await persistTempPatientIdAfterCreatePatientReplay(item, res);
+        } catch {
+          /* persistance best-effort — ne bloque pas la file */
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Échec de synchronisation";
