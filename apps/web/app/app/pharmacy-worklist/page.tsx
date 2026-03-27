@@ -52,6 +52,8 @@ export default function PharmacyWorklistPage() {
   const [recordInstr, setRecordInstr] = useState("");
   const [recordNotes, setRecordNotes] = useState("");
   const [recordSubmitting, setRecordSubmitting] = useState(false);
+  /** Dernière action worklist mise en file hors ligne uniquement. */
+  const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -87,10 +89,17 @@ export default function PharmacyWorklistPage() {
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/acknowledge`, {
+      const res = await apiFetch(`/orders/items/${itemId}/acknowledge`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible d'acquitter");
@@ -100,10 +109,17 @@ export default function PharmacyWorklistPage() {
   const handleStart = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/start`, {
+      const res = await apiFetch(`/orders/items/${itemId}/start`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible de démarrer");
@@ -113,10 +129,17 @@ export default function PharmacyWorklistPage() {
   const handleComplete = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/complete`, {
+      const res = await apiFetch(`/orders/items/${itemId}/complete`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible de terminer");
@@ -158,7 +181,7 @@ export default function PharmacyWorklistPage() {
     }
     setRecordSubmitting(true);
     try {
-      await apiFetch("/pharmacy/dispenses/record-order", {
+      const res = await apiFetch("/pharmacy/dispenses/record-order", {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
@@ -169,6 +192,13 @@ export default function PharmacyWorklistPage() {
           notes: recordNotes.trim() || undefined,
         }),
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       setRecordModal(null);
       loadQueue();
     } catch {
@@ -182,6 +212,25 @@ export default function PharmacyWorklistPage() {
     <div>
       <h1>Liste pharmacie</h1>
       <p>Ordres de médicaments à vérifier et dispenser.</p>
+      {queuedActionNotice ? (
+        <div
+          role="alert"
+          style={{
+            marginTop: 12,
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#b71c1c",
+            lineHeight: 1.45,
+            maxWidth: 720,
+          }}
+        >
+          {queuedActionNotice}
+        </div>
+      ) : null}
       {loading && queue.length === 0 && pendingLocal.length === 0 ? (
         <p>Chargement…</p>
       ) : queue.length === 0 && pendingLocal.length === 0 ? (

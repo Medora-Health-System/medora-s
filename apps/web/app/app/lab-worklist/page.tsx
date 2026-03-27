@@ -43,6 +43,8 @@ export default function LabWorklistPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Dernière action worklist mise en file hors ligne uniquement. */
+  const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -78,10 +80,17 @@ export default function LabWorklistPage() {
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/acknowledge`, {
+      const res = await apiFetch(`/orders/items/${itemId}/acknowledge`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible d'acquitter");
@@ -91,10 +100,17 @@ export default function LabWorklistPage() {
   const handleStart = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/start`, {
+      const res = await apiFetch(`/orders/items/${itemId}/start`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible de démarrer");
@@ -104,10 +120,17 @@ export default function LabWorklistPage() {
   const handleComplete = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/complete`, {
+      const res = await apiFetch(`/orders/items/${itemId}/complete`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible de terminer");
@@ -118,6 +141,25 @@ export default function LabWorklistPage() {
     <div>
       <h1>Liste laboratoire</h1>
       <p>Ordres de laboratoire à traiter.</p>
+      {queuedActionNotice ? (
+        <div
+          role="alert"
+          style={{
+            marginTop: 12,
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#b71c1c",
+            lineHeight: 1.45,
+            maxWidth: 720,
+          }}
+        >
+          {queuedActionNotice}
+        </div>
+      ) : null}
       {loading && queue.length === 0 && pendingLocal.length === 0 ? (
         <p>{ui.common.loading}</p>
       ) : queue.length === 0 && pendingLocal.length === 0 ? (
