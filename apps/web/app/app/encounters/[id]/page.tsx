@@ -2984,6 +2984,24 @@ function medicationIntentLabelFr(intent: string | null | undefined): string {
   return "À envoyer à la pharmacie";
 }
 
+/** Aligné sur `assertCanTransition(…, CANCELLED)` côté serveur — ordre parent. */
+function canAttemptWholeOrderCancel(order: { status?: string; pendingSync?: boolean }, encounterOpen: boolean): boolean {
+  if (!encounterOpen) return false;
+  if (order.pendingSync) return false;
+  const st = order.status ?? "";
+  if (st === "CANCELLED") return false;
+  if (
+    st === "COMPLETED" ||
+    st === "RESULTED" ||
+    st === "VERIFIED" ||
+    st === "IN_PROGRESS" ||
+    st === "STARTED"
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function OrdersTab({
   encounterId,
   encounter,
@@ -3013,6 +3031,12 @@ function OrdersTab({
   /** Libellé CARE à injecter uniquement à l’ouverture via action rapide (évite de réutiliser un ancien preset avec une ordonnance). */
   const [carePresetForOpenModal, setCarePresetForOpenModal] = useState<string | null>(null);
   const isRn = roles.includes("RN") || roles.includes("ADMIN");
+  const canCancelWholeOrder =
+    roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
+  const encounterOpen = encounter?.status === "OPEN";
+  const [cancelConfirmOrderId, setCancelConfirmOrderId] = useState<string | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [ordersFeedback, setOrdersFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const handlePrintRx = (order: any) => {
     if (order.type !== "MEDICATION") return;
@@ -3034,8 +3058,8 @@ function OrdersTab({
     }
   }, [encounterId, facilityId]);
 
-  const loadOrders = async () => {
-    setLoading(true);
+  const loadOrders = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const pending = await getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(
       () => [] as Record<string, unknown>[]
     );
@@ -3047,7 +3071,28 @@ function OrdersTab({
       console.error("Failed to load orders:", error);
       setOrders(mergeOrders([], pending));
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
+    }
+  };
+
+  const confirmCancelWholeOrder = async () => {
+    if (!cancelConfirmOrderId || cancelSubmitting) return;
+    setCancelSubmitting(true);
+    setOrdersFeedback(null);
+    try {
+      await apiFetch(`/orders/${cancelConfirmOrderId}/cancel`, { method: "POST", facilityId });
+      setCancelConfirmOrderId(null);
+      setOrdersFeedback({ type: "ok", text: "La commande a été annulée." });
+      await loadOrders({ silent: true });
+      await onOrdersUpdated?.();
+      await onRefetchEncounter?.();
+    } catch (e: unknown) {
+      setOrdersFeedback({
+        type: "err",
+        text: normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'annuler cette commande.",
+      });
+    } finally {
+      setCancelSubmitting(false);
     }
   };
 
@@ -3097,6 +3142,23 @@ function OrdersTab({
           </button>
         ) : null}
       </div>
+
+      {ordersFeedback ? (
+        <div
+          role="status"
+          style={{
+            marginBottom: 14,
+            padding: "12px 14px",
+            borderRadius: 6,
+            fontSize: 14,
+            backgroundColor: ordersFeedback.type === "ok" ? "#e8f5e9" : "#ffebee",
+            color: ordersFeedback.type === "ok" ? "#1b5e20" : "#b71c1c",
+            border: `1px solid ${ordersFeedback.type === "ok" ? "#a5d6a7" : "#ef9a9a"}`,
+          }}
+        >
+          {ordersFeedback.text}
+        </div>
+      ) : null}
 
       {orders.length === 0 ? (
         <div style={{ padding: 20, textAlign: "center", color: "#666" }}>
@@ -3187,14 +3249,18 @@ function OrdersTab({
                           order.status === "PENDING"
                             ? "#fff3cd"
                             : order.status === "COMPLETED"
-                            ? "#d4edda"
-                            : "#f5f5f5",
+                              ? "#d4edda"
+                              : order.status === "CANCELLED"
+                                ? "#ffebee"
+                                : "#f5f5f5",
                         color:
                           order.status === "PENDING"
                             ? "#856404"
                             : order.status === "COMPLETED"
-                            ? "#155724"
-                            : "#666",
+                              ? "#155724"
+                              : order.status === "CANCELLED"
+                                ? "#b71c1c"
+                                : "#666",
                       }}
                     >
                       {getOrderItemStatusLabel(order.status)}
@@ -3230,15 +3296,38 @@ function OrdersTab({
                   </td>
                   {(canPrescribe || isRn) && (
                     <td style={{ padding: 12, verticalAlign: "top" }}>
-                      {canPrescribe && order.type === "MEDICATION" && !(order as { pendingSync?: boolean }).pendingSync ? (
-                        <button
-                          type="button"
-                          onClick={() => handlePrintRx(order)}
-                          style={{ padding: "4px 12px", fontSize: 13, cursor: "pointer", border: "1px solid #ddd", borderRadius: 4 }}
-                        >
-                          Imprimer
-                        </button>
-                      ) : null}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                        {canPrescribe && order.type === "MEDICATION" && !(order as { pendingSync?: boolean }).pendingSync ? (
+                          <button
+                            type="button"
+                            onClick={() => handlePrintRx(order)}
+                            style={{ padding: "4px 12px", fontSize: 13, cursor: "pointer", border: "1px solid #ddd", borderRadius: 4 }}
+                          >
+                            Imprimer
+                          </button>
+                        ) : null}
+                        {canCancelWholeOrder && canAttemptWholeOrderCancel(order, encounterOpen) ? (
+                          <button
+                            type="button"
+                            disabled={cancelSubmitting}
+                            onClick={() => {
+                              setOrdersFeedback(null);
+                              setCancelConfirmOrderId(order.id);
+                            }}
+                            style={{
+                              padding: "4px 12px",
+                              fontSize: 13,
+                              cursor: cancelSubmitting ? "not-allowed" : "pointer",
+                              border: "1px solid #e57373",
+                              borderRadius: 4,
+                              backgroundColor: "#fff",
+                              color: "#c62828",
+                            }}
+                          >
+                            Annuler la commande
+                          </button>
+                        ) : null}
+                      </div>
                       {order.type === "MEDICATION" && order.prescriberName ? (
                         <div style={{ fontSize: 12, color: "#555", marginTop: 8 }}>Prescripteur : {order.prescriberName}</div>
                       ) : null}
@@ -3250,6 +3339,85 @@ function OrdersTab({
           </table>
         </div>
       )}
+
+      {cancelConfirmOrderId ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-order-title"
+          aria-busy={cancelSubmitting}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1100,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            boxSizing: "border-box",
+            cursor: cancelSubmitting ? "wait" : "default",
+          }}
+          onClick={(e) => {
+            if (cancelSubmitting) return;
+            if (e.target === e.currentTarget) setCancelConfirmOrderId(null);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              maxWidth: 440,
+              width: "100%",
+              padding: 20,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 id="cancel-order-title" style={{ margin: "0 0 12px 0", fontSize: 17 }}>
+              Annuler cette commande ?
+            </h4>
+            <p style={{ margin: "0 0 16px 0", fontSize: 14, lineHeight: 1.5, color: "#424242" }}>
+              Cette action annule toute la commande (toutes les lignes). Elle ne peut pas être annulée depuis cet écran.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                disabled={cancelSubmitting}
+                onClick={() => setCancelConfirmOrderId(null)}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 14,
+                  border: "1px solid #ccc",
+                  borderRadius: 4,
+                  background: "#fff",
+                  cursor: cancelSubmitting ? "not-allowed" : "pointer",
+                }}
+              >
+                Retour
+              </button>
+              <button
+                type="button"
+                disabled={cancelSubmitting}
+                onClick={() => void confirmCancelWholeOrder()}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 14,
+                  border: "none",
+                  borderRadius: 4,
+                  background: "#c62828",
+                  color: "white",
+                  fontWeight: 600,
+                  cursor: cancelSubmitting ? "not-allowed" : "pointer",
+                  opacity: cancelSubmitting ? 0.7 : 1,
+                }}
+              >
+                {cancelSubmitting ? "Annulation…" : "Confirmer l'annulation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showCreateModal && (
         <CreateOrderModal
