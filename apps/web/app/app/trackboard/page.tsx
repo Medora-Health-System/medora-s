@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { apiFetch } from "@/lib/apiClient";
+import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { getEncounterStatusBoardLabelFr, ui } from "@/lib/uiLabels";
+import { MEDORA_TRACKBOARD_UPDATED } from "@/lib/trackboardEvents";
 
 export default function TrackBoardPage() {
   const { facilityId: facilityIdFromHook, ready, canManagePharmacy } = useFacilityAndRoles();
@@ -35,7 +36,7 @@ export default function TrackBoardPage() {
     if (!facilityId) return;
     setLoading(true);
     try {
-      const data = await apiFetch("/trackboard?status=OPEN", { facilityId });
+      const data = await fetchOpenEncounters(facilityId);
       setEncounters(data || []);
     } catch (error) {
       console.error("Failed to load track board:", error);
@@ -43,6 +44,14 @@ export default function TrackBoardPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handler = () => {
+      void loadEncounters();
+    };
+    window.addEventListener(MEDORA_TRACKBOARD_UPDATED, handler);
+    return () => window.removeEventListener(MEDORA_TRACKBOARD_UPDATED, handler);
+  }, [facilityId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -167,12 +176,16 @@ export default function TrackBoardPage() {
                   </td>
                   <td style={{ padding: 12 }}>{formatTime(encounter.createdAt)}</td>
                   <td style={{ padding: 12 }}>
-                    <Link
-                      href={`/app/encounters/${encounter.id}`}
-                      style={{ color: "#2563eb", textDecoration: "none" }}
-                    >
-                      {ui.common.view}
-                    </Link>
+                    {encounter.pendingSync === true ? (
+                      <span style={{ color: "#666", fontSize: 13 }}>Synchronisation en cours</span>
+                    ) : (
+                      <Link
+                        href={`/app/encounters/${encounter.id}`}
+                        style={{ color: "#2563eb", textDecoration: "none" }}
+                      >
+                        {ui.common.view}
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}

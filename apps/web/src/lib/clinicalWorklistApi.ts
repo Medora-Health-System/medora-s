@@ -1,10 +1,18 @@
 import { apiFetch } from "./apiClient";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
+import { getPendingCreateEncountersForFacility, mergeEncounters } from "@/lib/offline/pendingTrackboardEncounters";
 
 /** Open encounters for nursing/provider worklists (same source as trackboard). */
 export async function fetchOpenEncounters(facilityId: string): Promise<any[]> {
-  const data = await apiFetch("/trackboard?status=OPEN", { facilityId });
-  return Array.isArray(data) ? data : [];
+  let serverRows: unknown[] = [];
+  try {
+    const data = await apiFetch("/trackboard?status=OPEN", { facilityId });
+    serverRows = Array.isArray(data) ? data : [];
+  } catch {
+    serverRows = [];
+  }
+  const pendingRows = await getPendingCreateEncountersForFacility(facilityId).catch(() => []);
+  return mergeEncounters(serverRows, pendingRows) as any[];
 }
 
 /** Orders for one encounter (same payload as OrdersTab). */

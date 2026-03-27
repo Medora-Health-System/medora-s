@@ -32,6 +32,7 @@ import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
+import { getLocalEncounterFromQueue, isLocalEncounterId } from "@/lib/offline/localEncounterFromQueue";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import {
@@ -227,8 +228,43 @@ export default function EncounterDetailPage() {
     let cancelled = false;
     setLoading(true);
     setEncounterFetchError(null);
+    const cacheKey = `encounter:${facilityId}:${encounterId}`;
+
+    if (isLocalEncounterId(encounterId)) {
+      (async () => {
+        try {
+          const local = await getLocalEncounterFromQueue(encounterId, facilityId);
+          if (cancelled) return;
+          if (local) {
+            setEncounter(local);
+            encounterHasLoadedOnceRef.current = true;
+            setEncounterFetchError(null);
+            void setCachedRecord("encounter_summaries", cacheKey, local, {
+              facilityId,
+              encounterId,
+              patientId: (local.patient as { id?: string } | undefined)?.id ?? undefined,
+            });
+          } else {
+            const cached = await getCachedRecord<any>("encounter_summaries", cacheKey);
+            if (cached?.data) {
+              setEncounter(cached.data);
+              encounterHasLoadedOnceRef.current = true;
+              setEncounterFetchError(null);
+            } else {
+              setEncounterFetchError("Consultation locale introuvable ou déjà synchronisée.");
+              setEncounter(null);
+            }
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
     (async () => {
-      const cacheKey = `encounter:${facilityId}:${encounterId}`;
       try {
         const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
         const enc = asApiObject(data);
@@ -282,6 +318,19 @@ export default function EncounterDetailPage() {
     if (!encounter?.id || !facilityId || !rolesReady) return;
     setQuickContextLoading(true);
     setQuickContextNotice(null);
+
+    if (isLocalEncounterId(encounter.id)) {
+      const pendingOrders = await getPendingCreateOrdersForEncounter(facilityId, encounter.id).catch(
+        () => [] as Record<string, unknown>[]
+      );
+      setQuickOrders(mergeOrders([], pendingOrders));
+      setQuickTriage(null);
+      setQuickDiagnosisCount(null);
+      setQuickPrimaryDiagnosis(null);
+      setQuickContextLoading(false);
+      return;
+    }
+
     const patientId = encounter.patient?.id as string;
     const triageCacheKey = `encounter-triage:${facilityId}:${encounter.id}`;
     const ordersCacheKey = `encounter-orders:${facilityId}:${encounter.id}`;
@@ -384,6 +433,10 @@ export default function EncounterDetailPage() {
     const pendingOrders = await getPendingCreateOrdersForEncounter(facilityId, encounter.id).catch(
       () => [] as Record<string, unknown>[]
     );
+    if (isLocalEncounterId(encounter.id)) {
+      setQuickOrders(pendingOrders);
+      return;
+    }
     try {
       const ords = await apiFetch(`/encounters/${encounter.id}/orders`, { facilityId });
       setQuickOrders(mergeOrders(Array.isArray(ords) ? ords : [], pendingOrders));
@@ -416,6 +469,24 @@ export default function EncounterDetailPage() {
 
   const loadEncounter = useCallback(async (opts?: { silent?: boolean }) => {
     if (!canViewEncounterDetail) return;
+    if (isLocalEncounterId(encounterId)) {
+      if (!opts?.silent) setLoading(true);
+      try {
+        const local = await getLocalEncounterFromQueue(encounterId, facilityId);
+        if (local) {
+          setEncounter(local);
+          encounterHasLoadedOnceRef.current = true;
+          void setCachedRecord("encounter_summaries", `encounter:${facilityId}:${encounterId}`, local, {
+            facilityId,
+            encounterId,
+            patientId: (local.patient as { id?: string } | undefined)?.id ?? undefined,
+          });
+        }
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+      return;
+    }
     if (!opts?.silent) setLoading(true);
     try {
       const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });

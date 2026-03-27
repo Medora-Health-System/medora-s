@@ -9,6 +9,8 @@ import { getRegistrationSexLabel } from "@/lib/uiLabels";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
+import { MEDORA_TRACKBOARD_UPDATED } from "@/lib/trackboardEvents";
+import { getPendingCreatePatientsForFacility, mergePatients } from "@/lib/offline/pendingPatients";
 
 interface Patient {
   id: string;
@@ -80,34 +82,39 @@ function PatientsPageContent() {
 
   const handleSearch = async () => {
     if (!facilityId) return;
-    
+
     setLoading(true);
     const cacheKey = `patient-search-index:${facilityId}`;
+    const pending = await getPendingCreatePatientsForFacility(facilityId).catch(() => [] as Patient[]);
+    const q = searchQuery.trim();
+    const ql = q.toLowerCase();
+    const pendingFiltered = !q
+      ? pending
+      : pending.filter((p) =>
+          `${p.firstName} ${p.lastName} ${p.mrn ?? ""} ${p.phone ?? ""}`.toLowerCase().includes(ql)
+        );
+
     try {
       const params = new URLSearchParams();
-      if (searchQuery.trim()) {
-        params.set("q", searchQuery.trim());
+      if (q) {
+        params.set("q", q);
       }
       const data = await apiFetch(`/patients/search?${params.toString()}`, {
         facilityId,
       });
       const list = patientSearchList(data);
-      setPatients(list);
+      setPatients(mergePatients(list, pendingFiltered as Patient[]));
       void setCachedRecord("patient_summaries", cacheKey, list, { facilityId });
     } catch (error) {
       console.error("Search error:", error);
       const cached = await getCachedRecord<Patient[]>("patient_summaries", cacheKey);
       const base = cached?.data ?? [];
-      const q = searchQuery.trim().toLowerCase();
-      if (!q) {
-        setPatients(base);
-      } else {
-        setPatients(
-          base.filter((p) =>
-            `${p.firstName} ${p.lastName} ${p.mrn ?? ""} ${p.phone ?? ""}`.toLowerCase().includes(q)
-          )
-        );
-      }
+      const baseFiltered = !q
+        ? base
+        : base.filter((p) =>
+            `${p.firstName} ${p.lastName} ${p.mrn ?? ""} ${p.phone ?? ""}`.toLowerCase().includes(ql)
+          );
+      setPatients(mergePatients(baseFiltered, pendingFiltered as Patient[]));
     } finally {
       setLoading(false);
     }
@@ -229,6 +236,9 @@ function PatientsPageContent() {
                   <td style={{ padding: 12 }}>{patient.mrn || "-"}</td>
                   <td style={{ padding: 12 }}>
                     {patient.firstName} {patient.lastName}
+                    {patient.pendingSync === true ? (
+                      <span style={{ fontSize: 11, color: "#888", marginLeft: 6 }}>· Hors ligne</span>
+                    ) : null}
                   </td>
                   <td style={{ padding: 12 }}>{formatAgeYearsSexFr(patient.dob, patient.sexAtBirth ?? null, patient.sex ?? null)}</td>
                   <td style={{ padding: 12 }}>{formatDate(patient.dob)}</td>
@@ -760,6 +770,13 @@ function CreateConsultationModal({
       });
       if (res?.queued) {
         setCreated({ id: "", queued: true });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(MEDORA_TRACKBOARD_UPDATED, {
+              detail: { facilityId },
+            })
+          );
+        }
         return;
       }
       setCreated({ id: (res as { id: string }).id });
