@@ -157,7 +157,12 @@ export function printDischarge(params: {
   primaryDiagnosis?: string | null;
 }): void {
   const win = window.open("", "_blank");
-  if (!win) return;
+  if (!win) {
+    alert(
+      "Impossible d'ouvrir la fenêtre d'impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups pour ce site et réessayez."
+    );
+    return;
+  }
   win.document.write(getDischargePrintHtml(params));
   win.document.close();
   win.focus();

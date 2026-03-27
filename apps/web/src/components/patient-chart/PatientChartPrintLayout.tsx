@@ -345,7 +345,9 @@ export function getPatientChartPrintHtml(params: {
 export function printPatientChart(html: string): void {
   const w = typeof window !== "undefined" ? window.open("", "_blank", "noopener,noreferrer") : null;
   if (!w) {
-    alert("Impossible d’ouvrir la fenêtre d’impression (popup bloquée).");
+    alert(
+      "Impossible d'ouvrir la fenêtre d'impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups pour ce site et réessayez."
+    );
     return;
   }
   w.document.open();
