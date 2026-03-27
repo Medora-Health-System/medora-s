@@ -3,6 +3,11 @@ import { getCachedRecord } from "@/lib/offline/offlineCache";
 import { listQueueItems } from "./offlineQueue";
 import type { OfflineQueueItem } from "./offlineTypes";
 
+/** Lignes encore éligibles au replay / affichage « en attente » — exclut `synced` (succès serveur, nettoyage local). */
+function queueRowPendingForUi(item: OfflineQueueItem): boolean {
+  return item.status === "pending" || item.status === "failed" || item.status === "syncing";
+}
+
 function mapPayloadToOrderItems(payload: Record<string, unknown>, queueId: string): unknown[] {
   const raw = payload.items;
   if (!Array.isArray(raw)) return [];
@@ -59,6 +64,7 @@ export async function getPendingCreateOrdersForEncounter(
   return all
     .filter(
       (item) =>
+        queueRowPendingForUi(item) &&
         item.type === "create_order" &&
         item.facilityId === facilityId &&
         item.endpoint === endpoint
@@ -141,6 +147,7 @@ async function pendingFacilityRowsForFilter(
   const all = await listQueueItems();
   const out: PendingFacilityQueueRow[] = [];
   for (const item of all) {
+    if (!queueRowPendingForUi(item)) continue;
     if (item.type !== "create_order" || item.facilityId !== facilityId) continue;
     const encId = encounterIdFromOrdersEndpoint(item.endpoint);
     if (!encId) continue;

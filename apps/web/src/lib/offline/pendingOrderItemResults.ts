@@ -12,6 +12,7 @@ export async function getPendingOrderItemResultsForEncounter(
   const out: Record<string, any> = {};
 
   for (const item of all) {
+    if (item.status !== "pending" && item.status !== "failed" && item.status !== "syncing") continue;
     if (item.type !== "order_item_result") continue;
 
     const orderItemId = extractOrderItemId(item.endpoint);

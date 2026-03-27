@@ -85,7 +85,6 @@ async function runOfflineQueueReplayBody(): Promise<void> {
         const txt = await res.text().catch(() => "");
         throw new Error(txt || `HTTP ${res.status}`);
       }
-      await removeQueueItem(item.id);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Échec de synchronisation";
       await patchQueueItem(item.id, {
@@ -93,6 +92,24 @@ async function runOfflineQueueReplayBody(): Promise<void> {
         retryCount: (item.retryCount || 0) + 1,
         lastError: msg,
       });
+      continue;
+    }
+    try {
+      await removeQueueItem(item.id);
+    } catch (removeErr: unknown) {
+      const msg = removeErr instanceof Error ? removeErr.message : "Échec suppression locale";
+      try {
+        await patchQueueItem(item.id, {
+          status: "synced",
+          lastError: `Nettoyage local : ${msg}`,
+        });
+      } catch {
+        try {
+          await patchQueueItem(item.id, { status: "synced", lastError: null });
+        } catch {
+          /* IndexedDB indisponible ou ligne absente — évite de marquer failed comme erreur serveur */
+        }
+      }
     }
   }
   const remaining = await getQueuePendingCount();

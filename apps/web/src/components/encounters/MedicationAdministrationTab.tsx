@@ -91,6 +91,7 @@ async function getPendingMedicationAdminsFromQueue(
   const all = await listQueueItems();
   const out: AdminRow[] = [];
   for (const item of all) {
+    if (item.status !== "pending" && item.status !== "failed" && item.status !== "syncing") continue;
     if (item.type !== "medication_administration") continue;
     if (item.facilityId !== facilityId) continue;
     if (item.endpoint !== endpoint) continue;

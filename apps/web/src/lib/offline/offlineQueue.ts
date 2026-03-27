@@ -46,7 +46,7 @@ export async function patchQueueItem(
 ): Promise<void> {
   const rows = await listQueueItems();
   const row = rows.find((r) => r.id === id);
-  if (!row) return;
+  if (!row) throw new Error(`Queue item not found: ${id}`);
   await idbSet("sync_queue", {
     ...row,
     ...patch,
