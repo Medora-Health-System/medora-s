@@ -127,6 +127,8 @@ export default function EncounterDetailPage() {
   const [encounterResultsRefresh, setEncounterResultsRefresh] = useState(0);
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [closingEncounter, setClosingEncounter] = useState(false);
+  /** Clôture mise en file hors ligne — la consultation reste ouverte côté serveur jusqu’à sync. */
+  const [queuedClosePendingSync, setQueuedClosePendingSync] = useState(false);
   const [showDischargeModal, setShowDischargeModal] = useState(false);
   /** Objet fusionné enregistré avant la modale de confirmation finale (ou null si clôture sans étape dossier). */
   const [pendingDischarge, setPendingDischarge] = useState<Record<string, string> | null>(null);
@@ -185,6 +187,10 @@ export default function EncounterDetailPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showCloseConfirmModal, closingEncounter]);
+
+  useEffect(() => {
+    if (encounter?.status === "CLOSED") setQueuedClosePendingSync(false);
+  }, [encounter?.status]);
 
   useEffect(() => {
     if (!showDischargeModal || !encounter) return;
@@ -508,7 +514,7 @@ export default function EncounterDetailPage() {
           if (t) dischargePayload[k] = t;
         }
       }
-      await apiFetch(`/encounters/${encounterId}/close`, {
+      const res = await apiFetch(`/encounters/${encounterId}/close`, {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
@@ -516,7 +522,19 @@ export default function EncounterDetailPage() {
           Object.keys(dischargePayload).length > 0 ? { discharge: dischargePayload } : {}
         ),
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+
       setShowCloseConfirmModal(false);
+
+      if (queued) {
+        setQueuedClosePendingSync(true);
+        setPendingDischarge(null);
+        await loadEncounter();
+        return;
+      }
+
+      setQueuedClosePendingSync(false);
       setPendingDischarge(null);
       await loadEncounter();
     } catch {
@@ -656,6 +674,26 @@ export default function EncounterDetailPage() {
           }}
         >
           {quickContextNotice}
+        </div>
+      ) : null}
+      {queuedClosePendingSync && encounter?.status === "OPEN" ? (
+        <div
+          role="alert"
+          style={{
+            marginBottom: 12,
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            fontSize: 13,
+            color: "#b71c1c",
+            lineHeight: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          La demande de clôture a été enregistrée sur cet appareil et est en attente de synchronisation avec le
+          serveur. La consultation n&apos;est pas encore confirmée fermée : les autres postes peuvent encore afficher la
+          visite comme ouverte jusqu&apos;à la fin de la synchronisation.
         </div>
       ) : null}
       <div style={{ marginBottom: 16 }}>
