@@ -8,6 +8,7 @@ import {
   attachmentsFromResultDataAll,
   clinicalResultFromOrderItemLike,
 } from "@/lib/clinicalResultNormalize";
+import { getCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingOrderItemResultsForEncounter } from "@/lib/offline/pendingOrderItemResults";
 
 type PendingLocalResult = {
@@ -66,17 +67,31 @@ export function EncounterResultsTab({
 }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  /** true si le GET commandes a échoué et qu’aucun cache exploitable n’était disponible (ids manquants pour fusion locale). */
+  const [ordersLoadFailedNoCache, setOrdersLoadFailedNoCache] = useState(false);
   const [pendingResultByItemId, setPendingResultByItemId] = useState<Map<string, PendingLocalResult>>(() => new Map());
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setOrdersLoadFailedNoCache(false);
       try {
         const data = await apiFetch(`/encounters/${encounterId}/orders`, { facilityId });
         if (!cancelled) setOrders(Array.isArray(data) ? data : []);
       } catch {
-        if (!cancelled) setOrders([]);
+        const ordersCacheKey = `encounter-orders:${facilityId}:${encounterId}`;
+        const cached = await getCachedRecord<any[]>("encounter_summaries", ordersCacheKey);
+        const cachedArr =
+          cached?.data && Array.isArray(cached.data) && cached.data.length > 0 ? cached.data : null;
+        if (!cancelled) {
+          if (cachedArr) {
+            setOrders(cachedArr);
+          } else {
+            setOrders([]);
+            setOrdersLoadFailedNoCache(true);
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -128,6 +143,26 @@ export function EncounterResultsTab({
   }
 
   if (rows.length === 0) {
+    if (ordersLoadFailedNoCache) {
+      return (
+        <div
+          role="alert"
+          style={{
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid #ffcc80",
+            backgroundColor: "#fff8e1",
+            fontSize: 14,
+            color: "#5d4037",
+            lineHeight: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          Impossible de charger les commandes depuis le serveur. Les résultats en attente de synchronisation sur cet
+          appareil peuvent être temporairement masqués jusqu&apos;à une reconnexion réussie.
+        </div>
+      );
+    }
     return (
       <div style={{ padding: 16, background: "#fafafa", borderRadius: 8, fontSize: 14, color: "#555" }}>
         Aucun résultat laboratoire ou imagerie enregistré pour cette consultation. Les résultats saisis depuis les files
