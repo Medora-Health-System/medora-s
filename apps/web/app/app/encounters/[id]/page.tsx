@@ -129,6 +129,8 @@ export default function EncounterDetailPage() {
   const [closingEncounter, setClosingEncounter] = useState(false);
   /** Clôture mise en file hors ligne — la consultation reste ouverte côté serveur jusqu’à sync. */
   const [queuedClosePendingSync, setQueuedClosePendingSync] = useState(false);
+  /** Dossier de sortie PATCH mis en file — données pas encore confirmées côté serveur. */
+  const [queuedDischargeSaveNotice, setQueuedDischargeSaveNotice] = useState(false);
   const [showDischargeModal, setShowDischargeModal] = useState(false);
   /** Objet fusionné enregistré avant la modale de confirmation finale (ou null si clôture sans étape dossier). */
   const [pendingDischarge, setPendingDischarge] = useState<Record<string, string> | null>(null);
@@ -170,6 +172,7 @@ export default function EncounterDetailPage() {
   useEffect(() => {
     setTabBootstrapped(false);
     encounterHasLoadedOnceRef.current = false;
+    setQueuedDischargeSaveNotice(false);
   }, [encounterId]);
 
   useEffect(() => {
@@ -191,6 +194,17 @@ export default function EncounterDetailPage() {
   useEffect(() => {
     if (encounter?.status === "CLOSED") setQueuedClosePendingSync(false);
   }, [encounter?.status]);
+
+  useEffect(() => {
+    if (!queuedDischargeSaveNotice || !pendingDischarge) return;
+    const parsed = parseDischargeSummaryForChart(encounter?.dischargeSummaryJson);
+    if (!parsed) return;
+    const matches = Object.entries(pendingDischarge).every(([k, v]) => {
+      const sv = String((parsed as Record<string, unknown>)[k] ?? "").trim();
+      return sv === String(v).trim();
+    });
+    if (matches) setQueuedDischargeSaveNotice(false);
+  }, [encounter?.dischargeSummaryJson, pendingDischarge, queuedDischargeSaveNotice]);
 
   useEffect(() => {
     if (!showDischargeModal || !encounter) return;
@@ -418,17 +432,21 @@ export default function EncounterDetailPage() {
   const handlePrintDischarge = useCallback(() => {
     if (!encounter?.patient) return;
     const facilityName = facilities.find((f) => f.id === facilityId)?.name;
+    const dischargeSummaryJsonForPrint =
+      pendingDischarge != null && Object.keys(pendingDischarge).length > 0
+        ? pendingDischarge
+        : encounter.dischargeSummaryJson;
     printDischarge({
       patient: encounter.patient,
       encounter: {
         createdAt: encounter.createdAt,
-        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        dischargeSummaryJson: dischargeSummaryJsonForPrint,
         physicianAssigned: encounter.physicianAssigned ?? null,
       },
       facilityName: facilityName ?? null,
       primaryDiagnosis: quickPrimaryDiagnosis,
     });
-  }, [encounter, facilityId, facilities, quickPrimaryDiagnosis]);
+  }, [encounter, facilityId, facilities, quickPrimaryDiagnosis, pendingDischarge]);
 
   useEffect(() => {
     if (!encounter?.id || !encounter?.patient?.id) return;
@@ -488,13 +506,18 @@ export default function EncounterDetailPage() {
     );
     try {
       if (merged !== null) {
-        await apiFetch(`/encounters/${encounterId}`, {
+        const res = await apiFetch(`/encounters/${encounterId}`, {
           method: "PATCH",
           facilityId,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ dischargeSummaryJson: merged }),
         });
+        const queued =
+          res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+        setQueuedDischargeSaveNotice(queued);
         await loadEncounter({ silent: true });
+      } else {
+        setQueuedDischargeSaveNotice(false);
       }
       setPendingDischarge(merged);
       setShowDischargeModal(false);
@@ -530,12 +553,14 @@ export default function EncounterDetailPage() {
       if (queued) {
         setQueuedClosePendingSync(true);
         setPendingDischarge(null);
+        setQueuedDischargeSaveNotice(false);
         await loadEncounter();
         return;
       }
 
       setQueuedClosePendingSync(false);
       setPendingDischarge(null);
+      setQueuedDischargeSaveNotice(false);
       await loadEncounter();
     } catch {
       alert("Impossible de fermer la consultation");
@@ -694,6 +719,25 @@ export default function EncounterDetailPage() {
           La demande de clôture a été enregistrée sur cet appareil et est en attente de synchronisation avec le
           serveur. La consultation n&apos;est pas encore confirmée fermée : les autres postes peuvent encore afficher la
           visite comme ouverte jusqu&apos;à la fin de la synchronisation.
+        </div>
+      ) : null}
+      {queuedDischargeSaveNotice ? (
+        <div
+          role="alert"
+          style={{
+            marginBottom: 12,
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            fontSize: 13,
+            color: "#b71c1c",
+            lineHeight: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          Le dossier de sortie a été enregistré sur cet appareil et est en attente de synchronisation avec le serveur. Il
+          n&apos;est pas encore confirmé côté serveur.
         </div>
       ) : null}
       <div style={{ marginBottom: 16 }}>
