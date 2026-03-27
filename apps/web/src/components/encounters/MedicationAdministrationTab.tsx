@@ -131,6 +131,8 @@ export function MedicationAdministrationTab({
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Affichage immédiat si l’enregistrement MAR est seulement mis en file (pas encore confirmé serveur). */
+  const [marQueuedOfflineNotice, setMarQueuedOfflineNotice] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [modalItem, setModalItem] = useState<{
@@ -240,12 +242,19 @@ export function MedicationAdministrationTab({
         administeredAt: new Date().toISOString(),
         notes: buildMarNotes(modalAction, routeLine, modalNotes),
       };
-      await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
+      const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      if (queued) {
+        setMarQueuedOfflineNotice(true);
+      } else {
+        setMarQueuedOfflineNotice(false);
+      }
       setModalItem(null);
       await loadAll();
     } catch (err) {
@@ -264,6 +273,26 @@ export function MedicationAdministrationTab({
         <p style={{ color: "#c62828", fontSize: 14, marginTop: 0 }} role="alert">
           {error}
         </p>
+      ) : null}
+      {marQueuedOfflineNotice ? (
+        <div
+          role="alert"
+          style={{
+            marginBottom: 12,
+            marginTop: error ? 8 : 0,
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            fontSize: 13,
+            color: "#b71c1c",
+            lineHeight: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          L&apos;administration a été enregistrée sur cet appareil et est en attente de synchronisation avec le serveur.
+          Elle n&apos;est pas encore confirmée côté serveur.
+        </div>
       ) : null}
 
       <h3 style={{ margin: "0 0 8px 0", fontSize: 16 }}>Médicaments à suivre</h3>
