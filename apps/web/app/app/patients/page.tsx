@@ -20,6 +20,8 @@ interface Patient {
   sex?: string | null;
   phone: string | null;
   nationalId?: string | null;
+  /** true si le dossier n’est pas encore confirmé côté serveur (création mise en file). */
+  pendingSync?: boolean;
 }
 
 function patientSearchList(data: unknown): Patient[] {
@@ -429,6 +431,12 @@ function NewPatientModal({
       if (formData.country.trim()) payload.country = formData.country.trim();
       if (formData.language.trim()) payload.language = formData.language.trim();
 
+      const clientTempId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `local_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      payload.clientTempId = clientTempId;
+
       const res = await apiFetch("/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -437,7 +445,18 @@ function NewPatientModal({
       });
       if (res?.queued) {
         setInfo("Création enregistrée hors ligne. Le dossier sera synchronisé dès le retour de la connexion");
-        onSuccess(null);
+        const localPatient: Patient = {
+          id: `temp-${clientTempId}`,
+          mrn: null,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          dob: formData.dateOfBirth,
+          sex: formData.sex || undefined,
+          phone: formData.phone.trim() || null,
+          nationalId: formData.nationalId.trim() || undefined,
+          pendingSync: true,
+        };
+        onSuccess(localPatient);
         return;
       }
       onSuccess((res as Patient) ?? null);
