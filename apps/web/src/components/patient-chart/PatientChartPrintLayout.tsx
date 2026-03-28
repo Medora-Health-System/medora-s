@@ -232,6 +232,20 @@ export function getPatientChartPrintHtml(params: {
                   )} <strong>le</strong> ${esc(fmtDt(enc.providerDocumentationSignedAt))}</p>`
                 : ""
             }
+            ${
+              (enc.providerAddenda ?? []).length > 0
+                ? `<p style="margin:8px 0 4px 0;font-size:12px;"><strong>Addenda</strong></p>${(enc.providerAddenda ?? [])
+                    .map(
+                      (ad) =>
+                        `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>Addendum</strong> par ${esc(
+                          ad.createdByDisplayFr ?? "—"
+                        )} <strong>le</strong> ${esc(fmtDt(ad.createdAt))}</p><p style="margin:4px 0 0 0;white-space:pre-wrap;">${esc(
+                          ad.text
+                        )}</p></div>`
+                    )
+                    .join("")}`
+                : ""
+            }
             <p style="margin:4px 0;"><strong>Impression clinique :</strong> ${esc(enc.clinicianImpressionPreview ?? "—")}</p>
             <p style="margin:4px 0;"><strong>Plan thérapeutique :</strong> ${esc(enc.treatmentPlanPreview ?? "—")}</p>
             <p style="margin:4px 0;"><strong>Diagnostics (cette visite) :</strong> ${esc(dxVisit || "—")}</p>

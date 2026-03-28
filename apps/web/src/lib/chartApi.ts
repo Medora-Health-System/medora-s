@@ -71,6 +71,13 @@ export type ChartSummaryEncounter = {
   providerDocumentationStatus?: string;
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
+  /** Append-only addenda after signature (V1). */
+  providerAddenda?: Array<{
+    id: string;
+    text: string;
+    createdAt: string;
+    createdByDisplayFr: string | null;
+  }>;
   followUpDate: string | null;
   createdAt: string;
   dischargedAt: string | null;

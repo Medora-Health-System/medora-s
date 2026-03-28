@@ -95,6 +95,7 @@ enum AuditAction {
   PATHWAY_ACTIVATED
   ORDERS_CREATED
   PROVIDER_DOCUMENTATION_SIGN
+  PROVIDER_DOCUMENTATION_ADDENDUM
 }
 
 enum EncounterType {
@@ -197,6 +198,7 @@ model Facility {
   diseaseCaseReports         DiseaseCaseReport[]
   followUps                  FollowUp[]
   triageVitalsReadings       TriageVitalsReading[]
+  encounterProviderAddenda   EncounterProviderAddendum[]
 }
 
 model Department {
@@ -249,6 +251,7 @@ model User {
 
   encountersAsAssignedPhysician Encounter[] @relation("EncounterPhysicianAssigned")
   encountersSignedByProvider    Encounter[] @relation("EncounterSignedBy")
+  providerAddendaCreated EncounterProviderAddendum[]
   orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
   ordersCancelled               Order[]     @relation("OrderCancelledBy")
 }
@@ -417,12 +420,31 @@ model Encounter {
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
   triageVitalsReadings   TriageVitalsReading[]
+  providerAddenda        EncounterProviderAddendum[]
 
   @@index([facilityId])
   @@index([patientId])
   @@index([status])
   @@index([physicianAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
+}
+
+/// Append-only addendum after provider documentation is signed (V1 — no edit/delete).
+model EncounterProviderAddendum {
+  id              String   @id @default(uuid())
+  encounterId     String
+  facilityId      String
+  text            String
+  createdAt       DateTime @default(now())
+  createdByUserId String
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  createdBy User      @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([encounterId, createdAt])
+  @@index([createdByUserId])
+  @@index([facilityId])
 }
 
 model Order {

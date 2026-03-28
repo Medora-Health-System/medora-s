@@ -76,6 +76,18 @@ function EncounterBlock({ enc, children }: { enc: ChartSummaryEncounter; childre
           Signé par {enc.providerDocumentationSignedByDisplayFr} le {formatDt(enc.providerDocumentationSignedAt)}
         </div>
       ) : null}
+      {(enc.providerAddenda ?? []).length > 0 ? (
+        <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
+          {(enc.providerAddenda ?? []).map((ad) => (
+            <div key={ad.id} style={{ marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                Addendum par {ad.createdByDisplayFr ?? "—"} le {formatDt(ad.createdAt)}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{ad.text}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {children}
     </div>
   );

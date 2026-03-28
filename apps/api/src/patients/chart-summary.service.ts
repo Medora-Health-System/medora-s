@@ -49,6 +49,15 @@ const encounterChartSelect = {
   providerDocumentationSignedBy: {
     select: { id: true, firstName: true, lastName: true },
   },
+  providerAddenda: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      text: true,
+      createdAt: true,
+      createdBy: { select: { firstName: true, lastName: true } },
+    },
+  },
   triage: {
     select: {
       vitalsJson: true,
@@ -520,6 +529,16 @@ export class ChartSummaryService {
         ? `${e.providerDocumentationSignedBy.firstName} ${e.providerDocumentationSignedBy.lastName}`.trim()
         : null;
 
+      const providerAddenda = (e.providerAddenda ?? []).map((a) => ({
+        id: a.id,
+        text: a.text,
+        createdAt:
+          a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+        createdByDisplayFr: a.createdBy
+          ? `${a.createdBy.firstName} ${a.createdBy.lastName}`.trim()
+          : null,
+      }));
+
       return {
         id: e.id,
         type: e.type,
@@ -531,6 +550,7 @@ export class ChartSummaryService {
         providerDocumentationStatus: e.providerDocumentationStatus ?? "DRAFT",
         providerDocumentationSignedAt: signedAtIso,
         providerDocumentationSignedByDisplayFr,
+        providerAddenda,
         followUpDate: e.followUpDate,
         createdAt: e.createdAt,
         dischargedAt: e.dischargedAt,
