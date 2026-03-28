@@ -44,6 +44,11 @@ const encounterChartSelect = {
   physicianAssigned: {
     select: { id: true, firstName: true, lastName: true },
   },
+  providerDocumentationStatus: true,
+  providerDocumentationSignedAt: true,
+  providerDocumentationSignedBy: {
+    select: { id: true, firstName: true, lastName: true },
+  },
   triage: {
     select: {
       vitalsJson: true,
@@ -147,6 +152,21 @@ function chartItemStatusAndCompletion(
     };
   }
   if (it.catalogItemType !== "MEDICATION") {
+    if (it.status === "CANCELLED") {
+      return {
+        chartStatus: "CANCELLED",
+        chartCompletedAt: it.completedAt,
+        chartCompletedBy: byNurse(it.completedByNurse),
+      };
+    }
+    const verifiedAt = it.result?.verifiedAt;
+    if (verifiedAt) {
+      return {
+        chartStatus: it.status === "VERIFIED" ? "VERIFIED" : "RESULTED",
+        chartCompletedAt: verifiedAt instanceof Date ? verifiedAt : new Date(verifiedAt),
+        chartCompletedBy: null,
+      };
+    }
     return {
       chartStatus: it.status,
       chartCompletedAt: it.completedAt,
@@ -490,6 +510,16 @@ export class ChartSummaryService {
         items: toChartOrderItems(o),
       }));
 
+      const signedAtIso =
+        e.providerDocumentationSignedAt instanceof Date
+          ? e.providerDocumentationSignedAt.toISOString()
+          : e.providerDocumentationSignedAt
+            ? String(e.providerDocumentationSignedAt)
+            : null;
+      const providerDocumentationSignedByDisplayFr = e.providerDocumentationSignedBy
+        ? `${e.providerDocumentationSignedBy.firstName} ${e.providerDocumentationSignedBy.lastName}`.trim()
+        : null;
+
       return {
         id: e.id,
         type: e.type,
@@ -498,6 +528,9 @@ export class ChartSummaryService {
         chiefComplaint: e.chiefComplaint,
         treatmentPlanPreview,
         clinicianImpressionPreview,
+        providerDocumentationStatus: e.providerDocumentationStatus ?? "DRAFT",
+        providerDocumentationSignedAt: signedAtIso,
+        providerDocumentationSignedByDisplayFr,
         followUpDate: e.followUpDate,
         createdAt: e.createdAt,
         dischargedAt: e.dischargedAt,

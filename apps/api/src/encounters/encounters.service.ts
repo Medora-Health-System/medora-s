@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { AuditService } from "../common/services/audit.service";
@@ -28,6 +28,45 @@ const DISCHARGE_SUMMARY_KEYS = [
 
 function admissionSummaryHasContent(data: Record<string, unknown>): boolean {
   return Object.values(data).some((v) => typeof v === "string" && v.trim().length > 0);
+}
+
+/** Merge incoming nursingAssessment JSON while preserving physicianEvalV1 from DB (signed encounters). */
+function mergeNursingAssessmentPreservingPhysicianEval(existing: unknown, incoming: unknown): unknown {
+  const ex =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? ({ ...existing } as Record<string, unknown>)
+      : {};
+  const inc =
+    incoming && typeof incoming === "object" && !Array.isArray(incoming)
+      ? (incoming as Record<string, unknown>)
+      : {};
+  const merged: Record<string, unknown> = { ...ex, ...inc };
+  merged.physicianEvalV1 = ex.physicianEvalV1;
+  return merged;
+}
+
+function hasPhysicianEvalV1Content(nursingAssessment: unknown): boolean {
+  if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) {
+    return false;
+  }
+  const pe = (nursingAssessment as Record<string, unknown>).physicianEvalV1;
+  if (!pe || typeof pe !== "object" || Array.isArray(pe)) return false;
+  const o = pe as Record<string, unknown>;
+  for (const k of ["hpi", "ros", "physicalExam", "mdm"]) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim().length > 0) return true;
+  }
+  return false;
+}
+
+function encounterHasSignableProviderContent(enc: {
+  providerNote: string | null;
+  treatmentPlan: string | null;
+  nursingAssessment: unknown;
+}): boolean {
+  if (enc.providerNote?.trim()) return true;
+  if (enc.treatmentPlan?.trim()) return true;
+  return hasPhysicianEvalV1Content(enc.nursingAssessment);
 }
 
 function mergeDischargeSummaryJson(
@@ -224,6 +263,7 @@ export class EncountersService {
       include: {
         patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
@@ -261,10 +301,85 @@ export class EncountersService {
       }
     }
 
-    const res = toEncounterClinicResponse(encounter);
+    const res = toEncounterClinicResponse(encounter) as Record<string, unknown>;
+    const signedByDisplayFr =
+      encounter.providerDocumentationStatus === "SIGNED" && encounter.providerDocumentationSignedBy
+        ? `${encounter.providerDocumentationSignedBy.firstName} ${encounter.providerDocumentationSignedBy.lastName}`.trim()
+        : null;
 
-    return encounter.status === EncounterStatus.CLOSED
-      ? { ...res, closedByDisplayFr }
+    const withClosed =
+      encounter.status === EncounterStatus.CLOSED
+        ? { ...res, closedByDisplayFr }
+        : res;
+
+    return signedByDisplayFr
+      ? { ...withClosed, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
+      : withClosed;
+  }
+
+  async signProviderDocumentation(
+    facilityId: string,
+    encounterId: string,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour signer l'évaluation médicale.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("La consultation doit être ouverte pour signer l'évaluation.");
+    }
+
+    if (encounter.providerDocumentationStatus === "SIGNED") {
+      throw new BadRequestException("L'évaluation médicale est déjà signée.");
+    }
+
+    if (!encounterHasSignableProviderContent(encounter)) {
+      throw new BadRequestException(
+        "Renseignez au moins une impression clinique, un plan de traitement ou la documentation médicale (HPI, ROS, examen, MDM) avant de signer."
+      );
+    }
+
+    const updated = await this.prisma.encounter.update({
+      where: { id: encounterId },
+      data: {
+        providerDocumentationStatus: "SIGNED",
+        providerDocumentationSignedAt: new Date(),
+        providerDocumentationSignedByUserId: userId,
+      },
+      include: {
+        patient: { select: encounterDetailPatientSelect },
+        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_SIGN, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+    });
+
+    const res = toEncounterClinicResponse(updated) as Record<string, unknown>;
+    const signedByDisplayFr = updated.providerDocumentationSignedBy
+      ? `${updated.providerDocumentationSignedBy.firstName} ${updated.providerDocumentationSignedBy.lastName}`.trim()
+      : null;
+    return signedByDisplayFr
+      ? { ...res, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
       : res;
   }
 
@@ -275,6 +390,19 @@ export class EncountersService {
 
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
+    }
+
+    if (encounter.providerDocumentationStatus === "SIGNED") {
+      if (
+        data.visitReason !== undefined ||
+        data.chiefComplaint !== undefined ||
+        data.clinicianImpression !== undefined ||
+        data.providerNote !== undefined ||
+        data.treatmentPlan !== undefined ||
+        data.followUpDate !== undefined
+      ) {
+        throw new BadRequestException("Cette évaluation médicale est signée et ne peut plus être modifiée.");
+      }
     }
 
     const updateData: Record<string, unknown> = {};
@@ -304,7 +432,10 @@ export class EncountersService {
         imp === null ? null : imp?.toString().trim() || null;
     }
     if (data.nursingAssessment !== undefined) {
-      updateData.nursingAssessment = data.nursingAssessment;
+      updateData.nursingAssessment =
+        encounter.providerDocumentationStatus === "SIGNED"
+          ? mergeNursingAssessmentPreservingPhysicianEval(encounter.nursingAssessment, data.nursingAssessment)
+          : data.nursingAssessment;
     }
     if (data.dischargeSummaryJson !== undefined) {
       updateData.dischargeSummaryJson = data.dischargeSummaryJson;

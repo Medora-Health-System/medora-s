@@ -223,6 +223,15 @@ export function getPatientChartPrintHtml(params: {
             <p style="margin:8px 0 4px 0;"><strong>Évaluation infirmière</strong></p>
             ${nursingHtml}
             <p style="margin:8px 0 4px 0;"><strong>Évaluation médicale</strong></p>
+            ${
+              enc.providerDocumentationStatus === "SIGNED" &&
+              enc.providerDocumentationSignedByDisplayFr &&
+              enc.providerDocumentationSignedAt
+                ? `<p style="margin:4px 0;font-size:11px;color:#1565c0;"><strong>Évaluation médicale signée par</strong> ${esc(
+                    enc.providerDocumentationSignedByDisplayFr
+                  )} <strong>le</strong> ${esc(fmtDt(enc.providerDocumentationSignedAt))}</p>`
+                : ""
+            }
             <p style="margin:4px 0;"><strong>Impression clinique :</strong> ${esc(enc.clinicianImpressionPreview ?? "—")}</p>
             <p style="margin:4px 0;"><strong>Plan thérapeutique :</strong> ${esc(enc.treatmentPlanPreview ?? "—")}</p>
             <p style="margin:4px 0;"><strong>Diagnostics (cette visite) :</strong> ${esc(dxVisit || "—")}</p>

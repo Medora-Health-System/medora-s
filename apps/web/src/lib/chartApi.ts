@@ -67,6 +67,10 @@ export type ChartSummaryEncounter = {
   chiefComplaint: string | null;
   treatmentPlanPreview: string | null;
   clinicianImpressionPreview: string | null;
+  /** DRAFT | SIGNED — chart API */
+  providerDocumentationStatus?: string;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
   followUpDate: string | null;
   createdAt: string;
   dischargedAt: string | null;

@@ -192,6 +192,22 @@ export class EncountersController {
     );
   }
 
+  @Post("encounters/:id/sign-provider-documentation")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async signProviderDocumentation(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.signProviderDocumentation(
+      facilityId,
+      id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Patch("encounters/:id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async update(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {

@@ -1178,7 +1178,12 @@ export default function EncounterDetailPage() {
             />
           )}
           {activeTab === "clinic" && (
-            <ClinicVisitTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />
+            <ClinicVisitTab
+              encounter={encounter}
+              facilityId={facilityId}
+              onUpdate={loadEncounter}
+              canSignProviderDocumentation={isProviderLike}
+            />
           )}
           {activeTab === "triage" && <TriageVitalsTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
           {activeTab === "nursing" && showNursingTab && (
@@ -1954,6 +1959,26 @@ function EncounterDiagnosticsTab({
   );
 }
 
+/** Aligné sur la validation serveur avant signature de l’évaluation médicale. */
+function encounterHasSignableProviderContentForUi(enc: {
+  clinicianImpression?: string | null;
+  providerNote?: string | null;
+  treatmentPlan?: string | null;
+  nursingAssessment?: unknown;
+}): boolean {
+  const note = (enc.clinicianImpression || enc.providerNote || "").trim();
+  const plan = (enc.treatmentPlan || "").trim();
+  if (note || plan) return true;
+  const raw = enc.nursingAssessment;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const pe = (raw as Record<string, unknown>).physicianEvalV1;
+  if (!pe || typeof pe !== "object" || Array.isArray(pe)) return false;
+  const o = pe as Record<string, unknown>;
+  return ["hpi", "ros", "physicalExam", "mdm"].some(
+    (k) => typeof o[k] === "string" && (o[k] as string).trim().length > 0
+  );
+}
+
 function parsePhysicianEvalV1FromEncounter(enc: { nursingAssessment?: unknown } | null | undefined): {
   hpi: string;
   ros: string;
@@ -1982,10 +2007,12 @@ function ClinicVisitTab({
   encounter,
   facilityId,
   onUpdate,
+  canSignProviderDocumentation,
 }: {
   encounter: any;
   facilityId: string;
   onUpdate: () => void;
+  canSignProviderDocumentation: boolean;
 }) {
   const [visitReason, setVisitReason] = useState(encounter.visitReason || encounter.chiefComplaint || "");
   const [impression, setImpression] = useState(encounter.clinicianImpression || encounter.providerNote || "");
@@ -1998,8 +2025,11 @@ function ClinicVisitTab({
   const [physicalExam, setPhysicalExam] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).physicalExam);
   const [mdm, setMdm] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).mdm);
   const [saving, setSaving] = useState(false);
+  const [signingDoc, setSigningDoc] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "queued" | "err"; text: string } | null>(null);
   const readOnly = encounter.status !== "OPEN";
+  const docSigned = encounter.providerDocumentationStatus === "SIGNED";
+  const fieldsLocked = readOnly || docSigned;
 
   useEffect(() => {
     setVisitReason(encounter.visitReason || encounter.chiefComplaint || "");
@@ -2021,7 +2051,30 @@ function ClinicVisitTab({
     encounter.treatmentPlan,
     encounter.followUpDate,
     encounter.nursingAssessment,
+    encounter.providerDocumentationStatus,
+    encounter.providerDocumentationSignedAt,
+    encounter.providerDocumentationSignedByDisplayFr,
   ]);
+
+  const handleSignDocumentation = async () => {
+    setMessage(null);
+    setSigningDoc(true);
+    try {
+      await apiFetch(`/encounters/${encounter.id}/sign-provider-documentation`, {
+        method: "POST",
+        facilityId,
+      });
+      setMessage({ type: "ok", text: "Évaluation médicale signée." });
+      onUpdate();
+    } catch (e: unknown) {
+      setMessage({
+        type: "err",
+        text: normalizeUserFacingError(e instanceof Error ? e.message : null) || "Signature impossible.",
+      });
+    } finally {
+      setSigningDoc(false);
+    }
+  };
 
   const save = async () => {
     setMessage(null);
@@ -2080,6 +2133,26 @@ function ClinicVisitTab({
   return (
     <div style={{ maxWidth: 720 }}>
       <h3 style={{ marginTop: 0 }}>Évaluation médicale</h3>
+      {docSigned &&
+      encounter.providerDocumentationSignedByDisplayFr &&
+      encounter.providerDocumentationSignedAt ? (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            backgroundColor: "#e3f2fd",
+            borderRadius: 6,
+            border: "1px solid #90caf9",
+            fontSize: 14,
+            color: "#0d47a1",
+            lineHeight: 1.45,
+          }}
+        >
+          Évaluation signée par <strong>{encounter.providerDocumentationSignedByDisplayFr}</strong> le{" "}
+          {new Date(encounter.providerDocumentationSignedAt).toLocaleString("fr-FR")}
+        </div>
+      ) : null}
       <p style={{ color: "#757575", fontSize: 13 }}>
         {readOnly
           ? "Consultation clôturée — lecture seule."
@@ -2089,7 +2162,7 @@ function ClinicVisitTab({
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Motif de visite</label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
           <select
-            disabled={readOnly}
+            disabled={fieldsLocked}
             value=""
             onChange={(e) => {
               const v = e.target.value;
@@ -2105,7 +2178,7 @@ function ClinicVisitTab({
           </select>
         </div>
         <input
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={visitReason}
           onChange={(e) => setVisitReason(e.target.value)}
           style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
@@ -2115,7 +2188,7 @@ function ClinicVisitTab({
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Histoire de la maladie actuelle (HPI)</label>
         <textarea
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={hpi}
           onChange={(e) => setHpi(e.target.value)}
           rows={4}
@@ -2126,7 +2199,7 @@ function ClinicVisitTab({
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Revue des systèmes (ROS)</label>
         <textarea
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={ros}
           onChange={(e) => setRos(e.target.value)}
           rows={4}
@@ -2137,7 +2210,7 @@ function ClinicVisitTab({
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Examen physique</label>
         <textarea
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={physicalExam}
           onChange={(e) => setPhysicalExam(e.target.value)}
           rows={4}
@@ -2148,7 +2221,7 @@ function ClinicVisitTab({
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Aide à la décision médicale (MDM)</label>
         <textarea
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={mdm}
           onChange={(e) => setMdm(e.target.value)}
           rows={4}
@@ -2158,7 +2231,7 @@ function ClinicVisitTab({
       </div>
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Impression clinique</label>
-        {!readOnly && (
+        {!fieldsLocked && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
             <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>Insérer :</span>
             {PROVIDER_IMPRESSION_SNIPPETS.slice(0, 5).map((snippet) => (
@@ -2186,7 +2259,7 @@ function ClinicVisitTab({
           </div>
         )}
         <textarea
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={impression}
           onChange={(e) => setImpression(e.target.value)}
           rows={4}
@@ -2196,7 +2269,7 @@ function ClinicVisitTab({
       </div>
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Plan de traitement</label>
-        {!readOnly && (
+        {!fieldsLocked && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
             <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>Insérer :</span>
             {PROVIDER_PLAN_SNIPPETS.slice(0, 5).map((snippet) => (
@@ -2224,7 +2297,7 @@ function ClinicVisitTab({
           </div>
         )}
         <textarea
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={plan}
           onChange={(e) => setPlan(e.target.value)}
           rows={5}
@@ -2236,7 +2309,7 @@ function ClinicVisitTab({
         <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Date de suivi</label>
         <input
           type="date"
-          disabled={readOnly}
+          disabled={fieldsLocked}
           value={followUp}
           onChange={(e) => setFollowUp(e.target.value)}
           style={{ padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
@@ -2256,23 +2329,48 @@ function ClinicVisitTab({
           {message.text}
         </p>
       )}
-      {!readOnly && (
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving}
-          style={{
-            padding: "10px 24px",
-            backgroundColor: "#1a1a1a",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: saving ? "wait" : "pointer",
-          }}
-        >
-          {saving ? "Enregistrement…" : "Enregistrer la visite"}
-        </button>
-      )}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        {!readOnly && !docSigned && (
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            style={{
+              padding: "10px 24px",
+              backgroundColor: "#1a1a1a",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor: saving ? "wait" : "pointer",
+            }}
+          >
+            {saving ? "Enregistrement…" : "Enregistrer la visite"}
+          </button>
+        )}
+        {canSignProviderDocumentation && !readOnly && !docSigned && (
+          <button
+            type="button"
+            onClick={() => void handleSignDocumentation()}
+            disabled={
+              signingDoc || !encounterHasSignableProviderContentForUi(encounter)
+            }
+            style={{
+              padding: "10px 24px",
+              backgroundColor: "#1565c0",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor:
+                signingDoc || !encounterHasSignableProviderContentForUi(encounter)
+                  ? "not-allowed"
+                  : "pointer",
+              opacity: signingDoc || !encounterHasSignableProviderContentForUi(encounter) ? 0.65 : 1,
+            }}
+          >
+            {signingDoc ? "…" : "Signer l'évaluation"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

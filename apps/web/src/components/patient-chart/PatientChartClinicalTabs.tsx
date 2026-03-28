@@ -61,6 +61,21 @@ function EncounterBlock({ enc, children }: { enc: ChartSummaryEncounter; childre
           ) : null}
         </div>
       ) : null}
+      {enc.providerDocumentationStatus === "SIGNED" &&
+      enc.providerDocumentationSignedByDisplayFr &&
+      enc.providerDocumentationSignedAt ? (
+        <div
+          style={{
+            fontSize: 12,
+            color: "#1565c0",
+            marginBottom: 12,
+            fontWeight: 600,
+            lineHeight: 1.45,
+          }}
+        >
+          Signé par {enc.providerDocumentationSignedByDisplayFr} le {formatDt(enc.providerDocumentationSignedAt)}
+        </div>
+      ) : null}
       {children}
     </div>
   );
