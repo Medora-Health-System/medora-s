@@ -3,6 +3,7 @@ import type { OrderItem } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { MedicationAdministrationCreateDto } from "@medora/shared";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
 @Injectable()
 export class MedicationAdministrationService {
@@ -62,6 +63,7 @@ export class MedicationAdministrationService {
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
     }
+    assertEncounterNotSigned(encounter);
     if (encounter.status !== "OPEN") {
       throw new BadRequestException("La consultation doit être ouverte pour enregistrer une administration.");
     }
