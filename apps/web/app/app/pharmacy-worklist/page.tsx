@@ -13,6 +13,7 @@ import {
   getPendingPharmacyMedicationOrderRowsForFacility,
   type PendingFacilityQueueRow,
 } from "@/lib/offline/pendingEncounterOrders";
+import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 
 function PendingEncounterPatientCells({
   facilityId,
@@ -162,6 +163,7 @@ export default function PharmacyWorklistPage() {
   const medicationLabel = (it: any) => getOrderItemDisplayLabelFr(it);
 
   const openRecordModal = (order: any, item: any) => {
+    if (orderIsCancelled(order)) return;
     setRecordModal({
       orderItemId: item.id,
       medicationLine: `${medicationLabel(item)} · Qté ${item.quantity ?? "—"} · Posologie : ${(item.notes as string) || "—"}`,
@@ -293,52 +295,75 @@ export default function PharmacyWorklistPage() {
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
                     <td style={{ padding: 12 }}>
-                      <Link
-                        href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
-                        style={{ marginRight: 8, fontSize: 13 }}
-                        title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
-                      >
-                        Voir le détail
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => openRecordModal(order, item)}
-                        style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
-                      >
-                        Enregistrer dispensation
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePrintRx(order)}
-                        style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
-                      >
-                        Imprimer
-                      </button>
-                      {(item.status === "PLACED" || item.status === "SIGNED") && (
-                        <button
-                          onClick={() => handleAcknowledge(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                        >
-                          Accuser réception
-                        </button>
+                      {orderIsCancelled(order) ? (
+                        <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
+                      ) : (
+                        getOrderItemStatusLabel(item.status)
                       )}
-                      {item.status === "ACKNOWLEDGED" && (
-                        <button
-                          onClick={() => handleStart(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                        >
-                          Démarrer
-                        </button>
-                      )}
-                      {item.status === "IN_PROGRESS" && (
-                        <button
-                          onClick={() => handleComplete(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                        >
-                          Terminer
-                        </button>
+                    </td>
+                    <td style={{ padding: 12 }}>
+                      {orderIsCancelled(order) ? (
+                        <div>
+                          <p style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 600, color: "#b71c1c", lineHeight: 1.45 }}>
+                            Commande annulée — aucune action possible
+                          </p>
+                          <Link
+                            href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
+                            style={{ fontSize: 13 }}
+                            title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
+                          >
+                            Voir le détail
+                          </Link>
+                        </div>
+                      ) : (
+                        <>
+                          <Link
+                            href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
+                            style={{ marginRight: 8, fontSize: 13 }}
+                            title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
+                          >
+                            Voir le détail
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => openRecordModal(order, item)}
+                            style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
+                          >
+                            Enregistrer dispensation
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePrintRx(order)}
+                            style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
+                          >
+                            Imprimer
+                          </button>
+                          {(item.status === "PLACED" || item.status === "SIGNED") && (
+                            <button
+                              onClick={() => handleAcknowledge(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              Accuser réception
+                            </button>
+                          )}
+                          {item.status === "ACKNOWLEDGED" && (
+                            <button
+                              onClick={() => handleStart(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              Démarrer
+                            </button>
+                          )}
+                          {item.status === "IN_PROGRESS" && (
+                            <button
+                              onClick={() => handleComplete(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              Terminer
+                            </button>
+                          )}
+                        </>
                       )}
                     </td>
                   </tr>

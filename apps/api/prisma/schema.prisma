@@ -248,6 +248,7 @@ model User {
 
   encountersAsAssignedPhysician Encounter[] @relation("EncounterPhysicianAssigned")
   orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
+  ordersCancelled               Order[]     @relation("OrderCancelledBy")
 }
 
 model PasswordResetToken {
@@ -431,12 +432,16 @@ model Order {
   prescriberContact  String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+  cancelledAt        DateTime?
+  cancelledByUserId  String?
+  cancellationReason String?
 
   encounter      Encounter       @relation(fields: [encounterId], references: [id], onDelete: Restrict)
   facility       Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
   patientId      String
   pathwaySession PathwaySession? @relation(fields: [pathwaySessionId], references: [id], onDelete: SetNull)
+  cancelledBy    User?           @relation("OrderCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   items          OrderItem[]
   auditLogs      AuditLog[]      @relation("OrderAuditLogs")
 
@@ -445,6 +450,7 @@ model Order {
   @@index([patientId])
   @@index([status])
   @@index([pathwaySessionId])
+  @@index([cancelledByUserId])
 }
 
 model OrderItem {

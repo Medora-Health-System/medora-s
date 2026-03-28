@@ -15,7 +15,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { orderCreateDtoSchema, orderUpdateDtoSchema } from "@medora/shared";
+import { orderCancelDtoSchema, orderCreateDtoSchema, orderUpdateDtoSchema } from "@medora/shared";
 import { RoleCode } from "@prisma/client";
 import { assertZodBody } from "../common/http/zod-parse";
 
@@ -124,15 +124,18 @@ export class OrdersController {
 
   @Post("orders/:id/cancel")
   @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
-  async cancel(@Param("id") id: string, @Req() req: any) {
+  async cancel(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
 
+    const dto = assertZodBody(orderCancelDtoSchema.safeParse(body));
+
     return this.ordersService.cancel(
       facilityId,
       id,
+      dto,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]

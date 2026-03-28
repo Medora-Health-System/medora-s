@@ -7,6 +7,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { MedicationCatalogService } from "../medication-catalog/medication-catalog.service";
 import { AuditAction, MedicationFulfillmentIntent } from "@prisma/client";
+import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import type {
   CreateInventoryItemDto,
   ReceiveStockDto,
@@ -354,6 +355,7 @@ export class PharmacyInventoryService {
     if (!orderItem) {
       throw new NotFoundException("Ligne d'ordonnance introuvable.");
     }
+    assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {
       throw new BadRequestException("La ligne doit être un médicament.");
     }

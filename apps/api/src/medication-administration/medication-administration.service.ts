@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import type { OrderItem } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { MedicationAdministrationCreateDto } from "@medora/shared";
+import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 
 @Injectable()
 export class MedicationAdministrationService {
@@ -84,6 +85,7 @@ export class MedicationAdministrationService {
       if (item.catalogItemType !== "MEDICATION") {
         throw new BadRequestException("La ligne doit être un médicament.");
       }
+      assertParentOrderNotCancelled(item.order.status);
       let catalogMedication: { displayNameFr: string | null; name: string | null; strength: string | null } | null =
         null;
       if (item.catalogItemId) {

@@ -9,6 +9,10 @@ export type ChartSummaryOrderItem = {
   medicationFulfillmentIntent: string | null;
   completedAt: string | null;
   completedBy: { firstName: string; lastName: string } | null;
+  /** Renseignés lorsque la commande parente est annulée (réplication pour affichage liste / filtre). */
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  cancelledByDisplayFr?: string | null;
   result: {
     resultText: string | null;
     verifiedAt: string | null;
@@ -30,6 +34,9 @@ export type ChartSummaryOrder = {
   type: string;
   status: string;
   createdAt: string;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  cancelledByDisplayFr?: string | null;
   items: ChartSummaryOrderItem[];
 };
 

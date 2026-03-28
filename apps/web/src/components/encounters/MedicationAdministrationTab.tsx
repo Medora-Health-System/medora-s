@@ -200,6 +200,7 @@ export function MedicationAdministrationTab({
       intendedAt?: string | null;
     }[] = [];
     for (const order of orders) {
+      if ((order as { status?: string }).status === "CANCELLED") continue;
       const items = (order as { items?: OrderItemApi[] }).items ?? [];
       for (const it of items) {
         if (!it.id) continue;

@@ -165,6 +165,18 @@ export function getPatientChartPrintHtml(params: {
 
       const ordersHtml = (enc.orders ?? [])
         .map((o) => {
+          const cancelNote =
+            o.status === "CANCELLED" && (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason)
+              ? `<div style="font-size:11px;color:#b71c1c;margin:4px 0 6px 0;line-height:1.4;">${
+                  o.cancelledByDisplayFr
+                    ? `Annulée par ${esc(o.cancelledByDisplayFr)}${o.cancelledAt ? ` le ${esc(fmtDt(o.cancelledAt))}` : ""}`
+                    : ""
+                }${
+                  o.cancellationReason
+                    ? `${o.cancelledByDisplayFr || o.cancelledAt ? "<br/>" : ""}Raison : ${esc(o.cancellationReason)}`
+                    : ""
+                }</div>`
+              : "";
           const items = (o.items ?? [])
             .map((it) => {
               const label = esc(it.displayLabel || "—");
@@ -172,7 +184,7 @@ export function getPatientChartPrintHtml(params: {
               return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
             })
             .join("");
-          return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeadingFr(o.type))}</strong><ul style="margin:4px 0 0 16px;">${items || "<li>—</li>"}</ul></div>`;
+          return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeadingFr(o.type))}</strong>${cancelNote}<ul style="margin:4px 0 0 16px;">${items || "<li>—</li>"}</ul></div>`;
         })
         .join("");
 

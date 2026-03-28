@@ -147,24 +147,25 @@ export default function DepartmentOrderDetail({
   };
 
   const handleAck = async (itemId: string) => {
-    if (!facilityId) return;
+    if (!facilityId || order?.status === "CANCELLED") return;
     await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
     await load();
   };
 
   const handleStart = async (itemId: string) => {
-    if (!facilityId) return;
+    if (!facilityId || order?.status === "CANCELLED") return;
     await apiFetch(`/orders/items/${itemId}/start`, { method: "POST", facilityId });
     await load();
   };
 
   const handleComplete = async (itemId: string) => {
-    if (!facilityId) return;
+    if (!facilityId || order?.status === "CANCELLED") return;
     await apiFetch(`/orders/items/${itemId}/complete`, { method: "POST", facilityId });
     await load();
   };
 
   const openDispense = (item: any) => {
+    if (order?.status === "CANCELLED") return;
     setDispenseItem(item);
     setDispenseQty(String(item.quantity ?? 1));
     setDispenseInstr(((item.notes as string) || "").trim());
@@ -172,7 +173,7 @@ export default function DepartmentOrderDetail({
   };
 
   const submitDispense = async () => {
-    if (!facilityId || !dispenseItem) return;
+    if (!facilityId || !dispenseItem || order?.status === "CANCELLED") return;
     const q = parseInt(dispenseQty, 10);
     if (!Number.isFinite(q) || q < 1) {
       alert("Quantité invalide");
@@ -221,6 +222,7 @@ export default function DepartmentOrderDetail({
 
   const patient = order.encounter?.patient;
   const items = filterItems(order.items || []);
+  const parentOrderCancelled = order.status === "CANCELLED";
 
   const typeMismatch =
     (kind === "lab" && order.type !== "LAB") ||
@@ -235,6 +237,25 @@ export default function DepartmentOrderDetail({
         </Link>
       </div>
       <h1 style={{ marginTop: 0 }}>{labels.title}</h1>
+
+      {parentOrderCancelled && !typeMismatch ? (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            color: "#b71c1c",
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.45,
+          }}
+        >
+          Commande annulée — aucune action possible.
+        </div>
+      ) : null}
 
       {typeMismatch ? (
         <p style={{ color: "#c62828" }}>
@@ -307,6 +328,7 @@ export default function DepartmentOrderDetail({
             labels={labels}
             facilityId={facilityId}
             order={order}
+            parentOrderCancelled={parentOrderCancelled}
             onReload={load}
             onAck={handleAck}
             onStart={handleStart}
@@ -413,6 +435,7 @@ function LineCard({
   labels,
   facilityId,
   order,
+  parentOrderCancelled,
   onReload,
   onAck,
   onStart,
@@ -431,6 +454,7 @@ function LineCard({
   };
   facilityId: string;
   order: any;
+  parentOrderCancelled: boolean;
   onReload: () => Promise<void>;
   onAck: (id: string) => Promise<void>;
   onStart: (id: string) => Promise<void>;
@@ -503,7 +527,7 @@ function LineCard({
   );
 
   const submitResult = async () => {
-    if (!facilityId) return;
+    if (!facilityId || parentOrderCancelled) return;
     setFeedback(null);
 
     if (!hasPayloadForSubmit) {
@@ -647,7 +671,7 @@ function LineCard({
         </div>
       ) : null}
 
-      {workflowButtons}
+      {parentOrderCancelled ? null : workflowButtons}
 
       {item.result &&
       (item.result.resultText?.trim() ||
@@ -678,7 +702,7 @@ function LineCard({
         </div>
       ) : null}
 
-      {canResult ? (
+      {canResult && !parentOrderCancelled ? (
         <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #eee" }}>
           {workflowBlockMessage ? (
             <div

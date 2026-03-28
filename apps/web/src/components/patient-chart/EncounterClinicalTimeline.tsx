@@ -119,15 +119,37 @@ function OrderItemLine({
   }
 
   const statusFr = getOrderItemStatusLabel(it.status);
-  const intentFr = it.catalogItemType === "MEDICATION" ? medicationIntentLabelFr(it.medicationFulfillmentIntent) : null;
+  const intentFr =
+    it.catalogItemType === "MEDICATION" && it.status !== "CANCELLED"
+      ? medicationIntentLabelFr(it.medicationFulfillmentIntent)
+      : null;
   const extras: string[] = [];
   if (intentFr) extras.push(intentFr);
   extras.push(statusFr);
+
+  const cancelMeta =
+    it.status === "CANCELLED" && (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
+      <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
+        {it.cancelledByDisplayFr ? (
+          <>
+            Annulée par <strong>{it.cancelledByDisplayFr}</strong>
+            {it.cancelledAt ? <> le {formatShortDateTime(it.cancelledAt)}</> : null}
+          </>
+        ) : null}
+        {it.cancellationReason ? (
+          <>
+            {it.cancelledByDisplayFr || it.cancelledAt ? <br /> : null}
+            Raison : {it.cancellationReason}
+          </>
+        ) : null}
+      </div>
+    ) : null;
 
   return (
     <li>
       <strong>{it.displayLabel}</strong>
       {extras.length ? ` — ${extras.join(" · ")}` : null}
+      {cancelMeta}
     </li>
   );
 }

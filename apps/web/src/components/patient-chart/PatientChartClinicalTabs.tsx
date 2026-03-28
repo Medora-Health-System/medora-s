@@ -80,6 +80,23 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
         {orders.map((o) => (
           <div key={o.id} style={{ marginBottom: 12, fontSize: 14 }}>
             <div style={{ fontWeight: 600, color: "#455a64" }}>{orderTypeFr(o.type)}</div>
+            {o.status === "CANCELLED" &&
+            (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason) ? (
+              <div style={{ fontSize: 12, color: "#b71c1c", marginTop: 4, marginBottom: 6, lineHeight: 1.45 }}>
+                {o.cancelledByDisplayFr ? (
+                  <>
+                    Annulée par <strong>{o.cancelledByDisplayFr}</strong>
+                    {o.cancelledAt ? <> le {formatDt(o.cancelledAt)}</> : null}
+                  </>
+                ) : null}
+                {o.cancellationReason ? (
+                  <>
+                    {o.cancelledByDisplayFr || o.cancelledAt ? <br /> : null}
+                    Raison : {o.cancellationReason}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
             <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
               {(o.items || []).map((it) => (
                 <li key={it.id}>
@@ -231,11 +248,30 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
               {medLines.map((it) => (
                 <li key={it.id}>
                   <strong>{it.displayLabel}</strong> — {getOrderItemStatusLabel(it.status)}
-                  <div style={{ fontSize: 12, color: "#616161", marginTop: 4 }}>
-                    {it.medicationFulfillmentIntent === "ADMINISTER_CHART"
-                      ? "À administrer au patient"
-                      : "À envoyer à la pharmacie"}
-                  </div>
+                  {it.status === "CANCELLED" &&
+                  (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
+                    <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
+                      {it.cancelledByDisplayFr ? (
+                        <>
+                          Annulée par <strong>{it.cancelledByDisplayFr}</strong>
+                          {it.cancelledAt ? <> le {formatDt(it.cancelledAt)}</> : null}
+                        </>
+                      ) : null}
+                      {it.cancellationReason ? (
+                        <>
+                          {it.cancelledByDisplayFr || it.cancelledAt ? <br /> : null}
+                          Raison : {it.cancellationReason}
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {it.status !== "CANCELLED" ? (
+                    <div style={{ fontSize: 12, color: "#616161", marginTop: 4 }}>
+                      {it.medicationFulfillmentIntent === "ADMINISTER_CHART"
+                        ? "À administrer au patient"
+                        : "À envoyer à la pharmacie"}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>

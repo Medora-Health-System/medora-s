@@ -319,6 +319,23 @@ export const orderUpdateDtoSchema = z.object({
 
 export type OrderUpdateDto = z.infer<typeof orderUpdateDtoSchema>;
 
+/** Motifs prédéfinis pour annulation de commande entière (V1 — pas de champ auteur manuel). */
+export const ORDER_CANCELLATION_REASON_VALUES = [
+  "Erreur de saisie",
+  "Doublon",
+  "Changement clinique",
+  "Demande annulée",
+  "Autre",
+] as const;
+
+export const orderCancelDtoSchema = z.object({
+  cancellationReason: z.enum(ORDER_CANCELLATION_REASON_VALUES, {
+    errorMap: () => ({ message: "Motif d'annulation invalide." }),
+  }),
+});
+
+export type OrderCancelDto = z.infer<typeof orderCancelDtoSchema>;
+
 /** POST /encounters/:encounterId/medication-administrations — append-only MAR log. */
 export const medicationAdministrationCreateDtoSchema = z.object({
   orderItemId: z.string().uuid().optional(),

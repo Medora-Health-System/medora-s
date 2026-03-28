@@ -8,7 +8,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode, type Prisma } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
-import type { OrderCreateDto, OrderUpdateDto } from "@medora/shared";
+import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import type { OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
   stripUndefinedDeep,
@@ -292,7 +293,8 @@ export class OrdersService {
 
     const enriched = await this.enrichOrderItemsForDisplay(orders);
     const withResultLabels = await this.attachEnteredByDisplayOnOrders(enriched);
-    return this.attachOrderedByDisplayOnOrders(withResultLabels);
+    const withCancellation = await this.attachCancellationDisplayOnOrders(withResultLabels);
+    return this.attachOrderedByDisplayOnOrders(withCancellation);
   }
 
   /**
@@ -317,6 +319,25 @@ export class OrdersService {
         orderedByDisplayFr: umap.get(o.orderedBy) ?? null,
       };
     }) as OrderWithEnrichedItems[];
+  }
+
+  /**
+   * Ajoute `cancelledByDisplayFr` à partir de `Order.cancelledByUserId` (annulation commande entière).
+   */
+  async attachCancellationDisplayOnOrders(orders: OrderWithEnrichedItems[]): Promise<OrderWithEnrichedItems[]> {
+    const ids = [...new Set(orders.map((o) => o.cancelledByUserId).filter((x): x is string => Boolean(x)))];
+    if (ids.length === 0) {
+      return orders;
+    }
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    const umap = new Map(users.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()]));
+    return orders.map((o) => ({
+      ...o,
+      cancelledByDisplayFr: o.cancelledByUserId ? umap.get(o.cancelledByUserId) ?? null : null,
+    })) as OrderWithEnrichedItems[];
   }
 
   /**
@@ -393,7 +414,8 @@ export class OrdersService {
 
     const [enriched] = await this.enrichOrderItemsForDisplay([row as unknown as OrderWithItems]);
     const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
-    return withSig;
+    const [withCancel] = await this.attachCancellationDisplayOnOrders([withSig]);
+    return withCancel;
   }
 
   /**
@@ -566,7 +588,18 @@ export class OrdersService {
     return updated;
   }
 
-  async cancel(facilityId: string, id: string, userId?: string, ip?: string, userAgent?: string) {
+  async cancel(
+    facilityId: string,
+    id: string,
+    dto: OrderCancelDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour annuler une commande.");
+    }
+
     const order = await this.prisma.order.findFirst({
       where: { id, facilityId },
     });
@@ -577,9 +610,21 @@ export class OrdersService {
 
     assertCanTransition(order.status, "CANCELLED");
 
+    const reason = dto.cancellationReason.trim();
+    if (!reason) {
+      throw new BadRequestException("Le motif d'annulation est requis.");
+    }
+
+    const now = new Date();
+
     const updated = await this.prisma.order.update({
       where: { id },
-      data: { status: "CANCELLED" },
+      data: {
+        status: "CANCELLED",
+        cancelledAt: now,
+        cancelledByUserId: userId,
+        cancellationReason: reason,
+      },
       include: {
         items: true,
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
@@ -595,9 +640,13 @@ export class OrdersService {
       entityId: order.id,
       ip,
       userAgent,
+      metadata: { cancellationReason: reason },
     });
 
-    return updated;
+    const [enriched] = await this.enrichOrderItemsForDisplay([updated as unknown as OrderWithItems]);
+    const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
+    const [withCancelDisplay] = await this.attachCancellationDisplayOnOrders([withSig]);
+    return withCancelDisplay;
   }
 
   async acknowledgeOrderItem(
@@ -626,6 +675,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.ACKNOWLEDGED);
 
@@ -674,6 +724,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.IN_PROGRESS);
 
@@ -722,6 +773,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertParentOrderNotCancelled(orderItem.order.status);
     if (isMedicationAdministerChart(orderItem)) {
       throw new BadRequestException(
         "Cette ligne est destinée à l'administration infirmière ; utilisez la fin d'administration au lit."
@@ -777,6 +829,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {
       throw new BadRequestException("Seuls les médicaments peuvent être marqués comme effectués par l'infirmière.");
     }

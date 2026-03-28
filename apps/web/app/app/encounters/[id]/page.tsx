@@ -28,6 +28,7 @@ import {
   getPatientSexLabelFr,
 } from "@/lib/uiLabels";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { ORDER_CANCELLATION_REASON_VALUES } from "@medora/shared";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
@@ -3035,6 +3036,7 @@ function OrdersTab({
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
   const encounterOpen = encounter?.status === "OPEN";
   const [cancelConfirmOrderId, setCancelConfirmOrderId] = useState<string | null>(null);
+  const [cancelReasonSelection, setCancelReasonSelection] = useState<string>("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [ordersFeedback, setOrdersFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -3076,12 +3078,18 @@ function OrdersTab({
   };
 
   const confirmCancelWholeOrder = async () => {
-    if (!cancelConfirmOrderId || cancelSubmitting) return;
+    if (!cancelConfirmOrderId || cancelSubmitting || !cancelReasonSelection.trim()) return;
     setCancelSubmitting(true);
     setOrdersFeedback(null);
     try {
-      await apiFetch(`/orders/${cancelConfirmOrderId}/cancel`, { method: "POST", facilityId });
+      await apiFetch(`/orders/${cancelConfirmOrderId}/cancel`, {
+        method: "POST",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancellationReason: cancelReasonSelection }),
+      });
       setCancelConfirmOrderId(null);
+      setCancelReasonSelection("");
       setOrdersFeedback({ type: "ok", text: "La commande a été annulée." });
       await loadOrders({ silent: true });
       await onOrdersUpdated?.();
@@ -3265,6 +3273,34 @@ function OrdersTab({
                     >
                       {getOrderItemStatusLabel(order.status)}
                     </span>
+                    {order.status === "CANCELLED" &&
+                    ((order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr ||
+                      (order as { cancelledAt?: string | null }).cancelledAt ||
+                      (order as { cancellationReason?: string | null }).cancellationReason) ? (
+                      <div style={{ fontSize: 12, color: "#616161", marginTop: 8, lineHeight: 1.45 }}>
+                        {(order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr ? (
+                          <>
+                            Annulée par{" "}
+                            <strong>{(order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr}</strong>
+                            {(order as { cancelledAt?: string | null }).cancelledAt ? (
+                              <>
+                                {" "}
+                                le{" "}
+                                {new Date(
+                                  String((order as { cancelledAt?: string | null }).cancelledAt)
+                                ).toLocaleString("fr-FR")}
+                              </>
+                            ) : null}
+                          </>
+                        ) : null}
+                        {(order as { cancellationReason?: string | null }).cancellationReason ? (
+                          <>
+                            <br />
+                            Raison : {(order as { cancellationReason?: string | null }).cancellationReason}
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </td>
                   <td style={{ padding: 12, verticalAlign: "top" }}>{getOrderPriorityLabelFr(order.priority)}</td>
                   <td style={{ padding: 12, verticalAlign: "top", fontSize: 13 }}>
@@ -3312,6 +3348,7 @@ function OrdersTab({
                             disabled={cancelSubmitting}
                             onClick={() => {
                               setOrdersFeedback(null);
+                              setCancelReasonSelection("");
                               setCancelConfirmOrderId(order.id);
                             }}
                             style={{
@@ -3380,11 +3417,39 @@ function OrdersTab({
             <p style={{ margin: "0 0 16px 0", fontSize: 14, lineHeight: 1.5, color: "#424242" }}>
               Cette action annule toute la commande (toutes les lignes). Elle ne peut pas être annulée depuis cet écran.
             </p>
+            <label style={{ display: "block", marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
+              Motif d&apos;annulation
+              <select
+                value={cancelReasonSelection}
+                onChange={(e) => setCancelReasonSelection(e.target.value)}
+                disabled={cancelSubmitting}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  marginTop: 8,
+                  padding: "8px 10px",
+                  fontSize: 14,
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  boxSizing: "border-box",
+                }}
+              >
+                <option value="">— Choisir un motif —</option>
+                {ORDER_CANCELLATION_REASON_VALUES.map((r: (typeof ORDER_CANCELLATION_REASON_VALUES)[number]) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
               <button
                 type="button"
                 disabled={cancelSubmitting}
-                onClick={() => setCancelConfirmOrderId(null)}
+                onClick={() => {
+                  setCancelConfirmOrderId(null);
+                  setCancelReasonSelection("");
+                }}
                 style={{
                   padding: "8px 16px",
                   fontSize: 14,
@@ -3398,7 +3463,7 @@ function OrdersTab({
               </button>
               <button
                 type="button"
-                disabled={cancelSubmitting}
+                disabled={cancelSubmitting || !cancelReasonSelection.trim()}
                 onClick={() => void confirmCancelWholeOrder()}
                 style={{
                   padding: "8px 16px",
@@ -3408,8 +3473,8 @@ function OrdersTab({
                   background: "#c62828",
                   color: "white",
                   fontWeight: 600,
-                  cursor: cancelSubmitting ? "not-allowed" : "pointer",
-                  opacity: cancelSubmitting ? 0.7 : 1,
+                  cursor: cancelSubmitting || !cancelReasonSelection.trim() ? "not-allowed" : "pointer",
+                  opacity: cancelSubmitting || !cancelReasonSelection.trim() ? 0.7 : 1,
                 }}
               >
                 {cancelSubmitting ? "Annulation…" : "Confirmer l'annulation"}

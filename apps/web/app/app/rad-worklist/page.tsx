@@ -8,6 +8,7 @@ import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import { getOrderPriorityLabelFr, getPathwayTypeLabelFr, ui } from "@/lib/uiLabels";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { worklistItemIsTerminal, worklistItemNeedsAcknowledge } from "@/lib/worklistLabRadUi";
+import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 import {
   getEncounterPatientLabelFromCache,
   getPendingImagingOrderRowsForFacility,
@@ -206,9 +207,30 @@ export default function RadWorklistPage() {
                           </span>
                         )}
                       </td>
-                      <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
                       <td style={{ padding: 12 }}>
-                        {worklistItemIsTerminal(item.status) ? (
+                        {orderIsCancelled(order) ? (
+                          <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
+                        ) : (
+                          getOrderItemStatusLabel(item.status)
+                        )}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {orderIsCancelled(order) ? (
+                          <Link
+                            href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`}
+                            style={{
+                              display: "inline-block",
+                              padding: "6px 12px",
+                              background: "#1a1a1a",
+                              color: "#fff",
+                              borderRadius: 4,
+                              textDecoration: "none",
+                              fontSize: 13,
+                            }}
+                          >
+                            {ui.common.view}
+                          </Link>
+                        ) : worklistItemIsTerminal(item.status) ? (
                           <Link
                             href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`}
                             style={{

@@ -119,13 +119,20 @@ function orderItemDisplayLabel(item: OrderItemWithCatalogMedication): string {
 }
 
 function toChartOrderItems(order: OrderWithEnrichedItems) {
+  const parentCancelled = order.status === "CANCELLED";
+  const cancelledAtIso =
+    parentCancelled && order.cancelledAt
+      ? order.cancelledAt instanceof Date
+        ? order.cancelledAt.toISOString()
+        : String(order.cancelledAt)
+      : null;
   return (order.items || []).map((it) => {
     const label = orderItemDisplayLabel(it);
     const res = it.result ?? null;
     return {
       id: it.id,
       catalogItemType: it.catalogItemType,
-      status: it.status,
+      status: parentCancelled ? "CANCELLED" : it.status,
       displayLabel: label,
       medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? null,
       completedAt: it.completedAt,
@@ -136,6 +143,9 @@ function toChartOrderItems(order: OrderWithEnrichedItems) {
               lastName: it.completedByNurse.lastName,
             }
           : null,
+      cancelledAt: cancelledAtIso,
+      cancellationReason: parentCancelled ? order.cancellationReason ?? null : null,
+      cancelledByDisplayFr: parentCancelled ? order.cancelledByDisplayFr ?? null : null,
       result: res
         ? {
             resultText: res.resultText,
@@ -357,9 +367,10 @@ export class ChartSummaryService {
       ordersRaw as unknown as OrderWithItems[]
     );
     const ordersWithVerifierNames = await this.ordersService.attachEnteredByDisplayOnOrders(ordersEnriched);
+    const ordersWithCancellation = await this.ordersService.attachCancellationDisplayOnOrders(ordersWithVerifierNames);
 
     const ordersByEncounter = new Map<string, OrderWithEnrichedItems[]>();
-    for (const o of ordersWithVerifierNames) {
+    for (const o of ordersWithCancellation) {
       const list = ordersByEncounter.get(o.encounterId) ?? [];
       list.push(o);
       ordersByEncounter.set(o.encounterId, list);
@@ -393,6 +404,13 @@ export class ChartSummaryService {
         type: o.type,
         status: o.status,
         createdAt: o.createdAt,
+        cancelledAt: o.cancelledAt
+          ? o.cancelledAt instanceof Date
+            ? o.cancelledAt.toISOString()
+            : String(o.cancelledAt)
+          : null,
+        cancellationReason: o.cancellationReason ?? null,
+        cancelledByDisplayFr: o.cancelledByDisplayFr ?? null,
         items: toChartOrderItems(o),
       }));
 
