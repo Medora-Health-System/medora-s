@@ -265,7 +265,10 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                       ) : null}
                     </div>
                   ) : null}
-                  {it.status !== "CANCELLED" ? (
+                  {it.catalogItemType === "MEDICATION" &&
+                  it.status !== "CANCELLED" &&
+                  !it.completedAt &&
+                  !["COMPLETED", "RESULTED", "VERIFIED"].includes(it.status) ? (
                     <div style={{ fontSize: 12, color: "#616161", marginTop: 4 }}>
                       {it.medicationFulfillmentIntent === "ADMINISTER_CHART"
                         ? "À administrer au patient"

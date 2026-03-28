@@ -118,6 +118,76 @@ function orderItemDisplayLabel(item: OrderItemWithCatalogMedication): string {
   return fallback[item.catalogItemType] ?? "Article prescrit";
 }
 
+/** Chart-only: merge MAR + pharmacy dispense into MEDICATION lines so dossier matches bedside reality (OrderItem may stay PLACED). Lab/imagerie unchanged. */
+function chartItemStatusAndCompletion(
+  it: OrderItemWithCatalogMedication & {
+    medicationAdministrations?: Array<{
+      administeredAt: Date;
+      administeredBy: { firstName: string; lastName: string };
+    }>;
+    pharmacyDispenseRecord?: {
+      dispensedAt: Date;
+      dispensedBy: { firstName: string; lastName: string };
+    } | null;
+  },
+  parentCancelled: boolean
+): {
+  chartStatus: string;
+  chartCompletedAt: Date | null;
+  chartCompletedBy: { firstName: string; lastName: string } | null;
+} {
+  const byNurse = (u: { firstName: string; lastName: string } | null | undefined) =>
+    u ? { firstName: u.firstName, lastName: u.lastName } : null;
+
+  if (parentCancelled) {
+    return {
+      chartStatus: "CANCELLED",
+      chartCompletedAt: it.completedAt,
+      chartCompletedBy: byNurse(it.completedByNurse),
+    };
+  }
+  if (it.catalogItemType !== "MEDICATION") {
+    return {
+      chartStatus: it.status,
+      chartCompletedAt: it.completedAt,
+      chartCompletedBy: byNurse(it.completedByNurse),
+    };
+  }
+
+  const mar = it.medicationAdministrations?.[0];
+  const disp = it.pharmacyDispenseRecord ?? null;
+
+  let chartCompletedAt = it.completedAt;
+  let chartCompletedBy = byNurse(it.completedByNurse);
+
+  if (!chartCompletedAt && mar) {
+    chartCompletedAt = mar.administeredAt;
+    chartCompletedBy = byNurse(mar.administeredBy);
+  }
+  if (!chartCompletedAt && disp) {
+    chartCompletedAt = disp.dispensedAt;
+    chartCompletedBy = byNurse(disp.dispensedBy);
+  }
+
+  let chartStatus = it.status;
+  if (it.status === "CANCELLED") {
+    chartStatus = "CANCELLED";
+  } else if (
+    chartCompletedAt ||
+    it.status === "COMPLETED" ||
+    it.status === "RESULTED" ||
+    it.status === "VERIFIED"
+  ) {
+    if (it.status === "RESULTED" || it.status === "VERIFIED" || it.status === "COMPLETED") {
+      chartStatus = it.status;
+    } else {
+      chartStatus = "COMPLETED";
+    }
+  }
+
+  return { chartStatus, chartCompletedAt, chartCompletedBy };
+}
+
 function toChartOrderItems(order: OrderWithEnrichedItems) {
   const parentCancelled = order.status === "CANCELLED";
   const cancelledAtIso =
@@ -129,20 +199,15 @@ function toChartOrderItems(order: OrderWithEnrichedItems) {
   return (order.items || []).map((it) => {
     const label = orderItemDisplayLabel(it);
     const res = it.result ?? null;
+    const cf = chartItemStatusAndCompletion(it, parentCancelled);
     return {
       id: it.id,
       catalogItemType: it.catalogItemType,
-      status: parentCancelled ? "CANCELLED" : it.status,
+      status: cf.chartStatus,
       displayLabel: label,
       medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? null,
-      completedAt: it.completedAt,
-      completedBy:
-        it.completedByNurse != null
-          ? {
-              firstName: it.completedByNurse.firstName,
-              lastName: it.completedByNurse.lastName,
-            }
-          : null,
+      completedAt: cf.chartCompletedAt,
+      completedBy: cf.chartCompletedBy,
       cancelledAt: cancelledAtIso,
       cancellationReason: parentCancelled ? order.cancellationReason ?? null : null,
       cancelledByDisplayFr: parentCancelled ? order.cancelledByDisplayFr ?? null : null,
@@ -320,6 +385,17 @@ export class ChartSummaryService {
                 items: {
                   include: {
                     completedByNurse: { select: { firstName: true, lastName: true } },
+                    medicationAdministrations: {
+                      orderBy: { administeredAt: "desc" },
+                      take: 1,
+                      include: { administeredBy: { select: { firstName: true, lastName: true } } },
+                    },
+                    pharmacyDispenseRecord: {
+                      select: {
+                        dispensedAt: true,
+                        dispensedBy: { select: { firstName: true, lastName: true } },
+                      },
+                    },
                     result: {
                       select: {
                         resultText: true,

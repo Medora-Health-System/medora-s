@@ -21,6 +21,11 @@ import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import {
+  medicationLineClinicallyExecuted,
+  medicationOrderStatusKeyForEncounterTab,
+  orderAllowsWholeCancelOnline,
+} from "@/lib/orderEncounterUi";
+import {
   getEncounterStatusLabelFr,
   getEncounterTypeLabelFr,
   getOrderPriorityLabelFr,
@@ -3186,7 +3191,10 @@ function OrdersTab({
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {orders.map((order) => {
+                const orderStatusBadgeKey =
+                  order.type === "MEDICATION" ? medicationOrderStatusKeyForEncounterTab(order) : order.status;
+                return (
                 <tr
                   key={order.id}
                   style={{
@@ -3254,24 +3262,28 @@ function OrdersTab({
                         borderRadius: 4,
                         fontSize: 12,
                         backgroundColor:
-                          order.status === "PENDING"
+                          orderStatusBadgeKey === "PENDING"
                             ? "#fff3cd"
-                            : order.status === "COMPLETED"
+                            : orderStatusBadgeKey === "COMPLETED"
                               ? "#d4edda"
-                              : order.status === "CANCELLED"
+                              : orderStatusBadgeKey === "CANCELLED"
                                 ? "#ffebee"
-                                : "#f5f5f5",
+                                : orderStatusBadgeKey === "IN_PROGRESS"
+                                  ? "#e3f2fd"
+                                  : "#f5f5f5",
                         color:
-                          order.status === "PENDING"
+                          orderStatusBadgeKey === "PENDING"
                             ? "#856404"
-                            : order.status === "COMPLETED"
+                            : orderStatusBadgeKey === "COMPLETED"
                               ? "#155724"
-                              : order.status === "CANCELLED"
+                              : orderStatusBadgeKey === "CANCELLED"
                                 ? "#b71c1c"
-                                : "#666",
+                                : orderStatusBadgeKey === "IN_PROGRESS"
+                                  ? "#1565c0"
+                                  : "#666",
                       }}
                     >
-                      {getOrderItemStatusLabel(order.status)}
+                      {getOrderItemStatusLabel(orderStatusBadgeKey)}
                     </span>
                     {order.status === "CANCELLED" &&
                     ((order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr ||
@@ -3308,7 +3320,7 @@ function OrdersTab({
                       {(order.items || []).map((it: any) => (
                         <li key={it.id} style={{ marginBottom: 8 }}>
                           <strong>{formatOrderItemLineFr(it)}</strong>
-                          {order.type === "MEDICATION" ? (
+                          {order.type === "MEDICATION" && !medicationLineClinicallyExecuted(it) ? (
                             <div style={{ fontSize: 12, color: "#555" }}>
                               {medicationIntentLabelFr(it.medicationFulfillmentIntent)} · Qté : {it.quantity ?? "—"}
                               {it.refillCount != null ? ` · Renouvellements : ${it.refillCount}` : ""}
@@ -3319,6 +3331,21 @@ function OrdersTab({
                             <div style={{ fontSize: 12, color: "#2e7d32" }}>
                               Administré par {it.completedByNurse.firstName} {it.completedByNurse.lastName} le{" "}
                               {new Date(it.completedAt).toLocaleString("fr-FR")}
+                            </div>
+                          ) : order.type === "MEDICATION" &&
+                            Array.isArray(it.medicationAdministrations) &&
+                            it.medicationAdministrations[0]?.administeredAt &&
+                            it.medicationAdministrations[0]?.administeredBy ? (
+                            <div style={{ fontSize: 12, color: "#2e7d32" }}>
+                              Administré par {it.medicationAdministrations[0].administeredBy.firstName}{" "}
+                              {it.medicationAdministrations[0].administeredBy.lastName} le{" "}
+                              {new Date(it.medicationAdministrations[0].administeredAt).toLocaleString("fr-FR")}
+                            </div>
+                          ) : order.type === "MEDICATION" && it.pharmacyDispenseRecord?.dispensedAt ? (
+                            <div style={{ fontSize: 12, color: "#1565c0" }}>
+                              Délivré par {it.pharmacyDispenseRecord.dispensedBy?.firstName ?? ""}{" "}
+                              {it.pharmacyDispenseRecord.dispensedBy?.lastName ?? ""} le{" "}
+                              {new Date(it.pharmacyDispenseRecord.dispensedAt).toLocaleString("fr-FR")}
                             </div>
                           ) : null}
                         </li>
@@ -3342,7 +3369,9 @@ function OrdersTab({
                             Imprimer
                           </button>
                         ) : null}
-                        {canCancelWholeOrder && canAttemptWholeOrderCancel(order, encounterOpen) ? (
+                        {canCancelWholeOrder &&
+                        canAttemptWholeOrderCancel(order, encounterOpen) &&
+                        orderAllowsWholeCancelOnline(order) ? (
                           <button
                             type="button"
                             disabled={cancelSubmitting}
@@ -3371,7 +3400,8 @@ function OrdersTab({
                     </td>
                   )}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

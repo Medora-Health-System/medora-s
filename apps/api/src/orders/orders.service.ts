@@ -278,6 +278,21 @@ export class OrdersService {
           include: {
             completedByNurse: { select: { firstName: true, lastName: true } },
             result: true,
+            pharmacyDispenseRecord: {
+              select: {
+                id: true,
+                dispensedAt: true,
+                dispensedBy: { select: { firstName: true, lastName: true } },
+              },
+            },
+            medicationAdministrations: {
+              orderBy: { administeredAt: "desc" },
+              take: 1,
+              select: {
+                administeredAt: true,
+                administeredBy: { select: { firstName: true, lastName: true } },
+              },
+            },
           },
         },
       },
@@ -392,6 +407,21 @@ export class OrdersService {
           include: {
             completedByNurse: { select: { firstName: true, lastName: true } },
             result: true,
+            pharmacyDispenseRecord: {
+              select: {
+                id: true,
+                dispensedAt: true,
+                dispensedBy: { select: { firstName: true, lastName: true } },
+              },
+            },
+            medicationAdministrations: {
+              orderBy: { administeredAt: "desc" },
+              take: 1,
+              select: {
+                administeredAt: true,
+                administeredBy: { select: { firstName: true, lastName: true } },
+              },
+            },
           },
         },
       },
