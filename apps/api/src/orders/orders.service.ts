@@ -9,6 +9,7 @@ import { AuditService } from "../common/services/audit.service";
 import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode, type Prisma } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import type { OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -187,6 +188,8 @@ export class OrdersService {
     if (encounter.status !== "OPEN") {
       throw new BadRequestException("Can only create orders for open encounters");
     }
+
+    assertEncounterNotSigned(encounter);
 
     const orderCreateDataRaw = {
       ...stripUndefinedKeys({
@@ -580,11 +583,14 @@ export class OrdersService {
   async update(facilityId: string, id: string, data: OrderUpdateDto, userId?: string, ip?: string, userAgent?: string) {
     const order = await this.prisma.order.findFirst({
       where: { id, facilityId },
+      include: { encounter: true },
     });
 
     if (!order) {
       throw new NotFoundException("Order not found");
     }
+
+    assertEncounterNotSigned(order.encounter);
 
     const updateData: { status?: OrderStatus; priority?: OrderPriority; notes?: string | null } = {};
     if (data.status !== undefined) {
@@ -632,11 +638,14 @@ export class OrdersService {
 
     const order = await this.prisma.order.findFirst({
       where: { id, facilityId },
+      include: { encounter: true },
     });
 
     if (!order) {
       throw new NotFoundException("Order not found");
     }
+
+    assertEncounterNotSigned(order.encounter);
 
     assertCanTransition(order.status, "CANCELLED");
 
@@ -705,6 +714,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.ACKNOWLEDGED);
@@ -754,6 +764,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.IN_PROGRESS);
@@ -803,6 +814,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     if (isMedicationAdministerChart(orderItem)) {
       throw new BadRequestException(
@@ -859,6 +871,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {
       throw new BadRequestException("Seuls les médicaments peuvent être marqués comme effectués par l'infirmière.");

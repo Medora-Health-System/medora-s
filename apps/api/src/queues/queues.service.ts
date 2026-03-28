@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { OrderStatus, RoleCode } from "@prisma/client";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
 @Injectable()
 export class QueuesService {
@@ -203,13 +204,19 @@ export class QueuesService {
         }
       },
       include: {
-        order: true
-      }
+        order: {
+          include: {
+            encounter: true,
+          },
+        },
+      },
     });
 
     if (!orderItem) {
       throw new BadRequestException("Order item not found");
     }
+
+    assertEncounterNotSigned(orderItem.order.encounter);
 
     return this.prisma.orderItem.update({
       where: { id: orderItemId },

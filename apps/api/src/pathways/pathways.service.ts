@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import {
   AuditAction,
   PathwayType,
@@ -115,6 +116,7 @@ export class PathwaysService {
     let ordersCreated = 0;
 
     if (orderSet && orderSet.items.length > 0) {
+      assertEncounterNotSigned(encounter);
       // Group items by type (LAB, IMAGING, MEDICATION)
       const itemsByType: Record<string, typeof orderSet.items> = {};
       for (const item of orderSet.items) {
