@@ -20,7 +20,6 @@ import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
 import { PublicHealthModule } from "./public-health/public-health.module";
 import { DiagnosesModule } from "./diagnoses/diagnoses.module";
 import { FollowUpsModule } from "./follow-ups/follow-ups.module";
-import { DebugModule } from "./debug/debug.module";
 import { AdminModule } from "./admin/admin.module";
 import { MedicationAdministrationModule } from "./medication-administration/medication-administration.module";
 
@@ -48,11 +47,6 @@ const imports = [
   AdminModule,
   MedicationAdministrationModule,
 ];
-
-// Only include DebugModule in non-production environments
-if (process.env.NODE_ENV !== "production") {
-  imports.push(DebugModule);
-}
 
 @Module({
   imports,

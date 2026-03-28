@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
 import { randomBytes } from "crypto";
@@ -51,6 +56,36 @@ export class AdminFacilitiesService {
 
       return { id: facility.id, name: facility.name };
     });
+  }
+
+  /**
+   * Platform principals (`canCreateFacilities`) may list all facilities without per-facility ADMIN.
+   * Facility-level ADMIN at the active `x-facility-id` retains the previous list access (global rows).
+   */
+  async assertCanListFacilities(userId: string, facilityIdHeader: string | undefined) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { canCreateFacilities: true },
+    });
+    if (user?.canCreateFacilities) {
+      return;
+    }
+
+    if (!facilityIdHeader) {
+      throw new BadRequestException("Établissement requis");
+    }
+
+    const hasAdminHere = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        facilityId: facilityIdHeader,
+        isActive: true,
+        role: { code: RoleCode.ADMIN },
+      },
+    });
+    if (!hasAdminHere) {
+      throw new ForbiddenException("Liste des établissements non autorisée pour ce compte.");
+    }
   }
 
   async list() {
