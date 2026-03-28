@@ -390,3 +390,45 @@ function wrapWithGlobalDispenseChart(blocks: React.ReactNode[], globalDisp: Char
     </div>
   );
 }
+
+export function PatientAuditTimelineTabContent({ chartSummary }: { chartSummary: ChartSummary | null }) {
+  const items = chartSummary?.auditTimeline ?? [];
+  if (items.length === 0) {
+    return (
+      <div style={emptyBox}>
+        Aucun événement d&apos;historique récent pour ce dossier.
+      </div>
+    );
+  }
+  return (
+    <div>
+      <h3 style={{ fontSize: 15, marginTop: 0, marginBottom: 8, fontWeight: 600 }}>Historique du dossier</h3>
+      <p style={{ fontSize: 13, color: "#616161", marginBottom: 16, lineHeight: 1.45 }}>
+        Qui a fait quoi et quand — lecture seule.
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+        {items.map((it) => (
+          <li
+            key={it.id}
+            style={{
+              padding: "12px 0",
+              borderBottom: "1px solid #eee",
+              fontSize: 14,
+              lineHeight: 1.45,
+            }}
+          >
+            <div style={{ fontWeight: 600, color: "#37474f" }}>{it.shortLabelFr}</div>
+            <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
+              {it.userDisplayFr ? <>par {it.userDisplayFr}</> : <span>—</span>}
+              {" — "}
+              {formatDt(it.createdAt)}
+            </div>
+            {it.detailFr ? (
+              <div style={{ fontSize: 12, color: "#546e7a", marginTop: 6 }}>{it.detailFr}</div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

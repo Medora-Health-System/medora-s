@@ -9,6 +9,12 @@ import type {
   OrderWithEnrichedItems,
   OrderWithItems,
 } from "../orders/orders.types";
+import {
+  auditActionShortLabelFr,
+  buildAuditTimelineDetailFr,
+  CHART_AUDIT_TIMELINE_ACTIONS,
+  metadataEncounterId,
+} from "./chart-audit-timeline.util";
 
 const RECENT_ENCOUNTERS = 10;
 /** Consultations hors « top 10 » mais avec résultat lab/imagerie enregistré — visibilité clinique sans tout charger. */
@@ -305,7 +311,7 @@ export class ChartSummaryService {
       userAgent,
     });
 
-    const [topEncounters, activeDiagnoses, recentDispenses, recentVaccinations] =
+    const [topEncounters, activeDiagnoses, recentDispenses, recentVaccinations, auditTimelineRows] =
       await Promise.all([
         this.prisma.encounter.findMany({
           where: { patientId, facilityId },
@@ -354,6 +360,18 @@ export class ChartSummaryService {
             administeredAt: true,
             nextDueAt: true,
             vaccineCatalog: { select: { code: true, name: true } },
+          },
+        }),
+        this.prisma.auditLog.findMany({
+          where: {
+            patientId,
+            facilityId,
+            action: { in: CHART_AUDIT_TIMELINE_ACTIONS },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            user: { select: { firstName: true, lastName: true } },
           },
         }),
       ]);
@@ -576,12 +594,33 @@ export class ChartSummaryService {
       };
     });
 
+    const auditTimeline = auditTimelineRows.map((row) => {
+      const createdAt =
+        row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt);
+      const encounterId = row.encounterId ?? metadataEncounterId(row.metadata) ?? null;
+      const userDisplayFr = row.user
+        ? `${row.user.firstName} ${row.user.lastName}`.trim()
+        : null;
+      return {
+        id: row.id,
+        action: row.action,
+        createdAt,
+        userDisplayFr,
+        shortLabelFr: auditActionShortLabelFr(row.action),
+        detailFr: buildAuditTimelineDetailFr(row.action, row.metadata),
+        encounterId,
+        entityType: row.entityType,
+        entityId: row.entityId ?? null,
+      };
+    });
+
     return {
       patient,
       recentEncounters,
       activeDiagnoses,
       recentMedicationDispenses: recentDispenses,
       recentVaccinations,
+      auditTimeline,
     };
   }
 }

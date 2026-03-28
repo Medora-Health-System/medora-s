@@ -19,6 +19,7 @@ import {
   computeHeaderVitalsLine,
 } from "@/components/patient-chart";
 import {
+  PatientAuditTimelineTabContent,
   PatientOrdersTabContent,
   PatientResultsTabContent,
   PatientImagingTabContent,
@@ -344,6 +345,7 @@ export default function PatientDetailPage() {
   const tabs = [
     { id: "summary", label: "Résumé du patient" },
     { id: "encounters", label: "Consultations" },
+    ...(clinicalChartAccess ? [{ id: "history", label: "Historique du dossier" as const }] : []),
     ...(clinicalChartAccess ? [{ id: "vaccinations", label: "Vaccinations" as const }] : []),
     { id: "notes", label: "Notes" },
     { id: "orders", label: "Ordres" },
@@ -467,6 +469,14 @@ export default function PatientDetailPage() {
               onGoEncounters={() => setActiveTab("encounters")}
             />
           )}
+          {activeTab === "history" &&
+            (clinicalChartAccess && chartSummary ? (
+              <PatientAuditTimelineTabContent chartSummary={chartSummary} />
+            ) : (
+              <div style={{ color: "#616161", fontSize: 14 }}>
+                Historique disponible pour l&apos;équipe clinique sur ce dossier.
+              </div>
+            ))}
           {activeTab === "encounters" && (
             <PatientConsultationsTab
               patientId={patientId}

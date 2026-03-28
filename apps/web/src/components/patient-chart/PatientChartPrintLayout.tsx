@@ -308,6 +308,16 @@ export function getPatientChartPrintHtml(params: {
     })
     .join("");
 
+  const auditTimelinePrint = (chartSummary.auditTimeline ?? []).slice(0, 25);
+  const auditTimelineHtml = auditTimelinePrint
+    .map((it) => {
+      const who = it.userDisplayFr ? esc(`par ${it.userDisplayFr}`) : "—";
+      const when = esc(fmtShort(it.createdAt));
+      const detail = it.detailFr ? `<br/><span style="font-size:10px;color:#333;">${esc(it.detailFr)}</span>` : "";
+      return `<li style="margin:5px 0;font-size:11px;line-height:1.35;"><strong>${esc(it.shortLabelFr)}</strong><br/>${who} — ${when}${detail}</li>`;
+    })
+    .join("");
+
   const followUpsHtml = (followUps ?? [])
     .slice()
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -352,6 +362,10 @@ export function getPatientChartPrintHtml(params: {
     <p><strong>Dernier relevé</strong> ${esc(latestVitalsLine)}</p>
     ${latestVitalsWhen ? `<p><strong>Date du relevé</strong> ${esc(latestVitalsWhen)}</p>` : ""}
   </div>
+
+  <h2>Historique des actions</h2>
+  <p style="font-size:11px; margin:0 0 6px 0;">Événements récents enregistrés (extrait, lecture seule)</p>
+  <ul style="margin:0; padding-left:16px;">${auditTimelineHtml || "<li>—</li>"}</ul>
 
   <h2>Historique clinique par consultation</h2>
   ${encBlocks || "<p>—</p>"}

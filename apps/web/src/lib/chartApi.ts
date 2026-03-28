@@ -102,6 +102,19 @@ export type ChartSummaryEncounter = {
   } | null;
 };
 
+/** Ligne d’historique d’audit (dossier patient — lecture seule, V1). */
+export type ChartAuditTimelineItem = {
+  id: string;
+  action: string;
+  createdAt: string;
+  userDisplayFr: string | null;
+  shortLabelFr: string;
+  detailFr: string | null;
+  encounterId: string | null;
+  entityType: string;
+  entityId: string | null;
+};
+
 export type ChartSummary = {
   patient: {
     id: string;
@@ -150,6 +163,8 @@ export type ChartSummary = {
     nextDueAt: string | null;
     vaccineCatalog: { code: string; name: string };
   }>;
+  /** Derniers événements d’audit pertinents (max 50), du plus récent au plus ancien. */
+  auditTimeline?: ChartAuditTimelineItem[];
 };
 
 export async function fetchChartSummary(
