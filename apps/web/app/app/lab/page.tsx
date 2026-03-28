@@ -75,6 +75,14 @@ export default function LabPage() {
 
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
+    const item = (Array.isArray(queue) ? queue : [])
+      .flatMap((o: any) => (Array.isArray(o.items) ? o.items : []))
+      .find((i: any) => i.id === itemId);
+    if (!item) return;
+    if (item.status !== "PLACED" && item.status !== "PENDING" && item.status !== "SIGNED") {
+      console.warn("ACK blocked: invalid state", item.status);
+      return;
+    }
     try {
       await apiFetch(`/orders/items/${itemId}/acknowledge`, {
         method: "POST",

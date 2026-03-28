@@ -48,6 +48,10 @@ function getWorkflowBlockMessageFr(itemStatus: string): string | null {
   return "Complétez le flux (accusé réception, démarrage) avant d’ajouter un résultat (texte ou fichiers).";
 }
 
+function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
+  return !!item.pharmacyDispenseRecord;
+}
+
 function readFileAsAttachment(file: File): Promise<AttachmentMeta> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -148,6 +152,12 @@ export default function DepartmentOrderDetail({
 
   const handleAck = async (itemId: string) => {
     if (!facilityId || order?.status === "CANCELLED") return;
+    const item = (order?.items ?? []).find((i: any) => i.id === itemId);
+    if (!item) return;
+    if (item.status !== "PLACED" && item.status !== "PENDING" && item.status !== "SIGNED") {
+      console.warn("ACK blocked: invalid state", item.status);
+      return;
+    }
     await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
     await load();
   };
@@ -166,6 +176,7 @@ export default function DepartmentOrderDetail({
 
   const openDispense = (item: any) => {
     if (order?.status === "CANCELLED") return;
+    if (isAlreadyDispensed(item)) return;
     setDispenseItem(item);
     setDispenseQty(String(item.quantity ?? 1));
     setDispenseInstr(((item.notes as string) || "").trim());
@@ -174,6 +185,9 @@ export default function DepartmentOrderDetail({
 
   const submitDispense = async () => {
     if (!facilityId || !dispenseItem || order?.status === "CANCELLED") return;
+    const line = (order?.items ?? []).find((i: any) => i.id === dispenseItem.id);
+    const item = line ?? dispenseItem;
+    if (isAlreadyDispensed(item)) return;
     const q = parseInt(dispenseQty, 10);
     if (!Number.isFinite(q) || q < 1) {
       alert("Quantité invalide");
@@ -510,9 +524,11 @@ function LineCard({
       )}
       {kind === "pharmacy" && onOpenDispense && (
         <>
-          <button type="button" onClick={() => onOpenDispense(item)} style={{ padding: "6px 10px", cursor: "pointer" }}>
-            Enregistrer dispensation
-          </button>
+          {!isAlreadyDispensed(item) ? (
+            <button type="button" onClick={() => onOpenDispense(item)} style={{ padding: "6px 10px", cursor: "pointer" }}>
+              Enregistrer dispensation
+            </button>
+          ) : null}
           {order.encounter?.patient?.id ? (
             <Link
               href={`/app/pharmacy/dispense?patientId=${order.encounter.patient.id}&encounterId=${order.encounterId}`}

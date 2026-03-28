@@ -15,6 +15,10 @@ import {
 } from "@/lib/offline/pendingEncounterOrders";
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 
+function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
+  return !!item.pharmacyDispenseRecord;
+}
+
 function PendingEncounterPatientCells({
   facilityId,
   encounterId,
@@ -89,6 +93,14 @@ export default function PharmacyWorklistPage() {
 
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
+    const item = (Array.isArray(queue) ? queue : [])
+      .flatMap((o: any) => (Array.isArray(o.items) ? o.items : []))
+      .find((i: any) => i.id === itemId);
+    if (!item) return;
+    if (item.status !== "PLACED" && item.status !== "PENDING" && item.status !== "SIGNED") {
+      console.warn("ACK blocked: invalid state", item.status);
+      return;
+    }
     try {
       const res = await apiFetch(`/orders/items/${itemId}/acknowledge`, {
         method: "POST",
@@ -164,6 +176,7 @@ export default function PharmacyWorklistPage() {
 
   const openRecordModal = (order: any, item: any) => {
     if (orderIsCancelled(order)) return;
+    if (isAlreadyDispensed(item)) return;
     setRecordModal({
       orderItemId: item.id,
       medicationLine: `${medicationLabel(item)} · Qté ${item.quantity ?? "—"} · Posologie : ${(item.notes as string) || "—"}`,
@@ -176,6 +189,10 @@ export default function PharmacyWorklistPage() {
 
   const submitRecordDispense = async () => {
     if (!facilityId || !recordModal) return;
+    const item = (Array.isArray(queue) ? queue : [])
+      .flatMap((o: any) => (Array.isArray(o.items) ? o.items : []))
+      .find((i: any) => i.id === recordModal.orderItemId);
+    if (!item || isAlreadyDispensed(item)) return;
     const q = parseInt(recordQty, 10);
     if (!Number.isFinite(q) || q < 1) {
       alert("Quantité invalide");
@@ -325,13 +342,15 @@ export default function PharmacyWorklistPage() {
                           >
                             Voir le détail
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => openRecordModal(order, item)}
-                            style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
-                          >
-                            Enregistrer dispensation
-                          </button>
+                          {!isAlreadyDispensed(item) ? (
+                            <button
+                              type="button"
+                              onClick={() => openRecordModal(order, item)}
+                              style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
+                            >
+                              Enregistrer dispensation
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => handlePrintRx(order)}

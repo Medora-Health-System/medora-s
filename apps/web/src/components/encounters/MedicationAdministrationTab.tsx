@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { listQueueItems } from "@/lib/offline/offlineQueue";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { ui } from "@/lib/uiLabels";
 
@@ -204,6 +205,7 @@ export function MedicationAdministrationTab({
       const items = (order as { items?: OrderItemApi[] }).items ?? [];
       for (const it of items) {
         if (!it.id) continue;
+        if (String(it.id).startsWith("local:")) continue;
         if (!isOrderItemPendingNurseMedication(it)) continue;
         rows.push({
           orderItemId: it.id,
@@ -234,6 +236,10 @@ export function MedicationAdministrationTab({
 
   const submitModal = async () => {
     if (!modalItem || encounterStatus !== "OPEN") return;
+    if (!isOrderItemIdUuid(modalItem.orderItemId)) {
+      console.warn("MAR blocked: invalid orderItemId", modalItem.orderItemId);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
