@@ -1,11 +1,15 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { OrderStatus, RoleCode } from "@prisma/client";
+import { AuditAction, OrderStatus, RoleCode } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { AuditService } from "../common/services/audit.service";
 
 @Injectable()
 export class QueuesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   async getRadiologyQueue(facilityId: string) {
     return this.prisma.order.findMany({
@@ -218,7 +222,9 @@ export class QueuesService {
 
     assertEncounterNotSigned(orderItem.order.encounter);
 
-    return this.prisma.orderItem.update({
+    const fromStatus = orderItem.status;
+
+    const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
       data: { status },
       include: {
@@ -240,6 +246,32 @@ export class QueuesService {
         }
       }
     });
+
+    let action: AuditAction;
+    if (status === OrderStatus.ACKNOWLEDGED) {
+      action = AuditAction.ORDER_ACK;
+    } else if (status === OrderStatus.IN_PROGRESS) {
+      action = AuditAction.ORDER_START;
+    } else if (status === OrderStatus.COMPLETED) {
+      action = AuditAction.ORDER_COMPLETE;
+    } else {
+      action = AuditAction.UPDATE;
+    }
+
+    await this.audit.log(action, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItem.id,
+      metadata: {
+        fromStatus,
+        toStatus: status,
+      },
+    });
+
+    return updated;
   }
 }
 

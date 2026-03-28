@@ -1,13 +1,17 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import type { OrderItem } from "@prisma/client";
+import { AuditAction, type OrderItem } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { AuditService } from "../common/services/audit.service";
 import type { MedicationAdministrationCreateDto } from "@medora/shared";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
 @Injectable()
 export class MedicationAdministrationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   /**
    * Stable French medication label for MAR — aligned with `OrdersService.displayLabelFrForItem`
@@ -70,6 +74,7 @@ export class MedicationAdministrationService {
 
     let orderItemId: string | null = data.orderItemId ?? null;
     let medicationLabelSnapshot: string | null = null;
+    let orderIdForAudit: string | undefined;
     if (orderItemId) {
       const item = await this.prisma.orderItem.findFirst({
         where: { id: orderItemId },
@@ -97,9 +102,10 @@ export class MedicationAdministrationService {
         });
       }
       medicationLabelSnapshot = this.medicationLabelSnapshotFromMedicationOrderItem(item, catalogMedication);
+      orderIdForAudit = item.order.id;
     }
 
-    return this.prisma.medicationAdministration.create({
+    const created = await this.prisma.medicationAdministration.create({
       data: {
         facilityId,
         patientId: encounter.patientId,
@@ -114,5 +120,16 @@ export class MedicationAdministrationService {
         administeredBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    await this.audit.log(AuditAction.CREATE, "MEDICATION_ADMINISTRATION", {
+      userId: administeredByUserId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId,
+      entityId: created.id,
+      ...(orderIdForAudit ? { orderId: orderIdForAudit } : {}),
+    });
+
+    return created;
   }
 }
