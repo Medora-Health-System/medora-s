@@ -391,8 +391,12 @@ export function getPatientChartPrintHtml(params: {
 </html>`;
 }
 
-export function printPatientChart(html: string): void {
-  const w = typeof window !== "undefined" ? window.open("", "_blank", "noopener,noreferrer") : null;
+/**
+ * Ouvre la fenêtre d’impression tout de suite (geste utilisateur), puis génère le HTML.
+ * Passer une fabrique pour éviter tout travail lourd avant `window.open` (anti blocage pop-up).
+ */
+export function printPatientChart(buildHtml: () => string): void {
+  const w = typeof window !== "undefined" ? window.open("", "_blank") : null;
   if (!w) {
     alert(
       "Impossible d'ouvrir la fenêtre d'impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups pour ce site et réessayez."
@@ -400,11 +404,28 @@ export function printPatientChart(html: string): void {
     return;
   }
   w.document.open();
-  w.document.write(html);
+  w.document.write(
+    `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8" /><title>Impression</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>Préparation de l'impression…</p></body></html>`
+  );
   w.document.close();
-  w.focus();
+
   setTimeout(() => {
-    w.print();
-    w.close();
-  }, 250);
+    try {
+      const html = buildHtml();
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      setTimeout(() => {
+        w.print();
+        w.close();
+      }, 250);
+    } catch {
+      w.document.open();
+      w.document.write(
+        `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8" /><title>Erreur</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>Impossible de préparer le dossier pour l'impression. Réessayez ou contactez le support.</p></body></html>`
+      );
+      w.document.close();
+    }
+  }, 0);
 }

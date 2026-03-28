@@ -451,7 +451,7 @@ export default function PatientDetailPage() {
               onPrintMedicalRecord={
                 chartSummary
                   ? () =>
-                      printPatientChart(
+                      printPatientChart(() =>
                         getPatientChartPrintHtml({
                           chartSummary,
                           followUps: followUps ?? [],
