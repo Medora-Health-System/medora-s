@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { AuditService } from "../common/services/audit.service";
@@ -11,7 +18,9 @@ import {
   type EncounterCreateDto,
   type EncounterOperationalUpdateDto,
   type EncounterOutpatientCreateDto,
+  type EncounterProviderAddendumCreateDto,
   type EncounterUpdateDto,
+  type EncounterCloseDocumentationCheckResult,
 } from "@medora/shared";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
@@ -67,6 +76,31 @@ function encounterHasSignableProviderContent(enc: {
   if (enc.providerNote?.trim()) return true;
   if (enc.treatmentPlan?.trim()) return true;
   return hasPhysicianEvalV1Content(enc.nursingAssessment);
+}
+
+/** Sections structurées, lignes résumé ou procédure IV — aligné sur l’affichage dossier (V1). */
+function nursingAssessmentHasContent(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const o = raw as Record<string, unknown>;
+  const inner = o.nursingEvalV1;
+  if (!inner || typeof inner !== "object") return false;
+  const ne = inner as Record<string, unknown>;
+  const sections = ne.sections;
+  if (sections && typeof sections === "object") {
+    for (const v of Object.values(sections)) {
+      if (v && typeof v === "object" && "text" in v && typeof (v as { text: unknown }).text === "string") {
+        if ((v as { text: string }).text.trim().length > 0) return true;
+      }
+    }
+  }
+  const sl = ne.summaryLinesFr;
+  if (Array.isArray(sl) && sl.some((x) => typeof x === "string" && x.trim().length > 0)) return true;
+  const pv = ne.proceduresV1;
+  if (pv && typeof pv === "object") {
+    const iv = (pv as Record<string, unknown>).ivInsertion;
+    if (iv && typeof iv === "object" && (iv as { performed?: boolean }).performed === true) return true;
+  }
+  return false;
 }
 
 function mergeDischargeSummaryJson(
@@ -257,6 +291,22 @@ export class EncountersService {
     return encounters.map((e) => toEncounterClinicResponse(e));
   }
 
+  private mapProviderAddendaForApi(
+    rows: Array<{
+      id: string;
+      text: string;
+      createdAt: Date;
+      createdBy: { firstName: string; lastName: string };
+    }>
+  ) {
+    return rows.map((a) => ({
+      id: a.id,
+      text: a.text,
+      createdAt: a.createdAt,
+      createdByDisplayFr: `${a.createdBy.firstName} ${a.createdBy.lastName}`.trim(),
+    }));
+  }
+
   async findOne(facilityId: string, id: string, userId?: string, ip?: string, userAgent?: string) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
@@ -264,6 +314,12 @@ export class EncountersService {
         patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
         providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
+        providerAddenda: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            createdBy: { select: { firstName: true, lastName: true } },
+          },
+        },
       },
     });
 
@@ -301,7 +357,8 @@ export class EncountersService {
       }
     }
 
-    const res = toEncounterClinicResponse(encounter) as Record<string, unknown>;
+    const { providerAddenda: _rawAddenda, ...encounterForClinic } = encounter;
+    const res = toEncounterClinicResponse(encounterForClinic as typeof encounter) as Record<string, unknown>;
     const signedByDisplayFr =
       encounter.providerDocumentationStatus === "SIGNED" && encounter.providerDocumentationSignedBy
         ? `${encounter.providerDocumentationSignedBy.firstName} ${encounter.providerDocumentationSignedBy.lastName}`.trim()
@@ -312,9 +369,70 @@ export class EncountersService {
         ? { ...res, closedByDisplayFr }
         : res;
 
+    const withAddenda = {
+      ...withClosed,
+      providerAddenda: this.mapProviderAddendaForApi(_rawAddenda ?? []),
+    };
+
     return signedByDisplayFr
-      ? { ...withClosed, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
-      : withClosed;
+      ? { ...withAddenda, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
+      : withAddenda;
+  }
+
+  async addProviderAddendum(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterProviderAddendumCreateDto,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour ajouter un addendum.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    if (encounter.providerDocumentationStatus !== "SIGNED") {
+      throw new BadRequestException(
+        "Un addendum n'est possible qu'après signature de l'évaluation médicale."
+      );
+    }
+
+    const created = await this.prisma.encounterProviderAddendum.create({
+      data: {
+        encounterId,
+        facilityId,
+        text: dto.text.trim(),
+        createdByUserId: userId,
+      },
+      include: {
+        createdBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_ADDENDUM, "ENCOUNTER_PROVIDER_ADDENDUM", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: created.id,
+      ip,
+      userAgent,
+    });
+
+    return {
+      id: created.id,
+      text: created.text,
+      createdAt: created.createdAt,
+      createdByDisplayFr: `${created.createdBy.firstName} ${created.createdBy.lastName}`.trim(),
+    };
   }
 
   async signProviderDocumentation(
@@ -615,6 +733,81 @@ export class EncountersService {
     }
   }
 
+  private evaluateEncounterDocumentationDeficiencies(
+    encounter: {
+      chiefComplaint: string | null;
+      providerNote: string | null;
+      treatmentPlan: string | null;
+      nursingAssessment: unknown;
+      dischargeSummaryJson: unknown;
+      admissionSummaryJson: unknown;
+      type: EncounterType;
+    },
+    dischargeIncoming: EncounterCloseDto["discharge"]
+  ): EncounterCloseDocumentationCheckResult {
+    const deficiencies: Array<{ code: string; labelFr: string }> = [];
+
+    if (!encounter.chiefComplaint?.trim()) {
+      deficiencies.push({
+        code: "CHIEF_COMPLAINT",
+        labelFr: "Motif de consultation ou raison de visite",
+      });
+    }
+
+    if (!encounterHasSignableProviderContent(encounter)) {
+      deficiencies.push({
+        code: "PROVIDER_DOCUMENTATION",
+        labelFr:
+          "Évaluation médicale (au moins une impression clinique, un plan de traitement ou la documentation HPI/ROS/examen/MDM)",
+      });
+    }
+
+    if (!nursingAssessmentHasContent(encounter.nursingAssessment)) {
+      deficiencies.push({
+        code: "NURSING_ASSESSMENT",
+        labelFr: "Évaluation infirmière",
+      });
+    }
+
+    const mergedDischarge = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, dischargeIncoming);
+    if (!mergedDischarge) {
+      deficiencies.push({
+        code: "DISCHARGE_SUMMARY",
+        labelFr: "Dossier de sortie structuré",
+      });
+    }
+
+    if (encounter.type === EncounterType.INPATIENT) {
+      const adm = encounter.admissionSummaryJson;
+      const admObj =
+        adm && typeof adm === "object" && !Array.isArray(adm) ? (adm as Record<string, unknown>) : {};
+      if (!admissionSummaryHasContent(admObj)) {
+        deficiencies.push({
+          code: "ADMISSION_SUMMARY",
+          labelFr: "Dossier d'admission (hospitalisation)",
+        });
+      }
+    }
+
+    return { deficiencies, hasDeficiencies: deficiencies.length > 0 };
+  }
+
+  async getCloseDocumentationCheck(
+    facilityId: string,
+    encounterId: string,
+    discharge?: EncounterCloseDto["discharge"]
+  ): Promise<EncounterCloseDocumentationCheckResult> {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    return this.evaluateEncounterDocumentationDeficiencies(encounter, discharge);
+  }
+
   async close(
     facilityId: string,
     id: string,
@@ -633,6 +826,20 @@ export class EncountersService {
 
     // Validate status transition
     assertCanTransitionEncounter(encounter.status, "CLOSED");
+
+    const docCheck = this.evaluateEncounterDocumentationDeficiencies(encounter, data?.discharge);
+    if (docCheck.hasDeficiencies && !data?.acknowledgeDeficiencies) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message:
+            "La documentation est incomplète. Indiquez acknowledgeDeficiencies: true pour clôturer malgré les lacunes, ou complétez la documentation.",
+          deficiencies: docCheck.deficiencies,
+          code: "ENCOUNTER_CLOSE_DEFICIENCIES_NOT_ACKNOWLEDGED",
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
 
     const closePayload: Record<string, unknown> = {
       status: "CLOSED",
@@ -660,6 +867,13 @@ export class EncountersService {
       entityId: encounter.id,
       ip,
       userAgent,
+      metadata:
+        docCheck.hasDeficiencies && data?.acknowledgeDeficiencies
+          ? {
+              deficienciesAcknowledged: true,
+              deficiencyCodes: docCheck.deficiencies.map((d) => d.code),
+            }
+          : undefined,
     });
 
     return toEncounterClinicResponse(updated);

@@ -132,6 +132,10 @@ export default function EncounterDetailPage() {
   const [careModalPresetLabel, setCareModalPresetLabel] = useState<string | null>(null);
   const [encounterResultsRefresh, setEncounterResultsRefresh] = useState(0);
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
+  const [showDocumentationDeficiencyModal, setShowDocumentationDeficiencyModal] = useState(false);
+  const [documentationDeficiencies, setDocumentationDeficiencies] = useState<
+    Array<{ code: string; labelFr: string }>
+  >([]);
   const [closingEncounter, setClosingEncounter] = useState(false);
   /** Clôture mise en file hors ligne — la consultation reste ouverte côté serveur jusqu’à sync. */
   const [queuedClosePendingSync, setQueuedClosePendingSync] = useState(false);
@@ -196,6 +200,18 @@ export default function EncounterDetailPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showCloseConfirmModal, closingEncounter]);
+
+  useEffect(() => {
+    if (!showDocumentationDeficiencyModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !closingEncounter) {
+        setShowDocumentationDeficiencyModal(false);
+        setDocumentationDeficiencies([]);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showDocumentationDeficiencyModal, closingEncounter]);
 
   useEffect(() => {
     if (encounter?.status === "CLOSED") setQueuedClosePendingSync(false);
@@ -540,28 +556,36 @@ export default function EncounterDetailPage() {
     }
   };
 
-  const confirmCloseEncounter = async () => {
+  const buildDischargePayloadFromPending = () => {
+    const dischargePayload: Record<string, string> = {};
+    if (pendingDischarge) {
+      for (const [k, v] of Object.entries(pendingDischarge)) {
+        const t = typeof v === "string" ? v.trim() : "";
+        if (t) dischargePayload[k] = t;
+      }
+    }
+    return dischargePayload;
+  };
+
+  const executeCloseEncounter = async (acknowledgeDeficiencies: boolean) => {
     setClosingEncounter(true);
     try {
-      const dischargePayload: Record<string, string> = {};
-      if (pendingDischarge) {
-        for (const [k, v] of Object.entries(pendingDischarge)) {
-          const t = typeof v === "string" ? v.trim() : "";
-          if (t) dischargePayload[k] = t;
-        }
-      }
+      const dischargePayload = buildDischargePayloadFromPending();
+      const body: Record<string, unknown> = {};
+      if (Object.keys(dischargePayload).length > 0) body.discharge = dischargePayload;
+      if (acknowledgeDeficiencies) body.acknowledgeDeficiencies = true;
       const res = await apiFetch(`/encounters/${encounterId}/close`, {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          Object.keys(dischargePayload).length > 0 ? { discharge: dischargePayload } : {}
-        ),
+        body: JSON.stringify(body),
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
 
       setShowCloseConfirmModal(false);
+      setShowDocumentationDeficiencyModal(false);
+      setDocumentationDeficiencies([]);
 
       if (queued) {
         setQueuedClosePendingSync(true);
@@ -574,9 +598,47 @@ export default function EncounterDetailPage() {
       setQueuedClosePendingSync(false);
       setPendingDischarge(null);
       setQueuedDischargeSaveNotice(false);
+      if (acknowledgeDeficiencies) {
+        alert(
+          "Consultation terminée. La clôture a été enregistrée malgré des lacunes documentaires prises en compte."
+        );
+      }
       await loadEncounter();
     } catch {
       alert("Impossible de fermer la consultation");
+    } finally {
+      setClosingEncounter(false);
+    }
+  };
+
+  const runCloseDocumentationCheckAndProceed = async () => {
+    if (!encounter) return;
+    setClosingEncounter(true);
+    try {
+      const dischargePayload = buildDischargePayloadFromPending();
+      const checkBody = Object.keys(dischargePayload).length > 0 ? { discharge: dischargePayload } : {};
+      const check = await apiFetch(`/encounters/${encounterId}/close-check`, {
+        method: "POST",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(checkBody),
+      });
+      const result = asApiObject(check) as {
+        hasDeficiencies?: boolean;
+        deficiencies?: Array<{ code: string; labelFr: string }>;
+      };
+      if (result.hasDeficiencies && result.deficiencies && result.deficiencies.length > 0) {
+        setShowCloseConfirmModal(false);
+        setDocumentationDeficiencies(result.deficiencies);
+        setShowDocumentationDeficiencyModal(true);
+        return;
+      }
+      await executeCloseEncounter(false);
+    } catch (e) {
+      alert(
+        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          "Impossible de vérifier la documentation avant la clôture."
+      );
     } finally {
       setClosingEncounter(false);
     }
@@ -1585,7 +1647,7 @@ export default function EncounterDetailPage() {
               <button
                 type="button"
                 disabled={closingEncounter}
-                onClick={() => void confirmCloseEncounter()}
+                onClick={() => void runCloseDocumentationCheckAndProceed()}
                 style={{
                   padding: "10px 18px",
                   fontSize: 14,
@@ -1599,6 +1661,95 @@ export default function EncounterDetailPage() {
                 }}
               >
                 {closingEncounter ? "…" : "Terminer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDocumentationDeficiencyModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2100,
+            padding: 16,
+          }}
+          onClick={() => {
+            if (!closingEncounter) {
+              setShowDocumentationDeficiencyModal(false);
+              setDocumentationDeficiencies([]);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: 8,
+              maxWidth: 480,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="documentation-deficiency-title"
+          >
+            <h2 id="documentation-deficiency-title" style={{ margin: "0 0 12px 0", fontSize: 18 }}>
+              Documentation incomplète
+            </h2>
+            <p style={{ margin: "0 0 12px 0", fontSize: 14, color: "#333", lineHeight: 1.5 }}>
+              Les éléments suivants sont manquants ou incomplets :
+            </p>
+            <ul style={{ margin: "0 0 20px 0", paddingLeft: 20, fontSize: 14, color: "#333", lineHeight: 1.5 }}>
+              {documentationDeficiencies.map((d) => (
+                <li key={d.code}>{d.labelFr}</li>
+              ))}
+            </ul>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                disabled={closingEncounter}
+                onClick={() => {
+                  setShowDocumentationDeficiencyModal(false);
+                  setDocumentationDeficiencies([]);
+                }}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                  background: "#fff",
+                  cursor: closingEncounter ? "not-allowed" : "pointer",
+                }}
+              >
+                Retour au dossier
+              </button>
+              <button
+                type="button"
+                disabled={closingEncounter}
+                onClick={() => void executeCloseEncounter(true)}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "none",
+                  borderRadius: 6,
+                  background: "#5d4037",
+                  color: "white",
+                  cursor: closingEncounter ? "not-allowed" : "pointer",
+                  opacity: closingEncounter ? 0.85 : 1,
+                }}
+              >
+                {closingEncounter ? "…" : "Terminer quand même"}
               </button>
             </div>
           </div>
@@ -2026,6 +2177,8 @@ function ClinicVisitTab({
   const [mdm, setMdm] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).mdm);
   const [saving, setSaving] = useState(false);
   const [signingDoc, setSigningDoc] = useState(false);
+  const [addendumText, setAddendumText] = useState("");
+  const [addendumSaving, setAddendumSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "queued" | "err"; text: string } | null>(null);
   const readOnly = encounter.status !== "OPEN";
   const docSigned = encounter.providerDocumentationStatus === "SIGNED";
@@ -2054,7 +2207,33 @@ function ClinicVisitTab({
     encounter.providerDocumentationStatus,
     encounter.providerDocumentationSignedAt,
     encounter.providerDocumentationSignedByDisplayFr,
+    encounter.providerAddenda,
   ]);
+
+  const handleAddAddendum = async () => {
+    const t = addendumText.trim();
+    if (!t) return;
+    setMessage(null);
+    setAddendumSaving(true);
+    try {
+      await apiFetch(`/encounters/${encounter.id}/provider-addenda`, {
+        method: "POST",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: t }),
+      });
+      setAddendumText("");
+      setMessage({ type: "ok", text: "Addendum enregistré." });
+      onUpdate();
+    } catch (e: unknown) {
+      setMessage({
+        type: "err",
+        text: normalizeUserFacingError(e instanceof Error ? e.message : null) || "Enregistrement impossible.",
+      });
+    } finally {
+      setAddendumSaving(false);
+    }
+  };
 
   const handleSignDocumentation = async () => {
     setMessage(null);
@@ -2151,6 +2330,59 @@ function ClinicVisitTab({
         >
           Évaluation signée par <strong>{encounter.providerDocumentationSignedByDisplayFr}</strong> le{" "}
           {new Date(encounter.providerDocumentationSignedAt).toLocaleString("fr-FR")}
+        </div>
+      ) : null}
+      {(encounter.providerAddenda ?? []).length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          {(encounter.providerAddenda ?? []).map((ad: { id: string; text: string; createdAt: string; createdByDisplayFr?: string | null }) => (
+            <div
+              key={ad.id}
+              style={{
+                marginBottom: 12,
+                padding: "12px 14px",
+                backgroundColor: "#fafafa",
+                borderRadius: 6,
+                border: "1px solid #eee",
+                fontSize: 14,
+                lineHeight: 1.45,
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                Addendum par {ad.createdByDisplayFr ?? "—"} le{" "}
+                {new Date(ad.createdAt).toLocaleString("fr-FR")}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{ad.text}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {docSigned && canSignProviderDocumentation ? (
+        <div style={{ marginBottom: 20 }}>
+          <h4 style={{ marginTop: 0, marginBottom: 8, fontSize: 15 }}>Ajouter un addendum</h4>
+          <textarea
+            value={addendumText}
+            onChange={(e) => setAddendumText(e.target.value)}
+            rows={4}
+            maxLength={5000}
+            style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4, marginBottom: 8 }}
+            placeholder="Texte de l'addendum (append-only, sans modifier l'évaluation signée)."
+          />
+          <button
+            type="button"
+            onClick={() => void handleAddAddendum()}
+            disabled={addendumSaving || !addendumText.trim()}
+            style={{
+              padding: "8px 18px",
+              backgroundColor: "#37474f",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor: addendumSaving || !addendumText.trim() ? "not-allowed" : "pointer",
+              opacity: addendumSaving || !addendumText.trim() ? 0.65 : 1,
+            }}
+          >
+            {addendumSaving ? "Enregistrement…" : "Enregistrer l'addendum"}
+          </button>
         </div>
       ) : null}
       <p style={{ color: "#757575", fontSize: 13 }}>

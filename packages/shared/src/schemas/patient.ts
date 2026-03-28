@@ -167,9 +167,23 @@ export type EncounterDischargeFields = z.infer<typeof encounterDischargeFieldsSc
 
 export const encounterCloseDtoSchema = z.object({
   discharge: encounterDischargeFieldsSchema.optional(),
+  /** Si la documentation est incomplète, doit être true pour autoriser la clôture (V1 — pas d’arrêt dur). */
+  acknowledgeDeficiencies: z.boolean().optional(),
 });
 
 export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;
+
+/** POST /encounters/:id/close-check — même charge utile que la clôture pour fusionner le dossier de sortie. */
+export const encounterCloseCheckDtoSchema = z.object({
+  discharge: encounterDischargeFieldsSchema.optional(),
+});
+
+export type EncounterCloseCheckDto = z.infer<typeof encounterCloseCheckDtoSchema>;
+
+export type EncounterCloseDocumentationCheckResult = {
+  hasDeficiencies: boolean;
+  deficiencies: Array<{ code: string; labelFr: string }>;
+};
 
 export const orderStatusSchema = z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
@@ -344,4 +358,11 @@ export const medicationAdministrationCreateDtoSchema = z.object({
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
+
+/** POST /encounters/:id/provider-addenda — append-only after signed provider documentation (V1). */
+export const encounterProviderAddendumCreateDtoSchema = z.object({
+  text: z.string().trim().min(1).max(5000),
+});
+
+export type EncounterProviderAddendumCreateDto = z.infer<typeof encounterProviderAddendumCreateDtoSchema>;
 

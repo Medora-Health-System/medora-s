@@ -18,9 +18,11 @@ import { DiagnosesService } from "../diagnoses/diagnoses.service";
 import { createDiagnosisDtoSchema } from "../diagnoses/dto";
 import {
   encounterCloseDtoSchema,
+  encounterCloseCheckDtoSchema,
   encounterCreateDtoSchema,
   encounterOperationalUpdateDtoSchema,
   encounterOutpatientCreateDtoSchema,
+  encounterProviderAddendumCreateDtoSchema,
   encounterUpdateDtoSchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
@@ -208,6 +210,27 @@ export class EncountersController {
     );
   }
 
+  @Post("encounters/:id/provider-addenda")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async addProviderAddendum(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterProviderAddendumCreateDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.addProviderAddendum(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Patch("encounters/:id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async update(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
@@ -237,6 +260,22 @@ export class EncountersController {
       req.ip,
       req.headers["user-agent"]
     );
+  }
+
+  @Post("encounters/:id/close-check")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async closeDocumentationCheck(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+
+    const parsed = encounterCloseCheckDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+
+    return this.encountersService.getCloseDocumentationCheck(facilityId, id, parsed.data.discharge);
   }
 
   @Post("encounters/:id/close")
