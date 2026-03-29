@@ -10,5 +10,11 @@ export const facilityDtoSchema = z.object({
   name: z.string(),
 });
 
+/** PATCH /admin/facilities/:id */
+export const setFacilityActiveDtoSchema = z.object({
+  isActive: z.boolean(),
+});
+
 export type CreateFacilityDto = z.infer<typeof createFacilityDtoSchema>;
 export type FacilityDto = z.infer<typeof facilityDtoSchema>;
+export type SetFacilityActiveDto = z.infer<typeof setFacilityActiveDtoSchema>;

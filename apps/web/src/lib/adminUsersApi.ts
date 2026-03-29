@@ -131,6 +131,35 @@ export async function patchAdminUserStatus(
   }) as Promise<AdminUserRow>;
 }
 
+export type AdminFacilityRow = { id: string; name: string; isActive?: boolean };
+
+/** GET /admin/facilities — liste globale (plateforme ou ADMIN à l’établissement actif). */
+export async function fetchAdminFacilities(
+  facilityId?: string,
+  options?: { includeInactive?: boolean }
+): Promise<AdminFacilityRow[]> {
+  const q = options?.includeInactive ? "?includeInactive=true" : "";
+  const data = await adminApiFetch(`/facilities${q}`, {
+    method: "GET",
+    ...(facilityId ? { facilityId } : {}),
+  });
+  return Array.isArray(data) ? (data as AdminFacilityRow[]) : [];
+}
+
+/** PATCH /admin/facilities/:id — activation contractuelle (plateforme `canCreateFacilities` uniquement côté API). */
+export async function setAdminFacilityActive(
+  facilityId: string,
+  id: string,
+  isActive: boolean
+): Promise<{ id: string; name: string; isActive: boolean }> {
+  return adminApiFetch(`/facilities/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isActive }),
+    facilityId,
+  }) as Promise<{ id: string; name: string; isActive: boolean }>;
+}
+
 /** POST /admin/facilities — crée un établissement et rattache l’admin courant (côté API). */
 export async function createAdminFacility(
   facilityId: string,

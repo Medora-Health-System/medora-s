@@ -12,13 +12,13 @@ import {
  * Shell authentifié unique : `AppShell` + nav (`sidebarNavConfig`).
  * Imports directs vers les fichiers (pas de barrel `app-shell/index`) — évite manifest / chunks client incorrects.
  */
-import { AppShell } from "@/components/app-shell/AppShell";
+import { AppShell, type AppShellFacilityOption } from "@/components/app-shell/AppShell";
 import { SIDEBAR_NAV_ITEMS, groupSidebarNavItems } from "@/components/app-shell/sidebarNavConfig";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [facilities, setFacilities] = useState<string[]>([]);
+  const [facilities, setFacilities] = useState<AppShellFacilityOption[]>([]);
   const [activeFacility, setActiveFacility] = useState<string>("");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [routeRedirecting, setRouteRedirecting] = useState(false);
@@ -61,8 +61,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (frs.length > 0 && d) {
         const { accessTokenTtlSeconds: _ttlIgnored, ...userPayload } = d;
         setUser(userPayload);
-        const facilityIds: string[] = Array.from(new Set(frs.map((fr: any) => String(fr.facilityId))));
-        setFacilities(facilityIds);
+        const nameById = new Map<string, string>();
+        for (const fr of frs as { facilityId?: unknown; facilityName?: unknown }[]) {
+          const fid = String(fr.facilityId ?? "");
+          if (!fid) continue;
+          const raw = fr.facilityName;
+          const label =
+            typeof raw === "string" && raw.trim() ? raw.trim() : fid;
+          if (!nameById.has(fid)) nameById.set(fid, label);
+        }
+        const facilityOptions: AppShellFacilityOption[] = [...nameById.entries()].map(([id, name]) => ({
+          id,
+          name,
+        }));
+        const facilityIds = facilityOptions.map((f) => f.id);
+        setFacilities(facilityOptions);
 
         const cookieValue = document.cookie
           .split("; ")

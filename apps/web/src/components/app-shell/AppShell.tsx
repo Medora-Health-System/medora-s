@@ -11,6 +11,9 @@ import { ui } from "@/lib/uiLabels";
 import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
 import { SidebarNavIcon } from "./SidebarNavIcons";
 
+/** Établissements issus de `/api/auth/me` (`facilityRoles`) — `value` du `<select>` = id réel. */
+export type AppShellFacilityOption = { id: string; name: string };
+
 export type AppShellProps = {
   children: React.ReactNode;
   /** Toujours une chaîne (évite écart SSR / hydratation si `usePathname()` est null). */
@@ -18,7 +21,7 @@ export type AppShellProps = {
   routeRedirecting: boolean;
   /** Session en cours de résolution : même cadre visuel, sans menu ni contenu (évite barre latérale vide = impression d’ancienne UI). */
   bootstrapping?: boolean;
-  facilities: string[];
+  facilities: AppShellFacilityOption[];
   activeFacility: string;
   onFacilityChange: (facilityId: string) => void;
   userFullName: string;
@@ -79,9 +82,9 @@ export function AppShell({
                 cursor: "pointer",
               }}
             >
-              {facilities.map((facilityId) => (
-                <option key={facilityId} value={facilityId}>
-                  {ui.common.facilityPrefix} {facilityId.slice(0, 8)}
+              {facilities.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
                 </option>
               ))}
             </select>

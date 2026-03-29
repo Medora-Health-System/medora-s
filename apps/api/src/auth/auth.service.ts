@@ -69,7 +69,7 @@ export class AuthService {
       where: { id: userId },
       include: {
         userRoles: {
-          where: { isActive: true },
+          where: { isActive: true, facility: { isActive: true } },
           include: { role: true, facility: { select: { name: true } } },
         },
       }
@@ -123,7 +123,7 @@ export class AuthService {
       },
       include: {
         userRoles: {
-          where: { isActive: true },
+          where: { isActive: true, facility: { isActive: true } },
           include: { role: true, facility: true }
         }
       }

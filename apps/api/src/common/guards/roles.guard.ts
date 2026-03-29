@@ -46,6 +46,7 @@ export class RolesGuard implements CanActivate {
         userId,
         facilityId,
         isActive: true,
+        facility: { isActive: true },
         role: {
           code: { in: requiredRoles }
         }

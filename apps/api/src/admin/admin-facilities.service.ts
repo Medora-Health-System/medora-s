@@ -88,11 +88,52 @@ export class AdminFacilitiesService {
     }
   }
 
-  async list() {
+  /**
+   * @param includeInactive — If true, only `canCreateFacilities` users may list all facilities (with `isActive`).
+   * Otherwise only active facilities are returned (facility ADMIN or principal).
+   */
+  async list(userId: string, includeInactive: boolean) {
+    if (includeInactive) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { canCreateFacilities: true },
+      });
+      if (!user?.canCreateFacilities) {
+        throw new ForbiddenException("Liste complète des établissements non autorisée pour ce compte.");
+      }
+      return this.prisma.facility.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, isActive: true },
+      });
+    }
     return this.prisma.facility.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    });
+  }
+
+  async setFacilityActive(id: string, isActive: boolean, userId: string) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { canCreateFacilities: true },
+    });
+    if (!actor?.canCreateFacilities) {
+      throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
+    }
+
+    const existing = await this.prisma.facility.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Établissement introuvable.");
+    }
+
+    return this.prisma.facility.update({
+      where: { id },
+      data: { isActive },
+      select: { id: true, name: true, isActive: true },
     });
   }
 }
