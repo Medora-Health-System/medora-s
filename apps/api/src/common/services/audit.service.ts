@@ -1,10 +1,31 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditAction } from "@prisma/client";
 
+const DEFAULT_AUDIT_FAILURE_MODE = "best_effort";
+
+function serializeErrorForAudit(error: unknown): { message: string; stack?: string } {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      ...(error.stack ? { stack: error.stack } : {}),
+    };
+  }
+  return { message: String(error) };
+}
+
 @Injectable()
 export class AuditService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly auditFailureMode: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService
+  ) {
+    this.auditFailureMode =
+      this.config.get<string>("AUDIT_FAILURE_MODE")?.trim() || DEFAULT_AUDIT_FAILURE_MODE;
+  }
 
   async log(
     action: AuditAction,
@@ -42,8 +63,26 @@ export class AuditService {
         },
       });
     } catch (error) {
-      // Don't fail the request if audit logging fails
-      console.error("Audit log error:", error);
+      const err = serializeErrorForAudit(error);
+      const payload = {
+        event: "AUDIT_LOG_WRITE_FAILED",
+        severity: "critical",
+        auditFailureMode: this.auditFailureMode,
+        action,
+        entityType,
+        entityId: options.entityId ?? null,
+        userId: options.userId ?? null,
+        facilityId: options.facilityId ?? null,
+        patientId: options.patientId ?? null,
+        encounterId: options.encounterId ?? null,
+        orderId: options.orderId ?? null,
+        ip: options.ip ?? null,
+        userAgent: options.userAgent ?? null,
+        errorMessage: err.message,
+        ...(err.stack ? { errorStack: err.stack } : {}),
+      };
+      // Operational hook: single-line grep + JSON for aggregators (no extra deps).
+      console.error("AUDIT_LOG_WRITE_FAILED", JSON.stringify(payload));
     }
   }
 }
