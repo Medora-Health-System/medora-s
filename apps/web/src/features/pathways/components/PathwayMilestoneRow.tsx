@@ -8,13 +8,19 @@ type Props = {
   milestone: MilestoneTimerView;
   pathwayStatus: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
   onMarkMet: (milestoneId: string) => Promise<void> | void;
+  /** Consultation fermée ou dossier signé : pas d’action sur les jalons. */
+  pathwayControlsLocked?: boolean;
   isNextDue?: boolean;
   isFlashing?: boolean;
 };
 
 export const PathwayMilestoneRow = React.forwardRef<HTMLDivElement, Props>(
-  ({ milestone, pathwayStatus, onMarkMet, isNextDue = false, isFlashing = false }, ref) => {
+  (
+    { milestone, pathwayStatus, onMarkMet, pathwayControlsLocked = false, isNextDue = false, isFlashing = false },
+    ref
+  ) => {
   const disabled =
+    pathwayControlsLocked ||
     pathwayStatus !== "ACTIVE" ||
     milestone.uiStatus === "MET" ||
     milestone.uiStatus === "WAIVED" ||

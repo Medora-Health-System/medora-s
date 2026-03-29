@@ -702,6 +702,8 @@ export default function EncounterDetailPage() {
   }
 
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  /** Dossier médical signé : saisie verrouillée (addendum et navigation restent possibles). */
+  const isLocked = encounter.providerDocumentationStatus === "SIGNED";
   const isRNOnly = roles.includes("RN") && !isProviderLike;
   const showNursingTab = roles.includes("RN") || roles.includes("ADMIN") || roles.includes("PROVIDER");
   const canEditOperational = roles.includes("RN") || roles.includes("ADMIN");
@@ -774,6 +776,23 @@ export default function EncounterDetailPage() {
           }}
         >
           {quickContextNotice}
+        </div>
+      ) : null}
+      {isLocked ? (
+        <div
+          role="status"
+          style={{
+            marginBottom: 12,
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #90caf9",
+            backgroundColor: "#e3f2fd",
+            fontSize: 13,
+            color: "#1565c0",
+            lineHeight: 1.45,
+          }}
+        >
+          Dossier signé — modifications verrouillées
         </div>
       ) : null}
       {queuedClosePendingSync && encounter?.status === "OPEN" ? (
@@ -1247,13 +1266,16 @@ export default function EncounterDetailPage() {
               canSignProviderDocumentation={isProviderLike}
             />
           )}
-          {activeTab === "triage" && <TriageVitalsTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
+          {activeTab === "triage" && (
+            <TriageVitalsTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} isLocked={isLocked} />
+          )}
           {activeTab === "nursing" && showNursingTab && (
             <NursingAssessmentTab
               encounterId={encounterId}
               facilityId={facilityId}
               encounter={encounter}
               onUpdate={loadEncounter}
+              isLocked={isLocked}
             />
           )}
           {activeTab === "diagnostics" && (
@@ -1262,11 +1284,14 @@ export default function EncounterDetailPage() {
               patientId={patient.id}
               facilityId={facilityId}
               canPrescribe={canPrescribe}
+              isLocked={isLocked}
               onGoPatientChart={() => router.push(`/app/patients/${patient.id}`)}
             />
           )}
-          {activeTab === "pathways" && <PathwaysTab encounterId={encounterId} encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
-          {activeTab === "notes" && <NotesTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} />}
+          {activeTab === "pathways" && (
+            <PathwaysTab encounterId={encounterId} encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} isLocked={isLocked} />
+          )}
+          {activeTab === "notes" && <NotesTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} isLocked={isLocked} />}
           {activeTab === "orders" && (
             <OrdersTab
               encounterId={encounterId}
@@ -1348,8 +1373,9 @@ export default function EncounterDetailPage() {
                 ] as const
               ).map(([key, label, kind, rows]) => {
                 const editable =
-                  (kind === "nursing" && canEditNursingDischarge) ||
-                  (kind === "medical" && canEditMedicalDischarge);
+                  !isLocked &&
+                  ((kind === "nursing" && canEditNursingDischarge) ||
+                    (kind === "medical" && canEditMedicalDischarge));
                 const k = key as keyof DischargeFormState;
                 return (
                   <label key={key} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
@@ -1379,12 +1405,12 @@ export default function EncounterDetailPage() {
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
                 <span style={{ fontWeight: 600 }}>
                   Mode de sortie
-                  {!canEditNursingDischarge ? (
+                  {!canEditNursingDischarge || isLocked ? (
                     <span style={{ fontWeight: 400, color: "#757575", marginLeft: 6 }}>(lecture seule)</span>
                   ) : null}
                 </span>
                 <select
-                  disabled={!canEditNursingDischarge}
+                  disabled={!canEditNursingDischarge || isLocked}
                   value={dischargeForm.dischargeMode}
                   onChange={(e) => setDischargeForm((f) => ({ ...f, dischargeMode: e.target.value }))}
                   style={{
@@ -1392,7 +1418,7 @@ export default function EncounterDetailPage() {
                     borderRadius: 6,
                     border: "1px solid #ccc",
                     fontSize: 14,
-                    background: canEditNursingDischarge ? "#fff" : "#f5f5f5",
+                    background: canEditNursingDischarge && !isLocked ? "#fff" : "#f5f5f5",
                   }}
                 >
                   <option value="">— Sélectionner —</option>
@@ -2025,12 +2051,14 @@ function EncounterDiagnosticsTab({
   patientId,
   facilityId,
   canPrescribe,
+  isLocked,
   onGoPatientChart,
 }: {
   encounterId: string;
   patientId: string;
   facilityId: string;
   canPrescribe: boolean;
+  isLocked: boolean;
   onGoPatientChart: () => void;
 }) {
   const [loading, setLoading] = useState(true);
@@ -2074,7 +2102,15 @@ function EncounterDiagnosticsTab({
           <button
             type="button"
             onClick={onGoPatientChart}
-            style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 6, background: "#fafafa", cursor: "pointer" }}
+            disabled={isLocked}
+            style={{
+              padding: "8px 12px",
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              background: "#fafafa",
+              cursor: isLocked ? "not-allowed" : "pointer",
+              opacity: isLocked ? 0.65 : 1,
+            }}
           >
             Ajouter un diagnostic
           </button>
@@ -2611,10 +2647,12 @@ function TriageVitalsTab({
   encounter,
   facilityId,
   onUpdate,
+  isLocked,
 }: {
   encounter: any;
   facilityId: string;
   onUpdate: () => void;
+  isLocked: boolean;
 }) {
   const [triage, setTriage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -2639,6 +2677,7 @@ function TriageVitalsTab({
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string>("");
   const isReadOnly = encounter.status !== "OPEN";
+  const formDisabled = isReadOnly || isLocked;
 
   useEffect(() => {
     loadTriage();
@@ -2807,7 +2846,7 @@ function TriageVitalsTab({
             type="text"
             value={formData.chiefComplaint}
             onChange={(e) => setFormData({ ...formData, chiefComplaint: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2819,7 +2858,7 @@ function TriageVitalsTab({
             type="datetime-local"
             value={formData.onsetAt}
             onChange={(e) => setFormData({ ...formData, onsetAt: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2830,7 +2869,7 @@ function TriageVitalsTab({
           <select
             value={formData.esi}
             onChange={(e) => setFormData({ ...formData, esi: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           >
             <option value="">Choisir…</option>
@@ -2849,7 +2888,7 @@ function TriageVitalsTab({
             type="datetime-local"
             value={formData.triageCompleteAt}
             onChange={(e) => setFormData({ ...formData, triageCompleteAt: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2864,7 +2903,7 @@ function TriageVitalsTab({
             step="0.1"
             value={formData.tempC}
             onChange={(e) => setFormData({ ...formData, tempC: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2874,7 +2913,7 @@ function TriageVitalsTab({
             type="number"
             value={formData.hr}
             onChange={(e) => setFormData({ ...formData, hr: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2884,7 +2923,7 @@ function TriageVitalsTab({
             type="number"
             value={formData.rr}
             onChange={(e) => setFormData({ ...formData, rr: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2894,7 +2933,7 @@ function TriageVitalsTab({
             type="number"
             value={formData.bpSys}
             onChange={(e) => setFormData({ ...formData, bpSys: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2904,7 +2943,7 @@ function TriageVitalsTab({
             type="number"
             value={formData.bpDia}
             onChange={(e) => setFormData({ ...formData, bpDia: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2916,7 +2955,7 @@ function TriageVitalsTab({
             max="100"
             value={formData.spo2}
             onChange={(e) => setFormData({ ...formData, spo2: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2927,7 +2966,7 @@ function TriageVitalsTab({
             step="0.1"
             value={formData.weightKg}
             onChange={(e) => setFormData({ ...formData, weightKg: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2938,7 +2977,7 @@ function TriageVitalsTab({
             step="0.1"
             value={formData.heightCm}
             onChange={(e) => setFormData({ ...formData, heightCm: e.target.value })}
-            disabled={isReadOnly}
+            disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           />
         </div>
@@ -2949,14 +2988,14 @@ function TriageVitalsTab({
         <textarea
           value={formData.allergyNote}
           onChange={(e) => setFormData({ ...formData, allergyNote: e.target.value })}
-          disabled={isReadOnly}
+          disabled={formDisabled}
           maxLength={2000}
           rows={4}
           style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, minHeight: 80 }}
         />
       </div>
 
-      {!isReadOnly && (
+      {!formDisabled && (
         <div style={{ marginTop: 24 }}>
           {saveInfo && (
             <div style={{ marginBottom: 10, color: saveInfo.includes("Impossible") ? "#c62828" : "#2e7d32", fontSize: 13 }}>
@@ -2980,9 +3019,11 @@ function TriageVitalsTab({
           </button>
         </div>
       )}
-      {isReadOnly && (
+      {formDisabled && (
         <div style={{ marginTop: 16, padding: 12, backgroundColor: "#fff3cd", borderRadius: 4, color: "#856404" }}>
-          La consultation est fermée. Les signes vitaux sont en lecture seule.
+          {isReadOnly
+            ? "La consultation est fermée. Les signes vitaux sont en lecture seule."
+            : "Dossier signé — les signes vitaux sont en lecture seule."}
         </div>
       )}
     </div>
@@ -2993,13 +3034,16 @@ function NotesTab({
   encounter,
   facilityId,
   onUpdate,
+  isLocked,
 }: {
   encounter: any;
   facilityId: string;
   onUpdate: () => void;
+  isLocked: boolean;
 }) {
   const [notes, setNotes] = useState(encounter.notes || "");
   const [saving, setSaving] = useState(false);
+  const notesReadOnly = encounter.status !== "OPEN" || isLocked;
 
   const handleSave = async () => {
     setSaving(true);
@@ -3034,6 +3078,7 @@ function NotesTab({
           <button
             key={snippet.slice(0, 20)}
             type="button"
+            disabled={notesReadOnly}
             onClick={() => setNotes((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
             style={{
               padding: "6px 10px",
@@ -3041,7 +3086,8 @@ function NotesTab({
               border: "1px solid #ccc",
               borderRadius: 4,
               background: "#f5f5f5",
-              cursor: "pointer",
+              cursor: notesReadOnly ? "not-allowed" : "pointer",
+              opacity: notesReadOnly ? 0.65 : 1,
               whiteSpace: "nowrap",
               maxWidth: 260,
               overflow: "hidden",
@@ -3057,20 +3103,29 @@ function NotesTab({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={10}
-        style={{ width: "100%", padding: 12, border: "1px solid #ddd", borderRadius: 4, marginBottom: 16 }}
+        readOnly={notesReadOnly}
+        style={{
+          width: "100%",
+          padding: 12,
+          border: "1px solid #ddd",
+          borderRadius: 4,
+          marginBottom: 16,
+          background: notesReadOnly ? "#f5f5f5" : "#fff",
+          cursor: notesReadOnly ? "not-allowed" : "text",
+        }}
         placeholder="Notes infirmières ou médicales…"
       />
       <button
         onClick={handleSave}
-        disabled={saving}
+        disabled={saving || notesReadOnly}
         style={{
           padding: "10px 20px",
           backgroundColor: "#1a1a1a",
           color: "white",
           border: "none",
           borderRadius: 4,
-          cursor: saving ? "not-allowed" : "pointer",
-          opacity: saving ? 0.6 : 1,
+          cursor: saving || notesReadOnly ? "not-allowed" : "pointer",
+          opacity: saving || notesReadOnly ? 0.6 : 1,
         }}
       >
         {saving ? "Enregistrement…" : "Enregistrer les notes"}
@@ -3084,11 +3139,13 @@ function PathwaysTab({
   encounter,
   facilityId,
   onUpdate,
+  isLocked,
 }: {
   encounterId: string;
   encounter: any;
   facilityId: string;
   onUpdate: () => void;
+  isLocked: boolean;
 }) {
   const [pathway, setPathway] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -3199,7 +3256,7 @@ function PathwaysTab({
 
   if (loading) return <div>Chargement des parcours…</div>;
 
-  const isReadOnly = encounter.status !== "OPEN";
+  const pathwayControlsLocked = encounter.status !== "OPEN" || isLocked;
 
   return (
     <div>
@@ -3212,16 +3269,16 @@ function PathwaysTab({
               <button
                 key={type}
                 onClick={() => handleActivate(type)}
-                disabled={activating || isReadOnly}
+                disabled={activating || pathwayControlsLocked}
                 style={{
                   padding: "12px 24px",
                   backgroundColor: "#1976d2",
                   color: "white",
                   border: "none",
                   borderRadius: 4,
-                  cursor: activating || isReadOnly ? "not-allowed" : "pointer",
+                  cursor: activating || pathwayControlsLocked ? "not-allowed" : "pointer",
                   fontSize: 14,
-                  opacity: activating || isReadOnly ? 0.6 : 1,
+                  opacity: activating || pathwayControlsLocked ? 0.6 : 1,
                 }}
               >
                 Activer {getPathwayTypeLabelFr(type)}
@@ -3245,14 +3302,14 @@ function PathwaysTab({
                 {pathway.status === "ACTIVE" && (
                   <button
                     onClick={handlePause}
-                    disabled={isReadOnly}
+                    disabled={pathwayControlsLocked}
                     style={{
                       padding: "8px 16px",
                       backgroundColor: "#ff9800",
                       color: "white",
                       border: "none",
                       borderRadius: 4,
-                      cursor: isReadOnly ? "not-allowed" : "pointer",
+                      cursor: pathwayControlsLocked ? "not-allowed" : "pointer",
                       fontSize: 14,
                     }}
                   >
@@ -3262,14 +3319,14 @@ function PathwaysTab({
                 {pathway.status !== "COMPLETED" && (
                   <button
                     onClick={handleComplete}
-                    disabled={isReadOnly}
+                    disabled={pathwayControlsLocked}
                     style={{
                       padding: "8px 16px",
                       backgroundColor: "#4caf50",
                       color: "white",
                       border: "none",
                       borderRadius: 4,
-                      cursor: isReadOnly ? "not-allowed" : "pointer",
+                      cursor: pathwayControlsLocked ? "not-allowed" : "pointer",
                       fontSize: 14,
                     }}
                   >
@@ -3299,6 +3356,7 @@ function PathwaysTab({
                   milestone={milestone}
                   pathwayStatus={pathway.status}
                   onMarkMet={handleMarkMilestone}
+                  pathwayControlsLocked={pathwayControlsLocked}
                   isNextDue={summary?.nextDue?.id === milestone.id}
                   isFlashing={flashId === milestone.id}
                 />

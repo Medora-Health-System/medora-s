@@ -189,12 +189,16 @@ export function NursingAssessmentTab({
   facilityId,
   encounter,
   onUpdate,
+  isLocked = false,
 }: {
   encounterId: string;
   facilityId: string;
   encounter: any;
   onUpdate: () => void;
+  /** Dossier médical signé — saisie verrouillée. */
+  isLocked?: boolean;
 }) {
+  const formLocked = isLocked;
   const initial = useMemo(() => parseAssessment(encounter?.nursingAssessment), [encounter?.nursingAssessment]);
   const [state, setState] = useState<AssessmentState>(initial);
   const [ivState, setIvState] = useState<IvInsertionProcedureV1>(() =>
@@ -297,9 +301,18 @@ export function NursingAssessmentTab({
         <p style={{ fontSize: 12, color: "#616161", margin: "8px 0 0 0", lineHeight: 1.45 }}>
           Si une voie IV a été prescrite, terminez aussi l&apos;ordre dans l&apos;onglet Ordres.
         </p>
-        <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, cursor: "pointer" }}>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginBottom: 12,
+            cursor: formLocked ? "not-allowed" : "pointer",
+          }}
+        >
           <input
             type="checkbox"
+            disabled={formLocked}
             checked={ivState.performed}
             onChange={(e) => {
               const checked = e.target.checked;
@@ -318,6 +331,7 @@ export function NursingAssessmentTab({
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
               <span style={{ fontWeight: 600 }}>Site</span>
               <select
+                disabled={formLocked}
                 value={ivState.site ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, site: e.target.value || undefined }))}
                 style={{ maxWidth: 360, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
@@ -335,6 +349,7 @@ export function NursingAssessmentTab({
                 <span style={{ fontWeight: 600 }}>Préciser le site</span>
                 <input
                   type="text"
+                  disabled={formLocked}
                   value={ivState.siteOther ?? ""}
                   onChange={(e) => setIvState((s) => ({ ...s, siteOther: e.target.value }))}
                   style={{ maxWidth: 420, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
@@ -345,6 +360,7 @@ export function NursingAssessmentTab({
               <span style={{ fontWeight: 600 }}>Calibre (optionnel)</span>
               <input
                 type="text"
+                disabled={formLocked}
                 placeholder="ex. 20G"
                 value={ivState.gauge ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, gauge: e.target.value }))}
@@ -355,6 +371,7 @@ export function NursingAssessmentTab({
               <span style={{ fontWeight: 600 }}>Date et heure</span>
               <input
                 type="datetime-local"
+                disabled={formLocked}
                 value={ivState.performedAt ? ivState.performedAt.slice(0, 16) : ""}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -372,8 +389,18 @@ export function NursingAssessmentTab({
                 value={ivState.note ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, note: e.target.value }))}
                 rows={2}
+                readOnly={formLocked}
                 placeholder="Contexte, difficulté, matériel…"
-                style={{ width: "100%", boxSizing: "border-box", padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #ccc",
+                  fontSize: 14,
+                  background: formLocked ? "#f5f5f5" : "#fff",
+                  cursor: formLocked ? "not-allowed" : "text",
+                }}
               />
             </label>
           </div>
@@ -393,6 +420,7 @@ export function NursingAssessmentTab({
                   <button
                     key={chip}
                     type="button"
+                    disabled={formLocked}
                     onClick={() => appendChip(sec.id, chip)}
                     style={{
                       fontSize: 12,
@@ -400,7 +428,8 @@ export function NursingAssessmentTab({
                       borderRadius: 16,
                       border: "1px solid #bbb",
                       background: "#fff",
-                      cursor: "pointer",
+                      cursor: formLocked ? "not-allowed" : "pointer",
+                      opacity: formLocked ? 0.65 : 1,
                     }}
                   >
                     + {chip}
@@ -411,6 +440,7 @@ export function NursingAssessmentTab({
             <textarea
               value={state[sec.id]?.text ?? ""}
               onChange={(e) => setSectionText(sec.id, e.target.value)}
+              readOnly={formLocked}
               placeholder={
                 sec.id === "notesInfirmieresLibres"
                   ? "Transmission, contexte, points de vigilance, suivi…"
@@ -424,6 +454,8 @@ export function NursingAssessmentTab({
                 borderRadius: 6,
                 border: "1px solid #ccc",
                 fontSize: 14,
+                background: formLocked ? "#f5f5f5" : "#fff",
+                cursor: formLocked ? "not-allowed" : "text",
               }}
             />
           </section>
@@ -432,7 +464,7 @@ export function NursingAssessmentTab({
       <div style={{ marginTop: 20, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <button
           type="button"
-          disabled={saving}
+          disabled={saving || formLocked}
           onClick={() => void save()}
           style={{
             padding: "10px 20px",
@@ -441,7 +473,8 @@ export function NursingAssessmentTab({
             border: "none",
             borderRadius: 6,
             fontWeight: 600,
-            cursor: saving ? "wait" : "pointer",
+            cursor: saving || formLocked ? "not-allowed" : "pointer",
+            opacity: formLocked ? 0.65 : 1,
           }}
         >
           {saving ? "Enregistrement…" : "Enregistrer l'évaluation infirmière"}
