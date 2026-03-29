@@ -1,6 +1,7 @@
 {
   "name": "medora-s",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "workspaces": [
     "apps/*",
     "packages/*"
