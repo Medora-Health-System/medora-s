@@ -214,7 +214,7 @@ export class PathwaysService {
 
     assertEncounterNotSigned(pathway.encounter);
 
-    return this.prisma.pathwaySession.update({
+    const updated = await this.prisma.pathwaySession.update({
       where: { id: pathwayId },
       data: {
         status: PathwayStatus.PAUSED,
@@ -227,6 +227,19 @@ export class PathwaysService {
         },
       },
     });
+
+    await this.audit.log(AuditAction.UPDATE, "PATHWAY", {
+      userId,
+      facilityId,
+      patientId: pathway.encounter.patientId,
+      encounterId: pathway.encounterId,
+      entityId: pathwayId,
+      ip,
+      userAgent,
+      metadata: { pathwayAction: "pause" },
+    });
+
+    return updated;
   }
 
   async complete(pathwayId: string, facilityId: string, userId?: string, ip?: string, userAgent?: string) {
@@ -344,13 +357,34 @@ export class PathwaysService {
 
     assertEncounterNotSigned(pathway.encounter);
 
-    return this.prisma.pathwayMilestone.update({
+    const fromStatus = milestone.status;
+
+    const updatedMilestone = await this.prisma.pathwayMilestone.update({
       where: { id: milestoneId },
       data: {
         status,
         metAt: status === PathwayMilestoneStatus.MET ? new Date() : null,
       },
     });
+
+    await this.audit.log(AuditAction.UPDATE, "PATHWAY", {
+      userId,
+      facilityId,
+      patientId: pathway.encounter.patientId,
+      encounterId: pathway.encounterId,
+      entityId: pathwayId,
+      ip,
+      userAgent,
+      metadata: {
+        pathwayAction: "milestone",
+        milestoneId,
+        milestoneName: milestone.name,
+        fromStatus,
+        toStatus: status,
+      },
+    });
+
+    return updatedMilestone;
   }
 }
 

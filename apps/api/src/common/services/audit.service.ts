@@ -27,16 +27,18 @@ export class AuditService {
           action,
           entityType,
           entityId: options.entityId,
-      userId: options.userId,
-      facilityId: options.facilityId,
-      patientId: options.patientId,
-      ip: options.ip,
-      userAgent: options.userAgent,
-      metadata: {
-        ...(options.metadata || {}),
-        ...(options.encounterId ? { encounterId: options.encounterId } : {}),
-        ...(options.orderId ? { orderId: options.orderId } : {}),
-      },
+          userId: options.userId,
+          facilityId: options.facilityId,
+          patientId: options.patientId,
+          encounterId: options.encounterId,
+          orderId: options.orderId,
+          ip: options.ip,
+          userAgent: options.userAgent,
+          metadata: {
+            ...(options.metadata || {}),
+            ...(options.encounterId ? { encounterId: options.encounterId } : {}),
+            ...(options.orderId ? { orderId: options.orderId } : {}),
+          },
         },
       });
     } catch (error) {
@@ -45,4 +47,3 @@ export class AuditService {
     }
   }
 }
-
