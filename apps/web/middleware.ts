@@ -3,6 +3,16 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // PWA / public assets (must never go through session checks)
+  if (
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname.startsWith("/icons/")
+  ) {
+    return NextResponse.next();
+  }
+
   const sessionCookie =
     request.cookies.get("medora_session")?.value ?? request.cookies.get("accessToken")?.value;
 
@@ -28,6 +38,15 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/login", "/mot-de-passe-oublie", "/reinitialiser-mot-de-passe", "/api/auth/:path*"],
+  matcher: [
+    "/manifest.webmanifest",
+    "/sw.js",
+    "/icons/:path*",
+    "/app/:path*",
+    "/login",
+    "/mot-de-passe-oublie",
+    "/reinitialiser-mot-de-passe",
+    "/api/auth/:path*",
+  ],
 };
 
