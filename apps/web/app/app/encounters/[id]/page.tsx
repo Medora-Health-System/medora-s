@@ -68,6 +68,11 @@ import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
+import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
+
+function formatEncounterAuditDt(iso: string) {
+  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+}
 
 function getPathwayStatusLabelFr(status: string): string {
   if (status === "ACTIVE") return "Actif";
@@ -106,6 +111,7 @@ const ENCOUNTER_TAB_IDS = new Set([
   "results",
   "notes",
   "pathways",
+  "history",
 ]);
 
 export default function EncounterDetailPage() {
@@ -131,6 +137,9 @@ export default function EncounterDetailPage() {
   const [careModalRequestTick, setCareModalRequestTick] = useState(0);
   const [careModalPresetLabel, setCareModalPresetLabel] = useState<string | null>(null);
   const [encounterResultsRefresh, setEncounterResultsRefresh] = useState(0);
+  const [auditTimelineItems, setAuditTimelineItems] = useState<ChartAuditTimelineItem[] | null>(null);
+  const [auditTimelineLoading, setAuditTimelineLoading] = useState(false);
+  const [auditTimelineError, setAuditTimelineError] = useState<string | null>(null);
   const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
   const [showDocumentationDeficiencyModal, setShowDocumentationDeficiencyModal] = useState(false);
   const [documentationDeficiencies, setDocumentationDeficiencies] = useState<
@@ -299,6 +308,32 @@ export default function EncounterDetailPage() {
     }
     setTabBootstrapped(true);
   }, [encounter, facilityId, rolesReady, roles, tabBootstrapped]);
+
+  useEffect(() => {
+    if (activeTab !== "history" || !encounterId || !facilityId) return;
+    let cancelled = false;
+    (async () => {
+      setAuditTimelineLoading(true);
+      setAuditTimelineError(null);
+      try {
+        const rows = await fetchEncounterAuditTimeline(facilityId, encounterId);
+        if (!cancelled) setAuditTimelineItems(rows);
+      } catch (e) {
+        if (!cancelled) {
+          setAuditTimelineError(
+            normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+              "Impossible de charger l’historique."
+          );
+          setAuditTimelineItems(null);
+        }
+      } finally {
+        if (!cancelled) setAuditTimelineLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, encounterId, facilityId]);
 
   const loadQuickContext = useCallback(async () => {
     if (!encounter?.id || !facilityId || !rolesReady) return;
@@ -757,6 +792,7 @@ export default function EncounterDetailPage() {
     { id: "results", label: "Résultats" },
     { id: "notes", label: "Notes Inf." },
     { id: "pathways", label: "Parcours cliniques" },
+    { id: "history", label: "Historique" },
   ];
 
   return (
@@ -1318,6 +1354,61 @@ export default function EncounterDetailPage() {
               facilityId={facilityId}
               refreshToken={encounterResultsRefresh}
             />
+          )}
+          {activeTab === "history" && (
+            <div>
+              <p style={{ fontSize: 13, color: "#616161", margin: "0 0 16px 0", lineHeight: 1.45 }}>
+                Qui a fait quoi et quand — lecture seule, pour cette consultation.
+              </p>
+              {auditTimelineLoading ? (
+                <div style={{ fontSize: 14, color: "#555" }}>Chargement de l’historique…</div>
+              ) : auditTimelineError ? (
+                <div
+                  role="alert"
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #ef9a9a",
+                    backgroundColor: "#ffebee",
+                    fontSize: 14,
+                    color: "#b71c1c",
+                  }}
+                >
+                  {auditTimelineError}
+                </div>
+              ) : (auditTimelineItems?.length ?? 0) === 0 ? (
+                <div style={{ fontSize: 14, color: "#555" }}>
+                  Aucun événement d’historique pour cette consultation.
+                </div>
+              ) : (
+                <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                  {(auditTimelineItems ?? []).map((it) => (
+                    <li
+                      key={it.id}
+                      style={{
+                        padding: "12px 0",
+                        borderBottom: "1px solid #eee",
+                        fontSize: 14,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: "#37474f" }}>{it.shortLabelFr}</div>
+                      <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
+                        {formatEncounterAuditDt(it.createdAt)}
+                      </div>
+                      {it.userDisplayFr ? (
+                        <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
+                          par {it.userDisplayFr}
+                        </div>
+                      ) : null}
+                      {it.detailFr ? (
+                        <div style={{ fontSize: 12, color: "#546e7a", marginTop: 6 }}>{it.detailFr}</div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -176,6 +176,16 @@ export async function fetchChartSummary(
   }) as Promise<ChartSummary>;
 }
 
+/** Timeline d’audit pour une consultation (GET /encounters/:id/audit-timeline) — ordre chronologique côté serveur. */
+export async function fetchEncounterAuditTimeline(
+  facilityId: string,
+  encounterId: string
+): Promise<ChartAuditTimelineItem[]> {
+  return apiFetch(`/encounters/${encounterId}/audit-timeline`, {
+    facilityId,
+  }) as Promise<ChartAuditTimelineItem[]>;
+}
+
 export async function createDiagnosis(
   facilityId: string,
   encounterId: string,
