@@ -7,6 +7,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, Prisma } from "@prisma/client";
 import { isFollowUpStatus } from "../common/utils/prisma-query-enum-guards";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import type {
   CreateFollowUpDto,
   ListPatientFollowUpsQuery,
@@ -59,6 +60,7 @@ export class FollowUpsService {
           "Encounter not found or does not match patient/facility",
         );
       }
+      assertEncounterNotSigned(enc);
     }
 
     const row = await this.prisma.followUp.create({

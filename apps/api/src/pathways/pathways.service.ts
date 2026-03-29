@@ -212,6 +212,8 @@ export class PathwaysService {
       throw new BadRequestException("Only active pathways can be paused");
     }
 
+    assertEncounterNotSigned(pathway.encounter);
+
     return this.prisma.pathwaySession.update({
       where: { id: pathwayId },
       data: {
@@ -236,6 +238,8 @@ export class PathwaysService {
     if (!pathway) {
       throw new NotFoundException("Pathway not found");
     }
+
+    assertEncounterNotSigned(pathway.encounter);
 
     return this.prisma.pathwaySession.update({
       where: { id: pathwayId },
@@ -337,6 +341,8 @@ export class PathwaysService {
     if (!milestone) {
       throw new NotFoundException("Milestone not found");
     }
+
+    assertEncounterNotSigned(pathway.encounter);
 
     return this.prisma.pathwayMilestone.update({
       where: { id: milestoneId },

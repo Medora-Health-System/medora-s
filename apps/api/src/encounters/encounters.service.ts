@@ -12,6 +12,7 @@ import { AuditService } from "../common/services/audit.service";
 import { AuditAction, EncounterStatus, EncounterType, Prisma, RoleCode } from "@prisma/client";
 import { isEncounterType } from "../common/utils/prisma-query-enum-guards";
 import { assertCanTransitionEncounter } from "../common/workflow/encounter.transitions";
+import { SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR } from "./encounter-sign-lock.util";
 import {
   admissionSummaryFieldsSchema,
   type EncounterCloseDto,
@@ -37,21 +38,6 @@ const DISCHARGE_SUMMARY_KEYS = [
 
 function admissionSummaryHasContent(data: Record<string, unknown>): boolean {
   return Object.values(data).some((v) => typeof v === "string" && v.trim().length > 0);
-}
-
-/** Merge incoming nursingAssessment JSON while preserving physicianEvalV1 from DB (signed encounters). */
-function mergeNursingAssessmentPreservingPhysicianEval(existing: unknown, incoming: unknown): unknown {
-  const ex =
-    existing && typeof existing === "object" && !Array.isArray(existing)
-      ? ({ ...existing } as Record<string, unknown>)
-      : {};
-  const inc =
-    incoming && typeof incoming === "object" && !Array.isArray(incoming)
-      ? (incoming as Record<string, unknown>)
-      : {};
-  const merged: Record<string, unknown> = { ...ex, ...inc };
-  merged.physicianEvalV1 = ex.physicianEvalV1;
-  return merged;
 }
 
 function hasPhysicianEvalV1Content(nursingAssessment: unknown): boolean {
@@ -510,17 +496,60 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
+    const dataKeys = (Object.keys(data) as (keyof EncounterUpdateDto)[]).filter(
+      (k) => data[k] !== undefined
+    );
+    const allowedWhenSigned: (keyof EncounterUpdateDto)[] = ["roomLabel", "physicianAssignedUserId"];
+
     if (encounter.providerDocumentationStatus === "SIGNED") {
-      if (
-        data.visitReason !== undefined ||
-        data.chiefComplaint !== undefined ||
-        data.clinicianImpression !== undefined ||
-        data.providerNote !== undefined ||
-        data.treatmentPlan !== undefined ||
-        data.followUpDate !== undefined
-      ) {
-        throw new BadRequestException("Cette évaluation médicale est signée et ne peut plus être modifiée.");
+      const disallowed = dataKeys.filter((k) => !allowedWhenSigned.includes(k));
+      if (disallowed.length > 0) {
+        throw new BadRequestException(SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR);
       }
+      const updateData: Record<string, unknown> = {};
+      if (data.roomLabel !== undefined) {
+        updateData.roomLabel =
+          data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
+      }
+      if (data.physicianAssignedUserId !== undefined) {
+        if (data.physicianAssignedUserId === null) {
+          updateData.physicianAssignedUserId = null;
+        } else {
+          await this.assertProviderAtFacility(facilityId, data.physicianAssignedUserId);
+          updateData.physicianAssignedUserId = data.physicianAssignedUserId;
+        }
+      }
+      if (Object.keys(updateData).length === 0) {
+        const unchanged = await this.prisma.encounter.findFirst({
+          where: { id, facilityId },
+          include: {
+            patient: { select: encounterDetailPatientSelect },
+            physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+          },
+        });
+        if (!unchanged) {
+          throw new NotFoundException("Encounter not found");
+        }
+        return toEncounterClinicResponse(unchanged);
+      }
+      const updated = await this.prisma.encounter.update({
+        where: { id },
+        data: updateData,
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+      });
+      return toEncounterClinicResponse(updated);
     }
 
     const updateData: Record<string, unknown> = {};
@@ -550,10 +579,7 @@ export class EncountersService {
         imp === null ? null : imp?.toString().trim() || null;
     }
     if (data.nursingAssessment !== undefined) {
-      updateData.nursingAssessment =
-        encounter.providerDocumentationStatus === "SIGNED"
-          ? mergeNursingAssessmentPreservingPhysicianEval(encounter.nursingAssessment, data.nursingAssessment)
-          : data.nursingAssessment;
+      updateData.nursingAssessment = data.nursingAssessment;
     }
     if (data.dischargeSummaryJson !== undefined) {
       updateData.dischargeSummaryJson = data.dischargeSummaryJson;

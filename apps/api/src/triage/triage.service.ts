@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, type Triage } from "@prisma/client";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
 @Injectable()
 export class TriageService {
@@ -68,6 +69,8 @@ export class TriageService {
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
     }
+
+    assertEncounterNotSigned(encounter);
 
     const existing = await this.prisma.triage.findUnique({
       where: { encounterId },
