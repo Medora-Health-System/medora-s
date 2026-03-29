@@ -10,10 +10,8 @@ import type {
   OrderWithItems,
 } from "../orders/orders.types";
 import {
-  auditActionShortLabelFr,
-  buildAuditTimelineDetailFr,
   CHART_AUDIT_TIMELINE_ACTIONS,
-  metadataEncounterId,
+  mapAuditLogRowToTimelineItem,
 } from "./chart-audit-timeline.util";
 
 const RECENT_ENCOUNTERS = 10;
@@ -594,25 +592,7 @@ export class ChartSummaryService {
       };
     });
 
-    const auditTimeline = auditTimelineRows.map((row) => {
-      const createdAt =
-        row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt);
-      const encounterId = row.encounterId ?? metadataEncounterId(row.metadata) ?? null;
-      const userDisplayFr = row.user
-        ? `${row.user.firstName} ${row.user.lastName}`.trim()
-        : null;
-      return {
-        id: row.id,
-        action: row.action,
-        createdAt,
-        userDisplayFr,
-        shortLabelFr: auditActionShortLabelFr(row.action),
-        detailFr: buildAuditTimelineDetailFr(row.action, row.metadata),
-        encounterId,
-        entityType: row.entityType,
-        entityId: row.entityId ?? null,
-      };
-    });
+    const auditTimeline = auditTimelineRows.map((row) => mapAuditLogRowToTimelineItem(row));
 
     return {
       patient,

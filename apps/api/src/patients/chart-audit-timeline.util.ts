@@ -18,6 +18,24 @@ export const CHART_AUDIT_TIMELINE_ACTIONS: AuditAction[] = [
   AuditAction.CRITICAL_FLAG,
 ];
 
+/**
+ * Timeline consultation (API dédiée) — même périmètre d’actions que le bandeau dossier patient.
+ * Exclut explicitement le bruit de lecture (CHART_ACCESS, ENCOUNTER_VIEW, ORDER_VIEW) par omission.
+ */
+export const ENCOUNTER_AUDIT_TIMELINE_V1_ACTIONS: AuditAction[] = [...CHART_AUDIT_TIMELINE_ACTIONS];
+
+export type AuditTimelineItemDto = {
+  id: string;
+  action: AuditAction;
+  createdAt: string;
+  userDisplayFr: string | null;
+  shortLabelFr: string;
+  detailFr: string | null;
+  encounterId: string | null;
+  entityType: string;
+  entityId: string | null;
+};
+
 export function auditActionShortLabelFr(action: AuditAction): string {
   const map: Partial<Record<AuditAction, string>> = {
     [AuditAction.ENCOUNTER_CREATE]: "Consultation créée",
@@ -88,4 +106,34 @@ export function buildAuditTimelineDetailFr(action: AuditAction, metadata: unknow
     default:
       return null;
   }
+}
+
+/** Ligne Prisma `AuditLog` avec `user` optionnel — formatage dossier / timeline. */
+export function mapAuditLogRowToTimelineItem(row: {
+  id: string;
+  action: AuditAction;
+  createdAt: Date;
+  metadata: unknown;
+  encounterId: string | null;
+  entityType: string;
+  entityId: string | null;
+  user: { firstName: string; lastName: string } | null;
+}): AuditTimelineItemDto {
+  const createdAt =
+    row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt);
+  const encounterId = row.encounterId ?? metadataEncounterId(row.metadata) ?? null;
+  const userDisplayFr = row.user
+    ? `${row.user.firstName} ${row.user.lastName}`.trim()
+    : null;
+  return {
+    id: row.id,
+    action: row.action,
+    createdAt,
+    userDisplayFr,
+    shortLabelFr: auditActionShortLabelFr(row.action),
+    detailFr: buildAuditTimelineDetailFr(row.action, row.metadata),
+    encounterId,
+    entityType: row.entityType,
+    entityId: row.entityId ?? null,
+  };
 }

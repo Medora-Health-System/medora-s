@@ -116,6 +116,11 @@ function mergeDischargeSummaryJson(
 }
 import type { ListPatientEncountersQuery } from "./dto";
 import { toEncounterClinicResponse } from "./encounter-response.util";
+import {
+  ENCOUNTER_AUDIT_TIMELINE_V1_ACTIONS,
+  mapAuditLogRowToTimelineItem,
+  metadataEncounterId,
+} from "../patients/chart-audit-timeline.util";
 
 /** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
 const encounterDetailPatientSelect = {
@@ -742,6 +747,55 @@ export class EncountersService {
     }
     out.sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "fr"));
     return out;
+  }
+
+  /**
+   * Historique d’audit limité à une consultation — chronologique (plus ancien en premier).
+   * Même périmètre d’actions que le bandeau dossier patient (pas de bruit CHART_ACCESS / ENCOUNTER_VIEW / ORDER_VIEW).
+   */
+  async getAuditTimeline(
+    facilityId: string,
+    encounterId: string,
+    _userId?: string,
+    _ip?: string,
+    _userAgent?: string
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true, patientId: true },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const rows = await this.prisma.auditLog.findMany({
+      where: {
+        facilityId,
+        patientId: encounter.patientId,
+        action: { in: ENCOUNTER_AUDIT_TIMELINE_V1_ACTIONS },
+        OR: [
+          { encounterId: encounter.id },
+          {
+            metadata: {
+              path: ["encounterId"],
+              equals: encounter.id,
+            },
+          },
+        ],
+      },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      include: {
+        user: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    const forEncounter = rows.filter((row) => {
+      const eid = row.encounterId ?? metadataEncounterId(row.metadata);
+      return eid === encounter.id;
+    });
+
+    return forEncounter.map((row) => mapAuditLogRowToTimelineItem(row));
   }
 
   private async assertProviderAtFacility(facilityId: string, userId: string | null | undefined) {

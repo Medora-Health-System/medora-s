@@ -145,6 +145,31 @@ export class EncountersController {
     return this.encountersService.listProviders(facilityId);
   }
 
+  @Get("encounters/:id/audit-timeline")
+  @RequireRoles(
+    RoleCode.FRONT_DESK,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.PHARMACY,
+    RoleCode.ADMIN
+  )
+  async getAuditTimeline(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.getAuditTimeline(
+      facilityId,
+      id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Get("encounters/:id")
   @RequireRoles(
     RoleCode.FRONT_DESK,
