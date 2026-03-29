@@ -196,6 +196,22 @@ export class FollowUpsService {
       );
     }
 
+    if (existing.encounterId) {
+      const enc = await this.prisma.encounter.findFirst({
+        where: {
+          id: existing.encounterId,
+          facilityId,
+          patientId: existing.patientId,
+        },
+      });
+      if (!enc) {
+        throw new BadRequestException(
+          "Encounter not found or does not match patient/facility",
+        );
+      }
+      assertEncounterNotSigned(enc);
+    }
+
     const completedAt = new Date();
     const row = await this.prisma.followUp.update({
       where: { id },
@@ -234,6 +250,22 @@ export class FollowUpsService {
       throw new BadRequestException(
         `Follow-up is not open (status: ${existing.status})`,
       );
+    }
+
+    if (existing.encounterId) {
+      const enc = await this.prisma.encounter.findFirst({
+        where: {
+          id: existing.encounterId,
+          facilityId,
+          patientId: existing.patientId,
+        },
+      });
+      if (!enc) {
+        throw new BadRequestException(
+          "Encounter not found or does not match patient/facility",
+        );
+      }
+      assertEncounterNotSigned(enc);
     }
 
     const row = await this.prisma.followUp.update({
