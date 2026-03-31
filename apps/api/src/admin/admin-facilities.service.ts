@@ -90,7 +90,7 @@ export class AdminFacilitiesService {
 
   /**
    * @param includeInactive — If true, only `canCreateFacilities` users may list all facilities (with `isActive`).
-   * Otherwise only active facilities are returned (facility ADMIN or principal).
+   * Otherwise active facilities are returned: all for principals (`canCreateFacilities`), or only those the user belongs to.
    */
   async list(userId: string, includeInactive: boolean) {
     if (includeInactive) {
@@ -106,8 +106,30 @@ export class AdminFacilitiesService {
         select: { id: true, name: true, isActive: true },
       });
     }
+    const principal = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { canCreateFacilities: true },
+    });
+    if (principal?.canCreateFacilities) {
+      return this.prisma.facility.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      });
+    }
+    const roles = await this.prisma.userRole.findMany({
+      where: {
+        userId,
+        isActive: true,
+      },
+      select: { facilityId: true },
+    });
+    const facilityIds = roles.map((r) => r.facilityId);
     return this.prisma.facility.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        id: { in: facilityIds },
+      },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     });

@@ -151,8 +151,6 @@ export class EncountersController {
     RoleCode.RN,
     RoleCode.PROVIDER,
     RoleCode.BILLING,
-    RoleCode.LAB,
-    RoleCode.RADIOLOGY,
     RoleCode.PHARMACY,
     RoleCode.ADMIN
   )
@@ -176,8 +174,6 @@ export class EncountersController {
     RoleCode.RN,
     RoleCode.PROVIDER,
     RoleCode.BILLING,
-    RoleCode.LAB,
-    RoleCode.RADIOLOGY,
     RoleCode.PHARMACY,
     RoleCode.ADMIN
   )
