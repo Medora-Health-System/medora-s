@@ -4,9 +4,7 @@
  */
 export const ORDER_ITEM_STATUS_LABELS: Record<string, string> = {
   PENDING: "En attente",
-  PLACED: "Envoyée",
-  SIGNED: "Signée",
-  ACKNOWLEDGED: "Reçue",
+  ACKNOWLEDGED: "Reçu",
   IN_PROGRESS: "En cours",
   COMPLETED: "Terminée",
   CANCELLED: "Annulée",
