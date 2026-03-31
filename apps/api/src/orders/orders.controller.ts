@@ -75,7 +75,7 @@ export class OrdersController {
   }
 
   @Get("encounters/:encounterId/orders")
-  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
+  @Roles("RN", "PROVIDER", "ADMIN")
   async findByEncounter(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -92,7 +92,7 @@ export class OrdersController {
   }
 
   @Get("orders/:id")
-  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
+  @Roles("RN", "PROVIDER", "ADMIN")
   async findOne(@Param("id") orderId: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {

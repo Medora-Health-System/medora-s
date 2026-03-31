@@ -160,25 +160,19 @@ export default function EncounterDetailPage() {
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
 
-  /** Aligné sur GET /encounters/:id (inclut lab / imagerie / pharmacie pour les liens depuis les files). */
+  /** Aligné sur GET /encounters/:id — lab / imagerie / pharmacie : files et actions ligne, pas cette page. */
   const canViewEncounterDetail =
+    roles.includes("FRONT_DESK") ||
     roles.includes("RN") ||
     roles.includes("PROVIDER") ||
     roles.includes("ADMIN") ||
-    roles.includes("BILLING") ||
-    roles.includes("LAB") ||
-    roles.includes("RADIOLOGY") ||
-    roles.includes("PHARMACY");
+    roles.includes("BILLING");
 
   const canFetchEncounterTriage =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+  /** Aligné sur GET /encounters/:encounterId/orders (lecture ordres). */
   const canFetchEncounterOrders =
-    roles.includes("RN") ||
-    roles.includes("PROVIDER") ||
-    roles.includes("LAB") ||
-    roles.includes("RADIOLOGY") ||
-    roles.includes("PHARMACY") ||
-    roles.includes("ADMIN");
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canFetchPatientDiagnosesList = canFetchEncounterTriage;
   const canFetchMarTab =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
@@ -198,8 +192,12 @@ export default function EncounterDetailPage() {
     if (!rolesReady) return;
     if (!isAppPathAllowedForRoles(encounterDetailPath, roles)) {
       router.replace(getLandingRouteForRoles(roles));
+      return;
     }
-  }, [rolesReady, encounterDetailPath, roles, router]);
+    if (!canViewEncounterDetail) {
+      router.replace(getLandingRouteForRoles(roles));
+    }
+  }, [rolesReady, encounterDetailPath, roles, router, canViewEncounterDetail]);
 
   useEffect(() => {
     if (!showCloseConfirmModal) return;
@@ -687,6 +685,10 @@ export default function EncounterDetailPage() {
     return <div style={{ padding: 24 }}>Chargement…</div>;
   }
 
+  if (rolesReady && !canViewEncounterDetail) {
+    return null;
+  }
+
   if (loading && canViewEncounterDetail) {
     return (
       <div style={{ padding: 24 }}>
@@ -697,21 +699,6 @@ export default function EncounterDetailPage() {
 
   if (loading) {
     return <div style={{ padding: 24 }}>Chargement…</div>;
-  }
-
-  if (!canViewEncounterDetail) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[encounterDetail] accès refusé (rôle)", { encounterId, roles });
-    }
-    return (
-      <div style={{ padding: 24, maxWidth: 520 }}>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Accès restreint.</p>
-        <p style={{ margin: "12px 0 0 0", color: "#555", lineHeight: 1.5 }}>
-          Votre rôle ne permet pas d&apos;ouvrir le dossier de cette consultation. Utilisez un compte clinique ou
-          facturation, ou restez sur la fiche patient (liste des consultations).
-        </p>
-      </div>
-    );
   }
 
   if (!encounter) {
