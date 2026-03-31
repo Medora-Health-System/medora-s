@@ -92,7 +92,7 @@ export class OrdersController {
   }
 
   @Get("orders/:id")
-  @Roles("RN", "PROVIDER", "ADMIN")
+  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
   async findOne(@Param("id") orderId: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
