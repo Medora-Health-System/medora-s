@@ -127,9 +127,33 @@ export function AppShell({
               }}
             >
               <div style={{ padding: "12px 16px", borderBottom: "1px solid #444" }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{userFullName || ui.common.userFallback}</div>
-                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>{userUsername || ""}</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>
+                  {userFullName || ui.common.userFallback}
+                </div>
+                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                  {userUsername || ""}
+                </div>
               </div>
+
+              <Link
+                href="/app/settings"
+                style={{
+                  display: "block",
+                  padding: "12px 16px",
+                  color: "white",
+                  textDecoration: "none",
+                  fontSize: 14,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#333";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                Paramètres
+              </Link>
+
               <button
                 type="button"
                 onClick={onLogout}
