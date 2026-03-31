@@ -260,6 +260,37 @@ export class AdminUsersService {
     return this.getOneSummary(facilityId, userId);
   }
 
+  async resetPassword(
+    facilityId: string,
+    userId: string,
+    newPassword: string,
+    actorUserId: string
+  ) {
+    if (userId === actorUserId) {
+      throw new ForbiddenException("Utilisez le changement de mot de passe personnel.");
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        userRoles: { some: { facilityId } },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException("Utilisateur introuvable.");
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: "Mot de passe réinitialisé" };
+  }
+
   private async getOneSummary(facilityId: string, userId: string) {
     const u = await this.prisma.user.findUnique({
       where: { id: userId },

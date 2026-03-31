@@ -248,6 +248,28 @@ export class AuthService {
     return this.buildAuthUserDto(userId);
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException("Utilisateur invalide");
+    }
+
+    const ok = await argon2.verify(user.passwordHash, currentPassword);
+    if (!ok) {
+      throw new UnauthorizedException("Mot de passe actuel incorrect");
+    }
+
+    const newHash = await argon2.hash(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash },
+    });
+
+    return { message: "Mot de passe mis à jour" };
+  }
+
   /** Base URL for password reset links (e.g. https://app.medora.local or http://localhost:3000) */
   private resetPasswordBaseUrl(): string {
     return this.config.get<string>("RESET_PASSWORD_BASE_URL") ?? "http://localhost:3000";

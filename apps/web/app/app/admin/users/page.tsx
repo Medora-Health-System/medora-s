@@ -13,6 +13,7 @@ import {
   createAdminUser,
   createAdminFacility,
   patchAdminUserProfile,
+  patchAdminUserPassword,
   patchAdminUserRoles,
   patchAdminUserStatus,
   type AdminUserRow,
@@ -74,6 +75,7 @@ export default function AdminUsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
   const [profileUser, setProfileUser] = useState<AdminUserRow | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUserRow | null>(null);
 
   const isAdmin = ready && roles.includes("ADMIN");
   const currentFacilityName =
@@ -297,6 +299,23 @@ export default function AdminUsersPage() {
                   >
                     Gérer les rôles
                   </button>
+                  {u.id !== currentUserId ? (
+                    <button
+                      type="button"
+                      onClick={() => setResetPasswordUser(u)}
+                      style={{
+                        marginRight: 6,
+                        padding: "6px 10px",
+                        fontSize: 12,
+                        border: "1px solid #ccc",
+                        borderRadius: 4,
+                        background: "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Réinitialiser le mot de passe
+                    </button>
+                  ) : null}
                   {u.isActive && u.facilityAccessActive && u.id !== currentUserId ? (
                     <button
                       type="button"
@@ -430,6 +449,20 @@ export default function AdminUsersPage() {
             setProfileUser(null);
             setToast({ message: "Utilisateur mis à jour", ok: true });
             await load();
+          }}
+          onError={(m) => setToast({ message: m, ok: false })}
+        />
+      )}
+
+      {resetPasswordUser && facilityId && isAdmin && (
+        <ResetPasswordModal
+          facilityId={facilityId}
+          facilityDisplayName={currentFacilityName}
+          user={resetPasswordUser}
+          onClose={() => setResetPasswordUser(null)}
+          onSuccess={async () => {
+            setResetPasswordUser(null);
+            setToast({ message: "Mot de passe réinitialisé", ok: true });
           }}
           onError={(m) => setToast({ message: m, ok: false })}
         />
@@ -917,6 +950,152 @@ function EditRolesModal({
                 borderRadius: 4,
                 background: "#fff",
                 cursor: "pointer",
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: 4,
+                background: "#1a1a1a",
+                color: "white",
+                fontWeight: 600,
+                cursor: submitting ? "wait" : "pointer",
+              }}
+            >
+              {submitting ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordModal({
+  facilityId,
+  facilityDisplayName,
+  user,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  facilityId: string;
+  facilityDisplayName: string;
+  user: AdminUserRow;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+  onError: (m: string) => void;
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      onError("Les deux mots de passe ne correspondent pas.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      onError("Le mot de passe doit contenir au moins 8 caractères.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await patchAdminUserPassword(facilityId, user.id, { newPassword });
+      await onSuccess();
+    } catch (err: unknown) {
+      onError(
+        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
+          "Impossible de réinitialiser le mot de passe."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1500,
+        padding: 16,
+      }}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        style={{
+          background: "white",
+          borderRadius: 8,
+          padding: 24,
+          maxWidth: 440,
+          width: "100%",
+          maxHeight: "90vh",
+          overflow: "auto",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="reset-password-title"
+      >
+        <h2 id="reset-password-title" style={{ marginTop: 0 }}>
+          Réinitialiser le mot de passe
+        </h2>
+        <p style={{ fontSize: 13, color: "#666", marginTop: 0 }}>
+          {user.firstName} {user.lastName} — {user.email}
+        </p>
+        <p style={{ fontSize: 13, color: "#444", marginBottom: 12 }}>
+          <strong>Établissement :</strong> {facilityDisplayName}
+        </p>
+        <form onSubmit={submit}>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              Nouveau mot de passe *
+            </label>
+            <input
+              type="password"
+              minLength={8}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+            />
+            <p style={{ fontSize: 12, color: "#888", margin: "6px 0 0 0" }}>Au moins 8 caractères.</p>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              Confirmer le mot de passe *
+            </label>
+            <input
+              type="password"
+              minLength={8}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "1px solid #ccc",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: submitting ? "default" : "pointer",
               }}
             >
               Annuler

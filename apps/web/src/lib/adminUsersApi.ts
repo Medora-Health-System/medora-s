@@ -131,6 +131,20 @@ export async function patchAdminUserStatus(
   }) as Promise<AdminUserRow>;
 }
 
+/** PATCH /admin/users/:id/password */
+export async function patchAdminUserPassword(
+  facilityId: string,
+  userId: string,
+  body: { newPassword: string }
+): Promise<{ message: string }> {
+  return adminApiFetch(`/users/${userId}/password`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId,
+  }) as Promise<{ message: string }>;
+}
+
 export type AdminFacilityRow = { id: string; name: string; isActive?: boolean };
 
 /** GET /admin/facilities — liste globale (plateforme ou ADMIN à l’établissement actif). */
