@@ -31,6 +31,9 @@ CREATE INDEX "FollowUp_dueDate_idx" ON "FollowUp"("dueDate");
 -- CreateIndex
 CREATE INDEX "FollowUp_status_idx" ON "FollowUp"("status");
 
+-- CreateIndex
+CREATE INDEX "FollowUp_facilityId_status_dueDate_idx" ON "FollowUp"("facilityId", "status", "dueDate");
+
 -- AddForeignKey
 ALTER TABLE "FollowUp" ADD CONSTRAINT "FollowUp_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "Patient"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
