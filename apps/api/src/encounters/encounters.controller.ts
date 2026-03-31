@@ -174,7 +174,6 @@ export class EncountersController {
     RoleCode.RN,
     RoleCode.PROVIDER,
     RoleCode.BILLING,
-    RoleCode.PHARMACY,
     RoleCode.ADMIN
   )
   async findOne(@Param("id") id: string, @Req() req: any) {

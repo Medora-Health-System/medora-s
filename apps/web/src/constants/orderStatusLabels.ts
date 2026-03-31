@@ -10,8 +10,8 @@ export const ORDER_ITEM_STATUS_LABELS: Record<string, string> = {
   IN_PROGRESS: "En cours",
   COMPLETED: "Terminée",
   CANCELLED: "Annulée",
-  RESULTED: "Résultat disponible",
-  VERIFIED: "Vérifiée",
+  RESULTED: "Terminée",
+  VERIFIED: "Terminée",
 };
 
 export function getOrderItemStatusLabel(status: string): string {

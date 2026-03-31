@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
+import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { apiFetch } from "@/lib/apiClient";
 import { fetchChartSummary, createDiagnosis, type ChartSummary } from "@/lib/chartApi";
 import { fetchPatientFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
@@ -73,24 +73,28 @@ export default function PatientDetailPage() {
   const clinicalChartAccess =
     rolesReady &&
     (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
+  /** Aligné sur GET /patients/:id — pas d’accès dossier pour lab / imagerie / pharmacie seuls. */
   const canAccessPatientDetail =
-    rolesReady && isAppPathAllowedForRoles(patientDetailPath, roles);
+    rolesReady &&
+    isAppPathAllowedForRoles(patientDetailPath, roles) &&
+    (roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN") ||
+      roles.includes("FRONT_DESK"));
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const isRNOnly = roles.includes("RN") && !isProviderLike;
   /** Accueil seul n’a pas accès à `/app/patients/[id]` — pas de parcours « accueil » sur cette route. */
   const isFrontDeskQuick = false;
   const isBillingOnlyQuick =
     rolesReady && roles.includes("BILLING") && !clinicalChartAccess;
-  /** Liens « Ouvrir la consultation » — aligné sur `canViewEncounterDetail` de `/app/encounters/[id]`. */
+  /** Liens « Ouvrir la consultation » — aligné sur GET /encounters/:id. */
   const canOpenClinicalEncounterDetail =
     rolesReady &&
     (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
       roles.includes("BILLING") ||
-      roles.includes("LAB") ||
-      roles.includes("RADIOLOGY") ||
-      roles.includes("PHARMACY"));
+      roles.includes("FRONT_DESK"));
 
   const loadPatient = useCallback(async () => {
     if (!facilityId) return;
@@ -217,7 +221,21 @@ export default function PatientDetailPage() {
     if (!rolesReady) return;
     if (!isAppPathAllowedForRoles(patientDetailPath, roles)) {
       setLoading(false);
-      router.replace("/app/patients");
+      router.replace(
+        isAppPathAllowedForRoles("/app/patients", roles) ? "/app/patients" : getLandingRouteForRoles(roles)
+      );
+      return;
+    }
+    if (
+      !(
+        roles.includes("RN") ||
+        roles.includes("PROVIDER") ||
+        roles.includes("ADMIN") ||
+        roles.includes("FRONT_DESK")
+      )
+    ) {
+      setLoading(false);
+      router.replace(getLandingRouteForRoles(roles));
     }
   }, [rolesReady, patientDetailPath, roles, router]);
 
@@ -331,7 +349,7 @@ export default function PatientDetailPage() {
     (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
 
   if (rolesReady && !canAccessPatientDetail) {
-    return <div style={{ padding: 24 }}>Chargement…</div>;
+    return null;
   }
 
   if (loading) {
