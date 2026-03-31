@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
 import { getEncounterTypeLabelFr } from "@/lib/uiLabels";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { nursingAssessmentDisplayLines, nursingAssessmentSignatureLineFr } from "./patientChartHelpers";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { clinicalResultFromChartOrderItem } from "@/lib/clinicalResultNormalize";
@@ -127,7 +127,7 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
             <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
               {(o.items || []).map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {getOrderItemStatusLabel(it.status)}
+                  <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
                 </li>
               ))}
             </ul>
@@ -204,7 +204,7 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
         <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
           {all.map((it) => (
             <li key={it.id}>
-              <strong>{it.displayLabel}</strong> — {getOrderItemStatusLabel(it.status)}
+              <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
             </li>
           ))}
         </ul>
@@ -274,7 +274,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {medLines.map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {getOrderItemStatusLabel(it.status)}
+                  <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
                   {it.status === "CANCELLED" &&
                   (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
                     <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
@@ -295,7 +295,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                   {it.catalogItemType === "MEDICATION" &&
                   it.status !== "CANCELLED" &&
                   !it.completedAt &&
-                  !["COMPLETED", "RESULTED", "VERIFIED"].includes(it.status) ? (
+                  !isOrderItemDoneForChart(it.status) ? (
                     <div style={{ fontSize: 12, color: "#616161", marginTop: 4 }}>
                       {it.medicationFulfillmentIntent === "ADMINISTER_CHART"
                         ? "À administrer au patient"

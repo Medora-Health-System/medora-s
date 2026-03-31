@@ -13,7 +13,7 @@ import {
 } from "@/lib/uiLabels";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
 import {
   diagnosisDisplayFr,
   parseDischargeSummaryForChart,
@@ -180,7 +180,7 @@ export function getPatientChartPrintHtml(params: {
           const items = (o.items ?? [])
             .map((it) => {
               const label = esc(it.displayLabel || "—");
-              const st = esc(getOrderItemStatusLabel(it.status));
+              const st = esc(getOrderItemChartLabel(it.status));
               return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
             })
             .join("");

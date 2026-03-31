@@ -19,7 +19,7 @@ import { CreateOrderModal } from "@/components/orders";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import {
   medicationLineClinicallyExecuted,
   medicationOrderStatusKeyForEncounterTab,
@@ -3730,7 +3730,7 @@ function OrdersTab({
                         backgroundColor:
                           orderStatusBadgeKey === "PENDING"
                             ? "#fff3cd"
-                            : orderStatusBadgeKey === "COMPLETED"
+                            : isOrderItemDoneForChart(orderStatusBadgeKey)
                               ? "#d4edda"
                               : orderStatusBadgeKey === "CANCELLED"
                                 ? "#ffebee"
@@ -3740,7 +3740,7 @@ function OrdersTab({
                         color:
                           orderStatusBadgeKey === "PENDING"
                             ? "#856404"
-                            : orderStatusBadgeKey === "COMPLETED"
+                            : isOrderItemDoneForChart(orderStatusBadgeKey)
                               ? "#155724"
                               : orderStatusBadgeKey === "CANCELLED"
                                 ? "#b71c1c"
@@ -3749,7 +3749,7 @@ function OrdersTab({
                                   : "#666",
                       }}
                     >
-                      {getOrderItemStatusLabel(orderStatusBadgeKey)}
+                      {getOrderItemChartLabel(orderStatusBadgeKey)}
                     </span>
                     {order.status === "CANCELLED" &&
                     ((order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr ||

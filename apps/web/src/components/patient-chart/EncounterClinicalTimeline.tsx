@@ -13,7 +13,7 @@ import {
   parsePhysicianEvalV1ForChart,
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
 import {
   getEncounterStatusLabelFr,
   getEncounterTypeLabelFr,
@@ -107,7 +107,7 @@ function OrderItemLine({
     const crit = it.result?.criticalValue ? "Valeur critique — " : "";
     const txt = it.result?.resultText?.trim();
     const att = it.result?.attachmentSummaryFr;
-    const statusFr = getOrderItemStatusLabel(it.status);
+    const statusFr = getOrderItemChartLabel(it.status);
     const body = txt ? `${crit}${txt}` : att ? `${crit}${att}` : `${crit}${statusFr}`;
     return (
       <li>
@@ -118,7 +118,7 @@ function OrderItemLine({
     );
   }
 
-  const statusFr = getOrderItemStatusLabel(it.status);
+  const statusFr = getOrderItemChartLabel(it.status);
   const intentFr =
     it.catalogItemType === "MEDICATION" && it.status !== "CANCELLED"
       ? medicationIntentLabelFr(it.medicationFulfillmentIntent)
@@ -168,7 +168,7 @@ function NurseAdminLine({ it }: { it: ChartSummaryOrderItem }) {
       ) : (
         <>
           {" "}
-          — Complété le {formatShortDateTime(it.completedAt)} ({getOrderItemStatusLabel(it.status)})
+          — Complété le {formatShortDateTime(it.completedAt)} ({getOrderItemChartLabel(it.status)})
         </>
       )}
     </li>
