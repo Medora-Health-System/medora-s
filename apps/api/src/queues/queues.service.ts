@@ -2,6 +2,13 @@ import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditAction, OrderStatus, RoleCode } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import { assertCanTransition } from "../common/workflow/status.transitions";
+import {
+  assertAckOrStartActor,
+  assertDepartmentRoleForItem,
+  isMedicationAdministerChart,
+} from "../common/workflow/order-item-action-guards.util";
 import { AuditService } from "../common/services/audit.service";
 
 @Injectable()
@@ -10,6 +17,15 @@ export class QueuesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
+
+  private async roleCodesForFacility(userId: string | undefined, facilityId: string): Promise<RoleCode[]> {
+    if (!userId) return [];
+    const urs = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      include: { role: true },
+    });
+    return urs.map((u) => u.role.code);
+  }
 
   async getRadiologyQueue(facilityId: string) {
     return this.prisma.order.findMany({
@@ -220,7 +236,31 @@ export class QueuesService {
       throw new BadRequestException("Order item not found");
     }
 
+    if (status === OrderStatus.CANCELLED) {
+      throw new BadRequestException(
+        "L'annulation d'une ligne d'ordre doit passer par le flux d'annulation dédié."
+      );
+    }
+
     assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+
+    const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+
+    assertCanTransition(orderItem.status, status);
+
+    if (status === OrderStatus.ACKNOWLEDGED || status === OrderStatus.IN_PROGRESS) {
+      assertAckOrStartActor(orderItem, roleCodes);
+    } else if (status === OrderStatus.COMPLETED) {
+      if (isMedicationAdministerChart(orderItem)) {
+        throw new BadRequestException(
+          "Cette ligne est destinée à l'administration infirmière ; utilisez la fin d'administration au lit."
+        );
+      }
+      assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
+    } else {
+      assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
+    }
 
     const fromStatus = orderItem.status;
 

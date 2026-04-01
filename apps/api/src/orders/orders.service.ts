@@ -10,6 +10,11 @@ import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode, type Pris
 import { assertCanTransition } from "../common/workflow/status.transitions";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertAckOrStartActor,
+  assertDepartmentRoleForItem,
+  isMedicationAdministerChart,
+} from "../common/workflow/order-item-action-guards.util";
 import type { OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -118,55 +123,6 @@ const CATALOG_IMAGING_SELECT = {
   modality: true,
   bodyRegion: true,
 } as const;
-
-function assertDepartmentRoleForItem(catalogItemType: string, roleCodes: RoleCode[]) {
-  const admin = roleCodes.includes(RoleCode.ADMIN);
-  if (catalogItemType === "LAB_TEST") {
-    if (!admin && !roleCodes.includes(RoleCode.LAB)) {
-      throw new ForbiddenException("Rôle laboratoire requis pour cette action.");
-    }
-    return;
-  }
-  if (catalogItemType === "IMAGING_STUDY") {
-    if (!admin && !roleCodes.includes(RoleCode.RADIOLOGY)) {
-      throw new ForbiddenException("Rôle imagerie requis pour cette action.");
-    }
-    return;
-  }
-  if (catalogItemType === "MEDICATION") {
-    if (!admin && !roleCodes.includes(RoleCode.PHARMACY)) {
-      throw new ForbiddenException("Rôle pharmacie requis pour cette action.");
-    }
-    return;
-  }
-  if (catalogItemType === "CARE") {
-    if (!admin && !roleCodes.includes(RoleCode.RN)) {
-      throw new ForbiddenException("Rôle infirmier requis pour cette action.");
-    }
-    return;
-  }
-  throw new BadRequestException("Type de ligne d'ordre non pris en charge.");
-}
-
-function isMedicationAdministerChart(orderItem: { catalogItemType: string; medicationFulfillmentIntent: string | null }) {
-  return (
-    orderItem.catalogItemType === "MEDICATION" &&
-    orderItem.medicationFulfillmentIntent === "ADMINISTER_CHART"
-  );
-}
-
-/** Accusé / démarrage : infirmier pour médicament au lit ; sinon file départementale (labo, etc.). */
-function assertAckOrStartActor(orderItem: OrderItem, roleCodes: RoleCode[]) {
-  const admin = roleCodes.includes(RoleCode.ADMIN);
-  if (admin) return;
-  if (isMedicationAdministerChart(orderItem)) {
-    if (!roleCodes.includes(RoleCode.RN)) {
-      throw new ForbiddenException("Rôle infirmier requis pour cette ligne d'administration au lit.");
-    }
-    return;
-  }
-  assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
-}
 
 @Injectable()
 export class OrdersService {
