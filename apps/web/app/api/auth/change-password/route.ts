@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { applyAuthCookiesToResponse, refreshAccessTokenFromCookies } from "@/lib/server/refreshAccessToken";
+import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
 
 export async function POST(request: NextRequest) {
   try {
+    const originDenied = validateRequestOrigin(request);
+    if (originDenied) return originDenied;
+
     const body = await request.json();
     const currentPassword = body.currentPassword;
     const newPassword = body.newPassword;
