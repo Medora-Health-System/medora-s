@@ -165,9 +165,15 @@ export class PatientsService {
       updateData.sex = sexAtBirthToPatientSex(updateData.sexAtBirth as SexAtBirth | null);
     }
 
-    const updated = await this.prisma.patient.update({
-      where: { id },
+    const updateResult = await this.prisma.patient.updateMany({
+      where: { id, facilityId },
       data: updateData,
+    });
+    if (updateResult.count === 0) {
+      throw new NotFoundException("Patient not found");
+    }
+    const updated = await this.prisma.patient.findUniqueOrThrow({
+      where: { id },
     });
 
     // Audit update
