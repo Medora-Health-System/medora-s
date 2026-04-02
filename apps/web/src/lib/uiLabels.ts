@@ -55,6 +55,7 @@ const fr = {
     provider: "Médecin",
     patients: "Patients",
     encounters: "Consultations",
+    hospitalisation: "Hospitalisation",
     followUps: "Suivis",
     radWorklist: "Liste imagerie",
     labWorklist: "Liste laboratoire",
@@ -193,6 +194,20 @@ const fr = {
       STEMI: "Infarctus STEMI",
       TRAUMA: "Traumatisme",
     } as Record<string, string>,
+  },
+
+  /** Onglet MAR — administration médicamenteuse (consultation). */
+  mar: {
+    columnWhen: "Date et heure",
+    columnNurse: "Professionnel",
+    columnNotes: "Notes",
+    orderLineOptional: "Ligne d'ordre (optionnel)",
+    empty: "Aucune administration enregistrée.",
+    submit: "Enregistrer l'administration",
+    datetimeLabel: "Date et heure d'administration",
+    notesLabel: "Notes",
+    noLinkedOrder: "Sans lien ordre",
+    closedHint: "Consultation fermée : enregistrement désactivé.",
   },
 } as const;
 

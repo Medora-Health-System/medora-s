@@ -15,16 +15,20 @@ type Row = {
   roomLabel?: string | null;
   physicianAssigned?: { firstName?: string; lastName?: string } | null;
   patient?: { id?: string; firstName?: string; lastName?: string; mrn?: string | null };
+  /** Lignes médicament à administrer au chevet (aligné sur l’onglet Ordres). */
+  pendingMedicationCount?: number;
 };
 
 export function OpenEncountersTable({
   encounters,
   loading,
   emptyMessage,
+  showMarLink,
 }: {
   encounters: Row[];
   loading: boolean;
   emptyMessage: string;
+  showMarLink?: boolean;
 }) {
   if (loading) {
     return <p>{ui.common.loading}</p>;
@@ -49,6 +53,7 @@ export function OpenEncountersTable({
             <th style={th}>{ui.common.room}</th>
             <th style={th}>Médecin attribué</th>
             <th style={th}>{ui.common.arrival}</th>
+            <th style={th}>Médicaments (à faire)</th>
             <th style={th}>{ui.common.actions}</th>
           </tr>
         </thead>
@@ -73,6 +78,19 @@ export function OpenEncountersTable({
                   {encounter.createdAt ? new Date(encounter.createdAt).toLocaleString("fr-FR") : "—"}
                 </td>
                 <td style={td}>
+                  {typeof encounter.pendingMedicationCount === "number" ? (
+                    encounter.pendingMedicationCount > 0 ? (
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#c62828" }}>
+                        {encounter.pendingMedicationCount}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 14, color: "#666" }}>0</span>
+                    )
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td style={td}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {pid ? (
                       <Link
@@ -88,6 +106,14 @@ export function OpenEncountersTable({
                     >
                       Ouvrir la consultation
                     </Link>
+                    {showMarLink ? (
+                      <Link
+                        href={`/app/encounters/${encounter.id}?tab=mar`}
+                        style={{ fontSize: 14, color: "#2e7d32", fontWeight: 500 }}
+                      >
+                        Administration médicamenteuse
+                      </Link>
+                    ) : null}
                   </div>
                 </td>
               </tr>

@@ -118,7 +118,12 @@ export function getRxPrintHtml(params: {
 
 export function printRx(params: { order: RxOrder; patient: RxPatient; facilityName?: string }): void {
   const win = window.open("", "_blank");
-  if (!win) return;
+  if (!win) {
+    alert(
+      "Impossible d'ouvrir la fenêtre d'impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups pour ce site et réessayez."
+    );
+    return;
+  }
   win.document.write(getRxPrintHtml(params));
   win.document.close();
   win.focus();

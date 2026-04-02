@@ -14,7 +14,7 @@ function registerServiceWorker() {
 
 export function OfflineRuntime() {
   const [mounted, setMounted] = useState(false);
-  const { status, pendingCount } = useConnectivityStatus();
+  const { status } = useConnectivityStatus();
 
   useEffect(() => {
     setMounted(true);
@@ -25,14 +25,12 @@ export function OfflineRuntime() {
   /** Pas de bannière hors ligne / file d’attente pendant le SSR ou avant hydratation. */
   if (!mounted) return null;
 
-  if (status === "online" && pendingCount === 0) return null;
+  if (status !== "offline" && status !== "syncing") return null;
 
   const palette =
     status === "offline"
       ? { bg: "#fff3e0", fg: "#8a4b08", border: "#f3d19c", text: "Hors ligne" }
-      : status === "syncing"
-      ? { bg: "#e3f2fd", fg: "#0d47a1", border: "#bbdefb", text: "Synchronisation en cours" }
-      : { bg: "#fff8e1", fg: "#6d4c41", border: "#ffe082", text: "Connexion rétablie" };
+      : { bg: "#e3f2fd", fg: "#0d47a1", border: "#bbdefb", text: "Synchronisation en cours" };
 
   return (
     <div
@@ -54,28 +52,6 @@ export function OfflineRuntime() {
       }}
     >
       <span>{palette.text}</span>
-      {pendingCount > 0 ? (
-        <>
-          <span>{` · Certaines données ne sont pas encore synchronisées (${pendingCount})`}</span>
-          {status !== "syncing" && (
-            <button
-              type="button"
-              onClick={() => void processOfflineQueueOnce()}
-              style={{
-                marginLeft: 8,
-                border: "1px solid #bdbdbd",
-                background: "#fff",
-                borderRadius: 999,
-                padding: "2px 8px",
-                fontSize: 11,
-                cursor: "pointer",
-              }}
-            >
-              Réessayer
-            </button>
-          )}
-        </>
-      ) : null}
     </div>
   );
 }

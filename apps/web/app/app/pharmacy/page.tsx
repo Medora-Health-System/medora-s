@@ -9,7 +9,35 @@ import { PharmacyFavorites } from "@/components/pharmacy/PharmacyFavorites";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import { getOrderPriorityLabelFr, ui } from "@/lib/uiLabels";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
+import {
+  getEncounterPatientLabelFromCache,
+  getPendingPharmacyMedicationOrderRowsForFacility,
+  type PendingFacilityQueueRow,
+} from "@/lib/offline/pendingEncounterOrders";
 import { useConnectivityStatus } from "@/lib/offline/useConnectivityStatus";
+
+function PendingEncounterPatientCells({
+  facilityId,
+  encounterId,
+}: {
+  facilityId: string;
+  encounterId: string;
+}) {
+  const [name, setName] = useState("…");
+  const [mrn, setMrn] = useState("—");
+  useEffect(() => {
+    void getEncounterPatientLabelFromCache(facilityId, encounterId).then((p) => {
+      setName(p.label);
+      setMrn(p.mrn);
+    });
+  }, [facilityId, encounterId]);
+  return (
+    <>
+      <td style={{ padding: 12 }}>{name}</td>
+      <td style={{ padding: 12 }}>{mrn}</td>
+    </>
+  );
+}
 
 const linkStyle: React.CSSProperties = {
   display: "inline-block",
@@ -29,6 +57,7 @@ export default function PharmacyPage() {
   const { isOffline } = useConnectivityStatus();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<unknown[]>([]);
+  const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +79,7 @@ export default function PharmacyPage() {
     if (!facilityId) return;
     setLoading(true);
     const cacheKey = `pharmacy-queue:${facilityId}`;
+    const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId);
     try {
       const data = await apiFetch("/pharmacy/queue", { facilityId });
       setQueue(Array.isArray(data) ? data : []);
@@ -58,9 +88,10 @@ export default function PharmacyPage() {
       console.error("Failed to load pharmacy queue:", error);
       const cached = await getCachedRecord<unknown[]>("encounter_summaries", cacheKey);
       setQueue(cached?.data ?? []);
-    } finally {
-      setLoading(false);
     }
+    const pendingRows = await pendingP;
+    setPendingLocal(pendingRows);
+    setLoading(false);
   };
 
   const handleUpdateStatus = async (itemId: string, status: string) => {
@@ -122,9 +153,9 @@ export default function PharmacyPage() {
       )}
 
       <p>Ordres de médicaments à vérifier et dispenser.</p>
-      {loading ? (
+      {loading && (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
         <p>Chargement…</p>
-      ) : queue.length === 0 ? (
+      ) : (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
         <div
           style={{
             marginTop: 24,
@@ -138,96 +169,143 @@ export default function PharmacyPage() {
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              backgroundColor: "white",
-              border: "1px solid #eee",
-              borderRadius: 8,
-            }}
-          >
-            <thead>
-              <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(queue as { items?: { id: string; status: string; catalogItemId: string }[]; encounterId: string; priority: string; encounter?: { patient?: { id?: string; firstName: string; lastName: string; mrn?: string } } }[]).map(
-                (order) =>
-                  order.items?.map(
-                    (item: {
-                      id: string;
-                      status: string;
-                      catalogItemId: string;
-                    }) => (
-                      <tr
-                        key={item.id}
-                        style={{ borderBottom: "1px solid #eee" }}
-                      >
-                        <td style={{ padding: 12 }}>
-                          {order.encounter?.patient?.firstName}{" "}
-                          {order.encounter?.patient?.lastName}
-                        </td>
-                        <td style={{ padding: 12 }}>
-                          {order.encounter?.patient?.mrn ?? "—"}
-                        </td>
-                        <td style={{ padding: 12 }}>{item.catalogItemId}</td>
-                        <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(order.priority)}</td>
-                        <td style={{ padding: 12 }}>
-                          {getOrderItemStatusLabel(item.status)}
-                        </td>
-                        <td style={{ padding: 12 }}>
-                          {item.status === "PENDING" && (
-                            <button
-                              onClick={() =>
-                                handleUpdateStatus(item.id, "IN_PROGRESS")
+          {(queue as unknown[]).length > 0 ? (
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                backgroundColor: "white",
+                border: "1px solid #eee",
+                borderRadius: 8,
+              }}
+            >
+              <thead>
+                <tr style={{ borderBottom: "2px solid #ddd" }}>
+                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(queue as { items?: { id: string; status: string; catalogItemId: string }[]; encounterId: string; priority: string; encounter?: { patient?: { id?: string; firstName: string; lastName: string; mrn?: string } } }[]).map(
+                  (order) =>
+                    order.items?.map(
+                      (item: {
+                        id: string;
+                        status: string;
+                        catalogItemId: string;
+                      }) => (
+                        <tr
+                          key={item.id}
+                          style={{ borderBottom: "1px solid #eee" }}
+                        >
+                          <td style={{ padding: 12 }}>
+                            {order.encounter?.patient?.firstName}{" "}
+                            {order.encounter?.patient?.lastName}
+                          </td>
+                          <td style={{ padding: 12 }}>
+                            {order.encounter?.patient?.mrn ?? "—"}
+                          </td>
+                          <td style={{ padding: 12 }}>{item.catalogItemId}</td>
+                          <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(order.priority)}</td>
+                          <td style={{ padding: 12 }}>
+                            {getOrderItemStatusLabel(item.status)}
+                          </td>
+                          <td style={{ padding: 12 }}>
+                            {item.status === "PENDING" && (
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(item.id, "IN_PROGRESS")
+                                }
+                                style={{
+                                  marginRight: 8,
+                                  padding: "4px 8px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Vérifier
+                              </button>
+                            )}
+                            {item.status === "IN_PROGRESS" && (
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(item.id, "COMPLETED")
+                                }
+                                style={{
+                                  marginRight: 8,
+                                  padding: "4px 8px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Dispenser
+                              </button>
+                            )}
+                            <Link
+                              href={
+                                order.encounter?.patient?.id
+                                  ? `/app/pharmacy/dispense?patientId=${order.encounter.patient.id}&encounterId=${order.encounterId}`
+                                  : "/app/pharmacy/dispense"
                               }
-                              style={{
-                                marginRight: 8,
-                                padding: "4px 8px",
-                                cursor: "pointer",
-                              }}
+                              style={{ fontSize: 13 }}
                             >
-                              Vérifier
-                            </button>
-                          )}
-                          {item.status === "IN_PROGRESS" && (
-                            <button
-                              onClick={() =>
-                                handleUpdateStatus(item.id, "COMPLETED")
-                              }
-                              style={{
-                                marginRight: 8,
-                                padding: "4px 8px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Dispenser
-                            </button>
-                          )}
-                          <Link
-                            href={
-                              order.encounter?.patient?.id
-                                ? `/app/pharmacy/dispense?patientId=${order.encounter.patient.id}&encounterId=${order.encounterId}`
-                                : "/app/pharmacy/dispense"
-                            }
-                            style={{ fontSize: 13 }}
-                          >
-                            Contexte de dispensation
-                          </Link>
-                        </td>
-                      </tr>
+                              Contexte de dispensation
+                            </Link>
+                          </td>
+                        </tr>
+                      )
                     )
-                  )
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          ) : null}
+          {pendingLocal.length > 0 ? (
+            <div style={{ marginTop: (queue as unknown[]).length > 0 ? 28 : 0 }}>
+              <h2 style={{ fontSize: 16, marginBottom: 8 }}>En attente de synchronisation</h2>
+              <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>
+                Ordres créés sur cet appareil, non encore synchronisés avec le serveur.
+              </p>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  backgroundColor: "#fff8e1",
+                  border: "1px solid #ffe082",
+                  borderRadius: 8,
+                }}
+              >
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #ddd" }}>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingLocal.map((row) => (
+                    <tr key={row.queueItemId} style={{ borderBottom: "1px solid #eee" }}>
+                      <PendingEncounterPatientCells facilityId={row.facilityId} encounterId={row.encounterId} />
+                      <td style={{ padding: 12 }}>
+                        {row.itemLabels.filter(Boolean).join(", ") || "—"}
+                      </td>
+                      <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(row.priority)}</td>
+                      <td style={{ padding: 12 }}>En attente de synchronisation</td>
+                      <td style={{ padding: 12 }}>
+                        <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>
+                          Consultation
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

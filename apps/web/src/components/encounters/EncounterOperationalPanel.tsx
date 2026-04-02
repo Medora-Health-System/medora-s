@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
@@ -55,6 +55,30 @@ export function EncounterOperationalPanel({
       cancelled = true;
     };
   }, [facilityId, canEdit]);
+
+  /** Inclut le médecin courant si absent du roster (évite l’affichage d’UUID brut dans le `<select>`). */
+  const providersForSelect = useMemo(() => {
+    const list = [...providers];
+    const effectiveId = (physicianId || physicianAssigned?.id || "").trim();
+    if (!effectiveId) return list;
+    if (list.some((p) => p.id === effectiveId)) return list;
+    if (physicianAssigned && physicianAssigned.id === effectiveId) {
+      return [
+        {
+          id: physicianAssigned.id,
+          firstName: physicianAssigned.firstName,
+          lastName: physicianAssigned.lastName,
+        },
+        ...list,
+      ];
+    }
+    return [{ id: effectiveId, firstName: "", lastName: "" }, ...list];
+  }, [providers, physicianId, physicianAssigned]);
+
+  const providerOptionLabel = useCallback((p: ProviderRow) => {
+    const s = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+    return s || "Médecin attribué";
+  }, []);
 
   const save = useCallback(async () => {
     if (!canEdit) return;
@@ -127,9 +151,9 @@ export function EncounterOperationalPanel({
             style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #ccc", minWidth: 220 }}
           >
             <option value="">—</option>
-            {providers.map((p) => (
+            {providersForSelect.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.firstName} {p.lastName}
+                {providerOptionLabel(p)}
               </option>
             ))}
           </select>

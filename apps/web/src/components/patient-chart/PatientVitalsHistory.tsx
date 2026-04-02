@@ -75,6 +75,16 @@ export function PatientVitalsHistory({
               {row("SpO₂", v.spo2 != null && v.spo2 !== "" ? `${v.spo2} %` : null)}
               {row("Poids", v.weightKg != null && v.weightKg !== "" ? `${v.weightKg} kg` : null)}
               {row("Taille", v.heightCm != null && v.heightCm !== "" ? `${v.heightCm} cm` : null)}
+              {v.allergyNote && String(v.allergyNote).trim() !== "" ? (
+                <div style={{ display: "flex", gap: 8, fontSize: 13 }}>
+                  <span style={{ color: "#c62828", fontWeight: 700, minWidth: 150 }}>
+                    Allergie
+                  </span>
+                  <span style={{ color: "#c62828", fontWeight: 700 }}>
+                    {v.allergyNote}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         );

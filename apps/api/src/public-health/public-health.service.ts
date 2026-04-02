@@ -6,6 +6,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, DiseaseCaseStatus } from "@prisma/client";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import type {
   CreateVaccineCatalogDto,
   RecordVaccineAdministrationDto,
@@ -107,6 +108,7 @@ export class PublicHealthService {
           "Encounter not found or does not match patient/facility"
         );
       }
+      assertEncounterNotSigned(enc);
     }
 
     const administeredAt = dto.administeredAt ?? new Date();
@@ -249,6 +251,7 @@ export class PublicHealthService {
           "Encounter not found or does not match facility/patient"
         );
       }
+      assertEncounterNotSigned(enc);
     }
 
     const reportedAt = dto.reportedAt ?? new Date();

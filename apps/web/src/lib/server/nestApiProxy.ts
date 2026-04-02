@@ -5,6 +5,7 @@ import {
   refreshAccessTokenFromCookies,
   type RefreshedTokens,
 } from "@/lib/server/refreshAccessToken";
+import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
 
@@ -74,6 +75,9 @@ async function getFacilityId(req: NextRequest, accessToken: string | null): Prom
  * @param nestPath Path after API root, no leading slash (e.g. `patients/search`, `admin/users`).
  */
 export async function proxyNestRequest(req: NextRequest, nestPath: string): Promise<NextResponse> {
+  const originDenied = validateRequestOrigin(req);
+  if (originDenied) return originDenied;
+
   const normalized = nestPath.replace(/^\/+/, "");
   const url = `${API_URL}/${normalized}${req.nextUrl.search}`;
 

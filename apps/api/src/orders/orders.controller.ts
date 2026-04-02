@@ -15,7 +15,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { orderCreateDtoSchema, orderUpdateDtoSchema } from "@medora/shared";
+import { orderCancelDtoSchema, orderCreateDtoSchema, orderUpdateDtoSchema } from "@medora/shared";
 import { RoleCode } from "@prisma/client";
 import { assertZodBody } from "../common/http/zod-parse";
 
@@ -46,7 +46,8 @@ export class OrdersController {
 
     const data = assertZodBody(orderCreateDtoSchema.safeParse(body));
 
-    if (data.type === "MEDICATION") {
+    const orderType = data.type as string;
+    if (orderType === "MEDICATION" || orderType === "CARE") {
       const userId = req.user?.userId;
       if (!userId) throw new ForbiddenException("Authentification requise");
       const userRoles = await this.prisma.userRole.findMany({
@@ -55,7 +56,11 @@ export class OrdersController {
       });
       const codes = userRoles.map((ur) => ur.role.code);
       if (!codes.includes(RoleCode.PROVIDER) && !codes.includes(RoleCode.ADMIN)) {
-        throw new ForbiddenException("Seuls les médecins peuvent prescrire des médicaments.");
+        throw new ForbiddenException(
+          orderType === "MEDICATION"
+            ? "Seuls les médecins peuvent prescrire des médicaments."
+            : "Seuls les médecins peuvent créer des ordres de soins.",
+        );
       }
     }
 
@@ -70,7 +75,7 @@ export class OrdersController {
   }
 
   @Get("encounters/:encounterId/orders")
-  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
+  @Roles("RN", "PROVIDER", "ADMIN")
   async findByEncounter(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -119,15 +124,18 @@ export class OrdersController {
 
   @Post("orders/:id/cancel")
   @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
-  async cancel(@Param("id") id: string, @Req() req: any) {
+  async cancel(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
 
+    const dto = assertZodBody(orderCancelDtoSchema.safeParse(body));
+
     return this.ordersService.cancel(
       facilityId,
       id,
+      dto,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]
@@ -173,7 +181,7 @@ export class OrdersController {
   }
 
   @Post("orders/items/:id/complete")
-  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
   async completeOrderItem(@Param("id") orderItemId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {

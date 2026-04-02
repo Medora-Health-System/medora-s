@@ -25,7 +25,7 @@ export class AuthService {
     return s;
   }
   private accessTtl() {
-    /** Durée de session API alignée sur l’usage clinique (rafraîchissement côté web si besoin). */
+    /** Aligner apps/web JWT_ACCESS_TTL (cookies + accessTokenTtlSeconds) sur cette valeur — même chaîne (ex. 8h, 15m). */
     return this.config.get<string>("JWT_ACCESS_TTL") ?? "8h";
   }
   private refreshTtl() {
@@ -69,7 +69,7 @@ export class AuthService {
       where: { id: userId },
       include: {
         userRoles: {
-          where: { isActive: true },
+          where: { isActive: true, facility: { isActive: true } },
           include: { role: true, facility: { select: { name: true } } },
         },
       }
@@ -85,6 +85,7 @@ export class AuthService {
       username: user.email,
       fullName: `${user.firstName} ${user.lastName}`.trim(),
       preferredLang: "fr",
+      canCreateFacilities: user.canCreateFacilities === true,
       facilityRoles: sortedRoles.map((ur) => ({
         facilityId: ur.facilityId,
         facilityName: ur.facility?.name,
@@ -122,7 +123,7 @@ export class AuthService {
       },
       include: {
         userRoles: {
-          where: { isActive: true },
+          where: { isActive: true, facility: { isActive: true } },
           include: { role: true, facility: true }
         }
       }
@@ -245,6 +246,28 @@ export class AuthService {
 
   async me(userId: string) {
     return this.buildAuthUserDto(userId);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException("Utilisateur invalide");
+    }
+
+    const ok = await argon2.verify(user.passwordHash, currentPassword);
+    if (!ok) {
+      throw new UnauthorizedException("Mot de passe actuel incorrect");
+    }
+
+    const newHash = await argon2.hash(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash },
+    });
+
+    return { message: "Mot de passe mis à jour" };
   }
 
   /** Base URL for password reset links (e.g. https://app.medora.local or http://localhost:3000) */

@@ -19,9 +19,13 @@ export default function LabOrderDetailPage() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
+  /** Évite le premier rendu avec facilityId=null alors que le hook a déjà l’établissement (sinon « Établissement requis » et pas de chargement). */
+  const effectiveFacilityId =
+    facilityId ?? (facilityIdFromHook?.trim() ? facilityIdFromHook : null);
+
   if (!ready) return <p style={{ padding: 24 }}>Chargement…</p>;
 
   return (
-    <DepartmentOrderDetail kind="lab" orderId={orderId} listHref="/app/lab-worklist" facilityId={facilityId} />
+    <DepartmentOrderDetail kind="lab" orderId={orderId} listHref="/app/lab-worklist" facilityId={effectiveFacilityId} />
   );
 }

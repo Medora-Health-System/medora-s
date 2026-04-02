@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { formatAgeFr, formatAgeYearsSexFr } from "@/lib/patientDisplay";
@@ -110,22 +111,37 @@ function PatientsPageContent() {
     }
   };
 
-  const handleRowClick = (patientId: string) => {
-    router.push(`/app/patients/${patientId}`);
-  };
-
   const canCreateConsultation =
     rolesReady &&
-    (roles.includes("FRONT_DESK") ||
-      roles.includes("RN") ||
+    (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
-      roles.includes("ADMIN"));
+      roles.includes("ADMIN") ||
+      roles.includes("FRONT_DESK"));
+  /** Aligné sur la page `/app/encounters/[id]` (GET consultation autorisé). */
   const canOpenEncounterDetail =
     rolesReady &&
     (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
-      roles.includes("BILLING"));
+      roles.includes("BILLING") ||
+      roles.includes("LAB") ||
+      roles.includes("RADIOLOGY") ||
+      roles.includes("PHARMACY"));
+  /** Dossier patient hors liste — pas pour accueil seul. */
+  const canOpenPatientDossier =
+    rolesReady &&
+    (roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN") ||
+      roles.includes("BILLING") ||
+      roles.includes("LAB") ||
+      roles.includes("RADIOLOGY") ||
+      roles.includes("PHARMACY"));
+
+  const handleRowClick = (patientId: string) => {
+    if (!canOpenPatientDossier) return;
+    router.push(`/app/patients/${patientId}`);
+  };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "";
@@ -223,7 +239,16 @@ function PatientsPageContent() {
                           ev.stopPropagation();
                           handleRowClick(patient.id);
                         }}
-                        style={{ padding: "6px 10px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer", fontSize: 12 }}
+                        disabled={!canOpenPatientDossier}
+                        style={{
+                          padding: "6px 10px",
+                          border: "1px solid #ddd",
+                          borderRadius: 4,
+                          background: "#fff",
+                          cursor: canOpenPatientDossier ? "pointer" : "not-allowed",
+                          fontSize: 12,
+                          opacity: canOpenPatientDossier ? 1 : 0.55,
+                        }}
                       >
                         Ouvrir le dossier
                       </button>
@@ -794,13 +819,19 @@ function CreateConsultationModal({
             <div style={{ display: "flex", gap: 10 }}>
               {!created.queued && created.id && (
                 canOpenEncounterDetail ? (
-                  <a href={`/app/encounters/${created.id}`} style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13 }}>
+                  <Link
+                    href={`/app/encounters/${created.id}`}
+                    style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
+                  >
                     Ouvrir la consultation
-                  </a>
+                  </Link>
                 ) : (
-                  <a href={`/app/patients/${patient.id}`} style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13 }}>
+                  <Link
+                    href={`/app/patients/${patient.id}`}
+                    style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
+                  >
                     Ouvrir le dossier
-                  </a>
+                  </Link>
                 )
               )}
               <button type="button" onClick={onClose} style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer" }}>

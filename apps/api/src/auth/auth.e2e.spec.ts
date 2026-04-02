@@ -32,7 +32,8 @@ describe("Auth (e2e)", () => {
               lastName: "User",
               passwordHash,
               refreshTokenHash: null,
-              isActive: true
+              isActive: true,
+              canCreateFacilities: true,
             };
             if (include?.userRoles) {
               base.userRoles = [
@@ -61,7 +62,8 @@ describe("Auth (e2e)", () => {
             lastName: "User",
             passwordHash,
             refreshTokenHash: (db as any)._refreshTokenHash ?? null,
-            isActive: true
+            isActive: true,
+            canCreateFacilities: true,
           };
           if (!include?.userRoles) return base;
           return {

@@ -1,10 +1,31 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { OrderStatus, RoleCode } from "@prisma/client";
+import { AuditAction, OrderStatus, RoleCode } from "@prisma/client";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import { assertCanTransition } from "../common/workflow/status.transitions";
+import {
+  assertAckOrStartActor,
+  assertDepartmentRoleForItem,
+  isMedicationAdministerChart,
+} from "../common/workflow/order-item-action-guards.util";
+import { AuditService } from "../common/services/audit.service";
 
 @Injectable()
 export class QueuesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
+
+  private async roleCodesForFacility(userId: string | undefined, facilityId: string): Promise<RoleCode[]> {
+    if (!userId) return [];
+    const urs = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      include: { role: true },
+    });
+    return urs.map((u) => u.role.code);
+  }
 
   async getRadiologyQueue(facilityId: string) {
     return this.prisma.order.findMany({
@@ -203,15 +224,47 @@ export class QueuesService {
         }
       },
       include: {
-        order: true
-      }
+        order: {
+          include: {
+            encounter: true,
+          },
+        },
+      },
     });
 
     if (!orderItem) {
       throw new BadRequestException("Order item not found");
     }
 
-    return this.prisma.orderItem.update({
+    if (status === OrderStatus.CANCELLED) {
+      throw new BadRequestException(
+        "L'annulation d'une ligne d'ordre doit passer par le flux d'annulation dédié."
+      );
+    }
+
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+
+    const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+
+    assertCanTransition(orderItem.status, status);
+
+    if (status === OrderStatus.ACKNOWLEDGED || status === OrderStatus.IN_PROGRESS) {
+      assertAckOrStartActor(orderItem, roleCodes);
+    } else if (status === OrderStatus.COMPLETED) {
+      if (isMedicationAdministerChart(orderItem)) {
+        throw new BadRequestException(
+          "Cette ligne est destinée à l'administration infirmière ; utilisez la fin d'administration au lit."
+        );
+      }
+      assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
+    } else {
+      assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
+    }
+
+    const fromStatus = orderItem.status;
+
+    const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
       data: { status },
       include: {
@@ -233,6 +286,32 @@ export class QueuesService {
         }
       }
     });
+
+    let action: AuditAction;
+    if (status === OrderStatus.ACKNOWLEDGED) {
+      action = AuditAction.ORDER_ACK;
+    } else if (status === OrderStatus.IN_PROGRESS) {
+      action = AuditAction.ORDER_START;
+    } else if (status === OrderStatus.COMPLETED) {
+      action = AuditAction.ORDER_COMPLETE;
+    } else {
+      action = AuditAction.UPDATE;
+    }
+
+    await this.audit.log(action, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItem.id,
+      metadata: {
+        fromStatus,
+        toStatus: status,
+      },
+    });
+
+    return updated;
   }
 }
 

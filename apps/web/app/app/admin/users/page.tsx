@@ -11,7 +11,9 @@ import { useFacilityAndRoles, type UserFacilityOption } from "@/hooks/useFacilit
 import {
   fetchAdminUsers,
   createAdminUser,
+  createAdminFacility,
   patchAdminUserProfile,
+  patchAdminUserPassword,
   patchAdminUserRoles,
   patchAdminUserStatus,
   type AdminUserRow,
@@ -64,14 +66,16 @@ function rolesListFr(codes: string[]): string {
 }
 
 export default function AdminUsersPage() {
-  const { facilityId, facilities, roles, ready } = useFacilityAndRoles();
+  const { facilityId, facilities, roles, ready, refreshFromMe, canCreateFacilities } = useFacilityAndRoles();
   const [items, setItems] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(null);
+  const [showAddFacility, setShowAddFacility] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
   const [profileUser, setProfileUser] = useState<AdminUserRow | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUserRow | null>(null);
 
   const isAdmin = ready && roles.includes("ADMIN");
   const currentFacilityName =
@@ -116,7 +120,7 @@ export default function AdminUsersPage() {
     return <div style={{ padding: 24 }}>Chargement…</div>;
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && !canCreateFacilities) {
     return (
       <div style={{ padding: 24 }}>
         <p>Accès réservé aux administrateurs.</p>
@@ -155,27 +159,55 @@ export default function AdminUsersPage() {
       >
         <div>
           <h1 style={{ margin: "0 0 8px 0" }}>Utilisateurs et accès</h1>
-          <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
-            Établissement géré : <strong>{currentFacilityName}</strong>. Les comptes listés ont au moins un lien avec cet
-            établissement. Les rôles ci-dessous sont ceux <strong>pour cet établissement uniquement</strong> ; les accès
-            dans d&apos;autres établissements ne sont pas modifiés par cette page.
-          </p>
+          {isAdmin ? (
+            <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
+              Établissement géré : <strong>{currentFacilityName}</strong>. Les comptes listés ont au moins un lien avec cet
+              établissement. Les rôles ci-dessous sont ceux <strong>pour cet établissement uniquement</strong> ; les accès
+              dans d&apos;autres établissements ne sont pas modifiés par cette page.
+            </p>
+          ) : (
+            <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
+              La gestion des utilisateurs de cet établissement est réservée aux comptes avec le rôle Administrateur pour
+              l&apos;établissement affiché. Vous pouvez toutefois ajouter un établissement si votre compte y est autorisé.
+            </p>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          style={{
-            padding: "10px 18px",
-            background: "#1a1a1a",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Créer un utilisateur
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+          {canCreateFacilities ? (
+            <button
+              type="button"
+              onClick={() => setShowAddFacility(true)}
+              style={{
+                padding: "10px 18px",
+                background: "#fff",
+                color: "#1a1a1a",
+                border: "1px solid #1a1a1a",
+                borderRadius: 4,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Ajouter un établissement
+            </button>
+          ) : null}
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              style={{
+                padding: "10px 18px",
+                background: "#1a1a1a",
+                color: "white",
+                border: "none",
+                borderRadius: 4,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Créer un utilisateur
+            </button>
+          ) : null}
+        </div>
       </div>
       <p style={{ fontSize: 13, color: "#666", marginTop: 12 }}>
         <Link href="/app/admin" style={{ color: "#1565c0" }}>
@@ -183,24 +215,25 @@ export default function AdminUsersPage() {
         </Link>
       </p>
 
-      {loading ? (
-        <p style={{ marginTop: 24 }}>Chargement…</p>
-      ) : items.length === 0 ? (
-        <div
-          style={{
-            marginTop: 24,
-            padding: 24,
-            background: "#fafafa",
-            border: "1px solid #eee",
-            borderRadius: 8,
-            color: "#555",
-            fontSize: 14,
-          }}
-        >
-          Aucun utilisateur lié à cet établissement. Utilisez « Créer un utilisateur » pour ajouter un compte.
-        </div>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 14 }}>
+      {isAdmin ? (
+        loading ? (
+          <p style={{ marginTop: 24 }}>Chargement…</p>
+        ) : items.length === 0 ? (
+          <div
+            style={{
+              marginTop: 24,
+              padding: 24,
+              background: "#fafafa",
+              border: "1px solid #eee",
+              borderRadius: 8,
+              color: "#555",
+              fontSize: 14,
+            }}
+          >
+            Aucun utilisateur lié à cet établissement. Utilisez « Créer un utilisateur » pour ajouter un compte.
+          </div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid #ddd" }}>
               <th style={{ textAlign: "left", padding: 10 }}>Nom</th>
@@ -266,6 +299,23 @@ export default function AdminUsersPage() {
                   >
                     Gérer les rôles
                   </button>
+                  {u.id !== currentUserId ? (
+                    <button
+                      type="button"
+                      onClick={() => setResetPasswordUser(u)}
+                      style={{
+                        marginRight: 6,
+                        padding: "6px 10px",
+                        fontSize: 12,
+                        border: "1px solid #ccc",
+                        borderRadius: 4,
+                        background: "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Réinitialiser le mot de passe
+                    </button>
+                  ) : null}
                   {u.isActive && u.facilityAccessActive && u.id !== currentUserId ? (
                     <button
                       type="button"
@@ -340,9 +390,28 @@ export default function AdminUsersPage() {
             ))}
           </tbody>
         </table>
+        )
+      ) : null}
+
+      {showAddFacility && facilityId && canCreateFacilities && (
+        <AddFacilityModal
+          facilityId={facilityId}
+          onClose={() => setShowAddFacility(false)}
+          onSuccess={async () => {
+            try {
+              await refreshFromMe();
+            } catch {
+              /* session inchangée ; événement ci-dessous pour le shell */
+            }
+            window.dispatchEvent(new Event("medora:session-refresh"));
+            setShowAddFacility(false);
+            setToast({ message: "Établissement créé.", ok: true });
+          }}
+          onError={(m) => setToast({ message: m, ok: false })}
+        />
       )}
 
-      {showCreate && facilityId && (
+      {showCreate && facilityId && isAdmin && (
         <CreateUserModal
           facilities={facilities}
           defaultFacilityId={facilityId}
@@ -356,7 +425,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {editUser && facilityId && (
+      {editUser && facilityId && isAdmin && (
         <EditRolesModal
           facilityId={facilityId}
           facilityDisplayName={currentFacilityName}
@@ -371,7 +440,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {profileUser && facilityId && (
+      {profileUser && facilityId && isAdmin && (
         <EditProfileModal
           facilityId={facilityId}
           user={profileUser}
@@ -384,6 +453,135 @@ export default function AdminUsersPage() {
           onError={(m) => setToast({ message: m, ok: false })}
         />
       )}
+
+      {resetPasswordUser && facilityId && isAdmin && (
+        <ResetPasswordModal
+          facilityId={facilityId}
+          facilityDisplayName={currentFacilityName}
+          user={resetPasswordUser}
+          onClose={() => setResetPasswordUser(null)}
+          onSuccess={async () => {
+            setResetPasswordUser(null);
+            setToast({ message: "Mot de passe réinitialisé", ok: true });
+          }}
+          onError={(m) => setToast({ message: m, ok: false })}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddFacilityModal({
+  facilityId,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  facilityId: string;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+  onError: (m: string) => void;
+}) {
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      onError("Le nom de l’établissement est requis.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createAdminFacility(facilityId, { name: name.trim() });
+      await onSuccess();
+    } catch (err: unknown) {
+      onError(
+        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
+          "Impossible de créer l’établissement."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1500,
+        padding: 16,
+      }}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        style={{
+          background: "white",
+          borderRadius: 8,
+          padding: 24,
+          maxWidth: 440,
+          width: "100%",
+          maxHeight: "90vh",
+          overflow: "auto",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="add-facility-title"
+      >
+        <h2 id="add-facility-title" style={{ marginTop: 0 }}>
+          Ajouter un établissement
+        </h2>
+        <form onSubmit={submit}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              Nom de l’établissement *
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+              autoComplete="organization"
+            />
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "1px solid #ccc",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: submitting ? "default" : "pointer",
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: 4,
+                background: "#1a1a1a",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: submitting ? "default" : "pointer",
+              }}
+            >
+              {submitting ? "Création…" : "Créer"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -752,6 +950,152 @@ function EditRolesModal({
                 borderRadius: 4,
                 background: "#fff",
                 cursor: "pointer",
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: 4,
+                background: "#1a1a1a",
+                color: "white",
+                fontWeight: 600,
+                cursor: submitting ? "wait" : "pointer",
+              }}
+            >
+              {submitting ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordModal({
+  facilityId,
+  facilityDisplayName,
+  user,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  facilityId: string;
+  facilityDisplayName: string;
+  user: AdminUserRow;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+  onError: (m: string) => void;
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      onError("Les deux mots de passe ne correspondent pas.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      onError("Le mot de passe doit contenir au moins 8 caractères.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await patchAdminUserPassword(facilityId, user.id, { newPassword });
+      await onSuccess();
+    } catch (err: unknown) {
+      onError(
+        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
+          "Impossible de réinitialiser le mot de passe."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1500,
+        padding: 16,
+      }}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        style={{
+          background: "white",
+          borderRadius: 8,
+          padding: 24,
+          maxWidth: 440,
+          width: "100%",
+          maxHeight: "90vh",
+          overflow: "auto",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="reset-password-title"
+      >
+        <h2 id="reset-password-title" style={{ marginTop: 0 }}>
+          Réinitialiser le mot de passe
+        </h2>
+        <p style={{ fontSize: 13, color: "#666", marginTop: 0 }}>
+          {user.firstName} {user.lastName} — {user.email}
+        </p>
+        <p style={{ fontSize: 13, color: "#444", marginBottom: 12 }}>
+          <strong>Établissement :</strong> {facilityDisplayName}
+        </p>
+        <form onSubmit={submit}>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              Nouveau mot de passe *
+            </label>
+            <input
+              type="password"
+              minLength={8}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+            />
+            <p style={{ fontSize: 12, color: "#888", margin: "6px 0 0 0" }}>Au moins 8 caractères.</p>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              Confirmer le mot de passe *
+            </label>
+            <input
+              type="password"
+              minLength={8}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              style={{
+                padding: "8px 16px",
+                border: "1px solid #ccc",
+                borderRadius: 4,
+                background: "#fff",
+                cursor: submitting ? "default" : "pointer",
               }}
             >
               Annuler

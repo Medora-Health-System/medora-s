@@ -4,6 +4,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, OrderStatus } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
+import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
@@ -116,6 +118,9 @@ export class ResultsService {
     if (!orderItem) {
       throw new NotFoundException("Ligne de commande introuvable.");
     }
+
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
 
     const existingResult = await this.prisma.result.findUnique({ where: { orderItemId } });
 
@@ -245,6 +250,9 @@ export class ResultsService {
     if (!orderItem) {
       throw new NotFoundException("Analyse introuvable ou non laboratoire.");
     }
+
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
 
     const result = await this.prisma.result.upsert({
       where: { orderItemId },

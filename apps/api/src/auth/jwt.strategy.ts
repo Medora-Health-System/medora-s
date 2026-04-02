@@ -32,7 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { id: payload.sub },
       include: {
         userRoles: {
-          where: { isActive: true },
+          where: { isActive: true, facility: { isActive: true } },
           include: { role: true }
         }
       }

@@ -51,6 +51,18 @@ export class AuthController {
     return this.auth.me(req.user.userId);
   }
 
+  @Post("change-password")
+  @UseGuards(AuthGuard("jwt"))
+  async changePassword(@Req() req: any, @Body() body: any) {
+    const { currentPassword, newPassword } = body;
+
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+      throw new BadRequestException("Données invalides");
+    }
+
+    return this.auth.changePassword(req.user.userId, currentPassword, newPassword);
+  }
+
   @Post("forgot-password")
   async forgotPassword(@Body() body: unknown) {
     const parsed = forgotPasswordDtoSchema.safeParse(body);

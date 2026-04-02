@@ -1,0 +1,84 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+
+      - name: API typecheck
+        run: pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json
+
+      - name: Web typecheck
+        run: pnpm --filter @medora/web exec tsc --noEmit
+
+      - name: Web build
+        run: pnpm --filter @medora/web build
+
+  api-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medora_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d medora_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medora_ci
+      JWT_ACCESS_SECRET: ci_access_secret
+      JWT_REFRESH_SECRET: ci_refresh_secret
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm --filter @medora/api exec prisma generate
+
+      - name: Prisma migrate deploy
+        run: pnpm --filter @medora/api exec prisma migrate deploy
+
+      - name: Run facility isolation and RBAC e2e
+        working-directory: apps/api
+        run: pnpm exec jest --config jest.config.cjs facility-isolation.e2e.spec.ts rbac.e2e.spec.ts --runInBand

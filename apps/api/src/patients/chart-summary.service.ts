@@ -9,6 +9,10 @@ import type {
   OrderWithEnrichedItems,
   OrderWithItems,
 } from "../orders/orders.types";
+import {
+  CHART_AUDIT_TIMELINE_ACTIONS,
+  mapAuditLogRowToTimelineItem,
+} from "./chart-audit-timeline.util";
 
 const RECENT_ENCOUNTERS = 10;
 /** Consultations hors « top 10 » mais avec résultat lab/imagerie enregistré — visibilité clinique sans tout charger. */
@@ -36,10 +40,27 @@ const encounterChartSelect = {
   dischargedAt: true,
   dischargeStatus: true,
   roomLabel: true,
+  physicianAssignedUserId: true,
   nursingAssessment: true,
   dischargeSummaryJson: true,
+  admissionSummaryJson: true,
+  admittedAt: true,
   physicianAssigned: {
     select: { id: true, firstName: true, lastName: true },
+  },
+  providerDocumentationStatus: true,
+  providerDocumentationSignedAt: true,
+  providerDocumentationSignedBy: {
+    select: { id: true, firstName: true, lastName: true },
+  },
+  providerAddenda: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      text: true,
+      createdAt: true,
+      createdBy: { select: { firstName: true, lastName: true } },
+    },
   },
   triage: {
     select: {
@@ -90,18 +111,23 @@ function attachmentsForChartUi(resultData: unknown): Array<{
 }
 
 function orderItemDisplayLabel(item: OrderItemWithCatalogMedication): string {
-  /** Libellé enrichi (inclut saisie manuelle). */
+  /** Libellé enrichi (API) puis repli catalogue / manuel — même priorité que `OrdersService.displayLabelFrForItem`. */
   if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
   if (item.catalogItemType === "LAB_TEST") {
-    const fr = item.catalogLabTest?.displayNameFr?.trim();
-    if (fr) return fr;
+    const lab = frCatalogLabel(item.catalogLabTest ?? null);
+    if (lab) return lab;
+  } else if (item.catalogItemType === "IMAGING_STUDY") {
+    const img = frCatalogLabel(item.catalogImagingStudy ?? null);
+    if (img) return img;
+  } else if (item.catalogItemType === "MEDICATION") {
+    const med = frCatalogLabel(item.catalogMedication ?? null);
+    if (med) return med;
   }
-  const lab = frCatalogLabel(item.catalogLabTest ?? null);
-  if (lab) return lab;
-  const img = frCatalogLabel(item.catalogImagingStudy ?? null);
-  if (img) return img;
-  const med = frCatalogLabel(item.catalogMedication ?? null);
-  if (med) return med;
+  const manual = item.manualLabel?.trim();
+  if (manual) {
+    const sec = item.manualSecondaryText?.trim();
+    return sec ? `${manual} — ${sec}` : manual;
+  }
   const fallback: Record<string, string> = {
     LAB_TEST: "Analyse (libellé indisponible)",
     IMAGING_STUDY: "Imagerie (libellé indisponible)",
@@ -110,24 +136,114 @@ function orderItemDisplayLabel(item: OrderItemWithCatalogMedication): string {
   return fallback[item.catalogItemType] ?? "Article prescrit";
 }
 
+/** Chart-only: merge MAR + pharmacy dispense into MEDICATION lines so dossier matches bedside reality (OrderItem may stay PLACED). Lab/imagerie unchanged. */
+function chartItemStatusAndCompletion(
+  it: OrderItemWithCatalogMedication & {
+    medicationAdministrations?: Array<{
+      administeredAt: Date;
+      administeredBy: { firstName: string; lastName: string };
+    }>;
+    pharmacyDispenseRecord?: {
+      dispensedAt: Date;
+      dispensedBy: { firstName: string; lastName: string };
+    } | null;
+  },
+  parentCancelled: boolean
+): {
+  chartStatus: string;
+  chartCompletedAt: Date | null;
+  chartCompletedBy: { firstName: string; lastName: string } | null;
+} {
+  const byNurse = (u: { firstName: string; lastName: string } | null | undefined) =>
+    u ? { firstName: u.firstName, lastName: u.lastName } : null;
+
+  if (parentCancelled) {
+    return {
+      chartStatus: "CANCELLED",
+      chartCompletedAt: it.completedAt,
+      chartCompletedBy: byNurse(it.completedByNurse),
+    };
+  }
+  if (it.catalogItemType !== "MEDICATION") {
+    if (it.status === "CANCELLED") {
+      return {
+        chartStatus: "CANCELLED",
+        chartCompletedAt: it.completedAt,
+        chartCompletedBy: byNurse(it.completedByNurse),
+      };
+    }
+    const verifiedAt = it.result?.verifiedAt;
+    if (verifiedAt) {
+      return {
+        chartStatus: it.status === "VERIFIED" ? "VERIFIED" : "RESULTED",
+        chartCompletedAt: verifiedAt instanceof Date ? verifiedAt : new Date(verifiedAt),
+        chartCompletedBy: null,
+      };
+    }
+    return {
+      chartStatus: it.status,
+      chartCompletedAt: it.completedAt,
+      chartCompletedBy: byNurse(it.completedByNurse),
+    };
+  }
+
+  const mar = it.medicationAdministrations?.[0];
+  const disp = it.pharmacyDispenseRecord ?? null;
+
+  let chartCompletedAt = it.completedAt;
+  let chartCompletedBy = byNurse(it.completedByNurse);
+
+  if (!chartCompletedAt && mar) {
+    chartCompletedAt = mar.administeredAt;
+    chartCompletedBy = byNurse(mar.administeredBy);
+  }
+  if (!chartCompletedAt && disp) {
+    chartCompletedAt = disp.dispensedAt;
+    chartCompletedBy = byNurse(disp.dispensedBy);
+  }
+
+  let chartStatus = it.status;
+  if (it.status === "CANCELLED") {
+    chartStatus = "CANCELLED";
+  } else if (
+    chartCompletedAt ||
+    it.status === "COMPLETED" ||
+    it.status === "RESULTED" ||
+    it.status === "VERIFIED"
+  ) {
+    if (it.status === "RESULTED" || it.status === "VERIFIED" || it.status === "COMPLETED") {
+      chartStatus = it.status;
+    } else {
+      chartStatus = "COMPLETED";
+    }
+  }
+
+  return { chartStatus, chartCompletedAt, chartCompletedBy };
+}
+
 function toChartOrderItems(order: OrderWithEnrichedItems) {
+  const parentCancelled = order.status === "CANCELLED";
+  const cancelledAtIso =
+    parentCancelled && order.cancelledAt
+      ? order.cancelledAt instanceof Date
+        ? order.cancelledAt.toISOString()
+        : String(order.cancelledAt)
+      : null;
   return (order.items || []).map((it) => {
     const label = orderItemDisplayLabel(it);
     const res = it.result ?? null;
+    const cf = chartItemStatusAndCompletion(it, parentCancelled);
     return {
       id: it.id,
       catalogItemType: it.catalogItemType,
-      status: it.status,
+      status: cf.chartStatus,
       displayLabel: label,
       medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? null,
-      completedAt: it.completedAt,
-      completedBy:
-        it.completedByNurse != null
-          ? {
-              firstName: it.completedByNurse.firstName,
-              lastName: it.completedByNurse.lastName,
-            }
-          : null,
+      completedAt: cf.chartCompletedAt,
+      completedBy: cf.chartCompletedBy,
+      cancelledAt: cancelledAtIso,
+      cancellationReason: parentCancelled ? order.cancellationReason ?? null : null,
+      cancelledByDisplayFr: parentCancelled ? order.cancelledByDisplayFr ?? null : null,
       result: res
         ? {
             resultText: res.resultText,
@@ -193,7 +309,7 @@ export class ChartSummaryService {
       userAgent,
     });
 
-    const [topEncounters, activeDiagnoses, recentDispenses, recentVaccinations] =
+    const [topEncounters, activeDiagnoses, recentDispenses, recentVaccinations, auditTimelineRows] =
       await Promise.all([
         this.prisma.encounter.findMany({
           where: { patientId, facilityId },
@@ -242,6 +358,18 @@ export class ChartSummaryService {
             administeredAt: true,
             nextDueAt: true,
             vaccineCatalog: { select: { code: true, name: true } },
+          },
+        }),
+        this.prisma.auditLog.findMany({
+          where: {
+            patientId,
+            facilityId,
+            action: { in: CHART_AUDIT_TIMELINE_ACTIONS },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            user: { select: { firstName: true, lastName: true } },
           },
         }),
       ]);
@@ -302,6 +430,17 @@ export class ChartSummaryService {
                 items: {
                   include: {
                     completedByNurse: { select: { firstName: true, lastName: true } },
+                    medicationAdministrations: {
+                      orderBy: { administeredAt: "desc" },
+                      take: 1,
+                      include: { administeredBy: { select: { firstName: true, lastName: true } } },
+                    },
+                    pharmacyDispenseRecord: {
+                      select: {
+                        dispensedAt: true,
+                        dispensedBy: { select: { firstName: true, lastName: true } },
+                      },
+                    },
                     result: {
                       select: {
                         resultText: true,
@@ -349,9 +488,10 @@ export class ChartSummaryService {
       ordersRaw as unknown as OrderWithItems[]
     );
     const ordersWithVerifierNames = await this.ordersService.attachEnteredByDisplayOnOrders(ordersEnriched);
+    const ordersWithCancellation = await this.ordersService.attachCancellationDisplayOnOrders(ordersWithVerifierNames);
 
     const ordersByEncounter = new Map<string, OrderWithEnrichedItems[]>();
-    for (const o of ordersWithVerifierNames) {
+    for (const o of ordersWithCancellation) {
       const list = ordersByEncounter.get(o.encounterId) ?? [];
       list.push(o);
       ordersByEncounter.set(o.encounterId, list);
@@ -385,7 +525,34 @@ export class ChartSummaryService {
         type: o.type,
         status: o.status,
         createdAt: o.createdAt,
+        cancelledAt: o.cancelledAt
+          ? o.cancelledAt instanceof Date
+            ? o.cancelledAt.toISOString()
+            : String(o.cancelledAt)
+          : null,
+        cancellationReason: o.cancellationReason ?? null,
+        cancelledByDisplayFr: o.cancelledByDisplayFr ?? null,
         items: toChartOrderItems(o),
+      }));
+
+      const signedAtIso =
+        e.providerDocumentationSignedAt instanceof Date
+          ? e.providerDocumentationSignedAt.toISOString()
+          : e.providerDocumentationSignedAt
+            ? String(e.providerDocumentationSignedAt)
+            : null;
+      const providerDocumentationSignedByDisplayFr = e.providerDocumentationSignedBy
+        ? `${e.providerDocumentationSignedBy.firstName} ${e.providerDocumentationSignedBy.lastName}`.trim()
+        : null;
+
+      const providerAddenda = (e.providerAddenda ?? []).map((a) => ({
+        id: a.id,
+        text: a.text,
+        createdAt:
+          a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+        createdByDisplayFr: a.createdBy
+          ? `${a.createdBy.firstName} ${a.createdBy.lastName}`.trim()
+          : null,
       }));
 
       return {
@@ -396,13 +563,20 @@ export class ChartSummaryService {
         chiefComplaint: e.chiefComplaint,
         treatmentPlanPreview,
         clinicianImpressionPreview,
+        providerDocumentationStatus: e.providerDocumentationStatus ?? "DRAFT",
+        providerDocumentationSignedAt: signedAtIso,
+        providerDocumentationSignedByDisplayFr,
+        providerAddenda,
         followUpDate: e.followUpDate,
         createdAt: e.createdAt,
         dischargedAt: e.dischargedAt,
         dischargeStatus: e.dischargeStatus,
         roomLabel: e.roomLabel,
+        physicianAssignedUserId: e.physicianAssignedUserId,
         nursingAssessment: e.nursingAssessment,
         dischargeSummaryJson: e.dischargeSummaryJson,
+        admissionSummaryJson: e.admissionSummaryJson,
+        admittedAt: e.admittedAt,
         physicianAssigned: e.physicianAssigned,
         encounterDiagnoses: diagnosesByEncounter.get(e.id) ?? [],
         orders: compactOrders,
@@ -418,12 +592,15 @@ export class ChartSummaryService {
       };
     });
 
+    const auditTimeline = auditTimelineRows.map((row) => mapAuditLogRowToTimelineItem(row));
+
     return {
       patient,
       recentEncounters,
       activeDiagnoses,
       recentMedicationDispenses: recentDispenses,
       recentVaccinations,
+      auditTimeline,
     };
   }
 }

@@ -7,6 +7,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { MedicationCatalogService } from "../medication-catalog/medication-catalog.service";
 import { AuditAction, MedicationFulfillmentIntent } from "@prisma/client";
+import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import type {
   CreateInventoryItemDto,
   ReceiveStockDto,
@@ -268,6 +270,8 @@ export class PharmacyInventoryService {
       throw new BadRequestException("Encounter not found or does not match patient/facility");
     }
 
+    assertEncounterNotSigned(encounter);
+
     const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.inventoryItem.update({
         where: { id: dto.inventoryItemId },
@@ -349,11 +353,19 @@ export class PharmacyInventoryService {
         id: dto.orderItemId,
         order: { facilityId, type: "MEDICATION" },
       },
-      include: { order: true },
+      include: {
+        order: {
+          include: {
+            encounter: true,
+          },
+        },
+      },
     });
     if (!orderItem) {
       throw new NotFoundException("Ligne d'ordonnance introuvable.");
     }
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {
       throw new BadRequestException("La ligne doit être un médicament.");
     }

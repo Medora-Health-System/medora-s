@@ -94,6 +94,8 @@ enum AuditAction {
   CRITICAL_FLAG
   PATHWAY_ACTIVATED
   ORDERS_CREATED
+  PROVIDER_DOCUMENTATION_SIGN
+  PROVIDER_DOCUMENTATION_ADDENDUM
 }
 
 enum EncounterType {
@@ -188,12 +190,15 @@ model Facility {
   protocolOrderSets      ProtocolOrderSet[]
   diagnoses              Diagnosis[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   inventoryItems             InventoryItem[]
   inventoryTransactions      InventoryTransaction[]
   facilityMedicationUsages   FacilityMedicationUsage[]
   vaccineAdministrations     VaccineAdministration[]
   diseaseCaseReports         DiseaseCaseReport[]
   followUps                  FollowUp[]
+  triageVitalsReadings       TriageVitalsReading[]
+  encounterProviderAddenda   EncounterProviderAddendum[]
 }
 
 model Department {
@@ -229,12 +234,15 @@ model User {
   passwordHash     String
   refreshTokenHash String?
   isActive         Boolean  @default(true)
+  /// Plateforme : autorise la création d’établissements (indépendant du rôle ADMIN par site).
+  canCreateFacilities Boolean @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   userRoles              UserRole[]
   auditLogs              AuditLog[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   inventoryTransactions  InventoryTransaction[]
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
@@ -242,7 +250,10 @@ model User {
   passwordResetTokens   PasswordResetToken[]
 
   encountersAsAssignedPhysician Encounter[] @relation("EncounterPhysicianAssigned")
+  encountersSignedByProvider    Encounter[] @relation("EncounterSignedBy")
+  providerAddendaCreated EncounterProviderAddendum[]
   orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
+  ordersCancelled               Order[]     @relation("OrderCancelledBy")
 }
 
 model PasswordResetToken {
@@ -312,9 +323,11 @@ model Patient {
   auditLogs              AuditLog[]
   diagnoses              Diagnosis[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
+  triageVitalsReadings   TriageVitalsReading[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -378,7 +391,18 @@ model Encounter {
   /// Structured discharge summary (French UI keys / values); saved before closing when using discharge flow
   dischargeSummaryJson    Json?
 
+  /// Synthèse structurée d'admission (hospitalisation depuis la consultation) — MVP, une décision par visite
+  admissionSummaryJson Json?
+  /// Horodatage de la décision d'admission (rempli côté serveur à la 1re sauvegarde du dossier d'admission)
+  admittedAt           DateTime?
+
   notes String?
+
+  /// DRAFT | SIGNED — signature médicale sur l’évaluation (V1)
+  providerDocumentationStatus         String    @default("DRAFT")
+  providerDocumentationSignedAt       DateTime?
+  providerDocumentationSignedByUserId String?
+  providerDocumentationSignedBy       User?     @relation("EncounterSignedBy", fields: [providerDocumentationSignedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -391,14 +415,36 @@ model Encounter {
   pathwaySession         PathwaySession?
   diagnoses              Diagnosis[]
   medicationDispenses    MedicationDispense[]
+  medicationAdministrations MedicationAdministration[]
   vaccineAdministrations VaccineAdministration[]
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
+  triageVitalsReadings   TriageVitalsReading[]
+  providerAddenda        EncounterProviderAddendum[]
 
   @@index([facilityId])
   @@index([patientId])
   @@index([status])
   @@index([physicianAssignedUserId])
+  @@index([providerDocumentationSignedByUserId])
+}
+
+/// Append-only addendum after provider documentation is signed (V1 — no edit/delete).
+model EncounterProviderAddendum {
+  id              String   @id @default(uuid())
+  encounterId     String
+  facilityId      String
+  text            String
+  createdAt       DateTime @default(now())
+  createdByUserId String
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  createdBy User      @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([encounterId, createdAt])
+  @@index([createdByUserId])
+  @@index([facilityId])
 }
 
 model Order {
@@ -417,12 +463,16 @@ model Order {
   prescriberContact  String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+  cancelledAt        DateTime?
+  cancelledByUserId  String?
+  cancellationReason String?
 
   encounter      Encounter       @relation(fields: [encounterId], references: [id], onDelete: Restrict)
   facility       Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
   patientId      String
   pathwaySession PathwaySession? @relation(fields: [pathwaySessionId], references: [id], onDelete: SetNull)
+  cancelledBy    User?           @relation("OrderCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   items          OrderItem[]
   auditLogs      AuditLog[]      @relation("OrderAuditLogs")
 
@@ -431,6 +481,7 @@ model Order {
   @@index([patientId])
   @@index([status])
   @@index([pathwaySessionId])
+  @@index([cancelledByUserId])
 }
 
 model OrderItem {
@@ -448,6 +499,8 @@ model OrderItem {
   strength        String?     // e.g. "500 mg" for medication
   refillCount     Int?        // number of refills for Rx
   medicationFulfillmentIntent MedicationFulfillmentIntent?
+  /// Administration prévue (information clinique, pas planification récurrente).
+  intendedAdministrationAt DateTime?
   completedAt     DateTime?
   completedByUserId String?
   completedByNurse User?     @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
@@ -458,6 +511,7 @@ model OrderItem {
   order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   result Result?
   pharmacyDispenseRecord MedicationDispense?
+  medicationAdministrations MedicationAdministration[]
 
   @@index([orderId])
   @@index([status])
@@ -485,9 +539,32 @@ model Triage {
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  triageVitalsReadings TriageVitalsReading[]
 
   @@index([facilityId])
   @@index([encounterId])
+}
+
+/// Append-only vitals readings per triage save (Signes vitaux); `Triage.vitalsJson` remains current row.
+model TriageVitalsReading {
+  id               String    @id @default(uuid())
+  facilityId       String
+  patientId        String
+  encounterId      String
+  triageId         String
+  vitalsJson       Json
+  triageCompleteAt DateTime?
+  recordedAt       DateTime  @default(now())
+
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  triage    Triage    @relation(fields: [triageId], references: [id], onDelete: Restrict)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([patientId, recordedAt])
+  @@index([encounterId])
+  @@index([triageId])
 }
 
 model Result {
@@ -825,6 +902,32 @@ model MedicationDispense {
   @@index([facilityId])
   @@index([inventoryItemId])
   @@index([dispensedAt])
+}
+
+/// Append-only bedside medication administrations (MAR log); does not replace OrderItem lifecycle.
+model MedicationAdministration {
+  id                      String   @id @default(uuid())
+  facilityId              String
+  patientId               String
+  encounterId             String
+  orderItemId             String?
+  medicationLabelSnapshot String?
+  administeredAt          DateTime @default(now())
+  administeredByUserId    String
+  notes                   String?
+  createdAt               DateTime @default(now())
+
+  facility       Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter      Encounter  @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  orderItem      OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  administeredBy User       @relation(fields: [administeredByUserId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([orderItemId])
+  @@index([administeredAt])
 }
 
 // --- Medora Public Health: vaccination + disease reporting ---

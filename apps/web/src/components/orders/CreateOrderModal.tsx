@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { apiFetch, parseApiResponse } from "@/lib/apiClient";
-import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
+import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
 import type { OrderCreateDto } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -17,6 +17,18 @@ import { SelectedMedicationItems } from "./createOrderModal/SelectedMedicationIt
 import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
 import type { CreateOrderLineItem, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
+
+/** Préréglages — ordre type CARE, ligne catalogItemType CARE + manualLabel. */
+const CARE_PROCEDURE_PRESETS_FR = [
+  "Pose de voie IV",
+  "Administration d'oxygène",
+  "Pansement / soin de plaie",
+  "Nébulisation",
+  "Pose de sonde urinaire",
+  "Aspiration",
+  "Surveillance",
+  "Autre soin infirmier",
+] as const;
 
 function mapOrderCreateError(err: unknown): string {
   const msg = err instanceof Error ? err.message : "";
@@ -56,6 +68,7 @@ function buildPayload(
           : {
               catalogItemId: it.catalogItemId,
               catalogItemType: "LAB_TEST" as const,
+              ...(it._label?.trim() ? { displayLabelFr: it._label.trim() } : {}),
             }
       ),
     };
@@ -78,8 +91,23 @@ function buildPayload(
           : {
               catalogItemId: it.catalogItemId,
               catalogItemType: "IMAGING_STUDY" as const,
+              ...(it._label?.trim() ? { displayLabelFr: it._label.trim() } : {}),
             }
       ),
+    };
+  }
+
+  if (type === "CARE") {
+    return {
+      type: "CARE",
+      priority,
+      notes: rootNotes,
+      items: items.map((it) => ({
+        catalogItemId: null,
+        catalogItemType: "CARE" as const,
+        manualLabel: (it.manualLabel ?? it._label).trim(),
+        notes: it.notes?.trim() || undefined,
+      })),
     };
   }
 
@@ -90,28 +118,32 @@ function buildPayload(
     prescriberName: prescriberName.trim(),
     prescriberLicense: prescriberLicense.trim() || undefined,
     prescriberContact: prescriberContact.trim() || undefined,
-    items: items.map((it) =>
-      it.isManual || !it.catalogItemId
-        ? {
-            catalogItemId: null,
-            catalogItemType: "MEDICATION" as const,
-            manualLabel: (it.manualLabel ?? it._label).trim(),
-            quantity: it.quantity!,
-            notes: it.notes?.trim() || undefined,
-            strength: it.strength?.trim() || undefined,
-            refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
-            medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
-          }
-        : {
-            catalogItemId: it.catalogItemId,
-            catalogItemType: "MEDICATION" as const,
-            quantity: it.quantity!,
-            notes: it.notes?.trim() || undefined,
-            strength: it.strength?.trim() || undefined,
-            refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
-            medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
-          }
-    ),
+    items: items.map((it) => {
+      const raw = it.intendedAdministrationAt?.trim();
+      const intendedDate = raw ? new Date(raw) : undefined;
+      const baseManual = {
+        catalogItemId: null,
+        catalogItemType: "MEDICATION" as const,
+        manualLabel: (it.manualLabel ?? it._label).trim(),
+        quantity: it.quantity!,
+        notes: it.notes?.trim() || undefined,
+        strength: it.strength?.trim() || undefined,
+        refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
+        medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
+        ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
+      };
+      const baseCatalog = {
+        catalogItemId: it.catalogItemId!,
+        catalogItemType: "MEDICATION" as const,
+        quantity: it.quantity!,
+        notes: it.notes?.trim() || undefined,
+        strength: it.strength?.trim() || undefined,
+        refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
+        medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
+        ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
+      };
+      return it.isManual || !it.catalogItemId ? baseManual : baseCatalog;
+    }),
   };
 }
 
@@ -123,17 +155,37 @@ export function CreateOrderModal({
   initialOrderTab = "LAB",
   onClose,
   onSuccess,
+  /** Après constat serveur « consultation fermée », re-synchronise l’état parent (évite badge Ouverte obsolète). */
+  onRefetchEncounter,
+  /** Si onglet initial CARE : préremplit une ligne manuelle (ex. action rapide). */
+  initialCareManualLabel,
 }: {
   encounterId: string;
   facilityId: string;
   canPrescribe: boolean;
   encounter?: { patient?: { firstName?: string; lastName?: string; mrn?: string } };
   initialOrderTab?: OrderModalTab;
+  initialCareManualLabel?: string | null;
   onClose: () => void;
   onSuccess: () => void;
+  onRefetchEncounter?: () => Promise<void>;
 }) {
   const firstTab: OrderModalTab =
-    !canPrescribe && initialOrderTab === "MEDICATION" ? "LAB" : initialOrderTab;
+    !canPrescribe && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE") ? "LAB" : initialOrderTab;
+
+  const carePresetItems = (): CreateOrderLineItem[] => {
+    if (firstTab !== "CARE" || !initialCareManualLabel?.trim()) return [];
+    const label = initialCareManualLabel.trim();
+    return [
+      {
+        _lineId: newOrderLineId(),
+        isManual: true,
+        catalogItemType: "CARE",
+        manualLabel: label,
+        _label: label,
+      },
+    ];
+  };
 
   const [activeTab, setActiveTab] = useState<OrderModalTab>(firstTab);
   const [rxSuccess, setRxSuccess] = useState(false);
@@ -153,10 +205,12 @@ export function CreateOrderModal({
     prescriberName: "",
     prescriberLicense: "",
     prescriberContact: "",
-    items: [] as CreateOrderLineItem[],
+    items: carePresetItems(),
   });
 
-  const orderTypes: OrderModalTab[] = canPrescribe ? ["LAB", "IMAGING", "MEDICATION"] : ["LAB", "IMAGING"];
+  const orderTypes: OrderModalTab[] = canPrescribe
+    ? ["LAB", "IMAGING", "MEDICATION", "CARE"]
+    : ["LAB", "IMAGING"];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queuedSync, setQueuedSync] = useState(false);
@@ -192,8 +246,25 @@ export function CreateOrderModal({
     return "MEDICATION";
   };
 
+  const addCarePreset = (label: string) => {
+    setFormData((fd) => ({
+      ...fd,
+      items: [
+        ...fd.items,
+        {
+          _lineId: newOrderLineId(),
+          isManual: true,
+          catalogItemType: "CARE",
+          manualLabel: label,
+          _label: label,
+        },
+      ],
+    }));
+  };
+
   const handleSelectItem = (item: CatalogSearchItem) => {
     const tab = activeTab;
+    if (tab === "CARE") return;
     if (tab === "LAB" || tab === "IMAGING") {
       const catalogItemType = tab === "LAB" ? "LAB_TEST" : "IMAGING_STUDY";
       setFormData((fd) => {
@@ -291,6 +362,24 @@ export function CreateOrderModal({
     );
 
     try {
+      /**
+       * Cause du décalage UI / API : l’en-tête peut afficher « Ouverte » depuis un cache offline
+       * (`encounter_summaries`) ou un état React non rafraîchi alors que le serveur a déjà clôturé.
+       * Re-vérification synchrone avec la source de vérité avant POST (même règle que l’API).
+       */
+      try {
+        const latestRaw = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+        const latest = asApiObject(latestRaw) as { status?: string } | null;
+        // Ne bloquer que si la source de vérité indique explicitement un statut autre qu’OPEN.
+        if (latest && typeof latest.status === "string" && latest.status !== "OPEN") {
+          await onRefetchEncounter?.();
+          setError("Impossible de créer un ordre : la consultation doit être ouverte.");
+          return;
+        }
+      } catch {
+        /* re-vérification indisponible : l’API tranchera au POST */
+      }
+
       const res = (await apiFetch(`/encounters/${encounterId}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -314,6 +403,10 @@ export function CreateOrderModal({
         setOrderSuccess(true);
       }
     } catch (err) {
+      const raw = err instanceof Error ? err.message : "";
+      if (isEncounterMustBeOpenForOrderError(raw)) {
+        await onRefetchEncounter?.();
+      }
       setError(mapOrderCreateError(err));
     } finally {
       setLoading(false);
@@ -333,7 +426,9 @@ export function CreateOrderModal({
       ? "Rechercher une analyse (2 caractères min.)"
       : activeTab === "IMAGING"
         ? "Rechercher un examen d'imagerie…"
-        : "Rechercher un médicament…";
+        : activeTab === "CARE"
+          ? ""
+          : "Rechercher un médicament…";
 
   return (
     <div
@@ -394,8 +489,25 @@ export function CreateOrderModal({
 
         {rxSuccess && createdOrder && (
           <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>Ordonnance envoyée à la pharmacie</p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {(() => {
+              const items = formData.items;
+              const intents = items.map(
+                (it) => it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE"
+              );
+              const allAdminister =
+                items.length > 0 && intents.every((x) => x === "ADMINISTER_CHART");
+              const allPharmacy =
+                items.length > 0 && intents.every((x) => x === "PHARMACY_DISPENSE");
+              return (
+                <>
+                  <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>
+                    {allAdminister
+                      ? "Ordonnance enregistrée — à administrer au patient (dossier de soins)."
+                      : allPharmacy
+                        ? "Ordonnance enregistrée — à préparer en pharmacie."
+                        : "Ordonnance enregistrée — certaines lignes sont à administrer au patient, d’autres à la pharmacie."}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => {
@@ -437,6 +549,7 @@ export function CreateOrderModal({
               >
                 Imprimer l&apos;ordonnance
               </button>
+              {!allAdminister ? (
               <Link
                 href="/app/pharmacy-worklist"
                 style={{
@@ -452,6 +565,7 @@ export function CreateOrderModal({
               >
                 Voir la file pharmacie
               </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -472,9 +586,12 @@ export function CreateOrderModal({
               </button>
             </div>
             <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
-              Date d&apos;envoi :{" "}
+              Date d&apos;enregistrement :{" "}
               {createdOrder.createdAt ? new Date(createdOrder.createdAt).toLocaleString("fr-FR") : "—"}
             </p>
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -518,19 +635,59 @@ export function CreateOrderModal({
                   backgroundColor: "#fafafa",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
-                  Recherche et ajout
-                </div>
-                <SharedCatalogAutocomplete
-                  catalogType={catalogTypeForTab(activeTab)}
-                  label=""
-                  placeholder={searchPlaceholder}
-                  facilityId={facilityId}
-                  onSelect={handleSelectItem}
-                  favoritesFirst={activeTab === "MEDICATION"}
-                  minChars={activeTab === "MEDICATION" ? 2 : 2}
-                />
-                <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />
+                {activeTab === "CARE" ? (
+                  <>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#666",
+                        marginBottom: 10,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Soins / procédures
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                      {CARE_PROCEDURE_PRESETS_FR.map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => addCarePreset(label)}
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 13,
+                            border: "1px solid #00695c",
+                            borderRadius: 6,
+                            background: "#fff",
+                            color: "#004d40",
+                            cursor: "pointer",
+                            fontWeight: 500,
+                            textAlign: "left",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
+                      Recherche et ajout
+                    </div>
+                    <SharedCatalogAutocomplete
+                      catalogType={catalogTypeForTab(activeTab)}
+                      label=""
+                      placeholder={searchPlaceholder}
+                      facilityId={facilityId}
+                      onSelect={handleSelectItem}
+                      favoritesFirst={activeTab === "MEDICATION"}
+                      minChars={activeTab === "MEDICATION" ? 2 : 2}
+                    />
+                    <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />
+                  </>
+                )}
               </div>
 
               <div
@@ -548,9 +705,18 @@ export function CreateOrderModal({
                 {activeTab === "MEDICATION" && (
                   <SelectedMedicationItems items={formData.items} onPatch={patchMedItem} onRemove={removeItem} />
                 )}
+                {activeTab === "CARE" && (
+                  <SelectedLabItems
+                    listHeading="Soins sélectionnés"
+                    items={formData.items}
+                    onRemove={removeItem}
+                  />
+                )}
                 {formData.items.length === 0 && (
                   <p style={{ margin: "8px 0 12px", fontSize: 13, color: "#999" }}>
-                    Aucun élément — recherchez ci-dessus pour ajouter.
+                    {activeTab === "CARE"
+                      ? "Aucun soin — choisissez un préréglage ci-dessus."
+                      : "Aucun élément — recherchez ci-dessus pour ajouter."}
                   </p>
                 )}
               </div>
@@ -570,10 +736,19 @@ export function CreateOrderModal({
                     <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12 }}>Prescripteur</label>
                     <input
                       type="text"
+                      readOnly
+                      aria-readonly="true"
                       value={formData.prescriberName}
-                      onChange={(e) => setFormData((fd) => ({ ...fd, prescriberName: e.target.value }))}
-                      placeholder="Nom du prescripteur"
-                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #ccc", borderRadius: 4, fontSize: 14 }}
+                      placeholder="Chargement…"
+                      style={{
+                        width: "100%",
+                        padding: "8px 10px",
+                        border: "1px solid #ccc",
+                        borderRadius: 4,
+                        fontSize: 14,
+                        backgroundColor: "#f5f5f5",
+                        cursor: "default",
+                      }}
                     />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -642,7 +817,15 @@ export function CreateOrderModal({
                     fontSize: 14,
                   }}
                 >
-                  {loading ? "Envoi…" : activeTab === "MEDICATION" ? "Envoyer à la pharmacie" : "Créer l'ordre"}
+                  {loading
+                    ? activeTab === "MEDICATION"
+                      ? "Enregistrement…"
+                      : "Envoi…"
+                    : activeTab === "MEDICATION"
+                      ? "Enregistrer l'ordonnance"
+                      : activeTab === "CARE"
+                        ? "Créer l'ordre de soins"
+                        : "Créer l'ordre"}
                 </button>
               </div>
             </form>

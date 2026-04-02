@@ -90,4 +90,16 @@ export class AdminUsersController {
     }
     return this.adminUsers.updateStatus(facilityId, id, parsed.data, req.user.userId);
   }
+
+  @Patch("users/:id/password")
+  @RequireRoles(RoleCode.ADMIN)
+  async resetPassword(@Param("id") id: string, @Body() body: any, @Req() req: any) {
+    const facilityId = facilityIdFromReq(req);
+
+    if (!body?.newPassword || body.newPassword.length < 8) {
+      throw new BadRequestException("Mot de passe invalide");
+    }
+
+    return this.adminUsers.resetPassword(facilityId, id, body.newPassword, req.user.userId);
+  }
 }

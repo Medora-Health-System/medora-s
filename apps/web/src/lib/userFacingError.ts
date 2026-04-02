@@ -19,6 +19,10 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string }> = [
   { test: (s) => /invalid credentials/i.test(s), fr: "Identifiants invalides." },
   { test: (s) => /encounter not found/i.test(s), fr: "Consultation introuvable." },
   { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable." },
+  {
+    test: (s) => /patient already has an open encounter/i.test(s),
+    fr: "Une consultation est déjà ouverte pour ce patient. Fermez-la ou ouvrez-la avant d’en créer une nouvelle.",
+  },
   { test: (s) => /order not found/i.test(s), fr: "Ordre introuvable." },
   {
     test: (s) => /payload too large|request entity too large|413/i.test(s),
@@ -60,4 +64,14 @@ export function normalizeUserFacingError(message: string | undefined | null): st
 /** Quand aucun message exploitable n’est disponible. */
 export function genericUserFacingError(): string {
   return "Une erreur s'est produite.";
+}
+
+/** Erreur API « ordre uniquement si consultation ouverte » (message brut EN ou déjà normalisé FR). */
+export function isEncounterMustBeOpenForOrderError(message: string | undefined | null): boolean {
+  if (message == null) return false;
+  const s = String(message);
+  return (
+    /can only create orders for open encounters/i.test(s) ||
+    /consultation doit être ouverte/i.test(s)
+  );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
 
@@ -48,6 +49,9 @@ async function getFacilityId(req: NextRequest): Promise<string | null> {
 
 export async function POST(req: NextRequest) {
   try {
+    const originDenied = validateRequestOrigin(req);
+    if (originDenied) return originDenied;
+
     const cookieStore = await cookies();
     const accessToken =
       cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;

@@ -87,13 +87,14 @@ async function main() {
   const passwordHash = await argon2.hash("Admin123!");
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@medora.local" },
-    update: { firstName: "Admin", lastName: "User", isActive: true },
+    update: { firstName: "Admin", lastName: "User", isActive: true, canCreateFacilities: true },
     create: {
       email: "admin@medora.local",
       firstName: "Admin",
       lastName: "User",
       passwordHash,
-      isActive: true
+      isActive: true,
+      canCreateFacilities: true,
     }
   });
 

@@ -20,5 +20,7 @@ export type AuthUserDto = {
   fullName: string;
   preferredLang: string;
   facilityRoles: FacilityRoleDto[];
+  /** Plateforme : création d’établissements (hors RBAC par site). */
+  canCreateFacilities: boolean;
 };
 

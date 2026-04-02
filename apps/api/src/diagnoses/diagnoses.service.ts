@@ -6,6 +6,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import type {
   CreateDiagnosisDto,
   UpdateDiagnosisDto,
@@ -44,6 +45,8 @@ export class DiagnosesService {
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
     }
+
+    assertEncounterNotSigned(encounter);
 
     const row = await this.prisma.diagnosis.create({
       data: {
@@ -135,6 +138,14 @@ export class DiagnosesService {
       throw new BadRequestException("Cannot update a resolved diagnosis");
     }
 
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: existing.encounterId, facilityId },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    assertEncounterNotSigned(enc);
+
     const data: any = {};
     if (dto.code !== undefined) data.code = dto.code;
     if (dto.description !== undefined) data.description = dto.description;
@@ -177,6 +188,14 @@ export class DiagnosesService {
     if (existing.status === "RESOLVED") {
       throw new BadRequestException("Diagnosis is already resolved");
     }
+
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: existing.encounterId, facilityId },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    assertEncounterNotSigned(enc);
 
     const resolvedDate = new Date();
 

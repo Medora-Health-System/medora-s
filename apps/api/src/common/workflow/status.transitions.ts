@@ -8,7 +8,8 @@ export const ORDER_TRANSITIONS: Record<string, string[]> = {
   VERIFIED: [],
   CANCELLED: [],
   /** Accuser réception peut partir d’un ordre encore « en attente » (file labo / imagerie). */
-  PENDING: ["PLACED", "ACKNOWLEDGED", "CANCELLED"],
+  /** Démarrage direct depuis la file (pharmacie / imagerie) sans étape intermédiaire. */
+  PENDING: ["PLACED", "ACKNOWLEDGED", "IN_PROGRESS", "CANCELLED"],
   SIGNED: ["ACKNOWLEDGED", "CANCELLED"],
 };
 

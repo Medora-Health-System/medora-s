@@ -149,7 +149,7 @@ describe("RBAC (e2e)", () => {
     await app.close();
   });
 
-  describe("FRONT_DESK role restrictions", () => {
+  describe("FRONT_DESK role access", () => {
     it("should allow FRONT_DESK to search patients", () => {
       return request(app.getHttpServer())
         .get("/patients/search?q=Test")
@@ -158,20 +158,20 @@ describe("RBAC (e2e)", () => {
         .expect(200);
     });
 
-    it("should deny FRONT_DESK access to patient clinical details", () => {
+    it("should allow FRONT_DESK to read patient details", () => {
       return request(app.getHttpServer())
         .get(`/patients/${patientId}`)
         .set("Authorization", `Bearer ${frontDeskToken}`)
         .set("x-facility-id", facilityId)
-        .expect(403);
+        .expect(200);
     });
 
-    it("should deny FRONT_DESK access to patient encounters list", () => {
+    it("should allow FRONT_DESK to list patient encounters", () => {
       return request(app.getHttpServer())
         .get(`/patients/${patientId}/encounters`)
         .set("Authorization", `Bearer ${frontDeskToken}`)
         .set("x-facility-id", facilityId)
-        .expect(403);
+        .expect(200);
     });
   });
 

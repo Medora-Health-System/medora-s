@@ -1,4 +1,4 @@
-const CACHE_NAME = "medora-shell-v1";
+const CACHE_NAME = "medora-shell-v2";
 const OFFLINE_URL = "/hors-ligne";
 const SHELL_URLS = [
   "/",
@@ -38,8 +38,10 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          if (res.ok && res.type !== "opaqueredirect") {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          }
           return res;
         })
         .catch(async () => {
@@ -51,18 +53,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // ✅ FIXED (network-first)
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
-        .then((res) => {
-          if (res.ok && url.origin === self.location.origin) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => caches.match(OFFLINE_URL));
-    })
+    fetch(req)
+      .then((response) => {
+        if (response && response.ok && response.type !== "opaqueredirect") {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(req, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(req);
+      })
   );
 });

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
 import { getEncounterTypeLabelFr } from "@/lib/uiLabels";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { nursingAssessmentDisplayLines, nursingAssessmentSignatureLineFr } from "./patientChartHelpers";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { clinicalResultFromChartOrderItem } from "@/lib/clinicalResultNormalize";
@@ -26,6 +26,7 @@ function orderTypeFr(t: string): string {
   if (t === "LAB") return "Laboratoire";
   if (t === "IMAGING") return "Imagerie";
   if (t === "MEDICATION") return "Médicaments";
+  if (t === "CARE") return "Soins / procédures";
   return "Autre";
 }
 
@@ -60,6 +61,33 @@ function EncounterBlock({ enc, children }: { enc: ChartSummaryEncounter; childre
           ) : null}
         </div>
       ) : null}
+      {enc.providerDocumentationStatus === "SIGNED" &&
+      enc.providerDocumentationSignedByDisplayFr &&
+      enc.providerDocumentationSignedAt ? (
+        <div
+          style={{
+            fontSize: 12,
+            color: "#1565c0",
+            marginBottom: 12,
+            fontWeight: 600,
+            lineHeight: 1.45,
+          }}
+        >
+          Signé par {enc.providerDocumentationSignedByDisplayFr} le {formatDt(enc.providerDocumentationSignedAt)}
+        </div>
+      ) : null}
+      {(enc.providerAddenda ?? []).length > 0 ? (
+        <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
+          {(enc.providerAddenda ?? []).map((ad) => (
+            <div key={ad.id} style={{ marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                Addendum par {ad.createdByDisplayFr ?? "—"} le {formatDt(ad.createdAt)}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{ad.text}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {children}
     </div>
   );
@@ -79,10 +107,27 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
         {orders.map((o) => (
           <div key={o.id} style={{ marginBottom: 12, fontSize: 14 }}>
             <div style={{ fontWeight: 600, color: "#455a64" }}>{orderTypeFr(o.type)}</div>
+            {o.status === "CANCELLED" &&
+            (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason) ? (
+              <div style={{ fontSize: 12, color: "#b71c1c", marginTop: 4, marginBottom: 6, lineHeight: 1.45 }}>
+                {o.cancelledByDisplayFr ? (
+                  <>
+                    Annulée par <strong>{o.cancelledByDisplayFr}</strong>
+                    {o.cancelledAt ? <> le {formatDt(o.cancelledAt)}</> : null}
+                  </>
+                ) : null}
+                {o.cancellationReason ? (
+                  <>
+                    {o.cancelledByDisplayFr || o.cancelledAt ? <br /> : null}
+                    Raison : {o.cancellationReason}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
             <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
               {(o.items || []).map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {getOrderItemStatusLabel(it.status)}
+                  <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
                 </li>
               ))}
             </ul>
@@ -159,7 +204,7 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
         <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
           {all.map((it) => (
             <li key={it.id}>
-              <strong>{it.displayLabel}</strong> — {getOrderItemStatusLabel(it.status)}
+              <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
             </li>
           ))}
         </ul>
@@ -229,12 +274,34 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {medLines.map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {getOrderItemStatusLabel(it.status)}
-                  <div style={{ fontSize: 12, color: "#616161", marginTop: 4 }}>
-                    {it.medicationFulfillmentIntent === "ADMINISTER_CHART"
-                      ? "À administrer au patient"
-                      : "À envoyer à la pharmacie"}
-                  </div>
+                  <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
+                  {it.status === "CANCELLED" &&
+                  (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
+                    <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
+                      {it.cancelledByDisplayFr ? (
+                        <>
+                          Annulée par <strong>{it.cancelledByDisplayFr}</strong>
+                          {it.cancelledAt ? <> le {formatDt(it.cancelledAt)}</> : null}
+                        </>
+                      ) : null}
+                      {it.cancellationReason ? (
+                        <>
+                          {it.cancelledByDisplayFr || it.cancelledAt ? <br /> : null}
+                          Raison : {it.cancellationReason}
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {it.catalogItemType === "MEDICATION" &&
+                  it.status !== "CANCELLED" &&
+                  !it.completedAt &&
+                  !isOrderItemDoneForChart(it.status) ? (
+                    <div style={{ fontSize: 12, color: "#616161", marginTop: 4 }}>
+                      {it.medicationFulfillmentIntent === "ADMINISTER_CHART"
+                        ? "À administrer au patient"
+                        : "À envoyer à la pharmacie"}
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -320,6 +387,48 @@ function wrapWithGlobalDispenseChart(blocks: React.ReactNode[], globalDisp: Char
     <div>
       {extra}
       <div>{blocks}</div>
+    </div>
+  );
+}
+
+export function PatientAuditTimelineTabContent({ chartSummary }: { chartSummary: ChartSummary | null }) {
+  const items = chartSummary?.auditTimeline ?? [];
+  if (items.length === 0) {
+    return (
+      <div style={emptyBox}>
+        Aucun événement d&apos;historique récent pour ce dossier.
+      </div>
+    );
+  }
+  return (
+    <div>
+      <h3 style={{ fontSize: 15, marginTop: 0, marginBottom: 8, fontWeight: 600 }}>Historique du dossier</h3>
+      <p style={{ fontSize: 13, color: "#616161", marginBottom: 16, lineHeight: 1.45 }}>
+        Qui a fait quoi et quand — lecture seule.
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+        {items.map((it) => (
+          <li
+            key={it.id}
+            style={{
+              padding: "12px 0",
+              borderBottom: "1px solid #eee",
+              fontSize: 14,
+              lineHeight: 1.45,
+            }}
+          >
+            <div style={{ fontWeight: 600, color: "#37474f" }}>{it.shortLabelFr}</div>
+            <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
+              {it.userDisplayFr ? <>par {it.userDisplayFr}</> : <span>—</span>}
+              {" — "}
+              {formatDt(it.createdAt)}
+            </div>
+            {it.detailFr ? (
+              <div style={{ fontSize: 12, color: "#546e7a", marginTop: 6 }}>{it.detailFr}</div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

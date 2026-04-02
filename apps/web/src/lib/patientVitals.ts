@@ -96,6 +96,12 @@ export function formatVitalsHeaderLine(vitals: Record<string, number | string | 
   return parts.length ? parts.join(" · ") : "";
 }
 
+/** True when the GET /patients/:id/triage payload already carries at least one row (latest ou historique). */
+export function hasServerVitalsTimelineData(vitalsTimeline: PatientTriageVitalsResponse | null): boolean {
+  if (vitalsTimeline == null) return false;
+  return Boolean(vitalsTimeline.latest) || (vitalsTimeline.history?.length ?? 0) > 0;
+}
+
 /** Historique complet trié du plus récent au plus ancien (la ligne « latest » de l’API est réinjectée en tête si absente). */
 export function buildVitalsTimelineNewestFirst(
   latest: PatientTriageVitalsSnapshot | null | undefined,

@@ -1,6 +1,7 @@
 /**
  * Central role → landing and route guard for /app.
  * Priority for default home (first matching role wins): ADMIN > PROVIDER > RN > PHARMACY > FRONT_DESK > LAB > RADIOLOGY > BILLING.
+ * FRONT_DESK (seul) : accueil administratif — inscription, liste patients, suivis, facturation uniquement (voir APP_ROUTE_RULES).
  * Backend RBAC unchanged; this avoids pointless 403s in the UI.
  *
  * `APP_ROLE_CODES` must stay aligned with Prisma `RoleCode` and admin user assignment.
@@ -69,18 +70,23 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
-  /** Détail consultation = dossier clinique : pas d’accueil (FRONT_DESK). La liste /app/encounters reste autorisée (exact). */
+  /** Dossier patient (hors liste) — pas d’accès FRONT_DESK (liste `/app/patients` seulement). */
+  {
+    prefix: "/app/patients/",
+    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],
+  },
+  { prefix: "/app/patients", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"], exact: true },
   {
     prefix: "/app/encounters/",
     roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],
   },
-  { prefix: "/app/encounters", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"], exact: true },
-  { prefix: "/app/patients", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
+  { prefix: "/app/encounters", roles: ["ADMIN", "PROVIDER", "RN", "BILLING"], exact: true },
   { prefix: "/app/provider", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/nursing", roles: ["ADMIN", "PROVIDER", "RN"] },
-  { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
+  { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN"] },
+  { prefix: "/app/hospitalisation", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
-  { prefix: "/app/fracture", roles: ["ADMIN", "FRONT_DESK"] },
+  { prefix: "/app/fracture", roles: ["ADMIN"] },
   { prefix: "/app/admin", roles: ["ADMIN"] },
   { prefix: "/app/admin/users", roles: ["ADMIN"] },
   { prefix: "/app/users", roles: ["ADMIN"] },
@@ -93,6 +99,16 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/settings", roles: ["ADMIN", "PROVIDER", "RN"] },
 ];
 
+/**
+ * Détail consultation `/app/encounters/:id` (un seul segment après `encounters`).
+ * Aligné avec le garde du layout (`app/app/layout.tsx`) : ne pas appliquer `getRouteGuardRedirect` ici
+ * pour éviter un rebond silencieux vers le tableau de bord — la page consultation applique le RBAC.
+ */
+export function isEncounterDetailPathname(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return /^\/app\/encounters\/[^/]+$/.test(pathname);
+}
+
 function normalizeRoleSet(roles: string[]): Set<string> {
   return new Set(roles.map((r) => (r ?? "").toUpperCase().trim()).filter(Boolean));
 }
@@ -100,6 +116,7 @@ function normalizeRoleSet(roles: string[]): Set<string> {
 function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
   const { prefix, exact } = rule;
   if (exact) return pathname === prefix;
+  if (prefix.endsWith("/")) return pathname.startsWith(prefix);
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 

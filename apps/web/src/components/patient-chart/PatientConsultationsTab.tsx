@@ -211,29 +211,38 @@ export function PatientConsultationsTab({
 }) {
   const [encounters, setEncounters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [outpatientOnly, setOutpatientOnly] = useState(false);
 
   const loadEncounters = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const path = outpatientOnly
         ? `/patients/${patientId}/encounters?type=OUTPATIENT&limit=50`
         : `/patients/${patientId}/encounters?limit=50`;
       const data = await apiFetch(path, { facilityId });
       setEncounters(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (e) {
       setEncounters([]);
-      if (!administrativeOnly) {
-        // Erreur réseau / RBAC inattendu — éviter le bruit pour l’accueil (chargement attendu sans détail clinique).
-      }
+      const msg =
+        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+        "Impossible de charger la liste des consultations.";
+      setLoadError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (facilityId) loadEncounters();
+    if (!facilityId?.trim()) {
+      setLoading(false);
+      setEncounters([]);
+      setLoadError(null);
+      return;
+    }
+    void loadEncounters();
   }, [patientId, facilityId, outpatientOnly]);
 
   useEffect(() => {
@@ -244,6 +253,38 @@ export function PatientConsultationsTab({
   }, [pendingOpenCreateEncounter, onConsumedPendingOpenCreate]);
 
   if (loading) return <div style={{ padding: 12, color: "#666" }}>Chargement des consultations…</div>;
+
+  if (!facilityId?.trim()) {
+    return (
+      <div style={{ padding: 12, color: "#666", fontSize: 14 }}>
+        Établissement non disponible. Rechargez la page ou sélectionnez un établissement dans l&apos;en-tête.
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ padding: 12 }}>
+        <p style={{ margin: 0, color: "#b71c1c", fontSize: 14, lineHeight: 1.5 }}>{loadError}</p>
+        <button
+          type="button"
+          onClick={() => void loadEncounters()}
+          style={{
+            marginTop: 12,
+            padding: "8px 14px",
+            backgroundColor: "#1a1a1a",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontSize: 13,
+          }}
+        >
+          Réessayer
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>

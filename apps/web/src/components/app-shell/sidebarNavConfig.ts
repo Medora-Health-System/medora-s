@@ -1,7 +1,9 @@
 /**
- * Navigation latérale : couleurs par module, regroupements (FR), clés d’icônes.
- * Utilisé uniquement pour le rendu — la logique de rôles reste dans layout.tsx.
+ * Menu latéral du shell authentifié — consommé uniquement via `AppShell` (`app/app/layout.tsx`).
+ * Couleurs / regroupements (FR) ; le filtrage RBAC reste dans `app/app/layout.tsx`.
  */
+
+import { ui } from "@/lib/uiLabels";
 
 export type NavAccent =
   | "slate"
@@ -122,3 +124,98 @@ export const NAV_GROUP_ORDER: NavGroupId[] = [
   "sante_publique",
   "admin",
 ];
+
+const n = ui.nav;
+
+/**
+ * Menu latéral complet (libellés FR) — source unique pour le shell Medora.
+ * Filtrer selon les rôles actifs avant affichage.
+ */
+export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
+  { href: "/app/trackboard", label: n.trackboard, roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate" },
+  { href: "/app/registration", label: n.registration, roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
+  { href: "/app/nursing", label: n.nursing, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
+  { href: "/app/provider", label: n.provider, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
+  { href: "/app/patients", label: n.patients, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+  { href: "/app/encounters", label: n.encounters, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate" },
+  {
+    href: "/app/hospitalisation",
+    label: n.hospitalisation,
+    roles: ["ADMIN", "PROVIDER", "RN"],
+    group: "soins_dossiers",
+    accent: "slate",
+  },
+  { href: "/app/follow-ups", label: n.followUps, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+  { href: "/app/rad-worklist", label: n.radWorklist, roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
+  { href: "/app/lab-worklist", label: n.labWorklist, roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },
+  { href: "/app/pharmacy", label: n.pharmacyQueue, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
+  { href: "/app/pharmacy-worklist", label: n.pharmacyWorklist, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
+  {
+    href: "/app/pharmacy/inventory",
+    label: n.pharmacyInventory,
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  {
+    href: "/app/pharmacy/dispense",
+    label: n.pharmacyDispense,
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  {
+    href: "/app/pharmacy/low-stock",
+    label: n.pharmacyLowStock,
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  {
+    href: "/app/pharmacy/expiring",
+    label: n.pharmacyExpiring,
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  { href: "/app/billing", label: n.billing, roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo" },
+  { href: "/app/fracture", label: n.fracture, roles: ["ADMIN"], group: "facturation", accent: "slate" },
+  {
+    href: "/app/public-health/summary",
+    label: n.publicHealth,
+    roles: ["RN", "PROVIDER", "ADMIN"],
+    group: "sante_publique",
+    accent: "orange",
+  },
+  {
+    href: "/app/public-health/vaccinations",
+    label: n.vaccinations,
+    roles: ["RN", "PROVIDER", "ADMIN"],
+    group: "sante_publique",
+    accent: "orange",
+  },
+  {
+    href: "/app/public-health/disease-reports",
+    label: n.diseaseReports,
+    roles: ["RN", "PROVIDER", "ADMIN"],
+    group: "sante_publique",
+    accent: "orange",
+  },
+  { href: "/app/admin", label: n.admin, roles: ["ADMIN"], group: "admin", accent: "redGray" },
+  { href: "/app/admin/users", label: n.adminUsers, roles: ["ADMIN"], group: "admin", accent: "redGray" },
+];
+
+export type GroupedSidebarSection = {
+  groupId: NavGroupId;
+  title: string;
+  items: SidebarNavItem[];
+};
+
+/** Regroupe les entrées filtrées selon `NAV_GROUP_ORDER` (sections vides exclues). */
+export function groupSidebarNavItems(items: SidebarNavItem[]): GroupedSidebarSection[] {
+  return NAV_GROUP_ORDER.map((gid) => ({
+    groupId: gid,
+    title: NAV_GROUP_TITLE[gid],
+    items: items.filter((item) => item.group === gid),
+  })).filter((section) => section.items.length > 0);
+}

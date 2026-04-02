@@ -9,6 +9,10 @@ export type ChartSummaryOrderItem = {
   medicationFulfillmentIntent: string | null;
   completedAt: string | null;
   completedBy: { firstName: string; lastName: string } | null;
+  /** Renseignés lorsque la commande parente est annulée (réplication pour affichage liste / filtre). */
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  cancelledByDisplayFr?: string | null;
   result: {
     resultText: string | null;
     verifiedAt: string | null;
@@ -30,6 +34,9 @@ export type ChartSummaryOrder = {
   type: string;
   status: string;
   createdAt: string;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  cancelledByDisplayFr?: string | null;
   items: ChartSummaryOrderItem[];
 };
 
@@ -60,14 +67,29 @@ export type ChartSummaryEncounter = {
   chiefComplaint: string | null;
   treatmentPlanPreview: string | null;
   clinicianImpressionPreview: string | null;
+  /** DRAFT | SIGNED — chart API */
+  providerDocumentationStatus?: string;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
+  /** Append-only addenda after signature (V1). */
+  providerAddenda?: Array<{
+    id: string;
+    text: string;
+    createdAt: string;
+    createdByDisplayFr: string | null;
+  }>;
   followUpDate: string | null;
   createdAt: string;
   dischargedAt: string | null;
   dischargeStatus: string | null;
   roomLabel?: string | null;
+  physicianAssignedUserId?: string | null;
   physicianAssigned?: { id: string; firstName: string; lastName: string } | null;
   nursingAssessment?: unknown;
   dischargeSummaryJson?: unknown;
+  /** Dossier d'admission (depuis la consultation) */
+  admissionSummaryJson?: unknown;
+  admittedAt?: string | null;
   /** Présents côté API récent ; optionnel pour vieux caches hors-ligne. */
   encounterDiagnoses?: ChartEncounterDiagnosis[];
   orders?: ChartSummaryOrder[];
@@ -78,6 +100,19 @@ export type ChartSummaryEncounter = {
     chiefComplaint: string | null;
     esi: number | null;
   } | null;
+};
+
+/** Ligne d’historique d’audit (dossier patient — lecture seule, V1). */
+export type ChartAuditTimelineItem = {
+  id: string;
+  action: string;
+  createdAt: string;
+  userDisplayFr: string | null;
+  shortLabelFr: string;
+  detailFr: string | null;
+  encounterId: string | null;
+  entityType: string;
+  entityId: string | null;
 };
 
 export type ChartSummary = {
@@ -128,6 +163,8 @@ export type ChartSummary = {
     nextDueAt: string | null;
     vaccineCatalog: { code: string; name: string };
   }>;
+  /** Derniers événements d’audit pertinents (max 50), du plus récent au plus ancien. */
+  auditTimeline?: ChartAuditTimelineItem[];
 };
 
 export async function fetchChartSummary(
@@ -137,6 +174,16 @@ export async function fetchChartSummary(
   return apiFetch(`/patients/${patientId}/chart-summary`, {
     facilityId,
   }) as Promise<ChartSummary>;
+}
+
+/** Timeline d’audit pour une consultation (GET /encounters/:id/audit-timeline) — ordre chronologique côté serveur. */
+export async function fetchEncounterAuditTimeline(
+  facilityId: string,
+  encounterId: string
+): Promise<ChartAuditTimelineItem[]> {
+  return apiFetch(`/encounters/${encounterId}/audit-timeline`, {
+    facilityId,
+  }) as Promise<ChartAuditTimelineItem[]>;
 }
 
 export async function createDiagnosis(

@@ -24,7 +24,13 @@ export function OrderTypeTabs({
   onChange: (tab: OrderModalTab) => void;
 }) {
   const label = (t: OrderModalTab) =>
-    t === "LAB" ? "Analyses" : t === "IMAGING" ? "Imagerie" : "Médicaments";
+    t === "LAB"
+      ? "Analyses"
+      : t === "IMAGING"
+        ? "Imagerie"
+        : t === "MEDICATION"
+          ? "Médicaments"
+          : "Soins / procédures";
 
   return (
     <div

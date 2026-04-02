@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
+import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import {
   attachmentsFromResultDataAll,
   normalizeExamTitleFr,
@@ -131,13 +131,13 @@ function StatusChips({
   const chips: { label: string; bg: string; color: string }[] = [];
   if (criticalValue) {
     chips.push({ label: "Critique", bg: "#ffebee", color: "#b71c1c" });
-  } else if (itemStatus && ["RESULTED", "VERIFIED", "COMPLETED"].includes(itemStatus)) {
-    chips.push({ label: "Terminé", bg: "#e8f5e9", color: "#2e7d32" });
+  } else if (itemStatus && isOrderItemDoneForChart(itemStatus)) {
+    chips.push({ label: "Terminée", bg: "#e8f5e9", color: "#2e7d32" });
   } else if (itemStatus === "PENDING" || itemStatus === "PLACED") {
     chips.push({ label: "En attente", bg: "#fff8e1", color: "#f57f17" });
   }
   if (!chips.length && itemStatus) {
-    chips.push({ label: getOrderItemStatusLabel(itemStatus), bg: "#eceff1", color: "#37474f" });
+    chips.push({ label: getOrderItemChartLabel(itemStatus), bg: "#eceff1", color: "#37474f" });
   }
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -447,7 +447,7 @@ export function ClinicalResultViewer({
 }: ClinicalResultViewerProps) {
   const pad = compact ? 12 : 16;
   const displayTitle = normalizeExamTitleFr(title);
-  const statusLabel = itemStatus ? getOrderItemStatusLabel(itemStatus) : null;
+  const statusLabel = itemStatus ? getOrderItemChartLabel(itemStatus) : null;
   const borderAccent =
     catalogItemType === "IMAGING_STUDY" ? "#00838f" : catalogItemType === "LAB_TEST" ? "#1565c0" : "#1565c0";
   return (

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import {
   AuditAction,
   PathwayType,
@@ -115,6 +116,7 @@ export class PathwaysService {
     let ordersCreated = 0;
 
     if (orderSet && orderSet.items.length > 0) {
+      assertEncounterNotSigned(encounter);
       // Group items by type (LAB, IMAGING, MEDICATION)
       const itemsByType: Record<string, typeof orderSet.items> = {};
       for (const item of orderSet.items) {
@@ -210,7 +212,9 @@ export class PathwaysService {
       throw new BadRequestException("Only active pathways can be paused");
     }
 
-    return this.prisma.pathwaySession.update({
+    assertEncounterNotSigned(pathway.encounter);
+
+    const updated = await this.prisma.pathwaySession.update({
       where: { id: pathwayId },
       data: {
         status: PathwayStatus.PAUSED,
@@ -223,6 +227,19 @@ export class PathwaysService {
         },
       },
     });
+
+    await this.audit.log(AuditAction.UPDATE, "PATHWAY", {
+      userId,
+      facilityId,
+      patientId: pathway.encounter.patientId,
+      encounterId: pathway.encounterId,
+      entityId: pathwayId,
+      ip,
+      userAgent,
+      metadata: { pathwayAction: "pause" },
+    });
+
+    return updated;
   }
 
   async complete(pathwayId: string, facilityId: string, userId?: string, ip?: string, userAgent?: string) {
@@ -234,6 +251,8 @@ export class PathwaysService {
     if (!pathway) {
       throw new NotFoundException("Pathway not found");
     }
+
+    assertEncounterNotSigned(pathway.encounter);
 
     return this.prisma.pathwaySession.update({
       where: { id: pathwayId },
@@ -336,13 +355,36 @@ export class PathwaysService {
       throw new NotFoundException("Milestone not found");
     }
 
-    return this.prisma.pathwayMilestone.update({
+    assertEncounterNotSigned(pathway.encounter);
+
+    const fromStatus = milestone.status;
+
+    const updatedMilestone = await this.prisma.pathwayMilestone.update({
       where: { id: milestoneId },
       data: {
         status,
         metAt: status === PathwayMilestoneStatus.MET ? new Date() : null,
       },
     });
+
+    await this.audit.log(AuditAction.UPDATE, "PATHWAY", {
+      userId,
+      facilityId,
+      patientId: pathway.encounter.patientId,
+      encounterId: pathway.encounterId,
+      entityId: pathwayId,
+      ip,
+      userAgent,
+      metadata: {
+        pathwayAction: "milestone",
+        milestoneId,
+        milestoneName: milestone.name,
+        fromStatus,
+        toStatus: status,
+      },
+    });
+
+    return updatedMilestone;
   }
 }
 

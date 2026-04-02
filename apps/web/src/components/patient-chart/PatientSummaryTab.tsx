@@ -139,6 +139,7 @@ export function PatientSummaryTab({
   followUpsLoading,
   onRefreshFollowUps,
   onAddFollowUp,
+  onPrintMedicalRecord,
 }: {
   chartSummary: ChartSummary | null;
   chartLoading: boolean;
@@ -154,6 +155,8 @@ export function PatientSummaryTab({
   followUpsLoading: boolean;
   onRefreshFollowUps: () => void;
   onAddFollowUp: () => void;
+  /** Impression dossier (données déjà chargées) — en-tête du fil chronologique */
+  onPrintMedicalRecord?: () => void;
 }) {
   const formatDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
   const formatDateTime = (d: Date) =>
@@ -198,7 +201,29 @@ export function PatientSummaryTab({
         )}
       </div>
 
-      <ChartSection title="Fil chronologique clinique (par consultation)">
+      <ChartSection
+        title="Fil chronologique clinique (par consultation)"
+        action={
+          onPrintMedicalRecord ? (
+            <button
+              type="button"
+              onClick={onPrintMedicalRecord}
+              style={{
+                padding: "8px 14px",
+                border: "1px solid #000",
+                borderRadius: 4,
+                background: "#fff",
+                color: "#000",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: 13,
+              }}
+            >
+              Imprimer le dossier
+            </button>
+          ) : undefined
+        }
+      >
         <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>
           Synthèse par visite : signes vitaux d&apos;accueil, évaluation infirmière, ordres, résultats, dispensation et résumé
           de sortie lorsque disponibles. Du plus récent au plus ancien.

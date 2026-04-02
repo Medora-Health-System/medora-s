@@ -1,19 +1,136 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, Prisma, RoleCode } from "@prisma/client";
+import { AuditAction, EncounterStatus, EncounterType, Prisma, RoleCode } from "@prisma/client";
 import { isEncounterType } from "../common/utils/prisma-query-enum-guards";
 import { assertCanTransitionEncounter } from "../common/workflow/encounter.transitions";
-import type {
-  EncounterCloseDto,
-  EncounterCreateDto,
-  EncounterOperationalUpdateDto,
-  EncounterOutpatientCreateDto,
-  EncounterUpdateDto,
+import { SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR } from "./encounter-sign-lock.util";
+import {
+  admissionSummaryFieldsSchema,
+  type EncounterCloseDto,
+  type EncounterCreateDto,
+  type EncounterOperationalUpdateDto,
+  type EncounterOutpatientCreateDto,
+  type EncounterProviderAddendumCreateDto,
+  type EncounterUpdateDto,
+  type EncounterCloseDocumentationCheckResult,
 } from "@medora/shared";
+
+/** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
+const DISCHARGE_SUMMARY_KEYS = [
+  "disposition",
+  "exitCondition",
+  "dischargeInstructions",
+  "medicationsGiven",
+  "followUp",
+  "returnIfWorse",
+  "patientDestination",
+  "dischargeMode",
+] as const;
+
+function admissionSummaryHasContent(data: Record<string, unknown>): boolean {
+  return Object.values(data).some((v) => typeof v === "string" && v.trim().length > 0);
+}
+
+function hasPhysicianEvalV1Content(nursingAssessment: unknown): boolean {
+  if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) {
+    return false;
+  }
+  const pe = (nursingAssessment as Record<string, unknown>).physicianEvalV1;
+  if (!pe || typeof pe !== "object" || Array.isArray(pe)) return false;
+  const o = pe as Record<string, unknown>;
+  for (const k of ["hpi", "ros", "physicalExam", "mdm"]) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim().length > 0) return true;
+  }
+  return false;
+}
+
+function encounterHasSignableProviderContent(enc: {
+  providerNote: string | null;
+  treatmentPlan: string | null;
+  nursingAssessment: unknown;
+}): boolean {
+  if (enc.providerNote?.trim()) return true;
+  if (enc.treatmentPlan?.trim()) return true;
+  return hasPhysicianEvalV1Content(enc.nursingAssessment);
+}
+
+/** Sections structurées, lignes résumé ou procédure IV — aligné sur l’affichage dossier (V1). */
+function nursingAssessmentHasContent(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const o = raw as Record<string, unknown>;
+  const inner = o.nursingEvalV1;
+  if (!inner || typeof inner !== "object") return false;
+  const ne = inner as Record<string, unknown>;
+  const sections = ne.sections;
+  if (sections && typeof sections === "object") {
+    for (const v of Object.values(sections)) {
+      if (v && typeof v === "object" && "text" in v && typeof (v as { text: unknown }).text === "string") {
+        if ((v as { text: string }).text.trim().length > 0) return true;
+      }
+    }
+  }
+  const sl = ne.summaryLinesFr;
+  if (Array.isArray(sl) && sl.some((x) => typeof x === "string" && x.trim().length > 0)) return true;
+  const pv = ne.proceduresV1;
+  if (pv && typeof pv === "object") {
+    const iv = (pv as Record<string, unknown>).ivInsertion;
+    if (iv && typeof iv === "object" && (iv as { performed?: boolean }).performed === true) return true;
+  }
+  return false;
+}
+
+function mergeDischargeSummaryJson(
+  existing: unknown,
+  incoming: EncounterCloseDto["discharge"]
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+    const o = existing as Record<string, unknown>;
+    for (const k of DISCHARGE_SUMMARY_KEYS) {
+      const v = o[k];
+      if (typeof v === "string" && v.trim()) {
+        out[k] = v.trim();
+      }
+    }
+  }
+  if (incoming) {
+    const inc = incoming as Record<string, unknown>;
+    for (const k of DISCHARGE_SUMMARY_KEYS) {
+      const v = inc[k];
+      if (v !== undefined && String(v).trim() !== "") {
+        out[k] = String(v).trim();
+      }
+    }
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 import type { ListPatientEncountersQuery } from "./dto";
 import { toEncounterClinicResponse } from "./encounter-response.util";
+import {
+  ENCOUNTER_AUDIT_TIMELINE_V1_ACTIONS,
+  mapAuditLogRowToTimelineItem,
+  metadataEncounterId,
+} from "../patients/chart-audit-timeline.util";
+
+/** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
+const encounterDetailPatientSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  mrn: true,
+  dob: true,
+  sexAtBirth: true,
+} as const;
 
 @Injectable()
 export class EncountersService {
@@ -165,12 +282,35 @@ export class EncountersService {
     return encounters.map((e) => toEncounterClinicResponse(e));
   }
 
+  private mapProviderAddendaForApi(
+    rows: Array<{
+      id: string;
+      text: string;
+      createdAt: Date;
+      createdBy: { firstName: string; lastName: string };
+    }>
+  ) {
+    return rows.map((a) => ({
+      id: a.id,
+      text: a.text,
+      createdAt: a.createdAt,
+      createdByDisplayFr: `${a.createdBy.firstName} ${a.createdBy.lastName}`.trim(),
+    }));
+  }
+
   async findOne(facilityId: string, id: string, userId?: string, ip?: string, userAgent?: string) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true, dob: true, sexAtBirth: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
+        providerAddenda: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            createdBy: { select: { firstName: true, lastName: true } },
+          },
+        },
       },
     });
 
@@ -188,7 +328,168 @@ export class EncountersService {
       userAgent,
     });
 
-    return toEncounterClinicResponse(encounter);
+    let closedByDisplayFr: string | null = null;
+    if (encounter.status === EncounterStatus.CLOSED) {
+      const closeLog = await this.prisma.auditLog.findFirst({
+        where: {
+          action: AuditAction.ENCOUNTER_CLOSE,
+          entityId: encounter.id,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (closeLog?.userId) {
+        const closer = await this.prisma.user.findUnique({
+          where: { id: closeLog.userId },
+          select: { firstName: true, lastName: true },
+        });
+        if (closer) {
+          closedByDisplayFr = `${closer.firstName} ${closer.lastName}`.trim();
+        }
+      }
+    }
+
+    const { providerAddenda: _rawAddenda, ...encounterForClinic } = encounter;
+    const res = toEncounterClinicResponse(encounterForClinic as typeof encounter) as Record<string, unknown>;
+    const signedByDisplayFr =
+      encounter.providerDocumentationStatus === "SIGNED" && encounter.providerDocumentationSignedBy
+        ? `${encounter.providerDocumentationSignedBy.firstName} ${encounter.providerDocumentationSignedBy.lastName}`.trim()
+        : null;
+
+    const withClosed =
+      encounter.status === EncounterStatus.CLOSED
+        ? { ...res, closedByDisplayFr }
+        : res;
+
+    const withAddenda = {
+      ...withClosed,
+      providerAddenda: this.mapProviderAddendaForApi(_rawAddenda ?? []),
+    };
+
+    return signedByDisplayFr
+      ? { ...withAddenda, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
+      : withAddenda;
+  }
+
+  async addProviderAddendum(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterProviderAddendumCreateDto,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour ajouter un addendum.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    if (encounter.providerDocumentationStatus !== "SIGNED") {
+      throw new BadRequestException(
+        "Un addendum n'est possible qu'après signature de l'évaluation médicale."
+      );
+    }
+
+    const created = await this.prisma.encounterProviderAddendum.create({
+      data: {
+        encounterId,
+        facilityId,
+        text: dto.text.trim(),
+        createdByUserId: userId,
+      },
+      include: {
+        createdBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_ADDENDUM, "ENCOUNTER_PROVIDER_ADDENDUM", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: created.id,
+      ip,
+      userAgent,
+    });
+
+    return {
+      id: created.id,
+      text: created.text,
+      createdAt: created.createdAt,
+      createdByDisplayFr: `${created.createdBy.firstName} ${created.createdBy.lastName}`.trim(),
+    };
+  }
+
+  async signProviderDocumentation(
+    facilityId: string,
+    encounterId: string,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour signer l'évaluation médicale.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("La consultation doit être ouverte pour signer l'évaluation.");
+    }
+
+    if (encounter.providerDocumentationStatus === "SIGNED") {
+      throw new BadRequestException("L'évaluation médicale est déjà signée.");
+    }
+
+    if (!encounterHasSignableProviderContent(encounter)) {
+      throw new BadRequestException(
+        "Renseignez au moins une impression clinique, un plan de traitement ou la documentation médicale (HPI, ROS, examen, MDM) avant de signer."
+      );
+    }
+
+    const updated = await this.prisma.encounter.update({
+      where: { id: encounterId },
+      data: {
+        providerDocumentationStatus: "SIGNED",
+        providerDocumentationSignedAt: new Date(),
+        providerDocumentationSignedByUserId: userId,
+      },
+      include: {
+        patient: { select: encounterDetailPatientSelect },
+        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_SIGN, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+    });
+
+    const res = toEncounterClinicResponse(updated) as Record<string, unknown>;
+    const signedByDisplayFr = updated.providerDocumentationSignedBy
+      ? `${updated.providerDocumentationSignedBy.firstName} ${updated.providerDocumentationSignedBy.lastName}`.trim()
+      : null;
+    return signedByDisplayFr
+      ? { ...res, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
+      : res;
   }
 
   async update(facilityId: string, id: string, data: EncounterUpdateDto, userId?: string, ip?: string, userAgent?: string) {
@@ -198,6 +499,62 @@ export class EncountersService {
 
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
+    }
+
+    const dataKeys = (Object.keys(data) as (keyof EncounterUpdateDto)[]).filter(
+      (k) => data[k] !== undefined
+    );
+    const allowedWhenSigned: (keyof EncounterUpdateDto)[] = ["roomLabel", "physicianAssignedUserId"];
+
+    if (encounter.providerDocumentationStatus === "SIGNED") {
+      const disallowed = dataKeys.filter((k) => !allowedWhenSigned.includes(k));
+      if (disallowed.length > 0) {
+        throw new BadRequestException(SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR);
+      }
+      const updateData: Record<string, unknown> = {};
+      if (data.roomLabel !== undefined) {
+        updateData.roomLabel =
+          data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
+      }
+      if (data.physicianAssignedUserId !== undefined) {
+        if (data.physicianAssignedUserId === null) {
+          updateData.physicianAssignedUserId = null;
+        } else {
+          await this.assertProviderAtFacility(facilityId, data.physicianAssignedUserId);
+          updateData.physicianAssignedUserId = data.physicianAssignedUserId;
+        }
+      }
+      if (Object.keys(updateData).length === 0) {
+        const unchanged = await this.prisma.encounter.findFirst({
+          where: { id, facilityId },
+          include: {
+            patient: { select: encounterDetailPatientSelect },
+            physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+          },
+        });
+        if (!unchanged) {
+          throw new NotFoundException("Encounter not found");
+        }
+        return toEncounterClinicResponse(unchanged);
+      }
+      const updated = await this.prisma.encounter.update({
+        where: { id },
+        data: updateData,
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+      });
+      return toEncounterClinicResponse(updated);
     }
 
     const updateData: Record<string, unknown> = {};
@@ -232,6 +589,33 @@ export class EncountersService {
     if (data.dischargeSummaryJson !== undefined) {
       updateData.dischargeSummaryJson = data.dischargeSummaryJson;
     }
+    if (data.admissionSummaryJson !== undefined) {
+      if (encounter.status !== EncounterStatus.OPEN) {
+        throw new BadRequestException(
+          "L'admission ne peut être modifiée que sur une consultation ouverte."
+        );
+      }
+      if (data.admissionSummaryJson === null) {
+        updateData.admissionSummaryJson = null;
+        updateData.admittedAt = null;
+      } else {
+        const parsedAdmission = admissionSummaryFieldsSchema.safeParse(data.admissionSummaryJson);
+        if (!parsedAdmission.success) {
+          throw new BadRequestException("Dossier d'admission invalide.");
+        }
+        const asRecord = parsedAdmission.data as Record<string, unknown>;
+        if (!admissionSummaryHasContent(asRecord)) {
+          throw new BadRequestException("Renseignez au moins un champ du dossier d'admission.");
+        }
+        updateData.admissionSummaryJson = parsedAdmission.data;
+        if (!encounter.admittedAt) {
+          updateData.admittedAt = new Date();
+        }
+        if (encounter.type !== EncounterType.INPATIENT) {
+          updateData.type = EncounterType.INPATIENT;
+        }
+      }
+    }
     if (data.roomLabel !== undefined) {
       updateData.roomLabel =
         data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
@@ -249,7 +633,7 @@ export class EncountersService {
       where: { id },
       data: updateData,
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -304,11 +688,24 @@ export class EncountersService {
         updateData.physicianAssignedUserId = data.physicianAssignedUserId;
       }
     }
+    if (Object.keys(updateData).length === 0) {
+      const unchanged = await this.prisma.encounter.findFirst({
+        where: { id, facilityId },
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      if (!unchanged) {
+        throw new NotFoundException("Encounter not found");
+      }
+      return toEncounterClinicResponse(unchanged);
+    }
     const updated = await this.prisma.encounter.update({
       where: { id },
       data: updateData,
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -352,6 +749,55 @@ export class EncountersService {
     return out;
   }
 
+  /**
+   * Historique d’audit limité à une consultation — chronologique (plus ancien en premier).
+   * Même périmètre d’actions que le bandeau dossier patient (pas de bruit CHART_ACCESS / ENCOUNTER_VIEW / ORDER_VIEW).
+   */
+  async getAuditTimeline(
+    facilityId: string,
+    encounterId: string,
+    _userId?: string,
+    _ip?: string,
+    _userAgent?: string
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true, patientId: true },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const rows = await this.prisma.auditLog.findMany({
+      where: {
+        facilityId,
+        patientId: encounter.patientId,
+        action: { in: ENCOUNTER_AUDIT_TIMELINE_V1_ACTIONS },
+        OR: [
+          { encounterId: encounter.id },
+          {
+            metadata: {
+              path: ["encounterId"],
+              equals: encounter.id,
+            },
+          },
+        ],
+      },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      include: {
+        user: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    const forEncounter = rows.filter((row) => {
+      const eid = row.encounterId ?? metadataEncounterId(row.metadata);
+      return eid === encounter.id;
+    });
+
+    return forEncounter.map((row) => mapAuditLogRowToTimelineItem(row));
+  }
+
   private async assertProviderAtFacility(facilityId: string, userId: string | null | undefined) {
     if (userId === undefined || userId === null) return;
     const ok = await this.prisma.userRole.findFirst({
@@ -365,6 +811,81 @@ export class EncountersService {
     if (!ok) {
       throw new BadRequestException("L'utilisateur sélectionné n'est pas un médecin de cet établissement.");
     }
+  }
+
+  private evaluateEncounterDocumentationDeficiencies(
+    encounter: {
+      chiefComplaint: string | null;
+      providerNote: string | null;
+      treatmentPlan: string | null;
+      nursingAssessment: unknown;
+      dischargeSummaryJson: unknown;
+      admissionSummaryJson: unknown;
+      type: EncounterType;
+    },
+    dischargeIncoming: EncounterCloseDto["discharge"]
+  ): EncounterCloseDocumentationCheckResult {
+    const deficiencies: Array<{ code: string; labelFr: string }> = [];
+
+    if (!encounter.chiefComplaint?.trim()) {
+      deficiencies.push({
+        code: "CHIEF_COMPLAINT",
+        labelFr: "Motif de consultation ou raison de visite",
+      });
+    }
+
+    if (!encounterHasSignableProviderContent(encounter)) {
+      deficiencies.push({
+        code: "PROVIDER_DOCUMENTATION",
+        labelFr:
+          "Évaluation médicale (au moins une impression clinique, un plan de traitement ou la documentation HPI/ROS/examen/MDM)",
+      });
+    }
+
+    if (!nursingAssessmentHasContent(encounter.nursingAssessment)) {
+      deficiencies.push({
+        code: "NURSING_ASSESSMENT",
+        labelFr: "Évaluation infirmière",
+      });
+    }
+
+    const mergedDischarge = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, dischargeIncoming);
+    if (!mergedDischarge) {
+      deficiencies.push({
+        code: "DISCHARGE_SUMMARY",
+        labelFr: "Dossier de sortie structuré",
+      });
+    }
+
+    if (encounter.type === EncounterType.INPATIENT) {
+      const adm = encounter.admissionSummaryJson;
+      const admObj =
+        adm && typeof adm === "object" && !Array.isArray(adm) ? (adm as Record<string, unknown>) : {};
+      if (!admissionSummaryHasContent(admObj)) {
+        deficiencies.push({
+          code: "ADMISSION_SUMMARY",
+          labelFr: "Dossier d'admission (hospitalisation)",
+        });
+      }
+    }
+
+    return { deficiencies, hasDeficiencies: deficiencies.length > 0 };
+  }
+
+  async getCloseDocumentationCheck(
+    facilityId: string,
+    encounterId: string,
+    discharge?: EncounterCloseDto["discharge"]
+  ): Promise<EncounterCloseDocumentationCheckResult> {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    return this.evaluateEncounterDocumentationDeficiencies(encounter, discharge);
   }
 
   async close(
@@ -386,19 +907,34 @@ export class EncountersService {
     // Validate status transition
     assertCanTransitionEncounter(encounter.status, "CLOSED");
 
+    const docCheck = this.evaluateEncounterDocumentationDeficiencies(encounter, data?.discharge);
+    if (docCheck.hasDeficiencies && !data?.acknowledgeDeficiencies) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message:
+            "La documentation est incomplète. Indiquez acknowledgeDeficiencies: true pour clôturer malgré les lacunes, ou complétez la documentation.",
+          deficiencies: docCheck.deficiencies,
+          code: "ENCOUNTER_CLOSE_DEFICIENCIES_NOT_ACKNOWLEDGED",
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     const closePayload: Record<string, unknown> = {
       status: "CLOSED",
       dischargedAt: new Date(),
     };
-    if (data?.discharge && Object.values(data.discharge).some((v) => v !== undefined && String(v).trim() !== "")) {
-      closePayload.dischargeSummaryJson = data.discharge as object;
+    const mergedDischarge = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, data?.discharge);
+    if (mergedDischarge) {
+      closePayload.dischargeSummaryJson = mergedDischarge;
     }
 
     const updated = await this.prisma.encounter.update({
       where: { id },
       data: closePayload as Prisma.EncounterUpdateInput,
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -411,6 +947,13 @@ export class EncountersService {
       entityId: encounter.id,
       ip,
       userAgent,
+      metadata:
+        docCheck.hasDeficiencies && data?.acknowledgeDeficiencies
+          ? {
+              deficienciesAcknowledged: true,
+              deficiencyCodes: docCheck.deficiencies.map((d) => d.code),
+            }
+          : undefined,
     });
 
     return toEncounterClinicResponse(updated);

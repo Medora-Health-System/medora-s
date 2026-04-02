@@ -60,37 +60,61 @@ export const vitalsSchema = z.object({
   spo2: z.number().int().min(0).max(100).optional().nullable(),
   weightKg: z.number().positive().optional().nullable(),
   heightCm: z.number().positive().optional().nullable(),
+  allergyNote: z.string().max(2000).optional().nullable(),
 }).optional().nullable();
 
 export type Vitals = z.infer<typeof vitalsSchema>;
 
+/** Corps JSON : `""` sur champs optionnels doit être traité comme absent (sinon `uuid` / contraintes Zod échouent). */
+const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
 export const encounterCreateDtoSchema = z.object({
   type: encounterTypeSchema,
   /** @deprecated Préférer physicianAssignedUserId — conservé pour compat ; sinon copié vers médecin attribué si fourni. */
-  providerId: z.string().uuid().optional(),
+  providerId: z.preprocess(emptyStrToUndefined, z.union([z.string().uuid(), z.null()]).optional()),
   /** Médecin attribué (référence User) — source canonique d’affichage dossier / trackboard. */
-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
+  physicianAssignedUserId: z.preprocess(
+    emptyStrToUndefined,
+    z.union([z.string().uuid(), z.null()]).optional()
+  ),
   /** Reason for visit (clinic); stored as chiefComplaint */
-  visitReason: z.string().max(4000).optional(),
-  chiefComplaint: z.string().max(4000).optional(),
-  notes: z.string().max(16000).optional(),
+  visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
+  chiefComplaint: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
   /** Salle / lieu de consultation (accueil) */
-  roomLabel: z.string().max(64).optional().nullable(),
+  roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
 });
 
 export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
 
 export const encounterOutpatientCreateDtoSchema = z.object({
-  visitReason: z.string().max(4000).optional(),
-  notes: z.string().max(16000).optional(),
-  roomLabel: z.string().max(64).optional().nullable(),
-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
-  providerId: z.string().uuid().optional(),
+  visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
+  roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
+  physicianAssignedUserId: z.preprocess(
+    emptyStrToUndefined,
+    z.union([z.string().uuid(), z.null()]).optional()
+  ),
+  providerId: z.preprocess(emptyStrToUndefined, z.union([z.string().uuid(), z.null()]).optional()),
 });
 
 export type EncounterOutpatientCreateDto = z.infer<
   typeof encounterOutpatientCreateDtoSchema
 >;
+
+/** Dossier d'admission depuis la consultation (MVP — une entrée par encounter) */
+export const admissionSummaryFieldsSchema = z.object({
+  admissionReason: z.string().max(4000).optional(),
+  serviceUnit: z.string().max(512).optional(),
+  admissionDiagnosis: z.string().max(4000).optional(),
+  careLevel: z.string().max(256).optional(),
+  conditionAtAdmission: z.string().max(8000).optional(),
+  initialPlan: z.string().max(8000).optional(),
+  /** Nom affiché du médecin responsable (MVP texte libre) */
+  responsiblePhysicianName: z.string().max(256).optional(),
+});
+
+export type AdmissionSummaryFields = z.infer<typeof admissionSummaryFieldsSchema>;
 
 export const encounterUpdateDtoSchema = z.object({
   visitReason: z.string().max(4000).optional().nullable(),
@@ -106,6 +130,8 @@ export const encounterUpdateDtoSchema = z.object({
   /** Structured nursing assessment (e.g. Évaluation infirmière sections) */
   nursingAssessment: z.any().optional().nullable(),
   dischargeSummaryJson: z.any().optional().nullable(),
+  /** Décision d'admission structurée (JSON) — `admittedAt` défini côté API à la 1re sauvegarde */
+  admissionSummaryJson: z.any().optional().nullable(),
   roomLabel: z.string().max(64).optional().nullable(),
   physicianAssignedUserId: z.string().uuid().optional().nullable(),
 });
@@ -113,9 +139,13 @@ export const encounterUpdateDtoSchema = z.object({
 export type EncounterUpdateDto = z.infer<typeof encounterUpdateDtoSchema>;
 
 /** Accueil / infirmière : salle et médecin attribué uniquement */
+const emptyStrToNull = (v: unknown) => (v === "" ? null : v);
 export const encounterOperationalUpdateDtoSchema = z.object({
-  roomLabel: z.string().max(64).optional().nullable(),
-  physicianAssignedUserId: z.string().uuid().optional().nullable(),
+  roomLabel: z.preprocess(emptyStrToNull, z.union([z.string().max(64), z.null()]).optional()),
+  physicianAssignedUserId: z.preprocess(
+    emptyStrToNull,
+    z.union([z.string().uuid(), z.null()]).optional()
+  ),
 });
 
 export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalUpdateDtoSchema>;
@@ -127,15 +157,33 @@ export const encounterDischargeFieldsSchema = z.object({
   medicationsGiven: z.string().max(8000).optional(),
   followUp: z.string().max(4000).optional(),
   returnIfWorse: z.string().max(4000).optional(),
+  /** Destination du patient (domicile, famille, autre établissement, etc.) */
+  patientDestination: z.string().max(4000).optional(),
+  /** Libellé français (ex. Domicile, Transfert, Admission) — souvent choisi dans une liste */
+  dischargeMode: z.string().max(256).optional(),
 });
 
 export type EncounterDischargeFields = z.infer<typeof encounterDischargeFieldsSchema>;
 
 export const encounterCloseDtoSchema = z.object({
   discharge: encounterDischargeFieldsSchema.optional(),
+  /** Si la documentation est incomplète, doit être true pour autoriser la clôture (V1 — pas d’arrêt dur). */
+  acknowledgeDeficiencies: z.boolean().optional(),
 });
 
 export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;
+
+/** POST /encounters/:id/close-check — même charge utile que la clôture pour fusionner le dossier de sortie. */
+export const encounterCloseCheckDtoSchema = z.object({
+  discharge: encounterDischargeFieldsSchema.optional(),
+});
+
+export type EncounterCloseCheckDto = z.infer<typeof encounterCloseCheckDtoSchema>;
+
+export type EncounterCloseDocumentationCheckResult = {
+  hasDeficiencies: boolean;
+  deficiencies: Array<{ code: string; labelFr: string }>;
+};
 
 export const orderStatusSchema = z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
@@ -150,9 +198,14 @@ export type MedicationFulfillmentIntent = z.infer<typeof medicationFulfillmentIn
 export const orderItemCreateDtoSchema = z.object({
   /** Absent ou null si saisie manuelle (`manualLabel` requis). */
   catalogItemId: z.string().uuid().optional().nullable(),
-  catalogItemType: z.enum(["LAB_TEST", "IMAGING_STUDY", "MEDICATION"]),
+  catalogItemType: z.enum(["LAB_TEST", "IMAGING_STUDY", "MEDICATION", "CARE"]),
   /** Libellé libre lorsque l’article n’est pas au catalogue. */
   manualLabel: z.string().min(1).max(512).optional(),
+  /**
+   * Snapshot libellé affiché (ex. client hors-ligne) — non persisté en base ; ignoré côté API à l’écriture Prisma.
+   * Accepté pour les lignes catalogue LAB / IMAGING afin que la file d’attente locale affiche le nom exact.
+   */
+  displayLabelFr: z.string().max(512).optional(),
   manualSecondaryText: z.string().max(2000).optional(),
   quantity: z.number().int().positive().optional(),
   notes: z.string().max(8000).optional(),
@@ -162,13 +215,15 @@ export const orderItemCreateDtoSchema = z.object({
   refillCount: z.number().int().min(0).max(99).optional(),
   /** MEDICATION only: default PHARMACY_DISPENSE when omitted (server). */
   medicationFulfillmentIntent: medicationFulfillmentIntentSchema.optional(),
+  /** MEDICATION only: horaire d’administration prévu (optionnel). */
+  intendedAdministrationAt: z.coerce.date().optional().nullable(),
 });
 
 export type OrderItemCreateDto = z.infer<typeof orderItemCreateDtoSchema>;
 
 export const orderCreateDtoSchema = z
   .object({
-    type: z.enum(["LAB", "IMAGING", "MEDICATION"]),
+    type: z.enum(["LAB", "IMAGING", "MEDICATION", "CARE"]),
     priority: orderPrioritySchema.optional(),
     notes: z.string().max(16000).optional(),
     prescriberName: z.string().max(256).optional(),
@@ -219,6 +274,25 @@ export const orderCreateDtoSchema = z
       });
       return;
     }
+    if (data.type === "CARE") {
+      data.items.forEach((it, i) => {
+        if (it.catalogItemType !== "CARE") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Chaque ligne doit être un soin (CARE).",
+            path: ["items", i, "catalogItemType"],
+          });
+        }
+        if (!it.manualLabel?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Libellé requis pour chaque ligne de soin.",
+            path: ["items", i, "manualLabel"],
+          });
+        }
+      });
+      return;
+    }
     if (!data.prescriberName?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -258,4 +332,37 @@ export const orderUpdateDtoSchema = z.object({
 });
 
 export type OrderUpdateDto = z.infer<typeof orderUpdateDtoSchema>;
+
+/** Motifs prédéfinis pour annulation de commande entière (V1 — pas de champ auteur manuel). */
+export const ORDER_CANCELLATION_REASON_VALUES = [
+  "Erreur de saisie",
+  "Doublon",
+  "Changement clinique",
+  "Demande annulée",
+  "Autre",
+] as const;
+
+export const orderCancelDtoSchema = z.object({
+  cancellationReason: z.enum(ORDER_CANCELLATION_REASON_VALUES, {
+    errorMap: () => ({ message: "Motif d'annulation invalide." }),
+  }),
+});
+
+export type OrderCancelDto = z.infer<typeof orderCancelDtoSchema>;
+
+/** POST /encounters/:encounterId/medication-administrations — append-only MAR log. */
+export const medicationAdministrationCreateDtoSchema = z.object({
+  orderItemId: z.string().uuid().optional(),
+  administeredAt: z.coerce.date().optional(),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+});
+
+export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
+
+/** POST /encounters/:id/provider-addenda — append-only after signed provider documentation (V1). */
+export const encounterProviderAddendumCreateDtoSchema = z.object({
+  text: z.string().trim().min(1).max(5000),
+});
+
+export type EncounterProviderAddendumCreateDto = z.infer<typeof encounterProviderAddendumCreateDtoSchema>;
 

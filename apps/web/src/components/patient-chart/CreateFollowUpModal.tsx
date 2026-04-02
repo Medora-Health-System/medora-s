@@ -14,6 +14,8 @@ export type CreateFollowUpEncounterOption = {
   createdAt: string;
   visitReason?: string | null;
   chiefComplaint?: string | null;
+  /** Si la consultation est signée, le lien n’est pas proposé en création de suivi. */
+  providerDocumentationStatus?: string | null;
 };
 
 type PatientSearchHit = {
@@ -378,11 +380,15 @@ export function CreateFollowUpModal({
                   style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
                 >
                   <option value="">— Aucune —</option>
-                  {recentEncounters.map((enc) => (
-                    <option key={enc.id} value={enc.id}>
-                      {encounterLabel(enc)}
-                    </option>
-                  ))}
+                  {recentEncounters.map((enc) => {
+                    const signed = enc.providerDocumentationStatus === "SIGNED";
+                    return (
+                      <option key={enc.id} value={enc.id} disabled={signed}>
+                        {encounterLabel(enc)}
+                        {signed ? " — dossier signé" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             )}

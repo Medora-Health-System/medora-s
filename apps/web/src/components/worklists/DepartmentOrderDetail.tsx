@@ -48,6 +48,10 @@ function getWorkflowBlockMessageFr(itemStatus: string): string | null {
   return "Complétez le flux (accusé réception, démarrage) avant d’ajouter un résultat (texte ou fichiers).";
 }
 
+function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
+  return !!item.pharmacyDispenseRecord;
+}
+
 function readFileAsAttachment(file: File): Promise<AttachmentMeta> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -147,24 +151,32 @@ export default function DepartmentOrderDetail({
   };
 
   const handleAck = async (itemId: string) => {
-    if (!facilityId) return;
+    if (!facilityId || order?.status === "CANCELLED") return;
+    const item = (order?.items ?? []).find((i: any) => i.id === itemId);
+    if (!item) return;
+    if (item.status !== "PLACED" && item.status !== "PENDING" && item.status !== "SIGNED") {
+      console.warn("ACK blocked: invalid state", item.status);
+      return;
+    }
     await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
     await load();
   };
 
   const handleStart = async (itemId: string) => {
-    if (!facilityId) return;
+    if (!facilityId || order?.status === "CANCELLED") return;
     await apiFetch(`/orders/items/${itemId}/start`, { method: "POST", facilityId });
     await load();
   };
 
   const handleComplete = async (itemId: string) => {
-    if (!facilityId) return;
+    if (!facilityId || order?.status === "CANCELLED") return;
     await apiFetch(`/orders/items/${itemId}/complete`, { method: "POST", facilityId });
     await load();
   };
 
   const openDispense = (item: any) => {
+    if (order?.status === "CANCELLED") return;
+    if (isAlreadyDispensed(item)) return;
     setDispenseItem(item);
     setDispenseQty(String(item.quantity ?? 1));
     setDispenseInstr(((item.notes as string) || "").trim());
@@ -172,7 +184,10 @@ export default function DepartmentOrderDetail({
   };
 
   const submitDispense = async () => {
-    if (!facilityId || !dispenseItem) return;
+    if (!facilityId || !dispenseItem || order?.status === "CANCELLED") return;
+    const line = (order?.items ?? []).find((i: any) => i.id === dispenseItem.id);
+    const item = line ?? dispenseItem;
+    if (isAlreadyDispensed(item)) return;
     const q = parseInt(dispenseQty, 10);
     if (!Number.isFinite(q) || q < 1) {
       alert("Quantité invalide");
@@ -221,6 +236,7 @@ export default function DepartmentOrderDetail({
 
   const patient = order.encounter?.patient;
   const items = filterItems(order.items || []);
+  const parentOrderCancelled = order.status === "CANCELLED";
 
   const typeMismatch =
     (kind === "lab" && order.type !== "LAB") ||
@@ -235,6 +251,25 @@ export default function DepartmentOrderDetail({
         </Link>
       </div>
       <h1 style={{ marginTop: 0 }}>{labels.title}</h1>
+
+      {parentOrderCancelled && !typeMismatch ? (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            color: "#b71c1c",
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.45,
+          }}
+        >
+          Commande annulée — aucune action possible.
+        </div>
+      ) : null}
 
       {typeMismatch ? (
         <p style={{ color: "#c62828" }}>
@@ -307,6 +342,7 @@ export default function DepartmentOrderDetail({
             labels={labels}
             facilityId={facilityId}
             order={order}
+            parentOrderCancelled={parentOrderCancelled}
             onReload={load}
             onAck={handleAck}
             onStart={handleStart}
@@ -413,6 +449,7 @@ function LineCard({
   labels,
   facilityId,
   order,
+  parentOrderCancelled,
   onReload,
   onAck,
   onStart,
@@ -431,6 +468,7 @@ function LineCard({
   };
   facilityId: string;
   order: any;
+  parentOrderCancelled: boolean;
   onReload: () => Promise<void>;
   onAck: (id: string) => Promise<void>;
   onStart: (id: string) => Promise<void>;
@@ -486,9 +524,11 @@ function LineCard({
       )}
       {kind === "pharmacy" && onOpenDispense && (
         <>
-          <button type="button" onClick={() => onOpenDispense(item)} style={{ padding: "6px 10px", cursor: "pointer" }}>
-            Enregistrer dispensation
-          </button>
+          {!isAlreadyDispensed(item) ? (
+            <button type="button" onClick={() => onOpenDispense(item)} style={{ padding: "6px 10px", cursor: "pointer" }}>
+              Enregistrer dispensation
+            </button>
+          ) : null}
           {order.encounter?.patient?.id ? (
             <Link
               href={`/app/pharmacy/dispense?patientId=${order.encounter.patient.id}&encounterId=${order.encounterId}`}
@@ -503,7 +543,7 @@ function LineCard({
   );
 
   const submitResult = async () => {
-    if (!facilityId) return;
+    if (!facilityId || parentOrderCancelled) return;
     setFeedback(null);
 
     if (!hasPayloadForSubmit) {
@@ -563,9 +603,19 @@ function LineCard({
         body: JSON.stringify(body),
       });
       if (res && typeof res === "object" && (res as { queued?: boolean }).queued === true) {
+        setPdfFiles(null);
+        setImgFiles(null);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(MEDORA_CHART_RESULT_UPDATED, {
+              detail: { patientId: order.encounter?.patient?.id, encounterId: order.encounterId },
+            })
+          );
+        }
         setFeedback({
-          type: "err",
-          text: "Connexion instable : l’enregistrement n’a pas été envoyé au serveur. Vérifiez la connexion et réessayez.",
+          type: "ok",
+          text:
+            "Résultat enregistré localement. En attente de synchronisation — visible sur cet appareil (dossier patient, onglet Résultats) jusqu’à l’envoi au serveur.",
         });
         return;
       }
@@ -637,7 +687,7 @@ function LineCard({
         </div>
       ) : null}
 
-      {workflowButtons}
+      {parentOrderCancelled ? null : workflowButtons}
 
       {item.result &&
       (item.result.resultText?.trim() ||
@@ -668,7 +718,7 @@ function LineCard({
         </div>
       ) : null}
 
-      {canResult ? (
+      {canResult && !parentOrderCancelled ? (
         <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #eee" }}>
           {workflowBlockMessage ? (
             <div

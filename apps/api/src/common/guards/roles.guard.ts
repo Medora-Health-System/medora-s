@@ -25,7 +25,7 @@ export class RolesGuard implements CanActivate {
       this.reflector.get<RoleCode[]>("roles", context.getClass());
 
     if (!requiredRoles || requiredRoles.length === 0) {
-      return true; // No role requirement
+      throw new ForbiddenException("This endpoint requires configured roles.");
     }
 
     const request = context.switchToHttp().getRequest();
@@ -46,6 +46,7 @@ export class RolesGuard implements CanActivate {
         userId,
         facilityId,
         isActive: true,
+        facility: { isActive: true },
         role: {
           code: { in: requiredRoles }
         }

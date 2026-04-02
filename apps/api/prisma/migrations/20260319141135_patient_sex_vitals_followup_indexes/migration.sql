@@ -17,7 +17,4 @@ END
 WHERE "sexAtBirth" IS NOT NULL;
 
 -- CreateIndex
-CREATE INDEX "FollowUp_facilityId_status_dueDate_idx" ON "FollowUp"("facilityId", "status", "dueDate");
-
--- CreateIndex
 CREATE INDEX "UserRole_facilityId_roleId_idx" ON "UserRole"("facilityId", "roleId");

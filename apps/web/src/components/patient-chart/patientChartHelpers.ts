@@ -1,3 +1,5 @@
+import { nursingProcedureSummaryLinesFr } from "@/lib/nursingProcedures";
+
 /** Libellés des sections d’évaluation infirmière (`nursingEvalV1.sections`) — aligné sur `NursingAssessmentTab`. */
 export const NURSING_ASSESSMENT_SECTION_LABELS_FR: Record<string, string> = {
   etatGeneral: "État général",
@@ -14,7 +16,7 @@ export const NURSING_ASSESSMENT_SECTION_LABELS_FR: Record<string, string> = {
   securite: "Risques / sécurité",
   observationsInfirmieres: "Observations infirmières",
   interventionsInfirmieres: "Interventions infirmières",
-  notesInfirmieresLibres: "Notes infirmières libres",
+  notesInfirmieresLibres: "Note infirmière, autres",
   notesInfirmieres: "Observations infirmières",
 };
 
@@ -63,14 +65,44 @@ export function nursingAssessmentDisplayLines(raw: unknown): string[] {
   if (!raw || typeof raw !== "object") return [];
   const o = raw as Record<string, unknown>;
   const inner = o.nursingEvalV1;
+  let base: string[] = [];
   if (inner && typeof inner === "object") {
     const sl = (inner as Record<string, unknown>).summaryLinesFr;
     if (Array.isArray(sl)) {
       const lines = sl.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
-      if (lines.length) return lines;
+      if (lines.length) base = [...lines];
     }
   }
-  return parseNursingAssessmentSectionsForChart(raw).map((s) => `${s.labelFr} : ${s.text}`);
+  if (base.length === 0) {
+    base = parseNursingAssessmentSectionsForChart(raw).map((s) => `${s.labelFr} : ${s.text}`);
+  }
+  const proc = nursingProcedureSummaryLinesFr(raw);
+  if (proc.length === 0) return base;
+  return [...base, ...proc];
+}
+
+/** Champs non vides de `nursingAssessment.physicianEvalV1` pour affichage résumé / timeline. */
+export function parsePhysicianEvalV1ForChart(
+  raw: unknown
+): { labelFr: string; text: string }[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const o = raw as Record<string, unknown>;
+  const pe = o.physicianEvalV1;
+  if (!pe || typeof pe !== "object" || Array.isArray(pe)) return [];
+  const p = pe as Record<string, unknown>;
+  const pairs: [string, string][] = [
+    ["hpi", "HPI"],
+    ["ros", "ROS"],
+    ["physicalExam", "Examen physique"],
+    ["mdm", "MDM"],
+  ];
+  const out: { labelFr: string; text: string }[] = [];
+  for (const [key, labelFr] of pairs) {
+    const v = p[key];
+    if (typeof v !== "string" || !v.trim()) continue;
+    out.push({ labelFr, text: v.trim() });
+  }
+  return out;
 }
 
 export type DischargeSummaryFieldsFr = {
@@ -80,6 +112,8 @@ export type DischargeSummaryFieldsFr = {
   medicationsGiven?: string;
   followUp?: string;
   returnIfWorse?: string;
+  patientDestination?: string;
+  dischargeMode?: string;
 };
 
 /** Résumé de sortie structuré ; `null` si aucun champ renseigné. */
@@ -93,8 +127,46 @@ export function parseDischargeSummaryForChart(raw: unknown): DischargeSummaryFie
     "medicationsGiven",
     "followUp",
     "returnIfWorse",
+    "patientDestination",
+    "dischargeMode",
   ] as const;
   const out: DischargeSummaryFieldsFr = {};
+  let any = false;
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) {
+      (out as Record<string, string>)[k] = v.trim();
+      any = true;
+    }
+  }
+  return any ? out : null;
+}
+
+/** Champs alignés sur `admissionSummaryFieldsSchema` (@medora/shared). */
+export type AdmissionSummaryFieldsFr = {
+  admissionReason?: string;
+  serviceUnit?: string;
+  admissionDiagnosis?: string;
+  careLevel?: string;
+  conditionAtAdmission?: string;
+  initialPlan?: string;
+  responsiblePhysicianName?: string;
+};
+
+/** Dossier d'admission structuré ; `null` si aucun champ renseigné. */
+export function parseAdmissionSummaryForChart(raw: unknown): AdmissionSummaryFieldsFr | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const keys = [
+    "admissionReason",
+    "serviceUnit",
+    "admissionDiagnosis",
+    "careLevel",
+    "conditionAtAdmission",
+    "initialPlan",
+    "responsiblePhysicianName",
+  ] as const;
+  const out: AdmissionSummaryFieldsFr = {};
   let any = false;
   for (const k of keys) {
     const v = o[k];

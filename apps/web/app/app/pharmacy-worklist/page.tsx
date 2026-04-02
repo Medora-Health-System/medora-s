@@ -8,11 +8,45 @@ import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
 import { getOrderPriorityLabelFr, getPathwayTypeLabelFr, ui } from "@/lib/uiLabels";
+import {
+  getEncounterPatientLabelFromCache,
+  getPendingPharmacyMedicationOrderRowsForFacility,
+  type PendingFacilityQueueRow,
+} from "@/lib/offline/pendingEncounterOrders";
+import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
+
+function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
+  return !!item.pharmacyDispenseRecord;
+}
+
+function PendingEncounterPatientCells({
+  facilityId,
+  encounterId,
+}: {
+  facilityId: string;
+  encounterId: string;
+}) {
+  const [name, setName] = useState("…");
+  const [mrn, setMrn] = useState("—");
+  useEffect(() => {
+    void getEncounterPatientLabelFromCache(facilityId, encounterId).then((p) => {
+      setName(p.label);
+      setMrn(p.mrn);
+    });
+  }, [facilityId, encounterId]);
+  return (
+    <>
+      <td style={{ padding: 12 }}>{name}</td>
+      <td style={{ padding: 12 }}>{mrn}</td>
+    </>
+  );
+}
 
 export default function PharmacyWorklistPage() {
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
+  const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [recordModal, setRecordModal] = useState<{
     orderItemId: string;
@@ -23,6 +57,8 @@ export default function PharmacyWorklistPage() {
   const [recordInstr, setRecordInstr] = useState("");
   const [recordNotes, setRecordNotes] = useState("");
   const [recordSubmitting, setRecordSubmitting] = useState(false);
+  /** Dernière action worklist mise en file hors ligne uniquement. */
+  const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -42,24 +78,41 @@ export default function PharmacyWorklistPage() {
   const loadQueue = async () => {
     if (!facilityId) return;
     setLoading(true);
+    const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId);
     try {
       const data = await apiFetch("/worklists/pharmacy", { facilityId });
       setQueue(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load pharmacy worklist:", error);
       setQueue([]);
-    } finally {
-      setLoading(false);
     }
+    const pendingRows = await pendingP;
+    setPendingLocal(pendingRows);
+    setLoading(false);
   };
 
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
+    const item = (Array.isArray(queue) ? queue : [])
+      .flatMap((o: any) => (Array.isArray(o.items) ? o.items : []))
+      .find((i: any) => i.id === itemId);
+    if (!item) return;
+    if (item.status !== "PLACED" && item.status !== "PENDING" && item.status !== "SIGNED") {
+      console.warn("ACK blocked: invalid state", item.status);
+      return;
+    }
     try {
-      await apiFetch(`/orders/items/${itemId}/acknowledge`, {
+      const res = await apiFetch(`/orders/items/${itemId}/acknowledge`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible d'acquitter");
@@ -69,10 +122,17 @@ export default function PharmacyWorklistPage() {
   const handleStart = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/start`, {
+      const res = await apiFetch(`/orders/items/${itemId}/start`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible de démarrer");
@@ -82,10 +142,17 @@ export default function PharmacyWorklistPage() {
   const handleComplete = async (itemId: string) => {
     if (!facilityId) return;
     try {
-      await apiFetch(`/orders/items/${itemId}/complete`, {
+      const res = await apiFetch(`/orders/items/${itemId}/complete`, {
         method: "POST",
         facilityId,
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       loadQueue();
     } catch (error) {
       alert("Impossible de terminer");
@@ -108,6 +175,8 @@ export default function PharmacyWorklistPage() {
   const medicationLabel = (it: any) => getOrderItemDisplayLabelFr(it);
 
   const openRecordModal = (order: any, item: any) => {
+    if (orderIsCancelled(order)) return;
+    if (isAlreadyDispensed(item)) return;
     setRecordModal({
       orderItemId: item.id,
       medicationLine: `${medicationLabel(item)} · Qté ${item.quantity ?? "—"} · Posologie : ${(item.notes as string) || "—"}`,
@@ -120,6 +189,10 @@ export default function PharmacyWorklistPage() {
 
   const submitRecordDispense = async () => {
     if (!facilityId || !recordModal) return;
+    const item = (Array.isArray(queue) ? queue : [])
+      .flatMap((o: any) => (Array.isArray(o.items) ? o.items : []))
+      .find((i: any) => i.id === recordModal.orderItemId);
+    if (!item || isAlreadyDispensed(item)) return;
     const q = parseInt(recordQty, 10);
     if (!Number.isFinite(q) || q < 1) {
       alert("Quantité invalide");
@@ -127,7 +200,7 @@ export default function PharmacyWorklistPage() {
     }
     setRecordSubmitting(true);
     try {
-      await apiFetch("/pharmacy/dispenses/record-order", {
+      const res = await apiFetch("/pharmacy/dispenses/record-order", {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
@@ -138,6 +211,13 @@ export default function PharmacyWorklistPage() {
           notes: recordNotes.trim() || undefined,
         }),
       });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setQueuedActionNotice(
+        queued
+          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
+          : null
+      );
       setRecordModal(null);
       loadQueue();
     } catch {
@@ -151,14 +231,34 @@ export default function PharmacyWorklistPage() {
     <div>
       <h1>Liste pharmacie</h1>
       <p>Ordres de médicaments à vérifier et dispenser.</p>
-      {loading && queue.length === 0 ? (
+      {queuedActionNotice ? (
+        <div
+          role="alert"
+          style={{
+            marginTop: 12,
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #ef9a9a",
+            backgroundColor: "#ffebee",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#b71c1c",
+            lineHeight: 1.45,
+            maxWidth: 720,
+          }}
+        >
+          {queuedActionNotice}
+        </div>
+      ) : null}
+      {loading && queue.length === 0 && pendingLocal.length === 0 ? (
         <p>Chargement…</p>
-      ) : queue.length === 0 ? (
+      ) : queue.length === 0 && pendingLocal.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
           <p>Aucun ordre médicament dans la liste.</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
+          {queue.length > 0 ? (
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
@@ -212,52 +312,77 @@ export default function PharmacyWorklistPage() {
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
                     <td style={{ padding: 12 }}>
-                      <Link
-                        href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
-                        style={{ marginRight: 8, fontSize: 13 }}
-                        title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
-                      >
-                        Voir le détail
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => openRecordModal(order, item)}
-                        style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
-                      >
-                        Enregistrer dispensation
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePrintRx(order)}
-                        style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
-                      >
-                        Imprimer
-                      </button>
-                      {(item.status === "PLACED" || item.status === "SIGNED") && (
-                        <button
-                          onClick={() => handleAcknowledge(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                        >
-                          Accuser réception
-                        </button>
+                      {orderIsCancelled(order) ? (
+                        <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
+                      ) : (
+                        getOrderItemStatusLabel(item.status)
                       )}
-                      {item.status === "ACKNOWLEDGED" && (
-                        <button
-                          onClick={() => handleStart(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                        >
-                          Démarrer
-                        </button>
-                      )}
-                      {item.status === "IN_PROGRESS" && (
-                        <button
-                          onClick={() => handleComplete(item.id)}
-                          style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                        >
-                          Terminer
-                        </button>
+                    </td>
+                    <td style={{ padding: 12 }}>
+                      {orderIsCancelled(order) ? (
+                        <div>
+                          <p style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 600, color: "#b71c1c", lineHeight: 1.45 }}>
+                            Commande annulée — aucune action possible
+                          </p>
+                          <Link
+                            href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
+                            style={{ fontSize: 13 }}
+                            title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
+                          >
+                            Voir le détail
+                          </Link>
+                        </div>
+                      ) : (
+                        <>
+                          <Link
+                            href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
+                            style={{ marginRight: 8, fontSize: 13 }}
+                            title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
+                          >
+                            Voir le détail
+                          </Link>
+                          {!isAlreadyDispensed(item) ? (
+                            <button
+                              type="button"
+                              onClick={() => openRecordModal(order, item)}
+                              style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
+                            >
+                              Enregistrer dispensation
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => handlePrintRx(order)}
+                            style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
+                          >
+                            Imprimer
+                          </button>
+                          {(item.status === "PLACED" || item.status === "SIGNED") && (
+                            <button
+                              onClick={() => handleAcknowledge(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              Accuser réception
+                            </button>
+                          )}
+                          {item.status === "ACKNOWLEDGED" && (
+                            <button
+                              onClick={() => handleStart(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              Démarrer
+                            </button>
+                          )}
+                          {item.status === "IN_PROGRESS" && (
+                            <button
+                              onClick={() => handleComplete(item.id)}
+                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
+                            >
+                              Terminer
+                            </button>
+                          )}
+                        </>
                       )}
                     </td>
                   </tr>
@@ -265,6 +390,56 @@ export default function PharmacyWorklistPage() {
               )}
             </tbody>
           </table>
+          ) : null}
+          {pendingLocal.length > 0 ? (
+            <div style={{ marginTop: queue.length > 0 ? 28 : 0 }}>
+              <h2 style={{ fontSize: 16, marginBottom: 8 }}>En attente de synchronisation</h2>
+              <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>
+                Ordres créés sur cet appareil, non encore synchronisés avec le serveur.
+              </p>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  backgroundColor: "#fff8e1",
+                  border: "1px solid #ffe082",
+                  borderRadius: 8,
+                }}
+              >
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #ddd" }}>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.date}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingLocal.map((row) => (
+                    <tr key={row.queueItemId} style={{ borderBottom: "1px solid #eee" }}>
+                      <PendingEncounterPatientCells facilityId={row.facilityId} encounterId={row.encounterId} />
+                      <td style={{ padding: 12 }}>
+                        {row.itemLabels.filter(Boolean).join(", ") || "—"}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {new Date(row.createdAt).toLocaleString("fr-FR")}
+                      </td>
+                      <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(row.priority)}</td>
+                      <td style={{ padding: 12 }}>En attente de synchronisation</td>
+                      <td style={{ padding: 12 }}>
+                        <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>
+                          Consultation
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       )}
 
