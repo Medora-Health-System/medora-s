@@ -1,0 +1,53 @@
+name: Daily Postgres Backup
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_BACKUP_BUCKET: ${{ secrets.S3_BACKUP_BUCKET }}
+      S3_BACKUP_PREFIX: ${{ secrets.S3_BACKUP_PREFIX }}
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          set -euo pipefail
+          require() {
+            if [ -z "${2:-}" ]; then
+              echo "::error::Missing required secret: $1"
+              exit 1
+            fi
+          }
+          require DATABASE_URL "${DATABASE_URL:-}"
+          require AWS_ACCESS_KEY_ID "${AWS_ACCESS_KEY_ID:-}"
+          require AWS_SECRET_ACCESS_KEY "${AWS_SECRET_ACCESS_KEY:-}"
+          require S3_BACKUP_BUCKET "${S3_BACKUP_BUCKET:-}"
+
+      - name: Install postgresql-client, gzip, and awscli
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client gzip awscli
+
+      - name: Dump PostgreSQL and upload to S3
+        run: |
+          set -euo pipefail
+          STAMP="$(date -u +%Y%m%d-%H%M%S)"
+          OUT="medora-${STAMP}.sql.gz"
+          pg_dump "$DATABASE_URL" | gzip -c > "$OUT"
+          PREFIX="${S3_BACKUP_PREFIX:-}"
+          PREFIX="${PREFIX%/}"
+          if [ -n "$PREFIX" ]; then
+            DEST="s3://${S3_BACKUP_BUCKET}/${PREFIX}/${OUT}"
+          else
+            DEST="s3://${S3_BACKUP_BUCKET}/${OUT}"
+          fi
+          aws s3 cp "$OUT" "$DEST"
+          rm -f "$OUT"
