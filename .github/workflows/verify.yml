@@ -26,6 +26,9 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @medora/shared build
 
+      - name: Prisma generate
+        run: pnpm --filter @medora/api exec prisma generate
+
       - name: API typecheck
         run: pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json
 
@@ -72,6 +75,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
 
       - name: Prisma generate
         run: pnpm --filter @medora/api exec prisma generate
