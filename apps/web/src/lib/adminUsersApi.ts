@@ -145,7 +145,12 @@ export async function patchAdminUserPassword(
   }) as Promise<{ message: string }>;
 }
 
-export type AdminFacilityRow = { id: string; name: string; isActive?: boolean };
+export type AdminFacilityRow = {
+  id: string;
+  name: string;
+  isActive?: boolean;
+  defaultLanguage?: "fr" | "en";
+};
 
 /** GET /admin/facilities — liste globale (plateforme ou ADMIN à l’établissement actif). */
 export async function fetchAdminFacilities(
@@ -172,6 +177,19 @@ export async function setAdminFacilityActive(
     body: JSON.stringify({ isActive }),
     facilityId,
   }) as Promise<{ id: string; name: string; isActive: boolean }>;
+}
+
+export async function setAdminFacilityLanguage(
+  facilityId: string,
+  id: string,
+  defaultLanguage: "fr" | "en"
+): Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }> {
+  return adminApiFetch(`/facilities/${id}/language`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ defaultLanguage }),
+    facilityId,
+  }) as Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }>;
 }
 
 /** POST /admin/facilities — crée un établissement et rattache l’admin courant (côté API). */
