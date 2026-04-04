@@ -929,6 +929,9 @@ export class EncountersService {
     if (mergedDischarge) {
       closePayload.dischargeSummaryJson = mergedDischarge;
     }
+    if (data?.dischargeStatus !== undefined) {
+      closePayload.dischargeStatus = data.dischargeStatus;
+    }
 
     const updated = await this.prisma.encounter.update({
       where: { id },

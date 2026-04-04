@@ -165,10 +165,16 @@ export const encounterDischargeFieldsSchema = z.object({
 
 export type EncounterDischargeFields = z.infer<typeof encounterDischargeFieldsSchema>;
 
+/** Aligné sur Prisma `DischargeStatus` (Encounter.dischargeStatus). */
+export const encounterDischargeStatusSchema = z.enum(["DISCHARGED", "AMA", "TRANSFERRED", "DECEASED"]);
+
+export type EncounterDischargeStatus = z.infer<typeof encounterDischargeStatusSchema>;
+
 export const encounterCloseDtoSchema = z.object({
   discharge: encounterDischargeFieldsSchema.optional(),
   /** Si la documentation est incomplète, doit être true pour autoriser la clôture (V1 — pas d’arrêt dur). */
   acknowledgeDeficiencies: z.boolean().optional(),
+  dischargeStatus: encounterDischargeStatusSchema.optional(),
 });
 
 export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;
@@ -176,6 +182,7 @@ export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;
 /** POST /encounters/:id/close-check — même charge utile que la clôture pour fusionner le dossier de sortie. */
 export const encounterCloseCheckDtoSchema = z.object({
   discharge: encounterDischargeFieldsSchema.optional(),
+  dischargeStatus: encounterDischargeStatusSchema.optional(),
 });
 
 export type EncounterCloseCheckDto = z.infer<typeof encounterCloseCheckDtoSchema>;
