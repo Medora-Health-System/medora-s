@@ -1,9 +1,8 @@
 /**
  * Menu latéral du shell authentifié — consommé uniquement via `AppShell` (`app/app/layout.tsx`).
- * Couleurs / regroupements (FR) ; le filtrage RBAC reste dans `app/app/layout.tsx`.
+ * Libellés : clés i18n (`nav.*`, `navGroups.*`) ; résolution dans `AppShell` via `t()`.
+ * Le filtrage RBAC reste dans `app/app/layout.tsx`.
  */
-
-import { ui } from "@/lib/uiLabels";
 
 export type NavAccent =
   | "slate"
@@ -95,24 +94,115 @@ export type NavGroupId =
   | "sante_publique"
   | "admin";
 
-/** Titres de section affichés au-dessus du premier lien du groupe (FR) */
-export const NAV_GROUP_TITLE: Record<NavGroupId, string> = {
-  accueil: "Accueil",
-  soins_dossiers: "Soins et dossiers",
-  pharmacie: "Pharmacie",
-  examens: "Laboratoire et imagerie",
-  facturation: "Facturation",
-  sante_publique: "Santé publique",
-  admin: "Administration",
-};
-
 export type SidebarNavItem = {
   href: string;
+  /** Clé i18n (ex. `nav.trackboard`) — affichage via `t(label)` dans `AppShell`. */
   label: string;
   roles: string[];
   group: NavGroupId;
   accent: NavAccent;
 };
+
+type SidebarNavItemDef = Omit<SidebarNavItem, "label"> & { labelKey: string };
+
+const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
+  { href: "/app/trackboard", labelKey: "nav.trackboard", roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate" },
+  { href: "/app/registration", labelKey: "nav.registration", roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
+  { href: "/app/nursing", labelKey: "nav.nursing", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
+  { href: "/app/provider", labelKey: "nav.provider", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
+  { href: "/app/patients", labelKey: "nav.patients", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+  { href: "/app/encounters", labelKey: "nav.encounters", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate" },
+  {
+    href: "/app/hospitalisation",
+    labelKey: "nav.hospitalisation",
+    roles: ["ADMIN", "PROVIDER", "RN"],
+    group: "soins_dossiers",
+    accent: "slate",
+  },
+  { href: "/app/follow-ups", labelKey: "nav.followUps", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
+  { href: "/app/rad-worklist", labelKey: "nav.radWorklist", roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
+  { href: "/app/lab-worklist", labelKey: "nav.labWorklist", roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },
+  { href: "/app/pharmacy", labelKey: "nav.pharmacyQueue", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
+  { href: "/app/pharmacy-worklist", labelKey: "nav.pharmacyWorklist", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
+  {
+    href: "/app/pharmacy/inventory",
+    labelKey: "nav.pharmacyInventory",
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  {
+    href: "/app/pharmacy/dispense",
+    labelKey: "nav.pharmacyDispense",
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  {
+    href: "/app/pharmacy/low-stock",
+    labelKey: "nav.pharmacyLowStock",
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  {
+    href: "/app/pharmacy/expiring",
+    labelKey: "nav.pharmacyExpiring",
+    roles: ["PHARMACY", "ADMIN"],
+    group: "pharmacie",
+    accent: "green",
+  },
+  { href: "/app/billing", labelKey: "nav.billing", roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo" },
+  { href: "/app/fracture", labelKey: "nav.fracture", roles: ["ADMIN"], group: "facturation", accent: "slate" },
+  {
+    href: "/app/public-health/summary",
+    labelKey: "nav.publicHealth",
+    roles: ["RN", "PROVIDER", "ADMIN"],
+    group: "sante_publique",
+    accent: "orange",
+  },
+  {
+    href: "/app/public-health/vaccinations",
+    labelKey: "nav.vaccinations",
+    roles: ["RN", "PROVIDER", "ADMIN"],
+    group: "sante_publique",
+    accent: "orange",
+  },
+  {
+    href: "/app/public-health/disease-reports",
+    labelKey: "nav.diseaseReports",
+    roles: ["RN", "PROVIDER", "ADMIN"],
+    group: "sante_publique",
+    accent: "orange",
+  },
+  { href: "/app/admin", labelKey: "nav.admin", roles: ["ADMIN"], group: "admin", accent: "redGray" },
+  { href: "/app/admin/users", labelKey: "nav.adminUsers", roles: ["ADMIN"], group: "admin", accent: "redGray" },
+];
+
+/**
+ * Menu latéral : `label` contient la clé i18n (ex. `nav.trackboard`) pour `t()` dans `AppShell`.
+ */
+export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = SIDEBAR_NAV_DEFS.map((d) => ({
+  href: d.href,
+  roles: d.roles,
+  group: d.group,
+  accent: d.accent,
+  label: d.labelKey,
+}));
+
+export function getSidebarNavItems(t: (key: string) => string): SidebarNavItem[] {
+  return SIDEBAR_NAV_DEFS.map((d) => ({
+    href: d.href,
+    roles: d.roles,
+    group: d.group,
+    accent: d.accent,
+    label: t(d.labelKey),
+  }));
+}
+
+export function getNavGroupTitle(groupId: NavGroupId, t: (key: string) => string): string {
+  return t(`navGroups.${groupId}`);
+}
 
 /** Ordre d’affichage des sections dans la barre latérale */
 export const NAV_GROUP_ORDER: NavGroupId[] = [
@@ -125,88 +215,9 @@ export const NAV_GROUP_ORDER: NavGroupId[] = [
   "admin",
 ];
 
-const n = ui.nav;
-
-/**
- * Menu latéral complet (libellés FR) — source unique pour le shell Medora.
- * Filtrer selon les rôles actifs avant affichage.
- */
-export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
-  { href: "/app/trackboard", label: n.trackboard, roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate" },
-  { href: "/app/registration", label: n.registration, roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
-  { href: "/app/nursing", label: n.nursing, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
-  { href: "/app/provider", label: n.provider, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
-  { href: "/app/patients", label: n.patients, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
-  { href: "/app/encounters", label: n.encounters, roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate" },
-  {
-    href: "/app/hospitalisation",
-    label: n.hospitalisation,
-    roles: ["ADMIN", "PROVIDER", "RN"],
-    group: "soins_dossiers",
-    accent: "slate",
-  },
-  { href: "/app/follow-ups", label: n.followUps, roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
-  { href: "/app/rad-worklist", label: n.radWorklist, roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
-  { href: "/app/lab-worklist", label: n.labWorklist, roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },
-  { href: "/app/pharmacy", label: n.pharmacyQueue, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
-  { href: "/app/pharmacy-worklist", label: n.pharmacyWorklist, roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
-  {
-    href: "/app/pharmacy/inventory",
-    label: n.pharmacyInventory,
-    roles: ["PHARMACY", "ADMIN"],
-    group: "pharmacie",
-    accent: "green",
-  },
-  {
-    href: "/app/pharmacy/dispense",
-    label: n.pharmacyDispense,
-    roles: ["PHARMACY", "ADMIN"],
-    group: "pharmacie",
-    accent: "green",
-  },
-  {
-    href: "/app/pharmacy/low-stock",
-    label: n.pharmacyLowStock,
-    roles: ["PHARMACY", "ADMIN"],
-    group: "pharmacie",
-    accent: "green",
-  },
-  {
-    href: "/app/pharmacy/expiring",
-    label: n.pharmacyExpiring,
-    roles: ["PHARMACY", "ADMIN"],
-    group: "pharmacie",
-    accent: "green",
-  },
-  { href: "/app/billing", label: n.billing, roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo" },
-  { href: "/app/fracture", label: n.fracture, roles: ["ADMIN"], group: "facturation", accent: "slate" },
-  {
-    href: "/app/public-health/summary",
-    label: n.publicHealth,
-    roles: ["RN", "PROVIDER", "ADMIN"],
-    group: "sante_publique",
-    accent: "orange",
-  },
-  {
-    href: "/app/public-health/vaccinations",
-    label: n.vaccinations,
-    roles: ["RN", "PROVIDER", "ADMIN"],
-    group: "sante_publique",
-    accent: "orange",
-  },
-  {
-    href: "/app/public-health/disease-reports",
-    label: n.diseaseReports,
-    roles: ["RN", "PROVIDER", "ADMIN"],
-    group: "sante_publique",
-    accent: "orange",
-  },
-  { href: "/app/admin", label: n.admin, roles: ["ADMIN"], group: "admin", accent: "redGray" },
-  { href: "/app/admin/users", label: n.adminUsers, roles: ["ADMIN"], group: "admin", accent: "redGray" },
-];
-
 export type GroupedSidebarSection = {
   groupId: NavGroupId;
+  /** Clé i18n (ex. `navGroups.accueil`) — affichage via `t(title)` dans `AppShell`. */
   title: string;
   items: SidebarNavItem[];
 };
@@ -215,7 +226,7 @@ export type GroupedSidebarSection = {
 export function groupSidebarNavItems(items: SidebarNavItem[]): GroupedSidebarSection[] {
   return NAV_GROUP_ORDER.map((gid) => ({
     groupId: gid,
-    title: NAV_GROUP_TITLE[gid],
+    title: `navGroups.${gid}`,
     items: items.filter((item) => item.group === gid),
   })).filter((section) => section.items.length > 0);
 }
