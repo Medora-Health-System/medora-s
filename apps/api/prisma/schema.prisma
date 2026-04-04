@@ -173,6 +173,7 @@ model Facility {
   name      String
   country   String
   timezone  String
+  defaultLanguage String @default("fr")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

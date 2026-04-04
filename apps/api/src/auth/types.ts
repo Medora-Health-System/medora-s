@@ -10,6 +10,7 @@ export type FacilityRoleDto = {
   facilityId: string;
   /** Nom de l’établissement (pour l’UI ; optionnel pour rétrocompatibilité). */
   facilityName?: string;
+  defaultLanguage: string;
   role: string;
   departmentId: string | null;
 };
