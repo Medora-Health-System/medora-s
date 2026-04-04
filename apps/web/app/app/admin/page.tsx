@@ -6,6 +6,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   fetchAdminFacilities,
   setAdminFacilityActive,
+  setAdminFacilityLanguage,
   type AdminFacilityRow,
 } from "@/lib/adminUsersApi";
 
@@ -17,11 +18,12 @@ function switchSessionToFacility(facilityId: string) {
 }
 
 export default function AdminPage() {
-  const { ready, canCreateFacilities, facilityId } = useFacilityAndRoles();
+  const { ready, canCreateFacilities, facilityId, refreshFromMe } = useFacilityAndRoles();
   const [facilities, setFacilities] = useState<AdminFacilityRow[] | null>(null);
   const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilityToggleId, setFacilityToggleId] = useState<string | null>(null);
+  const [languageSavingId, setLanguageSavingId] = useState<string | null>(null);
 
   const loadFacilities = useCallback(async () => {
     setFacilitiesLoading(true);
@@ -119,7 +121,46 @@ export default function AdminPage() {
                     const busy = facilityToggleId === f.id;
                     return (
                       <tr key={f.id} style={{ borderBottom: "1px solid #eee" }}>
-                        <td style={{ padding: 10 }}>{f.name}</td>
+                        <td style={{ padding: 10 }}>
+                          <div>{f.name}</div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginTop: 8,
+                            }}
+                          >
+                            <span style={{ fontSize: 12, color: "#666" }}>Langue:</span>
+                            <select
+                              value={f.defaultLanguage ?? "fr"}
+                              disabled={!facilityId || languageSavingId === f.id}
+                              onChange={async (e) => {
+                                const newLang = e.target.value as "fr" | "en";
+                                if (!facilityId) return;
+                                setLanguageSavingId(f.id);
+                                try {
+                                  await setAdminFacilityLanguage(facilityId, f.id, newLang);
+                                  await loadFacilities();
+                                  try {
+                                    await refreshFromMe();
+                                  } catch {
+                                    /* shell : événement ci-dessous */
+                                  }
+                                  window.dispatchEvent(new Event("medora:session-refresh"));
+                                } catch {
+                                  alert("Impossible de modifier la langue.");
+                                } finally {
+                                  setLanguageSavingId(null);
+                                }
+                              }}
+                              style={{ padding: 4, borderRadius: 4 }}
+                            >
+                              <option value="fr">FR</option>
+                              <option value="en">EN</option>
+                            </select>
+                          </div>
+                        </td>
                         <td style={{ padding: 10 }}>{rowActive ? "Actif" : "Inactif"}</td>
                         <td style={{ padding: 10, fontFamily: "monospace", fontSize: 13 }}>{f.id}</td>
                         <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>

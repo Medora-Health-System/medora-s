@@ -223,7 +223,7 @@ export function AppShell({
                     marginBottom: 8,
                   }}
                 >
-                  {section.title}
+                  {t(section.title)}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {section.items.map((item) => {
@@ -278,7 +278,7 @@ export function AppShell({
                         >
                           <SidebarNavIcon href={item.href} accent={item.accent} />
                         </span>
-                        <span style={{ lineHeight: 1.3 }}>{item.label}</span>
+                        <span style={{ lineHeight: 1.3 }}>{t(item.label)}</span>
                       </Link>
                     );
                   })}

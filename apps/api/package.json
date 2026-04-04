@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "rm -rf dist tsconfig.build.tsbuildinfo && nest start --watch",
     "prebuild": "prisma generate",
-    "build": "nest build",
-    "start": "node dist/main.js",
+    "build": "rm -f tsconfig.build.tsbuildinfo && nest build",
+    "start": "prisma migrate deploy && node dist/main.js",
     "lint": "node -e \"console.log('lint not configured yet')\"",
     "test": "jest --config jest.config.cjs",
     "prisma:generate": "prisma generate",
