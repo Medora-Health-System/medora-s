@@ -42,19 +42,36 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<SupportedLanguage>(defaultLanguage);
+export function I18nProvider({
+  children,
+  facilityLanguage,
+}: {
+  children: React.ReactNode;
+  facilityLanguage?: string;
+}) {
+  const [language, setLanguageState] = useState<SupportedLanguage>(
+    (facilityLanguage as SupportedLanguage) || defaultLanguage
+  );
 
   useEffect(() => {
     try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+      if (facilityLanguage && isSupportedLanguage(facilityLanguage)) {
+        setLanguageState(facilityLanguage);
+        return;
+      }
+
+      const raw =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem(STORAGE_KEY)
+          : null;
+
       if (raw && isSupportedLanguage(raw)) {
         setLanguageState(raw);
       }
     } catch {
       // ignore
     }
-  }, []);
+  }, [facilityLanguage]);
 
   const setLanguage = useCallback((lang: SupportedLanguage) => {
     setLanguageState(lang);

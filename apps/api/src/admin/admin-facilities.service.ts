@@ -103,7 +103,7 @@ export class AdminFacilitiesService {
       }
       return this.prisma.facility.findMany({
         orderBy: { name: "asc" },
-        select: { id: true, name: true, isActive: true },
+        select: { id: true, name: true, isActive: true, defaultLanguage: true },
       });
     }
     const principal = await this.prisma.user.findUnique({
@@ -114,7 +114,7 @@ export class AdminFacilitiesService {
       return this.prisma.facility.findMany({
         where: { isActive: true },
         orderBy: { name: "asc" },
-        select: { id: true, name: true },
+        select: { id: true, name: true, defaultLanguage: true },
       });
     }
     const roles = await this.prisma.userRole.findMany({
@@ -131,7 +131,31 @@ export class AdminFacilitiesService {
         id: { in: facilityIds },
       },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, defaultLanguage: true },
+    });
+  }
+
+  async setFacilityLanguage(id: string, defaultLanguage: "fr" | "en", userId: string) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { canCreateFacilities: true },
+    });
+    if (!actor?.canCreateFacilities) {
+      throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
+    }
+
+    const existing = await this.prisma.facility.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Établissement introuvable.");
+    }
+
+    return this.prisma.facility.update({
+      where: { id },
+      data: { defaultLanguage },
+      select: { id: true, name: true, defaultLanguage: true },
     });
   }
 
@@ -155,7 +179,7 @@ export class AdminFacilitiesService {
     return this.prisma.facility.update({
       where: { id },
       data: { isActive },
-      select: { id: true, name: true, isActive: true },
+      select: { id: true, name: true, isActive: true, defaultLanguage: true },
     });
   }
 }

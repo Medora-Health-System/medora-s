@@ -70,7 +70,10 @@ export class AuthService {
       include: {
         userRoles: {
           where: { isActive: true, facility: { isActive: true } },
-          include: { role: true, facility: { select: { name: true } } },
+          include: {
+            role: true,
+            facility: { select: { name: true, defaultLanguage: true } },
+          },
         },
       }
     });
@@ -89,6 +92,7 @@ export class AuthService {
       facilityRoles: sortedRoles.map((ur) => ({
         facilityId: ur.facilityId,
         facilityName: ur.facility?.name,
+        defaultLanguage: ur.facility?.defaultLanguage ?? "fr",
         role: ur.role.code,
         departmentId: ur.departmentId ?? null,
       })),

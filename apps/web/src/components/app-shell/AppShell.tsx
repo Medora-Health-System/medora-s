@@ -7,8 +7,6 @@
  */
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { ui } from "@/lib/uiLabels";
-import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/i18n/provider";
 import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
 import { SidebarNavIcon } from "./SidebarNavIcons";
@@ -55,7 +53,7 @@ export function AppShell({
     setMounted(true);
   }, []);
 
-  const { language, setLanguage } = useI18n();
+  const { t } = useI18n();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -96,23 +94,6 @@ export function AppShell({
         </div>
 
         <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
-            style={{
-              backgroundColor: "#2a2a2a",
-              color: "white",
-              border: "1px solid #444",
-              padding: "6px 8px",
-              borderRadius: 4,
-              fontSize: 12,
-              cursor: "pointer",
-              marginRight: 12,
-            }}
-          >
-            <option value="fr">FR</option>
-            <option value="en">EN</option>
-          </select>
           <button
             type="button"
             onClick={onToggleUserMenu}
@@ -129,7 +110,7 @@ export function AppShell({
               gap: 8,
             }}
           >
-            {userFullName || ui.common.userFallback}
+            {userFullName || t("common.userFallback")}
             <span>▼</span>
           </button>
           {showUserMenu && (
@@ -149,7 +130,7 @@ export function AppShell({
             >
               <div style={{ padding: "12px 16px", borderBottom: "1px solid #444" }}>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>
-                  {userFullName || ui.common.userFallback}
+                  {userFullName || t("common.userFallback")}
                 </div>
                 <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
                   {userUsername || ""}
@@ -195,7 +176,7 @@ export function AppShell({
                   e.currentTarget.style.backgroundColor = "transparent";
                 }}
               >
-                {ui.common.logout}
+                {t("common.logout")}
               </button>
             </div>
           )}
@@ -225,7 +206,7 @@ export function AppShell({
                   lineHeight: 1.45,
                 }}
               >
-                {ui.common.loading}
+                {t("common.loading")}
               </p>
             ) : (
               groupedNavSections.map((section, si) => (
@@ -311,13 +292,13 @@ export function AppShell({
         <main style={{ flex: 1, padding: 24, background: "linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%)" }}>
           {bootstrapping ? (
             <div style={{ padding: 24 }}>
-              <p style={{ margin: 0 }}>{ui.common.loading}</p>
+              <p style={{ margin: 0 }}>{t("common.loading")}</p>
             </div>
           ) : routeRedirecting ? (
             <div style={{ padding: 24 }}>
-              <p style={{ margin: 0 }}>{ui.common.redirecting}</p>
+              <p style={{ margin: 0 }}>{t("common.redirecting")}</p>
               {pathname !== "/app" && (
-                <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#666" }}>{ui.common.unauthorizedRedirect}</p>
+                <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#666" }}>{t("common.unauthorizedRedirect")}</p>
               )}
             </div>
           ) : (

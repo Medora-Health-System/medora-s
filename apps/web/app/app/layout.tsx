@@ -14,6 +14,7 @@ import {
  */
 import { AppShell, type AppShellFacilityOption } from "@/components/app-shell/AppShell";
 import { SIDEBAR_NAV_ITEMS, groupSidebarNavItems } from "@/components/app-shell/sidebarNavConfig";
+import { I18nProvider } from "@/i18n/provider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -164,6 +165,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .map((fr: any) => fr.role);
   };
 
+  const getActiveFacilityLanguage = () => {
+    if (!user || !activeFacility) return undefined;
+
+    const match = user.facilityRoles?.find(
+      (fr: any) => fr.facilityId === activeFacility
+    );
+
+    return match?.defaultLanguage;
+  };
+
+  const facilityLanguage = getActiveFacilityLanguage();
+
   const activeRoles = getActiveRoles();
   /** Rôles « soins / technique » — accueil seul (FRONT_DESK sans ces rôles) : menu limité à inscription / liste patients / suivis / facturation. */
   const clinicalCareRoles = ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "PHARMACY"];
@@ -218,25 +231,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, pathname, activeFacility, router]);
 
   return (
-    <AppShell
-      pathname={pathname}
-      routeRedirecting={routeRedirecting}
-      bootstrapping={!sessionReady || !user}
-      facilities={facilities}
-      activeFacility={activeFacility}
-      onFacilityChange={(newFacility) => {
-        setActiveFacility(newFacility);
-        document.cookie = `medora_facility_id=${newFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
-        window.location.reload();
-      }}
-      userFullName={user?.fullName ?? ""}
-      userUsername={user?.username}
-      showUserMenu={showUserMenu}
-      onToggleUserMenu={() => setShowUserMenu(!showUserMenu)}
-      onLogout={handleLogout}
-      groupedNavSections={groupedNavSections}
-    >
-      {children}
-    </AppShell>
+    <I18nProvider facilityLanguage={facilityLanguage}>
+      <AppShell
+        pathname={pathname}
+        routeRedirecting={routeRedirecting}
+        bootstrapping={!sessionReady || !user}
+        facilities={facilities}
+        activeFacility={activeFacility}
+        onFacilityChange={(newFacility) => {
+          setActiveFacility(newFacility);
+          document.cookie = `medora_facility_id=${newFacility}; path=/; max-age=${365 * 24 * 60 * 60}`;
+          window.location.reload();
+        }}
+        userFullName={user?.fullName ?? ""}
+        userUsername={user?.username}
+        showUserMenu={showUserMenu}
+        onToggleUserMenu={() => setShowUserMenu(!showUserMenu)}
+        onLogout={handleLogout}
+        groupedNavSections={groupedNavSections}
+      >
+        {children}
+      </AppShell>
+    </I18nProvider>
   );
 }

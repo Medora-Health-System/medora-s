@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards, BadRequestException } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { createFacilityDtoSchema, setFacilityActiveDtoSchema } from "@medora/shared";
+import { createFacilityDtoSchema, setFacilityActiveDtoSchema, setFacilityLanguageDtoSchema } from "@medora/shared";
 import { AdminFacilitiesService } from "./admin-facilities.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }): string | undefined {
@@ -25,6 +25,23 @@ export class AdminFacilitiesController {
       });
     }
     return this.facilities.create(parsed.data.name, req.user.userId);
+  }
+
+  /** Langue d’interface par établissement : JWT + `User.canCreateFacilities` (service). */
+  @Patch("facilities/:id/language")
+  @UseGuards(AuthGuard("jwt"))
+  async setLanguage(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: { user: { userId: string } }
+  ) {
+    const parsed = setFacilityLanguageDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    return this.facilities.setFacilityLanguage(id, parsed.data.defaultLanguage, req.user.userId);
   }
 
   /** Activation / désactivation contractuelle : JWT + `User.canCreateFacilities` (service). */
