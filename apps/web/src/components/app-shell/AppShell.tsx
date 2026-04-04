@@ -8,6 +8,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ui } from "@/lib/uiLabels";
+import type { SupportedLanguage } from "@/i18n/config";
+import { useI18n } from "@/i18n/provider";
 import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
 import { SidebarNavIcon } from "./SidebarNavIcons";
 
@@ -53,6 +55,8 @@ export function AppShell({
     setMounted(true);
   }, []);
 
+  const { language, setLanguage } = useI18n();
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <header
@@ -91,7 +95,24 @@ export function AppShell({
           )}
         </div>
 
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+            style={{
+              backgroundColor: "#2a2a2a",
+              color: "white",
+              border: "1px solid #444",
+              padding: "6px 8px",
+              borderRadius: 4,
+              fontSize: 12,
+              cursor: "pointer",
+              marginRight: 12,
+            }}
+          >
+            <option value="fr">FR</option>
+            <option value="en">EN</option>
+          </select>
           <button
             type="button"
             onClick={onToggleUserMenu}

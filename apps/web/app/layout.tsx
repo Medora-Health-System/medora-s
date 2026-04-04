@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { OfflineRuntime } from "@/components/offline/OfflineRuntime";
+import { I18nProvider } from "@/i18n/provider";
 
 export const metadata: Metadata = {
   title: "Medora-S",
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="fr">
       <body style={{ margin: 0, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
         <OfflineRuntime />
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );
