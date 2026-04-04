@@ -9,6 +9,7 @@ import {
   setAdminFacilityLanguage,
   type AdminFacilityRow,
 } from "@/lib/adminUsersApi";
+import { useI18n } from "@/lib/i18n";
 
 const FACILITY_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 
@@ -18,6 +19,7 @@ function switchSessionToFacility(facilityId: string) {
 }
 
 export default function AdminPage() {
+  const { t } = useI18n();
   const { ready, canCreateFacilities, facilityId, refreshFromMe } = useFacilityAndRoles();
   const [facilities, setFacilities] = useState<AdminFacilityRow[] | null>(null);
   const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
@@ -182,7 +184,7 @@ export default function AdminPage() {
                                   marginRight: 8,
                                 }}
                               >
-                                Désactiver
+                                {t("common.deactivate")}
                               </button>
                               <button
                                 type="button"

@@ -6,6 +6,13 @@ export default {
     logout: "Log out",
     userFallback: "User",
     settings: "Settings",
+    create: "Create",
+    cancel: "Cancel",
+    save: "Save",
+    edit: "Edit",
+    delete: "Delete",
+    activate: "Activate",
+    deactivate: "Deactivate",
   },
   nav: {
     trackboard: "Trackboard",
@@ -40,5 +47,14 @@ export default {
     facturation: "Billing",
     sante_publique: "Public health",
     admin: "Administration",
+  },
+  adminUsers: {
+    title: "Users and access",
+    name: "Name",
+    email: "Email",
+    facility: "Facility",
+    roles: "Roles",
+    status: "Status",
+    actions: "Actions",
   },
 };

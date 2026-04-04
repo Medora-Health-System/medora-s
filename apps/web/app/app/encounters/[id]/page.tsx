@@ -58,6 +58,7 @@ import {
 } from "@/lib/encounterAdmission";
 import {
   DISCHARGE_MODE_OPTIONS_FR,
+  dischargeModeFrToDischargeStatus,
   emptyDischargeForm,
   hydrateDischargeFormFromEncounterJson,
   mergeDischargeForSave,
@@ -607,6 +608,8 @@ export default function EncounterDetailPage() {
       const body: Record<string, unknown> = {};
       if (Object.keys(dischargePayload).length > 0) body.discharge = dischargePayload;
       if (acknowledgeDeficiencies) body.acknowledgeDeficiencies = true;
+      const derivedStatus = dischargeModeFrToDischargeStatus(pendingDischarge?.dischargeMode);
+      if (derivedStatus) body.dischargeStatus = derivedStatus;
       const res = await apiFetch(`/encounters/${encounterId}/close`, {
         method: "POST",
         facilityId,
@@ -649,7 +652,10 @@ export default function EncounterDetailPage() {
     setClosingEncounter(true);
     try {
       const dischargePayload = buildDischargePayloadFromPending();
-      const checkBody = Object.keys(dischargePayload).length > 0 ? { discharge: dischargePayload } : {};
+      const derivedStatus = dischargeModeFrToDischargeStatus(pendingDischarge?.dischargeMode);
+      const checkBody: Record<string, unknown> = {};
+      if (Object.keys(dischargePayload).length > 0) checkBody.discharge = dischargePayload;
+      if (derivedStatus) checkBody.dischargeStatus = derivedStatus;
       const check = await apiFetch(`/encounters/${encounterId}/close-check`, {
         method: "POST",
         facilityId,

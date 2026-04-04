@@ -21,6 +21,7 @@ import {
 import { genericUserFacingError, normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
 import { getAdminAssignableRoleLabelFr } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
 
 function roleCheckboxes(
   selected: Set<string>,
@@ -66,6 +67,7 @@ function rolesListFr(codes: string[]): string {
 }
 
 export default function AdminUsersPage() {
+  const { t } = useI18n();
   const { facilityId, facilities, roles, ready, refreshFromMe, canCreateFacilities } = useFacilityAndRoles();
   const [items, setItems] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,7 +160,7 @@ export default function AdminUsersPage() {
         }}
       >
         <div>
-          <h1 style={{ margin: "0 0 8px 0" }}>Utilisateurs et accès</h1>
+          <h1 style={{ margin: "0 0 8px 0" }}>{t("adminUsers.title")}</h1>
           {isAdmin ? (
             <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
               Établissement géré : <strong>{currentFacilityName}</strong>. Les comptes listés ont au moins un lien avec cet
@@ -236,12 +238,12 @@ export default function AdminUsersPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid #ddd" }}>
-              <th style={{ textAlign: "left", padding: 10 }}>Nom</th>
-              <th style={{ textAlign: "left", padding: 10 }}>Courriel</th>
-              <th style={{ textAlign: "left", padding: 10 }}>Établissement</th>
-              <th style={{ textAlign: "left", padding: 10 }}>Rôles</th>
-              <th style={{ textAlign: "left", padding: 10 }}>Statut</th>
-              <th style={{ textAlign: "right", padding: 10 }}>Actions</th>
+              <th style={{ textAlign: "left", padding: 10 }}>{t("adminUsers.name")}</th>
+              <th style={{ textAlign: "left", padding: 10 }}>{t("adminUsers.email")}</th>
+              <th style={{ textAlign: "left", padding: 10 }}>{t("adminUsers.facility")}</th>
+              <th style={{ textAlign: "left", padding: 10 }}>{t("adminUsers.roles")}</th>
+              <th style={{ textAlign: "left", padding: 10 }}>{t("adminUsers.status")}</th>
+              <th style={{ textAlign: "right", padding: 10 }}>{t("adminUsers.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -282,7 +284,7 @@ export default function AdminUsersPage() {
                       cursor: "pointer",
                     }}
                   >
-                    Modifier
+                    {t("common.edit")}
                   </button>
                   <button
                     type="button"
@@ -350,7 +352,7 @@ export default function AdminUsersPage() {
                         cursor: "pointer",
                       }}
                     >
-                      Désactiver
+                      {t("common.deactivate")}
                     </button>
                   ) : null}
                   {(!u.isActive || !u.facilityAccessActive) && u.id !== currentUserId ? (
@@ -382,7 +384,7 @@ export default function AdminUsersPage() {
                         cursor: "pointer",
                       }}
                     >
-                      Activer
+                      {t("common.activate")}
                     </button>
                   ) : null}
                 </td>
@@ -482,6 +484,7 @@ function AddFacilityModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [defaultLanguage, setDefaultLanguage] = useState<"fr" | "en">("fr");
   const [submitting, setSubmitting] = useState(false);
@@ -579,7 +582,7 @@ function AddFacilityModal({
                 cursor: submitting ? "default" : "pointer",
               }}
             >
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -594,7 +597,7 @@ function AddFacilityModal({
                 cursor: submitting ? "default" : "pointer",
               }}
             >
-              {submitting ? "Création…" : "Créer"}
+              {submitting ? "Création…" : t("common.create")}
             </button>
           </div>
         </form>
@@ -616,6 +619,7 @@ function CreateUserModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
+  const { t } = useI18n();
   const [selectedFacilityId, setSelectedFacilityId] = useState(defaultFacilityId);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -822,7 +826,7 @@ function CreateUserModal({
                 cursor: "pointer",
               }}
             >
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -837,7 +841,7 @@ function CreateUserModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Création…" : "Créer"}
+              {submitting ? "Création…" : t("common.create")}
             </button>
           </div>
         </form>
@@ -861,6 +865,7 @@ function EditRolesModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(user.roles));
   const [submitting, setSubmitting] = useState(false);
 
@@ -969,7 +974,7 @@ function EditRolesModal({
                 cursor: "pointer",
               }}
             >
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -984,7 +989,7 @@ function EditRolesModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Enregistrement…" : "Enregistrer"}
+              {submitting ? "Enregistrement…" : t("common.save")}
             </button>
           </div>
         </form>
@@ -1008,6 +1013,7 @@ function ResetPasswordModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
+  const { t } = useI18n();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -1115,7 +1121,7 @@ function ResetPasswordModal({
                 cursor: submitting ? "default" : "pointer",
               }}
             >
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -1130,7 +1136,7 @@ function ResetPasswordModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Enregistrement…" : "Enregistrer"}
+              {submitting ? "Enregistrement…" : t("common.save")}
             </button>
           </div>
         </form>
@@ -1152,6 +1158,7 @@ function EditProfileModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
+  const { t } = useI18n();
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [email, setEmail] = useState(user.email);
@@ -1265,7 +1272,7 @@ function EditProfileModal({
                 cursor: "pointer",
               }}
             >
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -1280,7 +1287,7 @@ function EditProfileModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Enregistrement…" : "Enregistrer"}
+              {submitting ? "Enregistrement…" : t("common.save")}
             </button>
           </div>
         </form>

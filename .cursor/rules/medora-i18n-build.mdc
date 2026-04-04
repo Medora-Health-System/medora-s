@@ -1,0 +1,44 @@
+---
+description: Medora-S web UI — i18n keys for visible text; no hardcoded user-facing strings in components
+globs: apps/web/**/*.{tsx,ts}
+alwaysApply: true
+---
+
+# Medora i18n build rule (web)
+
+When adding or changing **user-visible** copy in `apps/web`, do **not** hardcode strings in JSX. Use the shared message files and `t()`.
+
+## Scope
+
+- **Must use i18n (`t()`):** titles, buttons, labels, table headers, menu items, short UI chrome.
+- **Do not refactor** unrelated logic, API calls, or data flow.
+- **Backend / validation / API error strings:** do not translate or move to i18n **unless** the task explicitly asks for it.
+- **Allowed temporary exceptions (speed):** long descriptive paragraphs, some toast copy, some inline errors — but prefer moving buttons, headers, and labels to i18n first.
+
+## Workflow for new features
+
+1. List all user-facing strings for the feature (titles, buttons, labels, headers, nav items).
+2. Add a **feature-named section** with the **same keys** in both:
+   - `apps/web/src/i18n/messages/en.ts`
+   - `apps/web/src/i18n/messages/fr.ts`
+3. In components:
+
+```ts
+import { useI18n } from "@/lib/i18n";
+// ...
+const { t } = useI18n();
+```
+
+4. Replace literals: `<h1>{t("featureName.title")}</h1>` — not `<h1>…</h1>` with hardcoded text.
+
+## Rules
+
+- **Mirror keys** exactly between `en.ts` and `fr.ts`.
+- **No duplicate key names** for the same concept; reuse `common.*` where appropriate.
+- **Product language** remains French for end users: French strings live in `fr.ts` (see `french-ui.mdc`). English in `en.ts` supports locale switching / dev; do not mix languages in the same visible control.
+- Do not skip i18n for “small” labels.
+
+## Do not
+
+- Mix French and English in the same user-visible control outside normal locale behavior.
+- Bypass i18n for buttons, headers, or table column titles.
