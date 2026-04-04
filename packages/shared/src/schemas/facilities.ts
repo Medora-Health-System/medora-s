@@ -15,6 +15,12 @@ export const setFacilityActiveDtoSchema = z.object({
   isActive: z.boolean(),
 });
 
+/** PATCH /admin/facilities/:id/language */
+export const setFacilityLanguageDtoSchema = z.object({
+  defaultLanguage: z.enum(["fr", "en"]),
+});
+
 export type CreateFacilityDto = z.infer<typeof createFacilityDtoSchema>;
 export type FacilityDto = z.infer<typeof facilityDtoSchema>;
 export type SetFacilityActiveDto = z.infer<typeof setFacilityActiveDtoSchema>;
+export type SetFacilityLanguageDto = z.infer<typeof setFacilityLanguageDtoSchema>;
