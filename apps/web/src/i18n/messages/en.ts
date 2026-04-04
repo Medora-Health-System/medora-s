@@ -5,6 +5,7 @@ export default {
     unauthorizedRedirect: "You do not have access to this page.",
     logout: "Log out",
     userFallback: "User",
+    settings: "Settings",
   },
   nav: {
     trackboard: "Trackboard",
