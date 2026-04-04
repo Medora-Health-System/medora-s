@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "prebuild": "prisma generate",
     "build": "nest build",
-    "start": "node dist/main.js",
+    "start": "prisma migrate deploy && node dist/main.js",
     "lint": "node -e \"console.log('lint not configured yet')\"",
     "test": "jest --config jest.config.cjs",
     "prisma:generate": "prisma generate",
