@@ -18,7 +18,7 @@ function switchSessionToFacility(facilityId: string) {
 }
 
 export default function AdminPage() {
-  const { ready, canCreateFacilities, facilityId } = useFacilityAndRoles();
+  const { ready, canCreateFacilities, facilityId, refreshFromMe } = useFacilityAndRoles();
   const [facilities, setFacilities] = useState<AdminFacilityRow[] | null>(null);
   const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
@@ -142,6 +142,12 @@ export default function AdminPage() {
                                 try {
                                   await setAdminFacilityLanguage(facilityId, f.id, newLang);
                                   await loadFacilities();
+                                  try {
+                                    await refreshFromMe();
+                                  } catch {
+                                    /* shell : événement ci-dessous */
+                                  }
+                                  window.dispatchEvent(new Event("medora:session-refresh"));
                                 } catch {
                                   alert("Impossible de modifier la langue.");
                                 } finally {
