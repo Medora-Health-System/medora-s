@@ -483,6 +483,7 @@ function AddFacilityModal({
   onError: (m: string) => void;
 }) {
   const [name, setName] = useState("");
+  const [defaultLanguage, setDefaultLanguage] = useState<"fr" | "en">("fr");
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -548,6 +549,19 @@ function AddFacilityModal({
               style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
               autoComplete="organization"
             />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              Langue par défaut *
+            </label>
+            <select
+              value={defaultLanguage}
+              onChange={(e) => setDefaultLanguage(e.target.value as "fr" | "en")}
+              style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+            >
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+            </select>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
