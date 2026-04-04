@@ -3,6 +3,7 @@ import { z } from "zod";
 /** POST /admin/facilities */
 export const createFacilityDtoSchema = z.object({
   name: z.string().trim().min(1, "Le nom est requis.").max(200),
+  defaultLanguage: z.enum(["fr", "en"]).optional().default("fr"),
 });
 
 export const facilityDtoSchema = z.object({

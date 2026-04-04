@@ -177,12 +177,12 @@ export async function setAdminFacilityActive(
 /** POST /admin/facilities — crée un établissement et rattache l’admin courant (côté API). */
 export async function createAdminFacility(
   facilityId: string,
-  body: { name: string }
-): Promise<{ id: string; name: string }> {
+  body: { name: string; defaultLanguage?: "fr" | "en" }
+): Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }> {
   return adminApiFetch("/facilities", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     facilityId,
-  }) as Promise<{ id: string; name: string }>;
+  }) as Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }>;
 }

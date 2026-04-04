@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { CreateFacilityDto } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
 import { randomBytes } from "crypto";
@@ -16,7 +17,7 @@ const DEFAULT_NEW_FACILITY_TIMEZONE = "America/Port-au-Prince";
 export class AdminFacilitiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(name: string, userId: string) {
+  async create(dto: CreateFacilityDto, userId: string) {
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { canCreateFacilities: true },
@@ -25,7 +26,7 @@ export class AdminFacilitiesService {
       throw new ForbiddenException("Création d’établissement non autorisée pour ce compte.");
     }
 
-    const trimmed = name.trim();
+    const trimmed = dto.name.trim();
     const code = `FAC-${randomBytes(6).toString("hex")}`;
 
     return this.prisma.$transaction(async (tx) => {
@@ -35,6 +36,7 @@ export class AdminFacilitiesService {
           name: trimmed,
           country: DEFAULT_NEW_FACILITY_COUNTRY,
           timezone: DEFAULT_NEW_FACILITY_TIMEZONE,
+          defaultLanguage: dto.defaultLanguage ?? "fr",
         },
       });
 
@@ -54,7 +56,11 @@ export class AdminFacilitiesService {
         },
       });
 
-      return { id: facility.id, name: facility.name };
+      return {
+        id: facility.id,
+        name: facility.name,
+        defaultLanguage: facility.defaultLanguage as "fr" | "en",
+      };
     });
   }
 

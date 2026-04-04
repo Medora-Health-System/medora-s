@@ -494,7 +494,10 @@ function AddFacilityModal({
     }
     setSubmitting(true);
     try {
-      await createAdminFacility(facilityId, { name: name.trim() });
+      await createAdminFacility(facilityId, {
+        name: name.trim(),
+        defaultLanguage,
+      });
       await onSuccess();
     } catch (err: unknown) {
       onError(

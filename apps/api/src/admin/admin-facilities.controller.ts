@@ -24,7 +24,7 @@ export class AdminFacilitiesController {
         cause: parsed.error,
       });
     }
-    return this.facilities.create(parsed.data.name, req.user.userId);
+    return this.facilities.create(parsed.data, req.user.userId);
   }
 
   /** Langue d’interface par établissement : JWT + `User.canCreateFacilities` (service). */
