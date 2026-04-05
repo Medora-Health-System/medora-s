@@ -70,6 +70,65 @@ import { MedicationAdministrationTab } from "@/components/encounters/MedicationA
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
+import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+
+/** Presentation-only: admission / discharge / close / documentation-deficiency modals on this page. */
+function encounterWorkflowModalOverlay(zIndex: number): React.CSSProperties {
+  return {
+    position: "fixed",
+    inset: 0,
+    zIndex,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    boxSizing: "border-box",
+  };
+}
+
+function encounterWorkflowModalPanel(maxWidth: number): React.CSSProperties {
+  return {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)",
+    maxWidth,
+    width: "100%",
+    padding: "22px 24px",
+    boxSizing: "border-box",
+  };
+}
+
+function encounterWorkflowModalField(editable: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid #e2e8f0",
+    fontSize: 14,
+    color: "#0f172a",
+    backgroundColor: editable ? "#fff" : "#f8fafc",
+    cursor: editable ? "text" : "not-allowed",
+    boxSizing: "border-box",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  };
+}
+
+function encounterWorkflowModalBtnSecondary(disabled: boolean): React.CSSProperties {
+  return {
+    padding: "10px 18px",
+    fontSize: 14,
+    fontWeight: 600,
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    background: "#fff",
+    color: "#334155",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.65 : 1,
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  };
+}
 
 function formatEncounterAuditDt(iso: string) {
   return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
@@ -683,12 +742,27 @@ export default function EncounterDetailPage() {
     }
   };
 
+  const encounterPageShell: React.CSSProperties = {
+    minHeight: "calc(100vh - 48px)",
+    backgroundColor: "#f8fafc",
+    padding: "24px 16px 32px",
+    boxSizing: "border-box",
+  };
+
   if (!facilityId || !encounterId) {
-    return <div style={{ padding: 24 }}>Chargement…</div>;
+    return (
+      <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 15, color: "#475569" }}>Chargement…</div>
+      </div>
+    );
   }
 
   if (!rolesReady) {
-    return <div style={{ padding: 24 }}>Chargement…</div>;
+    return (
+      <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 15, color: "#475569" }}>Chargement…</div>
+      </div>
+    );
   }
 
   if (rolesReady && !canViewEncounterDetail) {
@@ -697,47 +771,57 @@ export default function EncounterDetailPage() {
 
   if (loading && canViewEncounterDetail) {
     return (
-      <div style={{ padding: 24 }}>
-        {encounterHasLoadedOnceRef.current ? "Chargement…" : "Ouverture de la consultation…"}
+      <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 15, color: "#475569" }}>
+          {encounterHasLoadedOnceRef.current ? "Chargement…" : "Ouverture de la consultation…"}
+        </div>
       </div>
     );
   }
 
   if (loading) {
-    return <div style={{ padding: 24 }}>Chargement…</div>;
+    return (
+      <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 15, color: "#475569" }}>Chargement…</div>
+      </div>
+    );
   }
 
   if (!encounter) {
     const isEncounterNotFound =
       encounterFetchError != null && encounterFetchError.trim() === USER_FACING_ENCOUNTER_NOT_FOUND_FR;
     return (
-      <div style={{ padding: 24, maxWidth: 520 }}>
-        {isEncounterNotFound ? (
-          <>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Consultation introuvable</p>
-            <p style={{ margin: "12px 0 0 0", color: "#555" }}>
-              Cette consultation n&apos;existe pas dans l&apos;établissement actif, a été supprimée, ou le lien est
-              obsolète (autre établissement).
-            </p>
-            <p style={{ margin: "16px 0 0 0" }}>
-              <Link href="/app/encounters">Retour à la liste des consultations</Link>
-            </p>
-          </>
-        ) : encounterFetchError ? (
-          <>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Impossible de charger la consultation.</p>
-            {encounterFetchError.trim() !== "Impossible de charger la consultation." ? (
-              <p style={{ margin: "12px 0 0 0", color: "#b71c1c", lineHeight: 1.5 }}>{encounterFetchError}</p>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Consultation introuvable</p>
-            <p style={{ margin: "12px 0 0 0", color: "#555" }}>
-              Cette consultation n&apos;existe pas, a été supprimée, ou vous n&apos;avez pas accès à cet établissement.
-            </p>
-          </>
-        )}
+      <div style={encounterPageShell}>
+        <div style={{ maxWidth: 520, margin: "0 auto", width: "100%", textAlign: "center" }}>
+          {isEncounterNotFound ? (
+            <>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Consultation introuvable</p>
+              <p style={{ margin: "14px 0 0 0", color: "#64748b", lineHeight: 1.55 }}>
+                Cette consultation n&apos;existe pas dans l&apos;établissement actif, a été supprimée, ou le lien est
+                obsolète (autre établissement).
+              </p>
+              <p style={{ margin: "20px 0 0 0" }}>
+                <Link href="/app/encounters">Retour à la liste des consultations</Link>
+              </p>
+            </>
+          ) : encounterFetchError ? (
+            <>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                Impossible de charger la consultation.
+              </p>
+              {encounterFetchError.trim() !== "Impossible de charger la consultation." ? (
+                <p style={{ margin: "14px 0 0 0", color: "#b91c1c", lineHeight: 1.55 }}>{encounterFetchError}</p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Consultation introuvable</p>
+              <p style={{ margin: "14px 0 0 0", color: "#64748b", lineHeight: 1.55 }}>
+                Cette consultation n&apos;existe pas, a été supprimée, ou vous n&apos;avez pas accès à cet établissement.
+              </p>
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -778,13 +862,15 @@ export default function EncounterDetailPage() {
     encounter.status === "OPEN" || dischargePreviewForPrint !== null;
 
   const quickBtn: React.CSSProperties = {
-    padding: "6px 12px",
+    padding: "8px 14px",
     fontSize: 13,
-    border: "1px solid #ccc",
-    borderRadius: 6,
-    background: "#fafafa",
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    background: "#fff",
     cursor: "pointer",
     fontWeight: 500,
+    color: "#334155",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
   };
 
   const tabs = [
@@ -802,337 +888,344 @@ export default function EncounterDetailPage() {
   ];
 
   return (
-    <div>
-      {quickContextNotice ? (
-        <div
-          role="alert"
-          style={{
-            marginBottom: 12,
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #ffcc80",
-            backgroundColor: "#fff8e1",
-            fontSize: 13,
-            color: "#5d4037",
-            lineHeight: 1.45,
-          }}
-        >
-          {quickContextNotice}
-        </div>
-      ) : null}
-      {isLocked ? (
-        <div
-          role="status"
-          style={{
-            marginBottom: 12,
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #90caf9",
-            backgroundColor: "#e3f2fd",
-            fontSize: 13,
-            color: "#1565c0",
-            lineHeight: 1.45,
-          }}
-        >
-          Dossier signé — modifications verrouillées
-        </div>
-      ) : null}
-      {queuedClosePendingSync && encounter?.status === "OPEN" ? (
-        <div
-          role="alert"
-          style={{
-            marginBottom: 12,
-            padding: "12px 14px",
-            borderRadius: 8,
-            border: "1px solid #ef9a9a",
-            backgroundColor: "#ffebee",
-            fontSize: 13,
-            color: "#b71c1c",
-            lineHeight: 1.5,
-            fontWeight: 600,
-          }}
-        >
-          La demande de clôture a été enregistrée sur cet appareil et est en attente de synchronisation avec le
-          serveur. La consultation n&apos;est pas encore confirmée fermée : les autres postes peuvent encore afficher la
-          visite comme ouverte jusqu&apos;à la fin de la synchronisation.
-        </div>
-      ) : null}
-      {queuedDischargeSaveNotice ? (
-        <div
-          role="alert"
-          style={{
-            marginBottom: 12,
-            padding: "12px 14px",
-            borderRadius: 8,
-            border: "1px solid #ef9a9a",
-            backgroundColor: "#ffebee",
-            fontSize: 13,
-            color: "#b71c1c",
-            lineHeight: 1.5,
-            fontWeight: 600,
-          }}
-        >
-          Le dossier de sortie a été enregistré sur cet appareil et est en attente de synchronisation avec le serveur. Il
-          n&apos;est pas encore confirmé côté serveur.
-        </div>
-      ) : null}
-      <div style={{ marginBottom: 16 }}>
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "20px 24px",
-            borderRadius: 8,
-            border: "1px solid #e0e0e0",
-          }}
-        >
+    <div style={encounterPageShell}>
+      <div style={{ maxWidth: 1152, margin: "0 auto", width: "100%" }}>
+        {quickContextNotice ? (
           <div
+            role="alert"
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 16,
-              flexWrap: "wrap",
+              marginBottom: 16,
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: "1px solid #fde68a",
+              backgroundColor: "#fffbeb",
+              fontSize: 13,
+              color: "#78350f",
+              lineHeight: 1.5,
             }}
           >
-            <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-              <h1 style={{ margin: "0 0 6px 0", fontSize: 22, lineHeight: 1.25 }}>
-                {patient.firstName} {patient.lastName}
-              </h1>
-              <div style={{ color: "#444", fontSize: 14, lineHeight: 1.5 }}>
-                <div>
-                  <span style={{ color: "#757575" }}>Âge :</span> {ageText}
-                </div>
-                <div>
-                  <span style={{ color: "#757575" }}>Sexe :</span> {sexText}
-                </div>
-                {patientDob && (
+            {quickContextNotice}
+          </div>
+        ) : null}
+        {isLocked ? (
+          <div
+            role="status"
+            style={{
+              marginBottom: 16,
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: "1px solid #bae6fd",
+              backgroundColor: "#f0f9ff",
+              fontSize: 13,
+              color: "#0369a1",
+              lineHeight: 1.5,
+            }}
+          >
+            Dossier signé — modifications verrouillées
+          </div>
+        ) : null}
+        {queuedClosePendingSync && encounter?.status === "OPEN" ? (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 16,
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: "1px solid #fecaca",
+              backgroundColor: "#fef2f2",
+              fontSize: 13,
+              color: "#b91c1c",
+              lineHeight: 1.5,
+              fontWeight: 600,
+            }}
+          >
+            La demande de clôture a été enregistrée sur cet appareil et est en attente de synchronisation avec le
+            serveur. La consultation n&apos;est pas encore confirmée fermée : les autres postes peuvent encore afficher la
+            visite comme ouverte jusqu&apos;à la fin de la synchronisation.
+          </div>
+        ) : null}
+        {queuedDischargeSaveNotice ? (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 16,
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: "1px solid #fecaca",
+              backgroundColor: "#fef2f2",
+              fontSize: 13,
+              color: "#b91c1c",
+              lineHeight: 1.5,
+              fontWeight: 600,
+            }}
+          >
+            Le dossier de sortie a été enregistré sur cet appareil et est en attente de synchronisation avec le serveur. Il
+            n&apos;est pas encore confirmé côté serveur.
+          </div>
+        ) : null}
+        <div style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              backgroundColor: MEDORA_CARD_SHELL.background,
+              border: MEDORA_CARD_SHELL.border,
+              borderRadius: MEDORA_CARD_SHELL.radius,
+              boxShadow: MEDORA_CARD_SHELL.boxShadow,
+              padding: "20px 24px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 24,
+              }}
+            >
+              <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                <h1 style={{ margin: "0 0 10px 0", fontSize: 22, lineHeight: 1.25, fontWeight: 700, color: "#0f172a" }}>
+                  {patient.firstName} {patient.lastName}
+                </h1>
+                <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.55 }}>
                   <div>
-                    <span style={{ color: "#757575" }}>Date de naissance :</span> {patientDob}
+                    <span style={{ color: "#64748b" }}>Âge :</span> {ageText}
                   </div>
-                )}
-                <div>
-                  <span style={{ color: "#757575" }}>NIR / MRN :</span> {patient.mrn || "—"}
-                </div>
-                <div>
-                  <span style={{ color: "#757575" }}>Type de consultation :</span>{" "}
-                  {getEncounterTypeLabelFr(encounter.type)}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 4 }}>
-                  <span style={{ color: "#757575" }}>Statut :</span>
-                  <span
-                    style={{
-                      padding: "2px 10px",
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      backgroundColor: encounter.status === "OPEN" ? "#e3f2fd" : "#f5f5f5",
-                      color: encounter.status === "OPEN" ? "#1565c0" : "#616161",
-                    }}
-                  >
-                    {getEncounterStatusLabelFr(encounter.status)}
-                  </span>
-                  {encounter.admittedAt || parseAdmissionSummaryForChart(encounter.admissionSummaryJson) ? (
+                  <div>
+                    <span style={{ color: "#64748b" }}>Sexe :</span> {sexText}
+                  </div>
+                  {patientDob && (
+                    <div>
+                      <span style={{ color: "#64748b" }}>Date de naissance :</span> {patientDob}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 4 }}>
+                    <span style={{ color: "#64748b" }}>NIR / MRN :</span> {patient.mrn || "—"}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 10 }}>
+                    <span style={{ color: "#64748b" }}>Statut :</span>
                     <span
                       style={{
                         padding: "2px 10px",
                         borderRadius: 4,
                         fontSize: 12,
                         fontWeight: 600,
-                        backgroundColor: "#f3e5f5",
-                        color: "#6a1b9a",
+                        backgroundColor: encounter.status === "OPEN" ? "#e3f2fd" : "#f5f5f5",
+                        color: encounter.status === "OPEN" ? "#1565c0" : "#616161",
                       }}
-                      title={
-                        encounter.admittedAt
-                          ? `Décision d'admission le ${new Date(encounter.admittedAt).toLocaleString("fr-FR")}`
-                          : "Dossier d'admission enregistré"
-                      }
                     >
-                      Patient admis (hospitalisation)
+                      {getEncounterStatusLabelFr(encounter.status)}
                     </span>
-                  ) : null}
-                </div>
-                <div style={{ marginTop: 4 }}>
-                  <span style={{ color: "#757575" }}>Ouverture :</span>{" "}
-                  {new Date(encounter.createdAt).toLocaleString("fr-FR")}
-                </div>
-                <div style={{ marginTop: 4 }}>
-                  <span style={{ color: "#757575" }}>Salle :</span>{" "}
-                  {encounter.roomLabel?.trim() || "—"}
-                </div>
-                <div style={{ marginTop: 4 }}>
-                  <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
-                  {formatEncounterPhysicianAssignedFr(encounter)}
-                </div>
-                {encounter.status === "CLOSED" && (encounter.dischargedAt || encounter.updatedAt) && (
-                  <div style={{ color: "#424242", fontSize: 14 }}>
-                    {encounter.closedByDisplayFr?.trim()
-                      ? `Fermé par ${encounter.closedByDisplayFr.trim()} — ${new Date(
-                          encounter.dischargedAt ?? encounter.updatedAt
-                        ).toLocaleString("fr-FR")}`
-                      : `Fermé le ${new Date(encounter.dischargedAt ?? encounter.updatedAt).toLocaleString("fr-FR")}`}
+                    {encounter.admittedAt || parseAdmissionSummaryForChart(encounter.admissionSummaryJson) ? (
+                      <span
+                        style={{
+                          padding: "2px 10px",
+                          borderRadius: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          backgroundColor: "#f3e5f5",
+                          color: "#6a1b9a",
+                        }}
+                        title={
+                          encounter.admittedAt
+                            ? `Décision d'admission le ${new Date(encounter.admittedAt).toLocaleString("fr-FR")}`
+                            : "Dossier d'admission enregistré"
+                        }
+                      >
+                        Patient admis (hospitalisation)
+                      </span>
+                    ) : null}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-              <Link
-                href={`/app/patients/${patient.id}`}
-                style={{
-                  padding: "8px 12px",
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                  fontSize: 13,
-                  color: "#1a1a1a",
-                  textDecoration: "none",
-                  fontWeight: 600,
-                  background: "#fff",
-                }}
-              >
-                Retour au dossier patient
-              </Link>
-              {canAdmitPatient && (
-                <button
-                  type="button"
-                  onClick={() => setShowAdmissionModal(true)}
+
+              <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+                <div
                   style={{
-                    padding: "8px 16px",
-                    backgroundColor: "#6a1b9a",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    flexShrink: 0,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                    gap: "10px 16px",
+                    fontSize: 13,
+                    color: "#334155",
+                    lineHeight: 1.5,
                   }}
                 >
-                  Admettre le patient
-                </button>
-              )}
-              {encounter.status === "OPEN" && canManageEncounterClosure && (
-                <>
-                  <button
-                    type="button"
-                    onClick={openDischargeThenClose}
-                    style={{
-                      padding: "8px 16px",
-                      backgroundColor: "#37474f",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      flexShrink: 0,
-                    }}
-                  >
-                    Dossier de sortie
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openCloseConfirmModal}
-                    style={{
-                      padding: "8px 16px",
-                      backgroundColor: "#c62828",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      flexShrink: 0,
-                    }}
-                  >
-                    Terminer la consultation
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: 16,
-              paddingTop: 16,
-              borderTop: "1px solid #eee",
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#424242", marginBottom: 8, letterSpacing: 0.02 }}>
-              Derniers signes vitaux
-            </div>
-            <div style={{ fontSize: 13, color: "#333", lineHeight: 1.55 }}>
-              {quickContextLoading ? "Chargement…" : vitalsLine}
-              {vitalsJson?.allergyNote && String(vitalsJson.allergyNote).trim() !== "" && (
-                <div style={{ marginTop: 6, color: "#c62828", fontWeight: 700 }}>
-                  ⚠️ Allergie : {String(vitalsJson.allergyNote).trim()}
+                  <div>
+                    <span style={{ color: "#64748b" }}>Motif :</span>{" "}
+                    <span style={{ wordBreak: "break-word" }}>{motif}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b" }}>Type de consultation :</span>{" "}
+                    {getEncounterTypeLabelFr(encounter.type)}
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b" }}>Diagnostics (visite) :</span>{" "}
+                    {quickContextLoading ? "…" : quickDiagnosisCount !== null ? quickDiagnosisCount : "—"}
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b" }}>Ordonnances :</span>{" "}
+                    {quickContextLoading ? "…" : medOrderCount}
+                    {totalOrderCount > 0 && (
+                      <span style={{ color: "#64748b" }}> · Ordres : {totalOrderCount}</span>
+                    )}
+                  </div>
+                  {encounter.followUpDate && (
+                    <div>
+                      <span style={{ color: "#64748b" }}>Suivi :</span>{" "}
+                      {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
+                    </div>
+                  )}
+                  <div>
+                    <span style={{ color: "#64748b" }}>Salle :</span> {encounter.roomLabel?.trim() || "—"}
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b" }}>Médecin attribué :</span>{" "}
+                    {formatEncounterPhysicianAssignedFr(encounter)}
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b" }}>Ouverture :</span>{" "}
+                    {new Date(encounter.createdAt).toLocaleString("fr-FR")}
+                  </div>
+                  {encounter.status === "CLOSED" && (encounter.dischargedAt || encounter.updatedAt) && (
+                    <div style={{ gridColumn: "1 / -1", color: "#334155", fontSize: 13 }}>
+                      {encounter.closedByDisplayFr?.trim()
+                        ? `Fermé par ${encounter.closedByDisplayFr.trim()} — ${new Date(
+                            encounter.dischargedAt ?? encounter.updatedAt
+                          ).toLocaleString("fr-FR")}`
+                        : `Fermé le ${new Date(encounter.dischargedAt ?? encounter.updatedAt).toLocaleString("fr-FR")}`}
+                    </div>
+                  )}
                 </div>
-              )}
-              {vitalsAt && <div style={{ color: "#757575" }}>Relevé : {vitalsAt}</div>}
-            </div>
-          </div>
+              </div>
 
-          <div
-            style={{
-              marginTop: 16,
-              paddingTop: 16,
-              borderTop: "1px solid #eee",
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#424242", marginBottom: 8, letterSpacing: 0.02 }}>
-              Résumé rapide de la consultation
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: "8px 16px",
-                fontSize: 13,
-                color: "#333",
-              }}
-            >
-              <div>
-                <span style={{ color: "#757575" }}>Motif :</span>{" "}
-                <span style={{ wordBreak: "break-word" }}>{motif}</span>
-              </div>
-              <div>
-                <span style={{ color: "#757575" }}>Diagnostics (visite) :</span>{" "}
-                {quickContextLoading ? "…" : quickDiagnosisCount !== null ? quickDiagnosisCount : "—"}
-              </div>
-              <div>
-                <span style={{ color: "#757575" }}>Ordonnances :</span>{" "}
-                {quickContextLoading ? "…" : medOrderCount}
-                {totalOrderCount > 0 && (
-                  <span style={{ color: "#757575" }}> · Ordres : {totalOrderCount}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flex: "0 0 auto" }}>
+                <Link
+                  href={`/app/patients/${patient.id}`}
+                  style={{
+                    padding: "8px 12px",
+                    border: "1px solid #ccc",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    color: "#1a1a1a",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    background: "#fff",
+                  }}
+                >
+                  Retour au dossier patient
+                </Link>
+                {canAdmitPatient && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAdmissionModal(true)}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#6a1b9a",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Admettre le patient
+                  </button>
+                )}
+                {encounter.status === "OPEN" && canManageEncounterClosure && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={openDischargeThenClose}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#37474f",
+                        color: "white",
+                        border: "none",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      Dossier de sortie
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openCloseConfirmModal}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#c62828",
+                        color: "white",
+                        border: "none",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      Terminer la consultation
+                    </button>
+                  </>
                 )}
               </div>
-              {encounter.followUpDate && (
-                <div>
-                  <span style={{ color: "#757575" }}>Suivi :</span>{" "}
-                  {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
-                </div>
-              )}
-              <div>
-                <span style={{ color: "#757575" }}>Salle :</span>{" "}
-                {encounter.roomLabel?.trim() || "—"}
-              </div>
-              <div>
-                <span style={{ color: "#757575" }}>Médecin attribué :</span>{" "}
-                {formatEncounterPhysicianAssignedFr(encounter)}
-              </div>
             </div>
-          </div>
 
-          <div
-            style={{
-              marginTop: 16,
-              paddingTop: 16,
-              borderTop: "1px solid #eee",
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#424242", marginBottom: 8, letterSpacing: 0.02 }}>
-              Actions rapides
+            <div style={{ marginTop: 16 }}>
+              <div
+                style={{
+                  backgroundColor: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: 10,
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  Derniers signes vitaux
+                </div>
+                <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
+                  {quickContextLoading ? "Chargement…" : vitalsLine}
+                  {vitalsJson?.allergyNote && String(vitalsJson.allergyNote).trim() !== "" && (
+                    <div style={{ marginTop: 6, color: "#c62828", fontWeight: 700 }}>
+                      ⚠️ Allergie : {String(vitalsJson.allergyNote).trim()}
+                    </div>
+                  )}
+                  {vitalsAt && <div style={{ color: "#64748b" }}>Relevé : {vitalsAt}</div>}
+                </div>
+              </div>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+
+            <div style={{ marginTop: 16 }}>
+              <div
+                style={{
+                  backgroundColor: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: 12,
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  Actions rapides
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
               {isRNOnly && (
                 <>
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
@@ -1257,8 +1350,9 @@ export default function EncounterDetailPage() {
                   </Link>
                 </>
               )}
+                </div>
+              </div>
             </div>
-          </div>
           <EncounterOperationalPanel
             encounterId={encounterId}
             facilityId={facilityId}
@@ -1271,20 +1365,45 @@ export default function EncounterDetailPage() {
         </div>
       </div>
 
-      <div style={{ backgroundColor: "white", borderRadius: 8, border: "1px solid #ddd" }}>
-        <div style={{ display: "flex", borderBottom: "1px solid #ddd" }}>
+      <div
+        style={{
+          backgroundColor: MEDORA_CARD_SHELL.background,
+          border: MEDORA_CARD_SHELL.border,
+          borderRadius: MEDORA_CARD_SHELL.radius,
+          boxShadow: MEDORA_CARD_SHELL.boxShadow,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "nowrap",
+            gap: 6,
+            padding: "10px 12px",
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
+            borderBottom: "1px solid #e2e8f0",
+          }}
+        >
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: "12px 24px",
-                border: "none",
-                backgroundColor: activeTab === tab.id ? "#f5f5f5" : "transparent",
-                borderBottom: activeTab === tab.id ? "2px solid #1a1a1a" : "2px solid transparent",
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+                padding: "10px 16px",
+                borderRadius: 10,
+                border:
+                  activeTab === tab.id ? "1px solid #bfdbfe" : "1px solid transparent",
+                backgroundColor: activeTab === tab.id ? "#eff6ff" : "transparent",
+                color: activeTab === tab.id ? "#0f172a" : "#64748b",
                 cursor: "pointer",
                 fontSize: 14,
-                fontWeight: activeTab === tab.id ? 600 : 400,
+                fontWeight: activeTab === tab.id ? 600 : 500,
+                boxShadow:
+                  activeTab === tab.id ? "0 1px 2px rgba(15, 23, 42, 0.06)" : "none",
               }}
             >
               {tab.label}
@@ -1292,7 +1411,13 @@ export default function EncounterDetailPage() {
           ))}
         </div>
 
-        <div style={{ padding: 24 }}>
+        <div
+          style={{
+            padding: "20px 22px 28px",
+            backgroundColor: "#f8fafc",
+            borderTop: "1px solid #e2e8f0",
+          }}
+        >
           {activeTab === "summary" && (
             <EncounterSummaryTab
               encounter={encounter}
@@ -1362,86 +1487,107 @@ export default function EncounterDetailPage() {
             />
           )}
           {activeTab === "history" && (
-            <div>
-              <p style={{ fontSize: 13, color: "#616161", margin: "0 0 16px 0", lineHeight: 1.45 }}>
-                Qui a fait quoi et quand — lecture seule, pour cette consultation.
-              </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div
+                style={{
+                  backgroundColor: MEDORA_CARD_SHELL.background,
+                  border: MEDORA_CARD_SHELL.border,
+                  borderRadius: MEDORA_CARD_SHELL.radius,
+                  boxShadow: MEDORA_CARD_SHELL.boxShadow,
+                  padding: "16px 18px",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                  Qui a fait quoi et quand — lecture seule, pour cette consultation.
+                </p>
+              </div>
               {auditTimelineLoading ? (
-                <div style={{ fontSize: 14, color: "#555" }}>Chargement de l’historique…</div>
+                <div style={{ fontSize: 14, color: "#64748b", padding: "4px 2px" }}>Chargement de l’historique…</div>
               ) : auditTimelineError ? (
                 <div
                   role="alert"
                   style={{
-                    padding: "12px 14px",
-                    borderRadius: 8,
-                    border: "1px solid #ef9a9a",
-                    backgroundColor: "#ffebee",
+                    padding: "14px 16px",
+                    borderRadius: 14,
+                    border: "1px solid #fecaca",
+                    backgroundColor: "#fef2f2",
                     fontSize: 14,
-                    color: "#b71c1c",
+                    color: "#b91c1c",
+                    lineHeight: 1.5,
                   }}
                 >
                   {auditTimelineError}
                 </div>
               ) : (auditTimelineItems?.length ?? 0) === 0 ? (
-                <div style={{ fontSize: 14, color: "#555" }}>
+                <div
+                  style={{
+                    backgroundColor: MEDORA_CARD_SHELL.background,
+                    border: MEDORA_CARD_SHELL.border,
+                    borderRadius: MEDORA_CARD_SHELL.radius,
+                    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+                    padding: "20px 22px",
+                    fontSize: 14,
+                    color: "#64748b",
+                    lineHeight: 1.5,
+                  }}
+                >
                   Aucun événement d’historique pour cette consultation.
                 </div>
               ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                  {(auditTimelineItems ?? []).map((it) => (
-                    <li
-                      key={it.id}
-                      style={{
-                        padding: "12px 0",
-                        borderBottom: "1px solid #eee",
-                        fontSize: 14,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, color: "#37474f" }}>{it.shortLabelFr}</div>
-                      <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
-                        {formatEncounterAuditDt(it.createdAt)}
-                      </div>
-                      {it.userDisplayFr ? (
-                        <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
-                          par {it.userDisplayFr}
+                <div
+                  style={{
+                    backgroundColor: MEDORA_CARD_SHELL.background,
+                    border: MEDORA_CARD_SHELL.border,
+                    borderRadius: MEDORA_CARD_SHELL.radius,
+                    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+                    overflow: "hidden",
+                  }}
+                >
+                  <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                    {(auditTimelineItems ?? []).map((it, idx, arr) => (
+                      <li
+                        key={it.id}
+                        style={{
+                          padding: "14px 18px",
+                          borderBottom: idx < arr.length - 1 ? "1px solid #e2e8f0" : "none",
+                          fontSize: 14,
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, color: "#0f172a" }}>{it.shortLabelFr}</div>
+                        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                          {formatEncounterAuditDt(it.createdAt)}
                         </div>
-                      ) : null}
-                      {it.detailFr ? (
-                        <div style={{ fontSize: 12, color: "#546e7a", marginTop: 6 }}>{it.detailFr}</div>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                        {it.userDisplayFr ? (
+                          <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                            par {it.userDisplayFr}
+                          </div>
+                        ) : null}
+                        {it.detailFr ? (
+                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.45 }}>
+                            {it.detailFr}
+                          </div>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}
         </div>
       </div>
+    </div>
 
       {showDischargeModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2100,
-            padding: 16,
-          }}
+          style={encounterWorkflowModalOverlay(2100)}
           onClick={() => setShowDischargeModal(false)}
           role="presentation"
         >
           <div
             style={{
-              backgroundColor: "white",
-              borderRadius: 8,
-              maxWidth: 520,
-              width: "100%",
-              padding: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              ...encounterWorkflowModalPanel(520),
               maxHeight: "90vh",
               overflowY: "auto",
             }}
@@ -1450,14 +1596,27 @@ export default function EncounterDetailPage() {
             aria-modal="true"
             aria-labelledby="discharge-title"
           >
-            <h2 id="discharge-title" style={{ margin: "0 0 16px 0", fontSize: 18 }}>
+            <h2
+              id="discharge-title"
+              style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
+            >
               Dossier de sortie
             </h2>
-            <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#555", lineHeight: 1.45 }}>
-              Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin :
-              disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div
+              style={{
+                marginBottom: 16,
+                padding: "12px 14px",
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.55 }}>
+                Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin :
+                disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {(
                 [
                   ["disposition", "Disposition", "medical", 2],
@@ -1475,11 +1634,11 @@ export default function EncounterDetailPage() {
                     (kind === "medical" && canEditMedicalDischarge));
                 const k = key as keyof DischargeFormState;
                 return (
-                  <label key={key} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                    <span style={{ fontWeight: 600 }}>
+                  <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                    <span style={{ fontWeight: 600, color: "#334155" }}>
                       {label}
                       {!editable ? (
-                        <span style={{ fontWeight: 400, color: "#757575", marginLeft: 6 }}>(lecture seule)</span>
+                        <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>(lecture seule)</span>
                       ) : null}
                     </span>
                     <textarea
@@ -1487,23 +1646,16 @@ export default function EncounterDetailPage() {
                       value={dischargeForm[k] as string}
                       onChange={(e) => setDischargeForm((f) => ({ ...f, [k]: e.target.value }))}
                       rows={rows}
-                      style={{
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "1px solid #ccc",
-                        fontSize: 14,
-                        background: editable ? "#fff" : "#f5f5f5",
-                        cursor: editable ? "text" : "not-allowed",
-                      }}
+                      style={encounterWorkflowModalField(editable)}
                     />
                   </label>
                 );
               })}
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
                   Mode de sortie
                   {!canEditNursingDischarge || isLocked ? (
-                    <span style={{ fontWeight: 400, color: "#757575", marginLeft: 6 }}>(lecture seule)</span>
+                    <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>(lecture seule)</span>
                   ) : null}
                 </span>
                 <select
@@ -1511,11 +1663,8 @@ export default function EncounterDetailPage() {
                   value={dischargeForm.dischargeMode}
                   onChange={(e) => setDischargeForm((f) => ({ ...f, dischargeMode: e.target.value }))}
                   style={{
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #ccc",
-                    fontSize: 14,
-                    background: canEditNursingDischarge && !isLocked ? "#fff" : "#f5f5f5",
+                    ...encounterWorkflowModalField(canEditNursingDischarge && !isLocked),
+                    cursor: !canEditNursingDischarge || isLocked ? "not-allowed" : "pointer",
                   }}
                 >
                   <option value="">— Sélectionner —</option>
@@ -1527,18 +1676,11 @@ export default function EncounterDetailPage() {
                 </select>
               </label>
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => setShowDischargeModal(false)}
-                style={{
-                  padding: "10px 18px",
-                  fontSize: 14,
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
+                style={encounterWorkflowModalBtnSecondary(false)}
               >
                 Annuler
               </button>
@@ -1550,10 +1692,11 @@ export default function EncounterDetailPage() {
                   fontSize: 14,
                   fontWeight: 600,
                   border: "none",
-                  borderRadius: 6,
-                  background: "#37474f",
+                  borderRadius: 10,
+                  background: "#0f172a",
                   color: "white",
                   cursor: "pointer",
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
                 Continuer vers la clôture
@@ -1565,27 +1708,13 @@ export default function EncounterDetailPage() {
 
       {showAdmissionModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2150,
-            padding: 16,
-          }}
+          style={encounterWorkflowModalOverlay(2150)}
           onClick={() => !savingAdmission && setShowAdmissionModal(false)}
           role="presentation"
         >
           <div
             style={{
-              backgroundColor: "white",
-              borderRadius: 8,
-              maxWidth: 560,
-              width: "100%",
-              padding: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              ...encounterWorkflowModalPanel(560),
               maxHeight: "90vh",
               overflowY: "auto",
             }}
@@ -1594,51 +1723,64 @@ export default function EncounterDetailPage() {
             aria-modal="true"
             aria-labelledby="admission-title"
           >
-            <h2 id="admission-title" style={{ margin: "0 0 12px 0", fontSize: 18, color: "#4a148c" }}>
+            <h2
+              id="admission-title"
+              style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#5b21b6", lineHeight: 1.3 }}
+            >
               Dossier d&apos;admission
             </h2>
-            <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#555", lineHeight: 1.45 }}>
-              Documentez la décision d&apos;hospitalisation depuis cette consultation. La{" "}
-              <strong>sortie de consultation</strong> (autre flux) clôt la visite ; l&apos;
-              <strong>admission</strong> enregistre la décision et le plan initial dans ce même dossier.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Motif d&apos;admission</span>
+            <div
+              style={{
+                marginBottom: 16,
+                padding: "12px 14px",
+                backgroundColor: "#faf5ff",
+                border: "1px solid #e9d5ff",
+                borderRadius: 12,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.55 }}>
+                Documentez la décision d&apos;hospitalisation depuis cette consultation. La{" "}
+                <strong>sortie de consultation</strong> (autre flux) clôt la visite ; l&apos;
+                <strong>admission</strong> enregistre la décision et le plan initial dans ce même dossier.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>Motif d&apos;admission</span>
                 <textarea
                   value={admissionForm.admissionReason}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, admissionReason: e.target.value }))}
                   rows={2}
-                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={encounterWorkflowModalField(true)}
                 />
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Service / unité</span>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>Service / unité</span>
                 <input
                   type="text"
                   value={admissionForm.serviceUnit}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, serviceUnit: e.target.value }))}
-                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={encounterWorkflowModalField(true)}
                 />
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Diagnostic d&apos;admission</span>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>Diagnostic d&apos;admission</span>
                 <textarea
                   value={admissionForm.admissionDiagnosis}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, admissionDiagnosis: e.target.value }))}
                   rows={2}
-                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={encounterWorkflowModalField(true)}
                 />
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Niveau de soins</span>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>Niveau de soins</span>
                 <input
                   type="text"
                   list="medora-care-level-suggestions"
                   placeholder="Saisie libre ou choix parmi les suggestions"
                   value={admissionForm.careLevel}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, careLevel: e.target.value }))}
-                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={encounterWorkflowModalField(true)}
                 />
                 <datalist id="medora-care-level-suggestions">
                   {CARE_LEVEL_OPTIONS_FR.map((opt) => (
@@ -1646,47 +1788,40 @@ export default function EncounterDetailPage() {
                   ))}
                 </datalist>
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Condition à l&apos;admission</span>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>Condition à l&apos;admission</span>
                 <textarea
                   value={admissionForm.conditionAtAdmission}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, conditionAtAdmission: e.target.value }))}
                   rows={3}
-                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={encounterWorkflowModalField(true)}
                 />
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Plan initial</span>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>Plan initial</span>
                 <textarea
                   value={admissionForm.initialPlan}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, initialPlan: e.target.value }))}
                   rows={3}
-                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={encounterWorkflowModalField(true)}
                 />
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Médecin responsable</span>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: "#334155" }}>Médecin responsable</span>
                 <input
                   type="text"
                   value={admissionForm.responsiblePhysicianName}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, responsiblePhysicianName: e.target.value }))}
-                  style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={encounterWorkflowModalField(true)}
                 />
               </label>
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, flexWrap: "wrap" }}>
               <button
                 type="button"
                 disabled={savingAdmission}
                 onClick={() => setShowAdmissionModal(false)}
-                style={{
-                  padding: "10px 18px",
-                  fontSize: 14,
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                  background: "#fff",
-                  cursor: savingAdmission ? "not-allowed" : "pointer",
-                }}
+                style={encounterWorkflowModalBtnSecondary(savingAdmission)}
               >
                 Annuler
               </button>
@@ -1699,11 +1834,12 @@ export default function EncounterDetailPage() {
                   fontSize: 14,
                   fontWeight: 600,
                   border: "none",
-                  borderRadius: 6,
-                  background: "#6a1b9a",
+                  borderRadius: 10,
+                  background: "#6d28d9",
                   color: "white",
                   cursor: savingAdmission ? "not-allowed" : "pointer",
                   opacity: savingAdmission ? 0.85 : 1,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
                 {savingAdmission ? "…" : "Enregistrer le dossier d'admission"}
@@ -1715,40 +1851,27 @@ export default function EncounterDetailPage() {
 
       {showCloseConfirmModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2000,
-            padding: 16,
-          }}
+          style={encounterWorkflowModalOverlay(2000)}
           onClick={() => !closingEncounter && setShowCloseConfirmModal(false)}
           role="presentation"
         >
           <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: 8,
-              maxWidth: 420,
-              width: "100%",
-              padding: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-            }}
+            style={encounterWorkflowModalPanel(420)}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="close-encounter-confirm-title"
           >
-            <h2 id="close-encounter-confirm-title" style={{ margin: "0 0 12px 0", fontSize: 18 }}>
+            <h2
+              id="close-encounter-confirm-title"
+              style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
+            >
               Terminer la consultation
             </h2>
-            <p style={{ margin: "0 0 24px 0", fontSize: 14, color: "#333", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 20px 0", fontSize: 14, color: "#475569", lineHeight: 1.55 }}>
               Êtes-vous sûr de vouloir terminer la consultation ?
             </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button
                 type="button"
                 disabled={closingEncounter}
@@ -1756,14 +1879,7 @@ export default function EncounterDetailPage() {
                   setShowCloseConfirmModal(false);
                   setPendingDischarge(null);
                 }}
-                style={{
-                  padding: "10px 18px",
-                  fontSize: 14,
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                  background: "#fff",
-                  cursor: closingEncounter ? "not-allowed" : "pointer",
-                }}
+                style={encounterWorkflowModalBtnSecondary(closingEncounter)}
               >
                 Annuler
               </button>
@@ -1776,11 +1892,12 @@ export default function EncounterDetailPage() {
                   fontSize: 14,
                   fontWeight: 600,
                   border: "none",
-                  borderRadius: 6,
-                  background: "#c62828",
+                  borderRadius: 10,
+                  background: "#b91c1c",
                   color: "white",
                   cursor: closingEncounter ? "not-allowed" : "pointer",
                   opacity: closingEncounter ? 0.85 : 1,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
                 {closingEncounter ? "…" : "Terminer"}
@@ -1792,16 +1909,7 @@ export default function EncounterDetailPage() {
 
       {showDocumentationDeficiencyModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2100,
-            padding: 16,
-          }}
+          style={encounterWorkflowModalOverlay(2100)}
           onClick={() => {
             if (!closingEncounter) {
               setShowDocumentationDeficiencyModal(false);
@@ -1812,12 +1920,7 @@ export default function EncounterDetailPage() {
         >
           <div
             style={{
-              backgroundColor: "white",
-              borderRadius: 8,
-              maxWidth: 480,
-              width: "100%",
-              padding: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              ...encounterWorkflowModalPanel(480),
               maxHeight: "90vh",
               overflowY: "auto",
             }}
@@ -1826,15 +1929,41 @@ export default function EncounterDetailPage() {
             aria-modal="true"
             aria-labelledby="documentation-deficiency-title"
           >
-            <h2 id="documentation-deficiency-title" style={{ margin: "0 0 12px 0", fontSize: 18 }}>
+            <h2
+              id="documentation-deficiency-title"
+              style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
+            >
               Documentation incomplète
             </h2>
-            <p style={{ margin: "0 0 12px 0", fontSize: 14, color: "#333", lineHeight: 1.5 }}>
-              Les éléments suivants sont manquants ou incomplets :
-            </p>
-            <ul style={{ margin: "0 0 20px 0", paddingLeft: 20, fontSize: 14, color: "#333", lineHeight: 1.5 }}>
+            <div
+              style={{
+                marginBottom: 14,
+                padding: "12px 14px",
+                backgroundColor: "#fffbeb",
+                border: "1px solid #fde68a",
+                borderRadius: 12,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 14, color: "#92400e", lineHeight: 1.55, fontWeight: 600 }}>
+                Les éléments suivants sont manquants ou incomplets :
+              </p>
+            </div>
+            <ul
+              style={{
+                margin: "0 0 18px 0",
+                padding: "12px 14px 12px 28px",
+                fontSize: 14,
+                color: "#334155",
+                lineHeight: 1.55,
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+              }}
+            >
               {documentationDeficiencies.map((d) => (
-                <li key={d.code}>{d.labelFr}</li>
+                <li key={d.code} style={{ marginBottom: 6 }}>
+                  {d.labelFr}
+                </li>
               ))}
             </ul>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -1845,14 +1974,7 @@ export default function EncounterDetailPage() {
                   setShowDocumentationDeficiencyModal(false);
                   setDocumentationDeficiencies([]);
                 }}
-                style={{
-                  padding: "10px 18px",
-                  fontSize: 14,
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                  background: "#fff",
-                  cursor: closingEncounter ? "not-allowed" : "pointer",
-                }}
+                style={encounterWorkflowModalBtnSecondary(closingEncounter)}
               >
                 Retour au dossier
               </button>
@@ -1865,11 +1987,12 @@ export default function EncounterDetailPage() {
                   fontSize: 14,
                   fontWeight: 600,
                   border: "none",
-                  borderRadius: 6,
-                  background: "#5d4037",
+                  borderRadius: 10,
+                  background: "#57534e",
                   color: "white",
                   cursor: closingEncounter ? "not-allowed" : "pointer",
                   opacity: closingEncounter ? 0.85 : 1,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
                 {closingEncounter ? "…" : "Terminer quand même"}
@@ -1897,89 +2020,114 @@ function EncounterSummaryTab({
   const physicianDocSections = parsePhysicianEvalV1ForChart(encounter?.nursingAssessment);
   const dischargePreview = parseDischargeSummaryForChart(encounter?.dischargeSummaryJson);
   const admissionPreview = parseAdmissionSummaryForChart(encounter?.admissionSummaryJson);
+  const summaryCard: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+    padding: "18px 20px",
+  };
+  const summaryMutedBlock: React.CSSProperties = {
+    marginTop: 10,
+    padding: "12px 14px",
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: 12,
+    whiteSpace: "pre-wrap",
+  };
+  const summaryMutedBlockBlue: React.CSSProperties = {
+    ...summaryMutedBlock,
+    backgroundColor: "#f0f9ff",
+    border: "1px solid #bae6fd",
+  };
   return (
-    <div>
-      <h3>Résumé de la consultation</h3>
-      <p style={{ color: "#757575", fontSize: 13, marginTop: -4, marginBottom: 16 }}>
-        Synthèse clinique — les détails sont dans les onglets Signes vitaux et Évaluation médicale.
-      </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14 }}>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <strong>Médecin attribué :</strong>{" "}
-          {formatEncounterPhysicianAssignedFr(encounter)}
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={summaryCard}>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#0f172a" }}>Résumé de la consultation</h3>
+        <p style={{ color: "#64748b", fontSize: 13, margin: "8px 0 0 0", lineHeight: 1.5 }}>
+          Synthèse clinique — les détails sont dans les onglets Signes vitaux et Évaluation médicale.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14, color: "#334155", marginTop: 16 }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <strong style={{ color: "#0f172a" }}>Médecin attribué :</strong>{" "}
+            {formatEncounterPhysicianAssignedFr(encounter)}
+          </div>
+          {reason && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <strong style={{ color: "#0f172a" }}>Motif :</strong> {reason}
+            </div>
+          )}
+          {nursingLines.length > 0 && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <strong style={{ color: "#0f172a" }}>Évaluation infirmière (synthèse)</strong>
+              <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, color: "#334155", lineHeight: 1.5 }}>
+                {nursingLines.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+              {nursingSig ? (
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 8, fontStyle: "italic" }}>{nursingSig}</div>
+              ) : null}
+            </div>
+          )}
+          {encounter.followUpDate && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <strong style={{ color: "#0f172a" }}>Date de suivi :</strong>{" "}
+              {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
+            </div>
+          )}
         </div>
-        {reason && (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <strong>Motif :</strong> {reason}
-          </div>
-        )}
-        {nursingLines.length > 0 && (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <strong>Évaluation infirmière (synthèse)</strong>
-            <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, color: "#37474f", lineHeight: 1.5 }}>
-              {nursingLines.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
-            {nursingSig ? (
-              <div style={{ fontSize: 12, color: "#546e7a", marginTop: 8, fontStyle: "italic" }}>{nursingSig}</div>
-            ) : null}
-          </div>
-        )}
-        {encounter.followUpDate && (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <strong>Date de suivi :</strong>{" "}
-            {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
-          </div>
-        )}
       </div>
       {physicianDocSections.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <strong>Documentation médicale (HPI / ROS / examen / MDM)</strong>
-          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={summaryCard}>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>Documentation médicale (HPI / ROS / examen / MDM)</strong>
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
             {physicianDocSections.map((s, i) => (
               <div key={i}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
-                <div style={{ fontSize: 14, whiteSpace: "pre-wrap", color: "#263238", marginTop: 4 }}>{s.text}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{s.labelFr}</div>
+                <div style={{ fontSize: 14, whiteSpace: "pre-wrap", color: "#334155", marginTop: 4, lineHeight: 1.5 }}>
+                  {s.text}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
       {(encounter.clinicianImpression || encounter.providerNote) && (
-        <div style={{ marginTop: 16 }}>
-          <strong>Impression clinique / Note médecin</strong>
-          <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, whiteSpace: "pre-wrap" }}>
+        <div style={summaryCard}>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>Impression clinique / Note médecin</strong>
+          <div style={{ ...summaryMutedBlock, marginTop: 10, color: "#334155", fontSize: 14, lineHeight: 1.55 }}>
             {encounter.clinicianImpression || encounter.providerNote}
           </div>
         </div>
       )}
       {encounter.treatmentPlan && (
-        <div style={{ marginTop: 16 }}>
-          <strong>Plan de traitement</strong>
-          <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f0f7ff", borderRadius: 4, whiteSpace: "pre-wrap" }}>
+        <div style={summaryCard}>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>Plan de traitement</strong>
+          <div style={{ ...summaryMutedBlockBlue, marginTop: 10, color: "#334155", fontSize: 14, lineHeight: 1.55 }}>
             {encounter.treatmentPlan}
           </div>
         </div>
       )}
       {(admissionPreview || encounter.admittedAt) && (
-        <div style={{ marginTop: 16 }}>
-          <strong style={{ color: "#4a148c" }}>Décision d&apos;admission (hospitalisation)</strong>
+        <div style={summaryCard}>
+          <strong style={{ fontSize: 15, color: "#6a1b9a" }}>Décision d&apos;admission (hospitalisation)</strong>
           {encounter.admittedAt ? (
-            <div style={{ fontSize: 12, color: "#757575", marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
               Enregistrée le {new Date(encounter.admittedAt).toLocaleString("fr-FR")}
             </div>
           ) : null}
           {admissionPreview ? (
             <div
               style={{
-                marginTop: 8,
-                padding: 12,
-                backgroundColor: "#f3e5f5",
-                borderRadius: 4,
+                marginTop: 10,
+                padding: "14px 16px",
+                backgroundColor: "#faf5ff",
+                borderRadius: 12,
                 fontSize: 14,
                 lineHeight: 1.5,
-                color: "#263238",
+                color: "#334155",
+                border: "1px solid #e9d5ff",
                 borderLeft: "4px solid #6a1b9a",
               }}
             >
@@ -2027,36 +2175,37 @@ function EncounterSummaryTab({
               ) : null}
             </div>
           ) : (
-            <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#757575" }}>
+            <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#64748b" }}>
               Décision d&apos;admission enregistrée — détail à compléter depuis le bouton « Admettre le patient ».
             </p>
           )}
         </div>
       )}
       {showPrintDischarge && (
-        <div style={{ marginTop: 16 }}>
+        <div style={summaryCard}>
           <div
             style={{
               display: "flex",
               flexWrap: "wrap",
               alignItems: "center",
               gap: 10,
-              marginBottom: 8,
+              marginBottom: dischargePreview ? 10 : 0,
             }}
           >
-            <strong>Sortie de consultation</strong>
+            <strong style={{ fontSize: 15, color: "#0f172a" }}>Sortie de consultation</strong>
             <button
               type="button"
               onClick={onPrintDischarge}
               style={{
-                padding: "6px 12px",
+                padding: "8px 14px",
                 fontSize: 13,
-                border: "1px solid #000",
-                borderRadius: 4,
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
                 background: "#fff",
-                color: "#000",
+                color: "#0f172a",
                 cursor: "pointer",
                 fontWeight: 600,
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
               }}
             >
               Imprimer la sortie
@@ -2066,12 +2215,13 @@ function EncounterSummaryTab({
             <div
               style={{
                 marginTop: 4,
-                padding: 12,
-                backgroundColor: "#eceff1",
-                borderRadius: 4,
+                padding: "14px 16px",
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
                 fontSize: 14,
                 lineHeight: 1.5,
-                color: "#263238",
+                color: "#334155",
               }}
             >
               {dischargePreview.disposition ? (
@@ -2124,7 +2274,7 @@ function EncounterSummaryTab({
               ) : null}
             </div>
           ) : (
-            <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#757575" }}>
+            <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
               Aucun résumé de sortie structuré enregistré pour l&apos;instant — vous pouvez tout de même imprimer un
               document avec l&apos;identité patient et les informations de consultation.
             </p>
@@ -2132,9 +2282,9 @@ function EncounterSummaryTab({
         </div>
       )}
       {encounter.notes && (
-        <div style={{ marginTop: 16 }}>
-          <strong>Note infirmière, autres</strong>
-          <div style={{ marginTop: 8, padding: 12, backgroundColor: "#f5f5f5", borderRadius: 4, whiteSpace: "pre-wrap" }}>
+        <div style={summaryCard}>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>Note infirmière, autres</strong>
+          <div style={{ ...summaryMutedBlock, marginTop: 10, color: "#334155", fontSize: 14, lineHeight: 1.55 }}>
             {encounter.notes}
           </div>
         </div>
@@ -2189,24 +2339,61 @@ function EncounterDiagnosticsTab({
     };
   }, [encounterId, patientId, facilityId]);
 
-  if (loading) return <div>Chargement des diagnostics…</div>;
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "16px 18px",
+          backgroundColor: MEDORA_CARD_SHELL.background,
+          border: MEDORA_CARD_SHELL.border,
+          borderRadius: MEDORA_CARD_SHELL.radius,
+          boxShadow: MEDORA_CARD_SHELL.boxShadow,
+          color: "#64748b",
+          fontSize: 14,
+        }}
+      >
+        Chargement des diagnostics…
+      </div>
+    );
+  }
+
+  const dxShell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  };
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>Diagnostics de la consultation</h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div
+        style={{
+          ...dxShell,
+          padding: "14px 18px",
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Diagnostics de la consultation</h3>
         {canPrescribe ? (
           <button
             type="button"
             onClick={onGoPatientChart}
             disabled={isLocked}
             style={{
-              padding: "8px 12px",
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              background: "#fafafa",
+              padding: "8px 14px",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              background: "#f8fafc",
+              color: "#0f172a",
+              fontSize: 14,
+              fontWeight: 600,
               cursor: isLocked ? "not-allowed" : "pointer",
               opacity: isLocked ? 0.65 : 1,
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
           >
             Ajouter un diagnostic
@@ -2214,30 +2401,38 @@ function EncounterDiagnosticsTab({
         ) : null}
       </div>
       {rows.length === 0 ? (
-        <div style={{ padding: 16, border: "1px solid #eee", borderRadius: 6, background: "#fafafa", color: "#555" }}>
+        <div style={{ ...dxShell, padding: "18px 20px", color: "#64748b", fontSize: 14, lineHeight: 1.5 }}>
           Aucun diagnostic enregistré pour cette consultation.
         </div>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-          <thead>
-            <tr style={{ backgroundColor: "#f5f5f5" }}>
-              <th style={{ padding: "10px 12px", textAlign: "left" }}>Code</th>
-              <th style={{ padding: "10px 12px", textAlign: "left" }}>Libellé</th>
-              <th style={{ padding: "10px 12px", textAlign: "left" }}>Début</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} style={{ borderTop: "1px solid #eee" }}>
-                <td style={{ padding: "10px 12px" }}>{r.code}</td>
-                <td style={{ padding: "10px 12px" }}>{r.description || "—"}</td>
-                <td style={{ padding: "10px 12px" }}>
-                  {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString("fr-FR") : "—"}
-                </td>
+        <div style={{ ...dxShell, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <thead>
+              <tr style={{ backgroundColor: "#f8fafc" }}>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Code
+                </th>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Libellé
+                </th>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Début
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0", backgroundColor: "#fff" }}>
+                  <td style={{ padding: "12px 14px", color: "#0f172a" }}>{r.code}</td>
+                  <td style={{ padding: "12px 14px", color: "#334155" }}>{r.description || "—"}</td>
+                  <td style={{ padding: "12px 14px", color: "#334155" }}>
+                    {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString("fr-FR") : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -2442,22 +2637,71 @@ function ClinicVisitTab({
     }
   };
 
+  const clinicShell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  };
+  const clinicField: React.CSSProperties = {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "10px 12px",
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    fontSize: 14,
+    color: "#0f172a",
+    backgroundColor: fieldsLocked ? "#f8fafc" : "#fff",
+  };
+  const clinicSelect: React.CSSProperties = {
+    padding: "8px 12px",
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    fontSize: 14,
+    color: "#0f172a",
+    backgroundColor: fieldsLocked ? "#f8fafc" : "#fff",
+    minWidth: 200,
+  };
+  const clinicSnippetBtn: React.CSSProperties = {
+    padding: "6px 12px",
+    fontSize: 12,
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    background: "#f8fafc",
+    color: "#334155",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    maxWidth: 280,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  };
+  const clinicDateInput: React.CSSProperties = {
+    padding: "10px 12px",
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    fontSize: 14,
+    color: "#0f172a",
+    backgroundColor: fieldsLocked ? "#f8fafc" : "#fff",
+  };
+
   return (
-    <div style={{ maxWidth: 720 }}>
-      <h3 style={{ marginTop: 0 }}>Évaluation médicale</h3>
+    <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ ...clinicShell, padding: "16px 18px" }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Évaluation médicale</h3>
+      </div>
       {docSigned &&
       encounter.providerDocumentationSignedByDisplayFr &&
       encounter.providerDocumentationSignedAt ? (
         <div
           role="status"
           style={{
-            marginBottom: 16,
-            padding: "12px 14px",
-            backgroundColor: "#e3f2fd",
-            borderRadius: 6,
-            border: "1px solid #90caf9",
+            ...clinicShell,
+            padding: "14px 16px",
+            backgroundColor: "#eff6ff",
+            border: "1px solid #93c5fd",
             fontSize: 14,
-            color: "#0d47a1",
+            color: "#1e3a8a",
             lineHeight: 1.45,
           }}
         >
@@ -2471,11 +2715,10 @@ function ClinicVisitTab({
             <div
               key={ad.id}
               style={{
+                ...clinicShell,
                 marginBottom: 12,
-                padding: "12px 14px",
-                backgroundColor: "#fafafa",
-                borderRadius: 6,
-                border: "1px solid #eee",
+                padding: "14px 16px",
+                backgroundColor: "#f8fafc",
                 fontSize: 14,
                 lineHeight: 1.45,
               }}
@@ -2490,14 +2733,14 @@ function ClinicVisitTab({
         </div>
       ) : null}
       {docSigned && canSignProviderDocumentation ? (
-        <div style={{ marginBottom: 20 }}>
-          <h4 style={{ marginTop: 0, marginBottom: 8, fontSize: 15 }}>Ajouter un addendum</h4>
+        <div style={{ ...clinicShell, padding: "16px 18px" }}>
+          <h4 style={{ marginTop: 0, marginBottom: 10, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Ajouter un addendum</h4>
           <textarea
             value={addendumText}
             onChange={(e) => setAddendumText(e.target.value)}
             rows={4}
             maxLength={5000}
-            style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4, marginBottom: 8 }}
+            style={{ ...clinicField, marginBottom: 10 }}
             placeholder="Texte de l'addendum (append-only, sans modifier l'évaluation signée)."
           />
           <button
@@ -2505,26 +2748,32 @@ function ClinicVisitTab({
             onClick={() => void handleAddAddendum()}
             disabled={addendumSaving || !addendumText.trim()}
             style={{
-              padding: "8px 18px",
-              backgroundColor: "#37474f",
+              padding: "10px 18px",
+              backgroundColor: "#334155",
               color: "white",
               border: "none",
-              borderRadius: 4,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
               cursor: addendumSaving || !addendumText.trim() ? "not-allowed" : "pointer",
               opacity: addendumSaving || !addendumText.trim() ? 0.65 : 1,
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
             }}
           >
             {addendumSaving ? "Enregistrement…" : "Enregistrer l'addendum"}
           </button>
         </div>
       ) : null}
-      <p style={{ color: "#757575", fontSize: 13 }}>
-        {readOnly
-          ? "Consultation clôturée — lecture seule."
-          : "HPI, ROS, examen, aide à la décision, impression, plan et suivi — enregistrement partagé avec le dossier patient."}
-      </p>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Motif de visite</label>
+      <div style={{ ...clinicShell, padding: "12px 16px" }}>
+        <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
+          {readOnly
+            ? "Consultation clôturée — lecture seule."
+            : "HPI, ROS, examen, aide à la décision, impression, plan et suivi — enregistrement partagé avec le dossier patient."}
+        </p>
+      </div>
+      <div style={{ ...clinicShell, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Motif de visite</label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
           <select
             disabled={fieldsLocked}
@@ -2533,7 +2782,7 @@ function ClinicVisitTab({
               const v = e.target.value;
               if (v) setVisitReason(v);
             }}
-            style={{ padding: "8px 12px", border: "1px solid #ccc", borderRadius: 4, fontSize: 14, minWidth: 200 }}
+            style={clinicSelect}
             aria-label="Choisir un motif courant"
           >
             <option value="">— Motifs courants —</option>
@@ -2546,76 +2795,65 @@ function ClinicVisitTab({
           disabled={fieldsLocked}
           value={visitReason}
           onChange={(e) => setVisitReason(e.target.value)}
-          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicField}
           placeholder="Pourquoi le patient est-il là aujourd'hui ?"
         />
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Histoire de la maladie actuelle (HPI)</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Histoire de la maladie actuelle (HPI)</label>
         <textarea
           disabled={fieldsLocked}
           value={hpi}
           onChange={(e) => setHpi(e.target.value)}
           rows={4}
-          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicField}
           placeholder="Histoire de la plainte actuelle"
         />
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Revue des systèmes (ROS)</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Revue des systèmes (ROS)</label>
         <textarea
           disabled={fieldsLocked}
           value={ros}
           onChange={(e) => setRos(e.target.value)}
           rows={4}
-          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicField}
           placeholder="Revue par systèmes"
         />
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Examen physique</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Examen physique</label>
         <textarea
           disabled={fieldsLocked}
           value={physicalExam}
           onChange={(e) => setPhysicalExam(e.target.value)}
           rows={4}
-          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicField}
           placeholder="Constatations à l’examen"
         />
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Aide à la décision médicale (MDM)</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Aide à la décision médicale (MDM)</label>
         <textarea
           disabled={fieldsLocked}
           value={mdm}
           onChange={(e) => setMdm(e.target.value)}
           rows={4}
-          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicField}
           placeholder="Complexité, données, risque, synthèse décisionnelle"
         />
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Impression clinique</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Impression clinique</label>
         {!fieldsLocked && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
-            <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>Insérer :</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>Insérer :</span>
             {PROVIDER_IMPRESSION_SNIPPETS.slice(0, 5).map((snippet) => (
               <button
                 key={snippet.slice(0, 24)}
                 type="button"
                 onClick={() => setImpression((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
-                style={{
-                  padding: "4px 10px",
-                  fontSize: 12,
-                  border: "1px solid #ccc",
-                  borderRadius: 4,
-                  background: "#f9f9f9",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  maxWidth: 280,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
+                style={clinicSnippetBtn}
                 title={snippet}
               >
                 {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
@@ -2628,32 +2866,21 @@ function ClinicVisitTab({
           value={impression}
           onChange={(e) => setImpression(e.target.value)}
           rows={4}
-          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicField}
           placeholder="Bilan / impression clinique"
         />
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Plan de traitement</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Plan de traitement</label>
         {!fieldsLocked && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
-            <span style={{ fontSize: 13, color: "#666", alignSelf: "center" }}>Insérer :</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>Insérer :</span>
             {PROVIDER_PLAN_SNIPPETS.slice(0, 5).map((snippet) => (
               <button
                 key={snippet.slice(0, 24)}
                 type="button"
                 onClick={() => setPlan((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
-                style={{
-                  padding: "4px 10px",
-                  fontSize: 12,
-                  border: "1px solid #ccc",
-                  borderRadius: 4,
-                  background: "#f9f9f9",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  maxWidth: 280,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
+                style={clinicSnippetBtn}
                 title={snippet}
               >
                 {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
@@ -2666,29 +2893,32 @@ function ClinicVisitTab({
           value={plan}
           onChange={(e) => setPlan(e.target.value)}
           rows={5}
-          style={{ width: "100%", padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicField}
           placeholder="Médicaments, éducation, examens demandés, précautions de retour…"
         />
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Date de suivi</label>
+      <div style={{ marginBottom: 0 }}>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Date de suivi</label>
         <input
           type="date"
           disabled={fieldsLocked}
           value={followUp}
           onChange={(e) => setFollowUp(e.target.value)}
-          style={{ padding: 10, border: "1px solid #ccc", borderRadius: 4 }}
+          style={clinicDateInput}
         />
       </div>
+      </div>
+      <div style={{ ...clinicShell, padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
       {message && (
         <p
           role={message.type === "queued" ? "alert" : undefined}
           style={{
+            margin: 0,
             color:
-              message.type === "ok" ? "#2e7d32" : message.type === "queued" ? "#b71c1c" : "#c62828",
-            marginBottom: 12,
+              message.type === "ok" ? "#15803d" : message.type === "queued" ? "#b91c1c" : "#b91c1c",
             fontWeight: message.type === "queued" ? 600 : undefined,
             lineHeight: 1.45,
+            fontSize: 14,
           }}
         >
           {message.text}
@@ -2702,11 +2932,14 @@ function ClinicVisitTab({
             disabled={saving}
             style={{
               padding: "10px 24px",
-              backgroundColor: "#1a1a1a",
+              backgroundColor: "#0f172a",
               color: "white",
               border: "none",
-              borderRadius: 4,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
               cursor: saving ? "wait" : "pointer",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
             }}
           >
             {saving ? "Enregistrement…" : "Enregistrer la visite"}
@@ -2721,20 +2954,24 @@ function ClinicVisitTab({
             }
             style={{
               padding: "10px 24px",
-              backgroundColor: "#1565c0",
+              backgroundColor: "#1d4ed8",
               color: "white",
               border: "none",
-              borderRadius: 4,
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
               cursor:
                 signingDoc || !encounterHasSignableProviderContentForUi(encounter)
                   ? "not-allowed"
                   : "pointer",
               opacity: signingDoc || !encounterHasSignableProviderContentForUi(encounter) ? 0.65 : 1,
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
             }}
           >
             {signingDoc ? "…" : "Signer l'évaluation"}
           </button>
         )}
+      </div>
       </div>
     </div>
   );
@@ -3166,67 +3403,87 @@ function NotesTab({
     }
   };
 
+  const notesShell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  };
+
   return (
-    <div>
-      <h3>Notes Inf.</h3>
-      <p style={{ fontSize: 12, color: "#9e9e9e", marginBottom: 8 }}>Raccourcis ci-dessous.</p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-        {COMMON_NOTE_SNIPPETS.slice(0, 6).map((snippet) => (
-          <button
-            key={snippet.slice(0, 20)}
-            type="button"
-            disabled={notesReadOnly}
-            onClick={() => setNotes((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
-            style={{
-              padding: "6px 10px",
-              fontSize: 12,
-              border: "1px solid #ccc",
-              borderRadius: 4,
-              background: "#f5f5f5",
-              cursor: notesReadOnly ? "not-allowed" : "pointer",
-              opacity: notesReadOnly ? 0.65 : 1,
-              whiteSpace: "nowrap",
-              maxWidth: 260,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-            title={snippet}
-          >
-            {snippet.length > 32 ? snippet.slice(0, 31) + "…" : snippet}
-          </button>
-        ))}
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ ...notesShell, padding: "16px 18px" }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Notes Inf.</h3>
+        <p style={{ fontSize: 13, color: "#64748b", margin: "8px 0 0 0", lineHeight: 1.45 }}>Raccourcis ci-dessous.</p>
       </div>
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        rows={10}
-        readOnly={notesReadOnly}
-        style={{
-          width: "100%",
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 4,
-          marginBottom: 16,
-          background: notesReadOnly ? "#f5f5f5" : "#fff",
-          cursor: notesReadOnly ? "not-allowed" : "text",
-        }}
-        placeholder="Notes infirmières ou médicales…"
-      />
-      <button
-        onClick={handleSave}
-        disabled={saving || notesReadOnly}
-        style={{
-          padding: "10px 20px",
-          backgroundColor: "#1a1a1a",
-          color: "white",
-          border: "none",
-          borderRadius: 4,
-          cursor: saving || notesReadOnly ? "not-allowed" : "pointer",
-          opacity: saving || notesReadOnly ? 0.6 : 1,
-        }}
-      >
-        {saving ? "Enregistrement…" : "Enregistrer les notes"}
-      </button>
+      <div style={{ ...notesShell, padding: "16px 18px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          {COMMON_NOTE_SNIPPETS.slice(0, 6).map((snippet) => (
+            <button
+              key={snippet.slice(0, 20)}
+              type="button"
+              disabled={notesReadOnly}
+              onClick={() => setNotes((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
+              style={{
+                padding: "6px 12px",
+                fontSize: 12,
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                background: "#f8fafc",
+                color: "#334155",
+                cursor: notesReadOnly ? "not-allowed" : "pointer",
+                opacity: notesReadOnly ? 0.65 : 1,
+                whiteSpace: "nowrap",
+                maxWidth: 260,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+              }}
+              title={snippet}
+            >
+              {snippet.length > 32 ? snippet.slice(0, 31) + "…" : snippet}
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={10}
+          readOnly={notesReadOnly}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: "12px 14px",
+            border: "1px solid #e2e8f0",
+            borderRadius: 10,
+            marginBottom: 14,
+            fontSize: 14,
+            color: "#0f172a",
+            background: notesReadOnly ? "#f8fafc" : "#fff",
+            cursor: notesReadOnly ? "not-allowed" : "text",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+          }}
+          placeholder="Notes infirmières ou médicales…"
+        />
+        <button
+          onClick={handleSave}
+          disabled={saving || notesReadOnly}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: "#0f172a",
+            color: "white",
+            border: "none",
+            borderRadius: 10,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: saving || notesReadOnly ? "not-allowed" : "pointer",
+            opacity: saving || notesReadOnly ? 0.6 : 1,
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
+          }}
+        >
+          {saving ? "Enregistrement…" : "Enregistrer les notes"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -3351,31 +3608,60 @@ function PathwaysTab({
     el.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  if (loading) return <div>Chargement des parcours…</div>;
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "16px 18px",
+          backgroundColor: MEDORA_CARD_SHELL.background,
+          border: MEDORA_CARD_SHELL.border,
+          borderRadius: MEDORA_CARD_SHELL.radius,
+          boxShadow: MEDORA_CARD_SHELL.boxShadow,
+          color: "#64748b",
+          fontSize: 14,
+        }}
+      >
+        Chargement des parcours…
+      </div>
+    );
+  }
 
   const pathwayControlsLocked = encounter.status !== "OPEN" || isLocked;
 
+  const pathwayShell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  };
+
   return (
-    <div>
-      <h3>Parcours urgences</h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ ...pathwayShell, padding: "16px 18px" }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Parcours urgences</h3>
+      </div>
       {!pathway ? (
-        <div>
-          <p>Aucun parcours actif. Activez un parcours pour lancer les ordres de protocole et les chronos.</p>
-          <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+        <div style={{ ...pathwayShell, padding: "18px 20px" }}>
+          <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "#334155", lineHeight: 1.55 }}>
+            Aucun parcours actif. Activez un parcours pour lancer les ordres de protocole et les chronos.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {["STROKE", "SEPSIS", "STEMI", "TRAUMA"].map((type) => (
               <button
                 key={type}
                 onClick={() => handleActivate(type)}
                 disabled={activating || pathwayControlsLocked}
                 style={{
-                  padding: "12px 24px",
-                  backgroundColor: "#1976d2",
+                  padding: "10px 18px",
+                  backgroundColor: "#1d4ed8",
                   color: "white",
                   border: "none",
-                  borderRadius: 4,
+                  borderRadius: 10,
                   cursor: activating || pathwayControlsLocked ? "not-allowed" : "pointer",
                   fontSize: 14,
+                  fontWeight: 600,
                   opacity: activating || pathwayControlsLocked ? 0.6 : 1,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
                 }}
               >
                 Activer {getPathwayTypeLabelFr(type)}
@@ -3384,30 +3670,32 @@ function PathwaysTab({
           </div>
         </div>
       ) : (
-        <div>
-          <div style={{ marginBottom: 24, padding: 16, backgroundColor: "#f5f5f5", borderRadius: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ ...pathwayShell, padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div>
-                <h4 style={{ margin: "0 0 8px 0" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
                   Parcours {getPathwayTypeLabelFr(pathway.type)} – {getPathwayStatusLabelFr(pathway.status)}
                 </h4>
-                <div style={{ fontSize: 14, color: "#666" }}>
+                <div style={{ fontSize: 14, color: "#64748b" }}>
                   Activé le : {new Date(pathway.activatedAt).toLocaleString()}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {pathway.status === "ACTIVE" && (
                   <button
                     onClick={handlePause}
                     disabled={pathwayControlsLocked}
                     style={{
                       padding: "8px 16px",
-                      backgroundColor: "#ff9800",
+                      backgroundColor: "#ea580c",
                       color: "white",
                       border: "none",
-                      borderRadius: 4,
+                      borderRadius: 10,
                       cursor: pathwayControlsLocked ? "not-allowed" : "pointer",
                       fontSize: 14,
+                      fontWeight: 600,
+                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
                     }}
                   >
                     Mettre en pause
@@ -3419,12 +3707,14 @@ function PathwaysTab({
                     disabled={pathwayControlsLocked}
                     style={{
                       padding: "8px 16px",
-                      backgroundColor: "#4caf50",
+                      backgroundColor: "#15803d",
                       color: "white",
                       border: "none",
-                      borderRadius: 4,
+                      borderRadius: 10,
                       cursor: pathwayControlsLocked ? "not-allowed" : "pointer",
                       fontSize: 14,
+                      fontWeight: 600,
+                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
                     }}
                   >
                     Terminer
@@ -3434,8 +3724,8 @@ function PathwaysTab({
             </div>
           </div>
 
-          <div>
-            <h4 style={{ marginBottom: 16 }}>Chronos et jalons</h4>
+          <div style={{ ...pathwayShell, padding: "16px 18px" }}>
+            <h4 style={{ margin: "0 0 14px 0", fontSize: 15, fontWeight: 600, color: "#0f172a" }}>Chronos et jalons</h4>
             {summary && (
               <PathwaySessionSummaryBar
                 summary={summary}
@@ -3443,7 +3733,7 @@ function PathwaysTab({
                 onJumpToNextDue={jumpToNextDue}
               />
             )}
-            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
               {(Array.isArray(milestoneViews) ? milestoneViews : []).map((milestone) => (
                 <PathwayMilestoneRow
                   key={milestone.id}
@@ -3608,14 +3898,47 @@ function OrdersTab({
     setShowCreateModal(true);
   }, [careModalRequestTick, canPrescribe, careModalPresetLabel]);
 
-  if (loading) return <div>Chargement des ordres…</div>;
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "16px 18px",
+          backgroundColor: MEDORA_CARD_SHELL.background,
+          border: MEDORA_CARD_SHELL.border,
+          borderRadius: MEDORA_CARD_SHELL.radius,
+          boxShadow: MEDORA_CARD_SHELL.boxShadow,
+          color: "#64748b",
+          fontSize: 14,
+        }}
+      >
+        Chargement des ordres…
+      </div>
+    );
+  }
+
+  const ordersShell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  };
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div
+        style={{
+          ...ordersShell,
+          padding: "16px 18px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
         <div>
-          <h3 style={{ margin: 0 }}>Ordres</h3>
-          <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#9e9e9e", maxWidth: 480 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Ordres</h3>
+          <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#64748b", maxWidth: 480, lineHeight: 1.45 }}>
             Analyses, imagerie, ordonnances — prescription médicamenteuse : médecins / administrateurs.
           </p>
         </div>
@@ -3626,14 +3949,16 @@ function OrdersTab({
               setShowCreateModal(true);
             }}
             style={{
-              padding: "8px 16px",
-              backgroundColor: "#1a1a1a",
+              padding: "10px 18px",
+              backgroundColor: "#0f172a",
               color: "white",
               border: "none",
-              borderRadius: 4,
+              borderRadius: 10,
               cursor: "pointer",
               fontSize: 14,
+              fontWeight: 600,
               flexShrink: 0,
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
             }}
           >
             Créer un ordre
@@ -3645,13 +3970,12 @@ function OrdersTab({
         <div
           role="status"
           style={{
-            marginBottom: 14,
-            padding: "12px 14px",
-            borderRadius: 6,
+            padding: "12px 16px",
+            borderRadius: 12,
             fontSize: 14,
-            backgroundColor: ordersFeedback.type === "ok" ? "#e8f5e9" : "#ffebee",
-            color: ordersFeedback.type === "ok" ? "#1b5e20" : "#b71c1c",
-            border: `1px solid ${ordersFeedback.type === "ok" ? "#a5d6a7" : "#ef9a9a"}`,
+            backgroundColor: ordersFeedback.type === "ok" ? "#f0fdf4" : "#fef2f2",
+            color: ordersFeedback.type === "ok" ? "#166534" : "#b91c1c",
+            border: `1px solid ${ordersFeedback.type === "ok" ? "#bbf7d0" : "#fecaca"}`,
           }}
         >
           {ordersFeedback.text}
@@ -3659,20 +3983,34 @@ function OrdersTab({
       ) : null}
 
       {orders.length === 0 ? (
-        <div style={{ padding: 20, textAlign: "center", color: "#666" }}>
+        <div style={{ ...ordersShell, padding: "22px 20px", textAlign: "center", color: "#64748b", fontSize: 14 }}>
           Aucun ordre trouvé
         </div>
       ) : (
-        <div style={{ border: "1px solid #ddd", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ ...ordersShell, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>Type</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Statut</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Priorité</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Détail clinique</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Saisie de l&apos;ordre</th>
-                {(canPrescribe || isRn) && <th style={{ padding: 12, textAlign: "left" }}>Actions</th>}
+              <tr style={{ backgroundColor: "#f8fafc" }}>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Type
+                </th>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Statut
+                </th>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Priorité
+                </th>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Détail clinique
+                </th>
+                <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                  Saisie de l&apos;ordre
+                </th>
+                {(canPrescribe || isRn) && (
+                  <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -3683,7 +4021,7 @@ function OrdersTab({
                 <tr
                   key={order.id}
                   style={{
-                    borderTop: "1px solid #eee",
+                    borderTop: "1px solid #e2e8f0",
                     backgroundColor: (order as { pendingSync?: boolean }).pendingSync ? "#fff8e1" : undefined,
                   }}
                 >

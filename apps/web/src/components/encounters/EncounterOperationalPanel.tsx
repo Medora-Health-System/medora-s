@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
 const ROOM_VALUES = ["Salle d'attente", ...Array.from({ length: 30 }, (_, i) => String(i + 1))];
 
@@ -105,35 +106,68 @@ export function EncounterOperationalPanel({
     }
   }, [canEdit, encounterId, facilityId, onUpdated, onSaved, physicianId, room]);
 
+  const panelShell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+    marginTop: 16,
+    padding: "16px 18px",
+  };
+
+  const fieldLabel: React.CSSProperties = {
+    display: "block",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#64748b",
+    marginBottom: 6,
+    letterSpacing: "0.02em",
+  };
+
+  const selectStyle: React.CSSProperties = {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid #e2e8f0",
+    minWidth: 160,
+    fontSize: 14,
+    color: "#0f172a",
+    backgroundColor: "#fff",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  };
+
   if (!canEdit) {
     return (
-      <div style={{ fontSize: 13, color: "#333", display: "flex", flexWrap: "wrap", gap: 16 }}>
-        <div>
-          <span style={{ color: "#757575" }}>Salle : </span>
-          <strong>{roomLabel?.trim() || "—"}</strong>
-        </div>
-        <div>
-          <span style={{ color: "#757575" }}>Médecin attribué : </span>
-          <strong>
-            {physicianAssigned
-              ? `${physicianAssigned.firstName} ${physicianAssigned.lastName}`.trim()
-              : "—"}
-          </strong>
+      <div style={panelShell}>
+        <div style={{ fontSize: 13, color: "#334155", display: "flex", flexWrap: "wrap", gap: 20, rowGap: 10 }}>
+          <div>
+            <span style={{ color: "#64748b" }}>Salle : </span>
+            <strong style={{ color: "#0f172a" }}>{roomLabel?.trim() || "—"}</strong>
+          </div>
+          <div>
+            <span style={{ color: "#64748b" }}>Médecin attribué : </span>
+            <strong style={{ color: "#0f172a" }}>
+              {physicianAssigned
+                ? `${physicianAssigned.firstName} ${physicianAssigned.lastName}`.trim()
+                : "—"}
+            </strong>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ borderTop: "1px solid #eee", marginTop: 12, paddingTop: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#424242", marginBottom: 8 }}>Paramètres opérationnels</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+    <div style={panelShell}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", marginBottom: 14, letterSpacing: "0.01em" }}>
+        Paramètres opérationnels
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#555", marginBottom: 4 }}>Salle</label>
+          <label style={fieldLabel}>Salle</label>
           <select
             value={room || ""}
             onChange={(e) => setRoom(e.target.value)}
-            style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #ccc", minWidth: 160 }}
+            style={{ ...selectStyle, minWidth: 168 }}
           >
             <option value="">—</option>
             {ROOM_VALUES.map((r) => (
@@ -144,11 +178,11 @@ export function EncounterOperationalPanel({
           </select>
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#555", marginBottom: 4 }}>Médecin attribué</label>
+          <label style={fieldLabel}>Médecin attribué</label>
           <select
             value={physicianId}
             onChange={(e) => setPhysicianId(e.target.value)}
-            style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #ccc", minWidth: 220 }}
+            style={{ ...selectStyle, minWidth: 228 }}
           >
             <option value="">—</option>
             {providersForSelect.map((p) => (
@@ -163,20 +197,22 @@ export function EncounterOperationalPanel({
           disabled={saving}
           onClick={() => void save()}
           style={{
-            padding: "8px 16px",
-            backgroundColor: "#1565c0",
+            padding: "10px 18px",
+            backgroundColor: "#2563eb",
             color: "#fff",
             border: "none",
-            borderRadius: 6,
+            borderRadius: 10,
             cursor: saving ? "wait" : "pointer",
             fontWeight: 600,
+            fontSize: 14,
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
           }}
         >
           {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
       </div>
       {error && (
-        <p style={{ color: "#c62828", fontSize: 13, marginTop: 8 }} role="alert">
+        <p style={{ color: "#b91c1c", fontSize: 13, marginTop: 12, lineHeight: 1.45 }} role="alert">
           {error}
         </p>
       )}
