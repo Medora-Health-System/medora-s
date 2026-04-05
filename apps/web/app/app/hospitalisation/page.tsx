@@ -7,11 +7,12 @@ import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { getEncounterStatusBoardLabelFr, ui } from "@/lib/uiLabels";
 import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
+import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 
 export default function HospitalisationBoardPage() {
   const { facilityId: facilityIdFromHook, ready, canManagePharmacy } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [encounters, setEncounters] = useState<any[]>([]);
+  const [encounters, setEncounters] = useState<HospitalisationBoardEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -165,7 +166,7 @@ export default function HospitalisationBoardPage() {
                       {getEncounterStatusBoardLabelFr(encounter.status)}
                     </span>
                   </td>
-                  <td style={{ padding: 12 }}>{formatTime(encounter.createdAt)}</td>
+                  <td style={{ padding: 12 }}>{formatTime(encounter.createdAt ?? null)}</td>
                   <td style={{ padding: 12 }}>
                     <Link
                       href={`/app/encounters/${encounter.id}`}

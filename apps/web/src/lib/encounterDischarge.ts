@@ -40,6 +40,22 @@ export const DISCHARGE_MODE_OPTIONS_FR: readonly string[] = [
   "Autre",
 ];
 
+/**
+ * Mappe le libellé « mode de sortie » (DISCHARGE_MODE_OPTIONS_FR) vers Prisma DischargeStatus.
+ * Valeurs non mappées explicitement → undefined (ne pas envoyer dischargeStatus).
+ */
+export function dischargeModeFrToDischargeStatus(
+  dischargeMode: string | undefined
+): "DISCHARGED" | "AMA" | "TRANSFERRED" | "DECEASED" | undefined {
+  const m = dischargeMode?.trim();
+  if (!m) return undefined;
+  if (m === "Domicile") return "DISCHARGED";
+  if (m === "Transfert vers un autre établissement") return "TRANSFERRED";
+  if (m === "Contre avis médical (LAMA)") return "AMA";
+  if (m === "Décès") return "DECEASED";
+  return undefined;
+}
+
 export function emptyDischargeForm(): DischargeFormState {
   return {
     disposition: "",

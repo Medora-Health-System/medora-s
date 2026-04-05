@@ -153,7 +153,7 @@ export function AppShell({
                   e.currentTarget.style.backgroundColor = "transparent";
                 }}
               >
-                Paramètres
+                {t("common.settings")}
               </Link>
 
               <button
