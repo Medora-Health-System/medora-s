@@ -1,0 +1,33 @@
+---
+description: Medora UI standards enforcement
+globs: apps/web/**/*.{tsx,ts}
+alwaysApply: true
+---
+
+# Medora UI Standards Enforcement
+
+When building UI in `apps/web`:
+
+## MUST FOLLOW
+
+- `docs/ui/medora-ui-standards.md`
+- `apps/web/src/components/medora-card/` tokens (`medoraCardTokens.ts`) and components (`MedoraCard`, etc.)
+
+Complements `.cursor/rules/medora-card-system.mdc` (clinical list rows / worklist primitives).
+
+## DO NOT
+
+- Introduce new card shells for clinical list rows outside `MedoraCard` (see medora-card-system rule).
+- Introduce ad hoc palettes outside the documented system (shell border `#e2e8f0`, canvas `#f8fafc`, tokens in `medoraCardTokens.ts`).
+- Mix inconsistent spacing or radius (prefer shell `radius: 16`, inner inputs ~10–12, badges pill `9999` per existing components).
+
+## ALWAYS
+
+- Use `MedoraCard` (+ `MedoraCardInner`, etc.) for clinical list rows where the worklist pattern applies.
+- Use `MEDORA_CARD_SHELL` (or components that apply it) for simple panels / section shells.
+- Use `MedoraCardRoomBlock` for room/location emphasis in card rows.
+- Use `MedoraCardBadge` with `preset` or `soft` (`PriorityBadgeSoft` from tokens) before inventing new badge styles.
+
+## SAFE RULE
+
+If unsure → STOP and ask.
