@@ -148,130 +148,236 @@ function PatientsPageContent() {
     return new Date(dateStr).toLocaleDateString();
   };
 
+  const thBase: React.CSSProperties = {
+    padding: "12px 14px",
+    textAlign: "left",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#64748b",
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    borderBottom: "1px solid #e2e8f0",
+    backgroundColor: "#f8fafc",
+    whiteSpace: "nowrap",
+  };
+
+  const tdBase: React.CSSProperties = {
+    padding: "12px 14px",
+    fontSize: 14,
+    color: "#0f172a",
+    verticalAlign: "middle",
+    borderBottom: "1px solid #f1f5f9",
+  };
+
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ margin: 0 }}>Rechercher un patient</h1>
-        <button
-          onClick={() => setShowModal(true)}
+    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
+      <div style={{ maxWidth: 1152, margin: "0 auto" }}>
+        <header
           style={{
-            padding: "10px 20px",
-            backgroundColor: "#1a1a1a",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: 14,
-            fontWeight: 500,
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 16,
+            marginBottom: 24,
           }}
         >
-          Nouveau patient
-        </button>
-      </div>
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)",
+                fontWeight: 600,
+                color: "#0f172a",
+              }}
+            >
+              Rechercher un patient
+            </h1>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 560, lineHeight: 1.5 }}>
+              Recherche par nom, NIR ou téléphone dans l&apos;établissement.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            style={{
+              height: 40,
+              padding: "0 18px",
+              backgroundColor: "#0f172a",
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 600,
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
+            }}
+          >
+            Nouveau patient
+          </button>
+        </header>
 
-      <div style={{ marginBottom: 24 }}>
-        <input
-          type="text"
-          placeholder="Rechercher par nom, NIR ou téléphone…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: "100%",
-            maxWidth: 500,
-            padding: 10,
-            border: "1px solid #ddd",
-            borderRadius: 4,
-            fontSize: 16,
-          }}
-        />
-      </div>
-
-      {loading && <div style={{ padding: 20, textAlign: "center" }}>Chargement…</div>}
-
-      {!loading && patients.length === 0 && searchQuery && (
-        <div style={{ padding: 20, textAlign: "center", color: "#666", border: "1px solid #eee", borderRadius: 8 }}>
-          <div>Aucun patient trouvé</div>
-          <div style={{ marginTop: 6, fontSize: 13 }}>Essayez un autre nom, numéro ou identifiant</div>
+        <div style={{ marginBottom: 20 }}>
+          <label htmlFor="patient-search-q" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 6, letterSpacing: "0.02em" }}>
+            Recherche
+          </label>
+          <input
+            id="patient-search-q"
+            type="search"
+            autoComplete="off"
+            placeholder="Rechercher par nom, NIR ou téléphone…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              maxWidth: 520,
+              height: 44,
+              padding: "0 16px",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              fontSize: 15,
+              color: "#0f172a",
+              backgroundColor: "#fff",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+              boxSizing: "border-box",
+            }}
+          />
         </div>
-      )}
 
-      {!loading && patients.length > 0 && (
-        <div style={{ backgroundColor: "white", borderRadius: 8, overflow: "hidden", border: "1px solid #ddd" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#f5f5f5", borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>NIR</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Nom</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Âge / Sexe</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Date de naissance</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Téléphone</th>
-                <th style={{ padding: 12, textAlign: "left", fontWeight: 600 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {patients.map((patient) => (
-                <tr
-                  key={patient.id}
-                  onClick={() => handleRowClick(patient.id)}
-                  style={{
-                    cursor: "pointer",
-                    borderBottom: "1px solid #eee",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f9f9f9";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "white";
-                  }}
-                >
-                  <td style={{ padding: 12 }}>{patient.mrn || "-"}</td>
-                  <td style={{ padding: 12 }}>
-                    {patient.firstName} {patient.lastName}
-                  </td>
-                  <td style={{ padding: 12 }}>{formatAgeYearsSexFr(patient.dob, patient.sexAtBirth ?? null, patient.sex ?? null)}</td>
-                  <td style={{ padding: 12 }}>{formatDate(patient.dob)}</td>
-                  <td style={{ padding: 12 }}>{patient.phone || "-"}</td>
-                  <td style={{ padding: 12 }}>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          handleRowClick(patient.id);
-                        }}
-                        disabled={!canOpenPatientDossier}
-                        style={{
-                          padding: "6px 10px",
-                          border: "1px solid #ddd",
-                          borderRadius: 4,
-                          background: "#fff",
-                          cursor: canOpenPatientDossier ? "pointer" : "not-allowed",
-                          fontSize: 12,
-                          opacity: canOpenPatientDossier ? 1 : 0.55,
-                        }}
-                      >
-                        Ouvrir le dossier
-                      </button>
-                      {canCreateConsultation && (
-                        <button
-                          type="button"
-                          onClick={(ev) => {
-                            ev.stopPropagation();
-                            setConsultationTarget(patient);
-                          }}
-                          style={{ padding: "6px 10px", border: "none", borderRadius: 4, background: "#1a1a1a", color: "#fff", cursor: "pointer", fontSize: 12 }}
-                        >
-                          Créer une consultation
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {loading && (
+          <div
+            style={{
+              borderRadius: 16,
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#fff",
+              padding: 28,
+              textAlign: "center",
+              color: "#64748b",
+              fontSize: 14,
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+            }}
+          >
+            Chargement…
+          </div>
+        )}
+
+        {!loading && patients.length === 0 && searchQuery && (
+          <div
+            style={{
+              padding: "32px 24px",
+              textAlign: "center",
+              color: "#334155",
+              border: "1px dashed #cbd5e1",
+              borderRadius: 16,
+              backgroundColor: "rgba(255,255,255,0.95)",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 16 }}>Aucun patient trouvé</div>
+            <div style={{ marginTop: 8, fontSize: 14, color: "#64748b" }}>Essayez un autre nom, numéro ou identifiant</div>
+          </div>
+        )}
+
+        {!loading && patients.length > 0 && (
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+                <thead>
+                  <tr>
+                    <th style={thBase}>NIR</th>
+                    <th style={thBase}>Nom</th>
+                    <th style={thBase}>Âge / Sexe</th>
+                    <th style={thBase}>Date de naissance</th>
+                    <th style={thBase}>Téléphone</th>
+                    <th style={{ ...thBase, textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {patients.map((patient) => (
+                    <tr
+                      key={patient.id}
+                      onClick={() => handleRowClick(patient.id)}
+                      style={{
+                        cursor: canOpenPatientDossier ? "pointer" : "default",
+                        backgroundColor: "#fff",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (canOpenPatientDossier) e.currentTarget.style.backgroundColor = "#f8fafc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#fff";
+                      }}
+                    >
+                      <td style={{ ...tdBase, fontVariantNumeric: "tabular-nums", color: "#334155" }}>{patient.mrn || "-"}</td>
+                      <td style={{ ...tdBase, fontWeight: 500 }}>{patient.firstName} {patient.lastName}</td>
+                      <td style={tdBase}>{formatAgeYearsSexFr(patient.dob, patient.sexAtBirth ?? null, patient.sex ?? null)}</td>
+                      <td style={{ ...tdBase, fontVariantNumeric: "tabular-nums" }}>{formatDate(patient.dob)}</td>
+                      <td style={{ ...tdBase, fontVariantNumeric: "tabular-nums" }}>{patient.phone || "-"}</td>
+                      <td style={{ ...tdBase, textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <button
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              handleRowClick(patient.id);
+                            }}
+                            disabled={!canOpenPatientDossier}
+                            style={{
+                              padding: "8px 14px",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 10,
+                              background: "#fff",
+                              color: "#334155",
+                              cursor: canOpenPatientDossier ? "pointer" : "not-allowed",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              opacity: canOpenPatientDossier ? 1 : 0.55,
+                              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+                            }}
+                          >
+                            Ouvrir le dossier
+                          </button>
+                          {canCreateConsultation && (
+                            <button
+                              type="button"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                setConsultationTarget(patient);
+                              }}
+                              style={{
+                                padding: "8px 14px",
+                                border: "none",
+                                borderRadius: 10,
+                                background: "#0f172a",
+                                color: "#fff",
+                                cursor: "pointer",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
+                              }}
+                            >
+                              Créer une consultation
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
       {showModal && (
         <NewPatientModal
@@ -301,7 +407,11 @@ function PatientsPageContent() {
 
 export default function PatientsPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 24 }}>Chargement…</div>}>
+    <Suspense
+      fallback={
+        <div style={{ minHeight: "40vh", padding: 24, backgroundColor: "#f8fafc", color: "#64748b", fontSize: 14 }}>Chargement…</div>
+      }
+    >
       <PatientsPageContent />
     </Suspense>
   );

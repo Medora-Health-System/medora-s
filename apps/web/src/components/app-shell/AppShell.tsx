@@ -58,31 +58,19 @@ export function AppShell({
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <header
-        style={{
-          backgroundColor: "#1a1a1a",
-          color: "white",
-          padding: "12px 24px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "1px solid #333",
-        }}
+        className="flex h-14 shrink-0 items-center justify-between border-b border-slate-700/60 bg-slate-950 px-6 text-slate-100"
+        style={{ boxShadow: "inset 0 -1px 0 rgba(148,163,184,0.06)" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 20 }}>Medora S</h1>
+        <div className="flex min-w-0 items-center gap-6">
+          <h1 className="m-0 shrink-0 select-none text-lg font-bold leading-none tracking-tight">
+            <span className="text-blue-400">Medora</span>
+            <span className="text-teal-400">-S</span>
+          </h1>
           {facilities.length > 0 && (
             <select
               value={activeFacility}
               onChange={(e) => onFacilityChange(e.target.value)}
-              style={{
-                backgroundColor: "#2a2a2a",
-                color: "white",
-                border: "1px solid #444",
-                padding: "6px 12px",
-                borderRadius: 4,
-                fontSize: 14,
-                cursor: "pointer",
-              }}
+              className="min-h-[38px] max-w-[min(100vw-12rem,28rem)] cursor-pointer truncate rounded-lg border border-slate-600/70 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-sm outline-none transition-colors hover:border-slate-500 focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20"
             >
               {facilities.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -93,65 +81,29 @@ export function AppShell({
           )}
         </div>
 
-        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <div className="relative flex shrink-0 items-center">
           <button
             type="button"
             onClick={onToggleUserMenu}
-            style={{
-              backgroundColor: "transparent",
-              border: "1px solid #444",
-              color: "white",
-              padding: "8px 16px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 14,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
+            className="flex max-w-[min(100vw-8rem,18rem)] items-center gap-2 rounded-full border border-slate-600/70 bg-slate-900/80 px-4 py-2 text-left text-sm font-medium text-slate-100 shadow-sm outline-none transition-colors hover:border-slate-500 hover:bg-slate-800/90 focus-visible:ring-2 focus-visible:ring-teal-500/30"
           >
-            {userFullName || t("common.userFallback")}
-            <span>▼</span>
+            <span className="min-w-0 truncate">{userFullName || t("common.userFallback")}</span>
+            <span className="shrink-0 text-[10px] leading-none text-slate-400" aria-hidden>
+              ▾
+            </span>
           </button>
           {showUserMenu && (
-            <div
-              style={{
-                position: "absolute",
-                top: "100%",
-                right: 0,
-                marginTop: 8,
-                backgroundColor: "#2a2a2a",
-                border: "1px solid #444",
-                borderRadius: 4,
-                minWidth: 200,
-                boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-                zIndex: 1000,
-              }}
-            >
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid #444" }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>
+            <div className="absolute right-0 top-full z-[1000] mt-2 min-w-[220px] overflow-hidden rounded-xl border border-slate-700/80 bg-slate-900/95 shadow-lg shadow-black/40">
+              <div className="border-b border-slate-700/80 px-4 py-3">
+                <div className="text-sm font-medium text-slate-100">
                   {userFullName || t("common.userFallback")}
                 </div>
-                <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
-                  {userUsername || ""}
-                </div>
+                <div className="mt-1 truncate text-xs text-slate-400">{userUsername || ""}</div>
               </div>
 
               <Link
                 href="/app/settings"
-                style={{
-                  display: "block",
-                  padding: "12px 16px",
-                  color: "white",
-                  textDecoration: "none",
-                  fontSize: 14,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#333";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }}
+                className="block px-4 py-3 text-sm text-slate-100 no-underline transition-colors hover:bg-slate-800/90"
               >
                 {t("common.settings")}
               </Link>
@@ -159,22 +111,7 @@ export function AppShell({
               <button
                 type="button"
                 onClick={onLogout}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "12px 16px",
-                  backgroundColor: "transparent",
-                  border: "none",
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: 14,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#333";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }}
+                className="w-full cursor-pointer border-0 bg-transparent px-4 py-3 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800/90"
               >
                 {t("common.logout")}
               </button>
@@ -210,18 +147,12 @@ export function AppShell({
               </p>
             ) : (
               groupedNavSections.map((section, si) => (
-              <div key={section.groupId} style={{ marginTop: si > 0 ? 16 : 0 }}>
+              <div
+                key={section.groupId}
+                className={si > 0 ? "border-t border-white/10" : undefined}
+              >
                 <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "rgba(248,250,252,0.42)",
-                    padding: "0 10px 8px",
-                    borderBottom: "1px solid rgba(148,163,184,0.12)",
-                    marginBottom: 8,
-                  }}
+                  className={`px-2.5 text-xs font-bold uppercase tracking-wider text-white/70 mb-2 ${si > 0 ? "mt-6" : ""}`}
                 >
                   {t(section.title)}
                 </div>
@@ -236,6 +167,11 @@ export function AppShell({
                       <Link
                         key={item.href}
                         href={item.href}
+                        className={`group relative isolate origin-left overflow-hidden rounded-lg transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-sm ${
+                          active
+                            ? "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:rounded-lg before:bg-transparent before:transition-colors hover:before:bg-white/10"
+                            : "bg-[rgba(15,23,42,0.38)] hover:bg-white/10"
+                        }`}
                         style={{
                           color: active ? "#fff" : "rgba(248,250,252,0.9)",
                           textDecoration: "none",
@@ -243,42 +179,28 @@ export function AppShell({
                           borderRadius: 8,
                           fontSize: 13,
                           fontWeight: active ? 600 : 500,
-                          transition: "background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease",
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          backgroundColor: active ? accent.activeBg : "rgba(15,23,42,0.38)",
-                          boxShadow: active ? `inset 3px 0 0 ${accent.border}` : "inset 3px 0 0 transparent",
+                          ...(active
+                            ? {
+                                backgroundColor: accent.activeBg,
+                                backgroundImage:
+                                  "linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0.1))",
+                                boxShadow: `inset 3px 0 0 ${accent.border}, 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)`,
+                              }
+                            : {
+                                boxShadow: "inset 3px 0 0 transparent",
+                              }),
                           border: "1px solid rgba(148,163,184,0.1)",
                         }}
-                        onMouseEnter={(e) => {
-                          if (!active) {
-                            e.currentTarget.style.backgroundColor = accent.hoverBg;
-                            e.currentTarget.style.boxShadow = `inset 3px 0 0 ${accent.border}`;
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!active) {
-                            e.currentTarget.style.backgroundColor = "rgba(15,23,42,0.38)";
-                            e.currentTarget.style.boxShadow = "inset 3px 0 0 transparent";
-                          }
-                        }}
                       >
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 28,
-                            height: 28,
-                            borderRadius: 6,
-                            backgroundColor: active ? accent.pillBg : "rgba(15,23,42,0.35)",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <SidebarNavIcon href={item.href} accent={item.accent} />
+                        <span className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 shadow-sm transition-all duration-200 group-hover:bg-white/20">
+                          <SidebarNavIcon href={item.href} />
                         </span>
-                        <span style={{ lineHeight: 1.3 }}>{t(item.label)}</span>
+                        <span className="relative z-10" style={{ lineHeight: 1.3 }}>
+                          {t(item.label)}
+                        </span>
                       </Link>
                     );
                   })}

@@ -1,0 +1,2 @@
+/* Preflight désactivé dans tailwind.config.js ; utilitaires uniquement pour ne pas écraser le shell existant. */
+@tailwind utilities;
