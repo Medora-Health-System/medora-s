@@ -14,7 +14,7 @@ export {
 export { MedoraCard, MedoraCardInner, type MedoraCardProps, type MedoraCardVariant } from "./MedoraCard";
 export { MedoraCardIdentity, type MedoraCardIdentityProps } from "./MedoraCardIdentity";
 export { MedoraCardTitle, type MedoraCardTitleProps } from "./MedoraCardTitle";
-export { MedoraCardBadgeRow } from "./MedoraCardBadgeRow";
+export { MedoraCardBadgeRow, type MedoraCardBadgeRowProps } from "./MedoraCardBadgeRow";
 export { MedoraCardBadge, type MedoraCardBadgeProps, type MedoraCardBadgePreset } from "./MedoraCardBadge";
 export { MedoraCardMetaLines } from "./MedoraCardMetaLines";
 export { MedoraCardRoomBlock, type MedoraCardRoomBlockProps } from "./MedoraCardRoomBlock";

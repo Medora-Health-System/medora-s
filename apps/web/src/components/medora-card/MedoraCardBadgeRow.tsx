@@ -2,11 +2,17 @@
 
 import React from "react";
 
-export function MedoraCardBadgeRow({ children }: { children: React.ReactNode }) {
+export type MedoraCardBadgeRowProps = {
+  children: React.ReactNode;
+  /** Default 10 (below title stack); use 0 when nested inside a column that already sets vertical gap (e.g. trackboard actions). */
+  marginTop?: number;
+};
+
+export function MedoraCardBadgeRow({ children, marginTop = 10 }: MedoraCardBadgeRowProps) {
   return (
     <div
       style={{
-        marginTop: 10,
+        marginTop,
         display: "flex",
         flexWrap: "wrap",
         gap: 8,

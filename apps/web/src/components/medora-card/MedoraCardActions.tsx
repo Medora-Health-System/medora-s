@@ -14,6 +14,11 @@ export type MedoraCardActionsProps = {
   minWidth?: number;
   /** Default flex-end (worklist); use flex-start for full-width stacked buttons like nursing. */
   alignItems?: React.CSSProperties["alignItems"];
+  /**
+   * When true: no top border/padding and no `.medora-card-actions-rail` class — for action stacks
+   * nested beside `MedoraCardRoomBlock` (e.g. Médecin list) so layout matches the approved inline row.
+   */
+  inline?: boolean;
 };
 
 /**
@@ -25,10 +30,11 @@ export function MedoraCardActions({
   gap = 10,
   minWidth = 160,
   alignItems = "flex-end",
+  inline = false,
 }: MedoraCardActionsProps) {
   return (
     <div
-      className={RAIL_CLASS}
+      className={inline ? undefined : RAIL_CLASS}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -36,8 +42,8 @@ export function MedoraCardActions({
         alignItems,
         flexShrink: 0,
         minWidth,
-        borderTop: `1px solid ${railBorderTopColor}`,
-        paddingTop: 12,
+        borderTop: inline ? "none" : `1px solid ${railBorderTopColor}`,
+        paddingTop: inline ? 0 : 12,
         width: "100%",
       }}
     >
