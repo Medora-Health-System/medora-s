@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
+import "./globals.css";
 import { OfflineRuntime } from "@/components/offline/OfflineRuntime";
 import { I18nProvider } from "@/i18n/provider";
 
