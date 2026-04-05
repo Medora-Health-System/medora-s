@@ -8,6 +8,18 @@ import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { ui } from "@/lib/uiLabels";
 import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
+import {
+  MedoraCard,
+  MedoraCardActions,
+  MedoraCardActionsMediaStyle,
+  MedoraCardBadge,
+  MedoraCardBadgeRow,
+  MedoraCardIdentity,
+  MedoraCardInner,
+  MedoraCardRoomBlock,
+  MedoraCardTitle,
+  type PriorityBadgeSoft,
+} from "@/components/medora-card";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -23,16 +35,10 @@ const ACUITY_BORDER: Record<AcuityTier, string> = {
   stable: "#10b981",
 };
 
-const ACUITY_BADGE_BG: Record<AcuityTier, string> = {
-  critical: "#fef2f2",
-  monitoring: "#fffbeb",
-  stable: "#ecfdf5",
-};
-
-const ACUITY_BADGE_TEXT: Record<AcuityTier, string> = {
-  critical: "#991b1b",
-  monitoring: "#92400e",
-  stable: "#065f46",
+const ACUITY_SOFT: Record<AcuityTier, PriorityBadgeSoft> = {
+  critical: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+  monitoring: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
+  stable: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
 };
 
 function acuityFromEsi(esi: number | null | undefined): AcuityTier {
@@ -205,6 +211,7 @@ export default function HospitalisationBoardPage() {
         `,
           }}
         />
+        <MedoraCardActionsMediaStyle />
         <header
           style={{
             display: "flex",
@@ -436,195 +443,92 @@ export default function HospitalisationBoardPage() {
 
               return (
                 <li key={encounter.id}>
-                  <article
-                    style={{
-                      overflow: "hidden",
-                      borderRadius: 16,
-                      border: "1px solid #e2e8f0",
-                      backgroundColor: "#fff",
-                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
-                      borderLeftWidth: 4,
-                      borderLeftStyle: "solid",
-                      borderLeftColor: borderLeft,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: 16,
-                        padding: 16,
-                        alignItems: "stretch",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div style={{ display: "flex", minWidth: 0, flex: "1 1 220px", gap: 16 }}>
-                        <div
-                          aria-hidden
-                          style={{
-                            flexShrink: 0,
-                            width: 44,
-                            height: 44,
-                            borderRadius: "50%",
-                            backgroundColor: "#f1f5f9",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: "#334155",
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          {patientInitials(patient)}
-                        </div>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a", lineHeight: 1.25 }}>
-                            {fullPatientName(patient)}
-                          </h2>
-                          <p style={{ margin: "4px 0 0 0", fontSize: 14, color: "#64748b" }}>
-                            {formatAgeYearsSexFr(
-                              patient?.dob ?? null,
-                              patient?.sexAtBirth ?? null,
-                              patient?.sex ?? null
-                            )}
-                          </p>
-                          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>{cc}</p>
-                          <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
-                            {" · "}
-                            <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                            {formatTime(encounter.createdAt ?? null)}
-                          </p>
-                        </div>
-                      </div>
+                  <MedoraCard leftAccentColor={borderLeft} variant="default">
+                    <MedoraCardInner>
+                      <MedoraCardIdentity initials={patientInitials(patient)}>
+                        <MedoraCardTitle
+                          title={fullPatientName(patient)}
+                          subline={
+                            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
+                              {formatAgeYearsSexFr(
+                                patient?.dob ?? null,
+                                patient?.sexAtBirth ?? null,
+                                patient?.sex ?? null
+                              )}
+                            </p>
+                          }
+                        />
+                        <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>{cc}</p>
+                        <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
+                          {" · "}
+                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                          {formatTime(encounter.createdAt ?? null)}
+                        </p>
+                      </MedoraCardIdentity>
 
-                      {/* Bloc salle — même motif que Soins infirmiers / Tableau de bord */}
-                      <div
-                        style={{
-                          flex: "0 0 auto",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          minWidth: 104,
-                          alignSelf: "center",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "100%",
-                            minWidth: 96,
-                            maxWidth: 140,
-                            padding: "12px 14px",
-                            borderRadius: 14,
-                            border: "1px solid #bae6fd",
-                            backgroundColor: "#f0f9ff",
-                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)",
-                            textAlign: "center",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              letterSpacing: "0.06em",
-                              textTransform: "uppercase",
-                              color: "#0369a1",
-                              marginBottom: 4,
-                            }}
-                          >
-                            {ui.common.room}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 22,
-                              fontWeight: 700,
-                              lineHeight: 1.15,
-                              color: "#0c4a6e",
-                              fontVariantNumeric: "tabular-nums",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {room}
-                          </div>
-                        </div>
-                      </div>
+                      <MedoraCardRoomBlock label={ui.common.room} value={room} />
 
                       <div
                         className="hosp-meta-block"
                         style={{
                           display: "flex",
                           flexDirection: "column",
-                          gap: 8,
-                          alignItems: "flex-start",
-                          flexShrink: 0,
-                          minWidth: 200,
-                          borderTop: "1px solid #f1f5f9",
-                          paddingTop: 12,
+                          alignItems: "stretch",
                           width: "100%",
+                          minWidth: 200,
+                          flexShrink: 0,
                         }}
                       >
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{phys}</p>
-                        <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
-                          <span style={{ color: "#cbd5e1" }}>Inf.</span> {ui.common.dash}
-                        </p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "4px 10px",
-                              borderRadius: 9999,
-                              fontSize: 12,
-                              fontWeight: 600,
-                              backgroundColor: ACUITY_BADGE_BG[acuity],
-                              color: ACUITY_BADGE_TEXT[acuity],
-                              border: `1px solid ${acuity === "critical" ? "#fecaca" : acuity === "monitoring" ? "#fde68a" : "#a7f3d0"}`,
-                            }}
-                          >
-                            {ACUITY_LABEL_FR[acuity]}
-                          </span>
-                          <Link
-                            href={`/app/encounters/${encounter.id}`}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              padding: "6px 14px",
-                              borderRadius: 10,
-                              border: "1px solid #bfdbfe",
-                              backgroundColor: "#eff6ff",
-                              color: "#1d4ed8",
-                              fontSize: 14,
-                              fontWeight: 600,
-                              textDecoration: "none",
-                            }}
-                          >
-                            {ui.common.view}
-                          </Link>
-                          <Link
-                            href={`/app/encounters/${encounter.id}`}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              padding: "6px 14px",
-                              borderRadius: 10,
-                              border: "1px solid #cbd5e1",
-                              backgroundColor: "#fff",
-                              color: "#475569",
-                              fontSize: 14,
-                              fontWeight: 600,
-                              textDecoration: "none",
-                            }}
-                            aria-label="Ouvrir la consultation pour accéder au dossier de sortie"
-                          >
-                            Sortie
-                          </Link>
-                        </div>
+                        <MedoraCardActions railBorderTopColor="#f1f5f9" gap={8} minWidth={200} alignItems="flex-start">
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{phys}</p>
+                          <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
+                            <span style={{ color: "#cbd5e1" }}>Inf.</span> {ui.common.dash}
+                          </p>
+                          <MedoraCardBadgeRow marginTop={0}>
+                            <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
+                            <Link
+                              href={`/app/encounters/${encounter.id}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "6px 14px",
+                                borderRadius: 10,
+                                border: "1px solid #bfdbfe",
+                                backgroundColor: "#eff6ff",
+                                color: "#1d4ed8",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                textDecoration: "none",
+                              }}
+                            >
+                              {ui.common.view}
+                            </Link>
+                            <Link
+                              href={`/app/encounters/${encounter.id}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "6px 14px",
+                                borderRadius: 10,
+                                border: "1px solid #cbd5e1",
+                                backgroundColor: "#fff",
+                                color: "#475569",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                textDecoration: "none",
+                              }}
+                              aria-label="Ouvrir la consultation pour accéder au dossier de sortie"
+                            >
+                              Sortie
+                            </Link>
+                          </MedoraCardBadgeRow>
+                        </MedoraCardActions>
                       </div>
-                    </div>
-                  </article>
+                    </MedoraCardInner>
+                  </MedoraCard>
                 </li>
               );
             })}

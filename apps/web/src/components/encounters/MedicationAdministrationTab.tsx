@@ -236,7 +236,9 @@ export function MedicationAdministrationTab({
 
   const submitModal = async () => {
     if (!modalItem || encounterStatus !== "OPEN") return;
-    if (!isOrderItemIdUuid(modalItem.orderItemId)) {
+    const orderItemId =
+      typeof modalItem.orderItemId === "string" ? modalItem.orderItemId.trim() : "";
+    if (!isOrderItemIdUuid(orderItemId)) {
       console.warn("MAR blocked: invalid orderItemId", modalItem.orderItemId);
       return;
     }
@@ -245,7 +247,7 @@ export function MedicationAdministrationTab({
     try {
       const routeLine = modalRoute.trim() || modalItem.routeHint;
       const body: Record<string, unknown> = {
-        orderItemId: modalItem.orderItemId,
+        orderItemId,
         administeredAt: new Date().toISOString(),
         notes: buildMarNotes(modalAction, routeLine, modalNotes),
       };

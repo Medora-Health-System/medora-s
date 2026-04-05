@@ -9,6 +9,7 @@ import {
   parseIvInsertionFromNursing,
   type IvInsertionProcedureV1,
 } from "@/lib/nursingProcedures";
+import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
 type SectionDef = { id: string; label: string; chips: string[] };
 
@@ -278,27 +279,46 @@ export function NursingAssessmentTab({
     }
   }, [encounterId, facilityId, encounter?.nursingAssessment, onUpdate, state, ivState]);
 
+  const shell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  };
+
+  const controlBase: React.CSSProperties = {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid #e2e8f0",
+    fontSize: 14,
+    color: "#0f172a",
+    backgroundColor: "#fff",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  };
+
   return (
-    <div>
-      <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "#555", lineHeight: 1.5 }}>
-        <strong>Évaluation infirmière</strong> par systèmes — options rapides (puces) et complément libre. Enregistrement dans le
-        dossier de la consultation ; synthèse visible au résumé et dans le dossier patient.
-      </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ ...shell, padding: "16px 18px" }}>
+        <p style={{ margin: 0, fontSize: 14, color: "#334155", lineHeight: 1.55 }}>
+          <strong style={{ color: "#0f172a" }}>Évaluation infirmière</strong> par systèmes — options rapides (puces) et complément libre. Enregistrement dans le
+          dossier de la consultation ; synthèse visible au résumé et dans le dossier patient.
+        </p>
+      </div>
 
       <fieldset
         style={{
-          border: "1px solid #c8e6c9",
-          borderRadius: 8,
-          padding: 14,
-          marginBottom: 20,
-          backgroundColor: "#f1f8f4",
+          ...shell,
+          border: "1px solid #bbf7d0",
+          padding: "16px 18px",
+          margin: 0,
+          backgroundColor: "#f0fdf4",
         }}
       >
-        <legend style={{ fontWeight: 700, padding: "0 8px", fontSize: 15 }}>Procédures infirmières</legend>
-        <p style={{ fontSize: 13, color: "#555", marginTop: 0, lineHeight: 1.45 }}>
+        <legend style={{ fontWeight: 700, padding: "0 10px", fontSize: 14, color: "#0f172a" }}>Procédures infirmières</legend>
+        <p style={{ fontSize: 13, color: "#475569", marginTop: 0, lineHeight: 1.45 }}>
           Saisie rapide au lit — pose de voie IV pour l&apos;instant ; d&apos;autres procédures pourront s&apos;ajouter.
         </p>
-        <p style={{ fontSize: 12, color: "#616161", margin: "8px 0 0 0", lineHeight: 1.45 }}>
+        <p style={{ fontSize: 12, color: "#64748b", margin: "8px 0 0 0", lineHeight: 1.45 }}>
           Si une voie IV a été prescrite, terminez aussi l&apos;ordre dans l&apos;onglet Ordres.
         </p>
         <label
@@ -334,7 +354,7 @@ export function NursingAssessmentTab({
                 disabled={formLocked}
                 value={ivState.site ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, site: e.target.value || undefined }))}
-                style={{ maxWidth: 360, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                style={{ ...controlBase, maxWidth: 360 }}
               >
                 <option value="">— Sélectionner —</option>
                 {IV_SITE_OPTIONS_FR.map((opt) => (
@@ -352,7 +372,7 @@ export function NursingAssessmentTab({
                   disabled={formLocked}
                   value={ivState.siteOther ?? ""}
                   onChange={(e) => setIvState((s) => ({ ...s, siteOther: e.target.value }))}
-                  style={{ maxWidth: 420, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                  style={{ ...controlBase, maxWidth: 420 }}
                 />
               </label>
             ) : null}
@@ -364,7 +384,7 @@ export function NursingAssessmentTab({
                 placeholder="ex. 20G"
                 value={ivState.gauge ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, gauge: e.target.value }))}
-                style={{ maxWidth: 200, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                style={{ ...controlBase, maxWidth: 200 }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
@@ -380,7 +400,7 @@ export function NursingAssessmentTab({
                     performedAt: v ? new Date(v).toISOString() : undefined,
                   }));
                 }}
-                style={{ maxWidth: 280, padding: 8, borderRadius: 6, border: "1px solid #ccc", fontSize: 14 }}
+                style={{ ...controlBase, maxWidth: 280 }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
@@ -394,11 +414,8 @@ export function NursingAssessmentTab({
                 style={{
                   width: "100%",
                   boxSizing: "border-box",
-                  padding: 8,
-                  borderRadius: 6,
-                  border: "1px solid #ccc",
-                  fontSize: 14,
-                  background: formLocked ? "#f5f5f5" : "#fff",
+                  ...controlBase,
+                  background: formLocked ? "#f8fafc" : "#fff",
                   cursor: formLocked ? "not-allowed" : "text",
                 }}
               />
@@ -407,13 +424,17 @@ export function NursingAssessmentTab({
         ) : null}
       </fieldset>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {SECTIONS.map((sec) => (
           <section
             key={sec.id}
-            style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: 14, backgroundColor: "#fafafa" }}
+            style={{
+              ...shell,
+              padding: "16px 18px",
+              backgroundColor: "#fafafa",
+            }}
           >
-            <h4 style={{ margin: "0 0 8px 0", fontSize: 15 }}>{sec.label}</h4>
+            <h4 style={{ margin: "0 0 10px 0", fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{sec.label}</h4>
             {sec.chips.length > 0 ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                 {sec.chips.map((chip) => (
@@ -424,10 +445,12 @@ export function NursingAssessmentTab({
                     onClick={() => appendChip(sec.id, chip)}
                     style={{
                       fontSize: 12,
-                      padding: "4px 10px",
-                      borderRadius: 16,
-                      border: "1px solid #bbb",
+                      padding: "6px 12px",
+                      borderRadius: 9999,
+                      border: "1px solid #e2e8f0",
                       background: "#fff",
+                      color: "#334155",
+                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
                       cursor: formLocked ? "not-allowed" : "pointer",
                       opacity: formLocked ? 0.65 : 1,
                     }}
@@ -450,49 +473,57 @@ export function NursingAssessmentTab({
               style={{
                 width: "100%",
                 boxSizing: "border-box",
-                padding: 10,
-                borderRadius: 6,
-                border: "1px solid #ccc",
-                fontSize: 14,
-                background: formLocked ? "#f5f5f5" : "#fff",
+                ...controlBase,
+                padding: "10px 12px",
+                background: formLocked ? "#f8fafc" : "#fff",
                 cursor: formLocked ? "not-allowed" : "text",
               }}
             />
           </section>
         ))}
       </div>
-      <div style={{ marginTop: 20, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          ...shell,
+          padding: "14px 18px",
+          display: "flex",
+          gap: 14,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <button
           type="button"
           disabled={saving || formLocked}
           onClick={() => void save()}
           style={{
             padding: "10px 20px",
-            backgroundColor: "#2e7d32",
+            backgroundColor: "#15803d",
             color: "#fff",
             border: "none",
-            borderRadius: 6,
+            borderRadius: 10,
             fontWeight: 600,
+            fontSize: 14,
             cursor: saving || formLocked ? "not-allowed" : "pointer",
             opacity: formLocked ? 0.65 : 1,
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
           }}
         >
           {saving ? "Enregistrement…" : "Enregistrer l'évaluation infirmière"}
         </button>
-        {ok && !error && <span style={{ color: "#2e7d32", fontSize: 14 }}>Enregistré.</span>}
+        {ok && !error && <span style={{ color: "#15803d", fontSize: 14 }}>Enregistré.</span>}
       </div>
       {queuedLocalSave && !error ? (
         <div
           role="alert"
           style={{
-            marginTop: 12,
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid #ef9a9a",
-            backgroundColor: "#ffebee",
+            padding: "14px 16px",
+            borderRadius: 12,
+            border: "1px solid #fecaca",
+            backgroundColor: "#fef2f2",
             fontSize: 13,
             fontWeight: 600,
-            color: "#b71c1c",
+            color: "#b91c1c",
             lineHeight: 1.5,
             maxWidth: 560,
           }}
@@ -502,7 +533,7 @@ export function NursingAssessmentTab({
         </div>
       ) : null}
       {error && (
-        <p style={{ color: "#c62828", marginTop: 12 }} role="alert">
+        <p style={{ color: "#b91c1c", margin: 0, fontSize: 14, lineHeight: 1.45 }} role="alert">
           {error}
         </p>
       )}

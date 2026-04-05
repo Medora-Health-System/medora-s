@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { MedoraCardActionsMediaStyle } from "@/components/medora-card";
 import { PatientRowCard } from "./PatientRowCard";
 import {
   MOCK_HOSPITALIZATION_ROWS,
@@ -91,6 +92,16 @@ export function HospitalizationBoardView() {
   return (
     <div className="min-h-[calc(100vh-48px)] bg-[#F8FAFC] px-4 py-6 sm:px-6">
       <div className="mx-auto max-w-6xl">
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          @media (min-width: 640px) {
+            .hosp-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
+          }
+        `,
+          }}
+        />
+        <MedoraCardActionsMediaStyle />
         <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.65rem]">

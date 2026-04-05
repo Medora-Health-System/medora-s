@@ -10,6 +10,7 @@ import {
 } from "@/lib/clinicalResultNormalize";
 import { getCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingOrderItemResultsForEncounter } from "@/lib/offline/pendingOrderItemResults";
+import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
 type PendingLocalResult = {
   pendingSync: boolean;
@@ -138,8 +139,17 @@ export function EncounterResultsTab({
     return out;
   }, [orders, pendingResultByItemId]);
 
+  const resultCardShell: React.CSSProperties = {
+    backgroundColor: MEDORA_CARD_SHELL.background,
+    border: MEDORA_CARD_SHELL.border,
+    borderRadius: MEDORA_CARD_SHELL.radius,
+    boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  };
+
   if (loading) {
-    return <div style={{ color: "#616161", fontSize: 14 }}>Chargement des résultats…</div>;
+    return (
+      <div style={{ fontSize: 14, color: "#64748b", padding: "4px 2px" }}>Chargement des résultats…</div>
+    );
   }
 
   if (rows.length === 0) {
@@ -148,12 +158,12 @@ export function EncounterResultsTab({
         <div
           role="alert"
           style={{
-            padding: "12px 14px",
-            borderRadius: 8,
-            border: "1px solid #ffcc80",
-            backgroundColor: "#fff8e1",
+            padding: "14px 16px",
+            borderRadius: 14,
+            border: "1px solid #fde68a",
+            backgroundColor: "#fffbeb",
             fontSize: 14,
-            color: "#5d4037",
+            color: "#78350f",
             lineHeight: 1.5,
             fontWeight: 600,
           }}
@@ -164,7 +174,15 @@ export function EncounterResultsTab({
       );
     }
     return (
-      <div style={{ padding: 16, background: "#fafafa", borderRadius: 8, fontSize: 14, color: "#555" }}>
+      <div
+        style={{
+          ...resultCardShell,
+          padding: "20px 22px",
+          fontSize: 14,
+          color: "#64748b",
+          lineHeight: 1.5,
+        }}
+      >
         Aucun résultat laboratoire ou imagerie enregistré pour cette consultation. Les résultats saisis depuis les files
         apparaîtront ici automatiquement.
       </div>
@@ -172,11 +190,13 @@ export function EncounterResultsTab({
   }
 
   return (
-    <div>
-      <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#616161" }}>
-        Résultats liés à cette consultation (laboratoire et imagerie). Les mêmes données sont visibles dans le dossier
-        patient (onglet « Résultats »).
-      </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ ...resultCardShell, padding: "14px 16px" }}>
+        <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Résultats liés à cette consultation (laboratoire et imagerie). Les mêmes données sont visibles dans le dossier
+          patient (onglet « Résultats »).
+        </p>
+      </div>
       {rows.map(({ item, pendingSync }) => {
         const v = clinicalResultFromOrderItemLike({
           displayLabelFr: getOrderItemDisplayLabelFr(item),
@@ -185,34 +205,35 @@ export function EncounterResultsTab({
           result: item.result,
         });
         return (
-          <div key={item.id} style={{ marginBottom: pendingSync ? 12 : 0 }}>
+          <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {pendingSync ? (
               <div
                 role="status"
                 style={{
-                  marginBottom: 10,
-                  padding: "8px 12px",
+                  padding: "10px 14px",
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "#6d4c41",
-                  background: "#fff8e1",
-                  border: "1px solid #ffe082",
-                  borderRadius: 8,
+                  color: "#78350f",
+                  background: "#fffbeb",
+                  border: "1px solid #fde68a",
+                  borderRadius: 12,
                 }}
               >
                 En attente de synchronisation — affichage local sur cet appareil uniquement.
               </div>
             ) : null}
-            <ClinicalResultViewer
-              title={v.title}
-              itemStatus={v.itemStatus}
-              verifiedAt={v.verifiedAt}
-              criticalValue={v.criticalValue}
-              resultText={v.resultText}
-              attachments={v.attachments}
-              enteredByDisplayFr={v.enteredByDisplayFr}
-              catalogItemType={v.catalogItemType}
-            />
+            <div style={{ ...resultCardShell, padding: "16px 18px", overflow: "hidden" }}>
+              <ClinicalResultViewer
+                title={v.title}
+                itemStatus={v.itemStatus}
+                verifiedAt={v.verifiedAt}
+                criticalValue={v.criticalValue}
+                resultText={v.resultText}
+                attachments={v.attachments}
+                enteredByDisplayFr={v.enteredByDisplayFr}
+                catalogItemType={v.catalogItemType}
+              />
+            </div>
           </div>
         );
       })}

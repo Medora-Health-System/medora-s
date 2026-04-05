@@ -14,26 +14,18 @@ import {
   getPendingImagingOrderRowsForFacility,
   type PendingFacilityQueueRow,
 } from "@/lib/offline/pendingEncounterOrders";
-
-const PRIORITY_BORDER: Record<string, string> = {
-  ROUTINE: "#94a3b8",
-  URGENT: "#f97316",
-  STAT: "#ef4444",
-};
-
-const PRIORITY_BADGE_SOFT: Record<string, { bg: string; text: string; border: string }> = {
-  ROUTINE: { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
-  URGENT: { bg: "#fff7ed", text: "#c2410c", border: "#fdba74" },
-  STAT: { bg: "#fef2f2", text: "#b91c1c", border: "#fecaca" },
-};
-
-function priorityBorder(p: string) {
-  return PRIORITY_BORDER[p] ?? PRIORITY_BORDER.ROUTINE;
-}
-
-function priorityBadgeSoft(p: string) {
-  return PRIORITY_BADGE_SOFT[p] ?? PRIORITY_BADGE_SOFT.ROUTINE;
-}
+import {
+  MedoraCard,
+  MedoraCardActions,
+  MedoraCardActionsMediaStyle,
+  MedoraCardBadge,
+  MedoraCardBadgeRow,
+  MedoraCardIdentity,
+  MedoraCardInner,
+  MedoraCardTitle,
+  getPriorityBadgeSoft,
+  getPriorityBorder,
+} from "@/components/medora-card";
 
 function patientInitials(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
   const f = (p?.firstName ?? "").trim();
@@ -465,164 +457,49 @@ export default function RadWorklistPage() {
                 {filteredQueuePairs.map(({ order, item }) => {
                     const patient = order.encounter?.patient;
                     const pc = String(order.priority ?? "ROUTINE");
-                    const pSoft = priorityBadgeSoft(pc);
-                    const borderLeft = priorityBorder(pc);
-                    const statusLabel = orderIsCancelled(order) ? (
-                      <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
-                    ) : (
-                      getOrderItemStatusLabel(item.status)
-                    );
+                    const pSoft = getPriorityBadgeSoft(pc);
+                    const borderLeft = getPriorityBorder(pc);
                     return (
                       <li key={item.id}>
-                        <article
+                        <MedoraCard
                           className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
-                          style={{
-                            overflow: "hidden",
-                            borderRadius: 16,
-                            border: "1px solid #e2e8f0",
-                            backgroundColor: "#fff",
-                            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
-                            borderLeftWidth: 4,
-                            borderLeftStyle: "solid",
-                            borderLeftColor: borderLeft,
-                          }}
+                          leftAccentColor={borderLeft}
+                          variant="default"
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 16,
-                              padding: 16,
-                              alignItems: "stretch",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <div style={{ display: "flex", minWidth: 0, flex: "1 1 220px", gap: 16 }}>
-                              <div
-                                aria-hidden
-                                style={{
-                                  flexShrink: 0,
-                                  width: 44,
-                                  height: 44,
-                                  borderRadius: "50%",
-                                  backgroundColor: "#f1f5f9",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: 14,
-                                  fontWeight: 600,
-                                  color: "#334155",
-                                  border: "1px solid #e2e8f0",
-                                }}
-                              >
-                                {patientInitials(patient)}
-                              </div>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <h2
-                                  style={{
-                                    margin: 0,
-                                    fontSize: 16,
-                                    fontWeight: 600,
-                                    color: "#0f172a",
-                                    lineHeight: 1.25,
-                                  }}
-                                >
-                                  {fullPatientName(patient)}
-                                </h2>
-                                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>
-                                  <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
-                                  {(patient?.mrn ?? "").trim() || ui.common.dash}
-                                </p>
-                                <div
-                                  style={{
-                                    marginTop: 10,
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 8,
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      display: "inline-block",
-                                      padding: "4px 10px",
-                                      borderRadius: 9999,
-                                      fontSize: 12,
-                                      fontWeight: 600,
-                                      backgroundColor: "#f8fafc",
-                                      color: "#334155",
-                                      border: "1px solid #e2e8f0",
-                                    }}
-                                  >
-                                    {ui.common.study} · {getOrderItemDisplayLabelFr(item)}
-                                  </span>
-                                  <span
-                                    style={{
-                                      display: "inline-block",
-                                      padding: "4px 10px",
-                                      borderRadius: 9999,
-                                      fontSize: 12,
-                                      fontWeight: 600,
-                                      backgroundColor: "#f8fafc",
-                                      color: "#334155",
-                                      border: "1px solid #e2e8f0",
-                                    }}
-                                  >
-                                    {statusLabel}
-                                  </span>
-                                  {order.pathwaySession && (
-                                    <span
-                                      style={{
-                                        display: "inline-block",
-                                        padding: "4px 10px",
-                                        borderRadius: 9999,
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                        backgroundColor: "#e0f2fe",
-                                        color: "#0369a1",
-                                        border: "1px solid #bae6fd",
-                                      }}
-                                    >
-                                      {getPathwayTypeLabelFr(order.pathwaySession.type)}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
+                          <MedoraCardInner>
+                            <MedoraCardIdentity initials={patientInitials(patient)}>
+                              <MedoraCardTitle
+                                title={fullPatientName(patient)}
+                                subline={
+                                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                                    <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
+                                    {(patient?.mrn ?? "").trim() || ui.common.dash}
+                                  </p>
+                                }
+                              />
+                              <MedoraCardBadgeRow>
+                                <MedoraCardBadge preset="neutral">
+                                  {ui.common.study} · {getOrderItemDisplayLabelFr(item)}
+                                </MedoraCardBadge>
+                                {orderIsCancelled(order) ? (
+                                  <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
+                                ) : (
+                                  <MedoraCardBadge preset="neutral">{getOrderItemStatusLabel(item.status)}</MedoraCardBadge>
+                                )}
+                                {order.pathwaySession ? (
+                                  <MedoraCardBadge preset="pathway">
+                                    {getPathwayTypeLabelFr(order.pathwaySession.type)}
+                                  </MedoraCardBadge>
+                                ) : null}
+                              </MedoraCardBadgeRow>
+                            </MedoraCardIdentity>
 
-                            <div
-                              className="worklist-meta-rail"
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 10,
-                                alignItems: "flex-end",
-                                flexShrink: 0,
-                                minWidth: 160,
-                                borderTop: "1px solid #f1f5f9",
-                                paddingTop: 12,
-                                width: "100%",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  display: "inline-block",
-                                  padding: "4px 10px",
-                                  borderRadius: 9999,
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  backgroundColor: pSoft.bg,
-                                  color: pSoft.text,
-                                  border: `1px solid ${pSoft.border}`,
-                                }}
-                              >
-                                {getOrderPriorityLabelFr(pc)}
-                              </span>
+                            <MedoraCardActions railBorderTopColor="#f1f5f9">
+                              <MedoraCardBadge soft={pSoft}>{getOrderPriorityLabelFr(pc)}</MedoraCardBadge>
                               {renderActions(order, item)}
-                            </div>
-                          </div>
-                        </article>
+                            </MedoraCardActions>
+                          </MedoraCardInner>
+                        </MedoraCard>
                       </li>
                     );
                   })}
@@ -641,110 +518,34 @@ export default function RadWorklistPage() {
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
                   {filteredPendingLocal.map((row) => {
                     const pc = String(row.priority ?? "ROUTINE");
-                    const pSoft = priorityBadgeSoft(pc);
-                    const borderLeft = priorityBorder(pc);
+                    const pSoft = getPriorityBadgeSoft(pc);
+                    const borderLeft = getPriorityBorder(pc);
                     return (
                       <li key={row.queueItemId}>
-                        <article
+                        <MedoraCard
                           className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
-                          style={{
-                            overflow: "hidden",
-                            borderRadius: 16,
-                            border: "1px solid #fde68a",
-                            backgroundColor: "#fffbeb",
-                            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
-                            borderLeftWidth: 4,
-                            borderLeftStyle: "solid",
-                            borderLeftColor: borderLeft,
-                          }}
+                          leftAccentColor={borderLeft}
+                          variant="pendingSync"
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 16,
-                              padding: 16,
-                              alignItems: "stretch",
-                              justifyContent: "space-between",
-                            }}
-                          >
+                          <MedoraCardInner>
                             <div style={{ display: "flex", minWidth: 0, flex: "1 1 220px" }}>
                               <PendingEncounterPatientBlock facilityId={row.facilityId} encounterId={row.encounterId}>
-                                <div
-                                  style={{
-                                    marginTop: 10,
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 8,
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      display: "inline-block",
-                                      padding: "4px 10px",
-                                      borderRadius: 9999,
-                                      fontSize: 12,
-                                      fontWeight: 600,
-                                      backgroundColor: "#f8fafc",
-                                      color: "#334155",
-                                      border: "1px solid #e2e8f0",
-                                    }}
-                                  >
+                                <MedoraCardBadgeRow>
+                                  <MedoraCardBadge preset="neutral">
                                     {ui.common.study} · {row.itemLabels.filter(Boolean).join(", ") || ui.common.dash}
-                                  </span>
-                                  <span
-                                    style={{
-                                      display: "inline-block",
-                                      padding: "4px 10px",
-                                      borderRadius: 9999,
-                                      fontSize: 12,
-                                      fontWeight: 600,
-                                      backgroundColor: "#fef3c7",
-                                      color: "#92400e",
-                                      border: "1px solid #fde68a",
-                                    }}
-                                  >
-                                    En attente de synchronisation
-                                  </span>
-                                </div>
+                                  </MedoraCardBadge>
+                                  <MedoraCardBadge preset="syncPending">En attente de synchronisation</MedoraCardBadge>
+                                </MedoraCardBadgeRow>
                               </PendingEncounterPatientBlock>
                             </div>
-                            <div
-                              className="worklist-meta-rail"
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 10,
-                                alignItems: "flex-end",
-                                flexShrink: 0,
-                                minWidth: 160,
-                                borderTop: "1px solid #fde68a",
-                                paddingTop: 12,
-                                width: "100%",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  display: "inline-block",
-                                  padding: "4px 10px",
-                                  borderRadius: 9999,
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  backgroundColor: pSoft.bg,
-                                  color: pSoft.text,
-                                  border: `1px solid ${pSoft.border}`,
-                                }}
-                              >
-                                {getOrderPriorityLabelFr(pc)}
-                              </span>
+                            <MedoraCardActions railBorderTopColor="#fde68a">
+                              <MedoraCardBadge soft={pSoft}>{getOrderPriorityLabelFr(pc)}</MedoraCardBadge>
                               <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={btnVoir}>
                                 Consultation
                               </Link>
-                            </div>
-                          </div>
-                        </article>
+                            </MedoraCardActions>
+                          </MedoraCardInner>
+                        </MedoraCard>
                       </li>
                     );
                   })}
@@ -758,15 +559,7 @@ export default function RadWorklistPage() {
             )}
           </div>
         )}
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-          @media (min-width: 640px) {
-            .worklist-meta-rail { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
-          }
-        `,
-          }}
-        />
+        <MedoraCardActionsMediaStyle />
       </div>
     </div>
   );
