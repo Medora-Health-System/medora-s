@@ -1,0 +1,45 @@
+---
+description: Medora-S web UI — use shared MedoraCard primitives for clinical list rows and worklist cards
+globs: apps/web/**/*.{tsx,ts}
+alwaysApply: true
+---
+
+# Medora Card System
+
+When building or updating clinical list/worklist row UI in `apps/web`, do **not** introduce new custom row/card shells if the shared MedoraCard system can support the layout.
+
+## Use these primitives first
+
+- `MedoraCard`
+- `MedoraCardInner`
+- `MedoraCardIdentity`
+- `MedoraCardTitle`
+- `MedoraCardBadgeRow`
+- `MedoraCardBadge`
+- `MedoraCardMetaLines`
+- `MedoraCardRoomBlock`
+- `MedoraCardActions`
+
+## Applies to
+
+Trackboard, Hospitalisation, Soins infirmiers, Médecin, Consultations, Imagerie, Laboratoire, and future worklists/clinical dashboards.
+
+## Rules
+
+1. Preserve behavior, routes, API calls, and business logic.
+2. Refactor presentation only unless the task explicitly asks otherwise.
+3. Prefer extending shared MedoraCard props minimally over duplicating row/card markup.
+4. Keep room/location in the approved Medora placement for that page.
+5. Use existing badge/token presets before inventing new inline badge styles.
+6. Keep performance lightweight: no heavy animation, no unnecessary dependencies, no large assets.
+7. Match the currently approved Medora UI unless the task explicitly requests a redesign.
+
+## Do not
+
+- Create parallel card systems.
+- Duplicate room block or actions rail styling.
+- Replace MedoraCard with ad hoc `article`/div shells for clinical rows unless shared components truly cannot support the case.
+
+## Preferred workflow
+
+Audit page → preserve behavior → migrate to MedoraCard primitives → run `pnpm verify:web`.
