@@ -1,32 +1,14 @@
 /**
- * Données fictives — UI maquette hospitalisation uniquement (aucun appel API).
+ * Données fictives — référence maquette / tests (la page runtime utilise l’API + `HospitalizationBoardRow`).
  */
 
-export type HospitalizationAcuity = "critical" | "monitoring" | "stable";
-
-export type MockHospitalizationPatient = {
-  id: string;
-  room: string;
-  unit: string;
-  patientName: string;
-  /** Motif / plainte principale (affichage carte). */
-  chiefComplaint: string;
-  physician: string;
-  /** « — » ou « Non assigné » pour la maquette. */
-  nurseDisplay: string;
-  acuity: HospitalizationAcuity;
-  /** Libellé court âge + sexe */
-  ageSex: string;
-  esi: number | null;
-  /** Heure d’arrivée affichée (HH:mm). */
-  arrivalTime: string;
-};
+import type { HospitalizationBoardRow } from "./hospitalizationBoardRow";
 
 export const MOCK_UNITS = ["Médecine A", "Chirurgie B", "Urgences"] as const;
 
 export const MOCK_PHYSICIANS = ["Dr. Jean Paul", "Dr. Marie Dubois", "Dr. H. Joseph"] as const;
 
-export const MOCK_HOSPITALIZATION_ROWS: MockHospitalizationPatient[] = [
+export const MOCK_HOSPITALIZATION_ROWS: HospitalizationBoardRow[] = [
   {
     id: "mock-1",
     room: "312A",
@@ -39,6 +21,7 @@ export const MOCK_HOSPITALIZATION_ROWS: MockHospitalizationPatient[] = [
     ageSex: "42 ans • F",
     esi: 2,
     arrivalTime: "08:12",
+    status: "OPEN",
   },
   {
     id: "mock-2",
@@ -52,6 +35,7 @@ export const MOCK_HOSPITALIZATION_ROWS: MockHospitalizationPatient[] = [
     ageSex: "31 ans • M",
     esi: 3,
     arrivalTime: "09:45",
+    status: "OPEN",
   },
   {
     id: "mock-3",
@@ -65,6 +49,7 @@ export const MOCK_HOSPITALIZATION_ROWS: MockHospitalizationPatient[] = [
     ageSex: "58 ans • M",
     esi: 3,
     arrivalTime: "11:20",
+    status: "OPEN",
   },
   {
     id: "mock-4",
@@ -78,6 +63,7 @@ export const MOCK_HOSPITALIZATION_ROWS: MockHospitalizationPatient[] = [
     ageSex: "67 ans • F",
     esi: 4,
     arrivalTime: "07:55",
+    status: "OPEN",
   },
   {
     id: "mock-5",
@@ -91,5 +77,6 @@ export const MOCK_HOSPITALIZATION_ROWS: MockHospitalizationPatient[] = [
     ageSex: "29 ans • M",
     esi: 4,
     arrivalTime: "10:03",
+    status: "OPEN",
   },
 ];

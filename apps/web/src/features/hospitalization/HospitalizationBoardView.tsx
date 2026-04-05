@@ -3,28 +3,85 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MedoraCardActionsMediaStyle } from "@/components/medora-card";
+import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
+import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
+import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
+import { ui } from "@/lib/uiLabels";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PatientRowCard } from "./PatientRowCard";
-import {
-  MOCK_HOSPITALIZATION_ROWS,
-  MOCK_PHYSICIANS,
-  MOCK_UNITS,
-  type HospitalizationAcuity,
-  type MockHospitalizationPatient,
-} from "./mockData";
+import type { HospitalizationBoardAcuity, HospitalizationBoardRow } from "./hospitalizationBoardRow";
 
-const ACUITY_LABEL_FR: Record<HospitalizationAcuity, string> = {
+const ACUITY_LABEL_FR: Record<HospitalizationBoardAcuity, string> = {
   critical: "Critique",
   monitoring: "Surveillance",
   stable: "Stable",
 };
 
+function acuityFromEsi(esi: number | null | undefined): HospitalizationBoardAcuity {
+  if (esi == null || Number.isNaN(esi)) return "stable";
+  if (esi <= 1) return "critical";
+  if (esi <= 3) return "monitoring";
+  return "stable";
+}
+
+function fullPatientName(p: HospitalisationBoardEncounterRow["patient"]): string {
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
+}
+
+function physicianLabel(enc: HospitalisationBoardEncounterRow): string {
+  const p = enc.physicianAssigned;
+  if (!p) return "";
+  return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
+}
+
+/** Heuristic « unité » from room label when API has no separate unit field. */
+function unitFromRoomLabel(roomLabel: string | null | undefined): string {
+  const r = (roomLabel ?? "").trim();
+  if (!r) return "";
+  const part = r.split(/[-–/]/)[0]?.trim() ?? "";
+  return part || r;
+}
+
+function formatArrivalTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "—";
+  }
+}
+
+function mapHospitalisationEncounterToBoardRow(enc: HospitalisationBoardEncounterRow): HospitalizationBoardRow {
+  const p = enc.patient;
+  const esi = enc.triage?.esi ?? null;
+  const chief =
+    enc.triage?.chiefComplaint?.trim() ||
+    enc.chiefComplaint?.trim() ||
+    "";
+  const phys = physicianLabel(enc);
+  return {
+    id: enc.id,
+    room: enc.roomLabel?.trim() || ui.common.dash,
+    unit: unitFromRoomLabel(enc.roomLabel),
+    patientName: fullPatientName(p),
+    chiefComplaint: chief,
+    physician: phys || "—",
+    nurseDisplay: "—",
+    acuity: acuityFromEsi(esi),
+    ageSex: formatAgeYearsSexFr(p?.dob ?? null, p?.sexAtBirth ?? null, p?.sex ?? null),
+    esi,
+    arrivalTime: formatArrivalTime(enc.createdAt ?? null),
+    status: enc.status ?? "",
+  };
+}
+
 function filterRows(
-  rows: MockHospitalizationPatient[],
+  rows: HospitalizationBoardRow[],
   search: string,
   unit: string,
   acuity: string,
   physician: string
-): MockHospitalizationPatient[] {
+): HospitalizationBoardRow[] {
   const q = search.trim().toLowerCase();
   return rows.filter((r) => {
     if (unit && r.unit !== unit) return false;
@@ -61,31 +118,86 @@ function RowSkeleton() {
 export function HospitalizationBoardView() {
   const searchParams = useSearchParams();
   const mockMode = searchParams.get("mock");
+  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
+
+  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const [rows, setRows] = useState<HospitalizationBoardRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [unit, setUnit] = useState("");
   const [status, setStatus] = useState("");
   const [physician, setPhysician] = useState("");
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   useEffect(() => {
-    if (mockMode === "error" || mockMode === "empty") {
-      setInitialLoadDone(true);
+    const cookieValue = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("medora_facility_id="))
+      ?.split("=")[1];
+    setFacilityId(cookieValue || facilityIdFromHook || null);
+  }, [facilityIdFromHook]);
+
+  useEffect(() => {
+    if (mockMode === "error") {
+      setLoading(false);
+      setFetchError(null);
       return;
     }
-    const t = window.setTimeout(() => setInitialLoadDone(true), 420);
-    return () => window.clearTimeout(t);
+    if (mockMode === "empty") {
+      setLoading(false);
+      setFetchError(null);
+      setRows([]);
+    }
   }, [mockMode]);
 
-  const baseRows = mockMode === "empty" ? [] : MOCK_HOSPITALIZATION_ROWS;
+  useEffect(() => {
+    if (mockMode === "error" || mockMode === "empty") return;
+    if (!ready || !facilityId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setFetchError(null);
+      try {
+        const data = await fetchHospitalisationEncounters(facilityId);
+        if (!cancelled) setRows((data || []).map(mapHospitalisationEncounterToBoardRow));
+      } catch {
+        if (!cancelled) {
+          setFetchError("Impossible de charger la liste.");
+          setRows([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mockMode, ready, facilityId]);
+
+  const unitOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) {
+      if (r.unit) set.add(r.unit);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
+  }, [rows]);
+
+  const physicianOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) {
+      if (r.physician && r.physician !== "—") set.add(r.physician);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
+  }, [rows]);
 
   const filtered = useMemo(
-    () => filterRows(baseRows, search, unit, status, physician),
-    [baseRows, search, unit, status, physician]
+    () => filterRows(rows, search, unit, status, physician),
+    [rows, search, unit, status, physician]
   );
 
-  const isLoading = !initialLoadDone && mockMode !== "error" && mockMode !== "empty";
-  const showError = mockMode === "error";
+  const isLoading = loading && mockMode !== "error" && mockMode !== "empty";
+  const showError = mockMode === "error" || fetchError != null;
   const showEmpty = !isLoading && !showError && filtered.length === 0;
   const showList = !isLoading && !showError && filtered.length > 0;
 
@@ -137,7 +249,7 @@ export function HospitalizationBoardView() {
               label="Unité"
               value={unit}
               onChange={setUnit}
-              options={["", ...MOCK_UNITS]}
+              options={["", ...unitOptions]}
               placeholder="Toutes"
             />
             <FilterSelect
@@ -145,14 +257,14 @@ export function HospitalizationBoardView() {
               value={status}
               onChange={setStatus}
               options={["", "critical", "monitoring", "stable"]}
-              formatOption={(v) => (v ? ACUITY_LABEL_FR[v as HospitalizationAcuity] : "")}
+              formatOption={(v) => (v ? ACUITY_LABEL_FR[v as HospitalizationBoardAcuity] : "")}
               placeholder="Tous"
             />
             <FilterSelect
               label="Médecin"
               value={physician}
               onChange={setPhysician}
-              options={["", ...MOCK_PHYSICIANS]}
+              options={["", ...physicianOptions]}
               placeholder="Tous les médecins"
             />
           </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import type { HospitalizationAcuity, MockHospitalizationPatient } from "./mockData";
+import Link from "next/link";
+import type { HospitalizationBoardAcuity, HospitalizationBoardRow } from "./hospitalizationBoardRow";
 import { patientInitialsFromFullName } from "./patientInitials";
 import {
   MedoraCard,
@@ -12,34 +13,44 @@ import {
   MedoraCardInner,
   MedoraCardRoomBlock,
   MedoraCardTitle,
+  NEUTRAL_BADGE,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
-import { ui } from "@/lib/uiLabels";
+import { getEncounterStatusBoardLabelFr, ui } from "@/lib/uiLabels";
 
-const ACUITY_LABEL_FR: Record<HospitalizationAcuity, string> = {
+const ACUITY_LABEL_FR: Record<HospitalizationBoardAcuity, string> = {
   critical: "Critique",
   monitoring: "Surveillance",
   stable: "Stable",
 };
 
-const ACUITY_BORDER_HEX: Record<HospitalizationAcuity, string> = {
+const ACUITY_BORDER_HEX: Record<HospitalizationBoardAcuity, string> = {
   critical: "#ef4444",
   monitoring: "#fbbf24",
   stable: "#10b981",
 };
 
-const ACUITY_SOFT: Record<HospitalizationAcuity, PriorityBadgeSoft> = {
+const ACUITY_SOFT: Record<HospitalizationBoardAcuity, PriorityBadgeSoft> = {
   critical: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
   monitoring: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
   stable: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
 };
 
+/** Aligné sur le tableau de bord (`trackboard`) — pastilles statut consultation. */
+const ENCOUNTER_STATUS_BADGE_SOFT: Record<string, PriorityBadgeSoft> = {
+  OPEN: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
+  CLOSED: { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
+  CANCELLED: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+};
+
 type Props = {
-  row: MockHospitalizationPatient;
+  row: HospitalizationBoardRow;
 };
 
 export function PatientRowCard({ row }: Props) {
   const initials = patientInitialsFromFullName(row.patientName);
+  const statusKey = (row.status || "").trim();
+  const statusSoft = ENCOUNTER_STATUS_BADGE_SOFT[statusKey] ?? NEUTRAL_BADGE;
 
   return (
     <MedoraCard
@@ -88,13 +99,15 @@ export function PatientRowCard({ row }: Props) {
             </p>
             <MedoraCardBadgeRow marginTop={0}>
               <MedoraCardBadge soft={ACUITY_SOFT[row.acuity]}>{ACUITY_LABEL_FR[row.acuity]}</MedoraCardBadge>
-              <button
-                type="button"
+              <MedoraCardBadge soft={statusSoft}>
+                {statusKey ? getEncounterStatusBoardLabelFr(statusKey) : ui.common.dash}
+              </MedoraCardBadge>
+              <Link
+                href={`/app/encounters/${row.id}`}
                 className="rounded-lg border border-blue-200/80 bg-blue-50/80 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100/80"
-                onClick={() => {}}
               >
-                Voir
-              </button>
+                {ui.common.view}
+              </Link>
             </MedoraCardBadgeRow>
           </MedoraCardActions>
         </div>

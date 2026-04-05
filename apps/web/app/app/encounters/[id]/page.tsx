@@ -860,6 +860,8 @@ export default function EncounterDetailPage() {
   const dischargePreviewForPrint = parseDischargeSummaryForChart(encounter.dischargeSummaryJson);
   const showPrintDischarge =
     encounter.status === "OPEN" || dischargePreviewForPrint !== null;
+  const admissionBannerPreview = parseAdmissionSummaryForChart(encounter.admissionSummaryJson);
+  const showEncounterHospitalizationBanner = encounter.type === "INPATIENT";
 
   const quickBtn: React.CSSProperties = {
     padding: "8px 14px",
@@ -961,6 +963,83 @@ export default function EncounterDetailPage() {
           >
             Le dossier de sortie a été enregistré sur cet appareil et est en attente de synchronisation avec le serveur. Il
             n&apos;est pas encore confirmé côté serveur.
+          </div>
+        ) : null}
+        {showEncounterHospitalizationBanner ? (
+          <div
+            style={{
+              marginBottom: 16,
+              backgroundColor: MEDORA_CARD_SHELL.background,
+              border: MEDORA_CARD_SHELL.border,
+              borderRadius: MEDORA_CARD_SHELL.radius,
+              boxShadow: MEDORA_CARD_SHELL.boxShadow,
+              padding: "16px 18px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "#6d28d9",
+                marginBottom: 8,
+              }}
+            >
+              Hospitalisation
+            </div>
+            <p style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 600, color: "#0f172a", lineHeight: 1.4 }}>
+              {getEncounterTypeLabelFr(encounter.type)} — vous consultez un dossier de soins hospitaliers.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                fontSize: 13,
+                color: "#334155",
+                lineHeight: 1.5,
+              }}
+            >
+              <div>
+                <span style={{ color: "#64748b" }}>Salle :</span> {encounter.roomLabel?.trim() || "—"}
+              </div>
+              {encounter.admittedAt ? (
+                <div>
+                  <span style={{ color: "#64748b" }}>Admission :</span>{" "}
+                  {`Décision enregistrée le ${new Date(encounter.admittedAt).toLocaleString("fr-FR")}`}
+                </div>
+              ) : admissionBannerPreview ? (
+                <div>
+                  <span style={{ color: "#64748b" }}>Dossier d&apos;admission :</span> renseigné
+                </div>
+              ) : (
+                <div>
+                  <span style={{ color: "#64748b" }}>Dossier d&apos;admission :</span> non renseigné
+                </div>
+              )}
+              {admissionBannerPreview?.admissionReason ? (
+                <div style={{ wordBreak: "break-word" }}>
+                  <span style={{ color: "#64748b" }}>Motif d&apos;admission :</span> {admissionBannerPreview.admissionReason}
+                </div>
+              ) : null}
+              {dischargePreviewForPrint ? (
+                <div
+                  style={{
+                    marginTop: 4,
+                    padding: "10px 12px",
+                    backgroundColor: "#f8fafc",
+                    borderRadius: 12,
+                    border: "1px solid #e2e8f0",
+                    fontSize: 13,
+                    color: "#334155",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: "#0f172a" }}>Sortie :</span> dossier de sortie avec contenu
+                  enregistré.
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
         <div style={{ marginBottom: 16 }}>
