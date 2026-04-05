@@ -62,7 +62,14 @@ export function PatientRowCard({ row }: Props) {
         <MedoraCardIdentity initials={initials}>
           <MedoraCardTitle
             title={row.patientName}
-            subline={<p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>{row.ageSex}</p>}
+            subline={
+              <>
+                <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>{row.ageSex}</p>
+                <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+                  Consultation hospitalière
+                </p>
+              </>
+            }
           />
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
             {row.chiefComplaint}
@@ -107,6 +114,12 @@ export function PatientRowCard({ row }: Props) {
                 className="rounded-lg border border-blue-200/80 bg-blue-50/80 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100/80"
               >
                 {ui.common.view}
+              </Link>
+              <Link
+                href={`/app/encounters/${row.id}?tab=summary`}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Résumé
               </Link>
             </MedoraCardBadgeRow>
           </MedoraCardActions>
