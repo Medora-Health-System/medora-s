@@ -85,8 +85,6 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/nursing", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/hospitalisation", roles: ["ADMIN", "PROVIDER", "RN"] },
-  /** UI maquette hospitalisation (données fictives — pas d’API). */
-  { prefix: "/app/hospitalization", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
   { prefix: "/app/fracture", roles: ["ADMIN"] },
   { prefix: "/app/admin", roles: ["ADMIN"] },
@@ -120,6 +118,12 @@ function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
   if (exact) return pathname === prefix;
   if (prefix.endsWith("/")) return pathname.startsWith(prefix);
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/** Legacy EN spelling; redirects to `/app/hospitalisation`. Same RBAC as canonical (no duplicate rule). */
+function normalizeAppPathnameForRouteRules(pathname: string): string {
+  if (pathname === "/app/hospitalization") return "/app/hospitalisation";
+  return pathname;
 }
 
 /** Sorted longest prefix first for first-match semantics */
@@ -159,8 +163,9 @@ export function isAppPathAllowedForRoles(pathname: string, roles: string[]): boo
     return true;
   }
 
+  const pathForRules = normalizeAppPathnameForRouteRules(pathname);
   for (const rule of sortedRouteRules()) {
-    if (!pathMatchesRule(pathname, rule)) continue;
+    if (!pathMatchesRule(pathForRules, rule)) continue;
     return rule.roles.some((r) => set.has(r));
   }
   return false;

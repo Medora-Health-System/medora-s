@@ -1,23 +1,24 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Suspense } from "react";
-import { HospitalizationBoardView } from "@/features/hospitalization/HospitalizationBoardView";
+/** Legacy path; canonical hospitalization UI is `/app/hospitalisation`. */
+function serializeSearchParams(
+  sp: Record<string, string | string[] | undefined>,
+): string {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v === undefined) continue;
+    if (Array.isArray(v)) v.forEach((x) => u.append(k, x));
+    else u.set(k, v);
+  }
+  const s = u.toString();
+  return s ? `?${s}` : "";
+}
 
-/**
- * Maquette UI hospitalisation (données fictives, Tailwind).
- * Route : /app/hospitalization — distincte de /app/hospitalisation (données réelles).
- * États démo : ?mock=error | ?mock=empty
- */
-export default function HospitalizationBoardMockPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-[calc(100vh-48px)] bg-[#F8FAFC] px-4 py-10 text-center text-sm text-slate-500">
-          Chargement…
-        </div>
-      }
-    >
-      <HospitalizationBoardView />
-    </Suspense>
-  );
+export default async function HospitalizationLegacyRedirectPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  redirect(`/app/hospitalisation${serializeSearchParams(sp)}`);
 }

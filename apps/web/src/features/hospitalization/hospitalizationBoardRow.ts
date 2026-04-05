@@ -1,6 +1,6 @@
 /**
- * Presentation row for the V0 hospitalization board (`/app/hospitalization`).
- * Populated from `HospitalisationBoardEncounterRow` (API); not a mock-only shape.
+ * Row shape for demos/tests (`mockData.ts`). The live board uses `HospitalisationBoardEncounterRow` in
+ * `HospitalizationBoardView` (canonical route `/app/hospitalisation`).
  */
 
 export type HospitalizationBoardAcuity = "critical" | "monitoring" | "stable";

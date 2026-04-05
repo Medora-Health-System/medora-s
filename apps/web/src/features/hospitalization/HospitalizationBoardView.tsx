@@ -1,27 +1,61 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { MedoraCardActionsMediaStyle } from "@/components/medora-card";
-import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
-import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { ui } from "@/lib/uiLabels";
-import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { PatientRowCard } from "./PatientRowCard";
-import type { HospitalizationBoardAcuity, HospitalizationBoardRow } from "./hospitalizationBoardRow";
+import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
+import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
+import {
+  MedoraCard,
+  MedoraCardActions,
+  MedoraCardActionsMediaStyle,
+  MedoraCardBadge,
+  MedoraCardBadgeRow,
+  MedoraCardIdentity,
+  MedoraCardInner,
+  MedoraCardRoomBlock,
+  MedoraCardTitle,
+  type PriorityBadgeSoft,
+} from "@/components/medora-card";
 
-const ACUITY_LABEL_FR: Record<HospitalizationBoardAcuity, string> = {
+type AcuityTier = "critical" | "monitoring" | "stable";
+
+const ACUITY_LABEL_FR: Record<AcuityTier, string> = {
   critical: "Critique",
   monitoring: "Surveillance",
   stable: "Stable",
 };
 
-function acuityFromEsi(esi: number | null | undefined): HospitalizationBoardAcuity {
+const ACUITY_BORDER: Record<AcuityTier, string> = {
+  critical: "#ef4444",
+  monitoring: "#fbbf24",
+  stable: "#10b981",
+};
+
+const ACUITY_SOFT: Record<AcuityTier, PriorityBadgeSoft> = {
+  critical: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+  monitoring: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
+  stable: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
+};
+
+function acuityFromEsi(esi: number | null | undefined): AcuityTier {
   if (esi == null || Number.isNaN(esi)) return "stable";
   if (esi <= 1) return "critical";
   if (esi <= 3) return "monitoring";
   return "stable";
+}
+
+function patientInitials(p: HospitalisationBoardEncounterRow["patient"]): string {
+  const f = (p?.firstName ?? "").trim();
+  const l = (p?.lastName ?? "").trim();
+  const a = f.charAt(0) || "";
+  const b = l.charAt(0) || f.charAt(1) || "";
+  const s = (a + b).toUpperCase();
+  return s || "?";
 }
 
 function fullPatientName(p: HospitalisationBoardEncounterRow["patient"]): string {
@@ -42,93 +76,23 @@ function unitFromRoomLabel(roomLabel: string | null | undefined): string {
   return part || r;
 }
 
-function formatArrivalTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "—";
-  }
-}
-
-function mapHospitalisationEncounterToBoardRow(enc: HospitalisationBoardEncounterRow): HospitalizationBoardRow {
-  const p = enc.patient;
-  const esi = enc.triage?.esi ?? null;
-  const chief =
-    enc.triage?.chiefComplaint?.trim() ||
-    enc.chiefComplaint?.trim() ||
-    "";
-  const phys = physicianLabel(enc);
-  return {
-    id: enc.id,
-    room: enc.roomLabel?.trim() || ui.common.dash,
-    unit: unitFromRoomLabel(enc.roomLabel),
-    patientName: fullPatientName(p),
-    chiefComplaint: chief,
-    physician: phys || "—",
-    nurseDisplay: "—",
-    acuity: acuityFromEsi(esi),
-    ageSex: formatAgeYearsSexFr(p?.dob ?? null, p?.sexAtBirth ?? null, p?.sex ?? null),
-    esi,
-    arrivalTime: formatArrivalTime(enc.createdAt ?? null),
-    status: enc.status ?? "",
-  };
-}
-
-function filterRows(
-  rows: HospitalizationBoardRow[],
-  search: string,
-  unit: string,
-  acuity: string,
-  physician: string
-): HospitalizationBoardRow[] {
-  const q = search.trim().toLowerCase();
-  return rows.filter((r) => {
-    if (unit && r.unit !== unit) return false;
-    if (acuity && r.acuity !== acuity) return false;
-    if (physician && r.physician !== physician) return false;
-    if (q) {
-      const blob = `${r.patientName} ${r.chiefComplaint} ${r.room}`.toLowerCase();
-      if (!blob.includes(q)) return false;
-    }
-    return true;
-  });
-}
-
-function RowSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
-      <div className="flex gap-4">
-        <div className="h-11 w-11 shrink-0 rounded-full bg-slate-100" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-40 rounded bg-slate-100" />
-          <div className="h-3 w-24 rounded bg-slate-100" />
-          <div className="h-3 max-w-md rounded bg-slate-100" />
-          <div className="h-3 w-56 rounded bg-slate-100" />
-        </div>
-        <div className="hidden w-40 shrink-0 space-y-2 sm:block">
-          <div className="ml-auto h-3 w-28 rounded bg-slate-100" />
-          <div className="ml-auto h-3 w-20 rounded bg-slate-100" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
+/**
+ * Single implementation for `/app/hospitalisation` (and optional `?mock=error` | `?mock=empty` for demos/tests).
+ */
 export function HospitalizationBoardView() {
   const searchParams = useSearchParams();
   const mockMode = searchParams.get("mock");
-  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
 
+  const { facilityId: facilityIdFromHook, ready, canManagePharmacy } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [rows, setRows] = useState<HospitalizationBoardRow[]>([]);
+  const [encounters, setEncounters] = useState<HospitalisationBoardEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
-  const [unit, setUnit] = useState("");
-  const [status, setStatus] = useState("");
-  const [physician, setPhysician] = useState("");
+  const [filterUnit, setFilterUnit] = useState("");
+  const [filterAcuity, setFilterAcuity] = useState<"" | AcuityTier>("");
+  const [filterPhysician, setFilterPhysician] = useState("");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -141,69 +105,126 @@ export function HospitalizationBoardView() {
   useEffect(() => {
     if (mockMode === "error") {
       setLoading(false);
-      setFetchError(null);
+      setFetchError("Impossible de charger la liste.");
+      setEncounters([]);
       return;
     }
     if (mockMode === "empty") {
       setLoading(false);
       setFetchError(null);
-      setRows([]);
+      setEncounters([]);
     }
   }, [mockMode]);
+
+  const loadEncounters = async () => {
+    if (mockMode === "error" || mockMode === "empty") return;
+    if (!facilityId) return;
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const data = await fetchHospitalisationEncounters(facilityId);
+      setEncounters(data || []);
+    } catch (error) {
+      console.error("Failed to load hospitalisation board:", error);
+      setFetchError("Impossible de charger la liste.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (mockMode === "error" || mockMode === "empty") return;
     if (!ready || !facilityId) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setFetchError(null);
-      try {
-        const data = await fetchHospitalisationEncounters(facilityId);
-        if (!cancelled) setRows((data || []).map(mapHospitalisationEncounterToBoardRow));
-      } catch {
-        if (!cancelled) {
-          setFetchError("Impossible de charger la liste.");
-          setRows([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mockMode, ready, facilityId]);
+    void loadEncounters();
+    const interval = setInterval(() => {
+      void loadEncounters();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [ready, facilityId, mockMode]);
+
+  const effectiveFacilityId = facilityId || facilityIdFromHook || null;
 
   const unitOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const r of rows) {
-      if (r.unit) set.add(r.unit);
+    for (const e of encounters) {
+      const u = unitFromRoomLabel(e.roomLabel);
+      if (u) set.add(u);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [rows]);
+  }, [encounters]);
 
   const physicianOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const r of rows) {
-      if (r.physician && r.physician !== "—") set.add(r.physician);
+    for (const e of encounters) {
+      const pl = physicianLabel(e);
+      if (pl) set.add(pl);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [rows]);
+  }, [encounters]);
 
-  const filtered = useMemo(
-    () => filterRows(rows, search, unit, status, physician),
-    [rows, search, unit, status, physician]
-  );
+  const filteredEncounters = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return encounters.filter((encounter) => {
+      const acuity = acuityFromEsi(encounter.triage?.esi);
+      if (filterAcuity && acuity !== filterAcuity) return false;
 
-  const isLoading = loading && mockMode !== "error" && mockMode !== "empty";
-  const showError = mockMode === "error" || fetchError != null;
-  const showEmpty = !isLoading && !showError && filtered.length === 0;
-  const showList = !isLoading && !showError && filtered.length > 0;
+      const unit = unitFromRoomLabel(encounter.roomLabel);
+      if (filterUnit && unit !== filterUnit) return false;
+
+      const phys = physicianLabel(encounter);
+      if (filterPhysician && phys !== filterPhysician) return false;
+
+      if (q) {
+        const name = fullPatientName(encounter.patient).toLowerCase();
+        const cc = (
+          encounter.triage?.chiefComplaint ||
+          encounter.chiefComplaint ||
+          ""
+        ).toLowerCase();
+        const room = (encounter.roomLabel ?? "").toLowerCase();
+        const blob = `${name} ${cc} ${room} ${phys.toLowerCase()}`;
+        if (!blob.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [encounters, search, filterAcuity, filterUnit, filterPhysician]);
+
+  const formatTime = (date: string | null) => {
+    if (!date) return ui.common.dash;
+    return new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const inputBase: React.CSSProperties = {
+    height: 40,
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
+    backgroundColor: "#fff",
+    padding: "0 12px",
+    fontSize: 13,
+    color: "#0f172a",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+    width: "100%",
+    boxSizing: "border-box" as const,
+  };
+
+  const filterLabel: React.CSSProperties = {
+    display: "block",
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#64748b",
+    marginBottom: 3,
+    letterSpacing: "0.01em",
+  };
 
   return (
-    <div className="min-h-[calc(100vh-48px)] bg-[#F8FAFC] px-4 py-6 sm:px-6">
-      <div className="mx-auto max-w-6xl">
+    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
+      {ready && canManagePharmacy && effectiveFacilityId && (
+        <div style={{ marginBottom: 16 }}>
+          <PharmacyAlertsCard facilityId={effectiveFacilityId} />
+        </div>
+      )}
+
+      <div style={{ maxWidth: 1152, margin: "0 auto" }}>
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -214,139 +235,329 @@ export function HospitalizationBoardView() {
           }}
         />
         <MedoraCardActionsMediaStyle />
-        <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <header
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 16,
+            marginBottom: 24,
+          }}
+        >
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.65rem]">
+            <h1 style={{ margin: 0, fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)", fontWeight: 600, color: "#0f172a" }}>
               Hospitalisation
             </h1>
-            <p className="mt-1.5 text-sm text-slate-500">Vue des patients hospitalisés</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vue des patients hospitalisés</p>
           </div>
-          <button
-            type="button"
-            className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
-            onClick={() => {}}
-          >
-            Admettre un patient
-          </button>
         </header>
 
-        <div className="mb-8 flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="min-h-[2.75rem] flex-1">
-            <label className="sr-only" htmlFor="hosp-board-search">
-              Recherche
-            </label>
+        {/* Barre unique : recherche à gauche, filtres compacts, actions à droite (V0) */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+            gap: 10,
+            marginBottom: 28,
+          }}
+        >
+          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+            <span style={{ ...filterLabel, marginBottom: 3 }}>Recherche</span>
             <input
               id="hosp-board-search"
               type="search"
+              aria-label="Recherche"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un patient, un motif, une salle…"
-              className="h-11 w-full rounded-xl border border-slate-200/90 bg-white px-4 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              placeholder="Patient, motif, salle…"
+              style={{
+                ...inputBase,
+                height: 40,
+                fontSize: 14,
+              }}
             />
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end xl:shrink-0">
-            <FilterSelect
-              label="Unité"
-              value={unit}
-              onChange={setUnit}
-              options={["", ...unitOptions]}
-              placeholder="Toutes"
-            />
-            <FilterSelect
-              label="Statut"
-              value={status}
-              onChange={setStatus}
-              options={["", "critical", "monitoring", "stable"]}
-              formatOption={(v) => (v ? ACUITY_LABEL_FR[v as HospitalizationBoardAcuity] : "")}
-              placeholder="Tous"
-            />
-            <FilterSelect
-              label="Médecin"
-              value={physician}
-              onChange={setPhysician}
-              options={["", ...physicianOptions]}
-              placeholder="Tous les médecins"
-            />
+
+          <div style={{ flex: "0 0 auto", width: 124 }}>
+            <span style={filterLabel}>Unité</span>
+            <select
+              value={filterUnit}
+              onChange={(e) => setFilterUnit(e.target.value)}
+              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
+            >
+              <option value="">Toutes</option>
+              {unitOptions.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ flex: "0 0 auto", width: 128 }}>
+            <span style={filterLabel}>Statut</span>
+            <select
+              value={filterAcuity}
+              onChange={(e) => setFilterAcuity(e.target.value as "" | AcuityTier)}
+              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
+            >
+              <option value="">Tous</option>
+              <option value="critical">{ACUITY_LABEL_FR.critical}</option>
+              <option value="monitoring">{ACUITY_LABEL_FR.monitoring}</option>
+              <option value="stable">{ACUITY_LABEL_FR.stable}</option>
+            </select>
+          </div>
+
+          <div style={{ flex: "0 1 160px", minWidth: 140 }}>
+            <span style={filterLabel}>Médecin</span>
+            <select
+              value={filterPhysician}
+              onChange={(e) => setFilterPhysician(e.target.value)}
+              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
+            >
+              <option value="">Tous</option>
+              {physicianOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8, marginLeft: "auto" }}>
+            <button
+              type="button"
+              onClick={() => void loadEncounters()}
+              disabled={loading}
+              style={{
+                height: 40,
+                padding: "0 14px",
+                backgroundColor: "#fff",
+                color: "#334155",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: 13,
+                fontWeight: 500,
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {loading ? ui.common.loading : ui.common.refresh}
+            </button>
+            <button
+              type="button"
+              disabled
+              title="À utiliser depuis la fiche consultation du patient (pas depuis le tableau)."
+              aria-disabled="true"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: 40,
+                padding: "0 16px",
+                backgroundColor: "#f1f5f9",
+                color: "#64748b",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "not-allowed",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Sortie patient
+            </button>
           </div>
         </div>
 
-        {showError ? (
-          <div className="rounded-2xl border border-red-100 bg-white p-10 text-center shadow-sm">
-            <p className="text-base font-medium text-slate-800">Impossible de charger la liste.</p>
-            <p className="mt-2 text-sm text-slate-500">Vérifiez la connexion et réessayez.</p>
+        {fetchError ? (
+          <div
+            style={{
+              borderRadius: 16,
+              border: "1px solid #fecaca",
+              backgroundColor: "#fff",
+              padding: 40,
+              textAlign: "center",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{fetchError}</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vérifiez la connexion et réessayez.</p>
             <button
               type="button"
-              className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50"
-              onClick={() => window.location.reload()}
+              onClick={() => void loadEncounters()}
+              style={{
+                marginTop: 24,
+                padding: "10px 18px",
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
+                backgroundColor: "#fff",
+                fontSize: 14,
+                fontWeight: 500,
+                color: "#0f172a",
+                cursor: "pointer",
+              }}
             >
               Réessayer
             </button>
           </div>
-        ) : null}
-
-        {isLoading ? (
-          <div className="space-y-3">
-            <RowSkeleton />
-            <RowSkeleton />
-            <RowSkeleton />
+        ) : loading && encounters.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  borderRadius: 16,
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#fff",
+                  padding: 16,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+                }}
+              >
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", backgroundColor: "#f1f5f9" }} />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ height: 16, width: "40%", borderRadius: 4, backgroundColor: "#f1f5f9" }} />
+                    <div style={{ height: 12, width: "25%", borderRadius: 4, backgroundColor: "#f1f5f9" }} />
+                    <div style={{ height: 12, width: "70%", borderRadius: 4, backgroundColor: "#f1f5f9" }} />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        ) : null}
-
-        {showEmpty ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-6 py-16 text-center shadow-sm">
-            <p className="text-base font-medium text-slate-700">Aucun patient à afficher.</p>
-            <p className="mt-2 text-sm text-slate-500">
-              Ajustez la recherche ou les filtres, ou vérifiez qu’il existe des hospitalisations ouvertes.
+        ) : filteredEncounters.length === 0 ? (
+          <div
+            style={{
+              borderRadius: 16,
+              border: "1px dashed #cbd5e1",
+              backgroundColor: "rgba(255,255,255,0.9)",
+              padding: "48px 24px",
+              textAlign: "center",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
+              {encounters.length === 0
+                ? "Aucun patient hospitalisé avec une consultation ouverte."
+                : "Aucun patient ne correspond aux filtres."}
+            </p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
+              {encounters.length === 0
+                ? "Les admissions ouvertes apparaîtront ici."
+                : "Ajustez la recherche ou les filtres."}
             </p>
           </div>
-        ) : null}
+        ) : (
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+            {filteredEncounters.map((encounter) => {
+              const acuity = acuityFromEsi(encounter.triage?.esi);
+              const borderLeft = ACUITY_BORDER[acuity];
+              const patient = encounter.patient;
+              const cc =
+                encounter.triage?.chiefComplaint || encounter.chiefComplaint || ui.common.dash;
+              const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : ui.common.dash;
+              const room = encounter.roomLabel?.trim() || ui.common.dash;
+              const phys = physicianLabel(encounter) || ui.common.dash;
 
-        {showList ? (
-          <ul className="space-y-3">
-            {filtered.map((row) => (
-              <li key={row.id}>
-                <PatientRowCard row={row} />
-              </li>
-            ))}
+              return (
+                <li key={encounter.id}>
+                  <MedoraCard leftAccentColor={borderLeft} variant="default">
+                    <MedoraCardInner>
+                      <MedoraCardIdentity initials={patientInitials(patient)}>
+                        <MedoraCardTitle
+                          title={fullPatientName(patient)}
+                          subline={
+                            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
+                              {formatAgeYearsSexFr(
+                                patient?.dob ?? null,
+                                patient?.sexAtBirth ?? null,
+                                patient?.sex ?? null
+                              )}
+                            </p>
+                          }
+                        />
+                        <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>{cc}</p>
+                        <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
+                          {" · "}
+                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                          {formatTime(encounter.createdAt ?? null)}
+                        </p>
+                      </MedoraCardIdentity>
+
+                      <MedoraCardRoomBlock label={ui.common.room} value={room} />
+
+                      <div
+                        className="hosp-meta-block"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "stretch",
+                          width: "100%",
+                          minWidth: 200,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <MedoraCardActions railBorderTopColor="#f1f5f9" gap={8} minWidth={200} alignItems="flex-start">
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{phys}</p>
+                          <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
+                            <span style={{ color: "#cbd5e1" }}>Inf.</span> {ui.common.dash}
+                          </p>
+                          <MedoraCardBadgeRow marginTop={0}>
+                            <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
+                            <Link
+                              href={`/app/encounters/${encounter.id}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "6px 14px",
+                                borderRadius: 10,
+                                border: "1px solid #bfdbfe",
+                                backgroundColor: "#eff6ff",
+                                color: "#1d4ed8",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                textDecoration: "none",
+                              }}
+                            >
+                              {ui.common.view}
+                            </Link>
+                            <Link
+                              href={`/app/encounters/${encounter.id}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "6px 14px",
+                                borderRadius: 10,
+                                border: "1px solid #cbd5e1",
+                                backgroundColor: "#fff",
+                                color: "#475569",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                textDecoration: "none",
+                              }}
+                              aria-label="Ouvrir la consultation pour accéder au dossier de sortie"
+                            >
+                              Sortie
+                            </Link>
+                          </MedoraCardBadgeRow>
+                        </MedoraCardActions>
+                      </div>
+                    </MedoraCardInner>
+                  </MedoraCard>
+                </li>
+              );
+            })}
           </ul>
-        ) : null}
+        )}
       </div>
-    </div>
-  );
-}
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-  placeholder,
-  formatOption,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  placeholder: string;
-  formatOption?: (v: string) => string;
-}) {
-  return (
-    <div className="w-full min-w-[9.5rem] sm:w-40">
-      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full rounded-xl border border-slate-200/90 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-      >
-        <option value="">{placeholder}</option>
-        {options
-          .filter((o) => o !== "")
-          .map((o) => (
-            <option key={o} value={o}>
-              {formatOption ? formatOption(o) : o}
-            </option>
-          ))}
-      </select>
     </div>
   );
 }
