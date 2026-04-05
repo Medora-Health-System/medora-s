@@ -5,6 +5,17 @@ import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import { getEncounterStatusLabelFr, getEncounterTypeLabelFr, ui } from "@/lib/uiLabels";
+import {
+  MedoraCard,
+  MedoraCardActions,
+  MedoraCardActionsMediaStyle,
+  MedoraCardBadge,
+  MedoraCardBadgeRow,
+  MedoraCardIdentity,
+  MedoraCardInner,
+  MedoraCardRoomBlock,
+  MedoraCardTitle,
+} from "@/components/medora-card";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -127,15 +138,7 @@ export default function EncountersPage() {
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-          @media (min-width: 640px) {
-            .encounters-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
-          }
-        `,
-          }}
-        />
+        <MedoraCardActionsMediaStyle />
 
         <header style={{ marginBottom: 20 }}>
           <h1
@@ -304,233 +307,89 @@ export default function EncountersPage() {
 
               return (
                 <li key={encounter.id}>
-                  <article
-                    style={{
-                      overflow: "hidden",
-                      borderRadius: 16,
-                      border: "1px solid #e2e8f0",
-                      backgroundColor: "#fff",
-                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
-                      borderLeftWidth: 4,
-                      borderLeftStyle: "solid",
-                      borderLeftColor: borderLeft,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: 16,
-                        padding: 16,
-                        alignItems: "stretch",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div style={{ display: "flex", minWidth: 0, flex: "1 1 220px", gap: 16 }}>
-                        <div
-                          aria-hidden
-                          style={{
-                            flexShrink: 0,
-                            width: 44,
-                            height: 44,
-                            borderRadius: "50%",
-                            backgroundColor: "#f1f5f9",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: "#334155",
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          {patientInitials(patient)}
-                        </div>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <h2
-                            style={{
-                              margin: 0,
-                              fontSize: 16,
-                              fontWeight: 600,
-                              color: "#0f172a",
-                              lineHeight: 1.25,
-                            }}
-                          >
-                            {fullPatientName(patient)}
-                          </h2>
-                          <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nir}
-                          </p>
-                          <div
-                            style={{
-                              marginTop: 10,
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 8,
-                              alignItems: "center",
-                            }}
-                          >
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "4px 10px",
-                                borderRadius: 9999,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                backgroundColor: "#f8fafc",
-                                color: "#334155",
-                                border: "1px solid #e2e8f0",
-                              }}
-                            >
-                              {ui.common.type} · {typeLabel}
-                            </span>
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "4px 10px",
-                                borderRadius: 9999,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                backgroundColor: soft.bg,
-                                color: soft.text,
-                                border: `1px solid ${soft.border}`,
-                              }}
-                            >
-                              {statusLabel}
-                            </span>
-                          </div>
-                          <p style={{ margin: "10px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.55 }}>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>Médecin attribué</span> {phys}
-                            {" · "}
-                            <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                            {formatArrivalDateTime(encounter.createdAt)}
-                          </p>
-                          <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#334155" }}>
-                            <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>Médicaments (à faire)</span>{" "}
-                            {medDisplay}
-                          </p>
-                        </div>
-                      </div>
+                  <MedoraCard leftAccentColor={borderLeft} variant="default">
+                    <MedoraCardInner>
+                      <MedoraCardIdentity initials={patientInitials(patient)}>
+                        <MedoraCardTitle
+                          title={fullPatientName(patient)}
+                          subline={
+                            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nir}
+                            </p>
+                          }
+                        />
+                        <MedoraCardBadgeRow>
+                          <MedoraCardBadge preset="neutral">
+                            {ui.common.type} · {typeLabel}
+                          </MedoraCardBadge>
+                          <MedoraCardBadge soft={soft}>{statusLabel}</MedoraCardBadge>
+                        </MedoraCardBadgeRow>
+                        <p style={{ margin: "10px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.55 }}>
+                          <span style={{ fontWeight: 600, color: "#475569" }}>Médecin attribué</span> {phys}
+                          {" · "}
+                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                          {formatArrivalDateTime(encounter.createdAt)}
+                        </p>
+                        <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#334155" }}>
+                          <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>Médicaments (à faire)</span>{" "}
+                          {medDisplay}
+                        </p>
+                      </MedoraCardIdentity>
 
-                      <div
-                        className="encounters-meta-block"
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 12,
-                          alignItems: "stretch",
-                          flexShrink: 0,
-                          minWidth: 220,
-                          flex: "1 1 260px",
-                          maxWidth: 420,
-                          borderTop: "1px solid #f1f5f9",
-                          paddingTop: 12,
-                          width: "100%",
-                        }}
-                      >
+                      <MedoraCardRoomBlock label={ui.common.room} value={room} />
+
+                      <MedoraCardActions railBorderTopColor="#f1f5f9" gap={8} minWidth={220} alignItems="flex-start">
                         <div
                           style={{
                             display: "flex",
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            gap: 12,
-                            alignItems: "flex-start",
-                            justifyContent: "flex-end",
+                            flexDirection: "column",
+                            gap: 8,
+                            alignItems: "stretch",
                             width: "100%",
                           }}
                         >
-                          <div
-                            style={{
-                              flex: "0 0 auto",
-                              minWidth: 96,
-                              maxWidth: 140,
-                              padding: "12px 14px",
-                              borderRadius: 14,
-                              border: "1px solid #bae6fd",
-                              backgroundColor: "#f0f9ff",
-                              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)",
-                              textAlign: "center",
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                letterSpacing: "0.06em",
-                                textTransform: "uppercase",
-                                color: "#0369a1",
-                                marginBottom: 4,
-                              }}
-                            >
-                              {ui.common.room}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 22,
-                                fontWeight: 700,
-                                lineHeight: 1.15,
-                                color: "#0c4a6e",
-                                fontVariantNumeric: "tabular-nums",
-                                wordBreak: "break-word",
-                              }}
-                            >
-                              {room}
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 8,
-                              alignItems: "stretch",
-                              minWidth: 200,
-                              flex: "1 1 180px",
-                            }}
-                          >
-                            {pid ? (
-                              <Link
-                                href={`/app/patients/${pid}`}
-                                style={{
-                                  display: "inline-flex",
-                                  justifyContent: "center",
-                                  padding: "8px 14px",
-                                  borderRadius: 10,
-                                  border: "1px solid #cbd5e1",
-                                  backgroundColor: "#fff",
-                                  color: "#334155",
-                                  fontSize: 13,
-                                  fontWeight: 600,
-                                  textDecoration: "none",
-                                  textAlign: "center",
-                                }}
-                              >
-                                Ouvrir le dossier
-                              </Link>
-                            ) : null}
+                          {pid ? (
                             <Link
-                              href={`/app/encounters/${encounter.id}`}
+                              href={`/app/patients/${pid}`}
                               style={{
                                 display: "inline-flex",
                                 justifyContent: "center",
                                 padding: "8px 14px",
                                 borderRadius: 10,
-                                border: "1px solid #bfdbfe",
-                                backgroundColor: "#eff6ff",
-                                color: "#1d4ed8",
+                                border: "1px solid #cbd5e1",
+                                backgroundColor: "#fff",
+                                color: "#334155",
                                 fontSize: 13,
                                 fontWeight: 600,
                                 textDecoration: "none",
                                 textAlign: "center",
                               }}
                             >
-                              Ouvrir la consultation
+                              Ouvrir le dossier
                             </Link>
-                          </div>
+                          ) : null}
+                          <Link
+                            href={`/app/encounters/${encounter.id}`}
+                            style={{
+                              display: "inline-flex",
+                              justifyContent: "center",
+                              padding: "8px 14px",
+                              borderRadius: 10,
+                              border: "1px solid #bfdbfe",
+                              backgroundColor: "#eff6ff",
+                              color: "#1d4ed8",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              textDecoration: "none",
+                              textAlign: "center",
+                            }}
+                          >
+                            Ouvrir la consultation
+                          </Link>
                         </div>
-                      </div>
-                    </div>
-                  </article>
+                      </MedoraCardActions>
+                    </MedoraCardInner>
+                  </MedoraCard>
                 </li>
               );
             })}

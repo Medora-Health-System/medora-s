@@ -32,7 +32,7 @@ import {
   getPathwayTypeLabelFr,
   getPatientSexLabelFr,
 } from "@/lib/uiLabels";
-import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { normalizeUserFacingError, USER_FACING_ENCOUNTER_NOT_FOUND_FR } from "@/lib/userFacingError";
 import { ORDER_CANCELLATION_REASON_VALUES } from "@medora/shared";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
@@ -708,9 +708,22 @@ export default function EncounterDetailPage() {
   }
 
   if (!encounter) {
+    const isEncounterNotFound =
+      encounterFetchError != null && encounterFetchError.trim() === USER_FACING_ENCOUNTER_NOT_FOUND_FR;
     return (
       <div style={{ padding: 24, maxWidth: 520 }}>
-        {encounterFetchError ? (
+        {isEncounterNotFound ? (
+          <>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Consultation introuvable</p>
+            <p style={{ margin: "12px 0 0 0", color: "#555" }}>
+              Cette consultation n&apos;existe pas dans l&apos;établissement actif, a été supprimée, ou le lien est
+              obsolète (autre établissement).
+            </p>
+            <p style={{ margin: "16px 0 0 0" }}>
+              <Link href="/app/encounters">Retour à la liste des consultations</Link>
+            </p>
+          </>
+        ) : encounterFetchError ? (
           <>
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Impossible de charger la consultation.</p>
             {encounterFetchError.trim() !== "Impossible de charger la consultation." ? (

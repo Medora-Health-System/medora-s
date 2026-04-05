@@ -8,22 +8,34 @@ export type MedoraCardActionsProps = {
   children: React.ReactNode;
   /** Border under rail on narrow viewports (default worklist: #f1f5f9; pending sync: #fde68a) */
   railBorderTopColor?: string;
+  /** Default 10 (worklist); use 8 for nursing / consultation action stacks. */
+  gap?: number;
+  /** Default 160 (worklist); use 220 for encounter list rails. */
+  minWidth?: number;
+  /** Default flex-end (worklist); use flex-start for full-width stacked buttons like nursing. */
+  alignItems?: React.CSSProperties["alignItems"];
 };
 
 /**
  * Right column: priority pill + buttons. Uses global class for ≥640px alignment.
  */
-export function MedoraCardActions({ children, railBorderTopColor = "#f1f5f9" }: MedoraCardActionsProps) {
+export function MedoraCardActions({
+  children,
+  railBorderTopColor = "#f1f5f9",
+  gap = 10,
+  minWidth = 160,
+  alignItems = "flex-end",
+}: MedoraCardActionsProps) {
   return (
     <div
       className={RAIL_CLASS}
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 10,
-        alignItems: "flex-end",
+        gap,
+        alignItems,
         flexShrink: 0,
-        minWidth: 160,
+        minWidth,
         borderTop: `1px solid ${railBorderTopColor}`,
         paddingTop: 12,
         width: "100%",

@@ -2,6 +2,10 @@
  * Toute chaîne affichée à l’utilisateur doit être en français.
  * Normalise les messages d’erreur renvoyés par l’API / le proxy (souvent en anglais).
  */
+
+/** Message FR normalisé pour `NotFoundException` consultation (ex. GET /encounters/:id). */
+export const USER_FACING_ENCOUNTER_NOT_FOUND_FR = "Consultation introuvable.";
+
 const RULES: Array<{ test: (s: string) => boolean; fr: string }> = [
   { test: (s) => /^\s*request failed\s*:\s*\d+\s*$/i.test(s), fr: "La requête a échoué. Réessayez." },
   { test: (s) => /invalid payload/i.test(s), fr: "Données invalides." },
@@ -10,6 +14,14 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string }> = [
   { test: (s) => /^unauthorized$/i.test(s.trim()), fr: "Accès non autorisé." },
   { test: (s) => /authentication required/i.test(s), fr: "Authentification requise." },
   { test: (s) => /^forbidden$/i.test(s.trim()), fr: "Accès refusé." },
+  /** Avant le filtre générique « not found » : « Encounter not found » contient « not found ». */
+  { test: (s) => /encounter not found/i.test(s), fr: USER_FACING_ENCOUNTER_NOT_FOUND_FR },
+  { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable." },
+  {
+    test: (s) => /patient already has an open encounter/i.test(s),
+    fr: "Une consultation est déjà ouverte pour ce patient. Fermez-la ou ouvrez-la avant d’en créer une nouvelle.",
+  },
+  { test: (s) => /order not found/i.test(s), fr: "Ordre introuvable." },
   { test: (s) => /not found/i.test(s) && !/introuvable/i.test(s), fr: "Ressource introuvable." },
   { test: (s) => /internal server error/i.test(s), fr: "Erreur interne du serveur." },
   { test: (s) => /facility id required/i.test(s), fr: "Établissement requis." },
@@ -17,13 +29,6 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string }> = [
   { test: (s) => /proxy error/i.test(s), fr: "Erreur de communication avec le serveur." },
   { test: (s) => /network error|failed to fetch|fetch failed|ecconnrefused|enotfound/i.test(s), fr: "Erreur de communication avec le serveur." },
   { test: (s) => /invalid credentials/i.test(s), fr: "Identifiants invalides." },
-  { test: (s) => /encounter not found/i.test(s), fr: "Consultation introuvable." },
-  { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable." },
-  {
-    test: (s) => /patient already has an open encounter/i.test(s),
-    fr: "Une consultation est déjà ouverte pour ce patient. Fermez-la ou ouvrez-la avant d’en créer une nouvelle.",
-  },
-  { test: (s) => /order not found/i.test(s), fr: "Ordre introuvable." },
   {
     test: (s) => /payload too large|request entity too large|413/i.test(s),
     fr: "Requête trop volumineuse : réduisez la taille des fichiers ou contactez l’administrateur.",
