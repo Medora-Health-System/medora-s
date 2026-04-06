@@ -2,13 +2,14 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
+import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
-import { ui } from "@/lib/uiLabels";
-import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
-import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
+import {
+  getEncounterStatusBoardLabelFr,
+  getEncounterTypeLabelFr,
+  ui,
+} from "@/lib/uiLabels";
 import {
   MedoraCard,
   MedoraCardActions,
@@ -22,13 +23,9 @@ import {
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 
-type AcuityTier = "critical" | "monitoring" | "stable";
+const EMERGENCY_TYPE = "EMERGENCY" as const;
 
-const ACUITY_LABEL_FR: Record<AcuityTier, string> = {
-  critical: "Critique",
-  monitoring: "Surveillance",
-  stable: "Stable",
-};
+type AcuityTier = "critical" | "monitoring" | "stable";
 
 const ACUITY_BORDER: Record<AcuityTier, string> = {
   critical: "#ef4444",
@@ -42,6 +39,18 @@ const ACUITY_SOFT: Record<AcuityTier, PriorityBadgeSoft> = {
   stable: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
 };
 
+const ACUITY_LABEL_FR: Record<AcuityTier, string> = {
+  critical: "Critique",
+  monitoring: "Surveillance",
+  stable: "Stable",
+};
+
+const STATUS_BADGE_SOFT: Record<string, PriorityBadgeSoft> = {
+  OPEN: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
+  CLOSED: { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
+  CANCELLED: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+};
+
 function acuityFromEsi(esi: number | null | undefined): AcuityTier {
   if (esi == null || Number.isNaN(esi)) return "stable";
   if (esi <= 1) return "critical";
@@ -49,50 +58,68 @@ function acuityFromEsi(esi: number | null | undefined): AcuityTier {
   return "stable";
 }
 
-function patientInitials(p: HospitalisationBoardEncounterRow["patient"]): string {
+function patientInitials(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
   const f = (p?.firstName ?? "").trim();
   const l = (p?.lastName ?? "").trim();
   const a = f.charAt(0) || "";
   const b = l.charAt(0) || f.charAt(1) || "";
-  const s = (a + b).toUpperCase();
-  return s || "?";
+  return (a + b).toUpperCase() || "?";
 }
 
-function fullPatientName(p: HospitalisationBoardEncounterRow["patient"]): string {
+function fullPatientName(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
   return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
 }
 
-function physicianLabel(enc: HospitalisationBoardEncounterRow): string {
+function physicianLabel(enc: {
+  physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+}): string {
   const p = enc.physicianAssigned;
   if (!p) return "";
   return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
 }
 
-/** Heuristic « unité » from room label when API has no separate unit field. */
-function unitFromRoomLabel(roomLabel: string | null | undefined): string {
-  const r = (roomLabel ?? "").trim();
-  if (!r) return "";
-  const part = r.split(/[-–/]/)[0]?.trim() ?? "";
-  return part || r;
+function patientNirDisplay(patient: { mrn?: string | null; nationalId?: string | null } | null | undefined): string {
+  const raw = (patient?.mrn ?? patient?.nationalId ?? "").trim();
+  return raw || ui.common.dash;
 }
 
-/**
- * Single implementation for `/app/hospitalisation` (and optional `?mock=error` | `?mock=empty` for demos/tests).
- */
-export function HospitalizationBoardView() {
-  const searchParams = useSearchParams();
-  const mockMode = searchParams.get("mock");
+function formatArrivalDateTime(iso: string | null | undefined): string {
+  if (!iso) return ui.common.dash;
+  try {
+    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return ui.common.dash;
+  }
+}
 
-  const { facilityId: facilityIdFromHook, ready, canManagePharmacy } = useFacilityAndRoles();
+type OpenEncounterRow = {
+  id: string;
+  type?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  roomLabel?: string | null;
+  chiefComplaint?: string | null;
+  patient?: {
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    dob?: string | null;
+    sexAtBirth?: string | null;
+    sex?: string | null;
+    mrn?: string | null;
+    nationalId?: string | null;
+  } | null;
+  triage?: { esi?: number | null; chiefComplaint?: string | null } | null;
+  physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+};
+
+export function EmergencyTrackboardView() {
+  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [encounters, setEncounters] = useState<HospitalisationBoardEncounterRow[]>([]);
+  const [rows, setRows] = useState<OpenEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-
   const [search, setSearch] = useState("");
-  const [filterUnit, setFilterUnit] = useState("");
-  const [filterAcuity, setFilterAcuity] = useState<"" | AcuityTier>("");
-  const [filterPhysician, setFilterPhysician] = useState("");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -102,97 +129,51 @@ export function HospitalizationBoardView() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
-  useEffect(() => {
-    if (mockMode === "error") {
-      setLoading(false);
-      setFetchError("Impossible de charger la liste.");
-      setEncounters([]);
-      return;
-    }
-    if (mockMode === "empty") {
-      setLoading(false);
-      setFetchError(null);
-      setEncounters([]);
-    }
-  }, [mockMode]);
-
   const loadEncounters = async () => {
-    if (mockMode === "error" || mockMode === "empty") return;
     if (!facilityId) return;
     setLoading(true);
     setFetchError(null);
     try {
-      const data = await fetchHospitalisationEncounters(facilityId);
-      setEncounters(data || []);
-    } catch (error) {
-      console.error("Failed to load hospitalisation board:", error);
-      setFetchError("Impossible de charger la liste.");
+      const data = await fetchOpenEncounters(facilityId);
+      const arr = Array.isArray(data) ? data : [];
+      setRows(arr as OpenEncounterRow[]);
+    } catch (e) {
+      console.error("Failed to load emergency trackboard:", e);
+      setFetchError("Impossible de charger le tableau des urgences.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (mockMode === "error" || mockMode === "empty") return;
     if (!ready || !facilityId) return;
     void loadEncounters();
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       void loadEncounters();
     }, 10000);
     return () => clearInterval(interval);
-  }, [ready, facilityId, mockMode]);
+  }, [ready, facilityId]);
 
-  const effectiveFacilityId = facilityId || facilityIdFromHook || null;
+  const emergencyOnly = useMemo(
+    () => rows.filter((e) => (e.type ?? "").trim() === EMERGENCY_TYPE),
+    [rows]
+  );
 
-  const unitOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of encounters) {
-      const u = unitFromRoomLabel(e.roomLabel);
-      if (u) set.add(u);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
-
-  const physicianOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of encounters) {
-      const pl = physicianLabel(e);
-      if (pl) set.add(pl);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
-
-  const filteredEncounters = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return encounters.filter((encounter) => {
-      const acuity = acuityFromEsi(encounter.triage?.esi);
-      if (filterAcuity && acuity !== filterAcuity) return false;
-
-      const unit = unitFromRoomLabel(encounter.roomLabel);
-      if (filterUnit && unit !== filterUnit) return false;
-
-      const phys = physicianLabel(encounter);
-      if (filterPhysician && phys !== filterPhysician) return false;
-
-      if (q) {
-        const name = fullPatientName(encounter.patient).toLowerCase();
-        const cc = (
-          encounter.triage?.chiefComplaint ||
-          encounter.chiefComplaint ||
-          ""
-        ).toLowerCase();
-        const room = (encounter.roomLabel ?? "").toLowerCase();
-        const blob = `${name} ${cc} ${room} ${phys.toLowerCase()}`;
-        if (!blob.includes(q)) return false;
-      }
-      return true;
+    if (!q) return emergencyOnly;
+    return emergencyOnly.filter((encounter) => {
+      const name = fullPatientName(encounter.patient).toLowerCase();
+      const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
+        .trim()
+        .toLowerCase();
+      const cc = (encounter.triage?.chiefComplaint || encounter.chiefComplaint || "").toLowerCase();
+      const room = (encounter.roomLabel ?? "").toLowerCase();
+      const phys = physicianLabel(encounter).toLowerCase();
+      const blob = `${name} ${nir} ${cc} ${room} ${phys}`;
+      return blob.includes(q);
     });
-  }, [encounters, search, filterAcuity, filterUnit, filterPhysician]);
-
-  const formatTime = (date: string | null) => {
-    if (!date) return ui.common.dash;
-    return new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  };
+  }, [emergencyOnly, search]);
 
   const inputBase: React.CSSProperties = {
     height: 40,
@@ -216,45 +197,39 @@ export function HospitalizationBoardView() {
     letterSpacing: "0.01em",
   };
 
+  const statusSoft = (status: string): PriorityBadgeSoft =>
+    STATUS_BADGE_SOFT[status] ?? { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" };
+
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
-      {ready && canManagePharmacy && effectiveFacilityId && (
-        <div style={{ marginBottom: 16 }}>
-          <PharmacyAlertsCard facilityId={effectiveFacilityId} />
-        </div>
-      )}
-
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
         <style
           dangerouslySetInnerHTML={{
             __html: `
           @media (min-width: 640px) {
-            .hosp-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
+            .er-track-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
           }
         `,
           }}
         />
         <MedoraCardActionsMediaStyle />
-        <header
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
-          <div>
-            <h1 style={{ margin: 0, fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)", fontWeight: 600, color: "#0f172a" }}>
-              Hospitalisation
-            </h1>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vue des patients hospitalisés</p>
-          </div>
+
+        <header style={{ marginBottom: 24 }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)",
+              fontWeight: 600,
+              color: "#0f172a",
+            }}
+          >
+            Urgences
+          </h1>
+          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
+            Consultations d&apos;urgence ouvertes
+          </p>
         </header>
 
-        {/* Barre unique : recherche à gauche, filtres compacts, actions à droite (V0) */}
         <div
           style={{
             display: "flex",
@@ -268,67 +243,15 @@ export function HospitalizationBoardView() {
           <div style={{ flex: "1 1 220px", minWidth: 0 }}>
             <span style={{ ...filterLabel, marginBottom: 3 }}>Recherche</span>
             <input
-              id="hosp-board-search"
               type="search"
               aria-label="Recherche"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Patient, motif, salle…"
-              style={{
-                ...inputBase,
-                height: 40,
-                fontSize: 14,
-              }}
+              style={{ ...inputBase, height: 40, fontSize: 14 }}
             />
           </div>
-
-          <div style={{ flex: "0 0 auto", width: 124 }}>
-            <span style={filterLabel}>Unité</span>
-            <select
-              value={filterUnit}
-              onChange={(e) => setFilterUnit(e.target.value)}
-              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
-            >
-              <option value="">Toutes</option>
-              {unitOptions.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ flex: "0 0 auto", width: 128 }}>
-            <span style={filterLabel}>Statut</span>
-            <select
-              value={filterAcuity}
-              onChange={(e) => setFilterAcuity(e.target.value as "" | AcuityTier)}
-              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
-            >
-              <option value="">Tous</option>
-              <option value="critical">{ACUITY_LABEL_FR.critical}</option>
-              <option value="monitoring">{ACUITY_LABEL_FR.monitoring}</option>
-              <option value="stable">{ACUITY_LABEL_FR.stable}</option>
-            </select>
-          </div>
-
-          <div style={{ flex: "0 1 160px", minWidth: 140 }}>
-            <span style={filterLabel}>Médecin</span>
-            <select
-              value={filterPhysician}
-              onChange={(e) => setFilterPhysician(e.target.value)}
-              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
-            >
-              <option value="">Tous</option>
-              {physicianOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8, marginLeft: "auto" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginLeft: "auto" }}>
             <button
               type="button"
               onClick={() => void loadEncounters()}
@@ -348,29 +271,6 @@ export function HospitalizationBoardView() {
               }}
             >
               {loading ? ui.common.loading : ui.common.refresh}
-            </button>
-            <button
-              type="button"
-              disabled
-              title="À utiliser depuis la fiche consultation du patient (pas depuis le tableau)."
-              aria-disabled="true"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: 40,
-                padding: "0 16px",
-                backgroundColor: "#f1f5f9",
-                color: "#64748b",
-                border: "1px solid #e2e8f0",
-                borderRadius: 12,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "not-allowed",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Sortie patient
             </button>
           </div>
         </div>
@@ -406,7 +306,7 @@ export function HospitalizationBoardView() {
               Réessayer
             </button>
           </div>
-        ) : loading && encounters.length === 0 ? (
+        ) : loading && rows.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[0, 1, 2].map((i) => (
               <div
@@ -430,7 +330,7 @@ export function HospitalizationBoardView() {
               </div>
             ))}
           </div>
-        ) : filteredEncounters.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div
             style={{
               borderRadius: 16,
@@ -442,19 +342,19 @@ export function HospitalizationBoardView() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
-              {encounters.length === 0
-                ? "Aucun patient hospitalisé avec une consultation ouverte."
-                : "Aucun patient ne correspond aux filtres."}
+              {emergencyOnly.length === 0
+                ? "Aucune consultation d'urgence ouverte."
+                : "Aucun résultat pour cette recherche."}
             </p>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
-              {encounters.length === 0
-                ? "Les admissions ouvertes apparaîtront ici."
-                : "Ajustez la recherche ou les filtres."}
+              {emergencyOnly.length === 0
+                ? "Les dossiers d'urgence ouverts apparaîtront ici."
+                : "Ajustez la recherche."}
             </p>
           </div>
         ) : (
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-            {filteredEncounters.map((encounter) => {
+            {filtered.map((encounter) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const patient = encounter.patient;
@@ -463,6 +363,9 @@ export function HospitalizationBoardView() {
               const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : ui.common.dash;
               const room = encounter.roomLabel?.trim() || ui.common.dash;
               const phys = physicianLabel(encounter) || ui.common.dash;
+              const nirLine = patientNirDisplay(patient);
+              const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null);
+              const statusKey = (encounter.status ?? "").trim() || "OPEN";
 
               return (
                 <li key={encounter.id}>
@@ -472,7 +375,10 @@ export function HospitalizationBoardView() {
                         <MedoraCardTitle
                           title={fullPatientName(patient)}
                           subline={
-                            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
+                            <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
+                              {" · "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
                               {formatAgeYearsSexFr(
                                 patient?.dob ?? null,
                                 patient?.sexAtBirth ?? null,
@@ -481,19 +387,24 @@ export function HospitalizationBoardView() {
                             </p>
                           }
                         />
-                        <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>{cc}</p>
+                        <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
+                          <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>
+                            {ui.common.chiefComplaintShort}
+                          </span>
+                          {" — "}
+                          {cc}
+                        </p>
                         <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
                           <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
                           {" · "}
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                          {formatTime(encounter.createdAt ?? null)}
+                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span> {arrivalDisplay}
                         </p>
                       </MedoraCardIdentity>
 
                       <MedoraCardRoomBlock label={ui.common.room} value={room} />
 
                       <div
-                        className="hosp-meta-block"
+                        className="er-track-meta-block"
                         style={{
                           display: "flex",
                           flexDirection: "column",
@@ -504,11 +415,22 @@ export function HospitalizationBoardView() {
                         }}
                       >
                         <MedoraCardActions railBorderTopColor="#f1f5f9" gap={8} minWidth={200} alignItems="flex-start">
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{phys}</p>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
+                            <span style={{ fontWeight: 500, color: "#64748b", fontSize: 12 }}>
+                              {ui.common.physician} ·{" "}
+                            </span>
+                            {phys}
+                          </p>
                           <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
-                            <span style={{ color: "#cbd5e1" }}>Inf.</span> {ui.common.dash}
+                            <span style={{ color: "#cbd5e1" }}>{ui.common.nurseAbbr}</span> {ui.common.dash}
                           </p>
                           <MedoraCardBadgeRow marginTop={0}>
+                            <MedoraCardBadge soft={statusSoft(statusKey)}>
+                              {getEncounterStatusBoardLabelFr(statusKey)}
+                            </MedoraCardBadge>
+                            <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
+                              {getEncounterTypeLabelFr(EMERGENCY_TYPE)}
+                            </MedoraCardBadge>
                             <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
                             <Link
                               href={`/app/encounters/${encounter.id}`}
@@ -527,25 +449,6 @@ export function HospitalizationBoardView() {
                               }}
                             >
                               {ui.common.view}
-                            </Link>
-                            <Link
-                              href={`/app/encounters/${encounter.id}`}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                padding: "6px 14px",
-                                borderRadius: 10,
-                                border: "1px solid #cbd5e1",
-                                backgroundColor: "#fff",
-                                color: "#475569",
-                                fontSize: 14,
-                                fontWeight: 600,
-                                textDecoration: "none",
-                              }}
-                              aria-label="Ouvrir la consultation pour accéder au dossier de sortie"
-                            >
-                              Sortie
                             </Link>
                           </MedoraCardBadgeRow>
                         </MedoraCardActions>

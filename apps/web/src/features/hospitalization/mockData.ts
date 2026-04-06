@@ -1,5 +1,5 @@
 /**
- * Données fictives — référence maquette / tests (la page runtime utilise l’API + `HospitalizationBoardRow`).
+ * Données fictives — référence maquette / tests (`HospitalizationBoardRow`; live UI uses API rows in `HospitalizationBoardView`).
  */
 
 import type { HospitalizationBoardRow } from "./hospitalizationBoardRow";

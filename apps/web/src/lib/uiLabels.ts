@@ -50,6 +50,7 @@ const fr = {
   /** Liens de navigation (sidebar) */
   nav: {
     trackboard: "Tableau de bord",
+    emergency: "Urgences",
     registration: "Accueil",
     nursing: "Soins infirmiers",
     provider: "Médecin",

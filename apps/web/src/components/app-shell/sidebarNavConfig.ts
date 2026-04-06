@@ -107,6 +107,13 @@ type SidebarNavItemDef = Omit<SidebarNavItem, "label"> & { labelKey: string };
 
 const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
   { href: "/app/trackboard", labelKey: "nav.trackboard", roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate" },
+  {
+    href: "/app/emergency/trackboard",
+    labelKey: "nav.emergency",
+    roles: ["ADMIN", "PROVIDER", "RN"],
+    group: "accueil",
+    accent: "slate",
+  },
   { href: "/app/registration", labelKey: "nav.registration", roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
   { href: "/app/nursing", labelKey: "nav.nursing", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
   { href: "/app/provider", labelKey: "nav.provider", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },

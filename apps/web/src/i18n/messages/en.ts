@@ -16,6 +16,7 @@ export default {
   },
   nav: {
     trackboard: "Trackboard",
+    emergency: "Emergency",
     registration: "Registration",
     nursing: "Nursing",
     provider: "Provider",
