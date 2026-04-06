@@ -228,6 +228,11 @@ export function EmergencyTrackboardView() {
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
             Consultations d&apos;urgence ouvertes
           </p>
+          <p style={{ margin: "10px 0 0 0", fontSize: 13 }}>
+            <Link href="/app/emergency/triage" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+              Accueil urgences — nouvelle consultation
+            </Link>
+          </p>
         </header>
 
         <div
@@ -433,7 +438,7 @@ export function EmergencyTrackboardView() {
                             </MedoraCardBadge>
                             <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
                             <Link
-                              href={`/app/encounters/${encounter.id}`}
+                              href={`/app/emergency/active/${encounter.id}`}
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",

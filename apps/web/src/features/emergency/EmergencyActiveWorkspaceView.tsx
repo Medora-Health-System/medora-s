@@ -1,0 +1,717 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { apiFetch, asApiObject } from "@/lib/apiClient";
+import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
+import {
+  getEncounterStatusBoardLabelFr,
+  getEncounterTypeLabelFr,
+  ui,
+} from "@/lib/uiLabels";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
+import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
+import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
+import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
+import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
+import {
+  MEDORA_CARD_SHELL,
+  MedoraCard,
+  MedoraCardActions,
+  MedoraCardActionsMediaStyle,
+  MedoraCardBadge,
+  MedoraCardBadgeRow,
+  MedoraCardIdentity,
+  MedoraCardInner,
+  MedoraCardRoomBlock,
+  MedoraCardTitle,
+  type PriorityBadgeSoft,
+} from "@/components/medora-card";
+
+const EMERGENCY_TYPE = "EMERGENCY" as const;
+
+const STATUS_BADGE_SOFT: Record<string, PriorityBadgeSoft> = {
+  OPEN: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
+  CLOSED: { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
+  CANCELLED: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+};
+
+type PatientLite = {
+  id?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  dob?: string | null;
+  sexAtBirth?: string | null;
+  sex?: string | null;
+  mrn?: string | null;
+  nationalId?: string | null;
+};
+
+type EncounterShell = {
+  id: string;
+  type?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  roomLabel?: string | null;
+  visitReason?: string | null;
+  chiefComplaint?: string | null;
+  admittedAt?: string | null;
+  patient?: PatientLite | null;
+  /** Required by `NursingAssessmentTab` (same payload as GET /encounters/:id). */
+  nursingAssessment?: unknown;
+  providerDocumentationStatus?: string | null;
+};
+
+function patientInitials(p: PatientLite | null | undefined): string {
+  const f = (p?.firstName ?? "").trim();
+  const l = (p?.lastName ?? "").trim();
+  const a = f.charAt(0) || "";
+  const b = l.charAt(0) || f.charAt(1) || "";
+  return (a + b).toUpperCase() || "?";
+}
+
+function fullPatientName(p: PatientLite | null | undefined): string {
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
+}
+
+function formatDateTimeFr(iso: string | null | undefined): string {
+  if (!iso) return ui.common.dash;
+  try {
+    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return ui.common.dash;
+  }
+}
+
+function statusSoft(status: string): PriorityBadgeSoft {
+  return STATUS_BADGE_SOFT[status] ?? { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" };
+}
+
+const linkPill: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "8px 14px",
+  borderRadius: 10,
+  border: "1px solid #bfdbfe",
+  backgroundColor: "#eff6ff",
+  color: "#1d4ed8",
+  fontSize: 14,
+  fontWeight: 600,
+  textDecoration: "none",
+};
+
+const shellBox: React.CSSProperties = {
+  backgroundColor: MEDORA_CARD_SHELL.background,
+  border: MEDORA_CARD_SHELL.border,
+  borderRadius: MEDORA_CARD_SHELL.radius,
+  boxShadow: MEDORA_CARD_SHELL.boxShadow,
+  padding: "14px 16px",
+};
+
+/** Zones du tableau de bord urgences (navigation locale + zone active). */
+export type ErWorkspaceSection =
+  | "triage"
+  | "results"
+  | "mar"
+  | "orders"
+  | "notes"
+  | "nursing"
+  | "disposition";
+
+export function EmergencyActiveWorkspaceView() {
+  const params = useParams();
+  const encounterId = params.id as string;
+  const { facilityId: facilityIdFromHook, roles, ready: rolesReady } = useFacilityAndRoles();
+  const [facilityId, setFacilityId] = useState<string | null>(null);
+  /** Bumped after embedded saves so `EncounterResultsTab` can refetch (same pattern as encounter page token). */
+  const [resultsRefresh, setResultsRefresh] = useState(0);
+
+  const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
+
+  const [encounter, setEncounter] = useState<EncounterShell | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fid = facilityId || facilityIdFromHook;
+
+  const canViewEncounterDetail =
+    roles.includes("FRONT_DESK") ||
+    roles.includes("RN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("ADMIN") ||
+    roles.includes("BILLING");
+
+  const canFetchEncounterTriage =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  const showNursingTab =
+    roles.includes("RN") || roles.includes("ADMIN") || roles.includes("PROVIDER");
+
+  const canFetchMarTab =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  useEffect(() => {
+    const cookieValue = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("medora_facility_id="))
+      ?.split("=")[1];
+    setFacilityId(cookieValue || facilityIdFromHook || null);
+  }, [facilityIdFromHook]);
+
+  const encounterHref = `/app/encounters/${encounterId}`;
+  const tabHref = (tab: string) => `${encounterHref}?tab=${encodeURIComponent(tab)}`;
+
+  const load = useCallback(async () => {
+    if (!encounterId || !fid || !rolesReady || !canViewEncounterDetail) {
+      if (rolesReady && !canViewEncounterDetail) {
+        setEncounter(null);
+        setLoading(false);
+        setError("Accès non autorisé à cette consultation.");
+      }
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const cacheKey = `encounter:${fid}:${encounterId}`;
+    try {
+      const raw = await apiFetch(`/encounters/${encounterId}`, { facilityId: fid });
+      const enc = asApiObject<EncounterShell>(raw);
+      if (enc) {
+        setEncounter(enc);
+        void setCachedRecord("encounter_summaries", cacheKey, enc, {
+          facilityId: fid,
+          encounterId,
+          patientId: enc.patient?.id ?? undefined,
+        });
+      } else {
+        setEncounter(null);
+        setError("Consultation indisponible (hors ligne ou synchronisation en cours).");
+      }
+
+    } catch (e) {
+      console.error(e);
+      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
+      setError(msg || "Impossible de charger la consultation.");
+      const cached = await getCachedRecord<EncounterShell>("encounter_summaries", cacheKey);
+      if (cached?.data) {
+        setEncounter(cached.data);
+        setError(
+          (msg || "Données en cache.") + " Certaines informations peuvent être obsolètes."
+        );
+      } else {
+        setEncounter(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [encounterId, fid, rolesReady, canViewEncounterDetail]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const onEmbeddedEncounterUpdate = useCallback(async () => {
+    await load();
+    setResultsRefresh((r) => r + 1);
+  }, [load]);
+
+  const complaintLine = useMemo(() => {
+    if (!encounter) return ui.common.dash;
+    const raw =
+      (encounter.visitReason || "").trim() || (encounter.chiefComplaint || "").trim();
+    return raw || ui.common.dash;
+  }, [encounter]);
+
+  useEffect(() => {
+    if (!canFetchEncounterTriage && activeSection === "triage") {
+      setActiveSection("results");
+    }
+  }, [canFetchEncounterTriage, activeSection]);
+
+  const sectionTitleFr: Record<ErWorkspaceSection, string> = {
+    triage: "Triage urgences",
+    results: "Résultats",
+    mar: "Administration médicamenteuse",
+    orders: "Ordres",
+    notes: "Notes",
+    nursing: "Évaluation infirmière",
+    disposition: "Disposition",
+  };
+
+  if (!rolesReady || !fid) {
+    return (
+      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{ui.common.loading}</div>
+    );
+  }
+
+  if (!canViewEncounterDetail) {
+    return (
+      <div style={{ padding: 24, maxWidth: 560 }}>
+        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? "Accès non autorisé."}</p>
+      </div>
+    );
+  }
+
+  if (loading && !encounter) {
+    return (
+      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{ui.common.loading}</div>
+    );
+  }
+
+  if (!encounter) {
+    return (
+      <div style={{ padding: 24, maxWidth: 560 }}>
+        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? "Consultation introuvable."}</p>
+        <p style={{ margin: "16px 0 0 0" }}>
+          <Link href="/app/emergency/trackboard" style={{ color: "#2563eb", fontWeight: 600 }}>
+            ← Tableau des urgences
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
+  const patient = encounter.patient;
+  const statusKey = (encounter.status ?? "").trim() || "OPEN";
+  const typeKey = (encounter.type ?? "").trim() || "—";
+  const roomDisplay = encounter.roomLabel?.trim() || ui.common.dash;
+  const isEmergencyType = encounter.type === EMERGENCY_TYPE;
+  const isLocked = encounter.providerDocumentationStatus === "SIGNED";
+
+  return (
+    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
+      <div style={{ maxWidth: 1152, margin: "0 auto" }}>
+        <MedoraCardActionsMediaStyle />
+
+        <header style={{ marginBottom: 20 }}>
+          <p style={{ margin: "0 0 8px 0", fontSize: 13 }}>
+            <Link href="/app/emergency/trackboard" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+              ← Urgences
+            </Link>
+          </p>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)",
+              fontWeight: 600,
+              color: "#0f172a",
+            }}
+          >
+            Espace urgence actif
+          </h1>
+          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.5 }}>
+            Choisissez une zone du tableau de bord, puis travaillez dans la zone active. La consultation complète reste
+            accessible en secours.
+          </p>
+        </header>
+
+        {!isEmergencyType && (
+          <div style={{ ...shellBox, marginBottom: 16, borderColor: "#fde68a", backgroundColor: "#fffbeb" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "#92400e" }}>
+              Cette consultation n&apos;est pas de type urgence. Vous pouvez ouvrir le dossier complet ci-dessous.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ ...shellBox, marginBottom: 16, borderColor: "#fecaca", backgroundColor: "#fef2f2" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "#991b1b" }}>{error}</p>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 16 }}>
+        <MedoraCard leftAccentColor="#2563eb" variant="default">
+          <MedoraCardInner>
+            <MedoraCardIdentity initials={patientInitials(patient ?? undefined)}>
+              <MedoraCardTitle
+                title={fullPatientName(patient ?? undefined)}
+                subline={
+                  <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                    <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
+                    {(patient?.mrn ?? patient?.nationalId ?? "").trim() || ui.common.dash}
+                    {" · "}
+                    <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
+                    {formatAgeYearsSexFr(patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
+                  </p>
+                }
+              />
+              <p style={{ margin: "10px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
+                <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>{ui.common.chiefComplaintShort}</span>
+                {" — "}
+                {complaintLine}
+              </p>
+              <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                {formatDateTimeFr(encounter.createdAt ?? null)}
+                {encounter.admittedAt ? (
+                  <>
+                    {" · "}
+                    <span style={{ fontWeight: 600, color: "#475569" }}>Admission</span>{" "}
+                    {formatDateTimeFr(encounter.admittedAt)}
+                  </>
+                ) : null}
+              </p>
+            </MedoraCardIdentity>
+
+            <MedoraCardRoomBlock label={ui.common.room} value={roomDisplay} />
+
+            <MedoraCardActions railBorderTopColor="#e2e8f0" gap={10} minWidth={0} alignItems="flex-start">
+              <MedoraCardBadgeRow marginTop={0}>
+                <MedoraCardBadge soft={statusSoft(statusKey)}>{getEncounterStatusBoardLabelFr(statusKey)}</MedoraCardBadge>
+                <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
+                  {getEncounterTypeLabelFr(typeKey)}
+                </MedoraCardBadge>
+              </MedoraCardBadgeRow>
+              <Link href={encounterHref} style={{ ...linkPill, alignSelf: "flex-start" }}>
+                Ouvrir la consultation complète
+              </Link>
+            </MedoraCardActions>
+          </MedoraCardInner>
+        </MedoraCard>
+        </div>
+
+        <section aria-label="Tableau de bord urgences" style={{ marginBottom: 20 }}>
+          <h2
+            style={{
+              margin: "0 0 12px 0",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#64748b",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+            }}
+          >
+            Tableau de bord
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))",
+              gap: 10,
+            }}
+          >
+            {(
+              [
+                {
+                  id: "triage" as const,
+                  accent: "#b91c1c",
+                  title: "Triage",
+                  sub: "Motif, ESI, SV",
+                  disabled: !canFetchEncounterTriage,
+                },
+                { id: "results" as const, accent: "#6366f1", title: "Résultats", sub: "Labo, imagerie", disabled: false },
+                {
+                  id: "mar" as const,
+                  accent: "#059669",
+                  title: "MAR",
+                  sub: "Médicaments",
+                  disabled: !canFetchMarTab,
+                },
+                { id: "orders" as const, accent: "#7c3aed", title: "Ordres", sub: "Prescriptions", disabled: false },
+                { id: "notes" as const, accent: "#475569", title: "Notes", sub: "Inf. / court", disabled: false },
+                {
+                  id: "nursing" as const,
+                  accent: "#0ea5e9",
+                  title: "Soins",
+                  sub: "Évaluation",
+                  disabled: !showNursingTab,
+                },
+                {
+                  id: "disposition" as const,
+                  accent: "#94a3b8",
+                  title: "Disposition",
+                  sub: "Sortie",
+                  disabled: false,
+                },
+              ] as const
+            ).map((q) => {
+              const selected = activeSection === q.id;
+              return (
+                <div
+                  key={q.id}
+                  style={{
+                    borderRadius: 16,
+                    outline: selected ? "2px solid #2563eb" : "1px solid transparent",
+                    outlineOffset: 0,
+                    transition: "outline-color 0.12s ease",
+                  }}
+                >
+                  <button
+                    type="button"
+                    disabled={q.disabled}
+                    onClick={() => {
+                      if (!q.disabled) setActiveSection(q.id);
+                    }}
+                    style={{
+                      width: "100%",
+                      margin: 0,
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      cursor: q.disabled ? "not-allowed" : "pointer",
+                      textAlign: "left",
+                      opacity: q.disabled ? 0.55 : 1,
+                    }}
+                  >
+                    <MedoraCard leftAccentColor={q.accent} variant="default">
+                      <MedoraCardInner>
+                        <MedoraCardIdentity initials={q.title.charAt(0)}>
+                          <MedoraCardTitle
+                            title={q.title}
+                            subline={<p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{q.sub}</p>}
+                          />
+                        </MedoraCardIdentity>
+                      </MedoraCardInner>
+                    </MedoraCard>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section aria-label="Zone active" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 10, justifyContent: "space-between" }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitleFr[activeSection]}</h2>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <Link href={encounterHref} style={{ ...linkPill, fontSize: 13 }}>
+                Consultation complète
+              </Link>
+              <Link href={tabHref("clinic")} style={{ ...linkPill, fontSize: 13 }}>
+                Évaluation médicale
+              </Link>
+              <Link href={tabHref("diagnostics")} style={{ ...linkPill, fontSize: 13 }}>
+                Diagnostics
+              </Link>
+            </div>
+          </div>
+
+          {activeSection === "triage" && canFetchEncounterTriage ? (
+            <EmergencyTriagePanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              isLocked={isLocked}
+              encounterTriageTabHref={tabHref("triage")}
+              patientChartHref={
+                encounter.patient?.id ? `/app/patients/${encodeURIComponent(encounter.patient.id)}` : undefined
+              }
+              onSaved={onEmbeddedEncounterUpdate}
+            />
+          ) : null}
+
+          {activeSection === "triage" && !canFetchEncounterTriage ? (
+            <MedoraCard leftAccentColor="#64748b" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="T">
+                  <MedoraCardTitle
+                    title="Triage"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Réservé à certains rôles sur cette page. Utilisez le dossier complet.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
+                  <Link href={tabHref("triage")} style={linkPill}>
+                    Ouvrir le triage (dossier)
+                  </Link>
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "results" ? (
+            <MedoraCard leftAccentColor="#6366f1" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="R">
+                  <MedoraCardTitle
+                    title="Résultats"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Laboratoire et imagerie — même source que l&apos;onglet Résultats.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <div style={{ width: "100%", marginTop: 12 }}>
+                  <EncounterResultsTab
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    refreshToken={resultsRefresh}
+                  />
+                </div>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "mar" && canFetchMarTab ? (
+            <MedoraCard leftAccentColor="#059669" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="M">
+                  <MedoraCardTitle
+                    title="Administration médicamenteuse (MAR)"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Même outil que l&apos;onglet MAR du dossier.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <div style={{ width: "100%", marginTop: 12 }}>
+                  <MedicationAdministrationTab
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    encounterStatus={encounter.status ?? "OPEN"}
+                  />
+                </div>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "mar" && !canFetchMarTab ? (
+            <MedoraCard leftAccentColor="#059669" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="M">
+                  <MedoraCardTitle
+                    title="MAR"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Non disponible pour ce rôle sur cette page.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
+                  <Link href={tabHref("mar")} style={linkPill}>
+                    Onglet MAR (dossier)
+                  </Link>
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "orders" ? (
+            <MedoraCard leftAccentColor="#7c3aed" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="O">
+                  <MedoraCardTitle
+                    title="Ordres"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                        Les ordres complets sont gérés dans le dossier de consultation.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
+                  <Link href={tabHref("orders")} style={linkPill}>
+                    Ouvrir les ordres
+                  </Link>
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "notes" ? (
+            <MedoraCard leftAccentColor="#475569" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="N">
+                  <MedoraCardTitle
+                    title="Notes"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                        Notes infirmières et court texte — dossier complet.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
+                  <Link href={tabHref("notes")} style={linkPill}>
+                    Onglet notes
+                  </Link>
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "nursing" && showNursingTab ? (
+            <MedoraCard leftAccentColor="#0ea5e9" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="I">
+                  <MedoraCardTitle
+                    title="Évaluation infirmière"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Saisie partagée avec le dossier de consultation.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <div style={{ width: "100%", marginTop: 12 }}>
+                  <NursingAssessmentTab
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    encounter={encounter}
+                    onUpdate={() => void onEmbeddedEncounterUpdate()}
+                    isLocked={isLocked}
+                  />
+                </div>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "nursing" && !showNursingTab ? (
+            <MedoraCard leftAccentColor="#0ea5e9" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="I">
+                  <MedoraCardTitle
+                    title="Soins infirmiers"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Évaluation réservée à certains rôles. Ouvrez le dossier complet.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
+                  <Link href={tabHref("nursing")} style={linkPill}>
+                    Onglet soins infirmiers
+                  </Link>
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "disposition" ? (
+            <MedoraCard leftAccentColor="#94a3b8" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="D">
+                  <MedoraCardTitle
+                    title="Disposition"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                        Sortie, instructions et clôture — dossier complet.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
+                  <Link href={tabHref("summary")} style={linkPill}>
+                    Résumé et sortie
+                  </Link>
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+        </section>
+      </div>
+    </div>
+  );
+}
