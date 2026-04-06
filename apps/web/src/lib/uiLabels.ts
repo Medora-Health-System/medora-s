@@ -21,6 +21,7 @@ const fr = {
     cancel: "Annuler",
     back: "Retour",
     refresh: "Actualiser",
+    search: "Rechercher",
     dash: "—",
     view: "Voir",
     study: "Examen",
@@ -51,6 +52,7 @@ const fr = {
   nav: {
     trackboard: "Tableau de bord",
     emergency: "Urgences",
+    emergencyTriage: "Accueil urgences",
     registration: "Accueil",
     nursing: "Soins infirmiers",
     provider: "Médecin",
@@ -244,7 +246,7 @@ export const uiLabels = {
     loading: fr.common.loading,
     noData: "Aucune donnée disponible",
     error: "Une erreur est survenue",
-    search: "Rechercher",
+    search: fr.common.search,
     filter: "Filtrer",
   },
 } as const;
