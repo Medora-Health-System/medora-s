@@ -317,8 +317,8 @@ export function EmergencyDispositionPanel({
             title="Disposition (urgences)"
             subline={
               <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                Décision de fin de visite — champs alignés sur le dossier de sortie Medora. La clôture définitive et les
-                contrôles documentaires restent sur le résumé de consultation.
+                Décision d&apos;orientation opérationnelle — enregistrée dans le dossier partagé (sortie / admission).
+                La clôture définitive et les contrôles documentaires restent sur le résumé de consultation.
               </p>
             }
           />
@@ -469,6 +469,10 @@ export function EmergencyDispositionPanel({
               <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
                 Le mode de sortie enregistré dans le dossier correspond au libellé « mode de sortie » (sortie standard
                 Medora).
+              </p>
+              <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                Pour une prise en charge en <strong>observation</strong>, choisir « Hospitalisation / admission » puis
+                renseigner le dossier d&apos;admission avec le niveau de soins « Observation » (champs Medora existants).
               </p>
             </div>
 
@@ -681,7 +685,7 @@ export function EmergencyDispositionPanel({
                   cursor: formDisabled || saving ? "not-allowed" : "pointer",
                 }}
               >
-                {saving ? "Enregistrement…" : "Enregistrer la disposition"}
+                {saving ? "Enregistrement…" : "Enregistrer la décision d'orientation"}
               </button>
               {isLocked ? (
                 <span style={{ fontSize: 12, color: "#b45309" }}>Documentation signée — saisie verrouillée.</span>
