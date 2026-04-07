@@ -1,51 +1,80 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useEffect, useMemo, useState } from "react";
 import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
-import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
+import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { ui } from "@/lib/uiLabels";
-import {
-  MedoraCard,
-  MedoraCardActions,
-  MedoraCardIdentity,
-  MedoraCardInner,
-  MedoraCardTitle,
-} from "@/components/medora-card";
+import { CreateOrderModal } from "@/components/orders";
+import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
+import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
+import { formatDomainLabelFr, type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
 
-const linkPill: React.CSSProperties = {
+const btn: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "8px 14px",
+  padding: "8px 10px",
   borderRadius: 10,
   border: "1px solid #bfdbfe",
   backgroundColor: "#eff6ff",
   color: "#1d4ed8",
-  fontSize: 13,
+  fontSize: 12,
   fontWeight: 600,
-  textDecoration: "none",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+  minHeight: 40,
 };
 
-/**
- * Cockpit ordres / interventions urgences — lecture + liens vers les flux Medora existants.
- * Pas de moteur d’ordres parallèle : les prescriptions complètes restent dans le dossier.
- */
+const DOMAIN_ORDER: ErOrderDomain[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
+
+function extractLineLabelsForDomain(orders: unknown[], domain: ErOrderDomain): string[] {
+  const out: string[] = [];
+  const typeStr =
+    domain === "LAB"
+      ? "LAB"
+      : domain === "IMAGING"
+        ? "IMAGING"
+        : domain === "MEDICATION"
+          ? "MEDICATION"
+          : "CARE";
+  for (const raw of orders) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const o = raw as Record<string, unknown>;
+    if (o.type !== typeStr) continue;
+    const items = Array.isArray(o.items) ? o.items : [];
+    for (const it of items) {
+      const label = getOrderItemDisplayLabelFr(it as Parameters<typeof getOrderItemDisplayLabelFr>[0]);
+      if (label.trim()) out.push(label.trim());
+    }
+  }
+  return out;
+}
+
+type EncounterPatientForOrder = {
+  patient?: { firstName?: string | null; lastName?: string | null; mrn?: string | null } | null;
+};
+
 export function EmergencyErOrdersPanel({
   encounterId,
   facilityId,
-  ordersTabHref,
-  diagnosticsTabHref,
-  nursingTabHref,
+  canPrescribe,
+  encounterForOrderModal,
+  onRefetchEncounter,
+  onOrdersCreated,
 }: {
   encounterId: string;
   facilityId: string;
-  ordersTabHref: string;
-  diagnosticsTabHref: string;
-  nursingTabHref: string;
+  canPrescribe: boolean;
+  encounterForOrderModal: EncounterPatientForOrder | null | undefined;
+  onRefetchEncounter: () => Promise<void>;
+  onOrdersCreated?: () => void | Promise<void>;
 }) {
-  const [orderCount, setOrderCount] = useState<number | null>(null);
+  const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ordersRefresh, setOrdersRefresh] = useState(0);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
 
   useEffect(() => {
     let cancelled = false;
@@ -53,9 +82,9 @@ export function EmergencyErOrdersPanel({
       setLoading(true);
       try {
         const orders = await fetchOrdersForEncounter(facilityId, encounterId);
-        if (!cancelled) setOrderCount(Array.isArray(orders) ? orders.length : 0);
+        if (!cancelled) setOrdersRaw(Array.isArray(orders) ? orders : []);
       } catch {
-        if (!cancelled) setOrderCount(null);
+        if (!cancelled) setOrdersRaw(null);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -63,58 +92,147 @@ export function EmergencyErOrdersPanel({
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId]);
+  }, [encounterId, facilityId, ordersRefresh]);
+
+  const labelsByDomain = useMemo(() => {
+    if (!ordersRaw) return null;
+    const rec: Record<ErOrderDomain, string[]> = {
+      LAB: extractLineLabelsForDomain(ordersRaw, "LAB"),
+      IMAGING: extractLineLabelsForDomain(ordersRaw, "IMAGING"),
+      MEDICATION: extractLineLabelsForDomain(ordersRaw, "MEDICATION"),
+      CARE: extractLineLabelsForDomain(ordersRaw, "CARE"),
+    };
+    return rec;
+  }, [ordersRaw]);
+
+  const openModal = (tab: OrderModalTab) => {
+    setCreateModalInitialTab(tab);
+    setShowCreateModal(true);
+  };
 
   return (
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
       <MedoraCardInner>
-        <MedoraCardIdentity initials="O">
-          <MedoraCardTitle
-            title="Ordres & interventions (urgences)"
-            subline={
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                Vue cockpit : accès rapide aux files et à l&apos;onglet ordres du dossier. Oxygène, perfusion, voie IV :
-                passer par les ordres prescrits et la saisie infirmière (voie IV) lorsque applicable.
-              </p>
-            }
-          />
-        </MedoraCardIdentity>
-        <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0} alignItems="flex-start">
-          <Link href={ordersTabHref} style={linkPill}>
-            Ouvrir les ordres (dossier)
-          </Link>
-          <Link href={diagnosticsTabHref} style={linkPill}>
-            Diagnostics (dossier)
-          </Link>
-          <Link href="/app/lab" style={{ ...linkPill, borderColor: "#c7d2fe", backgroundColor: "#eef2ff", color: "#4338ca" }}>
-            {ui.lab.title}
-          </Link>
-          <Link href="/app/radiology" style={{ ...linkPill, borderColor: "#c7d2fe", backgroundColor: "#eef2ff", color: "#4338ca" }}>
-            {ui.radiology.title}
-          </Link>
-          <Link href="/app/pharmacy-queue" style={{ ...linkPill, borderColor: "#bbf7d0", backgroundColor: "#f0fdf4", color: "#166534" }}>
-            {ui.nav.pharmacyQueue}
-          </Link>
-          <Link href={nursingTabHref} style={{ ...linkPill, borderColor: "#bae6fd", backgroundColor: "#f0f9ff", color: "#0369a1" }}>
-            Soins infirmiers (voie IV, etc.)
-          </Link>
-        </MedoraCardActions>
-        <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
-          {loading ? (
-            ui.common.loading
-          ) : orderCount != null ? (
-            <>
-              <strong>{orderCount}</strong> commande(s) liée(s) à cette consultation (aperçu liste serveur / file locale).
-            </>
-          ) : (
-            "Impossible de charger le décompte des commandes."
-          )}
-        </p>
-        <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-          Les statuts d&apos;ordre affichés dans le dossier utilisent les libellés Medora existants (ex.{" "}
-          {getOrderItemChartLabel("ORDERED")}).
-        </p>
+        {loading ? (
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{ui.common.loading}</p>
+        ) : labelsByDomain == null ? (
+          <p style={{ margin: 0, fontSize: 13, color: "#b91c1c" }}>
+            Impossible de charger les ordres pour cette consultation.
+          </p>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 12,
+              width: "100%",
+              alignItems: "stretch",
+            }}
+          >
+            <div
+              style={{
+                flex: "1 1 200px",
+                minWidth: 0,
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+                alignContent: "start",
+              }}
+            >
+              <button type="button" onClick={() => openModal("LAB")} style={btn}>
+                Analyses
+              </button>
+              <button type="button" onClick={() => openModal("IMAGING")} style={btn}>
+                Imagerie
+              </button>
+              <button type="button" onClick={() => openModal("MEDICATION")} style={btn}>
+                Médicaments
+              </button>
+              <button type="button" onClick={() => openModal("CARE")} style={btn}>
+                Soins / procédures
+              </button>
+            </div>
+
+            <div
+              style={{
+                flex: "1 1 200px",
+                minWidth: 0,
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+                alignContent: "start",
+              }}
+            >
+              {DOMAIN_ORDER.map((d) => {
+                const lines = labelsByDomain[d];
+                const empty = lines.length === 0;
+                return (
+                  <div
+                    key={d}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: empty ? "1px dashed #cbd5e1" : "1px solid #e2e8f0",
+                      backgroundColor: empty ? "#fafafa" : "#fff",
+                      fontSize: 11,
+                      color: "#334155",
+                      lineHeight: 1.35,
+                      minHeight: 72,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{formatDomainLabelFr(d)}</div>
+                    {empty ? (
+                      <div style={{ color: "#64748b" }}>Aucun ordre</div>
+                    ) : (
+                      <ul style={{ margin: 0, paddingLeft: 14, maxHeight: 120, overflow: "auto" }}>
+                        {lines.slice(0, 12).map((line, i) => (
+                          <li key={`${d}-${i}`} style={{ marginBottom: 2 }}>
+                            {line}
+                          </li>
+                        ))}
+                        {lines.length > 12 ? (
+                          <li style={{ color: "#64748b", listStyle: "none", marginLeft: -14 }}>
+                            +{lines.length - 12} autre(s)…
+                          </li>
+                        ) : null}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </MedoraCardInner>
+
+      {showCreateModal ? (
+        <CreateOrderModal
+          key={`${encounterId}-${createModalInitialTab}-${ordersRefresh}`}
+          encounterId={encounterId}
+          facilityId={facilityId}
+          canPrescribe={canPrescribe}
+          encounter={
+            encounterForOrderModal?.patient
+              ? {
+                  patient: {
+                    firstName: encounterForOrderModal.patient.firstName ?? undefined,
+                    lastName: encounterForOrderModal.patient.lastName ?? undefined,
+                    mrn: encounterForOrderModal.patient.mrn ?? undefined,
+                  },
+                }
+              : undefined
+          }
+          initialOrderTab={createModalInitialTab}
+          onClose={() => setShowCreateModal(false)}
+          onRefetchEncounter={onRefetchEncounter}
+          onSuccess={async () => {
+            setShowCreateModal(false);
+            setOrdersRefresh((x) => x + 1);
+            await onOrdersCreated?.();
+          }}
+        />
+      ) : null}
     </MedoraCard>
   );
 }
