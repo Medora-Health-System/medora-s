@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
@@ -56,15 +56,30 @@ function mergeItemWithPendingSnapshot(item: any, pending: PendingLocalResult): a
   };
 }
 
+/** Ligne labo/imagerie telle que construite pour l’affichage (réutilisable par l’UI urgences). */
+export type EncounterLabRadRow = { order: unknown; item: any; pendingSync: boolean };
+
+export type EncounterResultsLabRadSnapshot = {
+  loading: boolean;
+  rows: EncounterLabRadRow[];
+  ordersLoadFailedNoCache: boolean;
+};
+
 export function EncounterResultsTab({
   encounterId,
   facilityId,
   refreshToken,
+  onLabRadSnapshot,
+  hideIntroNote = false,
 }: {
   encounterId: string;
   facilityId: string;
   /** Incrémenté après saisie résultat (événement global) pour recharger. */
   refreshToken: number;
+  /** État + lignes affichables (évite un second GET pour un résumé externe, ex. urgences). */
+  onLabRadSnapshot?: (snapshot: EncounterResultsLabRadSnapshot) => void;
+  /** Masque le bloc d’intro gris si le parent fournit déjà le contexte. */
+  hideIntroNote?: boolean;
 }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,6 +154,17 @@ export function EncounterResultsTab({
     return out;
   }, [orders, pendingResultByItemId]);
 
+  const snapshotRef = useRef(onLabRadSnapshot);
+  snapshotRef.current = onLabRadSnapshot;
+
+  useEffect(() => {
+    snapshotRef.current?.({
+      loading,
+      rows,
+      ordersLoadFailedNoCache,
+    });
+  }, [loading, rows, ordersLoadFailedNoCache]);
+
   const resultCardShell: React.CSSProperties = {
     backgroundColor: MEDORA_CARD_SHELL.background,
     border: MEDORA_CARD_SHELL.border,
@@ -191,12 +217,14 @@ export function EncounterResultsTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ ...resultCardShell, padding: "14px 16px" }}>
-        <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
-          Résultats liés à cette consultation (laboratoire et imagerie). Les mêmes données sont visibles dans le dossier
-          patient (onglet « Résultats »).
-        </p>
-      </div>
+      {!hideIntroNote ? (
+        <div style={{ ...resultCardShell, padding: "14px 16px" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+            Résultats liés à cette consultation (laboratoire et imagerie). Les mêmes données sont visibles dans le dossier
+            patient (onglet « Résultats »).
+          </p>
+        </div>
+      ) : null}
       {rows.map(({ item, pendingSync }) => {
         const v = clinicalResultFromOrderItemLike({
           displayLabelFr: getOrderItemDisplayLabelFr(item),

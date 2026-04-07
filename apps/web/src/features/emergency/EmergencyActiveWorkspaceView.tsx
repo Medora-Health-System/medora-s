@@ -13,7 +13,7 @@ import {
 } from "@/lib/uiLabels";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
-import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
+import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
@@ -128,7 +128,7 @@ export function EmergencyActiveWorkspaceView() {
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, roles, ready: rolesReady } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
-  /** Bumped after embedded saves so `EncounterResultsTab` can refetch (same pattern as encounter page token). */
+  /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
   const [resultsRefresh, setResultsRefresh] = useState(0);
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
@@ -235,7 +235,7 @@ export function EmergencyActiveWorkspaceView() {
 
   const sectionTitleFr: Record<ErWorkspaceSection, string> = {
     triage: "Triage urgences",
-    results: "Résultats",
+    results: "Résultats et examens (urgences)",
     mar: "Administration médicamenteuse",
     orders: "Ordres",
     notes: "Notes",
@@ -404,7 +404,13 @@ export function EmergencyActiveWorkspaceView() {
                   sub: "Motif, ESI, SV",
                   disabled: !canFetchEncounterTriage,
                 },
-                { id: "results" as const, accent: "#6366f1", title: "Résultats", sub: "Labo, imagerie", disabled: false },
+                {
+                  id: "results" as const,
+                  accent: "#6366f1",
+                  title: "Résultats",
+                  sub: "Labo, imagerie",
+                  disabled: false,
+                },
                 {
                   id: "mar" as const,
                   accent: "#059669",
@@ -528,27 +534,13 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "results" ? (
-            <MedoraCard leftAccentColor="#6366f1" variant="default">
-              <MedoraCardInner>
-                <MedoraCardIdentity initials="R">
-                  <MedoraCardTitle
-                    title="Résultats"
-                    subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Laboratoire et imagerie — même source que l&apos;onglet Résultats.
-                      </p>
-                    }
-                  />
-                </MedoraCardIdentity>
-                <div style={{ width: "100%", marginTop: 12 }}>
-                  <EncounterResultsTab
-                    encounterId={encounterId}
-                    facilityId={fid}
-                    refreshToken={resultsRefresh}
-                  />
-                </div>
-              </MedoraCardInner>
-            </MedoraCard>
+            <EmergencyResultsPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              refreshToken={resultsRefresh}
+              resultsTabHref={tabHref("results")}
+              diagnosticsTabHref={tabHref("diagnostics")}
+            />
           ) : null}
 
           {activeSection === "mar" && canFetchMarTab ? (
