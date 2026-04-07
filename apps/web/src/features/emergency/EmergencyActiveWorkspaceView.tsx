@@ -33,7 +33,10 @@ import { MedicationAdministrationTab } from "@/components/encounters/MedicationA
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
+import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
+import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
+import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import {
   MEDORA_CARD_SHELL,
   MedoraCard,
@@ -139,6 +142,7 @@ const shellBox: React.CSSProperties = {
 /** Zones du tableau de bord urgences (navigation locale + zone active). */
 export type ErWorkspaceSection =
   | "triage"
+  | "visitSummary"
   | "results"
   | "mar"
   | "orders"
@@ -210,8 +214,9 @@ export function EmergencyActiveWorkspaceView() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
-  const encounterHref = `/app/encounters/${encounterId}`;
-  const tabHref = (tab: string) => `${encounterHref}?tab=${encodeURIComponent(tab)}`;
+  const genericEncounterHref = genericEncounterPath(encounterId);
+  const erChartHref = emergencyChartPath(encounterId);
+  const tabHref = (tab: string) => `${genericEncounterHref}?tab=${encodeURIComponent(tab)}`;
 
   const load = useCallback(async () => {
     if (!encounterId || !fid || !rolesReady || !canViewEncounterDetail) {
@@ -340,6 +345,7 @@ export function EmergencyActiveWorkspaceView() {
 
   const sectionTitleFr: Record<ErWorkspaceSection, string> = {
     triage: "Triage urgences",
+    visitSummary: "Synthèse de visite (urgences)",
     results: "Résultats et examens (urgences)",
     mar: "Administration médicamenteuse",
     orders: "Ordres",
@@ -413,8 +419,8 @@ export function EmergencyActiveWorkspaceView() {
             Espace urgence actif
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.5 }}>
-            Choisissez une zone du tableau de bord, puis travaillez dans la zone active. La consultation complète reste
-            accessible en secours.
+            Choisissez une zone du tableau de bord, puis travaillez dans la zone active. La charte urgence complète est le
+            parcours principal ; le dossier consultation Medora reste disponible en référence.
           </p>
         </header>
 
@@ -579,8 +585,20 @@ export function EmergencyActiveWorkspaceView() {
                     {getEncounterTypeLabelFr(typeKey)}
                   </MedoraCardBadge>
                 </MedoraCardBadgeRow>
-                <Link href={encounterHref} style={{ ...linkPill, alignSelf: "flex-end", fontSize: 13, padding: "7px 12px" }}>
-                  Ouvrir la consultation complète
+                <Link href={erChartHref} style={{ ...linkPill, alignSelf: "flex-end", fontSize: 13, padding: "7px 12px" }}>
+                  Consultation complète
+                </Link>
+                <Link
+                  href={genericEncounterHref}
+                  style={{
+                    alignSelf: "flex-end",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#64748b",
+                    textDecoration: "none",
+                  }}
+                >
+                  Dossier Medora (référence)
                 </Link>
               </div>
             </div>
@@ -616,6 +634,13 @@ export function EmergencyActiveWorkspaceView() {
                   accent: "#b91c1c",
                   title: "Triage",
                   disabled: !canFetchEncounterTriage,
+                },
+                {
+                  kind: "section" as const,
+                  id: "visitSummary" as const,
+                  accent: "#0f172a",
+                  title: "Synthèse",
+                  disabled: false,
                 },
                 {
                   kind: "section" as const,
@@ -659,7 +684,7 @@ export function EmergencyActiveWorkspaceView() {
                   id: "shortcut-encounter",
                   accent: "#2563eb",
                   title: "Consultation complète",
-                  href: encounterHref,
+                  href: erChartHref,
                 },
                 {
                   kind: "link" as const,
@@ -744,6 +769,18 @@ export function EmergencyActiveWorkspaceView() {
 
         <section aria-label="Zone active" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitleFr[activeSection]}</h2>
+
+          {activeSection === "visitSummary" ? (
+            <EmergencyVisitSummaryPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              triageSnapshot={triageSnapshot}
+              resultsRefresh={resultsRefresh}
+              resultsTabHref={tabHref("results")}
+              diagnosticsTabHref={tabHref("diagnostics")}
+            />
+          ) : null}
 
           {activeSection === "triage" && canFetchEncounterTriage ? (
             <EmergencyTriagePanel
@@ -838,25 +875,13 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "orders" ? (
-            <MedoraCard leftAccentColor="#7c3aed" variant="default">
-              <MedoraCardInner>
-                <MedoraCardIdentity initials="O">
-                  <MedoraCardTitle
-                    title="Ordres"
-                    subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                        Les ordres complets sont gérés dans le dossier de consultation.
-                      </p>
-                    }
-                  />
-                </MedoraCardIdentity>
-                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
-                  <Link href={tabHref("orders")} style={linkPill}>
-                    Ouvrir les ordres
-                  </Link>
-                </MedoraCardActions>
-              </MedoraCardInner>
-            </MedoraCard>
+            <EmergencyErOrdersPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              ordersTabHref={tabHref("orders")}
+              diagnosticsTabHref={tabHref("diagnostics")}
+              nursingTabHref={tabHref("nursing")}
+            />
           ) : null}
 
           {activeSection === "notes" ? (
@@ -922,7 +947,8 @@ export function EmergencyActiveWorkspaceView() {
               isLocked={isLocked}
               onSaved={onEmbeddedEncounterUpdate}
               clinicTabHref={tabHref("clinic")}
-              encounterHref={encounterHref}
+              erChartHref={erChartHref}
+              genericEncounterHref={genericEncounterHref}
             />
           ) : null}
 
@@ -956,7 +982,8 @@ export function EmergencyActiveWorkspaceView() {
               isLocked={isLocked}
               onSaved={onEmbeddedEncounterUpdate}
               summaryTabHref={tabHref("summary")}
-              encounterHref={encounterHref}
+              erChartHref={erChartHref}
+              genericEncounterHref={genericEncounterHref}
               hospitalisationBoardHref="/app/hospitalisation"
               canPrescribe={canPrescribe}
               canEditNursingDischarge={canEditNursingDischarge}
