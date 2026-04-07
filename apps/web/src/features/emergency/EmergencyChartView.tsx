@@ -186,6 +186,7 @@ export function EmergencyChartView() {
 
   const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
   const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -808,6 +809,10 @@ export function EmergencyChartView() {
             </h2>
             <EmergencyErNursingHandoffPanel
               encounter={encounter}
+              encounterId={encounterId}
+              facilityId={fid}
+              onSaved={onEmbeddedEncounterUpdate}
+              canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
               genericEncounterHref={genericEncounterHref}
               summaryTabHref={tabHref("summary")}
               hospitalisationBoardHref="/app/hospitalisation"

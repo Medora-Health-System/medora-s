@@ -10,6 +10,57 @@ import type { AdmissionFormState } from "@/lib/encounterAdmission";
 
 export const ER_DISPOSITION_V1_KEY = "erDispositionV1" as const;
 
+/** Sortie à domicile — exécution infirmière (V1), sibling de `erDispositionV1` sous `nursingAssessment` (Json). */
+export const ER_DISPOSITION_EXECUTION_V1_KEY = "erDispositionExecutionV1" as const;
+
+const MAX_EXEC_NOTE = 2000;
+
+export type ErDischargeSortieExecutionStored = {
+  dischargeSortieCompletedAt: string;
+  dischargeSortieCompletedByDisplayName: string;
+  dischargeSortieExecutionNote?: string;
+};
+
+export function readDischargeSortieExecutionFromEncounter(
+  nursingAssessment: unknown
+): ErDischargeSortieExecutionStored | null {
+  if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) return null;
+  const raw = (nursingAssessment as Record<string, unknown>)[ER_DISPOSITION_EXECUTION_V1_KEY];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const at = (raw as Record<string, unknown>).dischargeSortieCompletedAt;
+  const by = (raw as Record<string, unknown>).dischargeSortieCompletedByDisplayName;
+  if (typeof at !== "string" || typeof by !== "string") return null;
+  const note = (raw as Record<string, unknown>).dischargeSortieExecutionNote;
+  const out: ErDischargeSortieExecutionStored = {
+    dischargeSortieCompletedAt: at,
+    dischargeSortieCompletedByDisplayName: by,
+  };
+  if (typeof note === "string" && note.trim()) {
+    out.dischargeSortieExecutionNote = note.trim().slice(0, MAX_EXEC_NOTE);
+  }
+  return out;
+}
+
+/**
+ * Merge exécution sortie infirmière — préserve les autres clés de `nursingAssessment` (erDispositionV1, etc.).
+ */
+export function mergeDischargeSortieExecutionIntoNursingAssessment(
+  previousNursingAssessment: unknown,
+  execution: ErDischargeSortieExecutionStored
+): Record<string, unknown> {
+  const base =
+    previousNursingAssessment && typeof previousNursingAssessment === "object" && !Array.isArray(previousNursingAssessment)
+      ? { ...(previousNursingAssessment as Record<string, unknown>) }
+      : {};
+  const note = execution.dischargeSortieExecutionNote?.trim().slice(0, MAX_EXEC_NOTE);
+  base[ER_DISPOSITION_EXECUTION_V1_KEY] = {
+    dischargeSortieCompletedAt: execution.dischargeSortieCompletedAt,
+    dischargeSortieCompletedByDisplayName: execution.dischargeSortieCompletedByDisplayName,
+    ...(note ? { dischargeSortieExecutionNote: note } : {}),
+  };
+  return base;
+}
+
 /** UI outcome — maps to `dischargeForm.dischargeMode` (exact strings from DISCHARGE_MODE_OPTIONS_FR). */
 export type ErDispositionOutcomeUi =
   | "HOME"
