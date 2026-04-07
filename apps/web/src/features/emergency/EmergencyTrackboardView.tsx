@@ -13,13 +13,13 @@ import {
 import {
   esiDisplayChar,
   esiLevelFromUnknown,
-  EMERGENCY_AVATAR_CIRCLE_STYLE,
   esiUnderAvatarNumberStyle,
 } from "@/features/emergency/emergencyEsiDisplay";
 import {
   MedoraCard,
   MedoraCardBadge,
   MedoraCardInner,
+  MedoraCompactPatientCardRow,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 
@@ -365,151 +365,51 @@ export function EmergencyTrackboardView() {
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
-                      {/* Local negative margin offsets MedoraCardInner padding for a denser ER row without changing shared MedoraCardInner. */}
-                      <div
-                        style={{
-                          margin: "-8px -8px",
-                          width: "calc(100% + 16px)",
-                          minWidth: 0,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            gap: 8,
-                            rowGap: 6,
-                            width: "100%",
-                            minWidth: 0,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "row",
-                              alignItems: "flex-start",
-                              gap: 8,
-                              flex: "1 1 220px",
-                              minWidth: 0,
-                            }}
-                          >
-                            <div
+                      <MedoraCompactPatientCardRow
+                        avatarInitials={patientInitials(patient)}
+                        avatarFooter={
+                          <span style={esiUnderAvatarNumberStyle(esiLevel)}>{esiDisplayChar(esiLevel)}</span>
+                        }
+                        roomLabel={ui.common.room}
+                        roomValue={room}
+                        identity={
+                          <>
+                            <h2
                               style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: 0,
-                                flexShrink: 0,
-                                width: 44,
+                                margin: 0,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: "#0f172a",
+                                lineHeight: 1.2,
                               }}
                             >
-                              <div style={EMERGENCY_AVATAR_CIRCLE_STYLE} aria-hidden>
-                                {patientInitials(patient)}
-                              </div>
-                              <span style={esiUnderAvatarNumberStyle(esiLevel)}>{esiDisplayChar(esiLevel)}</span>
-                            </div>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <h2
-                                style={{
-                                  margin: 0,
-                                  fontSize: 14,
-                                  fontWeight: 600,
-                                  color: "#0f172a",
-                                  lineHeight: 1.2,
-                                }}
-                              >
-                                {fullPatientName(patient)}
-                              </h2>
-                              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
-                                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
-                                {" · "}
-                                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
-                                {formatAgeYearsSexFr(
-                                  patient?.dob ?? null,
-                                  patient?.sexAtBirth ?? null,
-                                  patient?.sex ?? null
-                                )}
-                              </p>
-                              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
-                                <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
-                                  {ui.common.chiefComplaintShort}
-                                </span>
-                                {" — "}
-                                {cc}
-                              </p>
-                              <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
-                                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                                {arrivalDisplay}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              flex: "0 0 auto",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              padding: "0 4px",
-                              alignSelf: "center",
-                            }}
-                          >
-                            <div
-                              style={{
-                                padding: "4px 8px",
-                                borderRadius: 8,
-                                border: "1px solid #bae6fd",
-                                backgroundColor: "#f0f9ff",
-                                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
-                                textAlign: "center",
-                                minWidth: 72,
-                                maxWidth: 120,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 700,
-                                  letterSpacing: "0.06em",
-                                  textTransform: "uppercase",
-                                  color: "#0369a1",
-                                  marginBottom: 1,
-                                  lineHeight: 1,
-                                }}
-                              >
-                                {ui.common.room}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: 700,
-                                  lineHeight: 1.15,
-                                  color: "#0c4a6e",
-                                  fontVariantNumeric: "tabular-nums",
-                                  wordBreak: "break-word",
-                                }}
-                              >
-                                {room}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-end",
-                              justifyContent: "center",
-                              gap: 3,
-                              flex: "0 1 200px",
-                              marginLeft: "auto",
-                              minWidth: 132,
-                              maxWidth: 240,
-                              alignSelf: "center",
-                            }}
-                          >
+                              {fullPatientName(patient)}
+                            </h2>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
+                              {" · "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
+                              {formatAgeYearsSexFr(
+                                patient?.dob ?? null,
+                                patient?.sexAtBirth ?? null,
+                                patient?.sex ?? null
+                              )}
+                            </p>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
+                              <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
+                                {ui.common.chiefComplaintShort}
+                              </span>
+                              {" — "}
+                              {cc}
+                            </p>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                              {arrivalDisplay}
+                            </p>
+                          </>
+                        }
+                        right={
+                          <>
                             {phys ? (
                               <p
                                 style={{
@@ -575,9 +475,9 @@ export function EmergencyTrackboardView() {
                                 {ui.common.view}
                               </Link>
                             </div>
-                          </div>
-                        </div>
-                      </div>
+                          </>
+                        }
+                      />
                     </MedoraCardInner>
                   </MedoraCard>
                 </li>

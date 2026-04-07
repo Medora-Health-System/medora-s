@@ -31,6 +31,8 @@ import {
 } from "@/features/emergency/EmergencyWorkspaceClinicalStrip";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
+import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
+import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import {
   MEDORA_CARD_SHELL,
@@ -77,6 +79,13 @@ type EncounterShell = {
   patient?: PatientLite | null;
   /** Required by `NursingAssessmentTab` (same payload as GET /encounters/:id). */
   nursingAssessment?: unknown;
+  dischargeSummaryJson?: unknown;
+  admissionSummaryJson?: unknown;
+  physicianAssigned?: {
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
   providerDocumentationStatus?: string | null;
 };
 
@@ -135,12 +144,29 @@ export type ErWorkspaceSection =
   | "orders"
   | "notes"
   | "nursing"
+  | "providerMse"
   | "disposition";
+
+type ErDashboardTile =
+  | {
+      kind: "section";
+      id: ErWorkspaceSection;
+      accent: string;
+      title: string;
+      disabled: boolean;
+    }
+  | {
+      kind: "link";
+      id: string;
+      accent: string;
+      title: string;
+      href: string;
+    };
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, roles, ready: rolesReady } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, roles, ready: rolesReady, canPrescribe } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
   const [resultsRefresh, setResultsRefresh] = useState(0);
@@ -172,6 +198,9 @@ export function EmergencyActiveWorkspaceView() {
 
   const canFetchMarTab =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
+  const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -303,6 +332,12 @@ export function EmergencyActiveWorkspaceView() {
     }
   }, [canFetchEncounterTriage, activeSection]);
 
+  useEffect(() => {
+    if (!showNursingTab && activeSection === "providerMse") {
+      setActiveSection("results");
+    }
+  }, [showNursingTab, activeSection]);
+
   const sectionTitleFr: Record<ErWorkspaceSection, string> = {
     triage: "Triage urgences",
     results: "Résultats et examens (urgences)",
@@ -310,6 +345,7 @@ export function EmergencyActiveWorkspaceView() {
     orders: "Ordres",
     notes: "Notes",
     nursing: "Réévaluation infirmière (urgences)",
+    providerMse: "Évaluation médicale (urgences)",
     disposition: "Disposition",
   };
 
@@ -568,51 +604,102 @@ export function EmergencyActiveWorkspaceView() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
               gap: 10,
             }}
           >
             {(
               [
                 {
+                  kind: "section" as const,
                   id: "triage" as const,
                   accent: "#b91c1c",
                   title: "Triage",
-                  sub: "Motif, ESI, SV",
                   disabled: !canFetchEncounterTriage,
                 },
                 {
+                  kind: "section" as const,
                   id: "results" as const,
                   accent: "#6366f1",
                   title: "Résultats",
-                  sub: "Labo, imagerie",
                   disabled: false,
                 },
                 {
+                  kind: "section" as const,
                   id: "mar" as const,
                   accent: "#059669",
                   title: "MAR",
-                  sub: "Médicaments",
                   disabled: !canFetchMarTab,
                 },
-                { id: "orders" as const, accent: "#7c3aed", title: "Ordres", sub: "Prescriptions", disabled: false },
-                { id: "notes" as const, accent: "#475569", title: "Notes", sub: "Inf. / court", disabled: false },
+                { kind: "section" as const, id: "orders" as const, accent: "#7c3aed", title: "Ordres", disabled: false },
+                { kind: "section" as const, id: "notes" as const, accent: "#475569", title: "Notes", disabled: false },
                 {
+                  kind: "section" as const,
                   id: "nursing" as const,
                   accent: "#0ea5e9",
                   title: "Soins",
-                  sub: "Réévaluation",
                   disabled: !showNursingTab,
                 },
                 {
+                  kind: "section" as const,
+                  id: "providerMse" as const,
+                  accent: "#4f46e5",
+                  title: "Évaluation médicale",
+                  disabled: !showNursingTab,
+                },
+                {
+                  kind: "section" as const,
                   id: "disposition" as const,
                   accent: "#94a3b8",
                   title: "Disposition",
-                  sub: "Sortie",
                   disabled: false,
                 },
-              ] as const
+                {
+                  kind: "link" as const,
+                  id: "shortcut-encounter",
+                  accent: "#2563eb",
+                  title: "Consultation complète",
+                  href: encounterHref,
+                },
+                {
+                  kind: "link" as const,
+                  id: "shortcut-diagnostics",
+                  accent: "#9333ea",
+                  title: "Diagnostics",
+                  href: tabHref("diagnostics"),
+                },
+              ] satisfies ErDashboardTile[]
             ).map((q) => {
+              if (q.kind === "link") {
+                return (
+                  <div
+                    key={q.id}
+                    style={{
+                      borderRadius: 16,
+                      outline: "1px solid transparent",
+                      outlineOffset: 0,
+                    }}
+                  >
+                    <Link
+                      href={q.href}
+                      style={{
+                        display: "block",
+                        textDecoration: "none",
+                        color: "inherit",
+                        width: "100%",
+                      }}
+                    >
+                      <MedoraCard leftAccentColor={q.accent} variant="default">
+                        <MedoraCardInner>
+                          <MedoraCardIdentity initials={q.title.charAt(0)}>
+                            <MedoraCardTitle title={q.title} />
+                          </MedoraCardIdentity>
+                        </MedoraCardInner>
+                      </MedoraCard>
+                    </Link>
+                  </div>
+                );
+              }
               const selected = activeSection === q.id;
               return (
                 <div
@@ -644,10 +731,7 @@ export function EmergencyActiveWorkspaceView() {
                     <MedoraCard leftAccentColor={q.accent} variant="default">
                       <MedoraCardInner>
                         <MedoraCardIdentity initials={q.title.charAt(0)}>
-                          <MedoraCardTitle
-                            title={q.title}
-                            subline={<p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{q.sub}</p>}
-                          />
+                          <MedoraCardTitle title={q.title} />
                         </MedoraCardIdentity>
                       </MedoraCardInner>
                     </MedoraCard>
@@ -659,20 +743,7 @@ export function EmergencyActiveWorkspaceView() {
         </section>
 
         <section aria-label="Zone active" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 10, justifyContent: "space-between" }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitleFr[activeSection]}</h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <Link href={encounterHref} style={{ ...linkPill, fontSize: 13 }}>
-                Consultation complète
-              </Link>
-              <Link href={tabHref("clinic")} style={{ ...linkPill, fontSize: 13 }}>
-                Évaluation médicale
-              </Link>
-              <Link href={tabHref("diagnostics")} style={{ ...linkPill, fontSize: 13 }}>
-                Diagnostics
-              </Link>
-            </div>
-          </div>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitleFr[activeSection]}</h2>
 
           {activeSection === "triage" && canFetchEncounterTriage ? (
             <EmergencyTriagePanel
@@ -843,26 +914,54 @@ export function EmergencyActiveWorkspaceView() {
             </MedoraCard>
           ) : null}
 
-          {activeSection === "disposition" ? (
-            <MedoraCard leftAccentColor="#94a3b8" variant="default">
+          {activeSection === "providerMse" && showNursingTab ? (
+            <EmergencyProviderMsePanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              isLocked={isLocked}
+              onSaved={onEmbeddedEncounterUpdate}
+              clinicTabHref={tabHref("clinic")}
+              encounterHref={encounterHref}
+            />
+          ) : null}
+
+          {activeSection === "providerMse" && !showNursingTab ? (
+            <MedoraCard leftAccentColor="#4f46e5" variant="default">
               <MedoraCardInner>
-                <MedoraCardIdentity initials="D">
+                <MedoraCardIdentity initials="M">
                   <MedoraCardTitle
-                    title="Disposition"
+                    title="Évaluation médicale"
                     subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                        Sortie, instructions et clôture — dossier complet.
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Zone réservée à certains rôles. Ouvrez le dossier complet.
                       </p>
                     }
                   />
                 </MedoraCardIdentity>
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
-                  <Link href={tabHref("summary")} style={linkPill}>
-                    Résumé et sortie
+                  <Link href={tabHref("clinic")} style={linkPill}>
+                    Onglet évaluation clinique
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
             </MedoraCard>
+          ) : null}
+
+          {activeSection === "disposition" ? (
+            <EmergencyDispositionPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              isLocked={isLocked}
+              onSaved={onEmbeddedEncounterUpdate}
+              summaryTabHref={tabHref("summary")}
+              encounterHref={encounterHref}
+              hospitalisationBoardHref="/app/hospitalisation"
+              canPrescribe={canPrescribe}
+              canEditNursingDischarge={canEditNursingDischarge}
+              canEditMedicalDischarge={canEditMedicalDischarge}
+            />
           ) : null}
         </section>
       </div>

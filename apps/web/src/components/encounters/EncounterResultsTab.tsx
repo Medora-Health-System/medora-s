@@ -71,6 +71,8 @@ export function EncounterResultsTab({
   refreshToken,
   onLabRadSnapshot,
   hideIntroNote = false,
+  /** Si false : charge les commandes et notifie `onLabRadSnapshot`, mais n’affiche pas la liste détaillée (cockpit urgences). */
+  embeddedDetailList = true,
 }: {
   encounterId: string;
   facilityId: string;
@@ -80,6 +82,7 @@ export function EncounterResultsTab({
   onLabRadSnapshot?: (snapshot: EncounterResultsLabRadSnapshot) => void;
   /** Masque le bloc d’intro gris si le parent fournit déjà le contexte. */
   hideIntroNote?: boolean;
+  embeddedDetailList?: boolean;
 }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,6 +174,10 @@ export function EncounterResultsTab({
     borderRadius: MEDORA_CARD_SHELL.radius,
     boxShadow: MEDORA_CARD_SHELL.boxShadow,
   };
+
+  if (!embeddedDetailList) {
+    return null;
+  }
 
   if (loading) {
     return (

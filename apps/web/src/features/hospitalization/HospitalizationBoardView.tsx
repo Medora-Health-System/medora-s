@@ -11,14 +11,9 @@ import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 import {
   MedoraCard,
-  MedoraCardActions,
-  MedoraCardActionsMediaStyle,
   MedoraCardBadge,
-  MedoraCardBadgeRow,
-  MedoraCardIdentity,
   MedoraCardInner,
-  MedoraCardRoomBlock,
-  MedoraCardTitle,
+  MedoraCompactPatientCardRow,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 
@@ -225,16 +220,6 @@ export function HospitalizationBoardView() {
       )}
 
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-          @media (min-width: 640px) {
-            .hosp-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
-          }
-        `,
-          }}
-        />
-        <MedoraCardActionsMediaStyle />
         <header
           style={{
             display: "flex",
@@ -453,7 +438,7 @@ export function HospitalizationBoardView() {
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {filteredEncounters.map((encounter) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
@@ -468,88 +453,124 @@ export function HospitalizationBoardView() {
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
-                      <MedoraCardIdentity initials={patientInitials(patient)}>
-                        <MedoraCardTitle
-                          title={fullPatientName(patient)}
-                          subline={
-                            <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
+                      <MedoraCompactPatientCardRow
+                        avatarInitials={patientInitials(patient)}
+                        roomLabel={ui.common.room}
+                        roomValue={room}
+                        rightMaxWidth={320}
+                        identity={
+                          <>
+                            <h2
+                              style={{
+                                margin: 0,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: "#0f172a",
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              {fullPatientName(patient)}
+                            </h2>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
                               {formatAgeYearsSexFr(
                                 patient?.dob ?? null,
                                 patient?.sexAtBirth ?? null,
                                 patient?.sex ?? null
                               )}
                             </p>
-                          }
-                        />
-                        <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>{cc}</p>
-                        <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
-                          {" · "}
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                          {formatTime(encounter.createdAt ?? null)}
-                        </p>
-                      </MedoraCardIdentity>
-
-                      <MedoraCardRoomBlock label={ui.common.room} value={room} />
-
-                      <div
-                        className="hosp-meta-block"
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "stretch",
-                          width: "100%",
-                          minWidth: 200,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <MedoraCardActions railBorderTopColor="#f1f5f9" gap={8} minWidth={200} alignItems="flex-start">
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{phys}</p>
-                          <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
-                            <span style={{ color: "#cbd5e1" }}>Inf.</span> {ui.common.dash}
-                          </p>
-                          <MedoraCardBadgeRow marginTop={0}>
-                            <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
-                            <Link
-                              href={`/app/encounters/${encounter.id}`}
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>{cc}</p>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
+                              {" · "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                              {formatTime(encounter.createdAt ?? null)}
+                            </p>
+                          </>
+                        }
+                        right={
+                          <>
+                            <p
                               style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                padding: "6px 14px",
-                                borderRadius: 10,
-                                border: "1px solid #bfdbfe",
-                                backgroundColor: "#eff6ff",
-                                color: "#1d4ed8",
-                                fontSize: 14,
+                                margin: 0,
+                                fontSize: 11,
                                 fontWeight: 600,
-                                textDecoration: "none",
+                                color: "#0f172a",
+                                textAlign: "right",
+                                lineHeight: 1.2,
+                                maxWidth: 260,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={phys}
+                            >
+                              {phys}
+                            </p>
+                            <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", textAlign: "right" }}>
+                              <span style={{ color: "#cbd5e1" }}>Inf.</span> {ui.common.dash}
+                            </p>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 4,
+                                justifyContent: "flex-end",
                               }}
                             >
-                              {ui.common.view}
-                            </Link>
-                            <Link
-                              href={`/app/encounters/${encounter.id}`}
+                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
+                            </div>
+                            <div
                               style={{
-                                display: "inline-flex",
+                                display: "flex",
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 4,
                                 alignItems: "center",
-                                justifyContent: "center",
-                                padding: "6px 14px",
-                                borderRadius: 10,
-                                border: "1px solid #cbd5e1",
-                                backgroundColor: "#fff",
-                                color: "#475569",
-                                fontSize: 14,
-                                fontWeight: 600,
-                                textDecoration: "none",
+                                justifyContent: "flex-end",
                               }}
-                              aria-label="Ouvrir la consultation pour accéder au dossier de sortie"
                             >
-                              Sortie
-                            </Link>
-                          </MedoraCardBadgeRow>
-                        </MedoraCardActions>
-                      </div>
+                              <Link
+                                href={`/app/encounters/${encounter.id}`}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "4px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #bfdbfe",
+                                  backgroundColor: "#eff6ff",
+                                  color: "#1d4ed8",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {ui.common.view}
+                              </Link>
+                              <Link
+                                href={`/app/encounters/${encounter.id}`}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "4px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #cbd5e1",
+                                  backgroundColor: "#fff",
+                                  color: "#475569",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                }}
+                                aria-label="Ouvrir la consultation pour accéder au dossier de sortie"
+                              >
+                                Sortie
+                              </Link>
+                            </div>
+                          </>
+                        }
+                      />
                     </MedoraCardInner>
                   </MedoraCard>
                 </li>
