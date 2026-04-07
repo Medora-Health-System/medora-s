@@ -32,6 +32,7 @@ import {
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
+import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import {
   MEDORA_CARD_SHELL,
@@ -78,6 +79,13 @@ type EncounterShell = {
   patient?: PatientLite | null;
   /** Required by `NursingAssessmentTab` (same payload as GET /encounters/:id). */
   nursingAssessment?: unknown;
+  dischargeSummaryJson?: unknown;
+  admissionSummaryJson?: unknown;
+  physicianAssigned?: {
+    id?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
   providerDocumentationStatus?: string | null;
 };
 
@@ -158,7 +166,7 @@ type ErDashboardTile =
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, roles, ready: rolesReady } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, roles, ready: rolesReady, canPrescribe } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
   const [resultsRefresh, setResultsRefresh] = useState(0);
@@ -190,6 +198,9 @@ export function EmergencyActiveWorkspaceView() {
 
   const canFetchMarTab =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
+  const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -938,25 +949,19 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "disposition" ? (
-            <MedoraCard leftAccentColor="#94a3b8" variant="default">
-              <MedoraCardInner>
-                <MedoraCardIdentity initials="D">
-                  <MedoraCardTitle
-                    title="Disposition"
-                    subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                        Sortie, instructions et clôture — dossier complet.
-                      </p>
-                    }
-                  />
-                </MedoraCardIdentity>
-                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
-                  <Link href={tabHref("summary")} style={linkPill}>
-                    Résumé et sortie
-                  </Link>
-                </MedoraCardActions>
-              </MedoraCardInner>
-            </MedoraCard>
+            <EmergencyDispositionPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              isLocked={isLocked}
+              onSaved={onEmbeddedEncounterUpdate}
+              summaryTabHref={tabHref("summary")}
+              encounterHref={encounterHref}
+              hospitalisationBoardHref="/app/hospitalisation"
+              canPrescribe={canPrescribe}
+              canEditNursingDischarge={canEditNursingDischarge}
+              canEditMedicalDischarge={canEditMedicalDischarge}
+            />
           ) : null}
         </section>
       </div>
