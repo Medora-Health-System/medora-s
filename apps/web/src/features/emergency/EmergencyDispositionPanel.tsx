@@ -105,7 +105,8 @@ export function EmergencyDispositionPanel({
   isLocked,
   onSaved,
   summaryTabHref,
-  encounterHref,
+  erChartHref,
+  genericEncounterHref,
   hospitalisationBoardHref,
   canPrescribe,
   canEditNursingDischarge,
@@ -117,7 +118,10 @@ export function EmergencyDispositionPanel({
   isLocked: boolean;
   onSaved: () => void | Promise<void>;
   summaryTabHref: string;
-  encounterHref: string;
+  /** Charte urgences complète (parcours principal). */
+  erChartHref: string;
+  /** Dossier consultation Medora générique (référence secondaire). */
+  genericEncounterHref: string;
   hospitalisationBoardHref: string;
   canPrescribe: boolean;
   canEditNursingDischarge: boolean;
@@ -339,7 +343,7 @@ export function EmergencyDispositionPanel({
             Résumé et clôture (dossier)
           </Link>
           <Link
-            href={encounterHref}
+            href={erChartHref}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -354,6 +358,23 @@ export function EmergencyDispositionPanel({
             }}
           >
             Consultation complète
+          </Link>
+          <Link
+            href={genericEncounterHref}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "8px 14px",
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#f8fafc",
+              color: "#64748b",
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Dossier Medora (référence)
           </Link>
           <Link
             href={hospitalisationBoardHref}

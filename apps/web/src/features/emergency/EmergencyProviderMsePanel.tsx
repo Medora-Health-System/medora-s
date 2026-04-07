@@ -77,7 +77,8 @@ export function EmergencyProviderMsePanel({
   isLocked,
   onSaved,
   clinicTabHref,
-  encounterHref,
+  erChartHref,
+  genericEncounterHref,
 }: {
   encounterId: string;
   facilityId: string;
@@ -86,8 +87,10 @@ export function EmergencyProviderMsePanel({
   onSaved: () => void | Promise<void>;
   /** Onglet évaluation clinique du dossier (référence complète). */
   clinicTabHref: string;
-  /** Lien dossier consultation (raccourci). */
-  encounterHref: string;
+  /** Charte urgences complète (parcours principal). */
+  erChartHref: string;
+  /** Dossier consultation Medora générique (référence secondaire). */
+  genericEncounterHref: string;
 }) {
   const [form, setForm] = useState<ErProviderMseForm>(() => erProviderMseFormFromEncounter(encounter.nursingAssessment));
   const [saving, setSaving] = useState(false);
@@ -246,7 +249,7 @@ export function EmergencyProviderMsePanel({
             Ouvrir l&apos;évaluation clinique (dossier)
           </Link>
           <Link
-            href={encounterHref}
+            href={erChartHref}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -261,6 +264,23 @@ export function EmergencyProviderMsePanel({
             }}
           >
             Consultation complète
+          </Link>
+          <Link
+            href={genericEncounterHref}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "8px 14px",
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#f8fafc",
+              color: "#64748b",
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Dossier Medora (référence)
           </Link>
         </MedoraCardActions>
 

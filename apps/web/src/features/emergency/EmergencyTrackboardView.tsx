@@ -22,6 +22,11 @@ import {
   MedoraCompactPatientCardRow,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
+import {
+  erDispositionBadgeFromEncounterJson,
+  type ErDispositionBadgeVariant,
+} from "@/features/emergency/erTrackboardDispositionBadge";
+import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -111,7 +116,31 @@ type OpenEncounterRow = {
   } | null;
   triage?: { esi?: number | null; chiefComplaint?: string | null } | null;
   physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+  dischargeSummaryJson?: unknown;
+  admissionSummaryJson?: unknown;
 };
+
+function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadgeSoft {
+  switch (variant) {
+    case "discharge":
+      return { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" };
+    case "admit":
+      return { bg: "#eef2ff", text: "#3730a3", border: "#c7d2fe" };
+    case "observe":
+      return { bg: "#f5f3ff", text: "#5b21b6", border: "#ddd6fe" };
+    case "transfer":
+      return { bg: "#fffbeb", text: "#b45309", border: "#fde68a" };
+    case "ama":
+      return { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" };
+    case "deceased":
+      return { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" };
+    case "lwbs":
+      return { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" };
+    case "other":
+    default:
+      return { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" };
+  }
+}
 
 export function EmergencyTrackboardView() {
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
@@ -360,6 +389,7 @@ export function EmergencyTrackboardView() {
               const nirLine = patientNirDisplay(patient);
               const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null);
               const statusKey = (encounter.status ?? "").trim() || "OPEN";
+              const dispositionBadge = erDispositionBadgeFromEncounterJson(encounter);
 
               return (
                 <li key={encounter.id}>
@@ -444,6 +474,13 @@ export function EmergencyTrackboardView() {
                               <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
                                 {getEncounterTypeLabelFr(EMERGENCY_TYPE)}
                               </MedoraCardBadge>
+                              {dispositionBadge ? (
+                                <span title="Décision documentée (résumé sortie / admission)">
+                                  <MedoraCardBadge soft={dispositionBadgeSoft(dispositionBadge.variant)}>
+                                    {dispositionBadge.shortLabel}
+                                  </MedoraCardBadge>
+                                </span>
+                              ) : null}
                             </div>
                             <div
                               style={{
@@ -457,7 +494,25 @@ export function EmergencyTrackboardView() {
                             >
                               <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
                               <Link
-                                href={`/app/emergency/active/${encounter.id}`}
+                                href={emergencyChartPath(encounter.id)}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "4px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #93c5fd",
+                                  backgroundColor: "#dbeafe",
+                                  color: "#1e40af",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                }}
+                              >
+                                Charte
+                              </Link>
+                              <Link
+                                href={emergencyActiveWorkspacePath(encounter.id)}
                                 style={{
                                   display: "inline-flex",
                                   alignItems: "center",

@@ -7,6 +7,7 @@ import {
   type EncounterLabRadRow,
   type EncounterResultsLabRadSnapshot,
 } from "@/components/encounters/EncounterResultsTab";
+import { buildErResultsCockpitModel } from "@/features/emergency/emergencyResultsCockpitModel";
 import { clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
@@ -94,81 +95,6 @@ function rowRecencyMs(row: EncounterLabRadRow): number {
   return orderCreatedMs(row.order);
 }
 
-function pickLatestByType(rows: EncounterLabRadRow[], type: "LAB_TEST" | "IMAGING_STUDY"): EncounterLabRadRow | null {
-  const filtered = rows.filter((r) => r.item.catalogItemType === type);
-  if (filtered.length === 0) return null;
-  return [...filtered].sort((a, b) => rowRecencyMs(b) - rowRecencyMs(a))[0] ?? null;
-}
-
-function buildCockpitModel(snap: EncounterResultsLabRadSnapshot | null) {
-  if (!snap || snap.loading) {
-    return {
-      ready: false as const,
-      failed: false,
-      empty: true,
-      labLatest: null as EncounterLabRadRow | null,
-      imagingLatest: null as EncounterLabRadRow | null,
-      priorityRows: [] as EncounterLabRadRow[],
-      labTotal: 0,
-      imagingTotal: 0,
-      pendingSyncCount: 0,
-    };
-  }
-  if (snap.ordersLoadFailedNoCache) {
-    return {
-      ready: true as const,
-      failed: true,
-      empty: true,
-      labLatest: null as EncounterLabRadRow | null,
-      imagingLatest: null as EncounterLabRadRow | null,
-      priorityRows: [] as EncounterLabRadRow[],
-      labTotal: 0,
-      imagingTotal: 0,
-      pendingSyncCount: 0,
-    };
-  }
-  const rows = snap.rows;
-  let labTotal = 0;
-  let imagingTotal = 0;
-  let pendingSyncCount = 0;
-  for (const r of rows) {
-    if (r.item.catalogItemType === "LAB_TEST") labTotal += 1;
-    if (r.item.catalogItemType === "IMAGING_STUDY") imagingTotal += 1;
-    if (r.pendingSync) pendingSyncCount += 1;
-  }
-  const labLatest = pickLatestByType(rows, "LAB_TEST");
-  const imagingLatest = pickLatestByType(rows, "IMAGING_STUDY");
-
-  const priorityRows: EncounterLabRadRow[] = [];
-  const seen = new Set<string>();
-  for (const r of rows) {
-    const crit =
-      r.item.result &&
-      typeof r.item.result === "object" &&
-      (r.item.result as { criticalValue?: boolean }).criticalValue === true;
-    if (r.pendingSync || crit) {
-      const id = typeof r.item.id === "string" ? r.item.id : String(r.item.id ?? "");
-      if (id && !seen.has(id)) {
-        seen.add(id);
-        priorityRows.push(r);
-      }
-    }
-  }
-  priorityRows.sort((a, b) => rowRecencyMs(b) - rowRecencyMs(a));
-
-  return {
-    ready: true as const,
-    failed: false,
-    empty: rows.length === 0,
-    labLatest,
-    imagingLatest,
-    priorityRows: priorityRows.slice(0, 6),
-    labTotal,
-    imagingTotal,
-    pendingSyncCount,
-  };
-}
-
 function CompactResultRow({
   row,
   emphasize,
@@ -239,7 +165,7 @@ export function EmergencyResultsPanel({
     setSnap(s);
   }, []);
 
-  const model = useMemo(() => buildCockpitModel(snap), [snap]);
+  const model = useMemo(() => buildErResultsCockpitModel(snap), [snap]);
 
   return (
     <MedoraCard leftAccentColor="#6366f1" variant="default">
