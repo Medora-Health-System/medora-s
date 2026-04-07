@@ -1,0 +1,31 @@
+---
+description: Medora-S UI density — compact operational boards, worklists, and lists; scan speed over decorative space
+globs: apps/web/**/*.{tsx,ts}
+alwaysApply: true
+---
+
+# Medora UI density (operational views)
+
+Default to **compact, operational** layouts. Clinical **documentation-heavy** screens may use more vertical space; **trackboards, queues, worklists, and patient lists** must optimize for **scan speed and density**.
+
+## Prefer
+
+- **As many rows/cards visible** as reasonably possible without scrolling (viewport-dependent).
+- **Horizontal information layout** over tall stacked vertical blocks when the content fits.
+- **Tight, intentional padding**; reuse `MedoraCard` / `MedoraCardInner` but **compose densely** (local wrappers, tighter gaps, single-row structure) for operational views — see `.cursor/rules/medora-card-system.mdc` for primitives.
+- **Justify height** if a card or row must be tall (e.g. rich clinical narrative); otherwise keep it short.
+
+## Avoid
+
+- **Decorative whitespace** and oversized vertical gaps.
+- **Enlarging** badges, room blocks, or status chips without a strong reason.
+- **Tall cards** for list/board patterns unless the screen is truly documentation-heavy.
+
+## Mental model
+
+- **Operational boards** = compact, fast scan, many visible rows.
+- **Detail / chart / documentation** = may be larger; still avoid gratuitous padding.
+
+## When unsure
+
+Prefer density and horizontal grouping; if a layout fights this rule, pause and justify why extra height is clinically necessary.

@@ -13,7 +13,22 @@ import {
 } from "@/lib/uiLabels";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
-import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
+import {
+  esiDisplayChar,
+  esiLevelFromUnknown,
+  EMERGENCY_AVATAR_CIRCLE_STYLE,
+  esiUnderAvatarNumberStyle,
+} from "@/features/emergency/emergencyEsiDisplay";
+import {
+  buildAllergyStripSummary,
+  buildErWorkspaceVitalPairs,
+  triagePreviewSliceFromTriageGet,
+} from "@/features/emergency/emergencyTriageDocPreview";
+import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
+import {
+  EmergencyWorkspaceAllergiesCard,
+  EmergencyWorkspaceVitalsCard,
+} from "@/features/emergency/EmergencyWorkspaceClinicalStrip";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
@@ -26,7 +41,6 @@ import {
   MedoraCardBadgeRow,
   MedoraCardIdentity,
   MedoraCardInner,
-  MedoraCardRoomBlock,
   MedoraCardTitle,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
@@ -128,8 +142,12 @@ export function EmergencyActiveWorkspaceView() {
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, roles, ready: rolesReady } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
-  /** Bumped after embedded saves so `EncounterResultsTab` can refetch (same pattern as encounter page token). */
+  /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
   const [resultsRefresh, setResultsRefresh] = useState(0);
+  /** Recharge le GET triage pour le bandeau clinique partagé (après enregistrement triage, etc.). */
+  const [triageRefresh, setTriageRefresh] = useState(0);
+  const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
+  const [triageLoading, setTriageLoading] = useState(false);
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
 
@@ -218,7 +236,59 @@ export function EmergencyActiveWorkspaceView() {
   const onEmbeddedEncounterUpdate = useCallback(async () => {
     await load();
     setResultsRefresh((r) => r + 1);
+    setTriageRefresh((r) => r + 1);
   }, [load]);
+
+  const loadTriageForStrip = useCallback(async () => {
+    if (!encounterId || !fid) return;
+    setTriageLoading(true);
+    try {
+      const data = await apiFetch(`/encounters/${encounterId}/triage`, { facilityId: fid });
+      setTriageSnapshot(
+        data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : null
+      );
+    } catch {
+      setTriageSnapshot(null);
+    } finally {
+      setTriageLoading(false);
+    }
+  }, [encounterId, fid, triageRefresh]);
+
+  useEffect(() => {
+    if (!encounterId || !fid) return;
+    void loadTriageForStrip();
+  }, [encounterId, fid, loadTriageForStrip]);
+
+  const clinicalStripModel = useMemo(() => {
+    const parsed = triagePreviewSliceFromTriageGet(triageSnapshot);
+    if (!parsed) {
+      const emptySlice = {
+        chiefComplaint: "",
+        onsetAt: "",
+        esi: "",
+        tempC: "",
+        hr: "",
+        rr: "",
+        bpSys: "",
+        bpDia: "",
+        spo2: "",
+        weightKg: "",
+        heightCm: "",
+        allergyNote: "",
+        triageCompleteAt: "",
+      };
+      return {
+        esi: "",
+        allergyText: "",
+        pairs: buildErWorkspaceVitalPairs(emptySlice),
+      };
+    }
+    return {
+      esi: parsed.slice.esi,
+      allergyText: buildAllergyStripSummary(parsed.slice, parsed.er),
+      pairs: buildErWorkspaceVitalPairs(parsed.slice),
+    };
+  }, [triageSnapshot]);
 
   const complaintLine = useMemo(() => {
     if (!encounter) return ui.common.dash;
@@ -235,7 +305,7 @@ export function EmergencyActiveWorkspaceView() {
 
   const sectionTitleFr: Record<ErWorkspaceSection, string> = {
     triage: "Triage urgences",
-    results: "Résultats",
+    results: "Résultats et examens (urgences)",
     mar: "Administration médicamenteuse",
     orders: "Ordres",
     notes: "Notes",
@@ -283,6 +353,8 @@ export function EmergencyActiveWorkspaceView() {
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
 
+  const headerEsiLevel = esiLevelFromUnknown(clinicalStripModel.esi.trim());
+
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
@@ -327,50 +399,155 @@ export function EmergencyActiveWorkspaceView() {
         <div style={{ marginBottom: 16 }}>
         <MedoraCard leftAccentColor="#2563eb" variant="default">
           <MedoraCardInner>
-            <MedoraCardIdentity initials={patientInitials(patient ?? undefined)}>
-              <MedoraCardTitle
-                title={fullPatientName(patient ?? undefined)}
-                subline={
-                  <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                    <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
-                    {(patient?.mrn ?? patient?.nationalId ?? "").trim() || ui.common.dash}
-                    {" · "}
-                    <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
-                    {formatAgeYearsSexFr(patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
-                  </p>
-                }
-              />
-              <p style={{ margin: "10px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
-                <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>{ui.common.chiefComplaintShort}</span>
-                {" — "}
-                {complaintLine}
-              </p>
-              <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                {formatDateTimeFr(encounter.createdAt ?? null)}
-                {encounter.admittedAt ? (
-                  <>
-                    {" · "}
-                    <span style={{ fontWeight: 600, color: "#475569" }}>Admission</span>{" "}
-                    {formatDateTimeFr(encounter.admittedAt)}
-                  </>
-                ) : null}
-              </p>
-            </MedoraCardIdentity>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "flex-start",
+                gap: "10px 12px",
+                width: "100%",
+              }}
+            >
+              {/* Gauche : initiales + ESI sous le cercle (pas de gros badge séparé) */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 3,
+                  flexShrink: 0,
+                  width: 48,
+                }}
+              >
+                <div style={EMERGENCY_AVATAR_CIRCLE_STYLE} aria-hidden>
+                  {patientInitials(patient ?? undefined)}
+                </div>
+                <span
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    color: "#64748b",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  ESI
+                </span>
+                <span style={esiUnderAvatarNumberStyle(triageLoading ? null : headerEsiLevel)}>
+                  {triageLoading ? "…" : esiDisplayChar(headerEsiLevel)}
+                </span>
+              </div>
 
-            <MedoraCardRoomBlock label={ui.common.room} value={roomDisplay} />
+              {/* Centre : identité patient */}
+              <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                <MedoraCardTitle
+                  title={fullPatientName(patient ?? undefined)}
+                  subline={
+                    <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
+                      {(patient?.mrn ?? patient?.nationalId ?? "").trim() || ui.common.dash}
+                      {" · "}
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
+                      {formatAgeYearsSexFr(patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
+                    </p>
+                  }
+                />
+                <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
+                  <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>{ui.common.chiefComplaintShort}</span>
+                  {" — "}
+                  {complaintLine}
+                </p>
+                <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                  <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                  {formatDateTimeFr(encounter.createdAt ?? null)}
+                  {encounter.admittedAt ? (
+                    <>
+                      {" · "}
+                      <span style={{ fontWeight: 600, color: "#475569" }}>Admission</span>{" "}
+                      {formatDateTimeFr(encounter.admittedAt)}
+                    </>
+                  ) : null}
+                </p>
+              </div>
 
-            <MedoraCardActions railBorderTopColor="#e2e8f0" gap={10} minWidth={0} alignItems="flex-start">
-              <MedoraCardBadgeRow marginTop={0}>
-                <MedoraCardBadge soft={statusSoft(statusKey)}>{getEncounterStatusBoardLabelFr(statusKey)}</MedoraCardBadge>
-                <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
-                  {getEncounterTypeLabelFr(typeKey)}
-                </MedoraCardBadge>
-              </MedoraCardBadgeRow>
-              <Link href={encounterHref} style={{ ...linkPill, alignSelf: "flex-start" }}>
-                Ouvrir la consultation complète
-              </Link>
-            </MedoraCardActions>
+              {/* SV + allergies : cartes compactes */}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  flex: "1 1 260px",
+                  alignItems: "stretch",
+                  minWidth: 0,
+                }}
+              >
+                <EmergencyWorkspaceVitalsCard vitalPairs={clinicalStripModel.pairs} loading={triageLoading} />
+                <EmergencyWorkspaceAllergiesCard
+                  allergySummary={clinicalStripModel.allergyText}
+                  loading={triageLoading}
+                />
+              </div>
+
+              {/* Droite : salle (haut) + statut + lien — style salle distinct d’ESI (bleu, pas rouge) */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  gap: 8,
+                  flex: "0 1 auto",
+                  marginLeft: "auto",
+                  minWidth: 140,
+                }}
+              >
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #bae6fd",
+                    backgroundColor: "#f0f9ff",
+                    textAlign: "center",
+                    minWidth: 88,
+                    maxWidth: 132,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: "#0369a1",
+                    }}
+                  >
+                    {ui.common.room}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 2,
+                      fontSize: 16,
+                      fontWeight: 700,
+                      lineHeight: 1.15,
+                      color: "#0c4a6e",
+                      fontVariantNumeric: "tabular-nums",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {roomDisplay}
+                  </div>
+                </div>
+                <MedoraCardBadgeRow marginTop={0}>
+                  <MedoraCardBadge soft={statusSoft(statusKey)}>{getEncounterStatusBoardLabelFr(statusKey)}</MedoraCardBadge>
+                  <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
+                    {getEncounterTypeLabelFr(typeKey)}
+                  </MedoraCardBadge>
+                </MedoraCardBadgeRow>
+                <Link href={encounterHref} style={{ ...linkPill, alignSelf: "flex-end", fontSize: 13, padding: "7px 12px" }}>
+                  Ouvrir la consultation complète
+                </Link>
+              </div>
+            </div>
           </MedoraCardInner>
         </MedoraCard>
         </div>
@@ -404,7 +581,13 @@ export function EmergencyActiveWorkspaceView() {
                   sub: "Motif, ESI, SV",
                   disabled: !canFetchEncounterTriage,
                 },
-                { id: "results" as const, accent: "#6366f1", title: "Résultats", sub: "Labo, imagerie", disabled: false },
+                {
+                  id: "results" as const,
+                  accent: "#6366f1",
+                  title: "Résultats",
+                  sub: "Labo, imagerie",
+                  disabled: false,
+                },
                 {
                   id: "mar" as const,
                   accent: "#059669",
@@ -528,27 +711,13 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "results" ? (
-            <MedoraCard leftAccentColor="#6366f1" variant="default">
-              <MedoraCardInner>
-                <MedoraCardIdentity initials="R">
-                  <MedoraCardTitle
-                    title="Résultats"
-                    subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Laboratoire et imagerie — même source que l&apos;onglet Résultats.
-                      </p>
-                    }
-                  />
-                </MedoraCardIdentity>
-                <div style={{ width: "100%", marginTop: 12 }}>
-                  <EncounterResultsTab
-                    encounterId={encounterId}
-                    facilityId={fid}
-                    refreshToken={resultsRefresh}
-                  />
-                </div>
-              </MedoraCardInner>
-            </MedoraCard>
+            <EmergencyResultsPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              refreshToken={resultsRefresh}
+              resultsTabHref={tabHref("results")}
+              diagnosticsTabHref={tabHref("diagnostics")}
+            />
           ) : null}
 
           {activeSection === "mar" && canFetchMarTab ? (

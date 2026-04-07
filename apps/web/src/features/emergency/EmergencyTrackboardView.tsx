@@ -11,15 +11,15 @@ import {
   ui,
 } from "@/lib/uiLabels";
 import {
+  esiDisplayChar,
+  esiLevelFromUnknown,
+  EMERGENCY_AVATAR_CIRCLE_STYLE,
+  esiUnderAvatarNumberStyle,
+} from "@/features/emergency/emergencyEsiDisplay";
+import {
   MedoraCard,
-  MedoraCardActions,
-  MedoraCardActionsMediaStyle,
   MedoraCardBadge,
-  MedoraCardBadgeRow,
-  MedoraCardIdentity,
   MedoraCardInner,
-  MedoraCardRoomBlock,
-  MedoraCardTitle,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 
@@ -203,17 +203,6 @@ export function EmergencyTrackboardView() {
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-          @media (min-width: 640px) {
-            .er-track-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
-          }
-        `,
-          }}
-        />
-        <MedoraCardActionsMediaStyle />
-
         <header style={{ marginBottom: 24 }}>
           <h1
             style={{
@@ -358,16 +347,16 @@ export function EmergencyTrackboardView() {
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {filtered.map((encounter) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const patient = encounter.patient;
               const cc =
                 encounter.triage?.chiefComplaint || encounter.chiefComplaint || ui.common.dash;
-              const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : ui.common.dash;
+              const esiLevel = esiLevelFromUnknown(encounter.triage?.esi ?? null);
               const room = encounter.roomLabel?.trim() || ui.common.dash;
-              const phys = physicianLabel(encounter) || ui.common.dash;
+              const phys = physicianLabel(encounter);
               const nirLine = patientNirDisplay(patient);
               const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null);
               const statusKey = (encounter.status ?? "").trim() || "OPEN";
@@ -376,87 +365,218 @@ export function EmergencyTrackboardView() {
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
-                      <MedoraCardIdentity initials={patientInitials(patient)}>
-                        <MedoraCardTitle
-                          title={fullPatientName(patient)}
-                          subline={
-                            <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
-                              {" · "}
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
-                              {formatAgeYearsSexFr(
-                                patient?.dob ?? null,
-                                patient?.sexAtBirth ?? null,
-                                patient?.sex ?? null
-                              )}
-                            </p>
-                          }
-                        />
-                        <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
-                          <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>
-                            {ui.common.chiefComplaintShort}
-                          </span>
-                          {" — "}
-                          {cc}
-                        </p>
-                        <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
-                          {" · "}
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span> {arrivalDisplay}
-                        </p>
-                      </MedoraCardIdentity>
-
-                      <MedoraCardRoomBlock label={ui.common.room} value={room} />
-
+                      {/* Local negative margin offsets MedoraCardInner padding for a denser ER row without changing shared MedoraCardInner. */}
                       <div
-                        className="er-track-meta-block"
                         style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "stretch",
-                          width: "100%",
-                          minWidth: 200,
-                          flexShrink: 0,
+                          margin: "-8px -8px",
+                          width: "calc(100% + 16px)",
+                          minWidth: 0,
                         }}
                       >
-                        <MedoraCardActions railBorderTopColor="#f1f5f9" gap={8} minWidth={200} alignItems="flex-start">
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
-                            <span style={{ fontWeight: 500, color: "#64748b", fontSize: 12 }}>
-                              {ui.common.physician} ·{" "}
-                            </span>
-                            {phys}
-                          </p>
-                          <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
-                            <span style={{ color: "#cbd5e1" }}>{ui.common.nurseAbbr}</span> {ui.common.dash}
-                          </p>
-                          <MedoraCardBadgeRow marginTop={0}>
-                            <MedoraCardBadge soft={statusSoft(statusKey)}>
-                              {getEncounterStatusBoardLabelFr(statusKey)}
-                            </MedoraCardBadge>
-                            <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
-                              {getEncounterTypeLabelFr(EMERGENCY_TYPE)}
-                            </MedoraCardBadge>
-                            <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
-                            <Link
-                              href={`/app/emergency/active/${encounter.id}`}
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                            gap: 8,
+                            rowGap: 6,
+                            width: "100%",
+                            minWidth: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "row",
+                              alignItems: "flex-start",
+                              gap: 8,
+                              flex: "1 1 220px",
+                              minWidth: 0,
+                            }}
+                          >
+                            <div
                               style={{
-                                display: "inline-flex",
+                                display: "flex",
+                                flexDirection: "column",
                                 alignItems: "center",
-                                justifyContent: "center",
-                                padding: "6px 14px",
-                                borderRadius: 10,
-                                border: "1px solid #bfdbfe",
-                                backgroundColor: "#eff6ff",
-                                color: "#1d4ed8",
-                                fontSize: 14,
-                                fontWeight: 600,
-                                textDecoration: "none",
+                                gap: 0,
+                                flexShrink: 0,
+                                width: 44,
                               }}
                             >
-                              {ui.common.view}
-                            </Link>
-                          </MedoraCardBadgeRow>
-                        </MedoraCardActions>
+                              <div style={EMERGENCY_AVATAR_CIRCLE_STYLE} aria-hidden>
+                                {patientInitials(patient)}
+                              </div>
+                              <span style={esiUnderAvatarNumberStyle(esiLevel)}>{esiDisplayChar(esiLevel)}</span>
+                            </div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <h2
+                                style={{
+                                  margin: 0,
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  color: "#0f172a",
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                {fullPatientName(patient)}
+                              </h2>
+                              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
+                                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
+                                {" · "}
+                                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
+                                {formatAgeYearsSexFr(
+                                  patient?.dob ?? null,
+                                  patient?.sexAtBirth ?? null,
+                                  patient?.sex ?? null
+                                )}
+                              </p>
+                              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
+                                <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
+                                  {ui.common.chiefComplaintShort}
+                                </span>
+                                {" — "}
+                                {cc}
+                              </p>
+                              <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                                <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                                {arrivalDisplay}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              flex: "0 0 auto",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "0 4px",
+                              alignSelf: "center",
+                            }}
+                          >
+                            <div
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 8,
+                                border: "1px solid #bae6fd",
+                                backgroundColor: "#f0f9ff",
+                                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+                                textAlign: "center",
+                                minWidth: 72,
+                                maxWidth: 120,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  letterSpacing: "0.06em",
+                                  textTransform: "uppercase",
+                                  color: "#0369a1",
+                                  marginBottom: 1,
+                                  lineHeight: 1,
+                                }}
+                              >
+                                {ui.common.room}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  lineHeight: 1.15,
+                                  color: "#0c4a6e",
+                                  fontVariantNumeric: "tabular-nums",
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {room}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "flex-end",
+                              justifyContent: "center",
+                              gap: 3,
+                              flex: "0 1 200px",
+                              marginLeft: "auto",
+                              minWidth: 132,
+                              maxWidth: 240,
+                              alignSelf: "center",
+                            }}
+                          >
+                            {phys ? (
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: 10,
+                                  fontWeight: 500,
+                                  color: "#64748b",
+                                  textAlign: "right",
+                                  lineHeight: 1.2,
+                                  maxWidth: 220,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                                title={phys}
+                              >
+                                <span style={{ color: "#94a3b8" }}>{ui.common.physician}</span> {phys}
+                              </p>
+                            ) : null}
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 4,
+                                justifyContent: "flex-end",
+                              }}
+                            >
+                              <MedoraCardBadge soft={statusSoft(statusKey)}>
+                                {getEncounterStatusBoardLabelFr(statusKey)}
+                              </MedoraCardBadge>
+                              <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
+                                {getEncounterTypeLabelFr(EMERGENCY_TYPE)}
+                              </MedoraCardBadge>
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 4,
+                                alignItems: "center",
+                                justifyContent: "flex-end",
+                              }}
+                            >
+                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
+                              <Link
+                                href={`/app/emergency/active/${encounter.id}`}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "4px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #bfdbfe",
+                                  backgroundColor: "#eff6ff",
+                                  color: "#1d4ed8",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {ui.common.view}
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </MedoraCardInner>
                   </MedoraCard>

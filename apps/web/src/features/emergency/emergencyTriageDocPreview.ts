@@ -4,7 +4,7 @@
  */
 
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
-import type { ErTriageV1Form } from "./medoraErTriageV1";
+import { erTriageV1FormFromVitalsJson, type ErTriageV1Form } from "./medoraErTriageV1";
 
 export type TriageDocPreviewFormSlice = {
   chiefComplaint: string;
@@ -27,6 +27,59 @@ export type TriagePreviewSection = {
   title: string;
   lines: string[];
 };
+
+/**
+ * Maps GET `/encounters/:id/triage` JSON to the preview slice + ER V1 form (same field mapping as `EmergencyTriagePanel`).
+ */
+export function triagePreviewSliceFromTriageGet(triage: Record<string, unknown> | null): {
+  slice: TriageDocPreviewFormSlice;
+  er: ErTriageV1Form;
+} | null {
+  if (!triage) return null;
+  const d = triage;
+  const v = (d.vitalsJson || {}) as Record<string, number | string | null>;
+  const slice: TriageDocPreviewFormSlice = {
+    chiefComplaint: (d.chiefComplaint as string) || "",
+    onsetAt: d.onsetAt ? new Date(d.onsetAt as string).toISOString().slice(0, 16) : "",
+    esi: d.esi != null ? String(d.esi) : "",
+    tempC: v.tempC?.toString() ?? "",
+    hr: v.hr?.toString() ?? "",
+    rr: v.rr?.toString() ?? "",
+    bpSys: v.bpSys?.toString() ?? "",
+    bpDia: v.bpDia?.toString() ?? "",
+    spo2: v.spo2?.toString() ?? "",
+    weightKg: v.weightKg?.toString() ?? "",
+    heightCm: v.heightCm?.toString() ?? "",
+    allergyNote: (v as { allergyNote?: string | null }).allergyNote ?? "",
+    triageCompleteAt: d.triageCompleteAt
+      ? new Date(d.triageCompleteAt as string).toISOString().slice(0, 16)
+      : "",
+  };
+  const er = erTriageV1FormFromVitalsJson(d.vitalsJson);
+  return { slice, er };
+}
+
+/** TA syst./diast. for compact strip (no wide label/value gap). */
+export function formatTriageBpStrip(sys: string, dia: string): string {
+  const s = String(sys ?? "").trim();
+  const d = String(dia ?? "").trim();
+  if (!s && !d) return "—";
+  return `${s || "—"}/${d || "—"}`;
+}
+
+/** One row per vital for the ER workspace header strip (order: TA, FC, FR, Temp, SpO₂, Poids, Taille). */
+export function buildErWorkspaceVitalPairs(slice: TriageDocPreviewFormSlice): { label: string; value: string }[] {
+  const f = slice;
+  return [
+    { label: "TA", value: formatTriageBpStrip(f.bpSys, f.bpDia) },
+    { label: "FC", value: f.hr.trim() ? `${f.hr.trim()} /min` : "—" },
+    { label: "FR", value: f.rr.trim() ? `${f.rr.trim()} /min` : "—" },
+    { label: "Temp", value: f.tempC.trim() ? `${f.tempC.trim()} °C` : "—" },
+    { label: "SpO₂", value: f.spo2.trim() ? `${f.spo2.trim()} %` : "—" },
+    { label: "Poids", value: f.weightKg.trim() ? `${f.weightKg.trim()} kg` : "—" },
+    { label: "Taille", value: f.heightCm.trim() ? `${f.heightCm.trim()} cm` : "—" },
+  ];
+}
 
 function vitalsRecordForHeader(f: TriageDocPreviewFormSlice): Record<string, number | string | null | undefined> {
   return {
