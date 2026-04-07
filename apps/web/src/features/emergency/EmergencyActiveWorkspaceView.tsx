@@ -15,7 +15,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
-import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
+import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import {
   MEDORA_CARD_SHELL,
@@ -239,7 +239,7 @@ export function EmergencyActiveWorkspaceView() {
     mar: "Administration médicamenteuse",
     orders: "Ordres",
     notes: "Notes",
-    nursing: "Évaluation infirmière",
+    nursing: "Réévaluation infirmière (urgences)",
     disposition: "Disposition",
   };
 
@@ -418,7 +418,7 @@ export function EmergencyActiveWorkspaceView() {
                   id: "nursing" as const,
                   accent: "#0ea5e9",
                   title: "Soins",
-                  sub: "Évaluation",
+                  sub: "Réévaluation",
                   disabled: !showNursingTab,
                 },
                 {
@@ -642,29 +642,14 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "nursing" && showNursingTab ? (
-            <MedoraCard leftAccentColor="#0ea5e9" variant="default">
-              <MedoraCardInner>
-                <MedoraCardIdentity initials="I">
-                  <MedoraCardTitle
-                    title="Évaluation infirmière"
-                    subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Saisie partagée avec le dossier de consultation.
-                      </p>
-                    }
-                  />
-                </MedoraCardIdentity>
-                <div style={{ width: "100%", marginTop: 12 }}>
-                  <NursingAssessmentTab
-                    encounterId={encounterId}
-                    facilityId={fid}
-                    encounter={encounter}
-                    onUpdate={() => void onEmbeddedEncounterUpdate()}
-                    isLocked={isLocked}
-                  />
-                </div>
-              </MedoraCardInner>
-            </MedoraCard>
+            <EmergencyNursingReassessmentPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              isLocked={isLocked}
+              onSaved={onEmbeddedEncounterUpdate}
+              nursingTabHref={tabHref("nursing")}
+            />
           ) : null}
 
           {activeSection === "nursing" && !showNursingTab ? (
