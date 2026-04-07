@@ -73,6 +73,10 @@ export function EncounterResultsTab({
   hideIntroNote = false,
   /** Si false : charge les commandes et notifie `onLabRadSnapshot`, mais n’affiche pas la liste détaillée (cockpit urgences). */
   embeddedDetailList = true,
+  /** Densité réduite pour {@link ClinicalResultViewer} (ex. cockpit urgences avec détail). */
+  compactResultViewer = false,
+  /** Si true et aucune ligne : pas de grand bloc « aucun résultat » (le parent affiche déjà le résumé). */
+  suppressEmptyDetailPlaceholder = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -83,6 +87,8 @@ export function EncounterResultsTab({
   /** Masque le bloc d’intro gris si le parent fournit déjà le contexte. */
   hideIntroNote?: boolean;
   embeddedDetailList?: boolean;
+  compactResultViewer?: boolean;
+  suppressEmptyDetailPlaceholder?: boolean;
 }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,6 +212,9 @@ export function EncounterResultsTab({
         </div>
       );
     }
+    if (suppressEmptyDetailPlaceholder) {
+      return null;
+    }
     return (
       <div
         style={{
@@ -267,6 +276,7 @@ export function EncounterResultsTab({
                 attachments={v.attachments}
                 enteredByDisplayFr={v.enteredByDisplayFr}
                 catalogItemType={v.catalogItemType}
+                compact={compactResultViewer}
               />
             </div>
           </div>
