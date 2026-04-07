@@ -15,14 +15,9 @@ import {
   MedoraCardActions,
   MedoraCardIdentity,
   MedoraCardInner,
-  MedoraCardRoomBlock,
   MedoraCardTitle,
 } from "@/components/medora-card";
-import {
-  buildAllergyStripSummary,
-  buildTriageDocumentationPreviewModel,
-  buildVitalsStripLine,
-} from "./emergencyTriageDocPreview";
+import { buildTriageDocumentationPreviewModel } from "./emergencyTriageDocPreview";
 import { EmergencyTriageV1Sections } from "./EmergencyTriageV1Sections";
 import {
   MEDORA_ER_TRIAGE_V1_KEY,
@@ -36,7 +31,7 @@ type EncounterLite = {
   id: string;
   status?: string | null;
   type?: string | null;
-  patient?: { id?: string } | null;
+  patient?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
 /** Form state aligned with `TriageVitalsTab` in `encounters/[id]/page.tsx` (same PUT body). */
@@ -366,9 +361,6 @@ export function EmergencyTriagePanel({
     [formData]
   );
 
-  const vitalsStripLine = useMemo(() => buildVitalsStripLine(formData), [formData]);
-  const allergyStripText = useMemo(() => buildAllergyStripSummary(formData, formData.erV1), [formData]);
-
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -408,16 +400,14 @@ export function EmergencyTriagePanel({
   return (
     <MedoraCard leftAccentColor="#b91c1c" variant="default">
       <MedoraCardInner>
-        <MedoraCardIdentity initials="T">
-          <MedoraCardTitle
-            title="Triage urgences"
-            subline={
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                Motif, gravité (ESI) et signes vitaux — même enregistrement que le dossier de consultation.
-              </p>
-            }
-          />
-        </MedoraCardIdentity>
+        <MedoraCardTitle
+          title="Triage urgences"
+          subline={
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+              Même enregistrement que le dossier de consultation.
+            </p>
+          }
+        />
 
         {loading ? (
           <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{ui.common.loading}</p>
@@ -435,94 +425,6 @@ export function EmergencyTriagePanel({
                 {saveInfo}
               </p>
             ) : null}
-
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 12,
-                alignItems: "stretch",
-                padding: "12px 14px",
-                borderRadius: 10,
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#f8fafc",
-                width: "100%",
-                boxSizing: "border-box",
-              }}
-            >
-              <MedoraCardRoomBlock label="ESI" value={formData.esi ? formData.esi : "—"} />
-              <div style={{ flex: "1 1 200px", minWidth: 180 }}>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "#64748b",
-                  }}
-                >
-                  Derniers signes vitaux
-                </p>
-                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#0f172a", lineHeight: 1.45 }}>
-                  {vitalsStripLine || "—"}
-                </p>
-              </div>
-              <div
-                style={{
-                  flex: "1 1 220px",
-                  minWidth: 200,
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #fecaca",
-                  backgroundColor: "#fef2f2",
-                  boxSizing: "border-box",
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "#b91c1c",
-                  }}
-                >
-                  Allergies
-                </p>
-                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#991b1b", lineHeight: 1.45, fontWeight: 600 }}>
-                  {allergyStripText || "Aucune allergie documentée"}
-                </p>
-              </div>
-              <div style={{ flex: "1 1 200px", minWidth: 180 }}>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "#64748b",
-                  }}
-                >
-                  Dernière mise à jour
-                </p>
-                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
-                  {updatedLine ?? "—"}
-                </p>
-                {formData.triageCompleteAt ? (
-                  <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                    Triage complété (saisi) :{" "}
-                    {new Date(formData.triageCompleteAt).toLocaleString("fr-FR", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </p>
-                ) : null}
-              </div>
-            </div>
 
             <div style={{ ...workspaceStyle, marginTop: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
