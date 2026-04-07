@@ -750,7 +750,7 @@ export function EmergencyDispositionPanel({
               }}
             >
               <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color: "#475569" }}>
-                Dernière mise à jour (notes urgence V1)
+                Horodatage décision d&apos;orientation (V1)
               </p>
               {storedSig ? (
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>

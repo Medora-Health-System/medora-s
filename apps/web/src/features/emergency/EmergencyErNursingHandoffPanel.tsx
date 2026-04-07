@@ -51,12 +51,16 @@ type PatientLite = {
 
 type EncounterLite = {
   id: string;
+  status?: string | null;
   createdAt?: string | null;
   patient?: PatientLite | null;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
   nursingAssessment?: unknown;
   physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+  providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
 };
 
 /**
@@ -83,8 +87,13 @@ export function EmergencyErNursingHandoffPanel({
   facilityName?: string | null;
 }) {
   const badge = useMemo(
-    () => erDispositionBadgeFromEncounterJson(encounter),
-    [encounter.dischargeSummaryJson, encounter.admissionSummaryJson]
+    () =>
+      erDispositionBadgeFromEncounterJson({
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+        nursingAssessment: encounter.nursingAssessment,
+      }),
+    [encounter.dischargeSummaryJson, encounter.admissionSummaryJson, encounter.nursingAssessment]
   );
   const discharge = useMemo(
     () => parseDischargeSummaryForChart(encounter.dischargeSummaryJson),
@@ -109,6 +118,21 @@ export function EmergencyErNursingHandoffPanel({
     Boolean(admission?.admissionReason?.trim()) ||
     Boolean(admission?.careLevel?.trim()) ||
     Boolean(admission?.serviceUnit?.trim());
+
+  const statusOpen = (encounter.status ?? "").trim() === "OPEN";
+  const docSigned = encounter.providerDocumentationStatus === "SIGNED";
+  const isDischargeDisposition = badge?.variant === "discharge";
+  const showDischargePending =
+    isDischargeDisposition && statusOpen && !docSigned;
+
+  const formatDt = (iso: string | null | undefined) => {
+    if (!iso) return ui.common.dash;
+    try {
+      return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+    } catch {
+      return ui.common.dash;
+    }
+  };
 
   const handlePrint = () => {
     const p = encounter.patient;
@@ -152,6 +176,44 @@ export function EmergencyErNursingHandoffPanel({
           )}
         </div>
 
+        {showDischargePending ? (
+          <div
+            style={{
+              marginTop: 10,
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: "1px solid #a7f3d0",
+              backgroundColor: "#ecfdf5",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#065f46", lineHeight: 1.4 }}>
+              Sortie en attente — action infirmière requise
+            </p>
+            <ul
+              style={{
+                margin: "6px 0 0 0",
+                paddingLeft: 18,
+                fontSize: 11,
+                color: "#14532d",
+                lineHeight: 1.45,
+              }}
+            >
+              <li>Vérifier les ordres actifs et le MAR.</li>
+              <li>Imprimer le document de sortie si nécessaire (bouton ci-dessous).</li>
+              <li>La clôture du dossier médical reste après signature du médecin (résumé consultation).</li>
+            </ul>
+          </div>
+        ) : null}
+
+        {docSigned &&
+        encounter.providerDocumentationSignedAt &&
+        encounter.providerDocumentationSignedByDisplayFr ? (
+          <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#1e40af", lineHeight: 1.45 }}>
+            <span style={{ fontWeight: 600 }}>Évaluation signée :</span>{" "}
+            {encounter.providerDocumentationSignedByDisplayFr} — {formatDt(encounter.providerDocumentationSignedAt)}
+          </p>
+        ) : null}
+
         {modeLine ? (
           <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.4 }}>
             <span style={{ fontWeight: 600, color: "#64748b" }}>Mode de sortie (dossier) :</span> {modeLine}
@@ -160,8 +222,8 @@ export function EmergencyErNursingHandoffPanel({
 
         {sig ? (
           <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.35 }}>
-            Dernière sauvegarde notes urgence (V1) : {sig.savedByDisplayName} —{" "}
-            {new Date(sig.savedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+            <span style={{ fontWeight: 600 }}>Décision d&apos;orientation enregistrée :</span> {sig.savedByDisplayName} —{" "}
+            {formatDt(sig.savedAt)}
           </p>
         ) : null}
 

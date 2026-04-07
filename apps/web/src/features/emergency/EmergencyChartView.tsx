@@ -90,6 +90,8 @@ type EncounterShell = {
     lastName?: string | null;
   } | null;
   providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
 };
 
 function patientInitials(p: PatientLite | null | undefined): string {

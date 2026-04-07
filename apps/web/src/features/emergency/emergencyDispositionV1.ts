@@ -141,6 +141,8 @@ export function supplementFormHasContent(form: ErDispositionSupplementForm): boo
 /**
  * Merge ER disposition supplement + signature into nursingAssessment.
  * Preserves erProviderMseV1, erNursingReassessmentV1, etc.
+ * Always persists `erDispositionV1` (including `signature`) on each disposition save so horodatage / auteur
+ * restent traçables même sans champs « précisions urgence » (LWBS, transfert, etc.).
  */
 export function mergeErDispositionV1IntoNursingAssessment(
   previousNursingAssessment: unknown,
@@ -151,15 +153,7 @@ export function mergeErDispositionV1IntoNursingAssessment(
     previousNursingAssessment && typeof previousNursingAssessment === "object" && !Array.isArray(previousNursingAssessment)
       ? { ...(previousNursingAssessment as Record<string, unknown>) }
       : {};
-  const prevForm = erDispositionSupplementFromEncounter(previousNursingAssessment);
-  const prevHad = supplementFormHasContent(prevForm);
-  const nowHas = supplementFormHasContent(form);
-
-  if (nowHas) {
-    base[ER_DISPOSITION_V1_KEY] = supplementToStored(form, signature);
-  } else if (prevHad && !nowHas) {
-    delete base[ER_DISPOSITION_V1_KEY];
-  }
+  base[ER_DISPOSITION_V1_KEY] = supplementToStored(form, signature);
   return base;
 }
 

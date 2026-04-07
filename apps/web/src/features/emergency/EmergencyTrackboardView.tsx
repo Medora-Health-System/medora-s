@@ -118,6 +118,7 @@ type OpenEncounterRow = {
   physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
+  nursingAssessment?: unknown;
 };
 
 function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadgeSoft {
@@ -475,7 +476,7 @@ export function EmergencyTrackboardView() {
                                 {getEncounterTypeLabelFr(EMERGENCY_TYPE)}
                               </MedoraCardBadge>
                               {dispositionBadge ? (
-                                <span title="Décision documentée (résumé sortie / admission)">
+                                <span title="Décision dossier (mode de sortie / admission persisté)">
                                   <MedoraCardBadge soft={dispositionBadgeSoft(dispositionBadge.variant)}>
                                     {dispositionBadge.shortLabel}
                                   </MedoraCardBadge>

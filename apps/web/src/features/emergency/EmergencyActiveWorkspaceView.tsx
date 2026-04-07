@@ -91,6 +91,8 @@ type EncounterShell = {
     lastName?: string | null;
   } | null;
   providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
 };
 
 function patientInitials(p: PatientLite | null | undefined): string {
@@ -1006,20 +1008,34 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "disposition" ? (
-            <EmergencyDispositionPanel
-              encounterId={encounterId}
-              facilityId={fid}
-              encounter={encounter}
-              isLocked={isLocked}
-              onSaved={onEmbeddedEncounterUpdate}
-              summaryTabHref={tabHref("summary")}
-              erChartHref={erChartHref}
-              genericEncounterHref={genericEncounterHref}
-              hospitalisationBoardHref="/app/hospitalisation"
-              canPrescribe={canPrescribe}
-              canEditNursingDischarge={canEditNursingDischarge}
-              canEditMedicalDischarge={canEditMedicalDischarge}
-            />
+            <>
+              <EmergencyDispositionPanel
+                encounterId={encounterId}
+                facilityId={fid}
+                encounter={encounter}
+                isLocked={isLocked}
+                onSaved={onEmbeddedEncounterUpdate}
+                summaryTabHref={tabHref("summary")}
+                erChartHref={erChartHref}
+                genericEncounterHref={genericEncounterHref}
+                hospitalisationBoardHref="/app/hospitalisation"
+                canPrescribe={canPrescribe}
+                canEditNursingDischarge={canEditNursingDischarge}
+                canEditMedicalDischarge={canEditMedicalDischarge}
+              />
+              <div style={{ marginTop: 10 }}>
+                <EmergencyErNursingHandoffPanel
+                  encounter={encounter}
+                  genericEncounterHref={genericEncounterHref}
+                  summaryTabHref={tabHref("summary")}
+                  hospitalisationBoardHref="/app/hospitalisation"
+                  marTabHref={tabHref("mar")}
+                  ordersTabHref={tabHref("orders")}
+                  resultsTabHref={tabHref("results")}
+                  facilityName={facilityName}
+                />
+              </div>
+            </>
           ) : null}
         </section>
       </div>
