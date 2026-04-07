@@ -9,14 +9,9 @@ import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { getEncounterStatusBoardLabelFr, ui } from "@/lib/uiLabels";
 import {
   MedoraCard,
-  MedoraCardActions,
-  MedoraCardActionsMediaStyle,
   MedoraCardBadge,
-  MedoraCardBadgeRow,
-  MedoraCardIdentity,
   MedoraCardInner,
-  MedoraCardRoomBlock,
-  MedoraCardTitle,
+  MedoraCompactPatientCardRow,
 } from "@/components/medora-card";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
@@ -207,17 +202,6 @@ export default function TrackBoardPage() {
       )}
 
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-          @media (min-width: 640px) {
-            .track-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
-          }
-        `,
-          }}
-        />
-        <MedoraCardActionsMediaStyle />
-
         <header style={{ marginBottom: 24 }}>
           <h1
             style={{
@@ -400,7 +384,7 @@ export default function TrackBoardPage() {
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {filteredEncounters.map((encounter: any) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
@@ -412,16 +396,28 @@ export default function TrackBoardPage() {
               const soft = statusSoft(encounter.status);
               const nirLine = patientNirDisplay(patient);
               const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null);
-
               return (
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
-                      <MedoraCardIdentity initials={patientInitials(patient)}>
-                        <MedoraCardTitle
-                          title={fullPatientName(patient)}
-                          subline={
-                            <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                      <MedoraCompactPatientCardRow
+                        avatarInitials={patientInitials(patient)}
+                        roomLabel={ui.common.room}
+                        roomValue={room}
+                        identity={
+                          <>
+                            <h2
+                              style={{
+                                margin: 0,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: "#0f172a",
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              {fullPatientName(patient)}
+                            </h2>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
                               <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
                               {" · "}
                               <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
@@ -431,66 +427,76 @@ export default function TrackBoardPage() {
                                 patient?.sex ?? null
                               )}
                             </p>
-                          }
-                        />
-                        <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
-                          <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>
-                            {ui.common.chiefComplaintShort}
-                          </span>
-                          {" — "}
-                          {cc}
-                        </p>
-                        <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
-                          {" · "}
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span> {arrivalDisplay}
-                        </p>
-                      </MedoraCardIdentity>
-
-                      <MedoraCardRoomBlock label={ui.common.room} value={room} />
-
-                      <div
-                        className="track-meta-block"
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "stretch",
-                          width: "100%",
-                          minWidth: 200,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <MedoraCardActions railBorderTopColor="#f1f5f9" gap={8} minWidth={200} alignItems="flex-start">
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
-                            <span style={{ fontWeight: 500, color: "#64748b", fontSize: 12 }}>{ui.common.physician} · </span>
-                            {phys}
-                          </p>
-                          <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
-                            <span style={{ color: "#cbd5e1" }}>{ui.common.nurseAbbr}</span> {ui.common.dash}
-                          </p>
-                          <MedoraCardBadgeRow marginTop={0}>
-                            <MedoraCardBadge soft={soft}>{getEncounterStatusBoardLabelFr(encounter.status)}</MedoraCardBadge>
-                            <Link
-                              href={`/app/encounters/${encounter.id}`}
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
+                              <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
+                                {ui.common.chiefComplaintShort}
+                              </span>
+                              {" — "}
+                              {cc}
+                            </p>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
+                              {" · "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                              {arrivalDisplay}
+                            </p>
+                          </>
+                        }
+                        right={
+                          <>
+                            <p
                               style={{
-                                display: "inline-flex",
+                                margin: 0,
+                                fontSize: 10,
+                                fontWeight: 500,
+                                color: "#64748b",
+                                textAlign: "right",
+                                lineHeight: 1.2,
+                                maxWidth: 220,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={phys}
+                            >
+                              <span style={{ color: "#94a3b8" }}>{ui.common.physician}</span> {phys}
+                            </p>
+                            <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", textAlign: "right" }}>
+                              <span style={{ color: "#cbd5e1" }}>{ui.common.nurseAbbr}</span> {ui.common.dash}
+                            </p>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 4,
                                 alignItems: "center",
-                                justifyContent: "center",
-                                padding: "6px 14px",
-                                borderRadius: 10,
-                                border: "1px solid #bfdbfe",
-                                backgroundColor: "#eff6ff",
-                                color: "#1d4ed8",
-                                fontSize: 14,
-                                fontWeight: 600,
-                                textDecoration: "none",
+                                justifyContent: "flex-end",
                               }}
                             >
-                              {ui.common.view}
-                            </Link>
-                          </MedoraCardBadgeRow>
-                        </MedoraCardActions>
-                      </div>
+                              <MedoraCardBadge soft={soft}>{getEncounterStatusBoardLabelFr(encounter.status)}</MedoraCardBadge>
+                              <Link
+                                href={`/app/encounters/${encounter.id}`}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "4px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #bfdbfe",
+                                  backgroundColor: "#eff6ff",
+                                  color: "#1d4ed8",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {ui.common.view}
+                              </Link>
+                            </div>
+                          </>
+                        }
+                      />
                     </MedoraCardInner>
                   </MedoraCard>
                 </li>

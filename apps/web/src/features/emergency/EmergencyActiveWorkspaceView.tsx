@@ -137,6 +137,22 @@ export type ErWorkspaceSection =
   | "nursing"
   | "disposition";
 
+type ErDashboardTile =
+  | {
+      kind: "section";
+      id: ErWorkspaceSection;
+      accent: string;
+      title: string;
+      disabled: boolean;
+    }
+  | {
+      kind: "link";
+      id: string;
+      accent: string;
+      title: string;
+      href: string;
+    };
+
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
   const encounterId = params.id as string;
@@ -568,51 +584,102 @@ export function EmergencyActiveWorkspaceView() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
               gap: 10,
             }}
           >
             {(
               [
                 {
+                  kind: "section" as const,
                   id: "triage" as const,
                   accent: "#b91c1c",
                   title: "Triage",
-                  sub: "Motif, ESI, SV",
                   disabled: !canFetchEncounterTriage,
                 },
                 {
+                  kind: "section" as const,
                   id: "results" as const,
                   accent: "#6366f1",
                   title: "Résultats",
-                  sub: "Labo, imagerie",
                   disabled: false,
                 },
                 {
+                  kind: "section" as const,
                   id: "mar" as const,
                   accent: "#059669",
                   title: "MAR",
-                  sub: "Médicaments",
                   disabled: !canFetchMarTab,
                 },
-                { id: "orders" as const, accent: "#7c3aed", title: "Ordres", sub: "Prescriptions", disabled: false },
-                { id: "notes" as const, accent: "#475569", title: "Notes", sub: "Inf. / court", disabled: false },
+                { kind: "section" as const, id: "orders" as const, accent: "#7c3aed", title: "Ordres", disabled: false },
+                { kind: "section" as const, id: "notes" as const, accent: "#475569", title: "Notes", disabled: false },
                 {
+                  kind: "section" as const,
                   id: "nursing" as const,
                   accent: "#0ea5e9",
                   title: "Soins",
-                  sub: "Réévaluation",
                   disabled: !showNursingTab,
                 },
                 {
+                  kind: "section" as const,
                   id: "disposition" as const,
                   accent: "#94a3b8",
                   title: "Disposition",
-                  sub: "Sortie",
                   disabled: false,
                 },
-              ] as const
+                {
+                  kind: "link" as const,
+                  id: "shortcut-encounter",
+                  accent: "#2563eb",
+                  title: "Consultation complète",
+                  href: encounterHref,
+                },
+                {
+                  kind: "link" as const,
+                  id: "shortcut-clinic",
+                  accent: "#4f46e5",
+                  title: "Évaluation médicale",
+                  href: tabHref("clinic"),
+                },
+                {
+                  kind: "link" as const,
+                  id: "shortcut-diagnostics",
+                  accent: "#9333ea",
+                  title: "Diagnostics",
+                  href: tabHref("diagnostics"),
+                },
+              ] satisfies ErDashboardTile[]
             ).map((q) => {
+              if (q.kind === "link") {
+                return (
+                  <div
+                    key={q.id}
+                    style={{
+                      borderRadius: 16,
+                      outline: "1px solid transparent",
+                      outlineOffset: 0,
+                    }}
+                  >
+                    <Link
+                      href={q.href}
+                      style={{
+                        display: "block",
+                        textDecoration: "none",
+                        color: "inherit",
+                        width: "100%",
+                      }}
+                    >
+                      <MedoraCard leftAccentColor={q.accent} variant="default">
+                        <MedoraCardInner>
+                          <MedoraCardIdentity initials={q.title.charAt(0)}>
+                            <MedoraCardTitle title={q.title} />
+                          </MedoraCardIdentity>
+                        </MedoraCardInner>
+                      </MedoraCard>
+                    </Link>
+                  </div>
+                );
+              }
               const selected = activeSection === q.id;
               return (
                 <div
@@ -644,10 +711,7 @@ export function EmergencyActiveWorkspaceView() {
                     <MedoraCard leftAccentColor={q.accent} variant="default">
                       <MedoraCardInner>
                         <MedoraCardIdentity initials={q.title.charAt(0)}>
-                          <MedoraCardTitle
-                            title={q.title}
-                            subline={<p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{q.sub}</p>}
-                          />
+                          <MedoraCardTitle title={q.title} />
                         </MedoraCardIdentity>
                       </MedoraCardInner>
                     </MedoraCard>
@@ -659,20 +723,7 @@ export function EmergencyActiveWorkspaceView() {
         </section>
 
         <section aria-label="Zone active" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 10, justifyContent: "space-between" }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitleFr[activeSection]}</h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <Link href={encounterHref} style={{ ...linkPill, fontSize: 13 }}>
-                Consultation complète
-              </Link>
-              <Link href={tabHref("clinic")} style={{ ...linkPill, fontSize: 13 }}>
-                Évaluation médicale
-              </Link>
-              <Link href={tabHref("diagnostics")} style={{ ...linkPill, fontSize: 13 }}>
-                Diagnostics
-              </Link>
-            </div>
-          </div>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitleFr[activeSection]}</h2>
 
           {activeSection === "triage" && canFetchEncounterTriage ? (
             <EmergencyTriagePanel

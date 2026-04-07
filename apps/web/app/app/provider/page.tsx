@@ -7,13 +7,10 @@ import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import { getEncounterStatusLabelFr, getEncounterTypeLabelFr, ui } from "@/lib/uiLabels";
 import {
   MedoraCard,
-  MedoraCardActions,
   MedoraCardBadge,
   MedoraCardBadgeRow,
-  MedoraCardIdentity,
   MedoraCardInner,
-  MedoraCardRoomBlock,
-  MedoraCardTitle,
+  MedoraCompactPatientCardRow,
 } from "@/components/medora-card";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
@@ -239,16 +236,6 @@ export default function ProviderPage() {
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-          @media (min-width: 640px) {
-            .provider-meta-block { border-top: none !important; padding-top: 0 !important; align-items: flex-end !important; text-align: right !important; width: auto !important; }
-          }
-        `,
-          }}
-        />
-
         <header style={{ marginBottom: 20 }}>
           <h1
             style={{
@@ -478,7 +465,7 @@ export default function ProviderPage() {
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {filteredEncounters.map((encounter) => {
               const patient = encounter.patient;
               const pid = patient?.id;
@@ -495,101 +482,95 @@ export default function ProviderPage() {
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
-                      <MedoraCardIdentity initials={patientInitials(patient)}>
-                        <MedoraCardTitle
-                          title={fullPatientName(patient)}
-                          subline={
-                            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                      <MedoraCompactPatientCardRow
+                        avatarInitials={patientInitials(patient)}
+                        roomLabel={ui.common.room}
+                        roomValue={room}
+                        rightMaxWidth={320}
+                        identity={
+                          <>
+                            <h2
+                              style={{
+                                margin: 0,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: "#0f172a",
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              {fullPatientName(patient)}
+                            </h2>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
                               <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nir}
                             </p>
-                          }
-                        />
-                        <MedoraCardBadgeRow>
-                          <MedoraCardBadge preset="neutral">
-                            {ui.common.type} · {typeLabel}
-                          </MedoraCardBadge>
-                          <MedoraCardBadge soft={soft}>{statusLabel}</MedoraCardBadge>
-                        </MedoraCardBadgeRow>
-                        <p style={{ margin: "10px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.55 }}>
-                          <span style={{ fontWeight: 600, color: "#475569" }}>Médecin attribué</span> {phys}
-                          {" · "}
-                          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                          {formatArrivalDateTime(encounter.createdAt)}
-                        </p>
-                      </MedoraCardIdentity>
-
-                      <div
-                        className="provider-meta-block"
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 12,
-                          alignItems: "stretch",
-                          flexShrink: 0,
-                          minWidth: 220,
-                          flex: "1 1 260px",
-                          maxWidth: 420,
-                          borderTop: "1px solid #f1f5f9",
-                          paddingTop: 12,
-                          width: "100%",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            gap: 12,
-                            alignItems: "flex-start",
-                            justifyContent: "flex-end",
-                            width: "100%",
-                          }}
-                        >
-                          <MedoraCardRoomBlock label={ui.common.room} value={room} />
-                          <div style={{ flex: "1 1 180px", minWidth: 200, display: "flex", flexDirection: "column" }}>
-                            <MedoraCardActions inline gap={8} minWidth={200} alignItems="flex-start">
-                              {pid ? (
-                                <Link
-                                  href={`/app/patients/${pid}`}
-                                  style={{
-                                    display: "inline-flex",
-                                    justifyContent: "center",
-                                    padding: "8px 14px",
-                                    borderRadius: 10,
-                                    border: "1px solid #cbd5e1",
-                                    backgroundColor: "#fff",
-                                    color: "#334155",
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    textDecoration: "none",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  Ouvrir le dossier
-                                </Link>
-                              ) : null}
+                            <div style={{ margin: "4px 0 0 0" }}>
+                              <MedoraCardBadgeRow marginTop={0}>
+                                <MedoraCardBadge preset="neutral">
+                                  {ui.common.type} · {typeLabel}
+                                </MedoraCardBadge>
+                                <MedoraCardBadge soft={soft}>{statusLabel}</MedoraCardBadge>
+                              </MedoraCardBadgeRow>
+                            </div>
+                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>Médecin attribué</span> {phys}
+                              {" · "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                              {formatArrivalDateTime(encounter.createdAt)}
+                            </p>
+                          </>
+                        }
+                        right={
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "row",
+                              flexWrap: "wrap",
+                              gap: 6,
+                              justifyContent: "flex-end",
+                              alignItems: "center",
+                            }}
+                          >
+                            {pid ? (
                               <Link
-                                href={`/app/encounters/${encounter.id}`}
+                                href={`/app/patients/${pid}`}
                                 style={{
                                   display: "inline-flex",
                                   justifyContent: "center",
-                                  padding: "8px 14px",
-                                  borderRadius: 10,
-                                  border: "1px solid #bfdbfe",
-                                  backgroundColor: "#eff6ff",
-                                  color: "#1d4ed8",
-                                  fontSize: 13,
+                                  padding: "4px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid #cbd5e1",
+                                  backgroundColor: "#fff",
+                                  color: "#334155",
+                                  fontSize: 12,
                                   fontWeight: 600,
                                   textDecoration: "none",
                                   textAlign: "center",
                                 }}
                               >
-                                Ouvrir la consultation
+                                Ouvrir le dossier
                               </Link>
-                            </MedoraCardActions>
+                            ) : null}
+                            <Link
+                              href={`/app/encounters/${encounter.id}`}
+                              style={{
+                                display: "inline-flex",
+                                justifyContent: "center",
+                                padding: "4px 10px",
+                                borderRadius: 8,
+                                border: "1px solid #bfdbfe",
+                                backgroundColor: "#eff6ff",
+                                color: "#1d4ed8",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                textDecoration: "none",
+                                textAlign: "center",
+                              }}
+                            >
+                              Ouvrir la consultation
+                            </Link>
                           </div>
-                        </div>
-                      </div>
+                        }
+                      />
                     </MedoraCardInner>
                   </MedoraCard>
                 </li>

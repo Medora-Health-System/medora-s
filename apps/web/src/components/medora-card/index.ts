@@ -19,3 +19,8 @@ export { MedoraCardBadge, type MedoraCardBadgeProps, type MedoraCardBadgePreset 
 export { MedoraCardMetaLines } from "./MedoraCardMetaLines";
 export { MedoraCardRoomBlock, type MedoraCardRoomBlockProps } from "./MedoraCardRoomBlock";
 export { MedoraCardActions, MedoraCardActionsMediaStyle } from "./MedoraCardActions";
+export {
+  MedoraCompactPatientCardRow,
+  MEDORA_COMPACT_AVATAR_CIRCLE_STYLE,
+  type MedoraCompactPatientCardRowProps,
+} from "./MedoraCompactPatientCardRow";
