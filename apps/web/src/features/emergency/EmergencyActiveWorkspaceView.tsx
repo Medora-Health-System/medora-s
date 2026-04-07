@@ -31,6 +31,7 @@ import {
 } from "@/features/emergency/EmergencyWorkspaceClinicalStrip";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
+import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import {
   MEDORA_CARD_SHELL,
@@ -135,6 +136,7 @@ export type ErWorkspaceSection =
   | "orders"
   | "notes"
   | "nursing"
+  | "providerMse"
   | "disposition";
 
 type ErDashboardTile =
@@ -319,6 +321,12 @@ export function EmergencyActiveWorkspaceView() {
     }
   }, [canFetchEncounterTriage, activeSection]);
 
+  useEffect(() => {
+    if (!showNursingTab && activeSection === "providerMse") {
+      setActiveSection("results");
+    }
+  }, [showNursingTab, activeSection]);
+
   const sectionTitleFr: Record<ErWorkspaceSection, string> = {
     triage: "Triage urgences",
     results: "Résultats et examens (urgences)",
@@ -326,6 +334,7 @@ export function EmergencyActiveWorkspaceView() {
     orders: "Ordres",
     notes: "Notes",
     nursing: "Réévaluation infirmière (urgences)",
+    providerMse: "Évaluation médicale (urgences)",
     disposition: "Disposition",
   };
 
@@ -622,6 +631,13 @@ export function EmergencyActiveWorkspaceView() {
                 },
                 {
                   kind: "section" as const,
+                  id: "providerMse" as const,
+                  accent: "#4f46e5",
+                  title: "Évaluation médicale",
+                  disabled: !showNursingTab,
+                },
+                {
+                  kind: "section" as const,
                   id: "disposition" as const,
                   accent: "#94a3b8",
                   title: "Disposition",
@@ -633,13 +649,6 @@ export function EmergencyActiveWorkspaceView() {
                   accent: "#2563eb",
                   title: "Consultation complète",
                   href: encounterHref,
-                },
-                {
-                  kind: "link" as const,
-                  id: "shortcut-clinic",
-                  accent: "#4f46e5",
-                  title: "Évaluation médicale",
-                  href: tabHref("clinic"),
                 },
                 {
                   kind: "link" as const,
@@ -888,6 +897,40 @@ export function EmergencyActiveWorkspaceView() {
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                   <Link href={tabHref("nursing")} style={linkPill}>
                     Onglet soins infirmiers
+                  </Link>
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          ) : null}
+
+          {activeSection === "providerMse" && showNursingTab ? (
+            <EmergencyProviderMsePanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              isLocked={isLocked}
+              onSaved={onEmbeddedEncounterUpdate}
+              clinicTabHref={tabHref("clinic")}
+              encounterHref={encounterHref}
+            />
+          ) : null}
+
+          {activeSection === "providerMse" && !showNursingTab ? (
+            <MedoraCard leftAccentColor="#4f46e5" variant="default">
+              <MedoraCardInner>
+                <MedoraCardIdentity initials="M">
+                  <MedoraCardTitle
+                    title="Évaluation médicale"
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        Zone réservée à certains rôles. Ouvrez le dossier complet.
+                      </p>
+                    }
+                  />
+                </MedoraCardIdentity>
+                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
+                  <Link href={tabHref("clinic")} style={linkPill}>
+                    Onglet évaluation clinique
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
