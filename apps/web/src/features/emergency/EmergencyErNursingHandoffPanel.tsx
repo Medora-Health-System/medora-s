@@ -249,8 +249,8 @@ export function EmergencyErNursingHandoffPanel({
             title="Exécution équipe (après décision)"
             subline={
               <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                Synthèse opérationnelle à partir du dossier partagé. Les actions détaillées (MAR, ordres, clôture)
-                restent dans les onglets du dossier Medora.
+                Exécution infirmière — distincte de la décision médicale ci-dessus. Données issues du dossier partagé ;
+                MAR, ordres et clôture médicale : onglets du dossier Medora.
               </p>
             }
           />

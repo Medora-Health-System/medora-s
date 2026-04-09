@@ -5,7 +5,10 @@
  */
 
 import { parseAdmissionSummaryForChart, parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
-import { erDispositionSupplementFromEncounter } from "@/features/emergency/emergencyDispositionV1";
+import {
+  erDispositionSupplementFromEncounter,
+  readDischargeSortieExecutionFromEncounter,
+} from "@/features/emergency/emergencyDispositionV1";
 
 export type ErDispositionBadgeVariant = "discharge" | "admit" | "observe" | "transfer" | "ama" | "deceased" | "other" | "lwbs";
 
@@ -34,7 +37,12 @@ export function erDispositionBadgeFromEncounterJson(enc: {
   const mode = d?.dischargeMode ? normalizeMode(d.dischargeMode) : "";
 
   if (mode === "Domicile") {
-    return { shortLabel: "SORTIE", variant: "discharge", source: "dischargeMode" };
+    const exec = readDischargeSortieExecutionFromEncounter(enc.nursingAssessment);
+    return {
+      shortLabel: exec ? "SORTIE" : "Sortie en attente",
+      variant: "discharge",
+      source: "dischargeMode",
+    };
   }
   if (mode === "Admission / hospitalisation") {
     const care = a?.careLevel ? normalizeMode(a.careLevel) : "";

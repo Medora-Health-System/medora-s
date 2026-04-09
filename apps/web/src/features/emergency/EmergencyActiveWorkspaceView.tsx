@@ -1021,9 +1021,6 @@ export function EmergencyActiveWorkspaceView() {
                 isLocked={isLocked}
                 onSaved={onEmbeddedEncounterUpdate}
                 summaryTabHref={tabHref("summary")}
-                erChartHref={erChartHref}
-                genericEncounterHref={genericEncounterHref}
-                hospitalisationBoardHref="/app/hospitalisation"
                 canPrescribe={canPrescribe}
                 canEditNursingDischarge={canEditNursingDischarge}
                 canEditMedicalDischarge={canEditMedicalDischarge}

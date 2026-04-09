@@ -794,9 +794,6 @@ export function EmergencyChartView() {
               isLocked={isLocked}
               onSaved={onEmbeddedEncounterUpdate}
               summaryTabHref={tabHref("summary")}
-              erChartHref={emergencyChartPath(encounterId)}
-              genericEncounterHref={genericEncounterHref}
-              hospitalisationBoardHref="/app/hospitalisation"
               canPrescribe={canPrescribe}
               canEditNursingDischarge={canEditNursingDischarge}
               canEditMedicalDischarge={canEditMedicalDischarge}
