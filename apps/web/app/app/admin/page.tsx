@@ -78,7 +78,7 @@ export default function AdminPage() {
       <p style={{ color: "#555", marginBottom: 20 }}>
         Gestion de la plateforme pour les administrateurs de l&apos;établissement.
       </p>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
         <li>
           <Link
             href="/app/admin/users"
@@ -95,6 +95,25 @@ export default function AdminPage() {
             Utilisateurs et accès
           </Link>
         </li>
+        {ready && canCreateFacilities ? (
+          <li>
+            <Link
+              href="/app/admin/mspp-access"
+              style={{
+                display: "inline-block",
+                padding: "12px 20px",
+                backgroundColor: "#fff",
+                color: "#1a1a1a",
+                border: "1px solid #1a1a1a",
+                borderRadius: 4,
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              {t("nav.adminMsppAccess")}
+            </Link>
+          </li>
+        ) : null}
       </ul>
 
       {ready && canCreateFacilities ? (
