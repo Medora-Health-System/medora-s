@@ -1,0 +1,115 @@
+/**
+ * MSPP Rapport — print stylesheet (browser print / PDF via print dialog).
+ * Isolates #mspp-rapport-print-root so the app shell does not appear on paper.
+ */
+
+.mspp-rapport-print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #mspp-rapport-print-root,
+  #mspp-rapport-print-root * {
+    visibility: visible;
+  }
+
+  #mspp-rapport-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    background: #fff;
+    color: #0f172a;
+  }
+
+  .mspp-no-print {
+    display: none !important;
+  }
+
+  .mspp-rapport-print-only {
+    display: block !important;
+    margin: 0 0 16px;
+    padding: 6px 0 14px;
+    border-bottom: 1px solid #000;
+  }
+
+  .mspp-rapport-print-brand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 0 22px;
+    padding: 0 12px;
+  }
+
+  .mspp-rapport-print-logo {
+    display: block;
+    height: 80px;
+    width: auto;
+    max-width: min(360px, 100%);
+    object-fit: contain;
+    object-position: center center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .mspp-rapport-print-only p {
+    margin: 0 0 6px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #000;
+  }
+
+  .mspp-rapport-print-only .mspp-rapport-print-header-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .mspp-rapport-print-only .mspp-rapport-print-header-meta {
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .mspp-print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .mspp-minister-signal {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #mspp-rapport-print-root .recharts-responsive-container {
+    min-height: 220px !important;
+  }
+
+  #mspp-rapport-print-root .recharts-wrapper,
+  #mspp-rapport-print-root .recharts-surface {
+    max-width: 100% !important;
+  }
+
+  #mspp-rapport-print-root svg {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #mspp-rapport-print-root a[href] {
+    color: #000;
+    text-decoration: none;
+  }
+}

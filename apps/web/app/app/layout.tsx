@@ -48,7 +48,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (!isMountedRef.current) return;
       const d =
         data && typeof data === "object" && !Array.isArray(data)
-          ? (data as { facilityRoles?: unknown; accessTokenTtlSeconds?: unknown })
+          ? (data as { facilityRoles?: unknown; msppRoles?: unknown; accessTokenTtlSeconds?: unknown })
           : null;
       if (
         d &&
@@ -59,8 +59,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setSessionAccessTtlSec(Math.floor(d.accessTokenTtlSeconds));
       }
       const frs = d && Array.isArray(d.facilityRoles) ? d.facilityRoles : [];
+      const msppRolesFromMe =
+        d && Array.isArray(d.msppRoles)
+          ? d.msppRoles.filter((x): x is string => typeof x === "string")
+          : [];
+      const { accessTokenTtlSeconds: _ttlIgnored, ...userPayload } = d ?? {};
+
+      // Facility users: keep pre–Phase 3 behavior (must not depend on MSPP fields).
       if (frs.length > 0 && d) {
-        const { accessTokenTtlSeconds: _ttlIgnored, ...userPayload } = d;
         setUser(userPayload);
         const nameById = new Map<string, string>();
         for (const fr of frs as { facilityId?: unknown; facilityName?: unknown }[]) {
@@ -89,6 +95,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setActiveFacility(facilityIds[0]);
           document.cookie = `medora_facility_id=${facilityIds[0]}; path=/; max-age=${365 * 24 * 60 * 60}`;
         }
+      } else if (msppRolesFromMe.length > 0 && d) {
+        // MSPP-only session (no facility roles): optional path, does not affect facility hydration above.
+        setUser(userPayload);
+        setFacilities([]);
+        setActiveFacility("");
       }
     } catch (err) {
       console.error("Failed to fetch user:", err);
@@ -114,7 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("medora:session-refresh", onSessionRefresh);
   }, [loadSession]);
 
-  /** Session résolue sans rôle établissement : aligné sur la garde d’accès (pas de shell « vide » durable). */
+  /** Session résolue sans accès app (ni établissement ni MSPP). */
   useEffect(() => {
     if (!sessionReady || user) return;
     router.replace("/login");
@@ -178,6 +189,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const facilityLanguage = getActiveFacilityLanguage();
 
   const activeRoles = getActiveRoles();
+  const msppRolesForNav = Array.isArray(user?.msppRoles)
+    ? user.msppRoles.filter((x: unknown): x is string => typeof x === "string")
+    : [];
+  const combinedRolesForNav = [...activeRoles, ...msppRolesForNav];
   /** Rôles « soins / technique » — accueil seul (FRONT_DESK sans ces rôles) : menu limité à inscription / liste patients / suivis / facturation. */
   const clinicalCareRoles = ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "PHARMACY"];
   const isFrontDeskNavRestricted =
@@ -198,10 +213,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     "/app/pharmacy/expiring",
   ]);
 
-  let navItems = SIDEBAR_NAV_ITEMS.filter((item) => item.roles.some((role) => activeRoles.includes(role)));
-  if (isFrontDeskNavRestricted) {
+  let navItems = SIDEBAR_NAV_ITEMS.filter((item) => {
+    if (item.platformAdminOnly) {
+      if (item.href === "/app/admin/mspp-access") {
+        return (
+          user?.canCreateFacilities === true || msppRolesForNav.includes("MSPP_ADMIN")
+        );
+      }
+      return user?.canCreateFacilities === true;
+    }
+    return item.roles.some((role) => combinedRolesForNav.includes(role));
+  });
+  /** Portail MSPP national : ne pas réduire le menu à « pharmacie seule » ou « accueil seul » (sinon perte d’Accès MSPP / routes nationales). */
+  const hasNationalMsppRoles = msppRolesForNav.length > 0;
+  if (!hasNationalMsppRoles && isFrontDeskNavRestricted) {
     navItems = navItems.filter((item) => registrationNavHrefs.has(item.href));
-  } else if (isPharmacyOnly) {
+  } else if (!hasNationalMsppRoles && isPharmacyOnly) {
     navItems = navItems.filter((item) => pharmacyNavHrefs.has(item.href));
   }
 
@@ -209,19 +236,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const pathname = usePathname() ?? "";
   useEffect(() => {
-    if (!user || !activeFacility || !pathname || !pathname.startsWith("/app")) {
+    if (!user || !pathname || !pathname.startsWith("/app")) {
       setRouteRedirecting(false);
       return;
     }
-    const roles = getActiveRoles();
+    const msppRolesForGuard = Array.isArray(user.msppRoles)
+      ? user.msppRoles.filter((x: unknown): x is string => typeof x === "string")
+      : [];
+    if (!activeFacility && msppRolesForGuard.length === 0) {
+      setRouteRedirecting(false);
+      return;
+    }
+    const facilityRoleCodes = getActiveRoles();
+    const roles = [...facilityRoleCodes, ...msppRolesForGuard];
     const frs = Array.isArray(user.facilityRoles) ? user.facilityRoles : [];
     const hasAnyFacilityRole = frs.length > 0;
+    const hasMspp = msppRolesForGuard.length > 0;
     // Évite un faux « non autorisé » si cookie / établissement actif pas encore alignés avec l’entrée facilityRoles (course au chargement).
-    if (hasAnyFacilityRole && roles.length === 0) {
+    if (hasAnyFacilityRole && facilityRoleCodes.length === 0 && !hasMspp) {
       setRouteRedirecting(false);
       return;
     }
-    const target = getRouteGuardRedirect(pathname, roles);
+    const target = getRouteGuardRedirect(pathname, roles, {
+      canCreateFacilities: user?.canCreateFacilities === true,
+    });
     if (target) {
       setRouteRedirecting(true);
       router.replace(target);
