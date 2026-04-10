@@ -75,6 +75,10 @@ const fr = {
     diseaseReports: "Déclarations maladies",
     admin: "Administration",
     adminUsers: "Utilisateurs et accès",
+    adminMsppAccess: "Accès MSPP (national)",
+    msppDashboard: "MSPP — Tableau de bord",
+    msppRapport: "MSPP — Rapport",
+    msppValidation: "MSPP — Validation",
   },
 
   encounter: {
