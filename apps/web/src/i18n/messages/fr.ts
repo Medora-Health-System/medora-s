@@ -105,6 +105,11 @@ export default {
     title: "Déclarations de cas",
     introMspp:
       "Ces déclarations peuvent être revues au niveau national (MSPP). Une saisie structurée (maladie, statut, dates, lieu) facilite la validation.",
+    pipelineNoteTitle: "Circuit Medora → MSPP",
+    pipelineVisibilityNote:
+      "Lorsque le département géographique (Haïti) est identifié, la déclaration peut être rattachée au circuit de validation MSPP (département puis central). Les dossiers approuvés au niveau central alimentent automatiquement les agrégats nationaux MSPP (rapports et indicateurs).",
+    tableMsppPipeline: "Revue MSPP",
+    msppReviewNotLinked: "Non rattachée (géographie non résolue ou hors circuit)",
     contextFacility:
       "Chaque déclaration est rattachée à l’établissement Medora actif (site de soins ou de surveillance selon votre configuration).",
     navSummary: "Résumé",
@@ -193,6 +198,13 @@ export default {
       CENTRAL_APPROVED: "Approuvé au central",
       CENTRAL_REJECTED: "Rejeté au central",
     },
+    pipelinePanelTitle: "Progression de la validation",
+    pipelinePanelIntro:
+      "Chaque ligne correspond à une revue liée à une déclaration d’établissement. Les validateurs départementaux traitent d’abord la file locale ; la file centrale regroupe les dossiers prêts pour la décision nationale.",
+    pipelineStepDept: "1 — File départementale : décision au niveau du département géographique.",
+    pipelineStepCentral: "2 — File centrale : décision nationale (après le département ou en attente central).",
+    pipelineNationalNote:
+      "Les dossiers au statut « Approuvé au central » sont pris en compte dans les agrégats nationaux (tableaux de bord MSPP, rapport imprimable) sans action supplémentaire.",
   },
   msppNarrative: {
     loading: "Chargement…",

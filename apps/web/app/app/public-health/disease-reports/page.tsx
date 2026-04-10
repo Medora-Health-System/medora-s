@@ -176,6 +176,13 @@ export default function DiseaseReportsPage() {
     return out === key ? code : out;
   };
 
+  const msppPipelineLabel = (msppReview: DiseaseCaseReportRow["msppReview"]) => {
+    if (!msppReview) return t("diseaseReports.msppReviewNotLinked");
+    const key = `msppValidation.reviewStatus.${msppReview.status}`;
+    const out = t(key);
+    return out === key ? msppReview.status : out;
+  };
+
   const handleSubmit = async () => {
     if (!facilityId || !diseaseCode.trim() || !diseaseName.trim()) return;
     if (useGeoLists && geoDeptId && communesForDept.length > 0 && !geoCommuneId.trim()) {
@@ -268,11 +275,30 @@ export default function DiseaseReportsPage() {
           <strong>{t("diseaseReports.contextFacility")}</strong> {facilityName}
         </p>
       ) : null}
-      <p style={{ color: "#555", fontSize: 14, marginBottom: 20 }}>
+      <p style={{ color: "#555", fontSize: 14, marginBottom: 12 }}>
         <Link href="/app/public-health/summary">{t("diseaseReports.navSummary")}</Link>
         {" · "}
         <Link href="/app/public-health/vaccinations">{t("diseaseReports.navVaccinations")}</Link>
       </p>
+
+      <div
+        style={{
+          fontSize: 14,
+          color: "#334155",
+          lineHeight: 1.55,
+          maxWidth: 720,
+          marginBottom: 20,
+          padding: "12px 14px",
+          background: "#f0f9ff",
+          borderRadius: 12,
+          border: "1px solid #bae6fd",
+        }}
+      >
+        <strong style={{ display: "block", marginBottom: 6, color: "#0c4a6e" }}>
+          {t("diseaseReports.pipelineNoteTitle")}
+        </strong>
+        {t("diseaseReports.pipelineVisibilityNote")}
+      </div>
 
       <div style={cardStyle}>
         <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("diseaseReports.newSectionTitle")}</h2>
@@ -496,6 +522,7 @@ export default function DiseaseReportsPage() {
                   <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableDepartment")}</th>
                   <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableCommune")}</th>
                   <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableGeoQuality")}</th>
+                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableMsppPipeline")}</th>
                   <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableOnset")}</th>
                   <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableNotes")}</th>
                   <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tablePatient")}</th>
@@ -553,6 +580,9 @@ export default function DiseaseReportsPage() {
                           {t("diseaseReports.badgeGeoFreeText")}
                         </span>
                       )}
+                    </td>
+                    <td style={{ padding: 10, fontSize: 13, maxWidth: 200, color: "#334155" }}>
+                      {msppPipelineLabel(r.msppReview)}
                     </td>
                     <td style={{ padding: 10 }}>{formatDate(r.onsetDate)}</td>
                     <td style={{ padding: 10, maxWidth: 180 }}>{truncateNote(r.notes, 48)}</td>

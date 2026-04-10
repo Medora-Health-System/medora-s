@@ -23,6 +23,7 @@ import {
   MSPP_PAGE_SUBTITLE,
   MSPP_PAGE_TITLE,
   MSPP_SECTION_CARD,
+  MSPP_SECTION_SUBTITLE,
   MSPP_SECTION_TITLE,
   MSPP_TABLE,
   MSPP_TABLE_CELL,
@@ -188,6 +189,36 @@ export default function MsppValidationPage() {
     <div style={MSPP_PAGE_SHELL}>
       <h1 style={MSPP_PAGE_TITLE}>MSPP — Validation</h1>
       <p style={MSPP_PAGE_SUBTITLE}>{t("msppValidation.subtitle")}</p>
+
+      <div style={{ ...MSPP_SECTION_CARD, marginBottom: 18 }}>
+        <h2 style={{ ...MSPP_SECTION_TITLE, fontSize: "1rem", marginTop: 0 }}>
+          {t("msppValidation.pipelinePanelTitle")}
+        </h2>
+        <p style={{ ...MSPP_SECTION_SUBTITLE, marginBottom: 12 }}>{t("msppValidation.pipelinePanelIntro")}</p>
+        <ol
+          style={{
+            margin: 0,
+            paddingLeft: 20,
+            color: "#334155",
+            fontSize: 14,
+            lineHeight: 1.55,
+          }}
+        >
+          <li style={{ marginBottom: 8 }}>{t("msppValidation.pipelineStepDept")}</li>
+          <li style={{ marginBottom: 8 }}>{t("msppValidation.pipelineStepCentral")}</li>
+        </ol>
+        <p
+          style={{
+            ...MSPP_SECTION_SUBTITLE,
+            marginBottom: 0,
+            marginTop: 12,
+            fontWeight: 600,
+            color: "#475569",
+          }}
+        >
+          {t("msppValidation.pipelineNationalNote")}
+        </p>
+      </div>
 
       {error && (
         <div style={MSPP_ERROR_CALLOUT} role="alert">

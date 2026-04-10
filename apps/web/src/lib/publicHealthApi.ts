@@ -47,6 +47,8 @@ export type DiseaseCaseReportRow = {
     geoCommuneLinked: boolean;
     geoIncomplete: boolean;
   };
+  /** Revue MSPP liée (circuit national), si le département géographique a pu être résolu. */
+  msppReview?: { id: string; status: string } | null;
 };
 
 export type DiseaseSummaryBreakdown = {

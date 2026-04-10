@@ -7,6 +7,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, DiseaseCaseStatus } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
 import type {
   CreateVaccineCatalogDto,
   RecordVaccineAdministrationDto,
@@ -35,6 +36,74 @@ export class PublicHealthService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
+
+  /**
+   * Résout l’identifiant `GeoDepartment` pour rattacher une `DiseaseCaseReview` (circuit MSPP).
+   * Priorité : lien `geoCommuneId` → département ; sinon correspondance du nom `department` (insensible à la casse).
+   */
+  private async resolveGeoDepartmentIdForMsppReview(params: {
+    geoCommuneId?: string | null;
+    department?: string | null;
+  }): Promise<string | null> {
+    if (params.geoCommuneId) {
+      const gc = await this.prisma.geoCommune.findUnique({
+        where: { id: params.geoCommuneId },
+        select: { geoDepartmentId: true },
+      });
+      return gc?.geoDepartmentId ?? null;
+    }
+    const d = String(params.department ?? "").trim();
+    if (!d) return null;
+    const dept = await this.prisma.geoDepartment.findFirst({
+      where: { name: { equals: d, mode: "insensitive" } },
+      select: { id: true },
+    });
+    return dept?.id ?? null;
+  }
+
+  /**
+   * Crée une revue MSPP en attente départementale lorsque le département géographique est connu.
+   * N’interrompt pas la création de déclaration en cas d’échec (journalisation seulement).
+   */
+  private async tryEnqueueMsppReview(
+    row: { id: string; geoCommuneId: string | null; department: string | null },
+    userId: string,
+    facilityId: string
+  ): Promise<{ id: string; status: string } | null> {
+    const existing = await this.prisma.diseaseCaseReview.findFirst({
+      where: { diseaseCaseReportId: row.id },
+      select: { id: true, status: true },
+    });
+    if (existing) return existing;
+
+    const geoDeptId = await this.resolveGeoDepartmentIdForMsppReview({
+      geoCommuneId: row.geoCommuneId,
+      department: row.department,
+    });
+    if (!geoDeptId) return null;
+
+    try {
+      const created = await this.prisma.diseaseCaseReview.create({
+        data: {
+          diseaseCaseReportId: row.id,
+          status: DiseaseCaseReviewStatus.PENDING_DEPARTMENT,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          departmentId: geoDeptId,
+        },
+        select: { id: true, status: true },
+      });
+      await this.audit.log(AuditAction.CREATE, "DiseaseCaseReview", {
+        userId,
+        facilityId,
+        entityId: created.id,
+        metadata: { diseaseCaseReportId: row.id, msppEnqueue: true },
+      });
+      return created;
+    } catch (e) {
+      console.error("[public-health] DiseaseCaseReview enqueue failed", e);
+      return null;
+    }
+  }
 
   async createVaccineCatalogItem(
     dto: CreateVaccineCatalogDto,
@@ -316,7 +385,13 @@ export class PublicHealthService {
       },
     });
 
-    return row;
+    const msppReview = await this.tryEnqueueMsppReview(
+      { id: row.id, geoCommuneId: row.geoCommuneId, department: row.department },
+      userId,
+      facilityId
+    );
+
+    return { ...row, msppReview: msppReview ?? null };
   }
 
   async listDiseaseCaseReports(
@@ -362,6 +437,22 @@ export class PublicHealthService {
       this.prisma.diseaseCaseReport.count({ where }),
     ]);
 
+    const reportIds = rows.map((r) => r.id);
+    const msppReviews =
+      reportIds.length > 0
+        ? await this.prisma.diseaseCaseReview.findMany({
+            where: { diseaseCaseReportId: { in: reportIds } },
+            select: { id: true, diseaseCaseReportId: true, status: true },
+          })
+        : [];
+    const msppReviewByReportId = new Map<string, { id: string; status: string }>();
+    for (const rev of msppReviews) {
+      if (!rev.diseaseCaseReportId) continue;
+      if (!msppReviewByReportId.has(rev.diseaseCaseReportId)) {
+        msppReviewByReportId.set(rev.diseaseCaseReportId, { id: rev.id, status: rev.status });
+      }
+    }
+
     const items = rows.map((r) => {
       const deptOk = Boolean(String(r.department ?? "").trim());
       const comOk = Boolean(String(r.commune ?? "").trim());
@@ -371,6 +462,7 @@ export class PublicHealthService {
           geoCommuneLinked: Boolean(r.geoCommuneId),
           geoIncomplete: !deptOk || !comOk,
         },
+        msppReview: msppReviewByReportId.get(r.id) ?? null,
       };
     });
 
