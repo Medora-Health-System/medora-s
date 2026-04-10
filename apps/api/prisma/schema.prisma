@@ -1068,7 +1068,7 @@ model DiseaseCaseReview {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  @@index([diseaseCaseReportId])
+  @@unique([diseaseCaseReportId])
   @@index([reviewerUserId])
   @@index([departmentId])
 }

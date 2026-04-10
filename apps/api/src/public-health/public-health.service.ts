@@ -104,7 +104,19 @@ export class PublicHealthService {
         },
       });
       return { ...created, createdNew: true };
-    } catch (e) {
+    } catch (e: unknown) {
+      if (
+        typeof e === "object" &&
+        e !== null &&
+        "code" in e &&
+        (e as { code?: string }).code === "P2002"
+      ) {
+        const race = await this.prisma.diseaseCaseReview.findFirst({
+          where: { diseaseCaseReportId: row.id },
+          select: { id: true, status: true },
+        });
+        if (race) return { ...race, createdNew: false };
+      }
       console.error("[public-health] DiseaseCaseReview enqueue failed", e);
       return null;
     }
