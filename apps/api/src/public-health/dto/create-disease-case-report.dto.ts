@@ -16,6 +16,8 @@ export const createDiseaseCaseReportDtoSchema = z.object({
   onsetDate: z.coerce.date().optional().nullable(),
   commune: z.string().max(128).optional().nullable(),
   department: z.string().max(128).optional().nullable(),
+  /** Lien optionnel vers `GeoCommune` — si fourni, commune/département affichés sont alignés sur le référentiel. */
+  geoCommuneId: z.string().uuid().optional().nullable(),
   notes: z.string().max(4000).optional().nullable(),
 });
 

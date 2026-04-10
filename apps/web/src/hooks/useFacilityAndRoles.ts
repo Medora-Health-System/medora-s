@@ -8,12 +8,17 @@ export type UserFacilityOption = { id: string; name: string };
 export function useFacilityAndRoles() {
   const [facilityId, setFacilityId] = useState<string>("");
   const [roles, setRoles] = useState<string[]>([]);
+  const [msppRoles, setMsppRoles] = useState<string[]>([]);
   const [facilities, setFacilities] = useState<UserFacilityOption[]>([]);
   const [canCreateFacilities, setCanCreateFacilities] = useState(false);
   const [ready, setReady] = useState(false);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     setCanCreateFacilities(d.canCreateFacilities === true);
+    const mspp = Array.isArray(d.msppRoles)
+      ? d.msppRoles.filter((x): x is string => typeof x === "string")
+      : [];
+    setMsppRoles(mspp);
     const frs = Array.isArray(d.facilityRoles) ? (d.facilityRoles as { facilityId?: string }[]) : [];
     const cookieValue = document.cookie
       .split("; ")
@@ -97,6 +102,7 @@ export function useFacilityAndRoles() {
   return {
     facilityId,
     roles,
+    msppRoles,
     facilities,
     canCreateFacilities,
     ready,

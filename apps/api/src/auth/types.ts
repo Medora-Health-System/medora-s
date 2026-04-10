@@ -21,6 +21,8 @@ export type AuthUserDto = {
   fullName: string;
   preferredLang: string;
   facilityRoles: FacilityRoleDto[];
+  /** Rôles portail MSPP national (`MsppUserRoleAssignment`), distincts des rôles par établissement. */
+  msppRoles: string[];
   /** Plateforme : création d’établissements (hors RBAC par site). */
   canCreateFacilities: boolean;
 };

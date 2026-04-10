@@ -18,6 +18,8 @@ import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-cat
 import { HAITI_MEDICATION_CATALOG, HAITI_DEFAULT_FAVORITE_CODES } from "./data/haiti-medications";
 import { HAITI_LAB_CATALOG } from "./data/haiti-lab-tests";
 import { HAITI_IMAGING_CATALOG } from "./data/haiti-imaging-studies";
+import { HAITI_GEO_DEPARTMENTS } from "./data/haiti-geo-departments";
+import { HAITI_SEED_COMMUNES } from "./data/haiti-seed-communes";
 
 const prisma = new PrismaClient();
 
@@ -80,6 +82,30 @@ async function main() {
       )
     )
   );
+
+  // Haiti geographic departments (MSPP departmental validators; codes ISO 3166-2, labels from haiti-departments.geojson)
+  await Promise.all(
+    HAITI_GEO_DEPARTMENTS.map((d) =>
+      prisma.geoDepartment.upsert({
+        where: { code: d.code },
+        update: { name: d.name, sortOrder: d.sortOrder },
+        create: { code: d.code, name: d.name, sortOrder: d.sortOrder },
+      })
+    )
+  );
+
+  for (const sc of HAITI_SEED_COMMUNES) {
+    const dept = await prisma.geoDepartment.findUnique({ where: { code: sc.departmentCode } });
+    if (!dept) continue;
+    const exists = await prisma.geoCommune.findFirst({
+      where: { geoDepartmentId: dept.id, name: sc.name },
+    });
+    if (!exists) {
+      await prisma.geoCommune.create({
+        data: { geoDepartmentId: dept.id, name: sc.name },
+      });
+    }
+  }
 
   // Admin user (deterministic credentials for local dev)
   // Username/email: admin@medora.local
@@ -565,6 +591,14 @@ async function main() {
       { diseaseCode: "B50.9", diseaseName: "Malaria", status: DiseaseCaseStatus.SUSPECTED, patientIdx: 1, commune: "Cap-Haïtien", department: "Nord" },
     ];
     for (const c of caseDefs) {
+      const deptRow = await prisma.geoDepartment.findFirst({ where: { name: c.department } });
+      let geoCommuneId: string | undefined;
+      if (deptRow) {
+        const com = await prisma.geoCommune.findFirst({
+          where: { geoDepartmentId: deptRow.id, name: c.commune },
+        });
+        geoCommuneId = com?.id;
+      }
       await prisma.diseaseCaseReport.create({
         data: {
           facilityId: facilityHT.id,
@@ -575,6 +609,7 @@ async function main() {
           status: c.status,
           commune: c.commune,
           department: c.department,
+          ...(geoCommuneId ? { geoCommuneId } : {}),
           reportedByUserId: providerUser.id,
         },
       });

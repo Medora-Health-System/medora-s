@@ -39,9 +39,16 @@ export type DiseaseCaseReportRow = {
   onsetDate?: string | null;
   commune?: string | null;
   department?: string | null;
+  geoCommuneId?: string | null;
   notes?: string | null;
   patient?: { id: string; firstName: string; lastName: string; mrn?: string | null } | null;
   reportedBy?: { id: string; firstName: string; lastName: string } | null;
+  dataQuality?: {
+    geoCommuneLinked: boolean;
+    geoIncomplete: boolean;
+  };
+  /** Revue MSPP liée (circuit national), si le département géographique a pu être résolu. */
+  msppReview?: { id: string; status: string } | null;
 };
 
 export type DiseaseSummaryBreakdown = {
@@ -115,6 +122,19 @@ export async function fetchVaccinationsDueSoon(facilityId: string) {
   }>;
 }
 
+export type HaitiGeoDepartment = { id: string; code: string; name: string };
+export type HaitiGeoCommune = { id: string; code: string | null; name: string };
+
+/** Référentiel départements / communes (Haïti) pour saisie alignée sur GeoDepartment / GeoCommune. */
+export async function fetchHaitiGeoReference(facilityId: string) {
+  return apiFetch("/public-health/haiti-geo", {
+    facilityId,
+  }) as Promise<{
+    departments: HaitiGeoDepartment[];
+    communesByDepartmentId: Record<string, HaitiGeoCommune[]>;
+  }>;
+}
+
 export async function createDiseaseReport(
   facilityId: string,
   body: Record<string, unknown>
@@ -135,6 +155,7 @@ export async function fetchDiseaseReports(
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== "") q.set(k, v);
   });
+  /** Supports status, commune, department, diseaseCode, diseaseName, reportedFrom, reportedTo, limit, offset */
   return apiFetch(`/public-health/disease-reports?${q.toString()}`, {
     facilityId,
   }) as Promise<{ items: DiseaseCaseReportRow[]; total: number }>;

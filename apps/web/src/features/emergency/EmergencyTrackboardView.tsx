@@ -26,6 +26,7 @@ import {
   erDispositionBadgeFromEncounterJson,
   type ErDispositionBadgeVariant,
 } from "@/features/emergency/erTrackboardDispositionBadge";
+import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
@@ -118,6 +119,7 @@ type OpenEncounterRow = {
   physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
+  nursingAssessment?: unknown;
 };
 
 function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadgeSoft {
@@ -390,6 +392,9 @@ export function EmergencyTrackboardView() {
               const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null);
               const statusKey = (encounter.status ?? "").trim() || "OPEN";
               const dispositionBadge = erDispositionBadgeFromEncounterJson(encounter);
+              const sortieInfirmierOk =
+                dispositionBadge?.variant === "discharge" &&
+                readDischargeSortieExecutionFromEncounter(encounter.nursingAssessment) != null;
 
               return (
                 <li key={encounter.id}>
@@ -475,9 +480,16 @@ export function EmergencyTrackboardView() {
                                 {getEncounterTypeLabelFr(EMERGENCY_TYPE)}
                               </MedoraCardBadge>
                               {dispositionBadge ? (
-                                <span title="Décision documentée (résumé sortie / admission)">
+                                <span title="Décision dossier (mode de sortie / admission persisté)">
                                   <MedoraCardBadge soft={dispositionBadgeSoft(dispositionBadge.variant)}>
                                     {dispositionBadge.shortLabel}
+                                  </MedoraCardBadge>
+                                </span>
+                              ) : null}
+                              {sortieInfirmierOk ? (
+                                <span title="Exécution sortie infirmière enregistrée (données persistées)">
+                                  <MedoraCardBadge soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
+                                    Exécuté
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}

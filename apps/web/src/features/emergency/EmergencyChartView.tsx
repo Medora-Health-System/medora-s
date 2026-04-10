@@ -32,6 +32,7 @@ import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDisposi
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
+import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import {
   MEDORA_CARD_SHELL,
   MedoraCard,
@@ -89,6 +90,8 @@ type EncounterShell = {
     lastName?: string | null;
   } | null;
   providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
 };
 
 function patientInitials(p: PatientLite | null | undefined): string {
@@ -150,7 +153,8 @@ const sectionTitle: React.CSSProperties = {
 export function EmergencyChartView() {
   const params = useParams();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, roles, ready: rolesReady, canPrescribe } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
+    useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [resultsRefresh, setResultsRefresh] = useState(0);
   const [triageRefresh, setTriageRefresh] = useState(0);
@@ -162,6 +166,7 @@ export function EmergencyChartView() {
   const [error, setError] = useState<string | null>(null);
 
   const fid = facilityId || facilityIdFromHook;
+  const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
 
   const canViewEncounterDetail =
     roles.includes("FRONT_DESK") ||
@@ -181,6 +186,7 @@ export function EmergencyChartView() {
 
   const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
   const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -669,9 +675,12 @@ export function EmergencyChartView() {
             <EmergencyErOrdersPanel
               encounterId={encounterId}
               facilityId={fid}
-              ordersTabHref={tabHref("orders")}
-              diagnosticsTabHref={tabHref("diagnostics")}
-              nursingTabHref={tabHref("nursing")}
+              canPrescribe={canPrescribe}
+              encounterForOrderModal={encounter ? { patient: encounter.patient } : null}
+              onRefetchEncounter={load}
+              onOrdersCreated={async () => {
+                setResultsRefresh((r) => r + 1);
+              }}
             />
           </section>
 
@@ -785,12 +794,29 @@ export function EmergencyChartView() {
               isLocked={isLocked}
               onSaved={onEmbeddedEncounterUpdate}
               summaryTabHref={tabHref("summary")}
-              erChartHref={emergencyChartPath(encounterId)}
-              genericEncounterHref={genericEncounterHref}
-              hospitalisationBoardHref="/app/hospitalisation"
               canPrescribe={canPrescribe}
               canEditNursingDischarge={canEditNursingDischarge}
               canEditMedicalDischarge={canEditMedicalDischarge}
+            />
+          </section>
+
+          <section aria-labelledby="section-handoff">
+            <h2 id="section-handoff" style={sectionTitle}>
+              Exécution équipe
+            </h2>
+            <EmergencyErNursingHandoffPanel
+              encounter={encounter}
+              encounterId={encounterId}
+              facilityId={fid}
+              onSaved={onEmbeddedEncounterUpdate}
+              canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
+              genericEncounterHref={genericEncounterHref}
+              summaryTabHref={tabHref("summary")}
+              hospitalisationBoardHref="/app/hospitalisation"
+              marTabHref={tabHref("mar")}
+              ordersTabHref={tabHref("orders")}
+              resultsTabHref={tabHref("results")}
+              facilityName={facilityName}
             />
           </section>
         </div>

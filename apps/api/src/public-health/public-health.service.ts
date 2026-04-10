@@ -7,6 +7,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, DiseaseCaseStatus } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
 import type {
   CreateVaccineCatalogDto,
   RecordVaccineAdministrationDto,
@@ -35,6 +36,74 @@ export class PublicHealthService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
+
+  /**
+   * Résout l’identifiant `GeoDepartment` pour rattacher une `DiseaseCaseReview` (circuit MSPP).
+   * Priorité : lien `geoCommuneId` → département ; sinon correspondance du nom `department` (insensible à la casse).
+   */
+  private async resolveGeoDepartmentIdForMsppReview(params: {
+    geoCommuneId?: string | null;
+    department?: string | null;
+  }): Promise<string | null> {
+    if (params.geoCommuneId) {
+      const gc = await this.prisma.geoCommune.findUnique({
+        where: { id: params.geoCommuneId },
+        select: { geoDepartmentId: true },
+      });
+      return gc?.geoDepartmentId ?? null;
+    }
+    const d = String(params.department ?? "").trim();
+    if (!d) return null;
+    const dept = await this.prisma.geoDepartment.findFirst({
+      where: { name: { equals: d, mode: "insensitive" } },
+      select: { id: true },
+    });
+    return dept?.id ?? null;
+  }
+
+  /**
+   * Crée une revue MSPP en attente départementale lorsque le département géographique est connu.
+   * N’interrompt pas la création de déclaration en cas d’échec (journalisation seulement).
+   */
+  private async tryEnqueueMsppReview(
+    row: { id: string; geoCommuneId: string | null; department: string | null },
+    userId: string,
+    facilityId: string
+  ): Promise<{ id: string; status: string } | null> {
+    const existing = await this.prisma.diseaseCaseReview.findFirst({
+      where: { diseaseCaseReportId: row.id },
+      select: { id: true, status: true },
+    });
+    if (existing) return existing;
+
+    const geoDeptId = await this.resolveGeoDepartmentIdForMsppReview({
+      geoCommuneId: row.geoCommuneId,
+      department: row.department,
+    });
+    if (!geoDeptId) return null;
+
+    try {
+      const created = await this.prisma.diseaseCaseReview.create({
+        data: {
+          diseaseCaseReportId: row.id,
+          status: DiseaseCaseReviewStatus.PENDING_DEPARTMENT,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          departmentId: geoDeptId,
+        },
+        select: { id: true, status: true },
+      });
+      await this.audit.log(AuditAction.CREATE, "DiseaseCaseReview", {
+        userId,
+        facilityId,
+        entityId: created.id,
+        metadata: { diseaseCaseReportId: row.id, msppEnqueue: true },
+      });
+      return created;
+    } catch (e) {
+      console.error("[public-health] DiseaseCaseReview enqueue failed", e);
+      return null;
+    }
+  }
 
   async createVaccineCatalogItem(
     dto: CreateVaccineCatalogDto,
@@ -254,6 +323,23 @@ export class PublicHealthService {
       assertEncounterNotSigned(enc);
     }
 
+    let communeStr = dto.commune ?? undefined;
+    let departmentStr = dto.department ?? undefined;
+    let geoCommuneId: string | undefined;
+
+    if (dto.geoCommuneId) {
+      const gc = await this.prisma.geoCommune.findUnique({
+        where: { id: dto.geoCommuneId },
+        include: { department: { select: { id: true, name: true } } },
+      });
+      if (!gc) {
+        throw new BadRequestException("Commune géographique invalide.");
+      }
+      geoCommuneId = gc.id;
+      communeStr = gc.name;
+      departmentStr = gc.department.name;
+    }
+
     const reportedAt = dto.reportedAt ?? new Date();
 
     const row = await this.prisma.diseaseCaseReport.create({
@@ -266,8 +352,9 @@ export class PublicHealthService {
         status: dto.status as DiseaseCaseStatus,
         reportedAt,
         onsetDate: dto.onsetDate ?? undefined,
-        commune: dto.commune ?? undefined,
-        department: dto.department ?? undefined,
+        commune: communeStr,
+        department: departmentStr,
+        geoCommuneId,
         notes: dto.notes ?? undefined,
         reportedByUserId: userId,
       },
@@ -293,11 +380,18 @@ export class PublicHealthService {
       metadata: {
         diseaseCode: dto.diseaseCode,
         status: dto.status,
-        commune: dto.commune,
+        commune: communeStr,
+        geoCommuneId,
       },
     });
 
-    return row;
+    const msppReview = await this.tryEnqueueMsppReview(
+      { id: row.id, geoCommuneId: row.geoCommuneId, department: row.department },
+      userId,
+      facilityId
+    );
+
+    return { ...row, msppReview: msppReview ?? null };
   }
 
   async listDiseaseCaseReports(
@@ -310,6 +404,7 @@ export class PublicHealthService {
     const where: any = { facilityId };
     if (query.status) where.status = query.status;
     if (query.commune) where.commune = query.commune;
+    if (query.department) where.department = query.department;
     if (query.diseaseCode) where.diseaseCode = query.diseaseCode;
     if (query.diseaseName) {
       where.diseaseName = { contains: query.diseaseName, mode: "insensitive" };
@@ -323,7 +418,7 @@ export class PublicHealthService {
     const take = query.limit ?? 100;
     const skip = query.offset ?? 0;
 
-    const [items, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       this.prisma.diseaseCaseReport.findMany({
         where,
         take,
@@ -341,6 +436,35 @@ export class PublicHealthService {
       }),
       this.prisma.diseaseCaseReport.count({ where }),
     ]);
+
+    const reportIds = rows.map((r) => r.id);
+    const msppReviews =
+      reportIds.length > 0
+        ? await this.prisma.diseaseCaseReview.findMany({
+            where: { diseaseCaseReportId: { in: reportIds } },
+            select: { id: true, diseaseCaseReportId: true, status: true },
+          })
+        : [];
+    const msppReviewByReportId = new Map<string, { id: string; status: string }>();
+    for (const rev of msppReviews) {
+      if (!rev.diseaseCaseReportId) continue;
+      if (!msppReviewByReportId.has(rev.diseaseCaseReportId)) {
+        msppReviewByReportId.set(rev.diseaseCaseReportId, { id: rev.id, status: rev.status });
+      }
+    }
+
+    const items = rows.map((r) => {
+      const deptOk = Boolean(String(r.department ?? "").trim());
+      const comOk = Boolean(String(r.commune ?? "").trim());
+      return {
+        ...r,
+        dataQuality: {
+          geoCommuneLinked: Boolean(r.geoCommuneId),
+          geoIncomplete: !deptOk || !comOk,
+        },
+        msppReview: msppReviewByReportId.get(r.id) ?? null,
+      };
+    });
 
     await this.audit.log(AuditAction.VIEW, "DISEASE_CASE_REPORT", {
       userId,
@@ -398,5 +522,30 @@ export class PublicHealthService {
       totalReports,
       breakdown,
     };
+  }
+
+  /**
+   * Référentiel Haïti (GeoDepartment / GeoCommune) pour saisie standardisée des déclarations.
+   * Lecture seule ; même périmètre RBAC que les déclarations maladies.
+   */
+  async listHaitiGeoReference(_facilityId: string) {
+    const departments = await this.prisma.geoDepartment.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, code: true, name: true },
+    });
+    const communes = await this.prisma.geoCommune.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, geoDepartmentId: true, code: true, name: true },
+    });
+    const communesByDepartmentId: Record<
+      string,
+      { id: string; code: string | null; name: string }[]
+    > = {};
+    for (const c of communes) {
+      const list = communesByDepartmentId[c.geoDepartmentId] ?? [];
+      list.push({ id: c.id, code: c.code, name: c.name });
+      communesByDepartmentId[c.geoDepartmentId] = list;
+    }
+    return { departments, communesByDepartmentId };
   }
 }

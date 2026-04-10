@@ -273,14 +273,18 @@ export function EmergencyResultsPanel({
           </div>
         </div>
 
-        <EncounterResultsTab
-          encounterId={encounterId}
-          facilityId={facilityId}
-          refreshToken={refreshToken}
-          onLabRadSnapshot={onLabRadSnapshot}
-          hideIntroNote
-          embeddedDetailList={false}
-        />
+        <div style={{ marginTop: 10, width: "100%" }}>
+          <EncounterResultsTab
+            encounterId={encounterId}
+            facilityId={facilityId}
+            refreshToken={refreshToken}
+            onLabRadSnapshot={onLabRadSnapshot}
+            hideIntroNote
+            embeddedDetailList
+            compactResultViewer
+            suppressEmptyDetailPlaceholder
+          />
+        </div>
       </MedoraCardInner>
     </MedoraCard>
   );

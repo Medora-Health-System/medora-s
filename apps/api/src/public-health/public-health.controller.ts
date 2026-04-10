@@ -103,6 +103,12 @@ export class PublicHealthController {
     );
   }
 
+  @Get("haiti-geo")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async haitiGeo(@Req() req: any) {
+    return this.publicHealth.listHaitiGeoReference(this.facilityId(req));
+  }
+
   @Get("disease-reports")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async listDiseaseReports(

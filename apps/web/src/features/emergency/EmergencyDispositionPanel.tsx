@@ -44,6 +44,7 @@ type EncounterLite = {
   id: string;
   status?: string | null;
   type?: string | null;
+  patient?: { id?: string } | null;
   nursingAssessment?: unknown;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
@@ -105,9 +106,6 @@ export function EmergencyDispositionPanel({
   isLocked,
   onSaved,
   summaryTabHref,
-  erChartHref,
-  genericEncounterHref,
-  hospitalisationBoardHref,
   canPrescribe,
   canEditNursingDischarge,
   canEditMedicalDischarge,
@@ -118,15 +116,14 @@ export function EmergencyDispositionPanel({
   isLocked: boolean;
   onSaved: () => void | Promise<void>;
   summaryTabHref: string;
-  /** Charte urgences complète (parcours principal). */
-  erChartHref: string;
-  /** Dossier consultation Medora générique (référence secondaire). */
-  genericEncounterHref: string;
-  hospitalisationBoardHref: string;
   canPrescribe: boolean;
   canEditNursingDischarge: boolean;
   canEditMedicalDischarge: boolean;
 }) {
+  const patientDossierPrintHref =
+    encounter.patient?.id != null && String(encounter.patient.id).trim() !== ""
+      ? `/app/patients/${encodeURIComponent(encounter.patient.id)}?tab=summary`
+      : undefined;
   const [dischargeForm, setDischargeForm] = useState<DischargeFormState>(() => emptyDischargeForm());
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
   const [supplementForm, setSupplementForm] = useState<ErDispositionSupplementForm>(() =>
@@ -248,7 +245,12 @@ export function EmergencyDispositionPanel({
       if (mergedDischarge !== null) {
         body.dischargeSummaryJson = mergedDischarge;
       }
-      if (canPrescribe && encounter.status === "OPEN" && Object.keys(admissionPayload).length > 0) {
+      if (
+        outcomeUi === "ADMISSION" &&
+        canPrescribe &&
+        encounter.status === "OPEN" &&
+        Object.keys(admissionPayload).length > 0
+      ) {
         body.admissionSummaryJson = admissionPayload;
       }
       body.nursingAssessment = mergeErDispositionV1IntoNursingAssessment(
@@ -317,14 +319,33 @@ export function EmergencyDispositionPanel({
             title="Disposition (urgences)"
             subline={
               <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                Décision de fin de visite — champs alignés sur le dossier de sortie Medora. La clôture définitive et les
-                contrôles documentaires restent sur le résumé de consultation.
+                Décision médicale d&apos;orientation — enregistrée dans le dossier partagé. L&apos;exécution infirmière
+                (sortie, impression, confirmation) se fait dans la section « Exécution équipe » sous cette disposition.
               </p>
             }
           />
         </MedoraCardIdentity>
 
         <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0} alignItems="flex-start">
+          {patientDossierPrintHref ? (
+            <Link
+              href={patientDossierPrintHref}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#f8fafc",
+                color: "#334155",
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Imprimer le dossier
+            </Link>
+          ) : null}
           <Link
             href={summaryTabHref}
             style={{
@@ -340,58 +361,7 @@ export function EmergencyDispositionPanel({
               textDecoration: "none",
             }}
           >
-            Résumé et clôture (dossier)
-          </Link>
-          <Link
-            href={erChartHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #bfdbfe",
-              backgroundColor: "#eff6ff",
-              color: "#1d4ed8",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Consultation complète
-          </Link>
-          <Link
-            href={genericEncounterHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#f8fafc",
-              color: "#64748b",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Dossier Medora (référence)
-          </Link>
-          <Link
-            href={hospitalisationBoardHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #e9d5ff",
-              backgroundColor: "#faf5ff",
-              color: "#6b21a8",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Tableau hospitalisation
+            Résumé et clôture
           </Link>
         </MedoraCardActions>
 
@@ -469,6 +439,10 @@ export function EmergencyDispositionPanel({
               <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
                 Le mode de sortie enregistré dans le dossier correspond au libellé « mode de sortie » (sortie standard
                 Medora).
+              </p>
+              <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                Pour une prise en charge en <strong>observation</strong>, choisir « Hospitalisation / admission » puis
+                renseigner le dossier d&apos;admission avec le niveau de soins « Observation » (champs Medora existants).
               </p>
             </div>
 
@@ -681,7 +655,7 @@ export function EmergencyDispositionPanel({
                   cursor: formDisabled || saving ? "not-allowed" : "pointer",
                 }}
               >
-                {saving ? "Enregistrement…" : "Enregistrer la disposition"}
+                {saving ? "Enregistrement…" : "Enregistrer la décision d'orientation"}
               </button>
               {isLocked ? (
                 <span style={{ fontSize: 12, color: "#b45309" }}>Documentation signée — saisie verrouillée.</span>
@@ -746,7 +720,7 @@ export function EmergencyDispositionPanel({
               }}
             >
               <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color: "#475569" }}>
-                Dernière mise à jour (notes urgence V1)
+                Horodatage décision d&apos;orientation (V1)
               </p>
               {storedSig ? (
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>

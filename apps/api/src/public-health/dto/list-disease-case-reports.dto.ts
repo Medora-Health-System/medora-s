@@ -4,6 +4,8 @@ import { diseaseCaseStatusSchema } from "./create-disease-case-report.dto";
 export const listDiseaseCaseReportsQuerySchema = z.object({
   status: diseaseCaseStatusSchema.optional(),
   commune: z.string().max(128).optional(),
+  /** Filtre exact sur la chaîne `DiseaseCaseReport.department` (ex. nom département géographique). */
+  department: z.string().max(128).optional(),
   diseaseCode: z.string().max(64).optional(),
   diseaseName: z.string().max(256).optional(),
   reportedFrom: z.coerce.date().optional(),

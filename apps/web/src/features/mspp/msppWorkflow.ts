@@ -1,0 +1,9 @@
+/** Aligné sur `apps/api/src/mspp/mspp.constants.ts` (statuts `DiseaseCaseReview.status`). */
+export const DiseaseCaseReviewStatus = {
+  PENDING_DEPARTMENT: "PENDING_DEPARTMENT",
+  DEPARTMENT_APPROVED: "DEPARTMENT_APPROVED",
+  DEPARTMENT_REJECTED: "DEPARTMENT_REJECTED",
+  PENDING_CENTRAL: "PENDING_CENTRAL",
+  CENTRAL_APPROVED: "CENTRAL_APPROVED",
+  CENTRAL_REJECTED: "CENTRAL_REJECTED",
+} as const;

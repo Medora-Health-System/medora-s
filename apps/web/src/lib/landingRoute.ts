@@ -21,6 +21,24 @@ export const APP_ROLE_CODES = [
 
 export type AppRoleCode = (typeof APP_ROLE_CODES)[number];
 
+/** Rôles portail MSPP national (alignés sur `MsppRoleCode` côté API). */
+export const MSPP_ROLE_CODES = [
+  "MSPP_MINISTRE",
+  "MSPP_EPIDEMIOLOGIE",
+  "MSPP_VALIDATOR_DEPT",
+  "MSPP_VALIDATOR_CENTRAL",
+  /** Administration déléguée des accès MSPP (sans pouvoir plateforme). */
+  "MSPP_ADMIN",
+] as const;
+
+/** Rôles MSPP opérationnels (tableaux de bord, validation) — hors administration des accès. */
+export const MSPP_OPERATIONAL_ROLE_CODES = [
+  "MSPP_MINISTRE",
+  "MSPP_EPIDEMIOLOGIE",
+  "MSPP_VALIDATOR_DEPT",
+  "MSPP_VALIDATOR_CENTRAL",
+] as const;
+
 const ROLE_LANDING: Array<{ role: string; path: string }> = [
   { role: "ADMIN", path: "/app/admin" },
   { role: "PROVIDER", path: "/app/provider" },
@@ -138,9 +156,20 @@ function sortedRouteRules(): RouteRule[] {
  */
 export function getLandingRouteForRoles(roles: string[]): string {
   const set = normalizeRoleSet(roles);
+  const hasFacilityAppRole = APP_ROLE_CODES.some((r) => set.has(r));
+  const hasMsppOperational = MSPP_OPERATIONAL_ROLE_CODES.some((r) => set.has(r));
+  const hasMsppAdminOnly = set.has("MSPP_ADMIN") && !hasMsppOperational;
+  const hasAnyMspp = MSPP_ROLE_CODES.some((r) => set.has(r));
+  if (!hasFacilityAppRole && hasAnyMspp) {
+    if (hasMsppAdminOnly) {
+      return "/app/admin/mspp-access";
+    }
+    return "/app/mspp/dashboard";
+  }
   for (const { role, path } of ROLE_LANDING) {
     if (set.has(role)) return path;
   }
+  if (hasAnyMspp) return "/app/mspp/dashboard";
   return DEFAULT_LANDING;
 }
 
@@ -148,10 +177,31 @@ export function getLandingRouteForRoles(roles: string[]): string {
  * Whether the user may open this pathname under /app (for active facility roles).
  * ADMIN: all /app paths. Others: longest matching APP_ROUTE_RULES prefix must allow a role they hold.
  */
-export function isAppPathAllowedForRoles(pathname: string, roles: string[]): boolean {
+export function isAppPathAllowedForRoles(
+  pathname: string,
+  roles: string[],
+  options?: { canCreateFacilities?: boolean }
+): boolean {
   if (!pathname.startsWith("/app")) return false;
+  const pathForRules = normalizeAppPathnameForRouteRules(pathname);
+  /** Administrateurs plateforme (`User.canCreateFacilities`) : hub `/app/admin` et sous-routes (sans exiger le rôle ADMIN). */
+  if (
+    options?.canCreateFacilities === true &&
+    (pathForRules === "/app/admin" || pathForRules.startsWith("/app/admin/"))
+  ) {
+    return true;
+  }
   const set = normalizeRoleSet(roles);
+  if (
+    pathForRules === "/app/admin/mspp-access" ||
+    pathForRules.startsWith("/app/admin/mspp-access/")
+  ) {
+    if (set.has("MSPP_ADMIN")) return true;
+  }
   if (set.has("ADMIN")) return true;
+  if (pathname === "/app/mspp" || pathname.startsWith("/app/mspp/")) {
+    return MSPP_OPERATIONAL_ROLE_CODES.some((r) => set.has(r));
+  }
   // Brief /app visit before layout redirects to role home
   if (pathname === "/app" && set.size > 0) return true;
 
@@ -164,7 +214,6 @@ export function isAppPathAllowedForRoles(pathname: string, roles: string[]): boo
     return true;
   }
 
-  const pathForRules = normalizeAppPathnameForRouteRules(pathname);
   for (const rule of sortedRouteRules()) {
     if (!pathMatchesRule(pathForRules, rule)) continue;
     return rule.roles.some((r) => set.has(r));
@@ -175,14 +224,18 @@ export function isAppPathAllowedForRoles(pathname: string, roles: string[]): boo
 /**
  * If the user must not stay on `pathname`, returns their safe home path; otherwise null.
  */
-export function getRouteGuardRedirect(pathname: string, roles: string[]): string | null {
+export function getRouteGuardRedirect(
+  pathname: string,
+  roles: string[],
+  options?: { canCreateFacilities?: boolean }
+): string | null {
   if (!pathname.startsWith("/app")) return null;
   if (pathname === "/app") {
     return getLandingRouteForRoles(roles);
   }
   const set = normalizeRoleSet(roles);
   if (set.has("ADMIN")) return null;
-  if (!isAppPathAllowedForRoles(pathname, roles)) return getLandingRouteForRoles(roles);
+  if (!isAppPathAllowedForRoles(pathname, roles, options)) return getLandingRouteForRoles(roles);
   return null;
 }
 
@@ -247,9 +300,12 @@ export function getRoleCodesForSessionFacility(
  */
 export function getPostLoginDestinationForAuthUser(
   facilityRoles: AuthFacilityRole[],
-  redirectParam: string | null | undefined
+  redirectParam: string | null | undefined,
+  msppRoles?: string[]
 ): string {
   const fid = getDefaultSessionFacilityId(facilityRoles);
   const roles = getRoleCodesForSessionFacility(facilityRoles, fid);
-  return getPostLoginDestination(roles, redirectParam);
+  const mspp = (msppRoles ?? []).map((r) => String(r).trim()).filter(Boolean);
+  const merged = [...roles, ...mspp];
+  return getPostLoginDestination(merged, redirectParam);
 }

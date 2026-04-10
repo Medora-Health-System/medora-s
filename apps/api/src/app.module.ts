@@ -22,6 +22,7 @@ import { DiagnosesModule } from "./diagnoses/diagnoses.module";
 import { FollowUpsModule } from "./follow-ups/follow-ups.module";
 import { AdminModule } from "./admin/admin.module";
 import { MedicationAdministrationModule } from "./medication-administration/medication-administration.module";
+import { MsppModule } from "./mspp/mspp.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -46,6 +47,7 @@ const imports = [
   FollowUpsModule,
   AdminModule,
   MedicationAdministrationModule,
+  MsppModule,
 ];
 
 @Module({

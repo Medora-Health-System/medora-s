@@ -36,6 +36,7 @@ import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDisposi
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
+import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import {
   MEDORA_CARD_SHELL,
@@ -90,6 +91,8 @@ type EncounterShell = {
     lastName?: string | null;
   } | null;
   providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
 };
 
 function patientInitials(p: PatientLite | null | undefined): string {
@@ -156,21 +159,24 @@ type ErDashboardTile =
       kind: "section";
       id: ErWorkspaceSection;
       accent: string;
-      title: string;
+      initials: string;
+      ariaLabel: string;
       disabled: boolean;
     }
   | {
       kind: "link";
       id: string;
       accent: string;
-      title: string;
+      initials: string;
+      ariaLabel: string;
       href: string;
     };
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, roles, ready: rolesReady, canPrescribe } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
+    useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
   const [resultsRefresh, setResultsRefresh] = useState(0);
@@ -186,6 +192,7 @@ export function EmergencyActiveWorkspaceView() {
   const [error, setError] = useState<string | null>(null);
 
   const fid = facilityId || facilityIdFromHook;
+  const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
 
   const canViewEncounterDetail =
     roles.includes("FRONT_DESK") ||
@@ -205,6 +212,7 @@ export function EmergencyActiveWorkspaceView() {
 
   const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
   const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -622,8 +630,9 @@ export function EmergencyActiveWorkspaceView() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
-              gap: 10,
+              gridTemplateColumns: "repeat(10, minmax(0, 1fr))",
+              gap: 6,
+              width: "100%",
             }}
           >
             {(
@@ -632,93 +641,101 @@ export function EmergencyActiveWorkspaceView() {
                   kind: "section" as const,
                   id: "triage" as const,
                   accent: "#b91c1c",
-                  title: "Triage",
+                  initials: "T",
+                  ariaLabel: "Triage",
                   disabled: !canFetchEncounterTriage,
-                },
-                {
-                  kind: "section" as const,
-                  id: "visitSummary" as const,
-                  accent: "#0f172a",
-                  title: "Synthèse",
-                  disabled: false,
                 },
                 {
                   kind: "section" as const,
                   id: "results" as const,
                   accent: "#6366f1",
-                  title: "Résultats",
+                  initials: "R",
+                  ariaLabel: "Résultats",
                   disabled: false,
                 },
                 {
                   kind: "section" as const,
                   id: "mar" as const,
                   accent: "#059669",
-                  title: "MAR",
+                  initials: "M",
+                  ariaLabel: "MAR",
                   disabled: !canFetchMarTab,
                 },
-                { kind: "section" as const, id: "orders" as const, accent: "#7c3aed", title: "Ordres", disabled: false },
-                { kind: "section" as const, id: "notes" as const, accent: "#475569", title: "Notes", disabled: false },
+                {
+                  kind: "section" as const,
+                  id: "orders" as const,
+                  accent: "#7c3aed",
+                  initials: "O",
+                  ariaLabel: "Ordres",
+                  disabled: false,
+                },
+                {
+                  kind: "section" as const,
+                  id: "notes" as const,
+                  accent: "#475569",
+                  initials: "N",
+                  ariaLabel: "Notes",
+                  disabled: false,
+                },
                 {
                   kind: "section" as const,
                   id: "nursing" as const,
                   accent: "#0ea5e9",
-                  title: "Soins",
+                  initials: "SI",
+                  ariaLabel: "Soins infirmiers",
                   disabled: !showNursingTab,
                 },
                 {
                   kind: "section" as const,
                   id: "providerMse" as const,
                   accent: "#4f46e5",
-                  title: "Évaluation médicale",
+                  initials: "EM",
+                  ariaLabel: "Évaluation médicale",
                   disabled: !showNursingTab,
                 },
                 {
                   kind: "section" as const,
                   id: "disposition" as const,
                   accent: "#94a3b8",
-                  title: "Disposition",
+                  initials: "D",
+                  ariaLabel: "Disposition",
                   disabled: false,
-                },
-                {
-                  kind: "link" as const,
-                  id: "shortcut-encounter",
-                  accent: "#2563eb",
-                  title: "Consultation complète",
-                  href: erChartHref,
                 },
                 {
                   kind: "link" as const,
                   id: "shortcut-diagnostics",
                   accent: "#9333ea",
-                  title: "Diagnostics",
+                  initials: "Dx",
+                  ariaLabel: "Diagnostics",
                   href: tabHref("diagnostics"),
+                },
+                {
+                  kind: "section" as const,
+                  id: "visitSummary" as const,
+                  accent: "#0f172a",
+                  initials: "S",
+                  ariaLabel: "Synthèse",
+                  disabled: false,
                 },
               ] satisfies ErDashboardTile[]
             ).map((q) => {
               if (q.kind === "link") {
                 return (
-                  <div
-                    key={q.id}
-                    style={{
-                      borderRadius: 16,
-                      outline: "1px solid transparent",
-                      outlineOffset: 0,
-                    }}
-                  >
+                  <div key={q.id} style={{ minWidth: 0, borderRadius: 16, outline: "1px solid transparent", outlineOffset: 0 }}>
                     <Link
                       href={q.href}
+                      aria-label={q.ariaLabel}
                       style={{
                         display: "block",
                         textDecoration: "none",
                         color: "inherit",
                         width: "100%",
+                        minWidth: 0,
                       }}
                     >
                       <MedoraCard leftAccentColor={q.accent} variant="default">
                         <MedoraCardInner>
-                          <MedoraCardIdentity initials={q.title.charAt(0)}>
-                            <MedoraCardTitle title={q.title} />
-                          </MedoraCardIdentity>
+                          <MedoraCardIdentity initials={q.initials}>{null}</MedoraCardIdentity>
                         </MedoraCardInner>
                       </MedoraCard>
                     </Link>
@@ -730,6 +747,7 @@ export function EmergencyActiveWorkspaceView() {
                 <div
                   key={q.id}
                   style={{
+                    minWidth: 0,
                     borderRadius: 16,
                     outline: selected ? "2px solid #2563eb" : "1px solid transparent",
                     outlineOffset: 0,
@@ -739,11 +757,14 @@ export function EmergencyActiveWorkspaceView() {
                   <button
                     type="button"
                     disabled={q.disabled}
+                    aria-label={q.ariaLabel}
+                    aria-current={selected ? "true" : undefined}
                     onClick={() => {
                       if (!q.disabled) setActiveSection(q.id);
                     }}
                     style={{
                       width: "100%",
+                      minWidth: 0,
                       margin: 0,
                       padding: 0,
                       border: "none",
@@ -755,9 +776,7 @@ export function EmergencyActiveWorkspaceView() {
                   >
                     <MedoraCard leftAccentColor={q.accent} variant="default">
                       <MedoraCardInner>
-                        <MedoraCardIdentity initials={q.title.charAt(0)}>
-                          <MedoraCardTitle title={q.title} />
-                        </MedoraCardIdentity>
+                        <MedoraCardIdentity initials={q.initials}>{null}</MedoraCardIdentity>
                       </MedoraCardInner>
                     </MedoraCard>
                   </button>
@@ -878,9 +897,12 @@ export function EmergencyActiveWorkspaceView() {
             <EmergencyErOrdersPanel
               encounterId={encounterId}
               facilityId={fid}
-              ordersTabHref={tabHref("orders")}
-              diagnosticsTabHref={tabHref("diagnostics")}
-              nursingTabHref={tabHref("nursing")}
+              canPrescribe={canPrescribe}
+              encounterForOrderModal={encounter ? { patient: encounter.patient } : null}
+              onRefetchEncounter={load}
+              onOrdersCreated={async () => {
+                setResultsRefresh((r) => r + 1);
+              }}
             />
           ) : null}
 
@@ -907,14 +929,30 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "nursing" && showNursingTab ? (
-            <EmergencyNursingReassessmentPanel
-              encounterId={encounterId}
-              facilityId={fid}
-              encounter={encounter}
-              isLocked={isLocked}
-              onSaved={onEmbeddedEncounterUpdate}
-              nursingTabHref={tabHref("nursing")}
-            />
+            <>
+              <EmergencyErNursingHandoffPanel
+                encounter={encounter}
+                encounterId={encounterId}
+                facilityId={fid}
+                onSaved={onEmbeddedEncounterUpdate}
+                canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
+                genericEncounterHref={genericEncounterHref}
+                summaryTabHref={tabHref("summary")}
+                hospitalisationBoardHref="/app/hospitalisation"
+                marTabHref={tabHref("mar")}
+                ordersTabHref={tabHref("orders")}
+                resultsTabHref={tabHref("results")}
+                facilityName={facilityName}
+              />
+              <EmergencyNursingReassessmentPanel
+                encounterId={encounterId}
+                facilityId={fid}
+                encounter={encounter}
+                isLocked={isLocked}
+                onSaved={onEmbeddedEncounterUpdate}
+                nursingTabHref={tabHref("nursing")}
+              />
+            </>
           ) : null}
 
           {activeSection === "nursing" && !showNursingTab ? (
@@ -975,20 +1013,35 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "disposition" ? (
-            <EmergencyDispositionPanel
-              encounterId={encounterId}
-              facilityId={fid}
-              encounter={encounter}
-              isLocked={isLocked}
-              onSaved={onEmbeddedEncounterUpdate}
-              summaryTabHref={tabHref("summary")}
-              erChartHref={erChartHref}
-              genericEncounterHref={genericEncounterHref}
-              hospitalisationBoardHref="/app/hospitalisation"
-              canPrescribe={canPrescribe}
-              canEditNursingDischarge={canEditNursingDischarge}
-              canEditMedicalDischarge={canEditMedicalDischarge}
-            />
+            <>
+              <EmergencyDispositionPanel
+                encounterId={encounterId}
+                facilityId={fid}
+                encounter={encounter}
+                isLocked={isLocked}
+                onSaved={onEmbeddedEncounterUpdate}
+                summaryTabHref={tabHref("summary")}
+                canPrescribe={canPrescribe}
+                canEditNursingDischarge={canEditNursingDischarge}
+                canEditMedicalDischarge={canEditMedicalDischarge}
+              />
+              <div style={{ marginTop: 10 }}>
+                <EmergencyErNursingHandoffPanel
+                  encounter={encounter}
+                  encounterId={encounterId}
+                  facilityId={fid}
+                  onSaved={onEmbeddedEncounterUpdate}
+                  canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
+                  genericEncounterHref={genericEncounterHref}
+                  summaryTabHref={tabHref("summary")}
+                  hospitalisationBoardHref="/app/hospitalisation"
+                  marTabHref={tabHref("mar")}
+                  ordersTabHref={tabHref("orders")}
+                  resultsTabHref={tabHref("results")}
+                  facilityName={facilityName}
+                />
+              </div>
+            </>
           ) : null}
         </section>
       </div>

@@ -92,6 +92,7 @@ export type NavGroupId =
   | "examens"
   | "facturation"
   | "sante_publique"
+  | "mspp"
   | "admin";
 
 export type SidebarNavItem = {
@@ -101,6 +102,8 @@ export type SidebarNavItem = {
   roles: string[];
   group: NavGroupId;
   accent: NavAccent;
+  /** Si vrai : afficher seulement si `User.canCreateFacilities` (admin plateforme). */
+  platformAdminOnly?: boolean;
 };
 
 type SidebarNavItemDef = Omit<SidebarNavItem, "label"> & { labelKey: string };
@@ -189,8 +192,37 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     group: "sante_publique",
     accent: "orange",
   },
+  {
+    href: "/app/mspp/dashboard",
+    labelKey: "nav.msppDashboard",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/rapport",
+    labelKey: "nav.msppRapport",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/validation",
+    labelKey: "nav.msppValidation",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp",
+    accent: "indigo",
+  },
   { href: "/app/admin", labelKey: "nav.admin", roles: ["ADMIN"], group: "admin", accent: "redGray" },
   { href: "/app/admin/users", labelKey: "nav.adminUsers", roles: ["ADMIN"], group: "admin", accent: "redGray" },
+  {
+    href: "/app/admin/mspp-access",
+    labelKey: "nav.adminMsppAccess",
+    roles: [],
+    group: "admin",
+    accent: "redGray",
+    platformAdminOnly: true,
+  },
 ];
 
 /**
@@ -202,6 +234,7 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = SIDEBAR_NAV_DEFS.map((d) => (
   group: d.group,
   accent: d.accent,
   label: d.labelKey,
+  platformAdminOnly: d.platformAdminOnly,
 }));
 
 export function getSidebarNavItems(t: (key: string) => string): SidebarNavItem[] {
@@ -211,6 +244,7 @@ export function getSidebarNavItems(t: (key: string) => string): SidebarNavItem[]
     group: d.group,
     accent: d.accent,
     label: t(d.labelKey),
+    platformAdminOnly: d.platformAdminOnly,
   }));
 }
 
@@ -226,6 +260,7 @@ export const NAV_GROUP_ORDER: NavGroupId[] = [
   "examens",
   "facturation",
   "sante_publique",
+  "mspp",
   "admin",
 ];
 
