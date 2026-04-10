@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, DiseaseCaseStatus } from "@prisma/client";
+import { AuditAction, DiseaseCaseStatus, Prisma } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
 import type {
@@ -67,14 +67,15 @@ export class PublicHealthService {
    */
   private async tryEnqueueMsppReview(
     row: { id: string; geoCommuneId: string | null; department: string | null },
-    userId: string,
-    facilityId: string
-  ): Promise<{ id: string; status: string } | null> {
+    userId: string | undefined,
+    facilityId: string,
+    options?: { isBackfill?: boolean }
+  ): Promise<{ id: string; status: string; createdNew: boolean } | null> {
     const existing = await this.prisma.diseaseCaseReview.findFirst({
       where: { diseaseCaseReportId: row.id },
       select: { id: true, status: true },
     });
-    if (existing) return existing;
+    if (existing) return { ...existing, createdNew: false };
 
     const geoDeptId = await this.resolveGeoDepartmentIdForMsppReview({
       geoCommuneId: row.geoCommuneId,
@@ -96,13 +97,128 @@ export class PublicHealthService {
         userId,
         facilityId,
         entityId: created.id,
-        metadata: { diseaseCaseReportId: row.id, msppEnqueue: true },
+        metadata: {
+          diseaseCaseReportId: row.id,
+          msppEnqueue: true,
+          ...(options?.isBackfill ? { source: "backfill" as const } : {}),
+        },
       });
-      return created;
+      return { ...created, createdNew: true };
     } catch (e) {
       console.error("[public-health] DiseaseCaseReview enqueue failed", e);
       return null;
     }
+  }
+
+  /**
+   * Backfill manuel : crée des `DiseaseCaseReview` manquantes pour d’anciennes déclarations,
+   * mêmes règles que la création en ligne (géo résolvable, pas de doublon).
+   * Idempotent : sans effet si une revue existe déjà pour la déclaration.
+   * Ne s’exécute pas au démarrage — appeler via script uniquement.
+   */
+  async backfillMissingMsppReviews(options?: { dryRun?: boolean }): Promise<{
+    candidatesWithoutReview: number;
+    dryRun: boolean;
+    skippedUnresolvedGeo: number;
+    skippedRaceExistingReview: number;
+    /** Lignes réellement créées (dryRun = false uniquement). */
+    created: number;
+    /** Si dryRun : nombre de revues qui seraient créées. */
+    wouldCreate?: number;
+    failed: number;
+  }> {
+    const dryRun = options?.dryRun === true;
+
+    const candidates = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        geoCommuneId: string | null;
+        department: string | null;
+        facilityId: string;
+      }>
+    >(Prisma.sql`
+      SELECT dcr.id, dcr."geoCommuneId", dcr.department, dcr."facilityId"
+      FROM "DiseaseCaseReport" dcr
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "DiseaseCaseReview" r
+        WHERE r."diseaseCaseReportId" = dcr.id
+      )
+    `);
+
+    const candidatesWithoutReview = candidates.length;
+    let skippedUnresolvedGeo = 0;
+    let skippedRaceExistingReview = 0;
+    let created = 0;
+    let failed = 0;
+
+    for (const r of candidates) {
+      const geoDeptId = await this.resolveGeoDepartmentIdForMsppReview({
+        geoCommuneId: r.geoCommuneId,
+        department: r.department,
+      });
+      if (!geoDeptId) {
+        skippedUnresolvedGeo++;
+        continue;
+      }
+
+      if (dryRun) {
+        created++;
+        continue;
+      }
+
+      const pre = await this.prisma.diseaseCaseReview.findFirst({
+        where: { diseaseCaseReportId: r.id },
+        select: { id: true },
+      });
+      if (pre) {
+        skippedRaceExistingReview++;
+        continue;
+      }
+
+      const out = await this.tryEnqueueMsppReview(
+        { id: r.id, geoCommuneId: r.geoCommuneId, department: r.department },
+        undefined,
+        r.facilityId,
+        { isBackfill: true }
+      );
+      if (out?.createdNew) {
+        created++;
+      } else if (out && !out.createdNew) {
+        skippedRaceExistingReview++;
+      } else {
+        failed++;
+      }
+    }
+
+    if (dryRun) {
+      const wouldCreateCount = created;
+      return {
+        candidatesWithoutReview,
+        dryRun: true,
+        skippedUnresolvedGeo,
+        skippedRaceExistingReview: 0,
+        created: 0,
+        wouldCreate: wouldCreateCount,
+        failed: 0,
+      };
+    }
+
+    console.log("[public-health] MSPP backfill complete", {
+      candidatesWithoutReview,
+      skippedUnresolvedGeo,
+      skippedRaceExistingReview,
+      created,
+      failed,
+    });
+
+    return {
+      candidatesWithoutReview,
+      dryRun: false,
+      skippedUnresolvedGeo,
+      skippedRaceExistingReview,
+      created,
+      failed,
+    };
   }
 
   async createVaccineCatalogItem(
@@ -385,13 +501,16 @@ export class PublicHealthService {
       },
     });
 
-    const msppReview = await this.tryEnqueueMsppReview(
+    const msppRaw = await this.tryEnqueueMsppReview(
       { id: row.id, geoCommuneId: row.geoCommuneId, department: row.department },
       userId,
       facilityId
     );
+    const msppReview = msppRaw
+      ? { id: msppRaw.id, status: msppRaw.status }
+      : null;
 
-    return { ...row, msppReview: msppReview ?? null };
+    return { ...row, msppReview };
   }
 
   async listDiseaseCaseReports(
