@@ -75,7 +75,7 @@ export class AuthService {
             facility: { select: { name: true, defaultLanguage: true } },
           },
         },
-      }
+      },
     });
 
     if (!user) throw new UnauthorizedException("User not found");
@@ -83,6 +83,22 @@ export class AuthService {
     const sortedRoles = [...user.userRoles].sort((a, b) =>
       a.facilityId.localeCompare(b.facilityId, "en")
     );
+
+    /** Isolated query so a missing/failed MSPP migration cannot break `/auth/me` or login for facility users. */
+    let msppRoles: string[] = [];
+    try {
+      const msppRows = await this.prisma.msppUserRoleAssignment.findMany({
+        where: { userId, isActive: true },
+        select: { role: true },
+      });
+      msppRoles = [...msppRows]
+        .map((a) => a.role)
+        .sort((a, b) => a.localeCompare(b, "en"));
+    } catch (err) {
+      console.error("buildAuthUserDto: msppUserRoleAssignment query failed (MSPP optional)", err);
+      msppRoles = [];
+    }
+
     return {
       id: user.id,
       username: user.email,
@@ -96,6 +112,7 @@ export class AuthService {
         role: ur.role.code,
         departmentId: ur.departmentId ?? null,
       })),
+      msppRoles,
     };
   }
 

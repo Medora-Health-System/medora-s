@@ -167,6 +167,27 @@ enum FollowUpStatus {
   CANCELLED
 }
 
+/// Classification for facilities (for future use on `Facility`; Phase 1 adds enum only).
+enum FacilityType {
+  HOSPITAL
+  CLINIC
+  HEALTH_CENTER
+  LABORATORY
+  SURVEILLANCE_POST
+  COMMUNITY_SITE
+  OTHER
+}
+
+/// National MSPP portal roles (separate from facility-scoped `RoleCode`).
+enum MsppRoleCode {
+  MSPP_MINISTRE
+  MSPP_EPIDEMIOLOGIE
+  MSPP_VALIDATOR_DEPT
+  MSPP_VALIDATOR_CENTRAL
+  /// Administration déléguée des accès MSPP (sans pouvoirs plateforme).
+  MSPP_ADMIN
+}
+
 model Facility {
   id        String   @id @default(uuid())
   code      String   @unique
@@ -255,6 +276,7 @@ model User {
   providerAddendaCreated EncounterProviderAddendum[]
   orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
   ordersCancelled               Order[]     @relation("OrderCancelledBy")
+  msppUserRoleAssignments       MsppUserRoleAssignment[]
 }
 
 model PasswordResetToken {
@@ -985,21 +1007,25 @@ model DiseaseCaseReport {
   onsetDate        DateTime?
   commune          String?
   department       String?
+  /// Lien optionnel vers le référentiel GeoCommune (saisie guidée ; `commune`/`department` restent la dénormalisation affichable).
+  geoCommuneId     String?
   notes            String?
   reportedByUserId String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
-  patient    Patient?   @relation(fields: [patientId], references: [id], onDelete: SetNull)
-  facility   Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  encounter  Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
-  reportedBy User?      @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
+  patient     Patient?     @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  facility    Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter   Encounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  reportedBy  User?        @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
+  geoCommune  GeoCommune?  @relation(fields: [geoCommuneId], references: [id], onDelete: SetNull)
 
   @@index([facilityId])
   @@index([patientId])
   @@index([diseaseCode])
   @@index([status])
   @@index([reportedAt])
+  @@index([geoCommuneId])
 }
 
 /// FRONT_DESK (and others) create via API; `encounterId` optional for registration desk follow-ups.
@@ -1027,4 +1053,65 @@ model FollowUp {
   @@index([dueDate])
   @@index([status])
   @@index([facilityId, status, dueDate])
+}
+
+/// MSPP-style review record. Phase 1: optional `diseaseCaseReportId` without FK to `DiseaseCaseReport` until relations are confirmed.
+model DiseaseCaseReview {
+  id                  String    @id @default(uuid())
+  diseaseCaseReportId String?
+  reviewerUserId      String?
+  status              String
+  reviewerLevel       String
+  departmentId        String
+  notes               String?
+  reviewedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([diseaseCaseReportId])
+  @@index([reviewerUserId])
+  @@index([departmentId])
+}
+
+/// Haiti national geographic department (département).
+model GeoDepartment {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  sortOrder Int?
+  communes  GeoCommune[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Commune within a geographic department.
+model GeoCommune {
+  id              String            @id @default(uuid())
+  geoDepartmentId String
+  department      GeoDepartment     @relation(fields: [geoDepartmentId], references: [id], onDelete: Restrict)
+  code            String?
+  name            String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  diseaseCaseReports DiseaseCaseReport[]
+
+  @@index([geoDepartmentId])
+  @@index([name])
+}
+
+/// National MSPP access (not tied to facility `UserRole`). `geoDepartmentId` is set for `MSPP_VALIDATOR_DEPT`.
+model MsppUserRoleAssignment {
+  id              String       @id @default(uuid())
+  userId          String
+  role            MsppRoleCode
+  geoDepartmentId String?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([geoDepartmentId])
+  @@index([userId, role])
 }
