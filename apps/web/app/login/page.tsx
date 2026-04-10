@@ -28,7 +28,11 @@ function LoginForm() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = (await parseApiResponse(response)) as { error?: string; message?: string; user?: { facilityRoles?: unknown } } | null;
+      const data = (await parseApiResponse(response)) as {
+        error?: string;
+        message?: string;
+        user?: { facilityRoles?: unknown; msppRoles?: unknown };
+      } | null;
 
       if (!response.ok) {
         const errorMessage =
@@ -43,9 +47,14 @@ function LoginForm() {
       }
 
       const facilityRoles = (data?.user?.facilityRoles ?? []) as { facilityId: string; role?: string }[];
+      const msppRolesRaw = data?.user?.msppRoles;
+      const msppRoles = Array.isArray(msppRolesRaw)
+        ? msppRolesRaw.filter((x): x is string => typeof x === "string")
+        : [];
       const dest = getPostLoginDestinationForAuthUser(
         facilityRoles.map((fr) => ({ facilityId: String(fr.facilityId), role: String(fr.role ?? "") })),
-        searchParams.get("redirect")
+        searchParams.get("redirect"),
+        msppRoles
       );
       router.push(dest);
       router.refresh();
