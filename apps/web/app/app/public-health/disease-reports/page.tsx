@@ -1,21 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { apiFetch } from "@/lib/apiClient";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
-import {
-  createDiseaseReport,
-  fetchDiseaseReports,
-  fetchHaitiGeoReference,
-  type DiseaseCaseReportRow,
-  type HaitiGeoDepartment,
-  type HaitiGeoCommune,
-} from "@/lib/publicHealthApi";
-import { Field, inputStyle } from "@/components/pharmacy/Modal";
-
-const STATUS_CODES = ["SUSPECTED", "CONFIRMED", "RULED_OUT"] as const;
+import { fetchDiseaseReports, fetchHaitiGeoReference, type DiseaseCaseReportRow, type HaitiGeoDepartment, type HaitiGeoCommune } from "@/lib/publicHealthApi";
+import { DiseaseReportForm } from "@/features/public-health/disease-report-form";
+import { inputStyle } from "@/components/pharmacy/Modal";
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: "#fff",
@@ -24,27 +15,6 @@ const cardStyle: React.CSSProperties = {
   marginBottom: 20,
   border: "1px solid #e2e8f0",
 };
-
-const btnPrimary: React.CSSProperties = {
-  padding: "10px 20px",
-  backgroundColor: "#1a1a1a",
-  color: "white",
-  border: "none",
-  borderRadius: 10,
-  cursor: "pointer",
-  fontSize: 14,
-  fontWeight: 600,
-};
-
-type Patient = { id: string; firstName: string; lastName: string; mrn: string | null };
-
-function todayDateInput(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function formatDate(d: string | null | undefined) {
   return d ? new Date(d).toLocaleDateString() : "—";
@@ -64,17 +34,6 @@ export default function DiseaseReportsPage() {
 
   const [geoDepartments, setGeoDepartments] = useState<HaitiGeoDepartment[]>([]);
   const [communesByDept, setCommunesByDept] = useState<Record<string, HaitiGeoCommune[]>>({});
-  const [geoDeptId, setGeoDeptId] = useState("");
-  const [geoCommuneId, setGeoCommuneId] = useState("");
-  const [manualDepartment, setManualDepartment] = useState("");
-  const [manualCommune, setManualCommune] = useState("");
-
-  const useGeoLists = geoDepartments.length > 0;
-
-  const communesForDept = useMemo(() => {
-    if (!geoDeptId) return [];
-    return communesByDept[geoDeptId] ?? [];
-  }, [geoDeptId, communesByDept]);
 
   useEffect(() => {
     if (!facilityId || !canViewPublicHealth) return;
@@ -95,22 +54,6 @@ export default function DiseaseReportsPage() {
       cancelled = true;
     };
   }, [facilityId, canViewPublicHealth]);
-
-  useEffect(() => {
-    setGeoCommuneId("");
-  }, [geoDeptId]);
-
-  const [patientQuery, setPatientQuery] = useState("");
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [patientId, setPatientId] = useState("");
-  const [diseaseCode, setDiseaseCode] = useState("");
-  const [diseaseName, setDiseaseName] = useState("");
-  const [status, setStatus] = useState<string>("SUSPECTED");
-  const [reportedDate, setReportedDate] = useState(todayDateInput);
-  const [onsetDate, setOnsetDate] = useState("");
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const [reports, setReports] = useState<DiseaseCaseReportRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -157,19 +100,6 @@ export default function DiseaseReportsPage() {
     if (ready && facilityId && canViewPublicHealth) void loadReports();
   }, [ready, facilityId, canViewPublicHealth, loadReports]);
 
-  const searchPatients = async () => {
-    if (!facilityId || !patientQuery.trim()) return;
-    try {
-      const data = await apiFetch(
-        `/patients/search?q=${encodeURIComponent(patientQuery.trim())}`,
-        { facilityId }
-      );
-      setPatients(data || []);
-    } catch {
-      setPatients([]);
-    }
-  };
-
   const statusLabel = (code: string) => {
     const key = `diseaseReports.statuses.${code}`;
     const out = t(key);
@@ -181,66 +111,6 @@ export default function DiseaseReportsPage() {
     const key = `msppValidation.reviewStatus.${msppReview.status}`;
     const out = t(key);
     return out === key ? msppReview.status : out;
-  };
-
-  const handleSubmit = async () => {
-    if (!facilityId || !diseaseCode.trim() || !diseaseName.trim()) return;
-    if (useGeoLists && geoDeptId && communesForDept.length > 0 && !geoCommuneId.trim()) {
-      setMessage({ type: "err", text: t("diseaseReports.communeRequiredWhenList") });
-      return;
-    }
-    setMessage(null);
-    setSubmitting(true);
-    try {
-      let departmentStr: string | undefined;
-      let communeStr: string | undefined;
-      if (useGeoLists && geoDeptId) {
-        const deptRow = geoDepartments.find((x) => x.id === geoDeptId);
-        departmentStr = deptRow?.name;
-        if (geoCommuneId) {
-          const comRow = communesForDept.find((x) => x.id === geoCommuneId);
-          communeStr = comRow?.name;
-        }
-      } else {
-        departmentStr = manualDepartment.trim() || undefined;
-        communeStr = manualCommune.trim() || undefined;
-      }
-
-      const body: Record<string, unknown> = {
-        diseaseCode: diseaseCode.trim(),
-        diseaseName: diseaseName.trim(),
-        status,
-        reportedAt: new Date(`${reportedDate}T12:00:00`).toISOString(),
-        onsetDate: onsetDate || undefined,
-        commune: communeStr,
-        department: departmentStr,
-        notes: notes.trim() || undefined,
-      };
-      if (useGeoLists && geoCommuneId.trim()) {
-        body.geoCommuneId = geoCommuneId.trim();
-      }
-      if (patientId) body.patientId = patientId;
-      await createDiseaseReport(facilityId, body);
-      setMessage({ type: "ok", text: t("diseaseReports.createdOk") });
-      setDiseaseCode("");
-      setDiseaseName("");
-      setOnsetDate("");
-      setReportedDate(todayDateInput());
-      setGeoDeptId("");
-      setGeoCommuneId("");
-      setManualDepartment("");
-      setManualCommune("");
-      setNotes("");
-      setPatientId("");
-      void loadReports();
-    } catch (e: unknown) {
-      setMessage({
-        type: "err",
-        text: e instanceof Error ? e.message : t("diseaseReports.createErr"),
-      });
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   if (!ready) return <p>{t("diseaseReports.loadingPage")}</p>;
@@ -300,151 +170,14 @@ export default function DiseaseReportsPage() {
         {t("diseaseReports.pipelineVisibilityNote")}
       </div>
 
-      <div style={cardStyle}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("diseaseReports.newSectionTitle")}</h2>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input
-            style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
-            placeholder={t("diseaseReports.patientSearchPlaceholder")}
-            value={patientQuery}
-            onChange={(e) => setPatientQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void searchPatients()}
-          />
-          <button type="button" onClick={() => void searchPatients()} style={btnPrimary}>
-            {t("diseaseReports.patientSearch")}
-          </button>
-        </div>
-        {patients.length > 0 && (
-          <Field label={t("diseaseReports.linkPatient")}>
-            <select style={inputStyle} value={patientId} onChange={(e) => setPatientId(e.target.value)}>
-              <option value="">{t("diseaseReports.patientNone")}</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.lastName}, {p.firstName} {p.mrn ? `— ${p.mrn}` : ""}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
-        <Field label={t("diseaseReports.diseaseCode")}>
-          <input
-            style={inputStyle}
-            value={diseaseCode}
-            onChange={(e) => setDiseaseCode(e.target.value)}
-            placeholder="ex. A09, J18"
-          />
-          <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
-            {t("diseaseReports.diseaseCodeHint")}
-          </span>
-        </Field>
-        <Field label={t("diseaseReports.diseaseName")}>
-          <input
-            style={inputStyle}
-            value={diseaseName}
-            onChange={(e) => setDiseaseName(e.target.value)}
-            placeholder="ex. Diarrhée aiguë"
-          />
-        </Field>
-        <Field label={t("diseaseReports.status")}>
-          <select style={inputStyle} value={status} onChange={(e) => setStatus(e.target.value)}>
-            {STATUS_CODES.map((c) => (
-              <option key={c} value={c}>
-                {statusLabel(c)}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={t("diseaseReports.reportedDate")}>
-          <input
-            type="date"
-            style={inputStyle}
-            value={reportedDate}
-            onChange={(e) => setReportedDate(e.target.value)}
-          />
-          <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
-            {t("diseaseReports.reportedDateHint")}
-          </span>
-        </Field>
-        <Field label={t("diseaseReports.onsetDate")}>
-          <input type="date" style={inputStyle} value={onsetDate} onChange={(e) => setOnsetDate(e.target.value)} />
-        </Field>
-
-        {useGeoLists ? (
-          <>
-            <p style={{ fontSize: 13, color: "#475569", margin: "8px 0 4px" }}>{t("diseaseReports.geoPickHint")}</p>
-            <Field label={t("diseaseReports.department")}>
-              <select style={inputStyle} value={geoDeptId} onChange={(e) => setGeoDeptId(e.target.value)}>
-                <option value="">{t("diseaseReports.deptPlaceholder")}</option>
-                {geoDepartments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.code})
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label={t("diseaseReports.commune")}>
-              <select
-                style={inputStyle}
-                value={geoCommuneId}
-                onChange={(e) => setGeoCommuneId(e.target.value)}
-                disabled={!geoDeptId}
-              >
-                <option value="">{t("diseaseReports.communePlaceholder")}</option>
-                {communesForDept.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.code ? ` (${c.code})` : ""}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {geoDeptId && communesForDept.length === 0 ? (
-              <p style={{ fontSize: 13, color: "#92400e", margin: "4px 0 0", background: "#fffbeb", padding: 8, borderRadius: 8 }}>
-                {t("diseaseReports.geoDeptButNoCommunesHint")}
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <p style={{ fontSize: 13, color: "#92400e", margin: "8px 0 4px", background: "#fffbeb", padding: 8, borderRadius: 8 }}>
-              {t("diseaseReports.geoManualHint")}
-            </p>
-            <Field label={t("diseaseReports.department")}>
-              <input style={inputStyle} value={manualDepartment} onChange={(e) => setManualDepartment(e.target.value)} />
-            </Field>
-            <Field label={t("diseaseReports.commune")}>
-              <input style={inputStyle} value={manualCommune} onChange={(e) => setManualCommune(e.target.value)} />
-            </Field>
-          </>
-        )}
-
-        <Field label={t("diseaseReports.notes")}>
-          <textarea style={{ ...inputStyle, minHeight: 80 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </Field>
-        <button
-          type="button"
-          disabled={submitting || !diseaseCode.trim() || !diseaseName.trim()}
-          onClick={() => void handleSubmit()}
-          style={btnPrimary}
-        >
-          {submitting ? t("diseaseReports.submitting") : t("diseaseReports.submit")}
-        </button>
-      </div>
-
-      {message && (
-        <div
-          role="status"
-          style={{
-            padding: 12,
-            borderRadius: 10,
-            marginBottom: 20,
-            backgroundColor: message.type === "ok" ? "rgba(22,163,74,0.12)" : "rgba(185,28,28,0.1)",
-            color: message.type === "ok" ? "#166534" : "#991b1b",
-          }}
-        >
-          {message.text}
-        </div>
-      )}
+      {facilityId ? (
+        <DiseaseReportForm
+          facilityId={facilityId}
+          onCreated={() => void loadReports()}
+          geoDepartments={geoDepartments}
+          communesByDept={communesByDept}
+        />
+      ) : null}
 
       <div style={cardStyle}>
         <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("diseaseReports.recentSectionTitle")}</h2>
@@ -469,11 +202,9 @@ export default function DiseaseReportsPage() {
             onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option value="">{t("diseaseReports.filterStatusAll")}</option>
-            {STATUS_CODES.map((c) => (
-              <option key={c} value={c}>
-                {statusLabel(c)}
-              </option>
-            ))}
+            <option value="SUSPECTED">{t("diseaseReports.statuses.SUSPECTED")}</option>
+            <option value="CONFIRMED">{t("diseaseReports.statuses.CONFIRMED")}</option>
+            <option value="RULED_OUT">{t("diseaseReports.statuses.RULED_OUT")}</option>
           </select>
           <input
             style={{ ...inputStyle, marginBottom: 0, width: 120 }}
@@ -499,96 +230,47 @@ export default function DiseaseReportsPage() {
             value={filterTo}
             onChange={(e) => setFilterTo(e.target.value)}
           />
-          <button type="button" onClick={() => void loadReports()} style={btnPrimary}>
+          <button type="button" onClick={() => void loadReports()} style={{ padding: "8px 14px", borderRadius: 8 }}>
             {t("diseaseReports.applyFilters")}
           </button>
         </div>
-        <p style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>
-          {t("diseaseReports.countReports").replace("{count}", String(total))}
-        </p>
+        <p style={{ fontSize: 13, color: "#64748b" }}>{t("diseaseReports.countReports").replace("{count}", String(total))}</p>
         {loading ? (
           <p>{t("diseaseReports.tableLoading")}</p>
         ) : reports.length === 0 ? (
-          <p style={{ color: "#64748b" }}>{t("diseaseReports.tableEmpty")}</p>
+          <p>{t("diseaseReports.tableEmpty")}</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
-                <tr style={{ borderBottom: "2px solid #e2e8f0", background: "#f8fafc" }}>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableDeclaredOn")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableDisease")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableCode")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableStatus")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableDepartment")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableCommune")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableGeoQuality")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableMsppPipeline")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableOnset")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tableNotes")}</th>
-                  <th style={{ padding: 10, textAlign: "left" }}>{t("diseaseReports.tablePatient")}</th>
+                <tr style={{ borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDeclaredOn")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDisease")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableCode")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableStatus")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDepartment")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableCommune")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableOnset")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableNotes")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tablePatient")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableMsppPipeline")}</th>
                 </tr>
               </thead>
               <tbody>
                 {reports.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                    <td style={{ padding: 10 }}>{formatDate(r.reportedAt)}</td>
-                    <td style={{ padding: 10 }}>{r.diseaseName}</td>
-                    <td style={{ padding: 10 }}>{r.diseaseCode}</td>
-                    <td style={{ padding: 10 }}>{statusLabel(r.status)}</td>
-                    <td style={{ padding: 10 }}>{r.department ?? t("diseaseReports.dash")}</td>
-                    <td style={{ padding: 10 }}>{r.commune ?? t("diseaseReports.dash")}</td>
-                    <td style={{ padding: 10, fontSize: 13 }}>
-                      {!r.dataQuality ? (
-                        t("diseaseReports.dash")
-                      ) : r.dataQuality.geoIncomplete ? (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "2px 8px",
-                            borderRadius: 9999,
-                            background: "rgba(217,119,6,0.15)",
-                            color: "#92400e",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {t("diseaseReports.badgeGeoIncomplete")}
-                        </span>
-                      ) : r.dataQuality.geoCommuneLinked ? (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "2px 8px",
-                            borderRadius: 9999,
-                            background: "rgba(22,163,74,0.14)",
-                            color: "#166534",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {t("diseaseReports.badgeGeoLinked")}
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "2px 8px",
-                            borderRadius: 9999,
-                            background: "rgba(100,116,139,0.12)",
-                            color: "#475569",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {t("diseaseReports.badgeGeoFreeText")}
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: 10, fontSize: 13, maxWidth: 200, color: "#334155" }}>
-                      {msppPipelineLabel(r.msppReview)}
-                    </td>
-                    <td style={{ padding: 10 }}>{formatDate(r.onsetDate)}</td>
-                    <td style={{ padding: 10, maxWidth: 180 }}>{truncateNote(r.notes, 48)}</td>
-                    <td style={{ padding: 10 }}>
+                  <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.reportedAt)}</td>
+                    <td style={{ padding: "8px 6px" }}>{r.diseaseName}</td>
+                    <td style={{ padding: "8px 6px" }}>{r.diseaseCode}</td>
+                    <td style={{ padding: "8px 6px" }}>{statusLabel(r.status)}</td>
+                    <td style={{ padding: "8px 6px" }}>{r.department ?? t("diseaseReports.dash")}</td>
+                    <td style={{ padding: "8px 6px" }}>{r.commune ?? t("diseaseReports.dash")}</td>
+                    <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.onsetDate)}</td>
+                    <td style={{ padding: "8px 6px", maxWidth: 200 }}>{truncateNote(r.notes, 80)}</td>
+                    <td style={{ padding: "8px 6px" }}>
                       {r.patient ? `${r.patient.lastName}, ${r.patient.firstName}` : t("diseaseReports.dash")}
                     </td>
+                    <td style={{ padding: "8px 6px", fontSize: 12 }}>{msppPipelineLabel(r.msppReview)}</td>
                   </tr>
                 ))}
               </tbody>

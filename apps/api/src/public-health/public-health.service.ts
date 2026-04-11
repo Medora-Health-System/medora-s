@@ -451,24 +451,18 @@ export class PublicHealthService {
       assertEncounterNotSigned(enc);
     }
 
-    let communeStr = dto.commune ?? undefined;
-    let departmentStr = dto.department ?? undefined;
-    let geoCommuneId: string | undefined;
-
-    if (dto.geoCommuneId) {
-      const gc = await this.prisma.geoCommune.findUnique({
-        where: { id: dto.geoCommuneId },
-        include: { department: { select: { id: true, name: true } } },
-      });
-      if (!gc) {
-        throw new BadRequestException("Commune géographique invalide.");
-      }
-      geoCommuneId = gc.id;
-      communeStr = gc.name;
-      departmentStr = gc.department.name;
+    const gc = await this.prisma.geoCommune.findUnique({
+      where: { id: dto.geoCommuneId },
+      include: { department: { select: { id: true, name: true } } },
+    });
+    if (!gc) {
+      throw new BadRequestException("Commune géographique invalide.");
     }
+    const geoCommuneId = gc.id;
+    const communeStr = gc.name;
+    const departmentStr = gc.department.name;
 
-    const reportedAt = dto.reportedAt ?? new Date();
+    const reportedAt = dto.reportedAt;
 
     const row = await this.prisma.diseaseCaseReport.create({
       data: {
@@ -483,7 +477,7 @@ export class PublicHealthService {
         commune: communeStr,
         department: departmentStr,
         geoCommuneId,
-        notes: dto.notes ?? undefined,
+        notes: dto.notes,
         reportedByUserId: userId,
       },
       include: {
