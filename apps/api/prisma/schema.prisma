@@ -1055,6 +1055,24 @@ model FollowUp {
   @@index([facilityId, status, dueDate])
 }
 
+/// Classification du cas pour la revue de surveillance (MSPP).
+enum MsppCaseClassification {
+  SUSPECT
+  PROBABLE
+  CONFIRMED
+  NOT_A_CASE
+}
+
+/// Type de preuve biologique documentée à la revue.
+enum MsppLabEvidenceType {
+  NONE
+  PCR
+  RAPID_ANTIGEN
+  CULTURE
+  SEROLOGY
+  OTHER
+}
+
 /// MSPP-style review record. Phase 1: optional `diseaseCaseReportId` without FK to `DiseaseCaseReport` until relations are confirmed.
 model DiseaseCaseReview {
   id                  String    @id @default(uuid())
@@ -1073,6 +1091,17 @@ model DiseaseCaseReview {
   validationLabConfirmed  Boolean?
   /// Risque d’exposition : LOW | MEDIUM | HIGH | UNKNOWN.
   validationExposureRisk  String?
+  /// Classification épidémiologique du cas (revue structurée).
+  caseClassification       MsppCaseClassification?
+  inclusionCriteriaSummary String?                 @db.Text
+  exclusionCriteriaSummary String?                 @db.Text
+  symptomOnsetDate         DateTime?
+  hospitalized             Boolean?
+  outcomeStatus            String?                 @db.VarChar(128)
+  labEvidenceType          MsppLabEvidenceType?
+  epiLinkedCase            Boolean?
+  travelOrExposureContext  String?                 @db.Text
+  finalDecisionRationale   String?                 @db.Text
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
