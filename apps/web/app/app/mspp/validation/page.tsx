@@ -7,8 +7,10 @@ import {
   fetchMsppReviews,
   msppCentralApprove,
   msppCentralReject,
+  msppCentralRequeue,
   msppDepartmentApprove,
   msppDepartmentReject,
+  msppDepartmentRequeue,
   type MsppReviewActionBody,
   type MsppReviewRow,
 } from "@/lib/msppApi";
@@ -17,6 +19,7 @@ import { DiseaseCaseReviewStatus } from "@/features/mspp/msppWorkflow";
 import {
   MSPP_BTN_APPROVE,
   MSPP_BTN_REJECT,
+  MSPP_BTN_REQUEUE,
   MSPP_BTN_ROW,
   MSPP_EMPTY_STATE,
   MSPP_ERROR_CALLOUT,
@@ -181,6 +184,61 @@ function MsppGeoReadinessBadges({
   );
 }
 
+function MsppValidationReviewRow({
+  row: r,
+  t,
+  codeHint,
+  showReviewedAtColumn,
+  actionCell,
+}: {
+  row: MsppReviewRow;
+  t: (key: string) => string;
+  codeHint: React.CSSProperties;
+  showReviewedAtColumn?: boolean;
+  actionCell: React.ReactNode;
+}) {
+  return (
+    <tr>
+      <td style={MSPP_TABLE_CELL}>
+        <MsppValidationPatientCell row={r} t={t} />
+      </td>
+      <td style={MSPP_TABLE_CELL}>
+        {r.patientPrimaryIdentifier?.trim() ? (
+          r.patientPrimaryIdentifier
+        ) : (
+          <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
+        )}
+      </td>
+      <td style={MSPP_TABLE_CELL}>
+        <div style={{ fontWeight: 600 }}>{r.reportDiseaseName ?? t("msppValidation.badgeDash")}</div>
+        {r.reportDiseaseCode ? <div style={codeHint}>{r.reportDiseaseCode}</div> : null}
+      </td>
+      <td style={MSPP_TABLE_CELL}>
+        <div>{r.reportDepartment ?? t("msppValidation.badgeDash")}</div>
+        <div style={{ color: "#64748b", fontSize: 12 }}>{r.reportCommune ?? ""}</div>
+      </td>
+      <td style={MSPP_TABLE_CELL}>{r.departmentName ?? t("msppValidation.badgeDash")}</td>
+      <td style={MSPP_TABLE_CELL}>
+        <MsppValidationFacilityCell row={r} t={t} />
+      </td>
+      <td style={MSPP_TABLE_CELL}>
+        <MsppValidationReporterCell row={r} />
+      </td>
+      <td style={MSPP_TABLE_CELL}>{formatDeclaredAt(r.reportedAt, t("msppValidation.badgeDash"))}</td>
+      <td style={MSPP_TABLE_CELL}>
+        <MsppGeoReadinessBadges row={r} t={t} />
+      </td>
+      {showReviewedAtColumn ? (
+        <td style={MSPP_TABLE_CELL}>
+          {formatDeclaredAt(r.reviewedAt, t("msppValidation.badgeDash"))}
+        </td>
+      ) : null}
+      <td style={MSPP_TABLE_CELL}>{reviewStatusLabel(t, r.status)}</td>
+      <td style={MSPP_TABLE_CELL}>{actionCell}</td>
+    </tr>
+  );
+}
+
 export default function MsppValidationPage() {
   const { t } = useI18n();
   const { ready, msppRoles } = useFacilityAndRoles();
@@ -195,6 +253,7 @@ export default function MsppValidationPage() {
   const [error, setError] = useState<string | null>(null);
   const [pendingDecision, setPendingDecision] = useState<PendingMsppDecision | null>(null);
   const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [requeueSubmittingId, setRequeueSubmittingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!canMspp) return;
@@ -224,6 +283,8 @@ export default function MsppValidationPage() {
       r.status === DiseaseCaseReviewStatus.DEPARTMENT_APPROVED ||
       r.status === DiseaseCaseReviewStatus.PENDING_CENTRAL
   );
+  const rejectedDept = rows.filter((r) => r.status === DiseaseCaseReviewStatus.DEPARTMENT_REJECTED);
+  const rejectedCentral = rows.filter((r) => r.status === DiseaseCaseReviewStatus.CENTRAL_REJECTED);
 
   function decisionModalTitle(d: PendingMsppDecision): string {
     switch (d.kind) {
@@ -271,6 +332,46 @@ export default function MsppValidationPage() {
       }
     } finally {
       setModalSubmitting(false);
+    }
+  }
+
+  async function submitDepartmentRequeue(reviewId: string) {
+    if (!window.confirm(t("msppValidation.requeueDeptConfirm"))) return;
+    setRequeueSubmittingId(reviewId);
+    setError(null);
+    try {
+      await msppDepartmentRequeue(reviewId);
+      await load();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      const NORMALIZED_GENERIC = "Une erreur est survenue.";
+      if (!msg.trim() || msg === NORMALIZED_GENERIC) {
+        setError(t("msppValidation.genericActionError"));
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setRequeueSubmittingId(null);
+    }
+  }
+
+  async function submitCentralRequeue(reviewId: string) {
+    if (!window.confirm(t("msppValidation.requeueCentralConfirm"))) return;
+    setRequeueSubmittingId(reviewId);
+    setError(null);
+    try {
+      await msppCentralRequeue(reviewId);
+      await load();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      const NORMALIZED_GENERIC = "Une erreur est survenue.";
+      if (!msg.trim() || msg === NORMALIZED_GENERIC) {
+        setError(t("msppValidation.genericActionError"));
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setRequeueSubmittingId(null);
     }
   }
 
@@ -378,79 +479,54 @@ export default function MsppValidationPage() {
               </thead>
               <tbody>
                 {pendingDept.map((r) => (
-                  <tr key={r.id}>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppValidationPatientCell row={r} t={t} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      {r.patientPrimaryIdentifier?.trim() ? (
-                        r.patientPrimaryIdentifier
-                      ) : (
-                        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
-                      )}
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <div style={{ fontWeight: 600 }}>{r.reportDiseaseName ?? t("msppValidation.badgeDash")}</div>
-                      {r.reportDiseaseCode ? <div style={codeHint}>{r.reportDiseaseCode}</div> : null}
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <div>{r.reportDepartment ?? t("msppValidation.badgeDash")}</div>
-                      <div style={{ color: "#64748b", fontSize: 12 }}>{r.reportCommune ?? ""}</div>
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>{r.departmentName ?? t("msppValidation.badgeDash")}</td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppValidationFacilityCell row={r} t={t} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppValidationReporterCell row={r} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      {formatDeclaredAt(r.reportedAt, t("msppValidation.badgeDash"))}
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppGeoReadinessBadges row={r} t={t} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>{reviewStatusLabel(t, r.status)}</td>
-                    <td style={MSPP_TABLE_CELL}>
-                      {canDeptActions ? (
-                        <div style={MSPP_BTN_ROW}>
-                          <button
-                            type="button"
-                            style={{
-                              ...MSPP_BTN_APPROVE,
-                              opacity: modalSubmitting ? 0.45 : 1,
-                              cursor: modalSubmitting ? "not-allowed" : "pointer",
-                            }}
-                            disabled={modalSubmitting}
-                            onClick={() => setPendingDecision({ kind: "dept-approve", reviewId: r.id })}
-                          >
-                            {t("msppValidation.btnApproveDept")}
-                          </button>
-                          <button
-                            type="button"
-                            style={{
-                              ...MSPP_BTN_REJECT,
-                              opacity: modalSubmitting ? 0.45 : 1,
-                              cursor: modalSubmitting ? "not-allowed" : "pointer",
-                            }}
-                            disabled={modalSubmitting}
-                            onClick={() => setPendingDecision({ kind: "dept-reject", reviewId: r.id })}
-                          >
-                            {t("msppValidation.btnRejectDept")}
-                          </button>
+                  <MsppValidationReviewRow
+                    key={r.id}
+                    row={r}
+                    t={t}
+                    codeHint={codeHint}
+                    showReviewedAtColumn={false}
+                    actionCell={
+                      <>
+                        {canDeptActions ? (
+                          <div style={MSPP_BTN_ROW}>
+                            <button
+                              type="button"
+                              style={{
+                                ...MSPP_BTN_APPROVE,
+                                opacity: modalSubmitting ? 0.45 : 1,
+                                cursor: modalSubmitting ? "not-allowed" : "pointer",
+                              }}
+                              disabled={modalSubmitting}
+                              onClick={() => setPendingDecision({ kind: "dept-approve", reviewId: r.id })}
+                            >
+                              {t("msppValidation.btnApproveDept")}
+                            </button>
+                            <button
+                              type="button"
+                              style={{
+                                ...MSPP_BTN_REJECT,
+                                opacity: modalSubmitting ? 0.45 : 1,
+                                cursor: modalSubmitting ? "not-allowed" : "pointer",
+                              }}
+                              disabled={modalSubmitting}
+                              onClick={() => setPendingDecision({ kind: "dept-reject", reviewId: r.id })}
+                            >
+                              {t("msppValidation.btnRejectDept")}
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedDeptValidators")}</span>
+                        )}
+                        <div style={{ marginTop: 8 }}>
+                          <MsppValidationTechnicalIds
+                            reviewId={r.id}
+                            reportId={r.diseaseCaseReportId}
+                            departmentId={r.departmentId}
+                          />
                         </div>
-                      ) : (
-                        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedDeptValidators")}</span>
-                      )}
-                      <div style={{ marginTop: 8 }}>
-                        <MsppValidationTechnicalIds
-                          reviewId={r.id}
-                          reportId={r.diseaseCaseReportId}
-                          departmentId={r.departmentId}
-                        />
-                      </div>
-                    </td>
-                  </tr>
+                      </>
+                    }
+                  />
                 ))}
               </tbody>
             </table>
@@ -458,7 +534,7 @@ export default function MsppValidationPage() {
         )}
       </div>
 
-      <div style={{ ...MSPP_SECTION_CARD, marginBottom: 0 }}>
+      <div style={{ ...MSPP_SECTION_CARD, marginBottom: 18 }}>
         <h2 style={{ ...MSPP_SECTION_TITLE, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
           {t("msppValidation.centralQueueTitle")}
           {!loading && <span style={queueCountStyle}>{pendingCentral.length}</span>}
@@ -487,79 +563,204 @@ export default function MsppValidationPage() {
               </thead>
               <tbody>
                 {pendingCentral.map((r) => (
-                  <tr key={r.id}>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppValidationPatientCell row={r} t={t} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      {r.patientPrimaryIdentifier?.trim() ? (
-                        r.patientPrimaryIdentifier
-                      ) : (
-                        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
-                      )}
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <div style={{ fontWeight: 600 }}>{r.reportDiseaseName ?? t("msppValidation.badgeDash")}</div>
-                      {r.reportDiseaseCode ? <div style={codeHint}>{r.reportDiseaseCode}</div> : null}
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <div>{r.reportDepartment ?? t("msppValidation.badgeDash")}</div>
-                      <div style={{ color: "#64748b", fontSize: 12 }}>{r.reportCommune ?? ""}</div>
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>{r.departmentName ?? t("msppValidation.badgeDash")}</td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppValidationFacilityCell row={r} t={t} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppValidationReporterCell row={r} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      {formatDeclaredAt(r.reportedAt, t("msppValidation.badgeDash"))}
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>
-                      <MsppGeoReadinessBadges row={r} t={t} />
-                    </td>
-                    <td style={MSPP_TABLE_CELL}>{reviewStatusLabel(t, r.status)}</td>
-                    <td style={MSPP_TABLE_CELL}>
-                      {canCentral ? (
-                        <div style={MSPP_BTN_ROW}>
-                          <button
-                            type="button"
-                            style={{
-                              ...MSPP_BTN_APPROVE,
-                              opacity: modalSubmitting ? 0.45 : 1,
-                              cursor: modalSubmitting ? "not-allowed" : "pointer",
-                            }}
-                            disabled={modalSubmitting}
-                            onClick={() => setPendingDecision({ kind: "central-approve", reviewId: r.id })}
-                          >
-                            {t("msppValidation.btnApproveCentral")}
-                          </button>
-                          <button
-                            type="button"
-                            style={{
-                              ...MSPP_BTN_REJECT,
-                              opacity: modalSubmitting ? 0.45 : 1,
-                              cursor: modalSubmitting ? "not-allowed" : "pointer",
-                            }}
-                            disabled={modalSubmitting}
-                            onClick={() => setPendingDecision({ kind: "central-reject", reviewId: r.id })}
-                          >
-                            {t("msppValidation.btnRejectCentral")}
-                          </button>
+                  <MsppValidationReviewRow
+                    key={r.id}
+                    row={r}
+                    t={t}
+                    codeHint={codeHint}
+                    showReviewedAtColumn={false}
+                    actionCell={
+                      <>
+                        {canCentral ? (
+                          <div style={MSPP_BTN_ROW}>
+                            <button
+                              type="button"
+                              style={{
+                                ...MSPP_BTN_APPROVE,
+                                opacity: modalSubmitting ? 0.45 : 1,
+                                cursor: modalSubmitting ? "not-allowed" : "pointer",
+                              }}
+                              disabled={modalSubmitting}
+                              onClick={() => setPendingDecision({ kind: "central-approve", reviewId: r.id })}
+                            >
+                              {t("msppValidation.btnApproveCentral")}
+                            </button>
+                            <button
+                              type="button"
+                              style={{
+                                ...MSPP_BTN_REJECT,
+                                opacity: modalSubmitting ? 0.45 : 1,
+                                cursor: modalSubmitting ? "not-allowed" : "pointer",
+                              }}
+                              disabled={modalSubmitting}
+                              onClick={() => setPendingDecision({ kind: "central-reject", reviewId: r.id })}
+                            >
+                              {t("msppValidation.btnRejectCentral")}
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedCentralValidators")}</span>
+                        )}
+                        <div style={{ marginTop: 8 }}>
+                          <MsppValidationTechnicalIds
+                            reviewId={r.id}
+                            reportId={r.diseaseCaseReportId}
+                            departmentId={r.departmentId}
+                          />
                         </div>
-                      ) : (
-                        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedCentralValidators")}</span>
-                      )}
-                      <div style={{ marginTop: 8 }}>
-                        <MsppValidationTechnicalIds
-                          reviewId={r.id}
-                          reportId={r.diseaseCaseReportId}
-                          departmentId={r.departmentId}
-                        />
-                      </div>
-                    </td>
-                  </tr>
+                      </>
+                    }
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...MSPP_SECTION_CARD, marginBottom: 18 }}>
+        <h2 style={{ ...MSPP_SECTION_TITLE, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+          {t("msppValidation.deptRejectedTitle")}
+          {!loading && <span style={queueCountStyle}>{rejectedDept.length}</span>}
+        </h2>
+        <p style={{ ...MSPP_SECTION_SUBTITLE, marginBottom: 12 }}>{t("msppValidation.deptRejectedIntro")}</p>
+        {loading ? (
+          <p style={{ color: "#64748b", margin: "12px 0 0" }}>{t("msppValidation.loading")}</p>
+        ) : rejectedDept.length === 0 ? (
+          <p style={{ ...MSPP_EMPTY_STATE, marginTop: 16 }}>{t("msppValidation.deptRejectedEmpty")}</p>
+        ) : (
+          <div style={{ overflowX: "auto", marginTop: 12 }}>
+            <table style={MSPP_TABLE}>
+              <thead>
+                <tr>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colPatient")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colIdentifier")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportDisease")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportLocation")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colDepartment")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colFacility")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReporter")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportedAt")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colGeoReadiness")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colLastDecision")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colStatus")}</th>
+                  <th style={{ ...MSPP_TABLE_HEAD_CELL, minWidth: 200 }}>{t("msppValidation.colActions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rejectedDept.map((r) => (
+                  <MsppValidationReviewRow
+                    key={r.id}
+                    row={r}
+                    t={t}
+                    codeHint={codeHint}
+                    showReviewedAtColumn
+                    actionCell={
+                      <>
+                        {canDeptActions ? (
+                          <div style={MSPP_BTN_ROW}>
+                            <button
+                              type="button"
+                              style={{
+                                ...MSPP_BTN_REQUEUE,
+                                opacity: requeueSubmittingId === r.id || modalSubmitting ? 0.45 : 1,
+                                cursor:
+                                  requeueSubmittingId === r.id || modalSubmitting ? "not-allowed" : "pointer",
+                              }}
+                              disabled={Boolean(requeueSubmittingId) || modalSubmitting}
+                              onClick={() => void submitDepartmentRequeue(r.id)}
+                            >
+                              {t("msppValidation.btnRequeueDept")}
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedDeptValidators")}</span>
+                        )}
+                        <div style={{ marginTop: 8 }}>
+                          <MsppValidationTechnicalIds
+                            reviewId={r.id}
+                            reportId={r.diseaseCaseReportId}
+                            departmentId={r.departmentId}
+                          />
+                        </div>
+                      </>
+                    }
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...MSPP_SECTION_CARD, marginBottom: 0 }}>
+        <h2 style={{ ...MSPP_SECTION_TITLE, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+          {t("msppValidation.centralRejectedTitle")}
+          {!loading && <span style={queueCountStyle}>{rejectedCentral.length}</span>}
+        </h2>
+        <p style={{ ...MSPP_SECTION_SUBTITLE, marginBottom: 12 }}>{t("msppValidation.centralRejectedIntro")}</p>
+        {loading ? (
+          <p style={{ color: "#64748b", margin: "12px 0 0" }}>{t("msppValidation.loading")}</p>
+        ) : rejectedCentral.length === 0 ? (
+          <p style={{ ...MSPP_EMPTY_STATE, marginTop: 16 }}>{t("msppValidation.centralRejectedEmpty")}</p>
+        ) : (
+          <div style={{ overflowX: "auto", marginTop: 12 }}>
+            <table style={MSPP_TABLE}>
+              <thead>
+                <tr>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colPatient")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colIdentifier")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportDisease")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportLocation")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colDepartment")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colFacility")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReporter")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportedAt")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colGeoReadiness")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colLastDecision")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colStatus")}</th>
+                  <th style={{ ...MSPP_TABLE_HEAD_CELL, minWidth: 200 }}>{t("msppValidation.colActions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rejectedCentral.map((r) => (
+                  <MsppValidationReviewRow
+                    key={r.id}
+                    row={r}
+                    t={t}
+                    codeHint={codeHint}
+                    showReviewedAtColumn
+                    actionCell={
+                      <>
+                        {canCentral ? (
+                          <div style={MSPP_BTN_ROW}>
+                            <button
+                              type="button"
+                              style={{
+                                ...MSPP_BTN_REQUEUE,
+                                opacity: requeueSubmittingId === r.id || modalSubmitting ? 0.45 : 1,
+                                cursor:
+                                  requeueSubmittingId === r.id || modalSubmitting ? "not-allowed" : "pointer",
+                              }}
+                              disabled={Boolean(requeueSubmittingId) || modalSubmitting}
+                              onClick={() => void submitCentralRequeue(r.id)}
+                            >
+                              {t("msppValidation.btnRequeueCentral")}
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedCentralValidators")}</span>
+                        )}
+                        <div style={{ marginTop: 8 }}>
+                          <MsppValidationTechnicalIds
+                            reviewId={r.id}
+                            reportId={r.diseaseCaseReportId}
+                            departmentId={r.departmentId}
+                          />
+                        </div>
+                      </>
+                    }
+                  />
                 ))}
               </tbody>
             </table>

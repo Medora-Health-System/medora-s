@@ -203,3 +203,17 @@ export async function msppCentralReject(reviewId: string, body: MsppReviewAction
     body: JSON.stringify(body),
   });
 }
+
+/** Remet en file départementale un dossier au statut DEPARTMENT_REJECTED (sans corps JSON). */
+export async function msppDepartmentRequeue(reviewId: string) {
+  return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/department-requeue`, {
+    method: "POST",
+  });
+}
+
+/** Remet en file centrale un dossier au statut CENTRAL_REJECTED (sans corps JSON). */
+export async function msppCentralRequeue(reviewId: string) {
+  return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/central-requeue`, {
+    method: "POST",
+  });
+}

@@ -234,6 +234,14 @@ export const MSPP_BTN_REJECT: CSSProperties = {
   color: "#b91c1c",
 };
 
+/** Remise en file après rejet (action réversible, traçabilité conservée). */
+export const MSPP_BTN_REQUEUE: CSSProperties = {
+  ...btnBase,
+  background: "#f0fdf4",
+  borderColor: "#86efac",
+  color: "#166534",
+};
+
 /** Primary action for print (Rapport MSPP). */
 export const MSPP_PRINT_BUTTON: CSSProperties = {
   padding: "10px 18px",

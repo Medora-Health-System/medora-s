@@ -453,6 +453,21 @@ export default {
     },
     deptQueueTitle: "Department queue (pending)",
     centralQueueTitle: "Central queue (after department)",
+    deptRejectedTitle: "Rejected at department",
+    centralRejectedTitle: "Rejected at central",
+    deptRejectedIntro:
+      "These dossiers stay visible after rejection. Requeue reopens department validation; history and notes are kept.",
+    centralRejectedIntro:
+      "These dossiers stay visible after central rejection. Requeue reopens central validation (department approval remains in history).",
+    deptRejectedEmpty: "No department rejections to show.",
+    centralRejectedEmpty: "No central rejections to show.",
+    colLastDecision: "Last decision (timestamp)",
+    btnRequeueDept: "Requeue for department",
+    btnRequeueCentral: "Requeue for central",
+    requeueDeptConfirm:
+      "Requeue this dossier for department validation? It will become actionable for department validators again.",
+    requeueCentralConfirm:
+      "Requeue this dossier for central validation? It will become actionable for central validators again.",
     deptQueueEmpty: "No department-level cases pending.",
     centralQueueEmpty: "No central-level cases pending.",
     btnApproveDept: "Approve (department)",

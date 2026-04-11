@@ -419,6 +419,21 @@ export default {
     },
     deptQueueTitle: "File départementale (en attente)",
     centralQueueTitle: "File centrale (après département)",
+    deptRejectedTitle: "Dossiers rejetés au département",
+    centralRejectedTitle: "Dossiers rejetés au central",
+    deptRejectedIntro:
+      "Ces dossiers restent visibles après rejet. La remise en file rouvre la validation départementale ; l’historique et les notes sont conservés.",
+    centralRejectedIntro:
+      "Ces dossiers restent visibles après rejet central. La remise en file rouvre la validation centrale (l’approbation départementale demeure dans l’historique).",
+    deptRejectedEmpty: "Aucun rejet départemental à afficher.",
+    centralRejectedEmpty: "Aucun rejet central à afficher.",
+    colLastDecision: "Dernière décision (horodatage)",
+    btnRequeueDept: "Remettre en file départementale",
+    btnRequeueCentral: "Remettre en file centrale",
+    requeueDeptConfirm:
+      "Remettre ce dossier en file départementale ? Il redeviendra traitable par les validateurs du département.",
+    requeueCentralConfirm:
+      "Remettre ce dossier en file centrale ? Il redeviendra traitable par les validateurs centraux.",
     deptQueueEmpty: "Aucun dossier en attente au niveau département.",
     centralQueueEmpty: "Aucun dossier en attente au niveau central.",
     btnApproveDept: "Approuver (département)",

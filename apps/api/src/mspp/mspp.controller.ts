@@ -95,6 +95,18 @@ export class MsppController {
     return this.mspp.centralReject(id, msppCtx(req), parseReviewAction(body));
   }
 
+  @Post("reviews/:id/department-requeue")
+  @RequireMsppRoles(MsppRoleCode.MSPP_VALIDATOR_DEPT, MsppRoleCode.MSPP_VALIDATOR_CENTRAL)
+  departmentRequeue(@Param("id") id: string, @Req() req: RequestWithJwtAndMspp) {
+    return this.mspp.departmentRequeue(id, msppCtx(req));
+  }
+
+  @Post("reviews/:id/central-requeue")
+  @RequireMsppRoles(MsppRoleCode.MSPP_VALIDATOR_CENTRAL)
+  centralRequeue(@Param("id") id: string, @Req() req: RequestWithJwtAndMspp) {
+    return this.mspp.centralRequeue(id, msppCtx(req));
+  }
+
   @Get("summary")
   @RequireMsppRoles(
     MsppRoleCode.MSPP_MINISTRE,

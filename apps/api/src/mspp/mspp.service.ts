@@ -709,6 +709,96 @@ export class MsppService {
     return { review: updated };
   }
 
+  /**
+   * Remet en file départementale un dossier précédemment rejeté au département (statut → PENDING_DEPARTMENT).
+   * Conserve les champs structurés et l’historique dans `notes` ; ajoute une ligne de traçabilité.
+   */
+  async departmentRequeue(reviewId: string, ctx: MsppRequestContext) {
+    const isDeptValidator = ctx.msppAssignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT);
+    const isCentralValidator = hasCentralValidatorRole(ctx.msppAssignments);
+    if (!isDeptValidator && !isCentralValidator) {
+      throw new ForbiddenException("Only MSPP_VALIDATOR_DEPT or MSPP_VALIDATOR_CENTRAL can department-requeue.");
+    }
+    const review = await this.prisma.diseaseCaseReview.findUnique({ where: { id: reviewId } });
+    if (!review) {
+      throw new NotFoundException("Review not found");
+    }
+    if (
+      !isCentralValidator &&
+      !ctx.deptValidatorAllGeoDepartments &&
+      !ctx.allowedDepartments.includes(review.departmentId)
+    ) {
+      throw new ForbiddenException("Not authorized for this department.");
+    }
+    if (review.status !== DiseaseCaseReviewStatus.DEPARTMENT_REJECTED) {
+      throw new BadRequestException(
+        `Invalid status for department requeue: expected ${DiseaseCaseReviewStatus.DEPARTMENT_REJECTED}`
+      );
+    }
+    const notes = this.appendNote(
+      review.notes,
+      `[MSPP Remise en file département] Demande par l’utilisateur ${ctx.userId} — ${new Date().toISOString()}`
+    );
+    const updated = await this.prisma.diseaseCaseReview.update({
+      where: { id: reviewId },
+      data: {
+        status: DiseaseCaseReviewStatus.PENDING_DEPARTMENT,
+        reviewerLevel: ReviewerLevel.DEPARTMENT,
+        reviewerUserId: null,
+        reviewedAt: null,
+        notes,
+      },
+      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    });
+    await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
+      userId: ctx.userId,
+      entityId: reviewId,
+      metadata: { msppAction: "department_requeue", diseaseCaseReportId: review.diseaseCaseReportId },
+    });
+    return { review: updated };
+  }
+
+  /**
+   * Remet en file centrale un dossier précédemment rejeté au central (statut → PENDING_CENTRAL).
+   * L’approbation départementale est conservée dans l’historique des champs ; le dossier redevient traitable au central.
+   */
+  async centralRequeue(reviewId: string, ctx: MsppRequestContext) {
+    const allowed = ctx.msppAssignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_CENTRAL);
+    if (!allowed) {
+      throw new ForbiddenException("Only MSPP_VALIDATOR_CENTRAL can central-requeue.");
+    }
+    const review = await this.prisma.diseaseCaseReview.findUnique({ where: { id: reviewId } });
+    if (!review) {
+      throw new NotFoundException("Review not found");
+    }
+    if (review.status !== DiseaseCaseReviewStatus.CENTRAL_REJECTED) {
+      throw new BadRequestException(
+        `Invalid status for central requeue: expected ${DiseaseCaseReviewStatus.CENTRAL_REJECTED}`
+      );
+    }
+    const notes = this.appendNote(
+      review.notes,
+      `[MSPP Remise en file centrale] Demande par l’utilisateur ${ctx.userId} — ${new Date().toISOString()}`
+    );
+    const updated = await this.prisma.diseaseCaseReview.update({
+      where: { id: reviewId },
+      data: {
+        status: DiseaseCaseReviewStatus.PENDING_CENTRAL,
+        reviewerLevel: ReviewerLevel.CENTRAL,
+        reviewerUserId: null,
+        reviewedAt: null,
+        notes,
+      },
+      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    });
+    await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
+      userId: ctx.userId,
+      entityId: reviewId,
+      metadata: { msppAction: "central_requeue", diseaseCaseReportId: review.diseaseCaseReportId },
+    });
+    return { review: updated };
+  }
+
   async summary(ctx: MsppRequestContext) {
     const where = reportingWhereForContext(ctx);
     const totalApproved = await this.prisma.diseaseCaseReview.count({ where });
