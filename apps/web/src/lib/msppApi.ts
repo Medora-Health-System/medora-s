@@ -7,6 +7,17 @@ export type MsppReviewActionBody = {
   duration: string;
   labConfirmed: boolean;
   exposureRisk: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+  caseClassification: "SUSPECT" | "PROBABLE" | "CONFIRMED" | "NOT_A_CASE";
+  inclusionCriteriaSummary: string;
+  exclusionCriteriaSummary: string;
+  /** AAAA-MM-JJ si connue ; sinon omettre la clé. */
+  symptomOnsetDate?: string;
+  hospitalized: boolean;
+  outcomeStatus: string;
+  labEvidenceType: "NONE" | "PCR" | "RAPID_ANTIGEN" | "CULTURE" | "SEROLOGY" | "OTHER";
+  epiLinkedCase: boolean;
+  travelOrExposureContext: string;
+  finalDecisionRationale: string;
 };
 
 export type MsppReviewRow = {
@@ -22,6 +33,16 @@ export type MsppReviewRow = {
   validationDuration?: string | null;
   validationLabConfirmed?: boolean | null;
   validationExposureRisk?: string | null;
+  caseClassification?: string | null;
+  inclusionCriteriaSummary?: string | null;
+  exclusionCriteriaSummary?: string | null;
+  symptomOnsetDate?: string | null;
+  hospitalized?: boolean | null;
+  outcomeStatus?: string | null;
+  labEvidenceType?: string | null;
+  epiLinkedCase?: boolean | null;
+  travelOrExposureContext?: string | null;
+  finalDecisionRationale?: string | null;
   /** Département géographique national (GeoDepartment), libellé lisible. */
   departmentName?: string | null;
   facilityName?: string | null;
@@ -31,6 +52,15 @@ export type MsppReviewRow = {
   reportCommune?: string | null;
   reportDiseaseCode?: string | null;
   reportDiseaseName?: string | null;
+  patientFullName?: string | null;
+  /** NIN si présent, sinon MRN local, sinon numéro de dossier global. */
+  patientPrimaryIdentifier?: string | null;
+  patientSex?: string | null;
+  patientAgeYears?: number | null;
+  /** Salle / lieu de visite lorsque la déclaration est liée à une rencontre. */
+  reportEncounterRoomLabel?: string | null;
+  /** Horodatage de la déclaration (ISO 8601). */
+  reportedAt?: string | null;
   dataQuality?: {
     geoIncomplete: boolean;
     geoCommuneLinked: boolean;

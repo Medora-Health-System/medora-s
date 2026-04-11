@@ -49,6 +49,76 @@ function reviewStatusLabel(t: (key: string) => string, status: string): string {
   return out === key ? status : out;
 }
 
+function formatDeclaredAt(iso: string | null | undefined, dash: string): string {
+  if (!iso) return dash;
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return dash;
+    return d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return dash;
+  }
+}
+
+function MsppValidationPatientCell({
+  row,
+  t,
+}: {
+  row: MsppReviewRow;
+  t: (key: string) => string;
+}) {
+  const name = row.patientFullName?.trim();
+  const sexKey = row.patientSex ? `msppValidation.patientSex.${row.patientSex}` : "";
+  const sexRaw = sexKey ? t(sexKey) : "";
+  const sexLabel = sexRaw && sexRaw !== sexKey ? sexRaw : null;
+  const agePart =
+    row.patientAgeYears != null
+      ? `${row.patientAgeYears} ${t("msppValidation.ageYearsSuffix")}`
+      : null;
+  const meta = [sexLabel, agePart].filter(Boolean).join(" · ");
+  if (!name && !meta) {
+    return <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>;
+  }
+  return (
+    <div>
+      {name ? (
+        <div style={{ fontWeight: 600 }}>{name}</div>
+      ) : (
+        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
+      )}
+      {meta ? <div style={{ color: "#64748b", fontSize: 12 }}>{meta}</div> : null}
+    </div>
+  );
+}
+
+function MsppValidationFacilityCell({
+  row,
+  t,
+}: {
+  row: MsppReviewRow;
+  t: (key: string) => string;
+}) {
+  const fac = row.facilityName?.trim();
+  const room = row.reportEncounterRoomLabel?.trim();
+  if (!fac && !room) {
+    return <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>;
+  }
+  return (
+    <div>
+      {fac ? (
+        <div style={{ fontWeight: 600 }}>{fac}</div>
+      ) : (
+        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
+      )}
+      {room ? (
+        <div style={{ color: "#64748b", fontSize: 12 }}>
+          {t("msppValidation.facilityEncounterRoom").replace("{room}", room)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MsppGeoReadinessBadges({
   row,
   t,
@@ -230,7 +300,7 @@ export default function MsppValidationPage() {
 
   return (
     <div style={MSPP_PAGE_SHELL}>
-      <h1 style={MSPP_PAGE_TITLE}>MSPP — Validation</h1>
+      <h1 style={MSPP_PAGE_TITLE}>{t("msppValidation.pageTitle")}</h1>
       <p style={MSPP_PAGE_SUBTITLE}>{t("msppValidation.subtitle")}</p>
 
       <div style={{ ...MSPP_SECTION_CARD, marginBottom: 18 }}>
@@ -283,27 +353,31 @@ export default function MsppValidationPage() {
             <table style={MSPP_TABLE}>
               <thead>
                 <tr>
-                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colRowIndex")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colPatient")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colIdentifier")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportDisease")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportLocation")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colDepartment")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colFacility")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReporter")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportedAt")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colGeoReadiness")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colStatus")}</th>
                   <th style={{ ...MSPP_TABLE_HEAD_CELL, minWidth: 220 }}>{t("msppValidation.colActions")}</th>
                 </tr>
               </thead>
               <tbody>
-                {pendingDept.map((r, idx) => (
+                {pendingDept.map((r) => (
                   <tr key={r.id}>
                     <td style={MSPP_TABLE_CELL}>
-                      <div style={{ fontWeight: 700, marginBottom: 6 }}>{idx + 1}</div>
-                      <MsppValidationTechnicalIds
-                        reviewId={r.id}
-                        reportId={r.diseaseCaseReportId}
-                        departmentId={r.departmentId}
-                      />
+                      <MsppValidationPatientCell row={r} t={t} />
+                    </td>
+                    <td style={MSPP_TABLE_CELL}>
+                      {r.patientPrimaryIdentifier?.trim() ? (
+                        r.patientPrimaryIdentifier
+                      ) : (
+                        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
+                      )}
                     </td>
                     <td style={MSPP_TABLE_CELL}>
                       <div style={{ fontWeight: 600 }}>{r.reportDiseaseName ?? t("msppValidation.badgeDash")}</div>
@@ -314,9 +388,14 @@ export default function MsppValidationPage() {
                       <div style={{ color: "#64748b", fontSize: 12 }}>{r.reportCommune ?? ""}</div>
                     </td>
                     <td style={MSPP_TABLE_CELL}>{r.departmentName ?? t("msppValidation.badgeDash")}</td>
-                    <td style={MSPP_TABLE_CELL}>{r.facilityName ?? t("msppValidation.badgeDash")}</td>
+                    <td style={MSPP_TABLE_CELL}>
+                      <MsppValidationFacilityCell row={r} t={t} />
+                    </td>
                     <td style={MSPP_TABLE_CELL}>
                       <MsppValidationReporterCell row={r} />
+                    </td>
+                    <td style={MSPP_TABLE_CELL}>
+                      {formatDeclaredAt(r.reportedAt, t("msppValidation.badgeDash"))}
                     </td>
                     <td style={MSPP_TABLE_CELL}>
                       <MsppGeoReadinessBadges row={r} t={t} />
@@ -353,6 +432,13 @@ export default function MsppValidationPage() {
                       ) : (
                         <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedDeptValidators")}</span>
                       )}
+                      <div style={{ marginTop: 8 }}>
+                        <MsppValidationTechnicalIds
+                          reviewId={r.id}
+                          reportId={r.diseaseCaseReportId}
+                          departmentId={r.departmentId}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -376,27 +462,31 @@ export default function MsppValidationPage() {
             <table style={MSPP_TABLE}>
               <thead>
                 <tr>
-                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colRowIndex")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colPatient")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colIdentifier")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportDisease")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportLocation")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colDepartment")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colFacility")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReporter")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colReportedAt")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colGeoReadiness")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>{t("msppValidation.colStatus")}</th>
                   <th style={{ ...MSPP_TABLE_HEAD_CELL, minWidth: 220 }}>{t("msppValidation.colActions")}</th>
                 </tr>
               </thead>
               <tbody>
-                {pendingCentral.map((r, idx) => (
+                {pendingCentral.map((r) => (
                   <tr key={r.id}>
                     <td style={MSPP_TABLE_CELL}>
-                      <div style={{ fontWeight: 700, marginBottom: 6 }}>{idx + 1}</div>
-                      <MsppValidationTechnicalIds
-                        reviewId={r.id}
-                        reportId={r.diseaseCaseReportId}
-                        departmentId={r.departmentId}
-                      />
+                      <MsppValidationPatientCell row={r} t={t} />
+                    </td>
+                    <td style={MSPP_TABLE_CELL}>
+                      {r.patientPrimaryIdentifier?.trim() ? (
+                        r.patientPrimaryIdentifier
+                      ) : (
+                        <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
+                      )}
                     </td>
                     <td style={MSPP_TABLE_CELL}>
                       <div style={{ fontWeight: 600 }}>{r.reportDiseaseName ?? t("msppValidation.badgeDash")}</div>
@@ -407,9 +497,14 @@ export default function MsppValidationPage() {
                       <div style={{ color: "#64748b", fontSize: 12 }}>{r.reportCommune ?? ""}</div>
                     </td>
                     <td style={MSPP_TABLE_CELL}>{r.departmentName ?? t("msppValidation.badgeDash")}</td>
-                    <td style={MSPP_TABLE_CELL}>{r.facilityName ?? t("msppValidation.badgeDash")}</td>
+                    <td style={MSPP_TABLE_CELL}>
+                      <MsppValidationFacilityCell row={r} t={t} />
+                    </td>
                     <td style={MSPP_TABLE_CELL}>
                       <MsppValidationReporterCell row={r} />
+                    </td>
+                    <td style={MSPP_TABLE_CELL}>
+                      {formatDeclaredAt(r.reportedAt, t("msppValidation.badgeDash"))}
                     </td>
                     <td style={MSPP_TABLE_CELL}>
                       <MsppGeoReadinessBadges row={r} t={t} />
@@ -446,6 +541,13 @@ export default function MsppValidationPage() {
                       ) : (
                         <span style={MSPP_MUTED_INLINE}>{t("msppValidation.reservedCentralValidators")}</span>
                       )}
+                      <div style={{ marginTop: 8 }}>
+                        <MsppValidationTechnicalIds
+                          reviewId={r.id}
+                          reportId={r.diseaseCaseReportId}
+                          departmentId={r.departmentId}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -21,6 +21,58 @@ function deptGeoIds(assignments: MsppRequestContext["msppAssignments"]): string[
     .map((a) => a.geoDepartmentId as string);
 }
 
+/** NIN (nationalId) preferred, then facility MRN, then global dossier number. */
+function patientPrimaryIdentifierFrom(p: {
+  nationalId: string | null;
+  mrn: string | null;
+  globalMrn: string;
+}): string {
+  const n = p.nationalId?.trim();
+  if (n) return n;
+  const m = p.mrn?.trim();
+  if (m) return m;
+  return p.globalMrn.trim();
+}
+
+function patientFullNameFrom(p: { firstName: string; lastName: string }): string | null {
+  const s = `${p.firstName} ${p.lastName}`.trim();
+  return s || null;
+}
+
+function ageInFullYearsAtReference(dob: Date, ref: Date): number | null {
+  if (Number.isNaN(dob.getTime()) || Number.isNaN(ref.getTime())) return null;
+  let age = ref.getUTCFullYear() - dob.getUTCFullYear();
+  const md = ref.getUTCMonth() - dob.getUTCMonth();
+  if (md < 0 || (md === 0 && ref.getUTCDate() < dob.getUTCDate())) age -= 1;
+  return age >= 0 ? age : null;
+}
+
+/** Champs persistés pour une décision MSPP (liste + réponse des mutations). */
+const DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT = {
+  id: true,
+  diseaseCaseReportId: true,
+  status: true,
+  reviewerLevel: true,
+  departmentId: true,
+  reviewedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  validationFever: true,
+  validationDuration: true,
+  validationLabConfirmed: true,
+  validationExposureRisk: true,
+  caseClassification: true,
+  inclusionCriteriaSummary: true,
+  exclusionCriteriaSummary: true,
+  symptomOnsetDate: true,
+  hospitalized: true,
+  outcomeStatus: true,
+  labEvidenceType: true,
+  epiLinkedCase: true,
+  travelOrExposureContext: true,
+  finalDecisionRationale: true,
+} satisfies Prisma.DiseaseCaseReviewSelect;
+
 /** Reviews visible to this MSPP user (department validators are scoped; national roles see all). */
 function reviewWhereForContext(ctx: MsppRequestContext): Prisma.DiseaseCaseReviewWhereInput {
   if (hasNationalScope(ctx.msppAssignments)) {
@@ -59,20 +111,7 @@ export class MsppService {
     const rows = await this.prisma.diseaseCaseReview.findMany({
       where,
       orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        diseaseCaseReportId: true,
-        status: true,
-        reviewerLevel: true,
-        departmentId: true,
-        reviewedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        validationFever: true,
-        validationDuration: true,
-        validationLabConfirmed: true,
-        validationExposureRisk: true,
-      },
+      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
     });
     const reportIds = [
       ...new Set(rows.map((r) => r.diseaseCaseReportId).filter((id): id is string => Boolean(id))),
@@ -86,6 +125,7 @@ export class MsppService {
               id: true,
               facilityId: true,
               reportedByUserId: true,
+              reportedAt: true,
               department: true,
               commune: true,
               geoCommuneId: true,
@@ -93,6 +133,18 @@ export class MsppService {
               diseaseName: true,
               facility: { select: { name: true } },
               reportedBy: { select: { firstName: true, lastName: true } },
+              patient: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  mrn: true,
+                  nationalId: true,
+                  globalMrn: true,
+                  dob: true,
+                  sex: true,
+                },
+              },
+              encounter: { select: { roomLabel: true } },
             },
           });
     const reportById = new Map(reports.map((rep) => [rep.id, rep]));
@@ -155,14 +207,32 @@ export class MsppService {
       let facilityName: string | null = null;
       let reporterName: string | null = null;
       let reporterRole: string | null = null;
+      let patientFullName: string | null = null;
+      let patientPrimaryIdentifier: string | null = null;
+      let patientSex: string | null = null;
+      let patientAgeYears: number | null = null;
+      let reportEncounterRoomLabel: string | null = null;
+      let reportedAt: string | null = null;
+
       if (rep) {
         facilityName = rep.facility.name;
+        reportedAt = rep.reportedAt.toISOString();
+        const room = rep.encounter?.roomLabel?.trim();
+        reportEncounterRoomLabel = room || null;
         if (rep.reportedBy) {
           const rn = `${rep.reportedBy.firstName} ${rep.reportedBy.lastName}`.trim();
           reporterName = rn || null;
         }
         if (rep.reportedByUserId) {
           reporterRole = reporterRoleByPair.get(pairKey(rep.reportedByUserId, rep.facilityId)) ?? null;
+        }
+        if (rep.patient) {
+          patientFullName = patientFullNameFrom(rep.patient);
+          patientPrimaryIdentifier = patientPrimaryIdentifierFrom(rep.patient);
+          patientSex = rep.patient.sex;
+          if (rep.patient.dob) {
+            patientAgeYears = ageInFullYearsAtReference(rep.patient.dob, rep.reportedAt);
+          }
         }
       }
 
@@ -176,6 +246,13 @@ export class MsppService {
         reportCommune: rep?.commune ?? null,
         reportDiseaseCode: rep?.diseaseCode ?? null,
         reportDiseaseName: rep?.diseaseName ?? null,
+        patientFullName,
+        patientPrimaryIdentifier,
+        patientSex,
+        patientAgeYears,
+        /** Clinical location hint when the declaration is linked to an encounter (salle, etc.). */
+        reportEncounterRoomLabel,
+        reportedAt,
         dataQuality: {
           geoIncomplete: rep ? !deptOk || !comOk : false,
           geoCommuneLinked: Boolean(rep?.geoCommuneId),
@@ -216,25 +293,9 @@ export class MsppService {
         reviewerUserId: ctx.userId,
         reviewedAt: new Date(),
         notes,
-        validationFever: dto.fever,
-        validationDuration: dto.duration,
-        validationLabConfirmed: dto.labConfirmed,
-        validationExposureRisk: dto.exposureRisk,
+        ...this.reviewStructuredFields(dto),
       },
-      select: {
-        id: true,
-        diseaseCaseReportId: true,
-        status: true,
-        reviewerLevel: true,
-        departmentId: true,
-        reviewedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        validationFever: true,
-        validationDuration: true,
-        validationLabConfirmed: true,
-        validationExposureRisk: true,
-      },
+      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -274,25 +335,9 @@ export class MsppService {
         reviewerUserId: ctx.userId,
         reviewedAt: new Date(),
         notes,
-        validationFever: dto.fever,
-        validationDuration: dto.duration,
-        validationLabConfirmed: dto.labConfirmed,
-        validationExposureRisk: dto.exposureRisk,
+        ...this.reviewStructuredFields(dto),
       },
-      select: {
-        id: true,
-        diseaseCaseReportId: true,
-        status: true,
-        reviewerLevel: true,
-        departmentId: true,
-        reviewedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        validationFever: true,
-        validationDuration: true,
-        validationLabConfirmed: true,
-        validationExposureRisk: true,
-      },
+      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -331,25 +376,9 @@ export class MsppService {
         reviewerUserId: ctx.userId,
         reviewedAt: new Date(),
         notes,
-        validationFever: dto.fever,
-        validationDuration: dto.duration,
-        validationLabConfirmed: dto.labConfirmed,
-        validationExposureRisk: dto.exposureRisk,
+        ...this.reviewStructuredFields(dto),
       },
-      select: {
-        id: true,
-        diseaseCaseReportId: true,
-        status: true,
-        reviewerLevel: true,
-        departmentId: true,
-        reviewedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        validationFever: true,
-        validationDuration: true,
-        validationLabConfirmed: true,
-        validationExposureRisk: true,
-      },
+      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -388,25 +417,9 @@ export class MsppService {
         reviewerUserId: ctx.userId,
         reviewedAt: new Date(),
         notes,
-        validationFever: dto.fever,
-        validationDuration: dto.duration,
-        validationLabConfirmed: dto.labConfirmed,
-        validationExposureRisk: dto.exposureRisk,
+        ...this.reviewStructuredFields(dto),
       },
-      select: {
-        id: true,
-        diseaseCaseReportId: true,
-        status: true,
-        reviewerLevel: true,
-        departmentId: true,
-        reviewedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        validationFever: true,
-        validationDuration: true,
-        validationLabConfirmed: true,
-        validationExposureRisk: true,
-      },
+      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -524,10 +537,42 @@ export class MsppService {
     return `${existing}\n${line}`;
   }
 
+  private reviewStructuredFields(dto: MsppReviewActionDto): Prisma.DiseaseCaseReviewUpdateInput {
+    return {
+      validationFever: dto.fever,
+      validationDuration: dto.duration,
+      validationLabConfirmed: dto.labConfirmed,
+      validationExposureRisk: dto.exposureRisk,
+      caseClassification: dto.caseClassification,
+      inclusionCriteriaSummary: dto.inclusionCriteriaSummary,
+      exclusionCriteriaSummary: dto.exclusionCriteriaSummary,
+      symptomOnsetDate: dto.symptomOnsetDate
+        ? new Date(`${dto.symptomOnsetDate}T12:00:00.000Z`)
+        : null,
+      hospitalized: dto.hospitalized,
+      outcomeStatus: dto.outcomeStatus,
+      labEvidenceType: dto.labEvidenceType,
+      epiLinkedCase: dto.epiLinkedCase,
+      travelOrExposureContext: dto.travelOrExposureContext,
+      finalDecisionRationale: dto.finalDecisionRationale,
+    };
+  }
+
   private validationAuditLine(actionLabel: string, dto: MsppReviewActionDto): string {
     const fever = dto.fever ? "oui" : "non";
     const lab = dto.labConfirmed ? "oui" : "non";
-    return `[MSPP ${actionLabel}] Fièvre: ${fever}; Durée des signes: ${dto.duration}; Confirmation biologique: ${lab}; Risque d'exposition: ${dto.exposureRisk}. Commentaire: ${dto.comment}`;
+    const hosp = dto.hospitalized ? "oui" : "non";
+    const epi = dto.epiLinkedCase ? "oui" : "non";
+    const onset = dto.symptomOnsetDate ?? "—";
+    return [
+      `[MSPP ${actionLabel}] Vérifications initiales — Fièvre: ${fever}; durée des signes: ${dto.duration}; confirmation biologique: ${lab}; risque d’exposition: ${dto.exposureRisk}.`,
+      `Critères de cas — Classification: ${dto.caseClassification}; début des signes: ${onset}; hospitalisé: ${hosp}; évolution: ${dto.outcomeStatus}; preuve labo: ${dto.labEvidenceType}; cas lié épidémiologiquement: ${epi}.`,
+      `Contexte voyage / exposition: ${dto.travelOrExposureContext}`,
+      `Critères d’inclusion: ${dto.inclusionCriteriaSummary}`,
+      `Critères d’exclusion: ${dto.exclusionCriteriaSummary}`,
+      `Commentaire validateur: ${dto.comment}`,
+      `Justification finale: ${dto.finalDecisionRationale}`,
+    ].join("\n");
   }
 
 }
