@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "rm -rf dist tsconfig.build.tsbuildinfo && nest start --watch",
+    "postinstall": "prisma generate",
     "prebuild": "prisma generate",
     "build": "rm -f tsconfig.build.tsbuildinfo && nest build",
     "start": "prisma migrate deploy && node dist/main.js",
@@ -35,6 +36,7 @@
     "body-parser": "^1.20.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "prisma": "^6.2.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^3.25.76"
@@ -50,7 +52,6 @@
     "@types/supertest": "^6.0.3",
     "eslint": "^9.17.0",
     "jest": "^29.7.0",
-    "prisma": "^6.2.1",
     "supertest": "^7.2.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
