@@ -1007,7 +1007,7 @@ model DiseaseCaseReport {
   onsetDate        DateTime?
   commune          String?
   department       String?
-  /// Lien optionnel vers le référentiel GeoCommune (saisie guidée ; `commune`/`department` restent la dénormalisation affichable).
+  /// Référentiel national GeoCommune (obligatoire à la création via API ; dénormalisation `commune`/`department` pour affichage).
   geoCommuneId     String?
   notes            String?
   reportedByUserId String?
@@ -1065,6 +1065,14 @@ model DiseaseCaseReview {
   departmentId        String
   notes               String?
   reviewedAt          DateTime?
+  /// Dernière décision : critère structuré — présence de fièvre (oui/non).
+  validationFever         Boolean?
+  /// Durée des signes ou de l’épisode (texte court).
+  validationDuration      String?
+  /// Confirmation biologique (oui/non).
+  validationLabConfirmed  Boolean?
+  /// Risque d’exposition : LOW | MEDIUM | HIGH | UNKNOWN.
+  validationExposureRisk  String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -1095,6 +1103,7 @@ model GeoCommune {
   updatedAt       DateTime          @updatedAt
   diseaseCaseReports DiseaseCaseReport[]
 
+  @@unique([geoDepartmentId, name])
   @@index([geoDepartmentId])
   @@index([name])
 }

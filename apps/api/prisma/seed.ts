@@ -97,14 +97,16 @@ async function main() {
   for (const sc of HAITI_SEED_COMMUNES) {
     const dept = await prisma.geoDepartment.findUnique({ where: { code: sc.departmentCode } });
     if (!dept) continue;
-    const exists = await prisma.geoCommune.findFirst({
-      where: { geoDepartmentId: dept.id, name: sc.name },
+    await prisma.geoCommune.upsert({
+      where: {
+        geoDepartmentId_name: {
+          geoDepartmentId: dept.id,
+          name: sc.name,
+        },
+      },
+      update: {},
+      create: { geoDepartmentId: dept.id, name: sc.name },
     });
-    if (!exists) {
-      await prisma.geoCommune.create({
-        data: { geoDepartmentId: dept.id, name: sc.name },
-      });
-    }
   }
 
   // Admin user (deterministic credentials for local dev)
@@ -592,12 +594,14 @@ async function main() {
     ];
     for (const c of caseDefs) {
       const deptRow = await prisma.geoDepartment.findFirst({ where: { name: c.department } });
-      let geoCommuneId: string | undefined;
-      if (deptRow) {
-        const com = await prisma.geoCommune.findFirst({
-          where: { geoDepartmentId: deptRow.id, name: c.commune },
-        });
-        geoCommuneId = com?.id;
+      if (!deptRow) {
+        throw new Error(`Seed: GeoDepartment not found for ${c.department}`);
+      }
+      const com = await prisma.geoCommune.findFirst({
+        where: { geoDepartmentId: deptRow.id, name: c.commune },
+      });
+      if (!com) {
+        throw new Error(`Seed: GeoCommune not found for ${c.commune} in ${c.department}`);
       }
       await prisma.diseaseCaseReport.create({
         data: {
@@ -609,7 +613,7 @@ async function main() {
           status: c.status,
           commune: c.commune,
           department: c.department,
-          ...(geoCommuneId ? { geoCommuneId } : {}),
+          geoCommuneId: com.id,
           reportedByUserId: providerUser.id,
         },
       });
