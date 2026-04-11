@@ -186,3 +186,121 @@ export function MsppDepartmentBarChart({ data }: { data: MsppDeptBarRow[] }) {
     </div>
   );
 }
+
+/** Largeur fixe (mm A4 ~ contenu) — impression / PDF sans ResponsiveContainer. */
+const RAPPORT_PRINT_CHART_WIDTH = 680;
+
+function rapportPrintBarHeight(rowCount: number): number {
+  return Math.min(420, 40 + rowCount * 28);
+}
+
+/**
+ * Même données que {@link MsppTrendLineChart} — rendu figé pour l’impression (SVG dimensionné explicitement).
+ * Ne pas utiliser pour l’écran : préférer la version responsive.
+ */
+export function MsppTrendLineChartPrint({ data }: { data: MsppTrendPoint[] }) {
+  if (data.length === 0) {
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la courbe temporelle.</p>;
+  }
+  const h = 270;
+  return (
+    <div style={MSPP_CHART_WELL}>
+      <LineChart
+        width={RAPPORT_PRINT_CHART_WIDTH}
+        height={h}
+        data={data}
+        margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="label" tick={axisStyle} interval="preserveStartEnd" />
+        <YAxis allowDecimals={false} tick={axisStyle} width={40} />
+        <Tooltip
+          formatter={(value) => [value ?? "—", "Cas approuvés"]}
+          labelFormatter={(label) => String(label)}
+          contentStyle={{ fontSize: 13 }}
+        />
+        <Line type="monotone" dataKey="count" name="Cas approuvés" stroke="#1d4ed8" strokeWidth={2} dot={{ r: 3 }} />
+      </LineChart>
+    </div>
+  );
+}
+
+/** Barres horizontales — dimensions fixes pour PDF / aperçu d’impression. */
+export function MsppDiseaseBarChartPrint({ data }: { data: MsppDiseaseBarRow[] }) {
+  if (data.length === 0) {
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la répartition par maladie.</p>;
+  }
+  const h = rapportPrintBarHeight(data.length);
+  return (
+    <div style={MSPP_CHART_WELL}>
+      <BarChart
+        width={RAPPORT_PRINT_CHART_WIDTH}
+        height={h}
+        data={data}
+        layout="vertical"
+        margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+        barCategoryGap={4}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+        <XAxis type="number" allowDecimals={false} tick={axisStyle} />
+        <YAxis
+          type="category"
+          dataKey="label"
+          width={160}
+          tick={{ ...axisStyle, fontSize: 11 }}
+          interval={0}
+        />
+        <Tooltip
+          formatter={(value) => [value ?? "—", "Cas"]}
+          labelFormatter={(_, payload) => {
+            const row = payload?.[0]?.payload as MsppDiseaseBarRow | undefined;
+            if (!row) return "";
+            return `${row.diseaseName} (${row.diseaseCode})`;
+          }}
+          contentStyle={{ fontSize: 13 }}
+        />
+        <Bar dataKey="count" name="Cas" fill="#0f766e" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </div>
+  );
+}
+
+export function MsppDepartmentBarChartPrint({ data }: { data: MsppDeptBarRow[] }) {
+  if (data.length === 0) {
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la répartition par département.</p>;
+  }
+  const h = rapportPrintBarHeight(data.length);
+  return (
+    <div style={MSPP_CHART_WELL}>
+      <BarChart
+        width={RAPPORT_PRINT_CHART_WIDTH}
+        height={h}
+        data={data}
+        layout="vertical"
+        margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+        barCategoryGap={4}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+        <XAxis type="number" allowDecimals={false} tick={axisStyle} />
+        <YAxis
+          type="category"
+          dataKey="label"
+          width={160}
+          tick={{ ...axisStyle, fontSize: 11 }}
+          interval={0}
+        />
+        <Tooltip
+          formatter={(value) => [value ?? "—", "Cas approuvés"]}
+          labelFormatter={(_, payload) => {
+            const row = payload?.[0]?.payload as MsppDeptBarRow | undefined;
+            if (!row) return "";
+            const code = row.departmentCode ? ` — ${row.departmentCode}` : "";
+            return `${row.departmentName ?? "—"}${code}`;
+          }}
+          contentStyle={{ fontSize: 13 }}
+        />
+        <Bar dataKey="count" name="Cas approuvés" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </div>
+  );
+}

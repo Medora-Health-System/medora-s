@@ -8,25 +8,11 @@
 }
 
 /**
- * Pre-print arming (screen only): Recharts ResponsiveContainer measures after layout.
- * `html.mspp-rapport-print-arming` is toggled by the print button until afterprint (or fallback).
- * Gives chart wrappers explicit dimensions so SVG is not rasterized at 0×0.
+ * Dual chart trees: écran = ResponsiveContainer ; impression = SVG dimensions fixes (voir Mspp*Print).
+ * Sur l’écran, la variante impression est masquée pour ne pas dupliquer visuellement.
  */
-html.mspp-rapport-print-arming #mspp-rapport-print-root .mspp-print-chart-anchor {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
-html.mspp-rapport-print-arming #mspp-rapport-print-root .mspp-print-chart-trend .recharts-responsive-container {
-  width: 100% !important;
-  min-height: 280px !important;
-  height: 280px !important;
-}
-
-html.mspp-rapport-print-arming #mspp-rapport-print-root .mspp-print-chart-bars .recharts-responsive-container {
-  width: 100% !important;
-  min-height: 240px !important;
+.mspp-rapport-print-charts-only {
+  display: none;
 }
 
 @media print {
@@ -114,6 +100,14 @@ html.mspp-rapport-print-arming #mspp-rapport-print-root .mspp-print-chart-bars .
   .mspp-minister-signal {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .mspp-rapport-screen-charts {
+    display: none !important;
+  }
+
+  .mspp-rapport-print-charts-only {
+    display: block !important;
   }
 
   #mspp-rapport-print-root .recharts-responsive-container {

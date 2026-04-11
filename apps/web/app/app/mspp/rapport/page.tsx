@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "@/features/mspp/msppRapportPrint.css";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
@@ -17,10 +17,13 @@ import {
 } from "@/lib/msppApi";
 import {
   MsppTrendLineChart,
+  MsppTrendLineChartPrint,
   buildTrendChartData,
   MsppDiseaseBarChart,
+  MsppDiseaseBarChartPrint,
   buildDiseaseBarData,
   MsppDepartmentBarChart,
+  MsppDepartmentBarChartPrint,
   buildDepartmentBarDataFromGeo,
 } from "@/features/mspp/MsppReportingCharts";
 import { MsppHaitiDepartmentMap } from "@/features/mspp/MsppHaitiDepartmentMap";
@@ -62,7 +65,6 @@ export default function MsppRapportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [printPreparing, setPrintPreparing] = useState(false);
-  const printArmingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [filterDisease, setFilterDisease] = useState("");
   const [filterDept, setFilterDept] = useState("");
@@ -98,46 +100,21 @@ export default function MsppRapportPage() {
     else if (ready && !canMspp) setLoading(false);
   }, [ready, canMspp, load]);
 
-  const clearPrintArming = useCallback(() => {
-    if (printArmingFallbackTimerRef.current) {
-      clearTimeout(printArmingFallbackTimerRef.current);
-      printArmingFallbackTimerRef.current = null;
-    }
-    document.documentElement.classList.remove("mspp-rapport-print-arming");
-    setPrintPreparing(false);
-  }, []);
-
   useEffect(() => {
     const onAfterPrint = () => {
-      clearPrintArming();
+      setPrintPreparing(false);
     };
     window.addEventListener("afterprint", onAfterPrint);
     return () => window.removeEventListener("afterprint", onAfterPrint);
-  }, [clearPrintArming]);
+  }, []);
 
   const requestMsppRapportPrint = useCallback(() => {
     if (loading || printPreparing) return;
     setPrintPreparing(true);
-    document.documentElement.classList.add("mspp-rapport-print-arming");
-    window.dispatchEvent(new Event("resize"));
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.dispatchEvent(new Event("resize"));
-        setTimeout(() => {
-          window.print();
-          if (printArmingFallbackTimerRef.current) {
-            clearTimeout(printArmingFallbackTimerRef.current);
-          }
-          printArmingFallbackTimerRef.current = setTimeout(() => {
-            printArmingFallbackTimerRef.current = null;
-            if (document.documentElement.classList.contains("mspp-rapport-print-arming")) {
-              clearPrintArming();
-            }
-          }, 12000);
-        }, 280);
-      });
+      window.print();
     });
-  }, [clearPrintArming, loading, printPreparing]);
+  }, [loading, printPreparing]);
 
   const diseaseRows =
     diseases?.diseases.filter((x) => {
@@ -325,9 +302,16 @@ export default function MsppRapportPage() {
         {loading ? (
           <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
         ) : (
-          <div className="mspp-print-chart-anchor mspp-print-chart-trend">
-            <MsppTrendLineChart data={trendData} />
-          </div>
+          <>
+            <div className="mspp-rapport-screen-charts">
+              <div className="mspp-print-chart-anchor mspp-print-chart-trend">
+                <MsppTrendLineChart data={trendData} />
+              </div>
+            </div>
+            <div className="mspp-rapport-print-charts-only mspp-print-chart-anchor mspp-print-chart-trend">
+              <MsppTrendLineChartPrint data={trendData} />
+            </div>
+          </>
         )}
         </div>
 
@@ -341,9 +325,16 @@ export default function MsppRapportPage() {
         {loading ? (
           <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
         ) : (
-          <div className="mspp-print-chart-anchor mspp-print-chart-bars">
-            <MsppDiseaseBarChart data={diseaseChartData} />
-          </div>
+          <>
+            <div className="mspp-rapport-screen-charts">
+              <div className="mspp-print-chart-anchor mspp-print-chart-bars">
+                <MsppDiseaseBarChart data={diseaseChartData} />
+              </div>
+            </div>
+            <div className="mspp-rapport-print-charts-only mspp-print-chart-anchor mspp-print-chart-bars">
+              <MsppDiseaseBarChartPrint data={diseaseChartData} />
+            </div>
+          </>
         )}
         </div>
 
@@ -357,9 +348,16 @@ export default function MsppRapportPage() {
         {loading ? (
           <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
         ) : (
-          <div className="mspp-print-chart-anchor mspp-print-chart-bars">
-            <MsppDepartmentBarChart data={deptChartData} />
-          </div>
+          <>
+            <div className="mspp-rapport-screen-charts">
+              <div className="mspp-print-chart-anchor mspp-print-chart-bars">
+                <MsppDepartmentBarChart data={deptChartData} />
+              </div>
+            </div>
+            <div className="mspp-rapport-print-charts-only mspp-print-chart-anchor mspp-print-chart-bars">
+              <MsppDepartmentBarChartPrint data={deptChartData} />
+            </div>
+          </>
         )}
         </div>
 
