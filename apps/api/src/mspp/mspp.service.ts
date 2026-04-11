@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditAction, MsppRoleCode, Prisma } from "@prisma/client";
+import { AuditAction, MsppLabEvidenceType, MsppRoleCode, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { DiseaseCaseReviewStatus, NATIONAL_MSPP_ROLES, ReviewerLevel } from "./mspp.constants";
@@ -19,6 +19,13 @@ export type MsppCaseQualityInput = {
   validationDuration: string | null | undefined;
 };
 
+/** Texte de durée généré côté client quand le dossier ne précise pas la durée — ne doit pas compter comme « renseigné ». */
+function isPlaceholderDurationText(value: string | null | undefined): boolean {
+  const t = String(value ?? "").trim().toLowerCase();
+  if (!t) return true;
+  return t.includes("non précisé") && t.includes("dossier");
+}
+
 /**
  * Score automatique de complétude pour la décision de validation (surveillance).
  * Utilisé avant approbation départementale ou centrale.
@@ -28,15 +35,84 @@ export function evaluateCaseQuality(review: MsppCaseQualityInput): number {
   if (review.validationFever) score += 1;
   if (review.validationLabConfirmed) score += 2;
   if (review.validationExposureRisk === "HIGH") score += 2;
-  if (review.validationDuration?.trim()) score += 1;
+  if (review.validationDuration?.trim() && !isPlaceholderDurationText(review.validationDuration)) {
+    score += 1;
+  }
   return score;
 }
 
-function assertCaseQualitySufficientForMsppApproval(input: MsppCaseQualityInput): void {
-  const score = evaluateCaseQuality(input);
-  if (score < 2) {
-    throw new BadRequestException("Dossier insuffisant pour validation MSPP");
-  }
+/** Sous-ensemble `DiseaseCaseReport` pour la complétude dossier (chaîne établissement → MSPP). */
+export type MsppFacilityReportQualitySlice = {
+  clinicalSummary: string | null;
+  notes: string | null;
+  feverReported: boolean | null;
+  symptomDuration: string | null;
+  hospitalized: boolean | null;
+  outcomeStatus: string | null;
+  labConfirmed: boolean | null;
+  labEvidenceType: string | null;
+  epiLinkedCase: boolean | null;
+  travelOrExposureContext: string | null;
+  provisionalCaseClassification: string | null;
+  onsetDate: Date | null;
+};
+
+/**
+ * Complétude du dossier initial établissement (0+). Aligné sur les champs saisis dans la déclaration Medora.
+ * Utilisé en complément du score « checklist » lorsque celui-ci reste bas (ex. exposureRisk UNKNOWN côté payload fusionné).
+ */
+export function evaluateFacilityDossierCompletenessScore(
+  rep: MsppFacilityReportQualitySlice
+): number {
+  let score = 0;
+  const clinical = rep.clinicalSummary?.trim() ?? "";
+  const notes = rep.notes?.trim() ?? "";
+  if (clinical.length >= 40) score += 2;
+  else if (clinical.length >= 15) score += 1;
+  if (notes.length >= 40 && clinical.length < 15) score += 1;
+
+  if (rep.feverReported === true) score += 1;
+  if (rep.labConfirmed === true) score += 2;
+  if (rep.labEvidenceType && rep.labEvidenceType !== MsppLabEvidenceType.NONE) score += 1;
+
+  const dur = rep.symptomDuration?.trim() ?? "";
+  if (dur.length >= 2 && !isPlaceholderDurationText(dur)) score += 1;
+
+  const out = rep.outcomeStatus?.trim() ?? "";
+  if (out.length >= 2 && !/non précisé/i.test(out)) score += 1;
+
+  const tr = rep.travelOrExposureContext?.trim() ?? "";
+  if (tr.length >= 15 && !/^non précisé/i.test(tr)) score += 1;
+
+  if (rep.epiLinkedCase === true) score += 1;
+  if (rep.provisionalCaseClassification != null) score += 1;
+  if (rep.onsetDate != null) score += 1;
+  if (rep.hospitalized !== null && rep.hospitalized !== undefined) score += 1;
+
+  return score;
+}
+
+const MSPP_APPROVAL_LEGACY_PASS = 2;
+const MSPP_APPROVAL_FACILITY_ALONE_PASS = 4;
+const MSPP_APPROVAL_COMBINED_PASS = 4;
+
+function assertMsppApprovalQuality(
+  dto: MsppReviewActionDto,
+  facilityReport: MsppFacilityReportQualitySlice | null
+): void {
+  const legacy = evaluateCaseQuality({
+    validationFever: dto.fever,
+    validationLabConfirmed: dto.labConfirmed,
+    validationExposureRisk: dto.exposureRisk,
+    validationDuration: dto.duration,
+  });
+  if (legacy >= MSPP_APPROVAL_LEGACY_PASS) return;
+
+  const facility = facilityReport ? evaluateFacilityDossierCompletenessScore(facilityReport) : 0;
+  if (facility >= MSPP_APPROVAL_FACILITY_ALONE_PASS) return;
+  if (legacy + facility >= MSPP_APPROVAL_COMBINED_PASS) return;
+
+  throw new BadRequestException("Dossier insuffisant pour validation MSPP");
 }
 
 function hasNationalScope(assignments: MsppRequestContext["msppAssignments"]): boolean {
@@ -393,12 +469,8 @@ export class MsppService {
         `Invalid status for department approve: expected ${DiseaseCaseReviewStatus.PENDING_DEPARTMENT}`
       );
     }
-    assertCaseQualitySufficientForMsppApproval({
-      validationFever: dto.fever,
-      validationLabConfirmed: dto.labConfirmed,
-      validationExposureRisk: dto.exposureRisk,
-      validationDuration: dto.duration,
-    });
+    const facilityReport = await this.loadFacilityReportQualitySlice(review.diseaseCaseReportId);
+    assertMsppApprovalQuality(dto, facilityReport);
     const notes = this.appendNote(
       review.notes,
       this.validationAuditLine("Validation département — approbation", dto)
@@ -486,12 +558,8 @@ export class MsppService {
         `Invalid status for central approve: expected ${DiseaseCaseReviewStatus.DEPARTMENT_APPROVED} or ${DiseaseCaseReviewStatus.PENDING_CENTRAL}`
       );
     }
-    assertCaseQualitySufficientForMsppApproval({
-      validationFever: dto.fever,
-      validationLabConfirmed: dto.labConfirmed,
-      validationExposureRisk: dto.exposureRisk,
-      validationDuration: dto.duration,
-    });
+    const facilityReport = await this.loadFacilityReportQualitySlice(review.diseaseCaseReportId);
+    assertMsppApprovalQuality(dto, facilityReport);
     const notes = this.appendNote(
       review.notes,
       this.validationAuditLine("Validation centrale — approbation", dto)
@@ -652,6 +720,29 @@ export class MsppService {
       }
     }
     return { diseases: [...agg.values()].sort((a, b) => b.count - a.count) };
+  }
+
+  private async loadFacilityReportQualitySlice(
+    diseaseCaseReportId: string | null | undefined
+  ): Promise<MsppFacilityReportQualitySlice | null> {
+    if (!diseaseCaseReportId) return null;
+    return this.prisma.diseaseCaseReport.findUnique({
+      where: { id: diseaseCaseReportId },
+      select: {
+        clinicalSummary: true,
+        notes: true,
+        feverReported: true,
+        symptomDuration: true,
+        hospitalized: true,
+        outcomeStatus: true,
+        labConfirmed: true,
+        labEvidenceType: true,
+        epiLinkedCase: true,
+        travelOrExposureContext: true,
+        provisionalCaseClassification: true,
+        onsetDate: true,
+      },
+    });
   }
 
   private appendNote(existing: string | null, reason?: string): string | undefined {

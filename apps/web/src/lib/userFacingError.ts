@@ -14,6 +14,16 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string }> = [
   { test: (s) => /^unauthorized$/i.test(s.trim()), fr: "Accès non autorisé." },
   { test: (s) => /authentication required/i.test(s), fr: "Authentification requise." },
   { test: (s) => /^forbidden$/i.test(s.trim()), fr: "Accès refusé." },
+  /** MSPP validation (Nest ForbiddenException / proxy). */
+  {
+    test: (s) => /not authorized for this department/i.test(s),
+    fr: "Vous n'avez pas accès à ce département.",
+  },
+  /** MSPP validation (Nest BadRequestException — qualité de dossier). */
+  {
+    test: (s) => /dossier insuffisant pour validation mspp/i.test(s),
+    fr: "Dossier insuffisant pour validation MSPP.",
+  },
   /** Avant le filtre générique « not found » : « Encounter not found » contient « not found ». */
   { test: (s) => /encounter not found/i.test(s), fr: USER_FACING_ENCOUNTER_NOT_FOUND_FR },
   { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable." },

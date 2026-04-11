@@ -262,18 +262,13 @@ export default function MsppValidationPage() {
       await load();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
-      const res = typeof e === "object" && e !== null ? (e as { response?: { status?: number } }).response : undefined;
-      const status403 = res?.status === 403;
-      const isForbidden =
-        status403 ||
-        msg.includes("Not authorized") ||
-        /\b403\b/.test(msg) ||
-        /Forbidden/i.test(msg);
-      setError(
-        isForbidden
-          ? t("msppValidation.errorNotAuthorizedDepartment")
-          : t("msppValidation.genericActionError")
-      );
+      /** Aligné sur `normalizeUserFacingError` (repli générique anglais → FR). */
+      const NORMALIZED_GENERIC = "Une erreur est survenue.";
+      if (!msg.trim() || msg === NORMALIZED_GENERIC) {
+        setError(t("msppValidation.genericActionError"));
+      } else {
+        setError(msg);
+      }
     } finally {
       setModalSubmitting(false);
     }

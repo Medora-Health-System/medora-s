@@ -433,7 +433,8 @@ export default {
     modalTitleCentralReject: "Rejet — niveau central",
     loadError: "Impossible de charger la file de validation.",
     actionError: "Action refusée ou erreur réseau. Vérifiez les champs et votre rôle MSPP.",
-    errorNotAuthorizedDepartment: "Vous n'êtes pas autorisé pour ce département.",
+    errorNotAuthorizedDepartment: "Vous n'avez pas accès à ce département.",
+    errorInsufficientDossierMspp: "Dossier insuffisant pour validation MSPP.",
     genericActionError: "Une erreur est survenue.",
     loading: "Chargement…",
     accessDeniedTitle: "MSPP — Validation",
@@ -489,6 +490,7 @@ export default {
   msppRapportPrint: {
     printButton: "Imprimer le rapport",
     printButtonDisabledHint: "Disponible une fois les données chargées.",
+    printPreparingHint: "Préparation des graphiques pour l’aperçu…",
     printHelper:
       "Ouvre la boîte de dialogue d’impression du navigateur (aperçu PDF possible selon l’appareil).",
     printHeaderTitle: "Rapport MSPP — agrégats nationaux",

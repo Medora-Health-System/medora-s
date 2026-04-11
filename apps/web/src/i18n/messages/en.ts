@@ -467,7 +467,8 @@ export default {
     modalTitleCentralReject: "Rejection — central level",
     loadError: "Unable to load the validation queue.",
     actionError: "Action denied or network error. Check fields and your MSPP role.",
-    errorNotAuthorizedDepartment: "You are not authorized for this department.",
+    errorNotAuthorizedDepartment: "You do not have access to this department.",
+    errorInsufficientDossierMspp: "The dossier is insufficient for MSPP validation.",
     genericActionError: "An error occurred.",
     loading: "Loading…",
     accessDeniedTitle: "MSPP — Validation",
@@ -523,6 +524,7 @@ export default {
   msppRapportPrint: {
     printButton: "Imprimer le rapport",
     printButtonDisabledHint: "Disponible une fois les données chargées.",
+    printPreparingHint: "Preparing charts for preview…",
     printHelper:
       "Ouvre la boîte de dialogue d’impression du navigateur (aperçu PDF possible selon l’appareil).",
     printHeaderTitle: "Rapport MSPP — agrégats nationaux",
