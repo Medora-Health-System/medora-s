@@ -1,10 +1,20 @@
-import { Body, Controller, ForbiddenException, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { MsppRoleCode } from "@prisma/client";
 import { MsppRolesGuard, type MsppRequestContext } from "./guards/mspp-roles.guard";
 import { RequireMsppRoles } from "./decorators/require-mspp-roles.decorator";
 import { MsppService } from "./mspp.service";
-import type { ReviewActionBody } from "./dto/review-action.dto";
+import { msppReviewActionSchema, type MsppReviewActionDto } from "./dto/review-action.dto";
 
 type RequestWithJwtAndMspp = {
   user?: { userId: string };
@@ -17,6 +27,16 @@ function msppCtx(req: RequestWithJwtAndMspp): MsppRequestContext {
     throw new ForbiddenException("MSPP context missing");
   }
   return ctx;
+}
+
+function parseReviewAction(body: unknown): MsppReviewActionDto {
+  const parsed = msppReviewActionSchema.safeParse(body ?? {});
+  if (!parsed.success) {
+    const msg =
+      parsed.error.errors.map((e) => e.message).join(" ") || "Corps de requête invalide.";
+    throw new BadRequestException(msg);
+  }
+  return parsed.data;
 }
 
 @Controller("mspp")
@@ -40,9 +60,9 @@ export class MsppController {
   departmentApprove(
     @Param("id") id: string,
     @Req() req: RequestWithJwtAndMspp,
-    @Body() body: ReviewActionBody
+    @Body() body: unknown
   ) {
-    return this.mspp.departmentApprove(id, msppCtx(req), body?.reason);
+    return this.mspp.departmentApprove(id, msppCtx(req), parseReviewAction(body));
   }
 
   @Post("reviews/:id/department-reject")
@@ -50,9 +70,9 @@ export class MsppController {
   departmentReject(
     @Param("id") id: string,
     @Req() req: RequestWithJwtAndMspp,
-    @Body() body: ReviewActionBody
+    @Body() body: unknown
   ) {
-    return this.mspp.departmentReject(id, msppCtx(req), body?.reason);
+    return this.mspp.departmentReject(id, msppCtx(req), parseReviewAction(body));
   }
 
   @Post("reviews/:id/central-approve")
@@ -60,9 +80,9 @@ export class MsppController {
   centralApprove(
     @Param("id") id: string,
     @Req() req: RequestWithJwtAndMspp,
-    @Body() body: ReviewActionBody
+    @Body() body: unknown
   ) {
-    return this.mspp.centralApprove(id, msppCtx(req), body?.reason);
+    return this.mspp.centralApprove(id, msppCtx(req), parseReviewAction(body));
   }
 
   @Post("reviews/:id/central-reject")
@@ -70,9 +90,9 @@ export class MsppController {
   centralReject(
     @Param("id") id: string,
     @Req() req: RequestWithJwtAndMspp,
-    @Body() body: ReviewActionBody
+    @Body() body: unknown
   ) {
-    return this.mspp.centralReject(id, msppCtx(req), body?.reason);
+    return this.mspp.centralReject(id, msppCtx(req), parseReviewAction(body));
   }
 
   @Get("summary")
