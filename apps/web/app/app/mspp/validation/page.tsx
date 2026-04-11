@@ -216,6 +216,8 @@ export default function MsppValidationPage() {
     else if (ready && !canMspp) setLoading(false);
   }, [ready, canMspp, load]);
 
+  const activeRow = pendingDecision ? rows.find((r) => r.id === pendingDecision.reviewId) : undefined;
+
   const pendingDept = rows.filter((r) => r.status === DiseaseCaseReviewStatus.PENDING_DEPARTMENT);
   const pendingCentral = rows.filter(
     (r) =>
@@ -258,9 +260,20 @@ export default function MsppValidationPage() {
       }
       setPendingDecision(null);
       await load();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("msppValidation.actionError");
-      setError(msg);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      const res = typeof e === "object" && e !== null ? (e as { response?: { status?: number } }).response : undefined;
+      const status403 = res?.status === 403;
+      const isForbidden =
+        status403 ||
+        msg.includes("Not authorized") ||
+        /\b403\b/.test(msg) ||
+        /Forbidden/i.test(msg);
+      setError(
+        isForbidden
+          ? t("msppValidation.errorNotAuthorizedDepartment")
+          : t("msppValidation.genericActionError")
+      );
     } finally {
       setModalSubmitting(false);
     }
@@ -566,6 +579,13 @@ export default function MsppValidationPage() {
           onClose={() => setPendingDecision(null)}
           onConfirm={submitDecision}
           submitting={modalSubmitting}
+          facilityDossier={activeRow?.facilityDossier ?? null}
+          departmentReview={activeRow?.departmentReview ?? null}
+          variant={
+            pendingDecision.kind === "dept-approve" || pendingDecision.kind === "dept-reject"
+              ? "department"
+              : "central"
+          }
         />
       ) : null}
     </div>

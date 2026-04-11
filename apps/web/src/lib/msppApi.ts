@@ -23,6 +23,61 @@ export type MsppReviewActionBody = {
   finalDecisionRationale: string;
 };
 
+/** Dossier tel que saisi à l’établissement (liste `/mspp/reviews`, champ `facilityDossier`). */
+/** Revue structurée enregistrée sur `DiseaseCaseReview` (liste `/mspp/reviews`, champ `departmentReview`). */
+export type MsppDepartmentReviewSnapshot = {
+  validationFever: boolean | null;
+  validationDuration: string | null;
+  validationLabConfirmed: boolean | null;
+  validationExposureRisk: string | null;
+  caseClassification: string | null;
+  inclusionCriteriaSummary: string | null;
+  exclusionCriteriaSummary: string | null;
+  symptomOnsetDate: string | null;
+  hospitalized: boolean | null;
+  outcomeStatus: string | null;
+  labEvidenceType: string | null;
+  epiLinkedCase: boolean | null;
+  travelOrExposureContext: string | null;
+  finalDecisionRationale: string | null;
+  reviewerLevel: string;
+  reviewStatus: string;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MsppFacilityDossier = {
+  diseaseCaseReportId: string;
+  reportCaseStatus: string;
+  diseaseCode: string;
+  diseaseName: string;
+  reportedAt: string;
+  onsetDate: string | null;
+  department: string | null;
+  commune: string | null;
+  geoCommuneId: string | null;
+  notes: string | null;
+  clinicalSummary: string | null;
+  feverReported: boolean | null;
+  symptomDuration: string | null;
+  hospitalized: boolean | null;
+  outcomeStatus: string | null;
+  labConfirmed: boolean | null;
+  labEvidenceType: string | null;
+  epiLinkedCase: boolean | null;
+  travelOrExposureContext: string | null;
+  provisionalCaseClassification: string | null;
+  facilityName: string;
+  patientFullName: string | null;
+  patientPrimaryIdentifier: string | null;
+  reporterName: string | null;
+  reporterRole: string | null;
+  patientSex: string | null;
+  patientAgeYears: number | null;
+  reportEncounterRoomLabel: string | null;
+};
+
 export type MsppReviewRow = {
   id: string;
   diseaseCaseReportId: string | null;
@@ -64,6 +119,10 @@ export type MsppReviewRow = {
   reportEncounterRoomLabel?: string | null;
   /** Horodatage de la déclaration (ISO 8601). */
   reportedAt?: string | null;
+  /** Dossier établissement complet pour affichage lecture seule (revue départementale). */
+  facilityDossier?: MsppFacilityDossier | null;
+  /** Champs de revue structurée (chaîne département → central). */
+  departmentReview?: MsppDepartmentReviewSnapshot | null;
   dataQuality?: {
     geoIncomplete: boolean;
     geoCommuneLinked: boolean;
