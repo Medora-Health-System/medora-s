@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 520" width="920" height="520" role="img" aria-labelledby="title desc">
+  <title id="title">Emplacement r�serv�  carte g�ographique Ha�ti (Medora-S / MSPP)</title>
+  <desc id="desc">Sch�ma non cartographique : cadre institutionnel pour une future carte interactive des d�partements.</desc>
+  <defs>
+    <linearGradient id="sea" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8f4fc"/>
+      <stop offset="100%" style="stop-color:#dbeafe"/>
+    </linearGradient>
+    <filter id="soft">
+      <feGaussianBlur stdDeviation="0.8"/>
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#sea)"/>
+  <!-- Stylized Haiti silhouette (simplified schematic, not survey-accurate) -->
+  <path fill="#1e3a5f" fill-opacity="0.85" stroke="#0f172a" stroke-width="1.2"
+    d="M 420 120 L 480 95 L 540 110 L 580 160 L 600 240 L 590 320 L 560 380 L 500 420 L 440 400 L 400 340 L 380 260 L 390 180 Z"/>
+  <path fill="#334155" fill-opacity="0.35" stroke="#64748b" stroke-width="1" stroke-dasharray="6 4"
+    d="M 430 200 L 470 190 L 510 210 L 520 280 L 490 330 L 450 310 Z"/>
+  <text x="460" y="455" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="15" fill="#0f172a" font-weight="600">
+    R�publique dHa�ti  cadre pour visualisation d�partementale
+  </text>
+  <text x="460" y="478" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="12" fill="#475569">
+    Placeholder institutionnel  �volution : carte interactive align�e sur le r�f�rentiel GeoDepartment
+  </text>
+  <rect x="40" y="40" width="840" height="440" fill="none" stroke="#94a3b8" stroke-width="2" rx="12" stroke-dasharray="10 6"/>
+  <text x="460" y="68" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="18" fill="#1e293b" font-weight="700">
+    MSPP  Medora-S
+  </text>
+  <text x="460" y="92" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="13" fill="#64748b">
+    Document de r�f�rence visuelle (non destin� � la navigation maritime ou administrative)
+  </text>
+</svg>
