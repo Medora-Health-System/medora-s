@@ -43,6 +43,12 @@ export function evaluateCaseQuality(review: MsppCaseQualityInput): number {
 
 /** Sous-ensemble `DiseaseCaseReport` pour la complétude dossier (chaîne établissement → MSPP). */
 export type MsppFacilityReportQualitySlice = {
+  diseaseCode: string;
+  diseaseName: string;
+  department: string | null;
+  commune: string | null;
+  geoCommuneId: string | null;
+  reportedAt: Date;
   clinicalSummary: string | null;
   notes: string | null;
   feverReported: boolean | null;
@@ -92,6 +98,82 @@ export function evaluateFacilityDossierCompletenessScore(
   return score;
 }
 
+const MSPP_RICH_NARRATIVE_SINGLE_MIN = 40;
+const MSPP_RICH_NARRATIVE_COMBO_EACH_MIN = 25;
+const MSPP_RICH_SUBSTANCE_SIGNALS_MIN = 2;
+
+function hasMeaningfulFacilityNarrative(rep: MsppFacilityReportQualitySlice): boolean {
+  const c = rep.clinicalSummary?.trim() ?? "";
+  const n = rep.notes?.trim() ?? "";
+  if (c.length >= MSPP_RICH_NARRATIVE_SINGLE_MIN || n.length >= MSPP_RICH_NARRATIVE_SINGLE_MIN) return true;
+  if (c.length >= MSPP_RICH_NARRATIVE_COMBO_EACH_MIN && n.length >= MSPP_RICH_NARRATIVE_COMBO_EACH_MIN) return true;
+  return false;
+}
+
+function hasFacilityDiseaseIdentity(rep: MsppFacilityReportQualitySlice): boolean {
+  return Boolean(rep.diseaseCode?.trim() && rep.diseaseName?.trim());
+}
+
+function hasFacilityGeography(rep: MsppFacilityReportQualitySlice): boolean {
+  const dept = rep.department?.trim();
+  const com = rep.commune?.trim();
+  if (dept && com) return true;
+  return Boolean(rep.geoCommuneId);
+}
+
+function hasFacilityTimelineAnchor(rep: MsppFacilityReportQualitySlice): boolean {
+  if (rep.onsetDate != null) return true;
+  const dur = rep.symptomDuration?.trim() ?? "";
+  return dur.length >= 2 && !isPlaceholderDurationText(dur);
+}
+
+function outcomeStatusMeaningful(rep: MsppFacilityReportQualitySlice): boolean {
+  const out = rep.outcomeStatus?.trim() ?? "";
+  return out.length >= 2 && !/non précisé/i.test(out);
+}
+
+function travelOrExposureMeaningful(rep: MsppFacilityReportQualitySlice): boolean {
+  const tr = rep.travelOrExposureContext?.trim() ?? "";
+  return tr.length >= 15 && !/^non précisé/i.test(tr);
+}
+
+/**
+ * Indices de substance clinique / épidémiologique sur le dossier initial (hors score checklist validateur).
+ * Utilisé uniquement pour l’auto-pass « dossier riche » — ne remplace pas les seuils numériques pour les autres cas.
+ */
+function countMsppFacilitySubstanceSignals(rep: MsppFacilityReportQualitySlice): number {
+  let n = 0;
+  if (rep.feverReported === true) n += 1;
+  if (rep.labConfirmed === true) n += 1;
+  if (rep.labEvidenceType && rep.labEvidenceType !== MsppLabEvidenceType.NONE) n += 1;
+  if (rep.hospitalized !== null && rep.hospitalized !== undefined) n += 1;
+  if (rep.onsetDate != null) n += 1;
+  const dur = rep.symptomDuration?.trim() ?? "";
+  if (dur.length >= 2 && !isPlaceholderDurationText(dur)) n += 1;
+  if (travelOrExposureMeaningful(rep)) n += 1;
+  if (rep.epiLinkedCase !== null && rep.epiLinkedCase !== undefined) n += 1;
+  if (rep.provisionalCaseClassification != null) n += 1;
+  if (outcomeStatusMeaningful(rep)) n += 1;
+  return n;
+}
+
+/**
+ * Dossier substantiellement documenté côté établissement : permet l’approbation même si le score « checklist »
+ * validateur (fièvre / labo / exposition) reste bas, tant que la déclaration porte assez de matière.
+ */
+export function meetsMsppRichDossierAutoPass(rep: MsppFacilityReportQualitySlice): boolean {
+  if (!hasMeaningfulFacilityNarrative(rep)) return false;
+  if (!hasFacilityDiseaseIdentity(rep)) return false;
+  if (!hasFacilityGeography(rep)) return false;
+  if (!hasFacilityTimelineAnchor(rep)) return false;
+  if (rep.reportedAt == null || Number.isNaN(rep.reportedAt.getTime())) return false;
+  if (countMsppFacilitySubstanceSignals(rep) < MSPP_RICH_SUBSTANCE_SIGNALS_MIN) return false;
+  return true;
+}
+
+const MSPP_APPROVAL_QUALITY_FAIL_MESSAGE =
+  "Dossier insuffisant pour validation MSPP : informations cliniques ou épidémiologiques incomplètes.";
+
 const MSPP_APPROVAL_LEGACY_PASS = 2;
 const MSPP_APPROVAL_FACILITY_ALONE_PASS = 4;
 const MSPP_APPROVAL_COMBINED_PASS = 4;
@@ -108,11 +190,13 @@ function assertMsppApprovalQuality(
   });
   if (legacy >= MSPP_APPROVAL_LEGACY_PASS) return;
 
+  if (facilityReport && meetsMsppRichDossierAutoPass(facilityReport)) return;
+
   const facility = facilityReport ? evaluateFacilityDossierCompletenessScore(facilityReport) : 0;
   if (facility >= MSPP_APPROVAL_FACILITY_ALONE_PASS) return;
   if (legacy + facility >= MSPP_APPROVAL_COMBINED_PASS) return;
 
-  throw new BadRequestException("Dossier insuffisant pour validation MSPP");
+  throw new BadRequestException(MSPP_APPROVAL_QUALITY_FAIL_MESSAGE);
 }
 
 function hasNationalScope(assignments: MsppRequestContext["msppAssignments"]): boolean {
@@ -729,6 +813,12 @@ export class MsppService {
     return this.prisma.diseaseCaseReport.findUnique({
       where: { id: diseaseCaseReportId },
       select: {
+        diseaseCode: true,
+        diseaseName: true,
+        department: true,
+        commune: true,
+        geoCommuneId: true,
+        reportedAt: true,
         clinicalSummary: true,
         notes: true,
         feverReported: true,
