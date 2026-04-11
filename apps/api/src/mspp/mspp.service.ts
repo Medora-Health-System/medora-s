@@ -43,6 +43,10 @@ function hasNationalScope(assignments: MsppRequestContext["msppAssignments"]): b
   return assignments.some((a) => NATIONAL_MSPP_ROLES.includes(a.role));
 }
 
+function hasDeptValidatorNationalScope(ctx: MsppRequestContext): boolean {
+  return ctx.deptValidatorAllGeoDepartments === true;
+}
+
 /** Central validators may act on any geo department for department-level MSPP steps. */
 function hasCentralValidatorRole(assignments: MsppRequestContext["msppAssignments"]): boolean {
   return assignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_CENTRAL);
@@ -105,6 +109,9 @@ function reviewWhereForContext(ctx: MsppRequestContext): Prisma.DiseaseCaseRevie
   if (hasNationalScope(ctx.msppAssignments)) {
     return {};
   }
+  if (hasDeptValidatorNationalScope(ctx)) {
+    return {};
+  }
   if (ctx.allowedDepartments.length === 0) {
     throw new ForbiddenException("Department validator requires geoDepartmentId on assignment.");
   }
@@ -116,6 +123,9 @@ function reportingWhereForContext(ctx: MsppRequestContext): Prisma.DiseaseCaseRe
     status: DiseaseCaseReviewStatus.CENTRAL_APPROVED,
   };
   if (hasNationalScope(ctx.msppAssignments)) {
+    return base;
+  }
+  if (hasDeptValidatorNationalScope(ctx)) {
     return base;
   }
   if (ctx.allowedDepartments.length === 0) {
@@ -151,11 +161,24 @@ export class MsppService {
               facilityId: true,
               reportedByUserId: true,
               reportedAt: true,
+              status: true,
               department: true,
               commune: true,
               geoCommuneId: true,
               diseaseCode: true,
               diseaseName: true,
+              onsetDate: true,
+              notes: true,
+              clinicalSummary: true,
+              feverReported: true,
+              symptomDuration: true,
+              hospitalized: true,
+              outcomeStatus: true,
+              labConfirmed: true,
+              labEvidenceType: true,
+              epiLinkedCase: true,
+              travelOrExposureContext: true,
+              provisionalCaseClassification: true,
               facility: { select: { name: true } },
               reportedBy: { select: { firstName: true, lastName: true } },
               patient: {
@@ -261,6 +284,62 @@ export class MsppService {
         }
       }
 
+      /** Données structurées de la revue telles qu’enregistrées (après département : revue départementale ; affichage central en lecture seule). */
+      const departmentReview = {
+        validationFever: r.validationFever,
+        validationDuration: r.validationDuration,
+        validationLabConfirmed: r.validationLabConfirmed,
+        validationExposureRisk: r.validationExposureRisk,
+        caseClassification: r.caseClassification,
+        inclusionCriteriaSummary: r.inclusionCriteriaSummary,
+        exclusionCriteriaSummary: r.exclusionCriteriaSummary,
+        symptomOnsetDate: r.symptomOnsetDate ? r.symptomOnsetDate.toISOString() : null,
+        hospitalized: r.hospitalized,
+        outcomeStatus: r.outcomeStatus,
+        labEvidenceType: r.labEvidenceType,
+        epiLinkedCase: r.epiLinkedCase,
+        travelOrExposureContext: r.travelOrExposureContext,
+        finalDecisionRationale: r.finalDecisionRationale,
+        reviewerLevel: r.reviewerLevel,
+        reviewStatus: r.status,
+        reviewedAt: r.reviewedAt ? r.reviewedAt.toISOString() : null,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+      };
+
+      const facilityDossier = rep
+        ? {
+            diseaseCaseReportId: rep.id,
+            reportCaseStatus: rep.status,
+            diseaseCode: rep.diseaseCode,
+            diseaseName: rep.diseaseName,
+            reportedAt: rep.reportedAt.toISOString(),
+            onsetDate: rep.onsetDate ? rep.onsetDate.toISOString() : null,
+            department: rep.department,
+            commune: rep.commune,
+            geoCommuneId: rep.geoCommuneId,
+            notes: rep.notes,
+            clinicalSummary: rep.clinicalSummary,
+            feverReported: rep.feverReported,
+            symptomDuration: rep.symptomDuration,
+            hospitalized: rep.hospitalized,
+            outcomeStatus: rep.outcomeStatus,
+            labConfirmed: rep.labConfirmed,
+            labEvidenceType: rep.labEvidenceType,
+            epiLinkedCase: rep.epiLinkedCase,
+            travelOrExposureContext: rep.travelOrExposureContext,
+            provisionalCaseClassification: rep.provisionalCaseClassification,
+            facilityName: rep.facility.name,
+            patientFullName,
+            patientPrimaryIdentifier,
+            reporterName,
+            reporterRole,
+            patientSex,
+            patientAgeYears,
+            reportEncounterRoomLabel,
+          }
+        : null;
+
       return {
         ...r,
         departmentName,
@@ -278,6 +357,10 @@ export class MsppService {
         /** Clinical location hint when the declaration is linked to an encounter (salle, etc.). */
         reportEncounterRoomLabel,
         reportedAt,
+        /** Dossier initial tel que saisi à l’établissement (lecture seule côté revue départementale). */
+        facilityDossier,
+        /** Synthèse des champs de revue enregistrés (chaîne département → central). */
+        departmentReview,
         dataQuality: {
           geoIncomplete: rep ? !deptOk || !comOk : false,
           geoCommuneLinked: Boolean(rep?.geoCommuneId),
@@ -298,7 +381,11 @@ export class MsppService {
     if (!review) {
       throw new NotFoundException("Review not found");
     }
-    if (!isCentralValidator && !ctx.allowedDepartments.includes(review.departmentId)) {
+    if (
+      !isCentralValidator &&
+      !ctx.deptValidatorAllGeoDepartments &&
+      !ctx.allowedDepartments.includes(review.departmentId)
+    ) {
       throw new ForbiddenException("Not authorized for this department.");
     }
     if (review.status !== DiseaseCaseReviewStatus.PENDING_DEPARTMENT) {
@@ -346,7 +433,11 @@ export class MsppService {
     if (!review) {
       throw new NotFoundException("Review not found");
     }
-    if (!isCentralValidator && !ctx.allowedDepartments.includes(review.departmentId)) {
+    if (
+      !isCentralValidator &&
+      !ctx.deptValidatorAllGeoDepartments &&
+      !ctx.allowedDepartments.includes(review.departmentId)
+    ) {
       throw new ForbiddenException("Not authorized for this department.");
     }
     if (review.status !== DiseaseCaseReviewStatus.PENDING_DEPARTMENT) {

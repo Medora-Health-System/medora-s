@@ -61,41 +61,87 @@ export class AdminMsppAccessService {
   }
 
   /**
-   * Creates one MSPP assignment; enforces GeoDepartment rules and duplicate (userId, role, geo) semantics.
+   * Creates one MSPP assignment; enforces GeoDepartment rules and duplicate semantics.
+   * For `MSPP_VALIDATOR_DEPT`: either `allGeoDepartments` or exactly one `geoDepartmentId`.
    */
   private async addMsppAssignmentForUser(
     userId: string,
     role: MsppRoleCode,
     geoDepartmentId: string | null | undefined,
+    allGeoDepartments: boolean | undefined,
     isActive: boolean
   ): Promise<{ id: string }> {
-    const geoResolved = resolvedGeoIdForRole(role, geoDepartmentId ?? null);
-    if (role === MsppRoleCode.MSPP_VALIDATOR_DEPT && !geoResolved) {
-      throw new BadRequestException("Département géographique requis pour ce rôle.");
-    }
-    if (role !== MsppRoleCode.MSPP_VALIDATOR_DEPT && geoResolved) {
-      throw new BadRequestException("Ce rôle ne prend pas de département géographique.");
-    }
+    const allNational = allGeoDepartments === true;
+    const geoResolved =
+      role === MsppRoleCode.MSPP_VALIDATOR_DEPT && !allNational
+        ? resolvedGeoIdForRole(role, geoDepartmentId ?? null)
+        : null;
 
-    if (role === MsppRoleCode.MSPP_VALIDATOR_DEPT && geoResolved) {
-      const geo = await this.prisma.geoDepartment.findUnique({
-        where: { id: geoResolved },
-        select: { id: true },
-      });
-      if (!geo) {
-        throw new BadRequestException("Département géographique invalide.");
+    if (role === MsppRoleCode.MSPP_VALIDATOR_DEPT) {
+      if (allNational && (geoDepartmentId != null && String(geoDepartmentId).trim() !== "")) {
+        throw new BadRequestException(
+          "Ne pas renseigner de département précis lorsque l’accès couvre tous les départements."
+        );
+      }
+      if (!allNational && !geoResolved) {
+        throw new BadRequestException("Département géographique requis pour ce rôle (ou accès national départemental).");
+      }
+      if (allNational && geoResolved) {
+        throw new BadRequestException("Choix invalide : département précis et tous départements.");
+      }
+      if (geoResolved) {
+        const geo = await this.prisma.geoDepartment.findUnique({
+          where: { id: geoResolved },
+          select: { id: true },
+        });
+        if (!geo) {
+          throw new BadRequestException("Département géographique invalide.");
+        }
+      }
+    } else {
+      if (allNational || (geoDepartmentId != null && geoDepartmentId !== "")) {
+        throw new BadRequestException("Ce rôle ne prend pas de département géographique.");
       }
     }
 
-    const dup = await this.prisma.msppUserRoleAssignment.findFirst({
-      where: {
-        userId,
-        role,
-        geoDepartmentId: role === MsppRoleCode.MSPP_VALIDATOR_DEPT ? geoResolved : null,
-      },
-    });
-    if (dup) {
-      throw new ConflictException("Cet accès MSPP existe déjà pour cet utilisateur.");
+    if (role === MsppRoleCode.MSPP_VALIDATOR_DEPT && allNational) {
+      const dupAll = await this.prisma.msppUserRoleAssignment.findFirst({
+        where: {
+          userId,
+          role: MsppRoleCode.MSPP_VALIDATOR_DEPT,
+          allGeoDepartments: true,
+        },
+      });
+      if (dupAll) {
+        throw new ConflictException("Un accès « tous les départements » existe déjà pour cet utilisateur.");
+      }
+    }
+
+    if (role === MsppRoleCode.MSPP_VALIDATOR_DEPT && geoResolved) {
+      const dup = await this.prisma.msppUserRoleAssignment.findFirst({
+        where: {
+          userId,
+          role: MsppRoleCode.MSPP_VALIDATOR_DEPT,
+          geoDepartmentId: geoResolved,
+          allGeoDepartments: false,
+        },
+      });
+      if (dup) {
+        throw new ConflictException("Cet accès MSPP existe déjà pour cet utilisateur.");
+      }
+    }
+
+    if (role !== MsppRoleCode.MSPP_VALIDATOR_DEPT) {
+      const dup = await this.prisma.msppUserRoleAssignment.findFirst({
+        where: {
+          userId,
+          role,
+          geoDepartmentId: null,
+        },
+      });
+      if (dup) {
+        throw new ConflictException("Cet accès MSPP existe déjà pour cet utilisateur.");
+      }
     }
 
     const created = await this.prisma.msppUserRoleAssignment.create({
@@ -103,6 +149,7 @@ export class AdminMsppAccessService {
         userId,
         role,
         geoDepartmentId: geoResolved,
+        allGeoDepartments: role === MsppRoleCode.MSPP_VALIDATOR_DEPT ? allNational : false,
         isActive,
       },
     });
@@ -159,6 +206,7 @@ export class AdminMsppAccessService {
         userAccountActive: r.user.isActive,
         role: r.role,
         geoDepartmentId: r.geoDepartmentId,
+        allGeoDepartments: r.allGeoDepartments,
         geoDepartmentName: r.geoDepartmentId ? geoById.get(r.geoDepartmentId)?.name ?? null : null,
         geoDepartmentCode: r.geoDepartmentId ? geoById.get(r.geoDepartmentId)?.code ?? null : null,
         isActive: r.isActive,
@@ -183,7 +231,13 @@ export class AdminMsppAccessService {
     }
     await this.assertDelegatedMayTouchTargetUser(actorId, user.id);
 
-    return this.addMsppAssignmentForUser(user.id, dto.role, dto.geoDepartmentId ?? null, true);
+    return this.addMsppAssignmentForUser(
+      user.id,
+      dto.role,
+      dto.geoDepartmentId ?? null,
+      dto.allGeoDepartments,
+      true
+    );
   }
 
   /**
@@ -210,6 +264,7 @@ export class AdminMsppAccessService {
         existing.id,
         dto.role,
         dto.geoDepartmentId ?? null,
+        dto.allGeoDepartments,
         msppActive
       );
       return {
@@ -241,6 +296,7 @@ export class AdminMsppAccessService {
       user.id,
       dto.role,
       dto.geoDepartmentId ?? null,
+      dto.allGeoDepartments,
       msppActive
     );
 
@@ -261,45 +317,101 @@ export class AdminMsppAccessService {
     }
     await this.assertDelegatedMayTouchTargetUser(actorId, existing.userId);
 
-    const nextRole = dto.role ?? existing.role;
+    let nextRole = dto.role ?? existing.role;
     let nextGeo: string | null = existing.geoDepartmentId;
+    let nextAll = existing.allGeoDepartments;
 
-    if (dto.geoDepartmentId !== undefined) {
-      nextGeo = dto.geoDepartmentId;
-    }
     if (dto.role !== undefined) {
-      nextGeo = resolvedGeoIdForRole(nextRole, nextGeo);
+      nextRole = dto.role;
+      if (dto.role !== MsppRoleCode.MSPP_VALIDATOR_DEPT) {
+        nextGeo = null;
+        nextAll = false;
+      }
     }
 
     if (nextRole === MsppRoleCode.MSPP_VALIDATOR_DEPT) {
-      if (!nextGeo) {
-        throw new BadRequestException("Département géographique requis pour ce rôle.");
+      if (dto.allGeoDepartments === true) {
+        nextAll = true;
+        nextGeo = null;
+      } else if (dto.allGeoDepartments === false) {
+        nextAll = false;
+        if (dto.geoDepartmentId !== undefined) {
+          nextGeo = dto.geoDepartmentId;
+        }
+      } else if (dto.geoDepartmentId !== undefined) {
+        nextGeo = dto.geoDepartmentId;
+        nextAll = false;
       }
-      const geo = await this.prisma.geoDepartment.findUnique({
-        where: { id: nextGeo },
-        select: { id: true },
-      });
-      if (!geo) {
-        throw new BadRequestException("Département géographique invalide.");
-      }
-    } else {
-      if (nextGeo) {
-        throw new BadRequestException("Ce rôle ne prend pas de département géographique.");
-      }
-      nextGeo = null;
     }
 
-    if (dto.isActive !== undefined || dto.role !== undefined || dto.geoDepartmentId !== undefined) {
-      const dup = await this.prisma.msppUserRoleAssignment.findFirst({
-        where: {
-          userId: existing.userId,
-          role: nextRole,
-          geoDepartmentId: nextRole === MsppRoleCode.MSPP_VALIDATOR_DEPT ? nextGeo : null,
-          NOT: { id: assignmentId },
-        },
-      });
-      if (dup) {
-        throw new ConflictException("Cet accès MSPP existe déjà pour cet utilisateur.");
+    if (nextRole === MsppRoleCode.MSPP_VALIDATOR_DEPT) {
+      if (nextAll && nextGeo) {
+        throw new BadRequestException("Choix invalide : département précis et tous départements.");
+      }
+      if (!nextAll && !nextGeo) {
+        throw new BadRequestException("Département géographique requis pour ce rôle (ou accès national départemental).");
+      }
+      if (!nextAll && nextGeo) {
+        const geo = await this.prisma.geoDepartment.findUnique({
+          where: { id: nextGeo },
+          select: { id: true },
+        });
+        if (!geo) {
+          throw new BadRequestException("Département géographique invalide.");
+        }
+      }
+    } else {
+      if (nextGeo || nextAll) {
+        throw new BadRequestException("Ce rôle ne prend pas de département géographique.");
+      }
+    }
+
+    const willCheckDup =
+      dto.isActive !== undefined ||
+      dto.role !== undefined ||
+      dto.geoDepartmentId !== undefined ||
+      dto.allGeoDepartments !== undefined;
+
+    if (willCheckDup) {
+      if (nextRole === MsppRoleCode.MSPP_VALIDATOR_DEPT && nextAll) {
+        const dup = await this.prisma.msppUserRoleAssignment.findFirst({
+          where: {
+            userId: existing.userId,
+            role: MsppRoleCode.MSPP_VALIDATOR_DEPT,
+            allGeoDepartments: true,
+            NOT: { id: assignmentId },
+          },
+        });
+        if (dup) {
+          throw new ConflictException("Un accès « tous les départements » existe déjà pour cet utilisateur.");
+        }
+      }
+      if (nextRole === MsppRoleCode.MSPP_VALIDATOR_DEPT && !nextAll && nextGeo) {
+        const dup = await this.prisma.msppUserRoleAssignment.findFirst({
+          where: {
+            userId: existing.userId,
+            role: MsppRoleCode.MSPP_VALIDATOR_DEPT,
+            geoDepartmentId: nextGeo,
+            allGeoDepartments: false,
+            NOT: { id: assignmentId },
+          },
+        });
+        if (dup) {
+          throw new ConflictException("Cet accès MSPP existe déjà pour cet utilisateur.");
+        }
+      }
+      if (nextRole !== MsppRoleCode.MSPP_VALIDATOR_DEPT) {
+        const dup = await this.prisma.msppUserRoleAssignment.findFirst({
+          where: {
+            userId: existing.userId,
+            role: nextRole,
+            geoDepartmentId: null,
+            NOT: { id: assignmentId },
+          },
+        });
+        if (dup) {
+          throw new ConflictException("Cet accès MSPP existe déjà pour cet utilisateur.");
+        }
       }
     }
 
@@ -307,8 +419,10 @@ export class AdminMsppAccessService {
       where: { id: assignmentId },
       data: {
         ...(dto.role !== undefined ? { role: dto.role } : {}),
-        ...(dto.geoDepartmentId !== undefined || dto.role !== undefined
-          ? { geoDepartmentId: nextGeo }
+        ...(dto.geoDepartmentId !== undefined ||
+        dto.role !== undefined ||
+        dto.allGeoDepartments !== undefined
+          ? { geoDepartmentId: nextGeo, allGeoDepartments: nextAll }
           : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },

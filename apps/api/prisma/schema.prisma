@@ -1004,6 +1004,7 @@ model DiseaseCaseReport {
   diseaseName      String
   status           DiseaseCaseStatus
   reportedAt       DateTime          @default(now())
+  /// Date de début des signes (équivalent dossier initial « symptom onset »).
   onsetDate        DateTime?
   commune          String?
   department       String?
@@ -1013,6 +1014,18 @@ model DiseaseCaseReport {
   reportedByUserId String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+
+  /// Dossier initial — signes (pas de champs de décision MSPP département/central ici).
+  feverReported    Boolean?
+  symptomDuration  String?           @db.VarChar(256)
+  hospitalized     Boolean?
+  outcomeStatus    String?           @db.VarChar(128)
+  labConfirmed     Boolean?
+  labEvidenceType  MsppLabEvidenceType?
+  epiLinkedCase    Boolean?
+  travelOrExposureContext String?    @db.Text
+  clinicalSummary  String?           @db.Text
+  provisionalCaseClassification MsppCaseClassification?
 
   patient     Patient?     @relation(fields: [patientId], references: [id], onDelete: SetNull)
   facility    Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
@@ -1137,19 +1150,22 @@ model GeoCommune {
   @@index([name])
 }
 
-/// National MSPP access (not tied to facility `UserRole`). `geoDepartmentId` is set for `MSPP_VALIDATOR_DEPT`.
+/// National MSPP access (not tied to facility `UserRole`). For `MSPP_VALIDATOR_DEPT`: either `geoDepartmentId` or `allGeoDepartments`.
 model MsppUserRoleAssignment {
-  id              String       @id @default(uuid())
-  userId          String
-  role            MsppRoleCode
-  geoDepartmentId String?
-  isActive        Boolean      @default(true)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                 String       @id @default(uuid())
+  userId             String
+  role               MsppRoleCode
+  geoDepartmentId    String?
+  /// When true with `MSPP_VALIDATOR_DEPT`, user may act on every geographic department (national dept-level scope).
+  allGeoDepartments    Boolean      @default(false)
+  isActive           Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([geoDepartmentId])
   @@index([userId, role])
+  @@index([userId, role, allGeoDepartments])
 }

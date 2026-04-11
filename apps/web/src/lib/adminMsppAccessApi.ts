@@ -52,6 +52,8 @@ export type MsppAccessAssignmentRow = {
   /** True when the linked user has `canCreateFacilities` (principal) — delegated MSPP admins cannot mutate. */
   userIsPlatformPrincipal?: boolean;
   role: string;
+  /** Validateur départemental : périmètre national (tous les départements géographiques). */
+  allGeoDepartments: boolean;
   geoDepartmentId: string | null;
   geoDepartmentName: string | null;
   geoDepartmentCode: string | null;
@@ -74,6 +76,7 @@ export async function createMsppAccessAssignment(body: {
   email: string;
   role: string;
   geoDepartmentId?: string | null;
+  allGeoDepartments?: boolean;
 }): Promise<{ id: string }> {
   return adminApiFetch("/mspp-access/assignments", {
     method: "POST",
@@ -88,6 +91,7 @@ export async function msppOnboardWizard(body: {
   password?: string;
   role: string;
   geoDepartmentId?: string | null;
+  allGeoDepartments?: boolean;
   msppAssignmentActive: boolean;
 }): Promise<{ userId: string; assignmentId: string; userCreated: boolean }> {
   return adminApiFetch("/mspp-access/onboard", {
@@ -98,7 +102,7 @@ export async function msppOnboardWizard(body: {
 
 export async function patchMsppAccessAssignment(
   id: string,
-  body: { role?: string; geoDepartmentId?: string | null; isActive?: boolean }
+  body: { role?: string; geoDepartmentId?: string | null; allGeoDepartments?: boolean; isActive?: boolean }
 ): Promise<{ id: string }> {
   return adminApiFetch(`/mspp-access/assignments/${encodeURIComponent(id)}`, {
     method: "PATCH",

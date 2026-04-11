@@ -4,25 +4,45 @@ import { MsppRoleCode } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MSPP_ROLES_KEY } from "../decorators/require-mspp-roles.decorator";
 
-export type MsppRequestContext = {
-  userId: string;
-  msppAssignments: Array<{ role: MsppRoleCode; geoDepartmentId: string | null }>;
-  /**
-   * Geo departments this user may act on as département validator (union of all
-   * `MSPP_VALIDATOR_DEPT` assignments with a `geoDepartmentId`). National roles
-   * still use `hasNationalScope` for unrestricted reads; this list drives scoped queries.
-   */
-  allowedDepartments: string[];
+export type MsppAssignmentRow = {
+  role: MsppRoleCode;
+  geoDepartmentId: string | null;
+  allGeoDepartments: boolean;
 };
 
-/** Unique geo department IDs from every active MSPP département-validator assignment. */
-export function allowedDepartmentsFromAssignments(
-  assignments: Array<{ role: MsppRoleCode; geoDepartmentId: string | null }>
-): string[] {
+export type MsppRequestContext = {
+  userId: string;
+  msppAssignments: MsppAssignmentRow[];
+  /**
+   * Geo departments this user may act on as département validator (union of
+   * `MSPP_VALIDATOR_DEPT` assignments with a specific `geoDepartmentId`).
+   * Does not include national dept scope; see `deptValidatorAllGeoDepartments`.
+   */
+  allowedDepartments: string[];
+  /**
+   * True when the user has at least one `MSPP_VALIDATOR_DEPT` assignment with
+   * `allGeoDepartments` (may validate any geographic department at dept level).
+   */
+  deptValidatorAllGeoDepartments: boolean;
+};
+
+/** Unique geo department IDs from MSPP département-validator rows scoped to one department. */
+export function allowedDepartmentsFromAssignments(assignments: MsppAssignmentRow[]): string[] {
   const ids = assignments
-    .filter((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT && a.geoDepartmentId)
+    .filter(
+      (a) =>
+        a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT &&
+        !a.allGeoDepartments &&
+        a.geoDepartmentId
+    )
     .map((a) => a.geoDepartmentId as string);
   return [...new Set(ids)];
+}
+
+export function hasDeptValidatorAllGeoDepartments(assignments: MsppAssignmentRow[]): boolean {
+  return assignments.some(
+    (a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT && a.allGeoDepartments === true
+  );
 }
 
 @Injectable()
@@ -46,12 +66,13 @@ export class MsppRolesGuard implements CanActivate {
 
     const rows = await this.prisma.msppUserRoleAssignment.findMany({
       where: { userId, isActive: true },
-      select: { role: true, geoDepartmentId: true },
+      select: { role: true, geoDepartmentId: true, allGeoDepartments: true },
     });
 
-    const assignments = rows.map((r) => ({
+    const assignments: MsppAssignmentRow[] = rows.map((r) => ({
       role: r.role,
       geoDepartmentId: r.geoDepartmentId,
+      allGeoDepartments: r.allGeoDepartments,
     }));
 
     const allowed = assignments.some((a) => requiredRoles.includes(a.role));
@@ -63,6 +84,7 @@ export class MsppRolesGuard implements CanActivate {
       userId,
       msppAssignments: assignments,
       allowedDepartments: allowedDepartmentsFromAssignments(assignments),
+      deptValidatorAllGeoDepartments: hasDeptValidatorAllGeoDepartments(assignments),
     } satisfies MsppRequestContext;
 
     return true;

@@ -15,6 +15,16 @@ import {
   type MsppAccessAssignmentRow,
 } from "@/lib/adminMsppAccessApi";
 
+/** Valeur sentinelle : validateur départemental pour tous les départements géographiques. */
+const ALL_GEO_DEPARTMENTS_VALUE = "__ALL_GEO_DEPARTMENTS__";
+
+function deptGeoPayload(geoId: string): { geoDepartmentId: string | null; allGeoDepartments: boolean } {
+  if (geoId === ALL_GEO_DEPARTMENTS_VALUE) {
+    return { geoDepartmentId: null, allGeoDepartments: true };
+  }
+  return { geoDepartmentId: geoId.trim() || null, allGeoDepartments: false };
+}
+
 function roleLabel(t: (key: string) => string, code: string): string {
   const key = `adminMsppAccess.roles.${code}`;
   const out = t(key);
@@ -34,7 +44,7 @@ export default function AdminMsppAccessPage() {
 
   const [createEmail, setCreateEmail] = useState("");
   const [createRole, setCreateRole] = useState<string>(MSPP_ROLE_CODES[0]);
-  const [createGeoId, setCreateGeoId] = useState("");
+  const [createGeoId, setCreateGeoId] = useState(ALL_GEO_DEPARTMENTS_VALUE);
   const [creating, setCreating] = useState(false);
 
   const [editing, setEditing] = useState<{
@@ -52,7 +62,7 @@ export default function AdminMsppAccessPage() {
   const [wizardEmail, setWizardEmail] = useState("");
   const [wizardPassword, setWizardPassword] = useState("");
   const [wizardRole, setWizardRole] = useState<string>(MSPP_ROLE_CODES[0]);
-  const [wizardGeoId, setWizardGeoId] = useState("");
+  const [wizardGeoId, setWizardGeoId] = useState(ALL_GEO_DEPARTMENTS_VALUE);
   const [wizardMsppActive, setWizardMsppActive] = useState(true);
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
 
@@ -62,7 +72,7 @@ export default function AdminMsppAccessPage() {
     setWizardEmail("");
     setWizardPassword("");
     setWizardRole(MSPP_ROLE_CODES[0]);
-    setWizardGeoId("");
+    setWizardGeoId(ALL_GEO_DEPARTMENTS_VALUE);
     setWizardMsppActive(true);
     setWizardOpen(true);
   }, []);
@@ -124,14 +134,15 @@ export default function AdminMsppAccessPage() {
     }
     setCreating(true);
     try {
+      const geo = showDept(createRole) ? deptGeoPayload(createGeoId) : { geoDepartmentId: null as string | null, allGeoDepartments: false };
       await createMsppAccessAssignment({
         email: createEmail.trim(),
         role: createRole,
-        geoDepartmentId: showDept(createRole) ? createGeoId || null : null,
+        ...geo,
       });
       setToast({ ok: true, message: t("adminMsppAccess.successCreate") });
       setCreateEmail("");
-      setCreateGeoId("");
+      setCreateGeoId(ALL_GEO_DEPARTMENTS_VALUE);
       await load();
     } catch (err) {
       setToast({
@@ -157,12 +168,13 @@ export default function AdminMsppAccessPage() {
     }
     setWizardSubmitting(true);
     try {
+      const geo = showDept(wizardRole) ? deptGeoPayload(wizardGeoId) : { geoDepartmentId: null as string | null, allGeoDepartments: false };
       const res = await msppOnboardWizard({
         firstName: wizardFirstName.trim(),
         lastName: wizardLastName.trim(),
         email: wizardEmail.trim(),
         role: wizardRole,
-        geoDepartmentId: showDept(wizardRole) ? wizardGeoId || null : null,
+        ...geo,
         msppAssignmentActive: wizardMsppActive,
         ...(pw.length >= 8 ? { password: pw } : {}),
       });
@@ -186,7 +198,7 @@ export default function AdminMsppAccessPage() {
     setEditing({
       id: row.id,
       role: row.role,
-      geoDepartmentId: row.geoDepartmentId ?? "",
+      geoDepartmentId: row.allGeoDepartments ? ALL_GEO_DEPARTMENTS_VALUE : row.geoDepartmentId ?? "",
     });
   };
 
@@ -200,7 +212,7 @@ export default function AdminMsppAccessPage() {
     try {
       await patchMsppAccessAssignment(editing.id, {
         role: editing.role,
-        geoDepartmentId: showDept(editing.role) ? editing.geoDepartmentId || null : null,
+        ...(showDept(editing.role) ? deptGeoPayload(editing.geoDepartmentId) : {}),
       });
       setToast({ ok: true, message: t("adminMsppAccess.successUpdate") });
       setEditing(null);
@@ -252,6 +264,153 @@ export default function AdminMsppAccessPage() {
 
   const rowLockedForActor = (row: MsppAccessAssignmentRow) =>
     isDelegatedMsppAdmin && row.userIsPlatformPrincipal === true;
+
+  const activeItems = items.filter((r) => r.isActive);
+  const inactiveItems = items.filter((r) => !r.isActive);
+
+  const renderAssignmentRows = (rows: MsppAccessAssignmentRow[], muted: boolean) =>
+    rows.map((row) => (
+      <React.Fragment key={row.id}>
+        <tr
+          style={
+            muted
+              ? {
+                  borderTop: "1px solid #e2e8f0",
+                  background: "#f1f5f9",
+                  color: "#64748b",
+                }
+              : { borderTop: "1px solid #e2e8f0" }
+          }
+        >
+          <td style={{ padding: "10px 12px" }}>
+            <div style={{ fontWeight: 600, color: muted ? "#64748b" : "#0f172a" }}>
+              {row.userFirstName} {row.userLastName}
+            </div>
+            <div style={{ color: muted ? "#94a3b8" : "#64748b", fontSize: 13 }}>{row.userEmail}</div>
+          </td>
+          <td style={{ padding: "10px 12px" }}>{roleLabel(t, row.role)}</td>
+          <td style={{ padding: "10px 12px" }}>
+            {row.role === "MSPP_VALIDATOR_DEPT" && row.allGeoDepartments
+              ? t("adminMsppAccess.allGeoDepartmentsDisplay")
+              : row.geoDepartmentName
+                ? `${row.geoDepartmentName}${row.geoDepartmentCode ? ` (${row.geoDepartmentCode})` : ""}`
+                : "—"}
+          </td>
+          <td style={{ padding: "10px 12px" }}>
+            {row.isActive ? t("adminMsppAccess.active") : t("adminMsppAccess.inactive")}
+          </td>
+          <td style={{ padding: "10px 12px" }}>
+            {row.userAccountActive ? t("adminMsppAccess.active") : t("adminMsppAccess.inactive")}
+          </td>
+          <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
+            {rowLockedForActor(row) ? (
+              <span style={{ fontSize: 13, color: muted ? "#94a3b8" : "#64748b" }} title={t("adminMsppAccess.platformPrincipalProtectedHint")}>
+                {t("adminMsppAccess.platformPrincipalProtected")}
+              </span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => (editing?.id === row.id ? setEditing(null) : startEdit(row))}
+                  style={{
+                    marginRight: 8,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    background: muted ? "#f8fafc" : "#fff",
+                    color: "#334155",
+                    cursor: "pointer",
+                  }}
+                >
+                  {editing?.id === row.id ? t("adminMsppAccess.cancel") : t("adminMsppAccess.edit")}
+                </button>
+                <button
+                  type="button"
+                  disabled={togglingId === row.id}
+                  onClick={() => void toggleActive(row)}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    background: muted ? "#f8fafc" : "#fff",
+                    color: "#334155",
+                    cursor: togglingId === row.id ? "default" : "pointer",
+                  }}
+                >
+                  {row.isActive ? t("adminMsppAccess.deactivate") : t("adminMsppAccess.reactivate")}
+                </button>
+              </>
+            )}
+          </td>
+        </tr>
+        {editing?.id === row.id ? (
+          <tr style={{ background: muted ? "#e8ecf1" : "#fafafa" }}>
+            <td colSpan={6} style={{ padding: "12px 16px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ color: muted ? "#64748b" : undefined }}>{t("adminMsppAccess.role")}</span>
+                  <select
+                    value={editing.role}
+                    onChange={(e) => setEditing({ ...editing, role: e.target.value })}
+                    style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", minWidth: 220 }}
+                  >
+                    {MSPP_ROLE_CODES.map((c) => (
+                      <option key={c} value={c}>
+                        {roleLabel(t, c)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {showDept(editing.role) ? (
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ color: muted ? "#64748b" : undefined }}>{t("adminMsppAccess.geoDepartment")}</span>
+                    <select
+                      required
+                      value={editing.geoDepartmentId}
+                      onChange={(e) => setEditing({ ...editing, geoDepartmentId: e.target.value })}
+                      style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", minWidth: 220 }}
+                    >
+                      <option value={ALL_GEO_DEPARTMENTS_VALUE}>{t("adminMsppAccess.geoAllDepartmentsOption")}</option>
+                      {geo.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name} ({g.code})
+                        </option>
+                      ))}
+                    </select>
+                    {!loading && geo.length === 0 ? (
+                      <span style={{ fontSize: 12, color: "#b45309", maxWidth: 360, lineHeight: 1.45 }} role="status">
+                        {t("adminMsppAccess.geoListEmptyHint")}
+                      </span>
+                    ) : null}
+                  </label>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={
+                    savingEdit ||
+                    (showDept(editing.role) &&
+                      (!editing.geoDepartmentId.trim() ||
+                        (geo.length === 0 && editing.geoDepartmentId !== ALL_GEO_DEPARTMENTS_VALUE)))
+                  }
+                  onClick={() => void saveEdit()}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: "#1a1a1a",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: savingEdit ? "default" : "pointer",
+                  }}
+                >
+                  {t("adminMsppAccess.save")}
+                </button>
+              </div>
+            </td>
+          </tr>
+        ) : null}
+      </React.Fragment>
+    ));
 
   return (
     <div style={{ padding: 24, maxWidth: 1100 }}>
@@ -377,7 +536,7 @@ export default function AdminMsppAccessPage() {
                 onChange={(e) => setCreateGeoId(e.target.value)}
                 style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}
               >
-                <option value="">—</option>
+                <option value={ALL_GEO_DEPARTMENTS_VALUE}>{t("adminMsppAccess.geoAllDepartmentsOption")}</option>
                 {geo.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name} ({g.code})
@@ -395,7 +554,10 @@ export default function AdminMsppAccessPage() {
           <div>
             <button
               type="submit"
-              disabled={creating || (showDept(createRole) && geo.length === 0)}
+              disabled={
+                creating ||
+                (showDept(createRole) && geo.length === 0 && createGeoId !== ALL_GEO_DEPARTMENTS_VALUE)
+              }
               style={{
                 padding: "10px 18px",
                 borderRadius: 10,
@@ -434,149 +596,62 @@ export default function AdminMsppAccessPage() {
       ) : items.length === 0 ? (
         <p style={{ color: "#64748b" }}>{t("adminMsppAccess.empty")}</p>
       ) : (
-        <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 12 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-            <thead>
-              <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
-                <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colUser")}</th>
-                <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colRole")}</th>
-                <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colDept")}</th>
-                <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colAssignment")}</th>
-                <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colAccount")}</th>
-                <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colActions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((row) => (
-                <React.Fragment key={row.id}>
-                  <tr style={{ borderTop: "1px solid #e2e8f0" }}>
-                    <td style={{ padding: "10px 12px" }}>
-                      <div style={{ fontWeight: 600 }}>
-                        {row.userFirstName} {row.userLastName}
-                      </div>
-                      <div style={{ color: "#64748b", fontSize: 13 }}>{row.userEmail}</div>
-                    </td>
-                    <td style={{ padding: "10px 12px" }}>{roleLabel(t, row.role)}</td>
-                    <td style={{ padding: "10px 12px" }}>
-                      {row.geoDepartmentName
-                        ? `${row.geoDepartmentName}${row.geoDepartmentCode ? ` (${row.geoDepartmentCode})` : ""}`
-                        : "—"}
-                    </td>
-                    <td style={{ padding: "10px 12px" }}>
-                      {row.isActive ? t("adminMsppAccess.active") : t("adminMsppAccess.inactive")}
-                    </td>
-                    <td style={{ padding: "10px 12px" }}>
-                      {row.userAccountActive ? t("adminMsppAccess.active") : t("adminMsppAccess.inactive")}
-                    </td>
-                    <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                      {rowLockedForActor(row) ? (
-                        <span style={{ fontSize: 13, color: "#64748b" }} title={t("adminMsppAccess.platformPrincipalProtectedHint")}>
-                          {t("adminMsppAccess.platformPrincipalProtected")}
-                        </span>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => (editing?.id === row.id ? setEditing(null) : startEdit(row))}
-                            style={{
-                              marginRight: 8,
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: "1px solid #cbd5e1",
-                              background: "#fff",
-                              cursor: "pointer",
-                            }}
-                          >
-                            {editing?.id === row.id ? t("adminMsppAccess.cancel") : t("adminMsppAccess.edit")}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={togglingId === row.id}
-                            onClick={() => void toggleActive(row)}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              border: "1px solid #cbd5e1",
-                              background: "#fff",
-                              cursor: togglingId === row.id ? "default" : "pointer",
-                            }}
-                          >
-                            {row.isActive ? t("adminMsppAccess.deactivate") : t("adminMsppAccess.reactivate")}
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                  {editing?.id === row.id ? (
-                    <tr style={{ background: "#fafafa" }}>
-                      <td colSpan={6} style={{ padding: "12px 16px" }}>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
-                          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <span>{t("adminMsppAccess.role")}</span>
-                            <select
-                              value={editing.role}
-                              onChange={(e) => setEditing({ ...editing, role: e.target.value })}
-                              style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", minWidth: 220 }}
-                            >
-                              {MSPP_ROLE_CODES.map((c) => (
-                                <option key={c} value={c}>
-                                  {roleLabel(t, c)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          {showDept(editing.role) ? (
-                            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                              <span>{t("adminMsppAccess.geoDepartment")}</span>
-                              <select
-                                required
-                                value={editing.geoDepartmentId}
-                                onChange={(e) => setEditing({ ...editing, geoDepartmentId: e.target.value })}
-                                style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", minWidth: 220 }}
-                              >
-                                <option value="">—</option>
-                                {geo.map((g) => (
-                                  <option key={g.id} value={g.id}>
-                                    {g.name} ({g.code})
-                                  </option>
-                                ))}
-                              </select>
-                              {!loading && geo.length === 0 ? (
-                                <span style={{ fontSize: 12, color: "#b45309", maxWidth: 360, lineHeight: 1.45 }} role="status">
-                                  {t("adminMsppAccess.geoListEmptyHint")}
-                                </span>
-                              ) : null}
-                            </label>
-                          ) : null}
-                          <button
-                            type="button"
-                            disabled={
-                              savingEdit ||
-                              (showDept(editing.role) &&
-                                (!editing.geoDepartmentId.trim() || geo.length === 0))
-                            }
-                            onClick={() => void saveEdit()}
-                            style={{
-                              padding: "10px 16px",
-                              borderRadius: 10,
-                              border: "none",
-                              background: "#1a1a1a",
-                              color: "#fff",
-                              fontWeight: 600,
-                              cursor: savingEdit ? "default" : "pointer",
-                            }}
-                          >
-                            {t("adminMsppAccess.save")}
-                          </button>
-                        </div>
-                      </td>
+        <>
+          <section style={{ marginBottom: inactiveItems.length > 0 ? 28 : 0 }}>
+            <h3 style={{ margin: "0 0 10px 0", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+              {t("adminMsppAccess.sectionActiveTitle")}
+            </h3>
+            {activeItems.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>{t("adminMsppAccess.sectionActiveEmpty")}</p>
+            ) : (
+              <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                  <thead>
+                    <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
+                      <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colUser")}</th>
+                      <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colRole")}</th>
+                      <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colDept")}</th>
+                      <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colAssignment")}</th>
+                      <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colAccount")}</th>
+                      <th style={{ padding: "10px 12px" }}>{t("adminMsppAccess.colActions")}</th>
                     </tr>
-                  ) : null}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </thead>
+                  <tbody>{renderAssignmentRows(activeItems, false)}</tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {inactiveItems.length > 0 ? (
+            <section aria-label={t("adminMsppAccess.sectionInactiveTitle")}>
+              <h3 style={{ margin: "0 0 10px 0", fontSize: 15, fontWeight: 700, color: "#475569" }}>
+                {t("adminMsppAccess.sectionInactiveTitle")}
+              </h3>
+              <div
+                style={{
+                  overflowX: "auto",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  background: "#fafbfc",
+                }}
+              >
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                  <thead>
+                    <tr style={{ background: "#e2e8f0", textAlign: "left", color: "#64748b" }}>
+                      <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t("adminMsppAccess.colUser")}</th>
+                      <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t("adminMsppAccess.colRole")}</th>
+                      <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t("adminMsppAccess.colDept")}</th>
+                      <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t("adminMsppAccess.colAssignment")}</th>
+                      <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t("adminMsppAccess.colAccount")}</th>
+                      <th style={{ padding: "10px 12px", fontWeight: 600 }}>{t("adminMsppAccess.colActions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>{renderAssignmentRows(inactiveItems, true)}</tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
+        </>
       )}
 
       <p style={{ marginTop: 24 }}>
@@ -695,7 +770,7 @@ export default function AdminMsppAccessPage() {
                     onChange={(e) => setWizardGeoId(e.target.value)}
                     style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1" }}
                   >
-                    <option value="">—</option>
+                    <option value={ALL_GEO_DEPARTMENTS_VALUE}>{t("adminMsppAccess.geoAllDepartmentsOption")}</option>
                     {geo.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.name} ({g.code})
@@ -730,7 +805,12 @@ export default function AdminMsppAccessPage() {
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
                 <button
                   type="submit"
-                  disabled={wizardSubmitting || (showDept(wizardRole) && geo.length === 0)}
+                  disabled={
+                    wizardSubmitting ||
+                    (showDept(wizardRole) &&
+                      geo.length === 0 &&
+                      wizardGeoId !== ALL_GEO_DEPARTMENTS_VALUE)
+                  }
                   style={{
                     padding: "10px 18px",
                     borderRadius: 10,
