@@ -51,6 +51,10 @@ export type DiseaseCaseReportRow = {
   epiLinkedCase?: boolean | null;
   travelOrExposureContext?: string | null;
   provisionalCaseClassification?: string | null;
+  /** Prénom + nom (champs patient réels uniquement). */
+  patientFullName?: string | null;
+  /** NIR si présent, sinon MRN, sinon numéro de dossier global (voir API). */
+  patientPrimaryIdentifier?: string | null;
   patient?: { id: string; firstName: string; lastName: string; mrn?: string | null } | null;
   reportedBy?: { id: string; firstName: string; lastName: string } | null;
   dataQuality?: {

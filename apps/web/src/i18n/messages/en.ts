@@ -255,6 +255,7 @@ export default {
     tableClinicalPreview: "Summary / notes",
     tableNotes: "Notes",
     tablePatient: "Patient",
+    tableIdentifier: "Identifier",
     dash: "—",
     labEvidenceTypes: {
       NONE: "None",

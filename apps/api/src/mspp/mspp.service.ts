@@ -7,6 +7,7 @@ import {
 import { AuditAction, MsppLabEvidenceType, MsppRoleCode, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
 import { DiseaseCaseReviewStatus, NATIONAL_MSPP_ROLES, ReviewerLevel } from "./mspp.constants";
 import type { MsppRequestContext } from "./guards/mspp-roles.guard";
 import type { MsppReviewActionDto } from "./dto/review-action.dto";
@@ -210,24 +211,6 @@ function hasDeptValidatorNationalScope(ctx: MsppRequestContext): boolean {
 /** Central validators may act on any geo department for department-level MSPP steps. */
 function hasCentralValidatorRole(assignments: MsppRequestContext["msppAssignments"]): boolean {
   return assignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_CENTRAL);
-}
-
-/** NIN (nationalId) preferred, then facility MRN, then global dossier number. */
-function patientPrimaryIdentifierFrom(p: {
-  nationalId: string | null;
-  mrn: string | null;
-  globalMrn: string;
-}): string {
-  const n = p.nationalId?.trim();
-  if (n) return n;
-  const m = p.mrn?.trim();
-  if (m) return m;
-  return p.globalMrn.trim();
-}
-
-function patientFullNameFrom(p: { firstName: string; lastName: string }): string | null {
-  const s = `${p.firstName} ${p.lastName}`.trim();
-  return s || null;
 }
 
 function ageInFullYearsAtReference(dob: Date, ref: Date): number | null {
@@ -435,8 +418,8 @@ export class MsppService {
           reporterRole = reporterRoleByPair.get(pairKey(rep.reportedByUserId, rep.facilityId)) ?? null;
         }
         if (rep.patient) {
-          patientFullName = patientFullNameFrom(rep.patient);
-          patientPrimaryIdentifier = patientPrimaryIdentifierFrom(rep.patient);
+          patientFullName = patientFullNameFromPatient(rep.patient);
+          patientPrimaryIdentifier = patientPrimaryIdentifierFromPatient(rep.patient);
           patientSex = rep.patient.sex;
           if (rep.patient.dob) {
             patientAgeYears = ageInFullYearsAtReference(rep.patient.dob, rep.reportedAt);

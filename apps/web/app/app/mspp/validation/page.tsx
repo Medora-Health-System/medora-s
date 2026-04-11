@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { formatPrimaryIdentifierForDisplay } from "@/lib/patientDisplay";
 import {
   fetchMsppReviews,
   msppCentralApprove,
@@ -197,14 +198,15 @@ function MsppValidationReviewRow({
   showReviewedAtColumn?: boolean;
   actionCell: React.ReactNode;
 }) {
+  const identifierDisplay = formatPrimaryIdentifierForDisplay(r.patientPrimaryIdentifier);
   return (
     <tr>
       <td style={MSPP_TABLE_CELL}>
         <MsppValidationPatientCell row={r} t={t} />
       </td>
       <td style={MSPP_TABLE_CELL}>
-        {r.patientPrimaryIdentifier?.trim() ? (
-          r.patientPrimaryIdentifier
+        {identifierDisplay ? (
+          identifierDisplay
         ) : (
           <span style={MSPP_MUTED_INLINE}>{t("msppValidation.badgeDash")}</span>
         )}

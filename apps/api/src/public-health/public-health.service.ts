@@ -11,6 +11,7 @@ import {
   MsppLabEvidenceType,
   Prisma,
 } from "@prisma/client";
+import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
 import type {
@@ -586,7 +587,14 @@ export class PublicHealthService {
         orderBy: { reportedAt: "desc" },
         include: {
           patient: {
-            select: { id: true, firstName: true, lastName: true, mrn: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              mrn: true,
+              nationalId: true,
+              globalMrn: true,
+            },
           },
           encounter: { select: { id: true } },
           reportedBy: {
@@ -616,8 +624,16 @@ export class PublicHealthService {
     const items = rows.map((r) => {
       const deptOk = Boolean(String(r.department ?? "").trim());
       const comOk = Boolean(String(r.commune ?? "").trim());
+      let patientFullName: string | null = null;
+      let patientPrimaryIdentifier: string | null = null;
+      if (r.patient) {
+        patientFullName = patientFullNameFromPatient(r.patient);
+        patientPrimaryIdentifier = patientPrimaryIdentifierFromPatient(r.patient);
+      }
       return {
         ...r,
+        patientFullName,
+        patientPrimaryIdentifier,
         dataQuality: {
           geoCommuneLinked: Boolean(r.geoCommuneId),
           geoIncomplete: !deptOk || !comOk,

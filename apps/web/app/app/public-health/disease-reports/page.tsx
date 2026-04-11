@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
+import { formatPrimaryIdentifierForDisplay } from "@/lib/patientDisplay";
 import { fetchDiseaseReports, fetchHaitiGeoReference, type DiseaseCaseReportRow, type HaitiGeoDepartment, type HaitiGeoCommune } from "@/lib/publicHealthApi";
 import { DiseaseReportForm } from "@/features/public-health/disease-report-form";
 import { inputStyle } from "@/components/pharmacy/Modal";
@@ -245,6 +246,8 @@ export default function DiseaseReportsPage() {
               <thead>
                 <tr style={{ borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDeclaredOn")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tablePatient")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableIdentifier")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDisease")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableCode")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableStatus")}</th>
@@ -252,29 +255,34 @@ export default function DiseaseReportsPage() {
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableCommune")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableOnset")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableClinicalPreview")}</th>
-                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tablePatient")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableMsppPipeline")}</th>
                 </tr>
               </thead>
               <tbody>
-                {reports.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.reportedAt)}</td>
-                    <td style={{ padding: "8px 6px" }}>{r.diseaseName}</td>
-                    <td style={{ padding: "8px 6px" }}>{r.diseaseCode}</td>
-                    <td style={{ padding: "8px 6px" }}>{statusLabel(r.status)}</td>
-                    <td style={{ padding: "8px 6px" }}>{r.department ?? t("diseaseReports.dash")}</td>
-                    <td style={{ padding: "8px 6px" }}>{r.commune ?? t("diseaseReports.dash")}</td>
-                    <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.onsetDate)}</td>
-                    <td style={{ padding: "8px 6px", maxWidth: 200 }}>
-                      {truncateNote(r.clinicalSummary || r.notes, 80)}
-                    </td>
-                    <td style={{ padding: "8px 6px" }}>
-                      {r.patient ? `${r.patient.lastName}, ${r.patient.firstName}` : t("diseaseReports.dash")}
-                    </td>
-                    <td style={{ padding: "8px 6px", fontSize: 12 }}>{msppPipelineLabel(r.msppReview)}</td>
-                  </tr>
-                ))}
+                {reports.map((r) => {
+                  const idDisplay = formatPrimaryIdentifierForDisplay(r.patientPrimaryIdentifier);
+                  return (
+                    <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.reportedAt)}</td>
+                      <td style={{ padding: "8px 6px" }}>
+                        {r.patientFullName?.trim() ? r.patientFullName.trim() : t("diseaseReports.dash")}
+                      </td>
+                      <td style={{ padding: "8px 6px" }}>
+                        {idDisplay ?? t("diseaseReports.dash")}
+                      </td>
+                      <td style={{ padding: "8px 6px" }}>{r.diseaseName}</td>
+                      <td style={{ padding: "8px 6px" }}>{r.diseaseCode}</td>
+                      <td style={{ padding: "8px 6px" }}>{statusLabel(r.status)}</td>
+                      <td style={{ padding: "8px 6px" }}>{r.department ?? t("diseaseReports.dash")}</td>
+                      <td style={{ padding: "8px 6px" }}>{r.commune ?? t("diseaseReports.dash")}</td>
+                      <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.onsetDate)}</td>
+                      <td style={{ padding: "8px 6px", maxWidth: 200 }}>
+                        {truncateNote(r.clinicalSummary || r.notes, 80)}
+                      </td>
+                      <td style={{ padding: "8px 6px", fontSize: 12 }}>{msppPipelineLabel(r.msppReview)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

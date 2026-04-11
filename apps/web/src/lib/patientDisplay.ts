@@ -68,3 +68,18 @@ export function formatAgeYearsSexEnglish(
 ): string {
   return formatAgeYearsSexFr(dob, sexAtBirth, sex);
 }
+
+/** Standard UUID v4 pattern — hide as user-facing primary identifier when no better label exists. */
+const UUID_V4_LIKE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Returns the value for display in patient identifier columns, or null if empty or UUID-shaped
+ * (e.g. fallback global dossier number stored as UUID).
+ */
+export function formatPrimaryIdentifierForDisplay(value: string | null | undefined): string | null {
+  const t = value?.trim();
+  if (!t) return null;
+  if (UUID_V4_LIKE.test(t)) return null;
+  return t;
+}
