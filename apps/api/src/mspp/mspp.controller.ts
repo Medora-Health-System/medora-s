@@ -56,7 +56,7 @@ export class MsppController {
   }
 
   @Post("reviews/:id/department-approve")
-  @RequireMsppRoles(MsppRoleCode.MSPP_VALIDATOR_DEPT)
+  @RequireMsppRoles(MsppRoleCode.MSPP_VALIDATOR_DEPT, MsppRoleCode.MSPP_VALIDATOR_CENTRAL)
   departmentApprove(
     @Param("id") id: string,
     @Req() req: RequestWithJwtAndMspp,
@@ -66,7 +66,7 @@ export class MsppController {
   }
 
   @Post("reviews/:id/department-reject")
-  @RequireMsppRoles(MsppRoleCode.MSPP_VALIDATOR_DEPT)
+  @RequireMsppRoles(MsppRoleCode.MSPP_VALIDATOR_DEPT, MsppRoleCode.MSPP_VALIDATOR_CENTRAL)
   departmentReject(
     @Param("id") id: string,
     @Req() req: RequestWithJwtAndMspp,

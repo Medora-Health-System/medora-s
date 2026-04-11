@@ -185,8 +185,10 @@ export default function MsppValidationPage() {
   const { t } = useI18n();
   const { ready, msppRoles } = useFacilityAndRoles();
   const canMspp = msppRoles.length > 0;
-  const canDept = msppRoles.includes("MSPP_VALIDATOR_DEPT");
   const canCentral = msppRoles.includes("MSPP_VALIDATOR_CENTRAL");
+  /** Aligné API : validateur central peut aussi traiter la file départementale. */
+  const canDeptActions =
+    msppRoles.includes("MSPP_VALIDATOR_DEPT") || canCentral;
 
   const [rows, setRows] = useState<MsppReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -402,7 +404,7 @@ export default function MsppValidationPage() {
                     </td>
                     <td style={MSPP_TABLE_CELL}>{reviewStatusLabel(t, r.status)}</td>
                     <td style={MSPP_TABLE_CELL}>
-                      {canDept ? (
+                      {canDeptActions ? (
                         <div style={MSPP_BTN_ROW}>
                           <button
                             type="button"

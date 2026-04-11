@@ -1,5 +1,8 @@
 import { apiFetch } from "./apiClient";
 
+/** Backend-relative prefix. `apiFetch` prepends the shared proxy base (not `/api/backend` in this string). */
+const BASE = "/mspp";
+
 /** Corps POST pour approbation / rejet MSPP (département ou central). */
 export type MsppReviewActionBody = {
   comment: string;
@@ -68,7 +71,7 @@ export type MsppReviewRow = {
 };
 
 export async function fetchMsppReviews() {
-  return apiFetch("/mspp/reviews", {}) as Promise<{ reviews: MsppReviewRow[] }>;
+  return apiFetch(`${BASE}/reviews`, {}) as Promise<{ reviews: MsppReviewRow[] }>;
 }
 
 export type MsppSummaryResponse = {
@@ -82,7 +85,7 @@ export type MsppSummaryResponse = {
 };
 
 export async function fetchMsppSummary() {
-  return apiFetch("/mspp/summary", {}) as Promise<MsppSummaryResponse>;
+  return apiFetch(`${BASE}/summary`, {}) as Promise<MsppSummaryResponse>;
 }
 
 export type MsppDiseasesResponse = {
@@ -90,7 +93,7 @@ export type MsppDiseasesResponse = {
 };
 
 export async function fetchMsppDiseases() {
-  return apiFetch("/mspp/diseases", {}) as Promise<MsppDiseasesResponse>;
+  return apiFetch(`${BASE}/diseases`, {}) as Promise<MsppDiseasesResponse>;
 }
 
 export type MsppGeographyResponse = {
@@ -103,7 +106,7 @@ export type MsppGeographyResponse = {
 };
 
 export async function fetchMsppGeography() {
-  return apiFetch("/mspp/geography", {}) as Promise<MsppGeographyResponse>;
+  return apiFetch(`${BASE}/geography`, {}) as Promise<MsppGeographyResponse>;
 }
 
 export type MsppTrendsResponse = {
@@ -111,32 +114,32 @@ export type MsppTrendsResponse = {
 };
 
 export async function fetchMsppTrends() {
-  return apiFetch("/mspp/trends", {}) as Promise<MsppTrendsResponse>;
+  return apiFetch(`${BASE}/trends`, {}) as Promise<MsppTrendsResponse>;
 }
 
 export async function msppDepartmentApprove(reviewId: string, body: MsppReviewActionBody) {
-  return apiFetch(`/mspp/reviews/${encodeURIComponent(reviewId)}/department-approve`, {
+  return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/department-approve`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
 export async function msppDepartmentReject(reviewId: string, body: MsppReviewActionBody) {
-  return apiFetch(`/mspp/reviews/${encodeURIComponent(reviewId)}/department-reject`, {
+  return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/department-reject`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
 export async function msppCentralApprove(reviewId: string, body: MsppReviewActionBody) {
-  return apiFetch(`/mspp/reviews/${encodeURIComponent(reviewId)}/central-approve`, {
+  return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/central-approve`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
 export async function msppCentralReject(reviewId: string, body: MsppReviewActionBody) {
-  return apiFetch(`/mspp/reviews/${encodeURIComponent(reviewId)}/central-reject`, {
+  return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/central-reject`, {
     method: "POST",
     body: JSON.stringify(body),
   });

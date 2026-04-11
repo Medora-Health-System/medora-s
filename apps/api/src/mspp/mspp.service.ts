@@ -11,14 +11,41 @@ import { DiseaseCaseReviewStatus, NATIONAL_MSPP_ROLES, ReviewerLevel } from "./m
 import type { MsppRequestContext } from "./guards/mspp-roles.guard";
 import type { MsppReviewActionDto } from "./dto/review-action.dto";
 
+/** Champs alignés sur la revue / le corps de décision MSPP (fièvre, labo, exposition, durée). */
+export type MsppCaseQualityInput = {
+  validationFever: boolean | null | undefined;
+  validationLabConfirmed: boolean | null | undefined;
+  validationExposureRisk: string | null | undefined;
+  validationDuration: string | null | undefined;
+};
+
+/**
+ * Score automatique de complétude pour la décision de validation (surveillance).
+ * Utilisé avant approbation départementale ou centrale.
+ */
+export function evaluateCaseQuality(review: MsppCaseQualityInput): number {
+  let score = 0;
+  if (review.validationFever) score += 1;
+  if (review.validationLabConfirmed) score += 2;
+  if (review.validationExposureRisk === "HIGH") score += 2;
+  if (review.validationDuration?.trim()) score += 1;
+  return score;
+}
+
+function assertCaseQualitySufficientForMsppApproval(input: MsppCaseQualityInput): void {
+  const score = evaluateCaseQuality(input);
+  if (score < 2) {
+    throw new BadRequestException("Dossier insuffisant pour validation MSPP");
+  }
+}
+
 function hasNationalScope(assignments: MsppRequestContext["msppAssignments"]): boolean {
   return assignments.some((a) => NATIONAL_MSPP_ROLES.includes(a.role));
 }
 
-function deptGeoIds(assignments: MsppRequestContext["msppAssignments"]): string[] {
-  return assignments
-    .filter((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT && a.geoDepartmentId)
-    .map((a) => a.geoDepartmentId as string);
+/** Central validators may act on any geo department for department-level MSPP steps. */
+function hasCentralValidatorRole(assignments: MsppRequestContext["msppAssignments"]): boolean {
+  return assignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_CENTRAL);
 }
 
 /** NIN (nationalId) preferred, then facility MRN, then global dossier number. */
@@ -78,11 +105,10 @@ function reviewWhereForContext(ctx: MsppRequestContext): Prisma.DiseaseCaseRevie
   if (hasNationalScope(ctx.msppAssignments)) {
     return {};
   }
-  const ids = deptGeoIds(ctx.msppAssignments);
-  if (ids.length === 0) {
+  if (ctx.allowedDepartments.length === 0) {
     throw new ForbiddenException("Department validator requires geoDepartmentId on assignment.");
   }
-  return { departmentId: { in: ids } };
+  return { departmentId: { in: ctx.allowedDepartments } };
 }
 
 function reportingWhereForContext(ctx: MsppRequestContext): Prisma.DiseaseCaseReviewWhereInput {
@@ -92,11 +118,10 @@ function reportingWhereForContext(ctx: MsppRequestContext): Prisma.DiseaseCaseRe
   if (hasNationalScope(ctx.msppAssignments)) {
     return base;
   }
-  const ids = deptGeoIds(ctx.msppAssignments);
-  if (ids.length === 0) {
+  if (ctx.allowedDepartments.length === 0) {
     throw new ForbiddenException("Department validator requires geoDepartmentId on assignment.");
   }
-  return { ...base, departmentId: { in: ids } };
+  return { ...base, departmentId: { in: ctx.allowedDepartments } };
 }
 
 @Injectable()
@@ -264,16 +289,16 @@ export class MsppService {
   }
 
   async departmentApprove(reviewId: string, ctx: MsppRequestContext, dto: MsppReviewActionDto) {
-    const allowed = ctx.msppAssignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT);
-    if (!allowed) {
-      throw new ForbiddenException("Only MSPP_VALIDATOR_DEPT can department-approve.");
+    const isDeptValidator = ctx.msppAssignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT);
+    const isCentralValidator = hasCentralValidatorRole(ctx.msppAssignments);
+    if (!isDeptValidator && !isCentralValidator) {
+      throw new ForbiddenException("Only MSPP_VALIDATOR_DEPT or MSPP_VALIDATOR_CENTRAL can department-approve.");
     }
     const review = await this.prisma.diseaseCaseReview.findUnique({ where: { id: reviewId } });
     if (!review) {
       throw new NotFoundException("Review not found");
     }
-    const deptIds = deptGeoIds(ctx.msppAssignments);
-    if (!deptIds.includes(review.departmentId)) {
+    if (!isCentralValidator && !ctx.allowedDepartments.includes(review.departmentId)) {
       throw new ForbiddenException("Not authorized for this department.");
     }
     if (review.status !== DiseaseCaseReviewStatus.PENDING_DEPARTMENT) {
@@ -281,6 +306,12 @@ export class MsppService {
         `Invalid status for department approve: expected ${DiseaseCaseReviewStatus.PENDING_DEPARTMENT}`
       );
     }
+    assertCaseQualitySufficientForMsppApproval({
+      validationFever: dto.fever,
+      validationLabConfirmed: dto.labConfirmed,
+      validationExposureRisk: dto.exposureRisk,
+      validationDuration: dto.duration,
+    });
     const notes = this.appendNote(
       review.notes,
       this.validationAuditLine("Validation département — approbation", dto)
@@ -306,16 +337,16 @@ export class MsppService {
   }
 
   async departmentReject(reviewId: string, ctx: MsppRequestContext, dto: MsppReviewActionDto) {
-    const allowed = ctx.msppAssignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT);
-    if (!allowed) {
-      throw new ForbiddenException("Only MSPP_VALIDATOR_DEPT can department-reject.");
+    const isDeptValidator = ctx.msppAssignments.some((a) => a.role === MsppRoleCode.MSPP_VALIDATOR_DEPT);
+    const isCentralValidator = hasCentralValidatorRole(ctx.msppAssignments);
+    if (!isDeptValidator && !isCentralValidator) {
+      throw new ForbiddenException("Only MSPP_VALIDATOR_DEPT or MSPP_VALIDATOR_CENTRAL can department-reject.");
     }
     const review = await this.prisma.diseaseCaseReview.findUnique({ where: { id: reviewId } });
     if (!review) {
       throw new NotFoundException("Review not found");
     }
-    const deptIds = deptGeoIds(ctx.msppAssignments);
-    if (!deptIds.includes(review.departmentId)) {
+    if (!isCentralValidator && !ctx.allowedDepartments.includes(review.departmentId)) {
       throw new ForbiddenException("Not authorized for this department.");
     }
     if (review.status !== DiseaseCaseReviewStatus.PENDING_DEPARTMENT) {
@@ -364,6 +395,12 @@ export class MsppService {
         `Invalid status for central approve: expected ${DiseaseCaseReviewStatus.DEPARTMENT_APPROVED} or ${DiseaseCaseReviewStatus.PENDING_CENTRAL}`
       );
     }
+    assertCaseQualitySufficientForMsppApproval({
+      validationFever: dto.fever,
+      validationLabConfirmed: dto.labConfirmed,
+      validationExposureRisk: dto.exposureRisk,
+      validationDuration: dto.duration,
+    });
     const notes = this.appendNote(
       review.notes,
       this.validationAuditLine("Validation centrale — approbation", dto)
