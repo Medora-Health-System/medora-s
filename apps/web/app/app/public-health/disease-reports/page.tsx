@@ -251,7 +251,7 @@ export default function DiseaseReportsPage() {
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDepartment")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableCommune")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableOnset")}</th>
-                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableNotes")}</th>
+                  <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableClinicalPreview")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tablePatient")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableMsppPipeline")}</th>
                 </tr>
@@ -266,7 +266,9 @@ export default function DiseaseReportsPage() {
                     <td style={{ padding: "8px 6px" }}>{r.department ?? t("diseaseReports.dash")}</td>
                     <td style={{ padding: "8px 6px" }}>{r.commune ?? t("diseaseReports.dash")}</td>
                     <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.onsetDate)}</td>
-                    <td style={{ padding: "8px 6px", maxWidth: 200 }}>{truncateNote(r.notes, 80)}</td>
+                    <td style={{ padding: "8px 6px", maxWidth: 200 }}>
+                      {truncateNote(r.clinicalSummary || r.notes, 80)}
+                    </td>
                     <td style={{ padding: "8px 6px" }}>
                       {r.patient ? `${r.patient.lastName}, ${r.patient.firstName}` : t("diseaseReports.dash")}
                     </td>

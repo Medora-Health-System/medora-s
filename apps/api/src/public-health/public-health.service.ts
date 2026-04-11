@@ -5,7 +5,12 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, DiseaseCaseStatus, Prisma } from "@prisma/client";
+import {
+  AuditAction,
+  DiseaseCaseStatus,
+  MsppLabEvidenceType,
+  Prisma,
+} from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
 import type {
@@ -464,6 +469,21 @@ export class PublicHealthService {
 
     const reportedAt = dto.reportedAt;
 
+    const notesTrim = dto.notes?.trim();
+    const clinicalTrim = dto.clinicalSummary?.trim();
+    const symptomDur = dto.symptomDuration?.trim();
+    const outcomeTrim = dto.outcomeStatus?.trim();
+    const travelTrim = dto.travelOrExposureContext?.trim();
+
+    let labEvidenceType: MsppLabEvidenceType | undefined;
+    if (dto.labConfirmed === false) {
+      labEvidenceType = MsppLabEvidenceType.NONE;
+    } else if (dto.labConfirmed === true) {
+      labEvidenceType = dto.labEvidenceType;
+    } else {
+      labEvidenceType = dto.labEvidenceType ?? undefined;
+    }
+
     const row = await this.prisma.diseaseCaseReport.create({
       data: {
         patientId: dto.patientId ?? undefined,
@@ -477,7 +497,22 @@ export class PublicHealthService {
         commune: communeStr,
         department: departmentStr,
         geoCommuneId,
-        notes: dto.notes,
+        notes: notesTrim || undefined,
+        clinicalSummary: clinicalTrim || undefined,
+        feverReported:
+          typeof dto.feverReported === "boolean" ? dto.feverReported : undefined,
+        symptomDuration: symptomDur || undefined,
+        hospitalized:
+          typeof dto.hospitalized === "boolean" ? dto.hospitalized : undefined,
+        outcomeStatus: outcomeTrim || undefined,
+        labConfirmed:
+          typeof dto.labConfirmed === "boolean" ? dto.labConfirmed : undefined,
+        labEvidenceType,
+        epiLinkedCase:
+          typeof dto.epiLinkedCase === "boolean" ? dto.epiLinkedCase : undefined,
+        travelOrExposureContext: travelTrim || undefined,
+        provisionalCaseClassification:
+          dto.provisionalCaseClassification ?? undefined,
         reportedByUserId: userId,
       },
       include: {

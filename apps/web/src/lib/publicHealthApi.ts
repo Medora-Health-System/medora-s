@@ -41,6 +41,16 @@ export type DiseaseCaseReportRow = {
   department?: string | null;
   geoCommuneId?: string | null;
   notes?: string | null;
+  clinicalSummary?: string | null;
+  feverReported?: boolean | null;
+  symptomDuration?: string | null;
+  hospitalized?: boolean | null;
+  outcomeStatus?: string | null;
+  labConfirmed?: boolean | null;
+  labEvidenceType?: string | null;
+  epiLinkedCase?: boolean | null;
+  travelOrExposureContext?: string | null;
+  provisionalCaseClassification?: string | null;
   patient?: { id: string; firstName: string; lastName: string; mrn?: string | null } | null;
   reportedBy?: { id: string; firstName: string; lastName: string } | null;
   dataQuality?: {

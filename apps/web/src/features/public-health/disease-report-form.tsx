@@ -3,10 +3,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
-import { createDiseaseReport, type HaitiGeoDepartment, type HaitiGeoCommune } from "@/lib/publicHealthApi";
+import {
+  createDiseaseReport,
+  type HaitiGeoDepartment,
+  type HaitiGeoCommune,
+} from "@/lib/publicHealthApi";
 import { Field, inputStyle } from "@/components/pharmacy/Modal";
 
 const STATUS_CODES = ["SUSPECTED", "CONFIRMED", "RULED_OUT"] as const;
+
+const LAB_EVIDENCE_FOR_CONFIRMED = [
+  "PCR",
+  "RAPID_ANTIGEN",
+  "CULTURE",
+  "SEROLOGY",
+  "OTHER",
+] as const;
+
+const MSPP_CLASSIFICATION = [
+  "SUSPECT",
+  "PROBABLE",
+  "CONFIRMED",
+  "NOT_A_CASE",
+] as const;
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: "#fff",
@@ -14,6 +33,15 @@ const cardStyle: React.CSSProperties = {
   borderRadius: 16,
   marginBottom: 20,
   border: "1px solid #e2e8f0",
+  maxWidth: 720,
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: 15,
+  fontWeight: 600,
+  color: "#334155",
+  marginTop: 20,
+  marginBottom: 10,
 };
 
 const btnPrimary: React.CSSProperties = {
@@ -42,6 +70,12 @@ function todayDateInput(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function triStateToBool(v: string): boolean | undefined {
+  if (v === "yes") return true;
+  if (v === "no") return false;
+  return undefined;
 }
 
 type Props = {
@@ -75,6 +109,16 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
   const [status, setStatus] = useState<string>("SUSPECTED");
   const [reportedDate, setReportedDate] = useState(todayDateInput);
   const [onsetDate, setOnsetDate] = useState("");
+  const [feverTri, setFeverTri] = useState("");
+  const [symptomDuration, setSymptomDuration] = useState("");
+  const [hospTri, setHospTri] = useState("");
+  const [outcomeStatus, setOutcomeStatus] = useState("");
+  const [labTri, setLabTri] = useState("");
+  const [labEvidenceType, setLabEvidenceType] = useState("");
+  const [epiTri, setEpiTri] = useState("");
+  const [travelOrExposureContext, setTravelOrExposureContext] = useState("");
+  const [provisionalClassification, setProvisionalClassification] = useState("");
+  const [clinicalSummary, setClinicalSummary] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -86,30 +130,51 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
     return out === key ? code : out;
   };
 
+  const labEvidenceLabel = (code: string) => {
+    const key = `diseaseReports.labEvidenceTypes.${code}`;
+    const out = t(key);
+    return out === key ? code : out;
+  };
+
+  const classLabel = (code: string) => {
+    const key = `diseaseReports.msppClassifications.${code}`;
+    const out = t(key);
+    return out === key ? code : out;
+  };
+
   const geoReadyForCommune =
     useGeoLists &&
     Boolean(geoDeptId) &&
     communesForDept.length > 0;
 
+  const hasTextJustification = Boolean(clinicalSummary.trim() || notes.trim());
+
+  const labValid =
+    labTri !== "yes" ||
+    Boolean(labEvidenceType && labEvidenceType !== "NONE");
+
   const isFormValid = useMemo(() => {
-    if (!diseaseCode.trim() || !diseaseName.trim() || !notes.trim()) return false;
+    if (!diseaseCode.trim() || !diseaseName.trim()) return false;
+    if (!hasTextJustification) return false;
     if (!reportedDate.trim()) return false;
     if (!status) return false;
     if (!useGeoLists) return false;
     if (!geoDeptId) return false;
     if (!geoReadyForCommune) return false;
     if (!geoCommuneId.trim()) return false;
+    if (!labValid) return false;
     return true;
   }, [
     diseaseCode,
     diseaseName,
-    notes,
+    hasTextJustification,
     reportedDate,
     status,
     useGeoLists,
     geoDeptId,
     geoReadyForCommune,
     geoCommuneId,
+    labValid,
   ]);
 
   const showInvalidHint = (isValid: boolean) => dirty && !isValid;
@@ -126,6 +191,27 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
     }
   };
 
+  const resetForm = () => {
+    setDiseaseCode("");
+    setDiseaseName("");
+    setOnsetDate("");
+    setReportedDate(todayDateInput());
+    setGeoDeptId("");
+    setGeoCommuneId("");
+    setFeverTri("");
+    setSymptomDuration("");
+    setHospTri("");
+    setOutcomeStatus("");
+    setLabTri("");
+    setLabEvidenceType("");
+    setEpiTri("");
+    setTravelOrExposureContext("");
+    setProvisionalClassification("");
+    setClinicalSummary("");
+    setNotes("");
+    setPatientId("");
+  };
+
   const handleSubmit = async () => {
     if (!facilityId || !isFormValid) return;
 
@@ -137,22 +223,44 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
         diseaseName: diseaseName.trim(),
         status,
         reportedAt: new Date(`${reportedDate}T12:00:00`).toISOString(),
-        onsetDate: onsetDate || undefined,
         geoCommuneId: geoCommuneId.trim(),
-        notes: notes.trim(),
       };
+
+      if (onsetDate) {
+        body.onsetDate = new Date(`${onsetDate}T12:00:00`).toISOString();
+      }
+      if (clinicalSummary.trim()) body.clinicalSummary = clinicalSummary.trim();
+      if (notes.trim()) body.notes = notes.trim();
+
+      const f = triStateToBool(feverTri);
+      if (f !== undefined) body.feverReported = f;
+      if (symptomDuration.trim()) body.symptomDuration = symptomDuration.trim();
+      const h = triStateToBool(hospTri);
+      if (h !== undefined) body.hospitalized = h;
+      if (outcomeStatus.trim()) body.outcomeStatus = outcomeStatus.trim();
+
+      if (labTri === "yes") {
+        body.labConfirmed = true;
+        body.labEvidenceType = labEvidenceType;
+      } else if (labTri === "no") {
+        body.labConfirmed = false;
+      }
+
+      const e = triStateToBool(epiTri);
+      if (e !== undefined) body.epiLinkedCase = e;
+      if (travelOrExposureContext.trim()) {
+        body.travelOrExposureContext = travelOrExposureContext.trim();
+      }
+      if (provisionalClassification.trim()) {
+        body.provisionalCaseClassification = provisionalClassification.trim();
+      }
+
       if (patientId) body.patientId = patientId;
+
       await createDiseaseReport(facilityId, body);
       setMessage({ type: "ok", text: t("diseaseReports.createdOk") });
       setDirty(false);
-      setDiseaseCode("");
-      setDiseaseName("");
-      setOnsetDate("");
-      setReportedDate(todayDateInput());
-      setGeoDeptId("");
-      setGeoCommuneId("");
-      setNotes("");
-      setPatientId("");
+      resetForm();
       onCreated();
     } catch (e: unknown) {
       setMessage({
@@ -204,6 +312,8 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
           </select>
         </Field>
       )}
+
+      <div style={sectionTitleStyle}>{t("diseaseReports.sectionDeclaration")}</div>
       <Field label={`${t("diseaseReports.diseaseCode")}${req}`}>
         <input
           style={inputStyle}
@@ -212,9 +322,11 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
             markDirty();
             setDiseaseCode(e.target.value);
           }}
-          placeholder="ex. A09, J18"
+          placeholder={t("diseaseReports.diseaseCodePlaceholder")}
         />
-        {showInvalidHint(Boolean(diseaseCode.trim())) ? <div style={errText}>{t("diseaseReports.validationDiseaseCode")}</div> : null}
+        {showInvalidHint(Boolean(diseaseCode.trim())) ? (
+          <div style={errText}>{t("diseaseReports.validationDiseaseCode")}</div>
+        ) : null}
         <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
           {t("diseaseReports.diseaseCodeHint")}
         </span>
@@ -227,9 +339,11 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
             markDirty();
             setDiseaseName(e.target.value);
           }}
-          placeholder="ex. Diarrhée aiguë"
+          placeholder={t("diseaseReports.diseaseNamePlaceholder")}
         />
-        {showInvalidHint(Boolean(diseaseName.trim())) ? <div style={errText}>{t("diseaseReports.validationDiseaseName")}</div> : null}
+        {showInvalidHint(Boolean(diseaseName.trim())) ? (
+          <div style={errText}>{t("diseaseReports.validationDiseaseName")}</div>
+        ) : null}
       </Field>
       <Field label={`${t("diseaseReports.status")}${req}`}>
         <select
@@ -257,21 +371,12 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
             setReportedDate(e.target.value);
           }}
         />
-        {showInvalidHint(Boolean(reportedDate.trim())) ? <div style={errText}>{t("diseaseReports.validationReportedDate")}</div> : null}
+        {showInvalidHint(Boolean(reportedDate.trim())) ? (
+          <div style={errText}>{t("diseaseReports.validationReportedDate")}</div>
+        ) : null}
         <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
           {t("diseaseReports.reportedDateHint")}
         </span>
-      </Field>
-      <Field label={t("diseaseReports.onsetDate")}>
-        <input
-          type="date"
-          style={inputStyle}
-          value={onsetDate}
-          onChange={(e) => {
-            markDirty();
-            setOnsetDate(e.target.value);
-          }}
-        />
       </Field>
 
       {!useGeoLists ? (
@@ -323,29 +428,202 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
                   </option>
                 ))}
               </select>
-              {showInvalidHint(Boolean(geoCommuneId.trim())) ? <div style={errText}>{t("diseaseReports.validationCommune")}</div> : null}
+              {showInvalidHint(Boolean(geoCommuneId.trim())) ? (
+                <div style={errText}>{t("diseaseReports.validationCommune")}</div>
+              ) : null}
             </Field>
           ) : null}
         </>
       )}
 
+      <div style={sectionTitleStyle}>{t("diseaseReports.sectionSignes")}</div>
+      <Field label={t("diseaseReports.onsetDate")}>
+        <input
+          type="date"
+          style={inputStyle}
+          value={onsetDate}
+          onChange={(e) => {
+            markDirty();
+            setOnsetDate(e.target.value);
+          }}
+        />
+      </Field>
+      <Field label={t("diseaseReports.feverReported")}>
+        <select
+          style={inputStyle}
+          value={feverTri}
+          onChange={(e) => {
+            markDirty();
+            setFeverTri(e.target.value);
+          }}
+        >
+          <option value="">{t("diseaseReports.triStateUnknown")}</option>
+          <option value="yes">{t("diseaseReports.triStateYes")}</option>
+          <option value="no">{t("diseaseReports.triStateNo")}</option>
+        </select>
+      </Field>
+      <Field label={t("diseaseReports.symptomDuration")}>
+        <input
+          style={inputStyle}
+          value={symptomDuration}
+          onChange={(e) => {
+            markDirty();
+            setSymptomDuration(e.target.value);
+          }}
+          placeholder={t("diseaseReports.symptomDurationHint")}
+        />
+      </Field>
+      <Field label={t("diseaseReports.hospitalized")}>
+        <select
+          style={inputStyle}
+          value={hospTri}
+          onChange={(e) => {
+            markDirty();
+            setHospTri(e.target.value);
+          }}
+        >
+          <option value="">{t("diseaseReports.triStateUnknown")}</option>
+          <option value="yes">{t("diseaseReports.triStateYes")}</option>
+          <option value="no">{t("diseaseReports.triStateNo")}</option>
+        </select>
+      </Field>
+      <Field label={t("diseaseReports.outcomeStatus")}>
+        <input
+          style={inputStyle}
+          value={outcomeStatus}
+          onChange={(e) => {
+            markDirty();
+            setOutcomeStatus(e.target.value);
+          }}
+          placeholder={t("diseaseReports.outcomeStatusHint")}
+        />
+      </Field>
+
+      <div style={sectionTitleStyle}>{t("diseaseReports.sectionLaboratoire")}</div>
+      <Field label={t("diseaseReports.labConfirmed")}>
+        <select
+          style={inputStyle}
+          value={labTri}
+          onChange={(e) => {
+            markDirty();
+            const v = e.target.value;
+            setLabTri(v);
+            if (v !== "yes") setLabEvidenceType("");
+          }}
+        >
+          <option value="">{t("diseaseReports.triStateUnknown")}</option>
+          <option value="yes">{t("diseaseReports.triStateYes")}</option>
+          <option value="no">{t("diseaseReports.triStateNo")}</option>
+        </select>
+      </Field>
+      {labTri === "yes" ? (
+        <Field label={`${t("diseaseReports.labEvidenceType")}${req}`}>
+          <select
+            style={inputStyle}
+            value={labEvidenceType}
+            onChange={(e) => {
+              markDirty();
+              setLabEvidenceType(e.target.value);
+            }}
+          >
+            <option value="">{t("diseaseReports.labEvidencePlaceholder")}</option>
+            {LAB_EVIDENCE_FOR_CONFIRMED.map((c) => (
+              <option key={c} value={c}>
+                {labEvidenceLabel(c)}
+              </option>
+            ))}
+          </select>
+          <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
+            {t("diseaseReports.labEvidenceHint")}
+          </span>
+          {showInvalidHint(labValid) ? (
+            <div style={errText}>{t("diseaseReports.validationLabEvidence")}</div>
+          ) : null}
+        </Field>
+      ) : null}
+
+      <div style={sectionTitleStyle}>{t("diseaseReports.sectionExposition")}</div>
+      <Field label={t("diseaseReports.epiLinkedCase")}>
+        <select
+          style={inputStyle}
+          value={epiTri}
+          onChange={(e) => {
+            markDirty();
+            setEpiTri(e.target.value);
+          }}
+        >
+          <option value="">{t("diseaseReports.triStateUnknown")}</option>
+          <option value="yes">{t("diseaseReports.triStateYes")}</option>
+          <option value="no">{t("diseaseReports.triStateNo")}</option>
+        </select>
+      </Field>
+      <Field label={t("diseaseReports.travelOrExposureContext")}>
+        <textarea
+          style={{ ...inputStyle, minHeight: 72 }}
+          value={travelOrExposureContext}
+          onChange={(e) => {
+            markDirty();
+            setTravelOrExposureContext(e.target.value);
+          }}
+          placeholder={t("diseaseReports.travelOrExposureHint")}
+        />
+      </Field>
+
+      <div style={sectionTitleStyle}>{t("diseaseReports.sectionResume")}</div>
+      <Field label={`${t("diseaseReports.provisionalClassification")}`}>
+        <select
+          style={inputStyle}
+          value={provisionalClassification}
+          onChange={(e) => {
+            markDirty();
+            setProvisionalClassification(e.target.value);
+          }}
+        >
+          <option value="">{t("diseaseReports.triStateUnknown")}</option>
+          {MSPP_CLASSIFICATION.map((c) => (
+            <option key={c} value={c}>
+              {classLabel(c)}
+            </option>
+          ))}
+        </select>
+        <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
+          {t("diseaseReports.provisionalClassificationHint")}
+        </span>
+      </Field>
+      <Field label={t("diseaseReports.clinicalSummary")}>
+        <textarea
+          style={{ ...inputStyle, minHeight: 120 }}
+          value={clinicalSummary}
+          onChange={(e) => {
+            markDirty();
+            setClinicalSummary(e.target.value);
+          }}
+        />
+        <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
+          {t("diseaseReports.clinicalSummaryHint")}
+        </span>
+      </Field>
       <Field label={t("diseaseReports.notes")}>
         <textarea
-          style={{ ...inputStyle, minHeight: 100 }}
+          style={{ ...inputStyle, minHeight: 72 }}
           value={notes}
           onChange={(e) => {
             markDirty();
             setNotes(e.target.value);
           }}
         />
-        {showInvalidHint(Boolean(notes.trim())) ? <div style={errText}>{t("diseaseReports.validationNotes")}</div> : null}
       </Field>
+      {showInvalidHint(hasTextJustification) ? (
+        <div style={errText}>{t("diseaseReports.validationNotesOrSummary")}</div>
+      ) : null}
+
       <button
         type="button"
         disabled={submitting || !isFormValid}
         onClick={() => void handleSubmit()}
         style={{
           ...btnPrimary,
+          marginTop: 8,
           opacity: submitting || !isFormValid ? 0.45 : 1,
           cursor: submitting || !isFormValid ? "not-allowed" : "pointer",
         }}
