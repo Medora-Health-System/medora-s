@@ -3,6 +3,7 @@
 import React from "react";
 import { useI18n } from "@/lib/i18n";
 import type { MsppCommuneSanitarySignalRow, MsppCommuneSanitarySignalsResponse } from "@/lib/msppApi";
+import { msppSanitaryThresholdProfileSubtitle } from "./msppSanitarySignalProfileLabel";
 import {
   MSPP_EMPTY_STATE,
   MSPP_MUTED_INLINE,
@@ -127,26 +128,37 @@ export function MsppCommuneSurveillanceBlock({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={`${row.geoCommuneId}-${row.diseaseCode}`}>
-                  <td style={MSPP_TABLE_CELL}>{row.departmentName?.trim() || "—"}</td>
-                  <td style={MSPP_TABLE_CELL}>{row.communeName?.trim() || "—"}</td>
-                  <td style={MSPP_TABLE_CELL}>
-                    <div style={{ fontWeight: 600 }}>{row.diseaseName?.trim() || row.diseaseCode}</div>
-                  </td>
-                  <td style={{ ...MSPP_TABLE_CELL, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    {row.currentCount}
-                  </td>
-                  <td style={{ ...MSPP_TABLE_CELL, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    {row.previousCount}
-                  </td>
-                  <td style={MSPP_TABLE_CELL}>
-                    <span style={signalLevelBadgeStyle(row.signalLevel)}>
-                      {t(`msppSanitarySignals.level.${row.signalLevel}`)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {rows.map((row) => {
+                const profileSub = msppSanitaryThresholdProfileSubtitle(t, row.thresholdProfileUsed);
+                return (
+                  <tr key={`${row.geoCommuneId}-${row.diseaseCode}`}>
+                    <td style={MSPP_TABLE_CELL}>{row.departmentName?.trim() || "—"}</td>
+                    <td style={MSPP_TABLE_CELL}>{row.communeName?.trim() || "—"}</td>
+                    <td style={MSPP_TABLE_CELL}>
+                      <div style={{ fontWeight: 600 }}>{row.diseaseName?.trim() || row.diseaseCode}</div>
+                    </td>
+                    <td style={{ ...MSPP_TABLE_CELL, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {row.currentCount}
+                    </td>
+                    <td style={{ ...MSPP_TABLE_CELL, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {row.previousCount}
+                    </td>
+                    <td style={MSPP_TABLE_CELL}>
+                      <span style={signalLevelBadgeStyle(row.signalLevel)}>
+                        {t(`msppSanitarySignals.level.${row.signalLevel}`)}
+                      </span>
+                      {profileSub ? (
+                        <div
+                          style={{ fontSize: 11, color: "#64748b", marginTop: 4, lineHeight: 1.35 }}
+                          title={t("msppSanitarySignals.ruleAppliedShort")}
+                        >
+                          {profileSub}
+                        </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

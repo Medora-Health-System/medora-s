@@ -16,6 +16,7 @@ import {
   NATIONAL_MSPP_ROLES,
   ReviewerLevel,
 } from "./mspp.constants";
+import { classifySanitarySignalLevelDiseaseAware } from "./sanitary-signal-thresholds";
 import type { MsppRequestContext } from "./guards/mspp-roles.guard";
 import type { MsppReviewActionDto } from "./dto/review-action.dto";
 
@@ -298,16 +299,6 @@ export type MsppReviewAuditTrailItem = {
   createdAt: string;
 };
 
-/** Rule-based support level for dashboard signals only (not an epidemic declaration). */
-function classifySanitarySignalLevel(currentCount: number, previousCount: number): MsppSignalLevelValue {
-  const delta = currentCount - previousCount;
-  if (delta <= 0) return MsppSignalLevel.LOW;
-  const ratio = previousCount > 0 ? currentCount / previousCount : Number.POSITIVE_INFINITY;
-  if (delta >= 6 || (previousCount >= 4 && ratio >= 2)) return MsppSignalLevel.HIGH;
-  if (delta >= 3 || ratio >= 1.5 || (previousCount === 0 && currentCount >= 4)) return MsppSignalLevel.MEDIUM;
-  return MsppSignalLevel.LOW;
-}
-
 /** One row of the national sanitary signals table (read-only). */
 export type MsppSanitarySignalRow = {
   diseaseCode: string;
@@ -320,6 +311,10 @@ export type MsppSanitarySignalRow = {
   delta: number;
   percentChange: number | null;
   signalLevel: MsppSignalLevelValue;
+  /** Disease-aware threshold profile id (in-code rules). */
+  thresholdProfileUsed: string;
+  /** Machine-readable rule resolution (e.g. EXACT:A00, PREFIX:A15). */
+  thresholdReason: string;
 };
 
 export type MsppSanitarySignalsResponse = {
@@ -347,6 +342,8 @@ export type MsppCommuneSanitarySignalRow = {
   delta: number;
   percentChange: number | null;
   signalLevel: MsppSignalLevelValue;
+  thresholdProfileUsed: string;
+  thresholdReason: string;
 };
 
 export type MsppCommuneSanitarySignalsResponse = {
@@ -1311,6 +1308,7 @@ export class MsppService {
         percentChange = Math.round(((currentCount - previousCount) / previousCount) * 1000) / 10;
       }
 
+      const classified = classifySanitarySignalLevelDiseaseAware(currentCount, previousCount, meta.diseaseCode);
       signals.push({
         diseaseCode: meta.diseaseCode,
         diseaseName: meta.diseaseName,
@@ -1321,7 +1319,9 @@ export class MsppService {
         previousCount,
         delta,
         percentChange,
-        signalLevel: classifySanitarySignalLevel(currentCount, previousCount),
+        signalLevel: classified.signalLevel,
+        thresholdProfileUsed: classified.thresholdProfileUsed,
+        thresholdReason: classified.thresholdReason,
       });
     }
 
@@ -1493,6 +1493,7 @@ export class MsppService {
         percentChange = Math.round(((currentCount - previousCount) / previousCount) * 1000) / 10;
       }
 
+      const classified = classifySanitarySignalLevelDiseaseAware(currentCount, previousCount, meta.diseaseCode);
       signals.push({
         departmentId: meta.departmentId,
         departmentCode: meta.departmentCode,
@@ -1505,7 +1506,9 @@ export class MsppService {
         previousCount,
         delta,
         percentChange,
-        signalLevel: classifySanitarySignalLevel(currentCount, previousCount),
+        signalLevel: classified.signalLevel,
+        thresholdProfileUsed: classified.thresholdProfileUsed,
+        thresholdReason: classified.thresholdReason,
       });
     }
 

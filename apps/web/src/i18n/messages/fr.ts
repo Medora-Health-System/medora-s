@@ -691,6 +691,14 @@ export default {
     colPrevious: "7 jours précédents",
     colLevel: "Niveau du signal",
     windowHint: "Comparaison sur deux fenêtres glissantes (UTC) : période précédente {prev} ; période récente {cur}. Date de référence : revue centrale approuvée.",
+    ruleAppliedShort: "Règle de signal appliquée",
+    profile: {
+      DEFAULT: "Seuil standard",
+      CHOLERA_LIKE: "Seuil renforcé",
+      DENGUE_LIKE: "Seuil ajusté (arbovirose)",
+      MALARIA_LIKE: "Seuil ajusté (paludisme)",
+      TUBERCULOSIS_LIKE: "Seuil conservateur",
+    },
     level: {
       LOW: "Faible",
       MEDIUM: "Modéré",

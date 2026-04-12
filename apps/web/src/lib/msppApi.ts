@@ -207,6 +207,8 @@ export type MsppSanitarySignalRow = {
   delta: number;
   percentChange: number | null;
   signalLevel: MsppSignalLevel;
+  thresholdProfileUsed: string;
+  thresholdReason: string;
 };
 
 export type MsppSanitarySignalsResponse = {
@@ -238,6 +240,8 @@ export type MsppCommuneSanitarySignalRow = {
   delta: number;
   percentChange: number | null;
   signalLevel: MsppSignalLevel;
+  thresholdProfileUsed: string;
+  thresholdReason: string;
 };
 
 export type MsppCommuneSanitarySignalsResponse = {
