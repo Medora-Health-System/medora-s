@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -14,7 +14,7 @@ import {
   type MsppSanitarySignalsResponse,
   type MsppValidationAnalyticsResponse,
 } from "@/lib/msppApi";
-import { downloadJson, downloadUtf8Csv, exportDateStamp } from "@/features/mspp/msppExportDownload";
+import { downloadUtf8Csv, exportDateStamp } from "@/features/mspp/msppExportDownload";
 import {
   buildCommuneSignalsCsv,
   buildEscalationsCsv,
@@ -27,6 +27,12 @@ import {
   buildWhoValidationAnalytics,
   buildWhoWeeklySurveillance,
 } from "@/features/mspp/msppWhoExportsBuild";
+import {
+  validateWhoPriorityAlertsPackage,
+  validateWhoValidationAnalyticsPackage,
+  validateWhoWeeklySurveillancePackage,
+} from "@/features/mspp/msppWhoExportsValidate";
+import { MsppWhoSubmissionPrepSection } from "@/features/mspp/MsppWhoSubmissionPrepSection";
 import {
   MSPP_BTN_APPROVE,
   MSPP_BTN_ROW,
@@ -113,18 +119,31 @@ export default function MsppExportsPage() {
     downloadUtf8Csv(`mspp-analyse-validations-departements-${stamp}.csv`, buildValidationDepartmentsCsv(validation, t));
   };
 
-  const dlWhoWeekly = () => {
-    if (!signals || !commune) return;
-    downloadJson(`who-weekly-surveillance-${stamp}.json`, buildWhoWeeklySurveillance(signals, commune));
-  };
-  const dlWhoAlerts = () => {
-    if (!escalations) return;
-    downloadJson(`who-priority-alerts-${stamp}.json`, buildWhoPriorityAlerts(escalations));
-  };
-  const dlWhoValidation = () => {
-    if (!validation) return;
-    downloadJson(`who-validation-analytics-${stamp}.json`, buildWhoValidationAnalytics(validation));
-  };
+  const weeklyWhoPkg = useMemo(
+    () => (signals && commune ? buildWhoWeeklySurveillance(signals, commune) : null),
+    [signals, commune]
+  );
+  const priorityWhoPkg = useMemo(
+    () => (escalations ? buildWhoPriorityAlerts(escalations) : null),
+    [escalations]
+  );
+  const validationWhoPkg = useMemo(
+    () => (validation ? buildWhoValidationAnalytics(validation) : null),
+    [validation]
+  );
+
+  const weeklyWhoValidation = useMemo(
+    () => (weeklyWhoPkg ? validateWhoWeeklySurveillancePackage(weeklyWhoPkg) : null),
+    [weeklyWhoPkg]
+  );
+  const priorityWhoValidation = useMemo(
+    () => (priorityWhoPkg ? validateWhoPriorityAlertsPackage(priorityWhoPkg) : null),
+    [priorityWhoPkg]
+  );
+  const validationWhoValidation = useMemo(
+    () => (validationWhoPkg ? validateWhoValidationAnalyticsPackage(validationWhoPkg) : null),
+    [validationWhoPkg]
+  );
 
   if (!ready) {
     return (
@@ -199,25 +218,17 @@ export default function MsppExportsPage() {
         )}
       </div>
 
-      <div style={MSPP_SECTION_CARD}>
-        <h2 style={MSPP_SECTION_TITLE}>{t("msppExportsPage.sectionWhoJsonTitle")}</h2>
-        <p style={MSPP_SECTION_SUBTITLE}>{t("msppExportsPage.sectionWhoJsonIntro")}</p>
-        {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>{t("msppExportsPage.loading")}</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
-            <button type="button" style={MSPP_BTN_APPROVE} disabled={!signals || !commune} onClick={dlWhoWeekly}>
-              {t("msppExportsPage.btnWhoWeeklyJson")}
-            </button>
-            <button type="button" style={MSPP_BTN_APPROVE} disabled={!escalations} onClick={dlWhoAlerts}>
-              {t("msppExportsPage.btnWhoAlertsJson")}
-            </button>
-            <button type="button" style={MSPP_BTN_APPROVE} disabled={!validation} onClick={dlWhoValidation}>
-              {t("msppExportsPage.btnWhoValidationJson")}
-            </button>
-          </div>
-        )}
-      </div>
+      <MsppWhoSubmissionPrepSection
+        t={t}
+        loading={loading}
+        stamp={stamp}
+        weeklyPkg={weeklyWhoPkg}
+        weeklyValidation={weeklyWhoValidation}
+        priorityPkg={priorityWhoPkg}
+        priorityValidation={priorityWhoValidation}
+        validationPkg={validationWhoPkg}
+        validationValidation={validationWhoValidation}
+      />
 
       <div style={{ ...MSPP_SECTION_CARD, marginBottom: 0 }}>
         <h2 style={MSPP_SECTION_TITLE}>{t("msppExportsPage.sectionNotesTitle")}</h2>
