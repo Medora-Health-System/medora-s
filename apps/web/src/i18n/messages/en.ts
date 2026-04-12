@@ -144,6 +144,11 @@ export default {
       MSPP_ADMIN: "Administrateur délégué (accès MSPP)",
     },
   },
+  publicHealthModule: {
+    facilityRequiredTitle: "This operational module requires an active facility context.",
+    facilityRequiredBody:
+      "Add facility access for this user to use disease reports and vaccinations.",
+  },
   diseaseReports: {
     title: "Disease case reports",
     introMspp:

@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { formatPrimaryIdentifierForDisplay } from "@/lib/patientDisplay";
 import { fetchDiseaseReports, fetchHaitiGeoReference, type DiseaseCaseReportRow, type HaitiGeoDepartment, type HaitiGeoCommune } from "@/lib/publicHealthApi";
 import { DiseaseReportForm } from "@/features/public-health/disease-report-form";
+import { PublicHealthFacilityRequiredBlock } from "@/features/public-health/PublicHealthFacilityRequiredBlock";
 import { inputStyle } from "@/components/pharmacy/Modal";
 
 const cardStyle: React.CSSProperties = {
@@ -122,6 +123,9 @@ export default function DiseaseReportsPage() {
         <p>{t("diseaseReports.accessDenied")}</p>
       </div>
     );
+  }
+  if (!facilityId) {
+    return <PublicHealthFacilityRequiredBlock />;
   }
 
   return (

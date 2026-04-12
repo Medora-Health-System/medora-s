@@ -96,12 +96,12 @@ export function useFacilityAndRoles() {
   const hasMsppOperationalForPublicHealth = msppRoles.some((r) =>
     (MSPP_OPERATIONAL_ROLE_CODES as readonly string[]).includes(r)
   );
-  /** Santé publique côté API est liée à un établissement : les rôles MSPP nationaux y accèdent avec le même module si un contexte établissement est actif. */
+  /** Peut ouvrir les pages santé publique ; les appels API restent conditionnés à un `facilityId` (voir message sur la page). */
   const canViewPublicHealth =
     roles.includes("RN") ||
     roles.includes("PROVIDER") ||
     roles.includes("ADMIN") ||
-    (hasMsppOperationalForPublicHealth && Boolean(facilityId));
+    hasMsppOperationalForPublicHealth;
   /** Only PROVIDER and ADMIN can prescribe (create medication orders). RN can create LAB/IMAGING orders. */
   const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
 

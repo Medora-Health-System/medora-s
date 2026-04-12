@@ -12,8 +12,9 @@ import {
   type VaccineAdministrationRow,
 } from "@/lib/publicHealthApi";
 import { Field, inputStyle } from "@/components/pharmacy/Modal";
-import { ui } from "@/lib/uiLabels";
 import { getEncounterStatusLabelFr, getEncounterTypeLabelFr } from "@/lib/uiLabels";
+import { PublicHealthFacilityRequiredBlock } from "@/features/public-health/PublicHealthFacilityRequiredBlock";
+import { useI18n } from "@/lib/i18n";
 
 type Patient = { id: string; firstName: string; lastName: string; mrn: string | null };
 type Encounter = { id: string; status: string; type: string; createdAt: string };
@@ -41,6 +42,7 @@ function formatDate(d: string | null | undefined) {
 }
 
 export default function PublicHealthVaccinationsPage() {
+  const { t } = useI18n();
   const { facilityId, ready, canViewPublicHealth } = useFacilityAndRoles();
 
   const [catalog, setCatalog] = useState<VaccineCatalogItem[]>([]);
@@ -154,14 +156,17 @@ export default function PublicHealthVaccinationsPage() {
     }
   };
 
-  if (!ready) return <p>{ui.common.loading}</p>;
+  if (!ready) return <p>{t("common.loading")}</p>;
   if (!canViewPublicHealth) {
     return (
       <div>
-        <h1>Vaccinations</h1>
-        <p>Vous n&apos;avez pas accès à cette page.</p>
+        <h1>{t("nav.vaccinations")}</h1>
+        <p>{t("diseaseReports.accessDenied")}</p>
       </div>
     );
+  }
+  if (!facilityId) {
+    return <PublicHealthFacilityRequiredBlock />;
   }
 
   return (

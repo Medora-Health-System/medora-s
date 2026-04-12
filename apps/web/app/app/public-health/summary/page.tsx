@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { useI18n } from "@/lib/i18n";
 import { fetchDiseaseSummary, type DiseaseSummary } from "@/lib/publicHealthApi";
+import { PublicHealthFacilityRequiredBlock } from "@/features/public-health/PublicHealthFacilityRequiredBlock";
 
 const btnPrimary: React.CSSProperties = {
   padding: "8px 16px",
@@ -24,6 +26,7 @@ const cardStyle: React.CSSProperties = {
 };
 
 export default function PublicHealthSummaryPage() {
+  const { t } = useI18n();
   const { facilityId, ready, canViewPublicHealth } = useFacilityAndRoles();
   const [summary, setSummary] = useState<DiseaseSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,14 +58,17 @@ export default function PublicHealthSummaryPage() {
   const fromPlaceholder = defaultFrom.toISOString().slice(0, 10);
   const toPlaceholder = defaultTo.toISOString().slice(0, 10);
 
-  if (!ready) return <p>Chargement…</p>;
+  if (!ready) return <p>{t("common.loading")}</p>;
   if (!canViewPublicHealth) {
     return (
       <div>
-        <h1>Résumé santé publique</h1>
-        <p>Vous n&apos;avez pas accès.</p>
+        <h1>{t("nav.publicHealth")}</h1>
+        <p>{t("diseaseReports.accessDenied")}</p>
       </div>
     );
+  }
+  if (!facilityId) {
+    return <PublicHealthFacilityRequiredBlock />;
   }
 
   const STATUS_LABELS: Record<string, string> = { SUSPECTED: "Suspect", CONFIRMED: "Confirmé", RULED_OUT: "Écarté" };
