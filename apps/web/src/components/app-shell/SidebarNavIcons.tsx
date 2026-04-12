@@ -74,6 +74,27 @@ function IconMsppRapport() {
   );
 }
 
+/** Alert inbox — bell */
+function IconMsppAlerts() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={20}
+      height={20}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="pointer-events-none shrink-0"
+      aria-hidden
+    >
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
 /** Validation — check circle */
 function IconMsppValidation() {
   return (
@@ -119,6 +140,9 @@ function IconMsppAccessAdmin() {
 export function SidebarNavIcon({ href }: { href: string }) {
   if (href === "/app/mspp/dashboard") {
     return <MsppBrandMark />;
+  }
+  if (href === "/app/mspp/alerts") {
+    return <IconMsppAlerts />;
   }
   if (href === "/app/mspp/rapport") {
     return <IconMsppRapport />;

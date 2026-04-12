@@ -3,6 +3,7 @@
 import React from "react";
 import { useI18n } from "@/lib/i18n";
 import type { MsppAlertEscalationRow, MsppAlertEscalationsResponse } from "@/lib/msppApi";
+import { formatMsppEscalationGeo } from "./msppEscalationFormatters";
 import {
   MSPP_EMPTY_STATE,
   MSPP_SECTION_CARD,
@@ -81,15 +82,6 @@ function signalLevelBadgeStyle(level: MsppAlertEscalationRow["signalLevel"]): Re
   };
 }
 
-function formatGeo(row: MsppAlertEscalationRow): string {
-  if (row.scope === "COMMUNE") {
-    const c = row.communeName?.trim() || "—";
-    const d = row.departmentName?.trim() || "";
-    return d ? `${c} (${d})` : c;
-  }
-  return row.departmentName?.trim() || "—";
-}
-
 export function MsppEscalationsBlock({
   loading,
   data,
@@ -144,7 +136,7 @@ export function MsppEscalationsBlock({
                       <td style={MSPP_TABLE_CELL}>
                         <div style={{ fontWeight: 600 }}>{row.diseaseName?.trim() || row.diseaseCode}</div>
                       </td>
-                      <td style={MSPP_TABLE_CELL}>{formatGeo(row)}</td>
+                      <td style={MSPP_TABLE_CELL}>{formatMsppEscalationGeo(row)}</td>
                       <td style={MSPP_TABLE_CELL}>
                         <span style={signalLevelBadgeStyle(row.signalLevel)}>{sigLabel}</span>
                       </td>

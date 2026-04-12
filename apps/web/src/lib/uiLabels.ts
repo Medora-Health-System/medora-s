@@ -77,6 +77,7 @@ const fr = {
     adminUsers: "Utilisateurs et accès",
     adminMsppAccess: "Accès MSPP (national)",
     msppDashboard: "MSPP — Tableau de bord",
+    msppNotificationCenter: "MSPP — Centre de notification",
     msppRapport: "MSPP — Rapport",
     msppValidation: "MSPP — Validation",
     msppAuditHistory: "MSPP — Historique des validations",
