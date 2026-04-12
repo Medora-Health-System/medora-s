@@ -286,6 +286,9 @@ model User {
   msppReviewAuditEvents         MsppReviewAuditEvent[]
   msppAlertTriagesAcknowledged  MsppAlertTriage[]        @relation("MsppAlertTriageAckBy")
   msppAlertTriagesAssigned      MsppAlertTriage[]        @relation("MsppAlertTriageAssignTo")
+  msppAlertInvestigationsOpened   MsppAlertInvestigation[]       @relation("MsppAlertInvestigationOpenedBy")
+  msppAlertInvestigationsAssigned MsppAlertInvestigation[]       @relation("MsppAlertInvestigationAssignedTo")
+  msppAlertInvestigationEventsCreated MsppAlertInvestigationEvent[] @relation("MsppAlertInvestigationEventCreatedBy")
   msppDiseaseReportFeedbacksCreated          MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackCreatedBy")
   msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
   msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackResolvedBy")
@@ -1220,10 +1223,70 @@ model MsppAlertTriage {
 
   acknowledgedBy User? @relation("MsppAlertTriageAckBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
   assignedTo     User? @relation("MsppAlertTriageAssignTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  investigation  MsppAlertInvestigation?
 
   @@index([triageStatus])
   @@index([departmentId])
   @@index([updatedAt])
+}
+
+/// Suivi opérationnel interne lié à une alerte d’escalade (pas déclaration d’épidémie ; distinct du triage).
+enum MsppAlertInvestigationStatus {
+  OPEN
+  FIELD_VERIFICATION
+  LAB_FOLLOWUP
+  COORDINATION_ACTIVE
+  CLOSED
+}
+
+enum MsppAlertInvestigationEventAction {
+  OPENED
+  STATUS_CHANGED
+  NOTE_ADDED
+  ASSIGNED
+}
+
+model MsppAlertInvestigation {
+  id                  String                       @id @default(uuid())
+  alertKey            String                       @unique
+  msppAlertTriageId   String?                      @unique
+  diseaseCode         String
+  escalationLevel     String
+  departmentId        String
+  geoCommuneId        String?
+  investigationStatus MsppAlertInvestigationStatus @default(OPEN)
+  openedAt            DateTime                     @default(now())
+  openedByUserId      String
+  assignedToUserId    String?
+  summary             String?                      @db.Text
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  msppAlertTriage MsppAlertTriage? @relation(fields: [msppAlertTriageId], references: [id], onDelete: SetNull)
+  openedBy       User @relation("MsppAlertInvestigationOpenedBy", fields: [openedByUserId], references: [id], onDelete: Restrict)
+  assignedTo     User? @relation("MsppAlertInvestigationAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  events         MsppAlertInvestigationEvent[]
+
+  @@index([investigationStatus])
+  @@index([departmentId])
+  @@index([updatedAt])
+}
+
+model MsppAlertInvestigationEvent {
+  id               String                         @id @default(uuid())
+  investigationId  String
+  action           MsppAlertInvestigationEventAction
+  note             String?                        @db.Text
+  statusBefore     MsppAlertInvestigationStatus?
+  statusAfter      MsppAlertInvestigationStatus?
+  assignedToUserId String?
+  createdByUserId  String
+  createdAt        DateTime                       @default(now())
+
+  investigation MsppAlertInvestigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  createdBy     User @relation("MsppAlertInvestigationEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([investigationId, createdAt])
 }
 
 /// Structured quality feedback from MSPP to facilities (does not mutate the declaration).

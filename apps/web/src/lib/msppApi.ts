@@ -570,3 +570,101 @@ export async function fetchMsppDiseaseReportFeedbackList(reportId: string) {
     items: MsppDiseaseReportFeedbackItem[];
   }>;
 }
+
+/** Suivi interne d’investigation (lié à `alertKey`, distinct du triage). */
+export type MsppAlertInvestigationWorkflowStatus =
+  | "OPEN"
+  | "FIELD_VERIFICATION"
+  | "LAB_FOLLOWUP"
+  | "COORDINATION_ACTIVE"
+  | "CLOSED";
+
+export type MsppAlertInvestigationCompact = {
+  id: string;
+  alertKey: string;
+  diseaseCode: string;
+  escalationLevel: string;
+  departmentId: string;
+  geoCommuneId: string | null;
+  investigationStatus: MsppAlertInvestigationWorkflowStatus;
+  openedAt: string;
+  summary: string | null;
+  openedByUserId: string;
+  openedByDisplayName: string;
+  assignedToUserId: string | null;
+  assignedToDisplayName: string | null;
+  updatedAt: string;
+};
+
+export type MsppAlertInvestigationEventRow = {
+  id: string;
+  action: "OPENED" | "STATUS_CHANGED" | "NOTE_ADDED" | "ASSIGNED";
+  note: string | null;
+  statusBefore: MsppAlertInvestigationWorkflowStatus | null;
+  statusAfter: MsppAlertInvestigationWorkflowStatus | null;
+  assignedToUserId: string | null;
+  createdByUserId: string;
+  createdByDisplayName: string;
+  createdAt: string;
+};
+
+export async function fetchMsppAlertInvestigationsList(limit?: number) {
+  const q = limit != null ? `?limit=${encodeURIComponent(String(limit))}` : "";
+  return apiFetch(`${BASE}/alerts/investigations${q}`, {}) as Promise<{
+    investigations: MsppAlertInvestigationCompact[];
+  }>;
+}
+
+export async function fetchMsppAlertInvestigationDetail(alertKey: string) {
+  const q = `?alertKey=${encodeURIComponent(alertKey)}`;
+  return apiFetch(`${BASE}/alerts/investigations/detail${q}`, {}) as Promise<{
+    investigation: MsppAlertInvestigationCompact;
+    events: MsppAlertInvestigationEventRow[];
+  }>;
+}
+
+export async function postMsppAlertInvestigationsBatch(body: { alertKeys: string[] }) {
+  return apiFetch(`${BASE}/alerts/investigations/batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ investigations: MsppAlertInvestigationCompact[] }>;
+}
+
+export async function postMsppAlertInvestigationOpen(
+  body: MsppAlertTriageVerifyBody & { summary?: string | null }
+) {
+  return apiFetch(`${BASE}/alerts/investigations/open`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ alreadyExists: boolean; investigation: MsppAlertInvestigationCompact }>;
+}
+
+export async function postMsppAlertInvestigationStatus(
+  body: MsppAlertTriageVerifyBody & { investigationStatus: MsppAlertInvestigationWorkflowStatus }
+) {
+  return apiFetch(`${BASE}/alerts/investigations/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ investigation: MsppAlertInvestigationCompact }>;
+}
+
+export async function postMsppAlertInvestigationNote(body: MsppAlertTriageVerifyBody & { note: string }) {
+  return apiFetch(`${BASE}/alerts/investigations/note`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ ok: true }>;
+}
+
+export async function postMsppAlertInvestigationAssign(
+  body: MsppAlertTriageVerifyBody & { assignedToUserId: string | null }
+) {
+  return apiFetch(`${BASE}/alerts/investigations/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ investigation: MsppAlertInvestigationCompact }>;
+}

@@ -5,11 +5,12 @@ import { PublicHealthModule } from "../public-health/public-health.module";
 import { MsppController } from "./mspp.controller";
 import { MsppPublicHealthNationalController } from "./mspp-public-health-national.controller";
 import { MsppService } from "./mspp.service";
+import { MsppAlertInvestigationService } from "./mspp-alert-investigation.service";
 import { MsppRolesGuard } from "./guards/mspp-roles.guard";
 
 @Module({
   imports: [PrismaModule, PublicHealthModule],
   controllers: [MsppController, MsppPublicHealthNationalController],
-  providers: [MsppService, AuditService, MsppRolesGuard],
+  providers: [MsppService, MsppAlertInvestigationService, AuditService, MsppRolesGuard],
 })
 export class MsppModule {}

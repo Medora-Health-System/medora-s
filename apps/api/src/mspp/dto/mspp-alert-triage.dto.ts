@@ -72,7 +72,8 @@ export function parseMsppAlertTriageAssign(body: unknown): z.infer<typeof msppAl
   return p.data;
 }
 
-function assertAlertKeyMatches(dto: MsppAlertTriageVerifyDto): void {
+/** Exported for MSPP alert investigations and other consumers that share `alertKey` rules. */
+export function assertAlertKeyMatches(dto: MsppAlertTriageVerifyDto): void {
   const expected = computeMsppAlertKey({
     scope: dto.scope,
     diseaseCode: dto.diseaseCode,

@@ -15,6 +15,14 @@ import { MsppRoleCode } from "@prisma/client";
 import { MsppRolesGuard, type MsppRequestContext } from "./guards/mspp-roles.guard";
 import { RequireMsppRoles } from "./decorators/require-mspp-roles.decorator";
 import { MsppService } from "./mspp.service";
+import { MsppAlertInvestigationService } from "./mspp-alert-investigation.service";
+import {
+  parseMsppAlertInvestigationAssign,
+  parseMsppAlertInvestigationBatch,
+  parseMsppAlertInvestigationNote,
+  parseMsppAlertInvestigationOpen,
+  parseMsppAlertInvestigationStatusBody,
+} from "./dto/mspp-alert-investigation.dto";
 import { msppReviewActionSchema, type MsppReviewActionDto } from "./dto/review-action.dto";
 import {
   parseMsppAlertTriageAcknowledge,
@@ -53,7 +61,8 @@ function parseReviewAction(body: unknown): MsppReviewActionDto {
 export class MsppController {
   constructor(
     private readonly mspp: MsppService,
-    private readonly publicHealth: PublicHealthService
+    private readonly publicHealth: PublicHealthService,
+    private readonly alertInvestigations: MsppAlertInvestigationService
   ) {}
 
   @Get("reviews")
@@ -285,6 +294,103 @@ export class MsppController {
     if (!actor) throw new ForbiddenException();
     const dto = parseMsppAlertTriageAssign(body);
     return this.mspp.assignAlertTriage(msppCtx(req), dto, actor);
+  }
+
+  /** Liste des investigations internes (suivi opérationnel, liées à `alertKey`). */
+  @Get("alerts/investigations")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  listAlertInvestigations(@Query("limit") limit?: string) {
+    const n = limit ? parseInt(limit, 10) : undefined;
+    return this.alertInvestigations.listInvestigations({
+      limit: Number.isFinite(n) ? n : undefined,
+    });
+  }
+
+  /** Détail d'une investigation + historique d'événements (paramètre `alertKey` encodé). */
+  @Get("alerts/investigations/detail")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  getAlertInvestigationDetail(@Query("alertKey") alertKey?: string) {
+    const k = alertKey?.trim();
+    if (!k) throw new BadRequestException("Paramètre alertKey requis.");
+    return this.alertInvestigations.getInvestigationDetail(k);
+  }
+
+  @Post("alerts/investigations/batch")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  batchAlertInvestigations(@Body() body: unknown) {
+    const { alertKeys } = parseMsppAlertInvestigationBatch(body);
+    return this.alertInvestigations.batchByAlertKeys(alertKeys);
+  }
+
+  @Post("alerts/investigations/open")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  openAlertInvestigation(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertInvestigationOpen(body);
+    return this.alertInvestigations.openInvestigation(dto, actor);
+  }
+
+  @Post("alerts/investigations/status")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  setAlertInvestigationStatus(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertInvestigationStatusBody(body);
+    return this.alertInvestigations.updateInvestigationStatus(dto, actor);
+  }
+
+  @Post("alerts/investigations/note")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  addAlertInvestigationNote(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertInvestigationNote(body);
+    return this.alertInvestigations.addInvestigationNote(dto, actor);
+  }
+
+  @Post("alerts/investigations/assign")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  assignAlertInvestigation(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertInvestigationAssign(body);
+    return this.alertInvestigations.assignInvestigation(dto, actor);
   }
 
   /** Retour qualité structuré vers l’établissement (ne modifie pas la déclaration). */

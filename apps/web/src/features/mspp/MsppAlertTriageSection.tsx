@@ -6,6 +6,8 @@ import type { MsppAlertTriageAssignee, MsppAlertTriageRow } from "@/lib/msppApi"
 import type { MsppSanitarySignalsResponse } from "@/lib/msppApi";
 import { formatMsppEscalationGeo } from "./msppEscalationFormatters";
 import { MsppAlertTriagePanel } from "./MsppAlertTriagePanel";
+import { MsppAlertInvestigationPanel } from "./MsppAlertInvestigationPanel";
+import type { MsppAlertInvestigationCompact } from "@/lib/msppApi";
 import {
   MSPP_EMPTY_STATE,
   MSPP_SECTION_CARD,
@@ -57,6 +59,8 @@ export function MsppAlertTriageSection({
   expandedAlertKey,
   onToggleExpand,
   onRefresh,
+  investigationByAlertKey,
+  onRefreshInvestigations,
 }: {
   title: string;
   rows: MsppAlertTriageRow[];
@@ -65,6 +69,8 @@ export function MsppAlertTriageSection({
   expandedAlertKey: string | null;
   onToggleExpand: (alertKey: string) => void;
   onRefresh: () => Promise<void>;
+  investigationByAlertKey: Record<string, MsppAlertInvestigationCompact | undefined>;
+  onRefreshInvestigations: () => Promise<void>;
 }) {
   const { t } = useI18n();
 
@@ -138,6 +144,21 @@ export function MsppAlertTriageSection({
                     <tr>
                       <td colSpan={7} style={{ background: "#f8fafc", padding: 16, borderTop: "1px solid #e2e8f0" }}>
                         <MsppAlertTriagePanel row={row} window={window} assignees={assignees} onSaved={onRefresh} />
+                        <div
+                          style={{
+                            marginTop: 20,
+                            paddingTop: 16,
+                            borderTop: "1px solid #e2e8f0",
+                          }}
+                        >
+                          <MsppAlertInvestigationPanel
+                            row={row}
+                            window={window}
+                            assignees={assignees}
+                            compact={investigationByAlertKey[row.alertKey]}
+                            onChanged={onRefreshInvestigations}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ) : null}

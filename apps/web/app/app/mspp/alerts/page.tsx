@@ -7,6 +7,8 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   fetchMsppAlertTriageAssignees,
   fetchMsppAlertTriageSnapshot,
+  postMsppAlertInvestigationsBatch,
+  type MsppAlertInvestigationCompact,
   type MsppAlertTriageAssignee,
   type MsppAlertTriageSnapshotResponse,
 } from "@/lib/msppApi";
@@ -63,6 +65,9 @@ export default function MsppAlertsInboxPage() {
   const [diseaseQuery, setDiseaseQuery] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [expandedAlertKey, setExpandedAlertKey] = useState<string | null>(null);
+  const [investigationByAlertKey, setInvestigationByAlertKey] = useState<
+    Record<string, MsppAlertInvestigationCompact | undefined>
+  >({});
 
   const load = useCallback(async () => {
     if (!canMspp) return;
@@ -89,6 +94,25 @@ export default function MsppAlertsInboxPage() {
   const onRefresh = useCallback(async () => {
     await load();
   }, [load]);
+
+  const refreshInvestigations = useCallback(async () => {
+    if (!data?.escalations?.length) return;
+    try {
+      const keys = data.escalations.map((e) => e.alertKey);
+      const res = await postMsppAlertInvestigationsBatch({ alertKeys: keys });
+      const m: Record<string, MsppAlertInvestigationCompact | undefined> = {};
+      for (const inv of res.investigations) {
+        m[inv.alertKey] = inv;
+      }
+      setInvestigationByAlertKey(m);
+    } catch {
+      /* conserver l’état affiché */
+    }
+  }, [data?.escalations]);
+
+  useEffect(() => {
+    if (data?.escalations?.length) void refreshInvestigations();
+  }, [data?.generatedAt, refreshInvestigations]);
 
   const departmentOptions = useMemo(() => {
     const rows = data?.escalations ?? [];
@@ -312,6 +336,8 @@ export default function MsppAlertsInboxPage() {
                 expandedAlertKey={expandedAlertKey}
                 onToggleExpand={toggleExpand}
                 onRefresh={onRefresh}
+                investigationByAlertKey={investigationByAlertKey}
+                onRefreshInvestigations={refreshInvestigations}
               />
               <div style={{ marginTop: 16 }} />
               <MsppAlertTriageSection
@@ -322,6 +348,8 @@ export default function MsppAlertsInboxPage() {
                 expandedAlertKey={expandedAlertKey}
                 onToggleExpand={toggleExpand}
                 onRefresh={onRefresh}
+                investigationByAlertKey={investigationByAlertKey}
+                onRefreshInvestigations={refreshInvestigations}
               />
               <div style={{ marginTop: 16 }} />
               <MsppAlertTriageSection
@@ -332,6 +360,8 @@ export default function MsppAlertsInboxPage() {
                 expandedAlertKey={expandedAlertKey}
                 onToggleExpand={toggleExpand}
                 onRefresh={onRefresh}
+                investigationByAlertKey={investigationByAlertKey}
+                onRefreshInvestigations={refreshInvestigations}
               />
             </>
           )}
