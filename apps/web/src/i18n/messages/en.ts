@@ -206,6 +206,8 @@ export default {
     requiredStar: " *",
     diseaseCode: "Disease code",
     diseaseCodeHint: "Standard code (e.g. local list or classification).",
+    diseaseCodeCatalogHint:
+      "Enter a code from the list or fill it after choosing the disease. A recognized code fills the label.",
     diseaseName: "Disease or syndrome",
     status: "Case status",
     reportedDate: "Report date",
@@ -255,8 +257,18 @@ export default {
     triStateUnknown: "Not specified",
     triStateYes: "Yes",
     triStateNo: "No",
-    diseaseCodePlaceholder: "e.g. A09, J18",
-    diseaseNamePlaceholder: "e.g. acute diarrhoea",
+    diseaseCodePlaceholder: "e.g. A90, B05",
+    diseaseNamePlaceholder: "Search (2+ characters) or type the label",
+    catalogLoading: "Loading disease reference list…",
+    catalogUnavailable:
+      "Reference unavailable: enter code and label manually. Retry later or contact an administrator.",
+    diseaseComboboxHint:
+      "National list (immediate / weekly reporting). Type at least two letters for suggestions; you may still enter code and label outside the list if needed.",
+    catalogNoMatch: "No match — you can continue with free text (code and label required).",
+    catalogMinChars: "Enter at least two characters to search the reference list.",
+    catalogGroupImmediate: "Immediate notification",
+    catalogGroupWeekly: "Weekly notification",
+    catalogGroupOther: "Other",
     labEvidencePlaceholder: "— Select evidence type —",
     validationDiseaseCode: "Disease code is required.",
     validationDiseaseName: "Disease or syndrome name is required.",
@@ -472,6 +484,76 @@ export default {
       CENTRAL_REJECT: "Central rejection",
       DEPARTMENT_REQUEUE: "Department requeue",
       CENTRAL_REQUEUE: "Central requeue",
+    },
+    reviewGuidance: {
+      title: "Aide à la validation",
+      profileLabel: "Profil de revue",
+      advisory: "Decision support only — does not replace clinical judgment or final classification.",
+      subsectionReview: "Review focus",
+      subsectionInclusion: "Inclusion considerations",
+      subsectionCaution: "Caution / vigilance",
+      profiles: {
+        DEFAULT: {
+          label: "General",
+          summary: "Cross-check declaration, clinical narrative, and place before any decision.",
+          reviewPoints:
+            "Consistency between disease code/name and clinical description\nGeographic completeness (department, commune)\nTemporal consistency (onset vs declaration)",
+          inclusionPoints:
+            "Clinical and contextual elements aligned with the facility declaration\nTraceability of key surveillance information",
+          cautionPoints:
+            "Do not infer severity or transmission from the label alone\nIf data are missing, prefer clarification before final validation",
+        },
+        CHOLERA_LIKE: {
+          label: "Acute watery diarrhea / cholera (reference)",
+          summary: "Acute episodes with water and sanitation implications deserve attention to GI signs and dehydration.",
+          reviewPoints:
+            "Acute GI signs and dehydration risk (including vomiting)\nWatery / large-volume stools and rapid evolution\nExposure context (water, hygiene, crowding, local seasonality)",
+          inclusionPoints:
+            "Consistency with acute diarrheal illness in the declared context\nExplicit signs or severity when documented",
+          cautionPoints:
+            "Do not equate nonspecific diarrhea with high-burden episodes without reading the dossier\nAvoid deciding on the label alone without clinical cross-check",
+        },
+        MEASLES_LIKE: {
+          label: "Measles / febrile rash illness (reference)",
+          summary: "Emphasize fever, rash, community contact, and age group when the code suggests it.",
+          reviewPoints:
+            "Fever and rash (cephalocaudal evolution over several days)\nAssociated signs (eyes, cough, respiratory) when described\nHousehold/school clustering or vulnerability context if mentioned",
+          inclusionPoints:
+            "Consistency between febrile-rash presentation and declaration\nIsolation or control measures if present in the dossier",
+          cautionPoints:
+            "Differentiate other febrile rashes without concluding from code alone\nDo not over-interpret the label without narrative signs",
+        },
+        DENGUE_LIKE: {
+          label: "Dengue / febrile arboviral illness (reference)",
+          summary: "Prioritize acute febrile context, possible bleeding warning signs, and local epidemic framing.",
+          reviewPoints:
+            "Acute fever and associated symptoms (pain, asthenia)\nBleeding or severity warning signs if reported\nExposure / season / co-circulation if mentioned",
+          inclusionPoints:
+            "Alignment between febrile syndrome described and declaration\nElements supporting clinical vigilance (warning signs)",
+          cautionPoints:
+            "Not every fever is arboviral without dossier review\nBe cautious on severity without clinical data",
+        },
+        MALARIA_LIKE: {
+          label: "Malaria (reference)",
+          summary: "Check consistency of paroxysmal fever, exposure context, and declared laboratory elements.",
+          reviewPoints:
+            "Fever and timeline compatible with acute episodes\nTravel / endemic area / local exposure if indicated\nDeclared testing or confirmation when present",
+          inclusionPoints:
+            "Consistency between possible exposure and clinical presentation\nTreatment or follow-up when relevant",
+          cautionPoints:
+            "Other febrile causes are common — avoid conclusions from code alone\nBe prudent if biology or context is missing",
+        },
+        TUBERCULOSIS_LIKE: {
+          label: "Tuberculosis (reference — slow evolution)",
+          summary: "Chronic presentations need careful reading: prolonged symptoms, slow course, and evidence when available.",
+          reviewPoints:
+            "Prolonged symptoms (cough, weight loss, prolonged fever) when described\nDuration and vulnerability context\nDeclared lab/imaging when present",
+          inclusionPoints:
+            "Consistency between chronicity described and declaration\nConfirmation or follow-up elements when available",
+          cautionPoints:
+            "Do not rush validation without timeline or sufficient clinical elements\nAvoid epidemiologic inference beyond the declared dossier",
+        },
+      },
     },
     sectionFacilityDossier: "Declaration from the facility",
     sectionDepartmentReview: "Departmental MSPP review",

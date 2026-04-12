@@ -17,6 +17,7 @@ import {
   ReviewerLevel,
 } from "./mspp.constants";
 import { classifySanitarySignalLevelDiseaseAware } from "./sanitary-signal-thresholds";
+import { resolveReviewGuidance } from "./review-disease-guidance";
 import type { MsppRequestContext } from "./guards/mspp-roles.guard";
 import type { MsppReviewActionDto } from "./dto/review-action.dto";
 
@@ -689,6 +690,8 @@ export class MsppService {
         updatedAt: r.updatedAt.toISOString(),
       };
 
+      const reviewGuidance = resolveReviewGuidance(rep?.diseaseCode ?? null);
+
       const facilityDossier = rep
         ? {
             diseaseCaseReportId: rep.id,
@@ -746,6 +749,10 @@ export class MsppService {
         dataQuality: {
           geoIncomplete: rep ? !deptOk || !comOk : false,
           geoCommuneLinked: Boolean(rep?.geoCommuneId),
+        },
+        reviewGuidance: {
+          reviewGuidanceProfile: reviewGuidance.reviewGuidanceProfile,
+          reviewGuidanceReason: reviewGuidance.reviewGuidanceReason,
         },
       };
     });

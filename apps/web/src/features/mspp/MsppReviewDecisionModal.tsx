@@ -13,6 +13,7 @@ import { MsppFacilityDossierReadonly } from "@/features/mspp/MsppFacilityDossier
 import { MsppDepartmentReviewReadonly } from "@/features/mspp/MsppDepartmentReviewReadonly";
 import { buildReviewActionBodyFromFacilityDossier } from "@/features/mspp/msppReviewPayloadFromDossier";
 import { buildReviewActionBodyForCentral } from "@/features/mspp/msppCentralReviewPayload";
+import { MsppReviewGuidancePanel } from "@/features/mspp/MsppReviewGuidancePanel";
 
 const OVERLAY: React.CSSProperties = {
   position: "fixed",
@@ -81,6 +82,8 @@ export type MsppReviewDecisionModalProps = {
   /** Revue structurée enregistrée (chaîne département) — requis pour la décision centrale. */
   departmentReview?: MsppDepartmentReviewSnapshot | null;
   variant?: "department" | "central";
+  /** Profil d’aide (code maladie) — lecture seule. */
+  reviewGuidanceProfileId?: string | null;
 };
 
 const CASE_CLASSIFICATION = ["SUSPECT", "PROBABLE", "CONFIRMED", "NOT_A_CASE"] as const;
@@ -94,6 +97,7 @@ export function MsppReviewDecisionModal({
   facilityDossier = null,
   departmentReview = null,
   variant = "central",
+  reviewGuidanceProfileId = null,
 }: MsppReviewDecisionModalProps) {
   const { t } = useI18n();
 
@@ -233,6 +237,8 @@ export function MsppReviewDecisionModal({
             {t("msppValidation.checklistIntroCentral")}
           </p>
         ) : null}
+
+        <MsppReviewGuidancePanel profileId={reviewGuidanceProfileId ?? "DEFAULT"} />
 
         {variant === "department" ? (
           <>

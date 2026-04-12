@@ -169,6 +169,8 @@ export default {
     requiredStar: " *",
     diseaseCode: "Code maladie",
     diseaseCodeHint: "Code usuel (ex. liste locale ou classification).",
+    diseaseCodeCatalogHint:
+      "Saisissez un code du référentiel ou complétez-le après le choix de la maladie. Un code reconnu remplit le libellé.",
     diseaseName: "Maladie ou syndrome",
     status: "Statut de cas",
     reportedDate: "Date de déclaration",
@@ -219,8 +221,18 @@ export default {
     triStateUnknown: "Non précisé",
     triStateYes: "Oui",
     triStateNo: "Non",
-    diseaseCodePlaceholder: "p. ex. A09, J18",
-    diseaseNamePlaceholder: "p. ex. diarrhée aiguë",
+    diseaseCodePlaceholder: "p. ex. A90, B05",
+    diseaseNamePlaceholder: "Rechercher (2 caractères minimum) ou saisir le libellé",
+    catalogLoading: "Chargement du référentiel de maladies…",
+    catalogUnavailable:
+      "Référentiel indisponible : saisie manuelle du code et du libellé. Réessayez plus tard ou contactez l’administrateur.",
+    diseaseComboboxHint:
+      "Référentiel national (notification immédiate / hebdomadaire). Saisissez au moins deux lettres pour afficher les propositions ; vous pouvez aussi compléter libellé et code hors liste si nécessaire.",
+    catalogNoMatch: "Aucune entrée ne correspond — vous pouvez poursuivre en saisie libre (code et libellé obligatoires).",
+    catalogMinChars: "Saisissez au moins deux caractères pour lancer la recherche dans le référentiel.",
+    catalogGroupImmediate: "Notification immédiate",
+    catalogGroupWeekly: "Notification hebdomadaire",
+    catalogGroupOther: "Autres",
     labEvidencePlaceholder: "— Choisir un type de preuve —",
     validationDiseaseCode: "Le code maladie est obligatoire.",
     validationDiseaseName: "Le nom de la maladie ou du syndrome est obligatoire.",
@@ -436,6 +448,82 @@ export default {
       CENTRAL_REJECT: "Rejet central",
       DEPARTMENT_REQUEUE: "Remise en file départementale",
       CENTRAL_REQUEUE: "Remise en file centrale",
+    },
+    reviewGuidance: {
+      title: "Aide à la validation",
+      profileLabel: "Profil de revue",
+      advisory: "Support à la décision — ne remplace pas le jugement clinique ni la classification finale.",
+      subsectionReview: "Points d’attention (revue)",
+      subsectionInclusion: "Critères d’inclusion à considérer",
+      subsectionCaution: "Prudence / points de vigilance",
+      profiles: {
+        DEFAULT: {
+          label: "Général",
+          summary:
+            "Croiser systématiquement la déclaration, le récit clinique et le lieu avant toute décision.",
+          reviewPoints:
+            "Cohérence entre code / libellé maladie et description clinique\nComplétude géographique (département, commune)\nCohérence temporelle (début des signes, déclaration)",
+          inclusionPoints:
+            "Éléments cliniques et contextuels alignés avec la déclaration d’établissement\nTraçabilité des informations essentielles pour la surveillance",
+          cautionPoints:
+            "Ne pas inférer de gravité ou de transmission uniquement à partir du libellé\nEn cas de données manquantes, privilégier une clarification avant validation définitive",
+        },
+        CHOLERA_LIKE: {
+          label: "Diarrhée aiguë / choléra (référence)",
+          summary:
+            "Les épisodes aigus à potentiel hydrique et sanitaire méritent une lecture attentive des signes digestifs et de la déshydratation.",
+          reviewPoints:
+            "Signes digestifs aigus et risque de déshydratation (dont vomissements)\nCaractère aqueux / volumineux des selles et évolution rapide\nContexte d’exposition (eau, hygiène, regroupement, saisonnalité locale)",
+          inclusionPoints:
+            "Cohérence avec un tableau aigu diarrhéique dans le contexte déclaré\nMention explicite des signes ou du niveau de gravité lorsque disponible",
+          cautionPoints:
+            "Ne pas confondre diarrhée non spécifique et épisode à fort enjeu sanitaire sans lecture du dossier\nÉviter une décision sur le seul libellé sans recoupement clinique",
+        },
+        MEASLES_LIKE: {
+          label: "Rougeole / éruption fébrile (référence)",
+          summary:
+            "Mettre l’accent sur la fièvre, l’éruption, le contact communautaire et le groupe d’âge lorsque le code l’indique.",
+          reviewPoints:
+            "Fièvre et éruption cutanée (céphalocaudale, évolution sur plusieurs jours)\nSignes associés (yeux, toux, signes respiratoires) lorsque décrits\nRegroupement familial / scolaire ou contexte de vulnérabilité si mentionné",
+          inclusionPoints:
+            "Cohérence entre tableau fébrile-éruptif et déclaration\nMention d’isolement ou de mesures si présentes dans le dossier",
+          cautionPoints:
+            "Distinguer autres éruptions fébriles sans conclure sur la base du seul code\nNe pas sur-interpréter un libellé sans signes narratifs",
+        },
+        DENGUE_LIKE: {
+          label: "Dengue / arbovirose fébrile (référence)",
+          summary:
+            "Prioriser le contexte fébrile aigu, les signes hémorragiques possibles et le cadre épidémique local.",
+          reviewPoints:
+            "Fièvre aiguë et symptômes associés (douleurs, asthénie)\nSignes d’alerte hémorragiques ou de gravité si rapportés\nContexte d’exposition / saison / cocirculation si mentionné",
+          inclusionPoints:
+            "Alignement entre syndrome fébrile décrit et déclaration\nPrésence d’éléments orientant la vigilance clinique (signes d’alerte)",
+          cautionPoints:
+            "Ne pas assimiler toute fièvre à une arbovirose sans lecture du dossier\nRester prudent sur la gravité sans données cliniques",
+        },
+        MALARIA_LIKE: {
+          label: "Paludisme (référence)",
+          summary:
+            "Vérifier la cohérence du tableau fébrile paroxystique, du contexte d’exposition et des éléments biologiques déclarés.",
+          reviewPoints:
+            "Fièvre et chronologie compatible avec un accès aigu\nVoyage / zone d’endémie / exposition locale si indiqué\nDépistage ou confirmation biologique déclarée (lorsque présent)",
+          inclusionPoints:
+            "Cohérence entre exposition possible et présentation clinique\nTraitement ou suivi mentionné lorsque pertinent",
+          cautionPoints:
+            "Autres causes fébriles fréquentes — éviter une conclusion sur le seul code\nRespecter la prudence si le dossier manque d’éléments biologiques ou de contexte",
+        },
+        TUBERCULOSIS_LIKE: {
+          label: "Tuberculose (référence — évolution lente)",
+          summary:
+            "Les tableaux chroniques exigent une lecture prudente : symptômes prolongés, évolution lente et preuves lorsqu’elles existent.",
+          reviewPoints:
+            "Symptômes prolongés (toux, baisse de poids, fièvre prolongée) lorsque décrits\nDurée d’évolution et contexte de vulnérabilité\nRésultats biologiques / radiologiques déclarés si présents",
+          inclusionPoints:
+            "Cohérence entre chronicité décrite et déclaration\nÉléments de confirmation ou de suivi lorsque disponibles",
+          cautionPoints:
+            "Ne pas précipiter une validation sans chronologie ni éléments cliniques suffisants\nÉviter l’inférence épidémiologique au-delà du dossier déclaré",
+        },
+      },
     },
     sectionFacilityDossier: "Dossier déclaré par l’établissement",
     sectionDepartmentReview: "Revue départementale MSPP",

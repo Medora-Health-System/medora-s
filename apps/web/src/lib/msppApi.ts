@@ -92,6 +92,12 @@ export type MsppReviewAuditTrailItem = {
   createdAt: string;
 };
 
+/** Aide à la validation (lecture seule, profil selon le code maladie). */
+export type MsppReviewGuidancePayload = {
+  reviewGuidanceProfile: string;
+  reviewGuidanceReason: string;
+};
+
 export type MsppReviewRow = {
   id: string;
   diseaseCaseReportId: string | null;
@@ -143,6 +149,8 @@ export type MsppReviewRow = {
   };
   /** Présent lorsque `includeAuditEvents` est demandé sur la liste. */
   auditTrail?: MsppReviewAuditTrailItem[];
+  /** Décision d’aide à la revue (profil indicatif selon code maladie). */
+  reviewGuidance?: MsppReviewGuidancePayload;
 };
 
 export async function fetchMsppReviews(opts?: { includeAuditEvents?: boolean }) {

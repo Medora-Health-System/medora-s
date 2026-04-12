@@ -784,6 +784,7 @@ export default function MsppValidationPage() {
           submitting={modalSubmitting}
           facilityDossier={activeRow?.facilityDossier ?? null}
           departmentReview={activeRow?.departmentReview ?? null}
+          reviewGuidanceProfileId={activeRow?.reviewGuidance?.reviewGuidanceProfile ?? null}
           variant={
             pendingDecision.kind === "dept-approve" || pendingDecision.kind === "dept-reject"
               ? "department"
