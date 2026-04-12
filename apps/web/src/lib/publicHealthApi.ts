@@ -65,6 +65,29 @@ export type DiseaseCaseReportRow = {
   };
   /** Revue MSPP liée (circuit national), si le département géographique a pu être résolu. */
   msppReview?: { id: string; status: string } | null;
+  /** Synthèse retours qualité MSPP (listes d’établissement et nationales). */
+  msppFeedback?: {
+    pendingCount: number;
+    actionRequiredCount: number;
+  };
+};
+
+/** Retour structuré MSPP → établissement (ne modifie pas la déclaration). */
+export type MsppDiseaseReportFeedbackItem = {
+  id: string;
+  diseaseCaseReportId: string;
+  diseaseCaseReviewId: string | null;
+  category: string;
+  severity: string;
+  feedbackText: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  createdByDisplayName: string;
+  facilityReviewedAt: string | null;
+  facilityReviewedByDisplayName: string | null;
+  resolvedAt: string | null;
+  resolvedByDisplayName: string | null;
 };
 
 export type DiseaseSummaryBreakdown = {
@@ -246,6 +269,31 @@ export async function fetchHaitiGeoReferenceNational() {
     departments: HaitiGeoDepartment[];
     communesByDepartmentId: Record<string, HaitiGeoCommune[]>;
   }>;
+}
+
+/** Liste des retours qualité MSPP pour une déclaration (périmètre établissement). */
+export async function fetchMsppFeedbackForFacilityReport(facilityId: string, reportId: string) {
+  return apiFetch(`/public-health/disease-reports/${encodeURIComponent(reportId)}/mspp-feedback`, {
+    facilityId,
+  }) as Promise<{ items: MsppDiseaseReportFeedbackItem[] }>;
+}
+
+/** Marquer un retour comme vu ou résolu (établissement). */
+export async function postMsppFeedbackFacilityStatus(
+  facilityId: string,
+  reportId: string,
+  feedbackId: string,
+  status: "REVIEWED" | "RESOLVED"
+) {
+  return apiFetch(
+    `/public-health/disease-reports/${encodeURIComponent(reportId)}/mspp-feedback/${encodeURIComponent(feedbackId)}/facility-status`,
+    {
+      method: "POST",
+      facilityId,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }
+  ) as Promise<{ ok: true; item: MsppDiseaseReportFeedbackItem }>;
 }
 
 export async function fetchVaccineCatalogNational(includeInactive?: boolean) {

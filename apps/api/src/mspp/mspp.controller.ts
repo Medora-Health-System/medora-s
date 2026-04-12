@@ -22,6 +22,8 @@ import {
   parseMsppAlertTriageNote,
   parseMsppAlertTriageStatus,
 } from "./dto/mspp-alert-triage.dto";
+import { parseCreateMsppDiseaseReportFeedback } from "../public-health/dto/mspp-disease-report-feedback.dto";
+import { PublicHealthService } from "../public-health/public-health.service";
 
 type RequestWithJwtAndMspp = {
   user?: { userId: string };
@@ -49,7 +51,10 @@ function parseReviewAction(body: unknown): MsppReviewActionDto {
 @Controller("mspp")
 @UseGuards(AuthGuard("jwt"), MsppRolesGuard)
 export class MsppController {
-  constructor(private readonly mspp: MsppService) {}
+  constructor(
+    private readonly mspp: MsppService,
+    private readonly publicHealth: PublicHealthService
+  ) {}
 
   @Get("reviews")
   @RequireMsppRoles(
@@ -280,6 +285,33 @@ export class MsppController {
     if (!actor) throw new ForbiddenException();
     const dto = parseMsppAlertTriageAssign(body);
     return this.mspp.assignAlertTriage(msppCtx(req), dto, actor);
+  }
+
+  /** Retour qualité structuré vers l’établissement (ne modifie pas la déclaration). */
+  @Post("disease-reports/feedback")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  createDiseaseReportFeedback(@Body() body: unknown, @Req() req: RequestWithJwtAndMspp) {
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException();
+    const dto = parseCreateMsppDiseaseReportFeedback(body);
+    return this.publicHealth.createMsppDiseaseReportFeedbackFromMspp(dto, userId);
+  }
+
+  /** Liste des retours pour une déclaration (lecture nationale MSPP). */
+  @Get("disease-reports/:reportId/feedback")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  listDiseaseReportFeedback(@Param("reportId") reportId: string) {
+    return this.publicHealth.listMsppDiseaseReportFeedbackForReport(reportId, {});
   }
 
   /** Read-only validation pipeline analytics (snapshot + audit-based timing in lookback window). */

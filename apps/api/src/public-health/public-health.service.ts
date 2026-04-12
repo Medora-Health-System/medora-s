@@ -8,6 +8,8 @@ import { AuditService } from "../common/services/audit.service";
 import {
   AuditAction,
   DiseaseCaseStatus,
+  MsppDiseaseReportFeedbackSeverity,
+  MsppDiseaseReportFeedbackStatus,
   MsppLabEvidenceType,
   Prisma,
 } from "@prisma/client";
@@ -21,6 +23,7 @@ import type {
   CreateDiseaseCaseReportDto,
   ListDiseaseCaseReportsQuery,
   DiseaseSummaryQuery,
+  CreateMsppDiseaseReportFeedbackDto,
 } from "./dto";
 import {
   activeDiseaseNotifiableCatalog,
@@ -661,6 +664,8 @@ export class PublicHealthService {
       }
     }
 
+    const feedbackSummary = await this.feedbackSummaryForReportIds(reportIds);
+
     const items = rows.map((r) => {
       const deptOk = Boolean(String(r.department ?? "").trim());
       const comOk = Boolean(String(r.commune ?? "").trim());
@@ -670,6 +675,7 @@ export class PublicHealthService {
         patientFullName = patientFullNameFromPatient(r.patient);
         patientPrimaryIdentifier = patientPrimaryIdentifierFromPatient(r.patient);
       }
+      const fb = feedbackSummary.get(r.id) ?? { pending: 0, actionRequired: 0 };
       return {
         ...r,
         patientFullName,
@@ -679,6 +685,10 @@ export class PublicHealthService {
           geoIncomplete: !deptOk || !comOk,
         },
         msppReview: msppReviewByReportId.get(r.id) ?? null,
+        msppFeedback: {
+          pendingCount: fb.pending,
+          actionRequiredCount: fb.actionRequired,
+        },
       };
     });
 
@@ -861,6 +871,8 @@ export class PublicHealthService {
       }
     }
 
+    const feedbackSummary = await this.feedbackSummaryForReportIds(reportIds);
+
     const items = rows.map((r) => {
       const deptOk = Boolean(String(r.department ?? "").trim());
       const comOk = Boolean(String(r.commune ?? "").trim());
@@ -871,6 +883,7 @@ export class PublicHealthService {
         patientPrimaryIdentifier = patientPrimaryIdentifierFromPatient(r.patient);
       }
       const { facility, ...rest } = r;
+      const fb = feedbackSummary.get(r.id) ?? { pending: 0, actionRequired: 0 };
       return {
         ...rest,
         facilityName: facility?.name ?? null,
@@ -881,6 +894,10 @@ export class PublicHealthService {
           geoIncomplete: !deptOk || !comOk,
         },
         msppReview: msppReviewByReportId.get(r.id) ?? null,
+        msppFeedback: {
+          pendingCount: fb.pending,
+          actionRequiredCount: fb.actionRequired,
+        },
       };
     });
 
@@ -917,5 +934,221 @@ export class PublicHealthService {
       communesByDepartmentId[c.geoDepartmentId] = list;
     }
     return { departments, communesByDepartmentId };
+  }
+
+  private async feedbackSummaryForReportIds(
+    reportIds: string[]
+  ): Promise<Map<string, { pending: number; actionRequired: number }>> {
+    const out = new Map<string, { pending: number; actionRequired: number }>();
+    if (reportIds.length === 0) return out;
+    for (const id of reportIds) {
+      out.set(id, { pending: 0, actionRequired: 0 });
+    }
+    const [nonResolved, actionRequired] = await Promise.all([
+      this.prisma.msppDiseaseReportFeedback.groupBy({
+        by: ["diseaseCaseReportId"],
+        where: {
+          diseaseCaseReportId: { in: reportIds },
+          status: { not: MsppDiseaseReportFeedbackStatus.RESOLVED },
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.msppDiseaseReportFeedback.groupBy({
+        by: ["diseaseCaseReportId"],
+        where: {
+          diseaseCaseReportId: { in: reportIds },
+          status: { not: MsppDiseaseReportFeedbackStatus.RESOLVED },
+          severity: MsppDiseaseReportFeedbackSeverity.ACTION_REQUIRED,
+        },
+        _count: { _all: true },
+      }),
+    ]);
+    for (const g of nonResolved) {
+      const cur = out.get(g.diseaseCaseReportId);
+      if (cur) cur.pending = g._count._all;
+    }
+    for (const g of actionRequired) {
+      const cur = out.get(g.diseaseCaseReportId);
+      if (cur) cur.actionRequired = g._count._all;
+    }
+    return out;
+  }
+
+  /**
+   * Retours MSPP structurés — création côté national uniquement (validateurs / direction).
+   */
+  async createMsppDiseaseReportFeedbackFromMspp(
+    dto: CreateMsppDiseaseReportFeedbackDto,
+    createdByUserId: string
+  ) {
+    const report = await this.prisma.diseaseCaseReport.findUnique({
+      where: { id: dto.diseaseCaseReportId },
+      select: { id: true },
+    });
+    if (!report) {
+      throw new NotFoundException("Déclaration introuvable.");
+    }
+    if (dto.diseaseCaseReviewId) {
+      const rev = await this.prisma.diseaseCaseReview.findFirst({
+        where: {
+          id: dto.diseaseCaseReviewId,
+          diseaseCaseReportId: dto.diseaseCaseReportId,
+        },
+        select: { id: true },
+      });
+      if (!rev) {
+        throw new BadRequestException("Revue MSPP non concordante avec la déclaration.");
+      }
+    }
+    const row = await this.prisma.msppDiseaseReportFeedback.create({
+      data: {
+        diseaseCaseReportId: dto.diseaseCaseReportId,
+        diseaseCaseReviewId: dto.diseaseCaseReviewId ?? null,
+        category: dto.category,
+        severity: dto.severity,
+        feedbackText: dto.feedbackText,
+        createdByUserId,
+      },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    await this.audit.log(AuditAction.CREATE, "MsppDiseaseReportFeedback", {
+      userId: createdByUserId,
+      entityId: row.id,
+      metadata: {
+        diseaseCaseReportId: dto.diseaseCaseReportId,
+        diseaseCaseReviewId: dto.diseaseCaseReviewId ?? null,
+        category: dto.category,
+        severity: dto.severity,
+      },
+    });
+    return this.serializeMsppDiseaseReportFeedback(row);
+  }
+
+  private serializeMsppDiseaseReportFeedback(row: {
+    id: string;
+    diseaseCaseReportId: string;
+    diseaseCaseReviewId: string | null;
+    category: string;
+    severity: string;
+    feedbackText: string;
+    status: MsppDiseaseReportFeedbackStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    facilityReviewedAt: Date | null;
+    resolvedAt: Date | null;
+    createdBy: { id: string; firstName: string; lastName: string };
+    facilityReviewedBy?: { firstName: string; lastName: string } | null;
+    resolvedBy?: { firstName: string; lastName: string } | null;
+  }) {
+    return {
+      id: row.id,
+      diseaseCaseReportId: row.diseaseCaseReportId,
+      diseaseCaseReviewId: row.diseaseCaseReviewId,
+      category: row.category,
+      severity: row.severity,
+      feedbackText: row.feedbackText,
+      status: row.status,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      createdByDisplayName: `${row.createdBy.firstName} ${row.createdBy.lastName}`.trim(),
+      facilityReviewedAt: row.facilityReviewedAt?.toISOString() ?? null,
+      facilityReviewedByDisplayName: row.facilityReviewedBy
+        ? `${row.facilityReviewedBy.firstName} ${row.facilityReviewedBy.lastName}`.trim()
+        : null,
+      resolvedAt: row.resolvedAt?.toISOString() ?? null,
+      resolvedByDisplayName: row.resolvedBy
+        ? `${row.resolvedBy.firstName} ${row.resolvedBy.lastName}`.trim()
+        : null,
+    };
+  }
+
+  async listMsppDiseaseReportFeedbackForReport(
+    reportId: string,
+    opts: { facilityId?: string }
+  ) {
+    const report = await this.prisma.diseaseCaseReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, facilityId: true },
+    });
+    if (!report) {
+      throw new NotFoundException("Déclaration introuvable.");
+    }
+    if (opts.facilityId && report.facilityId !== opts.facilityId) {
+      throw new NotFoundException("Déclaration introuvable.");
+    }
+    const rows = await this.prisma.msppDiseaseReportFeedback.findMany({
+      where: { diseaseCaseReportId: reportId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        facilityReviewedBy: { select: { firstName: true, lastName: true } },
+        resolvedBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+    return {
+      items: rows.map((r) => this.serializeMsppDiseaseReportFeedback(r)),
+    };
+  }
+
+  async setMsppDiseaseReportFeedbackFacilityStatus(
+    facilityId: string,
+    reportId: string,
+    feedbackId: string,
+    actorUserId: string,
+    next: "REVIEWED" | "RESOLVED"
+  ) {
+    const report = await this.prisma.diseaseCaseReport.findFirst({
+      where: { id: reportId, facilityId },
+      select: { id: true },
+    });
+    if (!report) {
+      throw new NotFoundException("Déclaration introuvable.");
+    }
+    const fb = await this.prisma.msppDiseaseReportFeedback.findFirst({
+      where: { id: feedbackId, diseaseCaseReportId: reportId },
+    });
+    if (!fb) {
+      throw new NotFoundException("Retour introuvable.");
+    }
+    if (fb.status === MsppDiseaseReportFeedbackStatus.RESOLVED && next === "REVIEWED") {
+      throw new BadRequestException("Ce retour est déjà résolu.");
+    }
+    const updated =
+      next === "REVIEWED"
+        ? await this.prisma.msppDiseaseReportFeedback.update({
+            where: { id: feedbackId },
+            data: {
+              status: MsppDiseaseReportFeedbackStatus.REVIEWED,
+              facilityReviewedAt: new Date(),
+              facilityReviewedByUserId: actorUserId,
+            },
+            include: {
+              createdBy: { select: { id: true, firstName: true, lastName: true } },
+              facilityReviewedBy: { select: { firstName: true, lastName: true } },
+              resolvedBy: { select: { firstName: true, lastName: true } },
+            },
+          })
+        : await this.prisma.msppDiseaseReportFeedback.update({
+            where: { id: feedbackId },
+            data: {
+              status: MsppDiseaseReportFeedbackStatus.RESOLVED,
+              resolvedAt: new Date(),
+              resolvedByUserId: actorUserId,
+            },
+            include: {
+              createdBy: { select: { id: true, firstName: true, lastName: true } },
+              facilityReviewedBy: { select: { firstName: true, lastName: true } },
+              resolvedBy: { select: { firstName: true, lastName: true } },
+            },
+          });
+    await this.audit.log(AuditAction.UPDATE, "MsppDiseaseReportFeedback", {
+      userId: actorUserId,
+      facilityId,
+      entityId: feedbackId,
+      metadata: { diseaseCaseReportId: reportId, facilityStatus: next },
+    });
+    return { ok: true as const, item: this.serializeMsppDiseaseReportFeedback(updated) };
   }
 }

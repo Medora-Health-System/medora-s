@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { Fragment, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
@@ -14,6 +14,7 @@ import {
   type HaitiGeoDepartment,
   type HaitiGeoCommune,
 } from "@/lib/publicHealthApi";
+import { MsppFacilityFeedbackPanel } from "@/features/public-health/MsppFacilityFeedbackPanel";
 import { DiseaseReportForm } from "@/features/public-health/disease-report-form";
 import { PublicHealthFacilityRequiredBlock } from "@/features/public-health/PublicHealthFacilityRequiredBlock";
 import { inputStyle } from "@/components/pharmacy/Modal";
@@ -78,6 +79,7 @@ export default function DiseaseReportsPage() {
   const [filterDiseaseName, setFilterDiseaseName] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
 
   const loadReports = useCallback(async () => {
     if (!canViewPublicHealthDiseaseReports) return;
@@ -131,6 +133,47 @@ export default function DiseaseReportsPage() {
     const out = t(key);
     return out === key ? msppReview.status : out;
   };
+
+  const feedbackBadge = (r: DiseaseCaseReportRow) => {
+    const fb = r.msppFeedback;
+    if (!fb || (fb.pendingCount === 0 && fb.actionRequiredCount === 0)) {
+      return <span style={{ color: "#94a3b8" }}>{t("diseaseReports.dash")}</span>;
+    }
+    if (fb.actionRequiredCount > 0) {
+      return (
+        <span
+          style={{
+            display: "inline-block",
+            padding: "2px 8px",
+            borderRadius: 9999,
+            background: "rgba(220,38,38,0.12)",
+            color: "#b91c1c",
+            fontWeight: 700,
+            fontSize: 12,
+          }}
+        >
+          {t("diseaseReports.msppFeedbackBadgeAction").replace("{n}", String(fb.actionRequiredCount))}
+        </span>
+      );
+    }
+    return (
+      <span
+        style={{
+          display: "inline-block",
+          padding: "2px 8px",
+          borderRadius: 9999,
+          background: "rgba(217,119,6,0.15)",
+          color: "#92400e",
+          fontWeight: 600,
+          fontSize: 12,
+        }}
+      >
+        {t("diseaseReports.msppFeedbackBadgePending").replace("{n}", String(fb.pendingCount))}
+      </span>
+    );
+  };
+
+  const tableColSpan = nationalRead ? 13 : 12;
 
   if (!ready) return <p>{t("diseaseReports.loadingPage")}</p>;
   if (!canViewPublicHealthDiseaseReports) {
@@ -298,36 +341,74 @@ export default function DiseaseReportsPage() {
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableOnset")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableClinicalPreview")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableMsppPipeline")}</th>
+                  <th style={{ padding: "8px 6px", minWidth: 140 }}>{t("diseaseReports.tableMsppFeedback")}</th>
                 </tr>
               </thead>
               <tbody>
                 {reports.map((r) => {
                   const idDisplay = formatPrimaryIdentifierForDisplay(r.patientPrimaryIdentifier);
                   return (
-                    <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.reportedAt)}</td>
-                      {nationalRead ? (
+                    <Fragment key={r.id}>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.reportedAt)}</td>
+                        {nationalRead ? (
+                          <td style={{ padding: "8px 6px" }}>
+                            {r.facilityName?.trim() ? r.facilityName.trim() : t("diseaseReports.dash")}
+                          </td>
+                        ) : null}
                         <td style={{ padding: "8px 6px" }}>
-                          {r.facilityName?.trim() ? r.facilityName.trim() : t("diseaseReports.dash")}
+                          {r.patientFullName?.trim() ? r.patientFullName.trim() : t("diseaseReports.dash")}
                         </td>
+                        <td style={{ padding: "8px 6px" }}>
+                          {idDisplay ?? t("diseaseReports.dash")}
+                        </td>
+                        <td style={{ padding: "8px 6px" }}>{r.diseaseName}</td>
+                        <td style={{ padding: "8px 6px" }}>{r.diseaseCode}</td>
+                        <td style={{ padding: "8px 6px" }}>{statusLabel(r.status)}</td>
+                        <td style={{ padding: "8px 6px" }}>{r.department ?? t("diseaseReports.dash")}</td>
+                        <td style={{ padding: "8px 6px" }}>{r.commune ?? t("diseaseReports.dash")}</td>
+                        <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.onsetDate)}</td>
+                        <td style={{ padding: "8px 6px", maxWidth: 200 }}>
+                          {truncateNote(r.clinicalSummary || r.notes, 80)}
+                        </td>
+                        <td style={{ padding: "8px 6px", fontSize: 12 }}>{msppPipelineLabel(r.msppReview)}</td>
+                        <td style={{ padding: "8px 6px", fontSize: 12, verticalAlign: "top" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+                            {feedbackBadge(r)}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedReportId((cur) => (cur === r.id ? null : r.id))
+                              }
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 8,
+                                border: "1px solid #cbd5e1",
+                                background: expandedReportId === r.id ? "#e2e8f0" : "#fff",
+                                fontSize: 12,
+                                cursor: "pointer",
+                              }}
+                            >
+                              {expandedReportId === r.id
+                                ? t("diseaseReports.msppFeedbackToggleHide")
+                                : t("diseaseReports.msppFeedbackToggleShow")}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedReportId === r.id ? (
+                        <tr>
+                          <td colSpan={tableColSpan} style={{ padding: "6px 8px 14px", background: "#fafafa" }}>
+                            <MsppFacilityFeedbackPanel
+                              reportId={r.id}
+                              facilityId={nationalRead ? null : facilityId ?? null}
+                              nationalMsppReadonly={nationalRead}
+                              onFeedbackUpdated={() => void loadReports()}
+                            />
+                          </td>
+                        </tr>
                       ) : null}
-                      <td style={{ padding: "8px 6px" }}>
-                        {r.patientFullName?.trim() ? r.patientFullName.trim() : t("diseaseReports.dash")}
-                      </td>
-                      <td style={{ padding: "8px 6px" }}>
-                        {idDisplay ?? t("diseaseReports.dash")}
-                      </td>
-                      <td style={{ padding: "8px 6px" }}>{r.diseaseName}</td>
-                      <td style={{ padding: "8px 6px" }}>{r.diseaseCode}</td>
-                      <td style={{ padding: "8px 6px" }}>{statusLabel(r.status)}</td>
-                      <td style={{ padding: "8px 6px" }}>{r.department ?? t("diseaseReports.dash")}</td>
-                      <td style={{ padding: "8px 6px" }}>{r.commune ?? t("diseaseReports.dash")}</td>
-                      <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.onsetDate)}</td>
-                      <td style={{ padding: "8px 6px", maxWidth: 200 }}>
-                        {truncateNote(r.clinicalSummary || r.notes, 80)}
-                      </td>
-                      <td style={{ padding: "8px 6px", fontSize: 12 }}>{msppPipelineLabel(r.msppReview)}</td>
-                    </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>

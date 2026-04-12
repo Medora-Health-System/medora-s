@@ -286,6 +286,9 @@ model User {
   msppReviewAuditEvents         MsppReviewAuditEvent[]
   msppAlertTriagesAcknowledged  MsppAlertTriage[]        @relation("MsppAlertTriageAckBy")
   msppAlertTriagesAssigned      MsppAlertTriage[]        @relation("MsppAlertTriageAssignTo")
+  msppDiseaseReportFeedbacksCreated          MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackCreatedBy")
+  msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
+  msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackResolvedBy")
 }
 
 model PasswordResetToken {
@@ -1041,6 +1044,7 @@ model DiseaseCaseReport {
   encounter   Encounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   reportedBy  User?        @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
   geoCommune  GeoCommune?  @relation(fields: [geoCommuneId], references: [id], onDelete: SetNull)
+  msppFeedbacks MsppDiseaseReportFeedback[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -1128,6 +1132,7 @@ model DiseaseCaseReview {
   updatedAt           DateTime  @updatedAt
 
   auditEvents MsppReviewAuditEvent[]
+  msppFeedbacks MsppDiseaseReportFeedback[]
 
   @@unique([diseaseCaseReportId])
   @@index([reviewerUserId])
@@ -1219,6 +1224,56 @@ model MsppAlertTriage {
   @@index([triageStatus])
   @@index([departmentId])
   @@index([updatedAt])
+}
+
+/// Structured quality feedback from MSPP to facilities (does not mutate the declaration).
+enum MsppDiseaseReportFeedbackCategory {
+  GEO_INCOMPLETE
+  CLINICAL_INCOMPLETE
+  LAB_MISSING
+  CODE_VERIFY
+  DUPLICATE_SUSPECTED
+  DATA_INCONSISTENT
+  OTHER
+}
+
+enum MsppDiseaseReportFeedbackSeverity {
+  INFO
+  WARNING
+  ACTION_REQUIRED
+}
+
+enum MsppDiseaseReportFeedbackStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+}
+
+model MsppDiseaseReportFeedback {
+  id                       String                            @id @default(uuid())
+  diseaseCaseReportId      String
+  diseaseCaseReviewId      String?
+  category                 MsppDiseaseReportFeedbackCategory
+  severity                 MsppDiseaseReportFeedbackSeverity
+  feedbackText             String                            @db.Text
+  status                   MsppDiseaseReportFeedbackStatus @default(OPEN)
+  createdByUserId          String
+  createdAt                DateTime                          @default(now())
+  updatedAt                DateTime                          @updatedAt
+  facilityReviewedAt       DateTime?
+  facilityReviewedByUserId String?
+  resolvedAt               DateTime?
+  resolvedByUserId         String?
+
+  report             DiseaseCaseReport @relation(fields: [diseaseCaseReportId], references: [id], onDelete: Restrict)
+  review             DiseaseCaseReview? @relation(fields: [diseaseCaseReviewId], references: [id], onDelete: SetNull)
+  createdBy          User              @relation("MsppDiseaseReportFeedbackCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  facilityReviewedBy User?             @relation("MsppDiseaseReportFeedbackFacilityReviewedBy", fields: [facilityReviewedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy         User?             @relation("MsppDiseaseReportFeedbackResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([diseaseCaseReportId])
+  @@index([status])
+  @@index([severity])
 }
 
 /// National MSPP access (not tied to facility `UserRole`). For `MSPP_VALIDATOR_DEPT`: either `geoDepartmentId` or `allGeoDepartments`.

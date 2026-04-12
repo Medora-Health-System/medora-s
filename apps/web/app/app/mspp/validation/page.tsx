@@ -41,6 +41,7 @@ import {
   MsppValidationTechnicalIds,
 } from "@/features/mspp/MsppValidationTechnicalIds";
 import { MsppReviewHistoryBlock } from "@/features/mspp/MsppReviewHistoryBlock";
+import { MsppValidationQualityFeedbackBlock } from "@/features/mspp/MsppValidationQualityFeedbackBlock";
 
 type PendingMsppDecision =
   | { kind: "dept-approve"; reviewId: string }
@@ -528,6 +529,10 @@ export default function MsppValidationPage() {
                           />
                         </div>
                         <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
+                        <MsppValidationQualityFeedbackBlock
+                          diseaseCaseReportId={r.diseaseCaseReportId}
+                          diseaseCaseReviewId={r.id}
+                        />
                       </>
                     }
                   />
@@ -613,6 +618,10 @@ export default function MsppValidationPage() {
                           />
                         </div>
                         <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
+                        <MsppValidationQualityFeedbackBlock
+                          diseaseCaseReportId={r.diseaseCaseReportId}
+                          diseaseCaseReviewId={r.id}
+                        />
                       </>
                     }
                   />
@@ -689,6 +698,10 @@ export default function MsppValidationPage() {
                           />
                         </div>
                         <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
+                        <MsppValidationQualityFeedbackBlock
+                          diseaseCaseReportId={r.diseaseCaseReportId}
+                          diseaseCaseReviewId={r.id}
+                        />
                       </>
                     }
                   />
@@ -765,6 +778,10 @@ export default function MsppValidationPage() {
                           />
                         </div>
                         <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
+                        <MsppValidationQualityFeedbackBlock
+                          diseaseCaseReportId={r.diseaseCaseReportId}
+                          diseaseCaseReviewId={r.id}
+                        />
                       </>
                     }
                   />

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Param,
   Query,
   Req,
   UseGuards,
@@ -47,6 +48,13 @@ export class MsppPublicHealthNationalController {
       req.ip,
       req.headers?.["user-agent"] as string | undefined
     );
+  }
+
+  /** Retours qualité MSPP sur une déclaration (lecture nationale). */
+  @Get("disease-reports/:reportId/feedback")
+  @RequireMsppRoles(MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS)
+  listDiseaseReportFeedbackNational(@Param("reportId") reportId: string) {
+    return this.publicHealth.listMsppDiseaseReportFeedbackForReport(reportId, {});
   }
 
   @Get("disease-reports")

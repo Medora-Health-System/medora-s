@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiClient";
+import type { MsppDiseaseReportFeedbackItem } from "./publicHealthApi";
 
 /** Backend-relative prefix. `apiFetch` prepends the shared proxy base (not `/api/backend` in this string). */
 const BASE = "/mspp";
@@ -543,4 +544,29 @@ export async function msppCentralRequeue(reviewId: string) {
   return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/central-requeue`, {
     method: "POST",
   });
+}
+
+/** Corps POST — retour qualité structuré vers l’établissement (ne modifie pas la déclaration). */
+export type MsppCreateDiseaseReportFeedbackBody = {
+  diseaseCaseReportId: string;
+  diseaseCaseReviewId?: string | null;
+  category: string;
+  severity: string;
+  feedbackText: string;
+};
+
+/** Création d’un retour qualité (validateurs MSPP nationaux). */
+export async function createMsppDiseaseReportFeedback(body: MsppCreateDiseaseReportFeedbackBody) {
+  return apiFetch(`${BASE}/disease-reports/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<MsppDiseaseReportFeedbackItem>;
+}
+
+/** Liste des retours pour une déclaration (contexte MSPP national). */
+export async function fetchMsppDiseaseReportFeedbackList(reportId: string) {
+  return apiFetch(`${BASE}/disease-reports/${encodeURIComponent(reportId)}/feedback`, {}) as Promise<{
+    items: MsppDiseaseReportFeedbackItem[];
+  }>;
 }
