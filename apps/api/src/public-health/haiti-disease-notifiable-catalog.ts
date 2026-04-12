@@ -278,3 +278,21 @@ export const HAITI_DISEASE_NOTIFIABLE_CATALOG: HaitiDiseaseNotifiableEntry[] = [
 export function activeDiseaseNotifiableCatalog(): HaitiDiseaseNotifiableEntry[] {
   return HAITI_DISEASE_NOTIFIABLE_CATALOG.filter((e) => e.isActive);
 }
+
+/**
+ * Resolve a catalog row for a `DiseaseCaseReport.diseaseCode` (exact ICD-style code, child code, or parent prefix).
+ * Longest catalog `code` wins when multiple prefixes could match.
+ */
+export function findNotifiableCatalogEntryByDiseaseCode(diseaseCode: string): HaitiDiseaseNotifiableEntry | null {
+  const raw = diseaseCode.trim();
+  if (!raw) return null;
+  const active = activeDiseaseNotifiableCatalog();
+  const exact = active.find((e) => e.code === raw);
+  if (exact) return exact;
+  const sorted = [...active].sort((a, b) => b.code.length - a.code.length);
+  for (const e of sorted) {
+    if (raw.startsWith(`${e.code}.`) || raw.startsWith(`${e.code}/`)) return e;
+    if (e.code.startsWith(`${raw}.`) || e.code.startsWith(`${raw}/`)) return e;
+  }
+  return null;
+}

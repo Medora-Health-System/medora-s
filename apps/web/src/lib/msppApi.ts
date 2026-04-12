@@ -275,6 +275,76 @@ export async function fetchMsppCommuneSanitarySignals(opts?: { departmentId?: st
   return apiFetch(`${BASE}/alerts/communes${q}`, {}) as Promise<MsppCommuneSanitarySignalsResponse>;
 }
 
+export type MsppEscalationLevel = "NONE" | "WATCH" | "PRIORITY" | "URGENT";
+
+export type MsppEscalationReasonCode =
+  | "ROUTINE_LOW_SIGNAL"
+  | "ROUTINE_MEDIUM_SIGNAL"
+  | "ROUTINE_HIGH_SIGNAL"
+  | "IMMEDIATE_HIGH_SIGNAL"
+  | "IMMEDIATE_MEDIUM_SIGNAL"
+  | "IMMEDIATE_LOW_SIGNAL"
+  | "WEEKLY_HIGH_PRIORITY_DISEASE"
+  | "WEEKLY_HIGH_SIGNAL"
+  | "WEEKLY_MEDIUM_SIGNAL"
+  | "WEEKLY_LOW_SIGNAL";
+
+export type MsppReportingCategory = "IMMEDIATE" | "WEEKLY" | "ROUTINE";
+
+export type MsppSurveillancePriority = "HIGH" | "MEDIUM" | "LOW";
+
+export type MsppAlertEscalationRow = {
+  scope: "DEPARTMENT" | "COMMUNE";
+  diseaseCode: string;
+  diseaseName: string;
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  geoCommuneId: string | null;
+  communeName: string | null;
+  currentCount: number;
+  previousCount: number;
+  delta: number;
+  signalLevel: MsppSignalLevel;
+  thresholdProfileUsed: string;
+  thresholdReason: string;
+  reportingCategory: MsppReportingCategory | null;
+  surveillancePriority: MsppSurveillancePriority | null;
+  catalogMatched: boolean;
+  escalationLevel: MsppEscalationLevel;
+  escalationReasonCode: MsppEscalationReasonCode;
+};
+
+export type MsppAlertEscalationsResponse = {
+  generatedAt: string;
+  window: MsppSanitarySignalsResponse["window"];
+  scopeNote: string;
+  disclaimer: string;
+  truncated: boolean;
+  totalMatchedBeforeCap: number;
+  escalations: MsppAlertEscalationRow[];
+  notificationFeed: {
+    schemaVersion: 1;
+    kind: "mspp_escalation_v1";
+    generatedAt: string;
+    window: MsppSanitarySignalsResponse["window"];
+    items: Array<{
+      scope: MsppAlertEscalationRow["scope"];
+      diseaseCode: string;
+      departmentId: string;
+      geoCommuneId: string | null;
+      escalationLevel: MsppEscalationLevel;
+      escalationReasonCode: MsppEscalationReasonCode;
+      signalLevel: MsppSignalLevel;
+    }>;
+  };
+};
+
+/** Escalations prioritaires (lecture seule, dérivée des signaux existants). */
+export async function fetchMsppAlertEscalations() {
+  return apiFetch(`${BASE}/alerts/escalations`, {}) as Promise<MsppAlertEscalationsResponse>;
+}
+
 export type MsppValidationDeptAnalyticsRow = {
   departmentId: string;
   departmentCode: string | null;

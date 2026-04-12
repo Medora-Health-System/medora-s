@@ -11,12 +11,14 @@ import {
   fetchMsppGeography,
   fetchMsppSanitarySignals,
   fetchMsppCommuneSanitarySignals,
+  fetchMsppAlertEscalations,
   type MsppSummaryResponse,
   type MsppTrendsResponse,
   type MsppDiseasesResponse,
   type MsppGeographyResponse,
   type MsppSanitarySignalsResponse,
   type MsppCommuneSanitarySignalsResponse,
+  type MsppAlertEscalationsResponse,
 } from "@/lib/msppApi";
 import {
   MsppTrendLineChart,
@@ -30,6 +32,7 @@ import { MsppDashboardNarrative } from "@/features/mspp/MsppNarrativeInsights";
 import { MsppSanitarySignalsBlock } from "@/features/mspp/MsppSanitarySignalsBlock";
 import { MsppHaitiHeatmap } from "@/features/mspp/MsppHaitiHeatmap";
 import { MsppCommuneSurveillanceBlock } from "@/features/mspp/MsppCommuneSurveillanceBlock";
+import { MsppEscalationsBlock } from "@/features/mspp/MsppEscalationsBlock";
 import {
   MSPP_EMPTY_STATE,
   MSPP_ERROR_CALLOUT,
@@ -61,6 +64,7 @@ export default function MsppDashboardPage() {
   const [geo, setGeo] = useState<MsppGeographyResponse | null>(null);
   const [sanitarySignals, setSanitarySignals] = useState<MsppSanitarySignalsResponse | null>(null);
   const [communeSignals, setCommuneSignals] = useState<MsppCommuneSanitarySignalsResponse | null>(null);
+  const [escalations, setEscalations] = useState<MsppAlertEscalationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,13 +75,14 @@ export default function MsppDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [s, t, d, g, sig, comm] = await Promise.all([
+      const [s, t, d, g, sig, comm, esc] = await Promise.all([
         fetchMsppSummary(),
         fetchMsppTrends(),
         fetchMsppDiseases(),
         fetchMsppGeography(),
         fetchMsppSanitarySignals(),
         fetchMsppCommuneSanitarySignals(),
+        fetchMsppAlertEscalations(),
       ]);
       setSummary(s);
       setTrends(t);
@@ -85,6 +90,7 @@ export default function MsppDashboardPage() {
       setGeo(g);
       setSanitarySignals(sig);
       setCommuneSignals(comm);
+      setEscalations(esc);
     } catch {
       setError("Impossible de charger les indicateurs.");
       setSummary(null);
@@ -93,6 +99,7 @@ export default function MsppDashboardPage() {
       setGeo(null);
       setSanitarySignals(null);
       setCommuneSignals(null);
+      setEscalations(null);
     } finally {
       setLoading(false);
     }
@@ -143,6 +150,8 @@ export default function MsppDashboardPage() {
       <MsppMinisterSignalBlock compact loading={loading} trends={trends} summary={summary} />
 
       <MsppSanitarySignalsBlock loading={loading} data={sanitarySignals} />
+
+      <MsppEscalationsBlock loading={loading} data={escalations} />
 
       <div style={MSPP_SECTION_CARD}>
         <h2 style={MSPP_SECTION_TITLE}>{t("msppSanitarySignals.mapTitle")}</h2>

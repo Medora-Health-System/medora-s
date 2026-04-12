@@ -18,6 +18,13 @@ import {
 } from "./mspp.constants";
 import { classifySanitarySignalLevelDiseaseAware } from "./sanitary-signal-thresholds";
 import { resolveReviewGuidance } from "./review-disease-guidance";
+import {
+  computeMsppEscalation,
+  type MsppEscalationLevel,
+  type MsppEscalationReasonCode,
+} from "./mspp-alert-escalation";
+import type { MsppReportingCategory, MsppSurveillancePriority } from "../public-health/haiti-disease-notifiable-catalog";
+import { findNotifiableCatalogEntryByDiseaseCode } from "../public-health/haiti-disease-notifiable-catalog";
 import type { MsppRequestContext } from "./guards/mspp-roles.guard";
 import type { MsppReviewActionDto } from "./dto/review-action.dto";
 
@@ -361,6 +368,56 @@ export type MsppCommuneSanitarySignalsResponse = {
   truncated: boolean;
   signalsTotalBeforeCap: number;
   signals: MsppCommuneSanitarySignalRow[];
+};
+
+/** Leadership-oriented escalation rows (read-only; derived from sanitary signal outputs + catalog governance). */
+export type MsppAlertEscalationRow = {
+  scope: "DEPARTMENT" | "COMMUNE";
+  diseaseCode: string;
+  diseaseName: string;
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  geoCommuneId: string | null;
+  communeName: string | null;
+  currentCount: number;
+  previousCount: number;
+  delta: number;
+  signalLevel: MsppSignalLevelValue;
+  thresholdProfileUsed: string;
+  thresholdReason: string;
+  reportingCategory: MsppReportingCategory | null;
+  surveillancePriority: MsppSurveillancePriority | null;
+  /** True when `diseaseCode` resolved to an active catalog entry. */
+  catalogMatched: boolean;
+  escalationLevel: MsppEscalationLevel;
+  escalationReasonCode: MsppEscalationReasonCode;
+};
+
+export type MsppAlertEscalationsResponse = {
+  generatedAt: string;
+  window: MsppSanitarySignalsResponse["window"];
+  scopeNote: string;
+  disclaimer: string;
+  truncated: boolean;
+  totalMatchedBeforeCap: number;
+  escalations: MsppAlertEscalationRow[];
+  /** Read-only payload shape for future internal notification channels (no delivery in V1). */
+  notificationFeed: {
+    schemaVersion: 1;
+    kind: "mspp_escalation_v1";
+    generatedAt: string;
+    window: MsppSanitarySignalsResponse["window"];
+    items: Array<{
+      scope: MsppAlertEscalationRow["scope"];
+      diseaseCode: string;
+      departmentId: string;
+      geoCommuneId: string | null;
+      escalationLevel: MsppEscalationLevel;
+      escalationReasonCode: MsppEscalationReasonCode;
+      signalLevel: MsppSignalLevelValue;
+    }>;
+  };
 };
 
 /** Read-only validation pipeline analytics (current state + audit timeline in lookback window). */
@@ -1372,6 +1429,7 @@ export class MsppService {
   }
 
   private static readonly COMMUNE_SIGNALS_MAX_ROWS = 150;
+  private static readonly ALERT_ESCALATIONS_MAX_ROWS = 150;
 
   /**
    * Commune-level decision-support signals: same 7d vs prior 7d windows and `CENTRAL_APPROVED` + `reviewedAt` as
@@ -1545,6 +1603,135 @@ export class MsppService {
       truncated: signalsTotalBeforeCap > capped.length,
       signalsTotalBeforeCap,
       signals: capped,
+    };
+  }
+
+  /**
+   * Escalation tiers for national leadership: pure read/compute on top of {@link sanitarySignals} and
+   * {@link communeSanitarySignals} plus governed catalog fields. No writes, no epidemic semantics.
+   */
+  async alertEscalations(ctx: MsppRequestContext): Promise<MsppAlertEscalationsResponse> {
+    const [dept, comm] = await Promise.all([this.sanitarySignals(ctx), this.communeSanitarySignals(ctx)]);
+
+    const escRank: Record<MsppEscalationLevel, number> = {
+      URGENT: 0,
+      PRIORITY: 1,
+      WATCH: 2,
+      NONE: 3,
+    };
+    const levelRank: Record<MsppSignalLevelValue, number> = {
+      [MsppSignalLevel.HIGH]: 0,
+      [MsppSignalLevel.MEDIUM]: 1,
+      [MsppSignalLevel.LOW]: 2,
+    };
+
+    const out: MsppAlertEscalationRow[] = [];
+
+    const pushDept = (row: MsppSanitarySignalRow) => {
+      const entry = findNotifiableCatalogEntryByDiseaseCode(row.diseaseCode);
+      const rc = entry?.reportingCategory ?? null;
+      const sp = entry?.surveillancePriority ?? null;
+      const { level, reasonCode } = computeMsppEscalation({
+        signalLevel: row.signalLevel,
+        reportingCategory: rc,
+        surveillancePriority: sp,
+      });
+      if (level === "NONE") return;
+      out.push({
+        scope: "DEPARTMENT",
+        diseaseCode: row.diseaseCode,
+        diseaseName: row.diseaseName,
+        departmentId: row.departmentId,
+        departmentCode: row.departmentCode,
+        departmentName: row.departmentName,
+        geoCommuneId: null,
+        communeName: null,
+        currentCount: row.currentCount,
+        previousCount: row.previousCount,
+        delta: row.delta,
+        signalLevel: row.signalLevel,
+        thresholdProfileUsed: row.thresholdProfileUsed,
+        thresholdReason: row.thresholdReason,
+        reportingCategory: rc,
+        surveillancePriority: sp,
+        catalogMatched: Boolean(entry),
+        escalationLevel: level,
+        escalationReasonCode: reasonCode,
+      });
+    };
+
+    const pushComm = (row: MsppCommuneSanitarySignalRow) => {
+      const entry = findNotifiableCatalogEntryByDiseaseCode(row.diseaseCode);
+      const rc = entry?.reportingCategory ?? null;
+      const sp = entry?.surveillancePriority ?? null;
+      const { level, reasonCode } = computeMsppEscalation({
+        signalLevel: row.signalLevel,
+        reportingCategory: rc,
+        surveillancePriority: sp,
+      });
+      if (level === "NONE") return;
+      out.push({
+        scope: "COMMUNE",
+        diseaseCode: row.diseaseCode,
+        diseaseName: row.diseaseName,
+        departmentId: row.departmentId,
+        departmentCode: row.departmentCode,
+        departmentName: row.departmentName,
+        geoCommuneId: row.geoCommuneId,
+        communeName: row.communeName,
+        currentCount: row.currentCount,
+        previousCount: row.previousCount,
+        delta: row.delta,
+        signalLevel: row.signalLevel,
+        thresholdProfileUsed: row.thresholdProfileUsed,
+        thresholdReason: row.thresholdReason,
+        reportingCategory: rc,
+        surveillancePriority: sp,
+        catalogMatched: Boolean(entry),
+        escalationLevel: level,
+        escalationReasonCode: reasonCode,
+      });
+    };
+
+    for (const s of dept.signals) pushDept(s);
+    for (const s of comm.signals) pushComm(s);
+
+    out.sort((a, b) => {
+      const er = escRank[a.escalationLevel] - escRank[b.escalationLevel];
+      if (er !== 0) return er;
+      const lr = levelRank[a.signalLevel] - levelRank[b.signalLevel];
+      if (lr !== 0) return lr;
+      return b.delta - a.delta;
+    });
+
+    const totalMatchedBeforeCap = out.length;
+    const capped = out.slice(0, MsppService.ALERT_ESCALATIONS_MAX_ROWS);
+
+    return {
+      generatedAt: dept.generatedAt,
+      window: dept.window,
+      scopeNote:
+        "National MSPP read-only escalations: derived from existing department and commune sanitary signal rows (7d vs prior 7d, central approvals).",
+      disclaimer:
+        "Automated classification for dashboard use only; human validation required. Does not declare an epidemic or change case status.",
+      truncated: totalMatchedBeforeCap > capped.length,
+      totalMatchedBeforeCap,
+      escalations: capped,
+      notificationFeed: {
+        schemaVersion: 1,
+        kind: "mspp_escalation_v1",
+        generatedAt: dept.generatedAt,
+        window: dept.window,
+        items: capped.map((r) => ({
+          scope: r.scope,
+          diseaseCode: r.diseaseCode,
+          departmentId: r.departmentId,
+          geoCommuneId: r.geoCommuneId,
+          escalationLevel: r.escalationLevel,
+          escalationReasonCode: r.escalationReasonCode,
+          signalLevel: r.signalLevel,
+        })),
+      },
     };
   }
 

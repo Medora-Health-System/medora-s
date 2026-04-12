@@ -184,6 +184,18 @@ export class MsppController {
     return this.mspp.communeSanitarySignals(msppCtx(req), d || undefined);
   }
 
+  /** Read-only escalation tiers (catalog governance + existing signal rows); no writes, no epidemic semantics. */
+  @Get("alerts/escalations")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  alertEscalations(@Req() req: RequestWithJwtAndMspp) {
+    return this.mspp.alertEscalations(msppCtx(req));
+  }
+
   /** Read-only validation pipeline analytics (snapshot + audit-based timing in lookback window). */
   @Get("analytics/validation")
   @RequireMsppRoles(
