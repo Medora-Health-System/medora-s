@@ -221,6 +221,13 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     accent: "indigo",
   },
   {
+    href: "/app/mspp/exports",
+    labelKey: "nav.msppExports",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp",
+    accent: "indigo",
+  },
+  {
     href: "/app/mspp/validation",
     labelKey: "nav.msppValidation",
     roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],

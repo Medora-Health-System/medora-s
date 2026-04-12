@@ -80,6 +80,7 @@ const fr = {
     msppNotificationCenter: "MSPP — Centre de notification",
     msppRapport: "MSPP — Rapport",
     msppBulletin: "MSPP — Bulletin hebdomadaire",
+    msppExports: "MSPP — Exports",
     msppValidation: "MSPP — Validation",
     msppAuditHistory: "MSPP — Historique des validations",
     msppValidationAnalytics: "MSPP — Analyse des validations",
