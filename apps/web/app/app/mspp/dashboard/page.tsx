@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   fetchMsppSummary,
@@ -25,6 +26,7 @@ import { MsppSurveillancePanel } from "@/features/mspp/MsppAlertBadges";
 import { MsppMinisterSignalBlock } from "@/features/mspp/MsppMinisterSignal";
 import { MsppDashboardNarrative } from "@/features/mspp/MsppNarrativeInsights";
 import { MsppSanitarySignalsBlock } from "@/features/mspp/MsppSanitarySignalsBlock";
+import { MsppHaitiHeatmap } from "@/features/mspp/MsppHaitiHeatmap";
 import {
   MSPP_EMPTY_STATE,
   MSPP_ERROR_CALLOUT,
@@ -48,6 +50,7 @@ import {
 const DISEASE_CHART_MAX = 18;
 
 export default function MsppDashboardPage() {
+  const { t } = useI18n();
   const { ready, msppRoles } = useFacilityAndRoles();
   const [summary, setSummary] = useState<MsppSummaryResponse | null>(null);
   const [trends, setTrends] = useState<MsppTrendsResponse | null>(null);
@@ -133,6 +136,11 @@ export default function MsppDashboardPage() {
       <MsppMinisterSignalBlock compact loading={loading} trends={trends} summary={summary} />
 
       <MsppSanitarySignalsBlock loading={loading} data={sanitarySignals} />
+
+      <div style={MSPP_SECTION_CARD}>
+        <h2 style={MSPP_SECTION_TITLE}>{t("msppSanitarySignals.mapTitle")}</h2>
+        <MsppHaitiHeatmap loading={loading} signals={sanitarySignals?.signals ?? []} />
+      </div>
 
       <MsppSurveillancePanel
         compact

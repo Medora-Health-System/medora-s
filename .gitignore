@@ -22,3 +22,6 @@ node_modules/
 .pnpm-store/
 node_modules/
 .next/
+apps/api/scripts/*.js
+apps/api/scripts/*.map
+apps/api/scripts/*.d.ts
