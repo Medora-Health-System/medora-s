@@ -600,6 +600,25 @@ export default {
     watchlistDiseaseCaption:
       "Observation par fréquence dans les dossiers affichés — pas de seuil d’alerte ni de jugement clinique.",
   },
+  msppCommuneSurveillance: {
+    title: "Surveillance communale",
+    signalCommunal: "Signal communal",
+    disclaimer: "Indicateurs descriptifs — lecture seule.",
+    validationRequired: "Validation humaine requise.",
+    windowHint:
+      "Comparaison sur deux fenêtres glissantes (UTC) : période précédente {prev} ; période récente {cur}. Référence : revue centrale approuvée ; commune issue du référentiel national.",
+    excludedHint:
+      "{n} dossier(s) ignorés : liaison communale absente ou incohérence entre le département de la revue et la commune référencée.",
+    truncatedHint: "Affichage des {shown} premiers signaux sur {total} (tri par niveau puis écart).",
+    loading: "Chargement…",
+    empty: "Aucun signal communal notable sur les fenêtres récentes (données liées à une commune référencée).",
+    colDepartment: "Département",
+    colCommune: "Commune",
+    colDisease: "Maladie",
+    colCurrent: "7 derniers jours",
+    colPrevious: "7 jours précédents",
+    colLevel: "Niveau",
+  },
   msppSanitarySignals: {
     title: "Alertes sanitaires",
     disclaimer: "Signal automatisé — validation humaine requise.",

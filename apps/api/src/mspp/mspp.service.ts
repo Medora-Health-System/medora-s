@@ -333,6 +333,38 @@ export type MsppSanitarySignalsResponse = {
   signals: MsppSanitarySignalRow[];
 };
 
+/** Commune-level signal row (referential `GeoCommune` + validated review windows). */
+export type MsppCommuneSanitarySignalRow = {
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  geoCommuneId: string;
+  communeName: string;
+  diseaseCode: string;
+  diseaseName: string;
+  currentCount: number;
+  previousCount: number;
+  delta: number;
+  percentChange: number | null;
+  signalLevel: MsppSignalLevelValue;
+};
+
+export type MsppCommuneSanitarySignalsResponse = {
+  generatedAt: string;
+  window: {
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+  };
+  /** Rows without reliable `geoCommuneId` or with dept/commune mismatch are omitted. */
+  excludedUnlinkedOrMismatchCount: number;
+  /** True when more than 150 signal rows matched after sorting. */
+  truncated: boolean;
+  signalsTotalBeforeCap: number;
+  signals: MsppCommuneSanitarySignalRow[];
+};
+
 @Injectable()
 export class MsppService {
   constructor(
@@ -1284,6 +1316,180 @@ export class MsppService {
         currentEnd: tEnd.toISOString(),
       },
       signals,
+    };
+  }
+
+  private static readonly COMMUNE_SIGNALS_MAX_ROWS = 150;
+
+  /**
+   * Commune-level decision-support signals: same 7d vs prior 7d windows and `CENTRAL_APPROVED` + `reviewedAt` as
+   * {@link sanitarySignals}, but grouped by (`GeoCommune`, disease). Only reports with **`geoCommuneId` set** are
+   * included; rows where `DiseaseCaseReview.departmentId` ≠ `GeoCommune.geoDepartmentId` are skipped (integrity).
+   */
+  async communeSanitarySignals(
+    ctx: MsppRequestContext,
+    filterDepartmentId?: string
+  ): Promise<MsppCommuneSanitarySignalsResponse> {
+    const whereBase = reportingWhereForContext(ctx);
+    const ms7d = 7 * 24 * 60 * 60 * 1000;
+    const generatedAt = new Date();
+    const currentEnd = generatedAt.getTime();
+    const currentStart = currentEnd - ms7d;
+    const previousEnd = currentStart;
+    const previousStart = currentEnd - 2 * ms7d;
+
+    const tPrevStart = new Date(previousStart);
+    const tCurrentStart = new Date(currentStart);
+    const tEnd = new Date(currentEnd);
+
+    const reviewWhere: Prisma.DiseaseCaseReviewWhereInput = {
+      ...whereBase,
+      diseaseCaseReportId: { not: null },
+      reviewedAt: { gte: tPrevStart, lt: tEnd },
+      ...(filterDepartmentId ? { departmentId: filterDepartmentId } : {}),
+    };
+
+    const reviewRows = await this.prisma.diseaseCaseReview.findMany({
+      where: reviewWhere,
+      select: {
+        reviewedAt: true,
+        departmentId: true,
+        diseaseCaseReportId: true,
+      },
+    });
+
+    const reportIds = [...new Set(reviewRows.map((r) => r.diseaseCaseReportId).filter(Boolean))] as string[];
+    const reports =
+      reportIds.length === 0
+        ? []
+        : await this.prisma.diseaseCaseReport.findMany({
+            where: {
+              id: { in: reportIds },
+              geoCommuneId: { not: null },
+            },
+            select: {
+              id: true,
+              diseaseCode: true,
+              diseaseName: true,
+              geoCommuneId: true,
+              geoCommune: {
+                select: {
+                  id: true,
+                  name: true,
+                  geoDepartmentId: true,
+                  department: { select: { id: true, name: true, code: true } },
+                },
+              },
+            },
+          });
+    const reportById = new Map(reports.map((r) => [r.id, r]));
+
+    let excludedUnlinkedOrMismatchCount = 0;
+    const prevMap = new Map<string, number>();
+    const currMap = new Map<string, number>();
+    const metaByKey = new Map<
+      string,
+      {
+        departmentId: string;
+        departmentCode: string | null;
+        departmentName: string | null;
+        geoCommuneId: string;
+        communeName: string;
+        diseaseCode: string;
+        diseaseName: string;
+      }
+    >();
+
+    for (const r of reviewRows) {
+      if (!r.reviewedAt || !r.diseaseCaseReportId) continue;
+      const rep = reportById.get(r.diseaseCaseReportId);
+      if (!rep?.geoCommuneId || !rep.geoCommune) {
+        excludedUnlinkedOrMismatchCount += 1;
+        continue;
+      }
+      const gc = rep.geoCommune;
+      if (r.departmentId !== gc.geoDepartmentId) {
+        excludedUnlinkedOrMismatchCount += 1;
+        continue;
+      }
+      const dept = gc.department;
+      const t = r.reviewedAt.getTime();
+      const key = `${rep.geoCommuneId}\u0000${rep.diseaseCode}`;
+      metaByKey.set(key, {
+        departmentId: dept.id,
+        departmentCode: dept.code ?? null,
+        departmentName: dept.name ?? null,
+        geoCommuneId: gc.id,
+        communeName: gc.name,
+        diseaseCode: rep.diseaseCode,
+        diseaseName: rep.diseaseName,
+      });
+      if (t >= previousStart && t < previousEnd) {
+        prevMap.set(key, (prevMap.get(key) ?? 0) + 1);
+      } else if (t >= currentStart && t < currentEnd) {
+        currMap.set(key, (currMap.get(key) ?? 0) + 1);
+      }
+    }
+
+    const allKeys = new Set<string>([...prevMap.keys(), ...currMap.keys()]);
+    const signals: MsppCommuneSanitarySignalRow[] = [];
+
+    for (const key of allKeys) {
+      const previousCount = prevMap.get(key) ?? 0;
+      const currentCount = currMap.get(key) ?? 0;
+      const delta = currentCount - previousCount;
+      if (delta <= 0) continue;
+
+      const meta = metaByKey.get(key);
+      if (!meta) continue;
+
+      let percentChange: number | null = null;
+      if (previousCount > 0) {
+        percentChange = Math.round(((currentCount - previousCount) / previousCount) * 1000) / 10;
+      }
+
+      signals.push({
+        departmentId: meta.departmentId,
+        departmentCode: meta.departmentCode,
+        departmentName: meta.departmentName,
+        geoCommuneId: meta.geoCommuneId,
+        communeName: meta.communeName,
+        diseaseCode: meta.diseaseCode,
+        diseaseName: meta.diseaseName,
+        currentCount,
+        previousCount,
+        delta,
+        percentChange,
+        signalLevel: classifySanitarySignalLevel(currentCount, previousCount),
+      });
+    }
+
+    const levelRank: Record<MsppSignalLevelValue, number> = {
+      [MsppSignalLevel.HIGH]: 0,
+      [MsppSignalLevel.MEDIUM]: 1,
+      [MsppSignalLevel.LOW]: 2,
+    };
+    signals.sort((a, b) => {
+      const lr = levelRank[a.signalLevel] - levelRank[b.signalLevel];
+      if (lr !== 0) return lr;
+      return b.delta - a.delta;
+    });
+
+    const signalsTotalBeforeCap = signals.length;
+    const capped = signals.slice(0, MsppService.COMMUNE_SIGNALS_MAX_ROWS);
+
+    return {
+      generatedAt: generatedAt.toISOString(),
+      window: {
+        previousStart: tPrevStart.toISOString(),
+        previousEnd: tCurrentStart.toISOString(),
+        currentStart: tCurrentStart.toISOString(),
+        currentEnd: tEnd.toISOString(),
+      },
+      excludedUnlinkedOrMismatchCount,
+      truncated: signalsTotalBeforeCap > capped.length,
+      signalsTotalBeforeCap,
+      signals: capped,
     };
   }
 

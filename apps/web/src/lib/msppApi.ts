@@ -225,6 +225,44 @@ export async function fetchMsppSanitarySignals() {
   return apiFetch(`${BASE}/alerts/signals`, {}) as Promise<MsppSanitarySignalsResponse>;
 }
 
+export type MsppCommuneSanitarySignalRow = {
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  geoCommuneId: string;
+  communeName: string;
+  diseaseCode: string;
+  diseaseName: string;
+  currentCount: number;
+  previousCount: number;
+  delta: number;
+  percentChange: number | null;
+  signalLevel: MsppSignalLevel;
+};
+
+export type MsppCommuneSanitarySignalsResponse = {
+  generatedAt: string;
+  window: {
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+  };
+  excludedUnlinkedOrMismatchCount: number;
+  truncated: boolean;
+  signalsTotalBeforeCap: number;
+  signals: MsppCommuneSanitarySignalRow[];
+};
+
+/** Signaux par commune (référentiel + revues centrales). `departmentId` optionnel = filtre département géographique. */
+export async function fetchMsppCommuneSanitarySignals(opts?: { departmentId?: string }) {
+  const q =
+    opts?.departmentId && opts.departmentId.trim()
+      ? `?departmentId=${encodeURIComponent(opts.departmentId.trim())}`
+      : "";
+  return apiFetch(`${BASE}/alerts/communes${q}`, {}) as Promise<MsppCommuneSanitarySignalsResponse>;
+}
+
 export async function msppDepartmentApprove(reviewId: string, body: MsppReviewActionBody) {
   return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/department-approve`, {
     method: "POST",

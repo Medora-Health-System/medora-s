@@ -167,4 +167,20 @@ export class MsppController {
   sanitarySignals(@Req() req: RequestWithJwtAndMspp) {
     return this.mspp.sanitarySignals(msppCtx(req));
   }
+
+  /** Commune-level signals (7d vs prior 7d); optional `departmentId` narrows to one geographic department. */
+  @Get("alerts/communes")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  communeSanitarySignals(
+    @Req() req: RequestWithJwtAndMspp,
+    @Query("departmentId") departmentId?: string
+  ) {
+    const d = departmentId?.trim();
+    return this.mspp.communeSanitarySignals(msppCtx(req), d || undefined);
+  }
 }
