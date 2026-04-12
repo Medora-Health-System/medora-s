@@ -73,13 +73,24 @@ export function formatAgeYearsSexEnglish(
 const UUID_V4_LIKE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export type FormatPrimaryIdentifierOptions = {
+  /**
+   * When true, UUID-shaped dossier numbers are shown (operational MSPP / surveillance views).
+   * Default false keeps legacy behavior for general UI where a UUID is not a meaningful human identifier.
+   */
+  allowUuidLike?: boolean;
+};
+
 /**
  * Returns the value for display in patient identifier columns, or null if empty or UUID-shaped
  * (e.g. fallback global dossier number stored as UUID).
  */
-export function formatPrimaryIdentifierForDisplay(value: string | null | undefined): string | null {
+export function formatPrimaryIdentifierForDisplay(
+  value: string | null | undefined,
+  options?: FormatPrimaryIdentifierOptions
+): string | null {
   const t = value?.trim();
   if (!t) return null;
-  if (UUID_V4_LIKE.test(t)) return null;
+  if (!options?.allowUuidLike && UUID_V4_LIKE.test(t)) return null;
   return t;
 }

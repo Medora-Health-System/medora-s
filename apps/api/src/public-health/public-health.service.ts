@@ -11,6 +11,7 @@ import {
   MsppDiseaseReportFeedbackSeverity,
   MsppDiseaseReportFeedbackStatus,
   MsppLabEvidenceType,
+  MsppRoleCode,
   Prisma,
 } from "@prisma/client";
 import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
@@ -49,6 +50,20 @@ export class PublicHealthService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
+
+  /**
+   * Facility disease-report list: patient identity (name + NIR/MRN/global dossier) is revealed only to users
+   * with national MSPP assignments that include disease-report visibility (aligned with MSPP portal scope).
+   * Pure Medora clinical roles at the facility receive redacted list rows (see `listDiseaseCaseReports`).
+   */
+  async userMayViewPatientIdentityOnFacilityDiseaseReportList(userId: string): Promise<boolean> {
+    const rows = await this.prisma.msppUserRoleAssignment.findMany({
+      where: { userId, isActive: true },
+      select: { role: true },
+    });
+    const allowed = new Set<MsppRoleCode>([MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]);
+    return rows.some((row) => allowed.has(row.role));
+  }
 
   /**
    * Résout l’identifiant `GeoDepartment` pour rattacher une `DiseaseCaseReview` (circuit MSPP).
@@ -603,8 +618,10 @@ export class PublicHealthService {
     query: ListDiseaseCaseReportsQuery,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    listOptions?: { revealPatientIdentity: boolean }
   ) {
+    const revealPatientIdentity = listOptions?.revealPatientIdentity === true;
     const where: any = { facilityId };
     if (query.status) where.status = query.status;
     if (query.commune) where.commune = query.commune;
@@ -667,17 +684,34 @@ export class PublicHealthService {
     const feedbackSummary = await this.feedbackSummaryForReportIds(reportIds);
 
     const items = rows.map((r) => {
+      const { patient, ...reportRest } = r;
       const deptOk = Boolean(String(r.department ?? "").trim());
       const comOk = Boolean(String(r.commune ?? "").trim());
       let patientFullName: string | null = null;
       let patientPrimaryIdentifier: string | null = null;
-      if (r.patient) {
-        patientFullName = patientFullNameFromPatient(r.patient);
-        patientPrimaryIdentifier = patientPrimaryIdentifierFromPatient(r.patient);
+      if (patient) {
+        patientFullName = patientFullNameFromPatient(patient);
+        patientPrimaryIdentifier = patientPrimaryIdentifierFromPatient(patient);
       }
       const fb = feedbackSummary.get(r.id) ?? { pending: 0, actionRequired: 0 };
+      if (!revealPatientIdentity) {
+        return {
+          ...reportRest,
+          patientFullName: null,
+          patientPrimaryIdentifier: null,
+          dataQuality: {
+            geoCommuneLinked: Boolean(r.geoCommuneId),
+            geoIncomplete: !deptOk || !comOk,
+          },
+          msppReview: msppReviewByReportId.get(r.id) ?? null,
+          msppFeedback: {
+            pendingCount: fb.pending,
+            actionRequiredCount: fb.actionRequired,
+          },
+        };
+      }
       return {
-        ...r,
+        ...reportRest,
         patientFullName,
         patientPrimaryIdentifier,
         dataQuality: {
@@ -882,7 +916,7 @@ export class PublicHealthService {
         patientFullName = patientFullNameFromPatient(r.patient);
         patientPrimaryIdentifier = patientPrimaryIdentifierFromPatient(r.patient);
       }
-      const { facility, ...rest } = r;
+      const { facility, patient: _patient, ...rest } = r;
       const fb = feedbackSummary.get(r.id) ?? { pending: 0, actionRequired: 0 };
       return {
         ...rest,

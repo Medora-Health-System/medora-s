@@ -153,12 +153,16 @@ export class PublicHealthController {
     if (!parsed.success) {
       throw new BadRequestException("Invalid query", { cause: parsed.error });
     }
+    const revealPatientIdentity = await this.publicHealth.userMayViewPatientIdentityOnFacilityDiseaseReportList(
+      this.userId(req)
+    );
     return this.publicHealth.listDiseaseCaseReports(
       this.facilityId(req),
       parsed.data,
       this.userId(req),
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      { revealPatientIdentity }
     );
   }
 

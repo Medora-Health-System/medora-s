@@ -40,10 +40,21 @@ function truncateNote(s: string | null | undefined, max: number) {
 
 export default function DiseaseReportsPage() {
   const { t } = useI18n();
-  const { facilityId, facilities, ready, canViewPublicHealthDiseaseReports, isMsppOnlyUser } =
-    useFacilityAndRoles();
+  const {
+    facilityId,
+    facilities,
+    ready,
+    canViewPublicHealthDiseaseReports,
+    isMsppOnlyUser,
+    msppRoles,
+  } = useFacilityAndRoles();
   const facilityName = facilities.find((f) => f.id === facilityId)?.name ?? "";
   const nationalRead = Boolean(isMsppOnlyUser && canViewPublicHealthDiseaseReports);
+  /** Aligné API : identifiants opérationnels (y compris dossier global type UUID) lorsque le backend expose l’identité. */
+  const showOperationalPatientIdentifier =
+    nationalRead ||
+    msppRoles.includes("MSPP_ADMIN") ||
+    msppRoles.includes("MSPP_DISEASE_REPORTS");
 
   const [geoDepartments, setGeoDepartments] = useState<HaitiGeoDepartment[]>([]);
   const [communesByDept, setCommunesByDept] = useState<Record<string, HaitiGeoCommune[]>>({});
@@ -346,7 +357,9 @@ export default function DiseaseReportsPage() {
               </thead>
               <tbody>
                 {reports.map((r) => {
-                  const idDisplay = formatPrimaryIdentifierForDisplay(r.patientPrimaryIdentifier);
+                  const idDisplay = formatPrimaryIdentifierForDisplay(r.patientPrimaryIdentifier, {
+                    allowUuidLike: showOperationalPatientIdentifier,
+                  });
                   return (
                     <Fragment key={r.id}>
                       <tr style={{ borderBottom: "1px solid #f1f5f9" }}>

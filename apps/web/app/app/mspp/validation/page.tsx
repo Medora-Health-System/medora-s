@@ -200,7 +200,9 @@ function MsppValidationReviewRow({
   showReviewedAtColumn?: boolean;
   actionCell: React.ReactNode;
 }) {
-  const identifierDisplay = formatPrimaryIdentifierForDisplay(r.patientPrimaryIdentifier);
+  const identifierDisplay = formatPrimaryIdentifierForDisplay(r.patientPrimaryIdentifier, {
+    allowUuidLike: true,
+  });
   return (
     <tr>
       <td style={MSPP_TABLE_CELL}>
