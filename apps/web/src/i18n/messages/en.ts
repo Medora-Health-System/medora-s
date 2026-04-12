@@ -152,6 +152,36 @@ export default {
     facilityRequiredBody:
       "Add facility access for this user to use disease reports and vaccinations.",
   },
+  publicHealthNational: {
+    readOnlyBanner: "MSPP national view — read only",
+    actionsNeedFacility: "Some actions require an active facility.",
+    vaccinationsPageTitle: "Vaccinations — national catalog",
+    vaccinationsReadOnlyIntro:
+      "Recording vaccinations and per-patient lists remain tied to an active Medora facility.",
+    vaccinationsCatalogTitle: "Vaccine catalog (reference)",
+    catalogEmpty: "No vaccines in the catalog.",
+    vaccinationsDueSoonDisabled:
+      "Per-facility upcoming-dose lists are not available in the national view. Select a facility or use an account with operational access.",
+  },
+  publicHealthSummary: {
+    pageTitle: "Public health summary",
+    periodTitle: "Period",
+    periodTo: "to",
+    refresh: "Refresh",
+    loadError: "No data or error while loading.",
+    totalReports: "Total reports",
+    byDisease: "By disease",
+    byCommune: "By commune",
+    disease: "Disease",
+    count: "Count",
+    commune: "Commune",
+    detailTitle: "Detail (disease × status × commune)",
+    detailEmpty: "No detail for this period.",
+    tableDisease: "Disease",
+    tableStatus: "Status",
+    tableCommuneCol: "Commune",
+    tableCount: "Count",
+  },
   diseaseReports: {
     title: "Disease case reports",
     introMspp:
@@ -264,6 +294,7 @@ export default {
     tableNotes: "Notes",
     tablePatient: "Patient",
     tableIdentifier: "Identifier",
+    tableFacility: "Facility",
     dash: "—",
     labEvidenceTypes: {
       NONE: "None",

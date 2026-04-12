@@ -117,6 +117,36 @@ export default {
     facilityRequiredBody:
       "Ajoutez un accès établissement à cet utilisateur pour utiliser les déclarations et les vaccinations.",
   },
+  publicHealthNational: {
+    readOnlyBanner: "Vue nationale MSPP — lecture seule",
+    actionsNeedFacility: "Certaines actions nécessitent un établissement actif.",
+    vaccinationsPageTitle: "Vaccinations — catalogue national",
+    vaccinationsReadOnlyIntro:
+      "L’enregistrement des vaccinations et les listes par patient restent liés à un établissement Medora actif.",
+    vaccinationsCatalogTitle: "Catalogue des vaccins (référentiel)",
+    catalogEmpty: "Aucun vaccin dans le référentiel.",
+    vaccinationsDueSoonDisabled:
+      "La liste des doses à venir par établissement n’est pas disponible en vue nationale. Sélectionnez un établissement ou utilisez un compte avec accès opérationnel.",
+  },
+  publicHealthSummary: {
+    pageTitle: "Résumé santé publique",
+    periodTitle: "Période",
+    periodTo: "au",
+    refresh: "Actualiser",
+    loadError: "Aucune donnée ou erreur lors du chargement.",
+    totalReports: "Total déclarations",
+    byDisease: "Par maladie",
+    byCommune: "Par commune",
+    disease: "Maladie",
+    count: "Nombre",
+    commune: "Commune",
+    detailTitle: "Détail (maladie × statut × commune)",
+    detailEmpty: "Aucun détail sur la période.",
+    tableDisease: "Maladie",
+    tableStatus: "Statut",
+    tableCommuneCol: "Commune",
+    tableCount: "Nombre",
+  },
   diseaseReports: {
     title: "Déclarations de cas",
     introMspp:
@@ -230,6 +260,7 @@ export default {
     tableNotes: "Notes",
     tablePatient: "Patient",
     tableIdentifier: "Identifiant",
+    tableFacility: "Établissement",
     dash: "—",
     labEvidenceTypes: {
       NONE: "Aucune",

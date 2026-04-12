@@ -5,7 +5,15 @@ import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { formatPrimaryIdentifierForDisplay } from "@/lib/patientDisplay";
-import { fetchDiseaseReports, fetchHaitiGeoReference, type DiseaseCaseReportRow, type HaitiGeoDepartment, type HaitiGeoCommune } from "@/lib/publicHealthApi";
+import {
+  fetchDiseaseReports,
+  fetchDiseaseReportsNational,
+  fetchHaitiGeoReference,
+  fetchHaitiGeoReferenceNational,
+  type DiseaseCaseReportRow,
+  type HaitiGeoDepartment,
+  type HaitiGeoCommune,
+} from "@/lib/publicHealthApi";
 import { DiseaseReportForm } from "@/features/public-health/disease-report-form";
 import { PublicHealthFacilityRequiredBlock } from "@/features/public-health/PublicHealthFacilityRequiredBlock";
 import { inputStyle } from "@/components/pharmacy/Modal";
@@ -31,16 +39,20 @@ function truncateNote(s: string | null | undefined, max: number) {
 
 export default function DiseaseReportsPage() {
   const { t } = useI18n();
-  const { facilityId, facilities, ready, canViewPublicHealthDiseaseReports } = useFacilityAndRoles();
+  const { facilityId, facilities, ready, canViewPublicHealthDiseaseReports, isMsppOnlyUser } =
+    useFacilityAndRoles();
   const facilityName = facilities.find((f) => f.id === facilityId)?.name ?? "";
+  const nationalRead = Boolean(isMsppOnlyUser && canViewPublicHealthDiseaseReports);
 
   const [geoDepartments, setGeoDepartments] = useState<HaitiGeoDepartment[]>([]);
   const [communesByDept, setCommunesByDept] = useState<Record<string, HaitiGeoCommune[]>>({});
 
   useEffect(() => {
-    if (!facilityId || !canViewPublicHealthDiseaseReports) return;
+    if (!canViewPublicHealthDiseaseReports) return;
+    if (!nationalRead && !facilityId) return;
     let cancelled = false;
-    void fetchHaitiGeoReference(facilityId)
+    const p = nationalRead ? fetchHaitiGeoReferenceNational() : fetchHaitiGeoReference(facilityId!);
+    void p
       .then((data) => {
         if (cancelled) return;
         setGeoDepartments(data.departments ?? []);
@@ -55,7 +67,7 @@ export default function DiseaseReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [facilityId, canViewPublicHealthDiseaseReports]);
+  }, [facilityId, canViewPublicHealthDiseaseReports, nationalRead]);
 
   const [reports, setReports] = useState<DiseaseCaseReportRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -68,7 +80,8 @@ export default function DiseaseReportsPage() {
   const [filterTo, setFilterTo] = useState("");
 
   const loadReports = useCallback(async () => {
-    if (!facilityId || !canViewPublicHealthDiseaseReports) return;
+    if (!canViewPublicHealthDiseaseReports) return;
+    if (!nationalRead && !facilityId) return;
     setLoading(true);
     try {
       const params: Record<string, string> = { limit: "100" };
@@ -78,7 +91,9 @@ export default function DiseaseReportsPage() {
       if (filterDiseaseName) params.diseaseName = filterDiseaseName;
       if (filterFrom) params.reportedFrom = filterFrom;
       if (filterTo) params.reportedTo = filterTo;
-      const res = await fetchDiseaseReports(facilityId, params);
+      const res = nationalRead
+        ? await fetchDiseaseReportsNational(params)
+        : await fetchDiseaseReports(facilityId!, params);
       setReports(res.items ?? []);
       setTotal(res.total ?? 0);
     } catch {
@@ -90,6 +105,7 @@ export default function DiseaseReportsPage() {
   }, [
     facilityId,
     canViewPublicHealthDiseaseReports,
+    nationalRead,
     filterStatus,
     filterCommune,
     filterDepartment,
@@ -99,8 +115,9 @@ export default function DiseaseReportsPage() {
   ]);
 
   useEffect(() => {
-    if (ready && facilityId && canViewPublicHealthDiseaseReports) void loadReports();
-  }, [ready, facilityId, canViewPublicHealthDiseaseReports, loadReports]);
+    if (!ready || !canViewPublicHealthDiseaseReports) return;
+    if (nationalRead || facilityId) void loadReports();
+  }, [ready, facilityId, canViewPublicHealthDiseaseReports, nationalRead, loadReports]);
 
   const statusLabel = (code: string) => {
     const key = `diseaseReports.statuses.${code}`;
@@ -124,17 +141,35 @@ export default function DiseaseReportsPage() {
       </div>
     );
   }
-  if (!facilityId) {
+  if (!nationalRead && !facilityId) {
     return <PublicHealthFacilityRequiredBlock />;
   }
 
   return (
     <div>
       <h1 style={{ marginTop: 0 }}>{t("diseaseReports.title")}</h1>
+      {nationalRead ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "12px 14px",
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+            borderRadius: 12,
+            fontSize: 14,
+            color: "#14532d",
+            maxWidth: 720,
+          }}
+        >
+          <strong>{t("publicHealthNational.readOnlyBanner")}</strong>
+          {" — "}
+          {t("publicHealthNational.actionsNeedFacility")}
+        </div>
+      ) : null}
       <p style={{ color: "#475569", fontSize: 14, marginBottom: 8, maxWidth: 720, lineHeight: 1.5 }}>
         {t("diseaseReports.introMspp")}
       </p>
-      {facilityName ? (
+      {!nationalRead && facilityName ? (
         <p
           style={{
             fontSize: 13,
@@ -175,7 +210,7 @@ export default function DiseaseReportsPage() {
         {t("diseaseReports.pipelineVisibilityNote")}
       </div>
 
-      {facilityId ? (
+      {!nationalRead && facilityId ? (
         <DiseaseReportForm
           facilityId={facilityId}
           onCreated={() => void loadReports()}
@@ -250,6 +285,9 @@ export default function DiseaseReportsPage() {
               <thead>
                 <tr style={{ borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDeclaredOn")}</th>
+                  {nationalRead ? (
+                    <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableFacility")}</th>
+                  ) : null}
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tablePatient")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableIdentifier")}</th>
                   <th style={{ padding: "8px 6px" }}>{t("diseaseReports.tableDisease")}</th>
@@ -268,6 +306,11 @@ export default function DiseaseReportsPage() {
                   return (
                     <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>{formatDate(r.reportedAt)}</td>
+                      {nationalRead ? (
+                        <td style={{ padding: "8px 6px" }}>
+                          {r.facilityName?.trim() ? r.facilityName.trim() : t("diseaseReports.dash")}
+                        </td>
+                      ) : null}
                       <td style={{ padding: "8px 6px" }}>
                         {r.patientFullName?.trim() ? r.patientFullName.trim() : t("diseaseReports.dash")}
                       </td>

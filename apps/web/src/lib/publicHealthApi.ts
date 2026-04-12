@@ -31,6 +31,8 @@ export type DiseaseCaseReportRow = {
   id: string;
   patientId?: string | null;
   facilityId: string;
+  /** Présent sur les listes nationales MSPP (`/mspp/public-health/disease-reports`). */
+  facilityName?: string | null;
   encounterId?: string | null;
   diseaseCode: string;
   diseaseName: string;
@@ -186,4 +188,35 @@ export async function fetchDiseaseSummary(
   return apiFetch(`/public-health/disease-summary?${q.toString()}`, {
     facilityId,
   }) as Promise<DiseaseSummary>;
+}
+
+/** Lecture nationale MSPP — sans en-tête `x-facility-id`. */
+export async function fetchDiseaseSummaryNational(reportedFrom?: string, reportedTo?: string) {
+  const q = new URLSearchParams();
+  if (reportedFrom) q.set("reportedFrom", reportedFrom);
+  if (reportedTo) q.set("reportedTo", reportedTo);
+  return apiFetch(`/mspp/public-health/disease-summary?${q.toString()}`, {}) as Promise<DiseaseSummary>;
+}
+
+export async function fetchDiseaseReportsNational(params: Record<string, string | undefined>) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") q.set(k, v);
+  });
+  return apiFetch(`/mspp/public-health/disease-reports?${q.toString()}`, {}) as Promise<{
+    items: DiseaseCaseReportRow[];
+    total: number;
+  }>;
+}
+
+export async function fetchHaitiGeoReferenceNational() {
+  return apiFetch("/mspp/public-health/haiti-geo", {}) as Promise<{
+    departments: HaitiGeoDepartment[];
+    communesByDepartmentId: Record<string, HaitiGeoCommune[]>;
+  }>;
+}
+
+export async function fetchVaccineCatalogNational(includeInactive?: boolean) {
+  const q = includeInactive ? "?includeInactive=true" : "";
+  return apiFetch(`/mspp/public-health/vaccines/catalog${q}`, {}) as Promise<VaccineCatalogItem[]>;
 }

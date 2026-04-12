@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   fetchVaccineCatalog,
+  fetchVaccineCatalogNational,
   recordVaccination,
   fetchVaccinationsDueSoon,
   type VaccineCatalogItem,
@@ -43,7 +44,8 @@ function formatDate(d: string | null | undefined) {
 
 export default function PublicHealthVaccinationsPage() {
   const { t } = useI18n();
-  const { facilityId, ready, canViewPublicHealthVaccinations } = useFacilityAndRoles();
+  const { facilityId, ready, canViewPublicHealthVaccinations, isMsppOnlyUser } = useFacilityAndRoles();
+  const nationalRead = Boolean(isMsppOnlyUser && canViewPublicHealthVaccinations);
 
   const [catalog, setCatalog] = useState<VaccineCatalogItem[]>([]);
   const [patientQuery, setPatientQuery] = useState("");
@@ -70,25 +72,38 @@ export default function PublicHealthVaccinationsPage() {
     windowEnd?: string;
   }>({ items: [] });
   const [loadingDueSoon, setLoadingDueSoon] = useState(false);
+  const [nationalCatalogDone, setNationalCatalogDone] = useState(false);
 
   useEffect(() => {
-    if (!facilityId || !canViewPublicHealthVaccinations) return;
+    if (!canViewPublicHealthVaccinations) return;
+    if (nationalRead) {
+      setNationalCatalogDone(false);
+      fetchVaccineCatalogNational()
+        .then((list) => {
+          setCatalog(list);
+          if (list[0]) setVaccineCatalogId(list[0].id);
+        })
+        .catch(() => setCatalog([]))
+        .finally(() => setNationalCatalogDone(true));
+      return;
+    }
+    if (!facilityId) return;
     fetchVaccineCatalog(facilityId)
       .then((list) => {
         setCatalog(list);
         if (list[0]) setVaccineCatalogId(list[0].id);
       })
       .catch(() => setCatalog([]));
-  }, [facilityId, canViewPublicHealthVaccinations]);
+  }, [facilityId, canViewPublicHealthVaccinations, nationalRead]);
 
   useEffect(() => {
-    if (!facilityId || !canViewPublicHealthVaccinations) return;
+    if (nationalRead || !facilityId || !canViewPublicHealthVaccinations) return;
     setLoadingDueSoon(true);
     fetchVaccinationsDueSoon(facilityId)
       .then((res) => setDueSoon({ items: res.items || [], windowEnd: res.windowEnd }))
       .catch(() => setDueSoon({ items: [] }))
       .finally(() => setLoadingDueSoon(false));
-  }, [facilityId, canViewPublicHealthVaccinations]);
+  }, [facilityId, canViewPublicHealthVaccinations, nationalRead]);
 
   const searchPatients = async () => {
     if (!facilityId || !patientQuery.trim()) return;
@@ -165,8 +180,67 @@ export default function PublicHealthVaccinationsPage() {
       </div>
     );
   }
-  if (!facilityId) {
+  if (!nationalRead && !facilityId) {
     return <PublicHealthFacilityRequiredBlock />;
+  }
+
+  if (nationalRead) {
+    return (
+      <div>
+        <h1 style={{ marginTop: 0 }}>{t("publicHealthNational.vaccinationsPageTitle")}</h1>
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+            borderRadius: 8,
+            fontSize: 14,
+            color: "#14532d",
+            maxWidth: 720,
+          }}
+        >
+          <strong>{t("publicHealthNational.readOnlyBanner")}</strong>
+          {" — "}
+          {t("publicHealthNational.vaccinationsReadOnlyIntro")}
+        </div>
+        <p style={{ color: "#555", fontSize: 14, marginBottom: 20 }}>
+          <Link href="/app/public-health/summary">{t("diseaseReports.navSummary")}</Link>
+          {" · "}
+          <Link href="/app/public-health/disease-reports">{t("diseaseReports.title")}</Link>
+        </p>
+        <div style={cardStyle}>
+          <h3 style={{ marginTop: 0 }}>{t("publicHealthNational.vaccinationsCatalogTitle")}</h3>
+          {!nationalCatalogDone ? (
+            <p style={{ color: "#666" }}>{t("common.loading")}</p>
+          ) : catalog.length === 0 ? (
+            <p style={{ color: "#666" }}>{t("publicHealthNational.catalogEmpty")}</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #ddd" }}>
+                  <th style={{ padding: 8, textAlign: "left" }}>{t("common.name")}</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>{t("diseaseReports.tableCode")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalog.map((v) => (
+                  <tr key={v.id} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={{ padding: 8 }}>{v.name}</td>
+                    <td style={{ padding: 8 }}>{v.code}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div style={{ ...cardStyle, background: "#f8fafc" }}>
+          <p style={{ margin: 0, fontSize: 14, color: "#475569" }}>
+            {t("publicHealthNational.vaccinationsDueSoonDisabled")}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
