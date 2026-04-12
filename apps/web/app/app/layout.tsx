@@ -164,10 +164,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
     const id = window.setInterval(() => {
-      void fetch("/api/auth/refresh", { method: "POST", credentials: "include" }).catch(() => {});
+      void (async () => {
+        try {
+          const r = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+          if (!r.ok) {
+            window.clearInterval(id);
+            if (r.status === 401) {
+              router.replace("/login");
+            }
+          }
+        } catch {
+          window.clearInterval(id);
+        }
+      })();
     }, intervalMs);
     return () => window.clearInterval(id);
-  }, [user, sessionAccessTtlSec]);
+  }, [user, sessionAccessTtlSec, router]);
 
   const handleLogout = async () => {
     try {

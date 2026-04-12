@@ -112,9 +112,12 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
 
   let lastRefreshed: RefreshedTokens | null = null;
   let didRefresh = false;
+  /** Une seule tentative de refresh par requête proxy (évite 2× POST /auth/refresh si le 1er échoue puis un 401 Nest). */
+  let refreshAttempted = false;
 
   const refreshOnce = async (): Promise<boolean> => {
-    if (didRefresh) return false;
+    if (refreshAttempted) return false;
+    refreshAttempted = true;
     const hasRt = !!cookieStore.get("refreshToken")?.value;
     if (!hasRt) return false;
     const t = await refreshAccessTokenFromCookies();
