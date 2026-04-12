@@ -887,6 +887,12 @@ export default {
     btnCommune: "Download — Commune surveillance",
     btnValidationSummary: "Download — Validation summary",
     btnValidationDepts: "Download — By department (validation)",
+    sectionWhoJsonTitle: "Interoperability JSON exports (versioned schema)",
+    sectionWhoJsonIntro:
+      "Structured packages for archival or external integration (English keys). Same sources as the CSV exports above; no automatic submission.",
+    btnWhoWeeklyJson: "Download JSON — Weekly surveillance",
+    btnWhoAlertsJson: "Download JSON — Priority alerts",
+    btnWhoValidationJson: "Download JSON — Validation analytics",
     sectionNotesTitle: "Notes",
     noteGenerated: "UI generation timestamp: {date}",
     noteMethod:

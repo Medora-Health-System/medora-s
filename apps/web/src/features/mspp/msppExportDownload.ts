@@ -32,3 +32,18 @@ export function downloadUtf8Csv(filename: string, rows: (string | number | boole
 export function exportDateStamp(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/** Téléchargement JSON UTF-8 (interop / paquets versionnés). */
+export function downloadJson(filename: string, payload: unknown): void {
+  const text = JSON.stringify(payload, null, 2);
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

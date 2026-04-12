@@ -852,6 +852,12 @@ export default {
     btnCommune: "Télécharger — Surveillance communale",
     btnValidationSummary: "Télécharger — Synthèse validation",
     btnValidationDepts: "Télécharger — Détail par département (validation)",
+    sectionWhoJsonTitle: "Exports JSON interopérabilité (schéma versionné)",
+    sectionWhoJsonIntro:
+      "Paquets structurés pour archivage ou intégration externe (clés en anglais). Mêmes sources que les CSV ci-dessus ; aucune soumission automatique.",
+    btnWhoWeeklyJson: "Télécharger JSON surveillance hebdomadaire",
+    btnWhoAlertsJson: "Télécharger JSON alertes prioritaires",
+    btnWhoValidationJson: "Télécharger JSON analyse validation",
     sectionNotesTitle: "Notes",
     noteGenerated: "Date de génération locale de ce fichier d’interface : {date}",
     noteMethod:

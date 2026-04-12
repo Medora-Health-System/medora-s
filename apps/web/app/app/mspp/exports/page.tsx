@@ -14,7 +14,7 @@ import {
   type MsppSanitarySignalsResponse,
   type MsppValidationAnalyticsResponse,
 } from "@/lib/msppApi";
-import { downloadUtf8Csv, exportDateStamp } from "@/features/mspp/msppExportDownload";
+import { downloadJson, downloadUtf8Csv, exportDateStamp } from "@/features/mspp/msppExportDownload";
 import {
   buildCommuneSignalsCsv,
   buildEscalationsCsv,
@@ -22,6 +22,11 @@ import {
   buildValidationDepartmentsCsv,
   buildValidationSummaryCsv,
 } from "@/features/mspp/msppExportsBuild";
+import {
+  buildWhoPriorityAlerts,
+  buildWhoValidationAnalytics,
+  buildWhoWeeklySurveillance,
+} from "@/features/mspp/msppWhoExportsBuild";
 import {
   MSPP_BTN_APPROVE,
   MSPP_BTN_ROW,
@@ -108,6 +113,19 @@ export default function MsppExportsPage() {
     downloadUtf8Csv(`mspp-analyse-validations-departements-${stamp}.csv`, buildValidationDepartmentsCsv(validation, t));
   };
 
+  const dlWhoWeekly = () => {
+    if (!signals || !commune) return;
+    downloadJson(`who-weekly-surveillance-${stamp}.json`, buildWhoWeeklySurveillance(signals, commune));
+  };
+  const dlWhoAlerts = () => {
+    if (!escalations) return;
+    downloadJson(`who-priority-alerts-${stamp}.json`, buildWhoPriorityAlerts(escalations));
+  };
+  const dlWhoValidation = () => {
+    if (!validation) return;
+    downloadJson(`who-validation-analytics-${stamp}.json`, buildWhoValidationAnalytics(validation));
+  };
+
   if (!ready) {
     return (
       <div style={MSPP_PAGE_SHELL}>
@@ -176,6 +194,26 @@ export default function MsppExportsPage() {
             </button>
             <button type="button" style={MSPP_BTN_APPROVE} disabled={!validation} onClick={dlValDepts}>
               {t("msppExportsPage.btnValidationDepts")}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={MSPP_SECTION_CARD}>
+        <h2 style={MSPP_SECTION_TITLE}>{t("msppExportsPage.sectionWhoJsonTitle")}</h2>
+        <p style={MSPP_SECTION_SUBTITLE}>{t("msppExportsPage.sectionWhoJsonIntro")}</p>
+        {loading ? (
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppExportsPage.loading")}</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+            <button type="button" style={MSPP_BTN_APPROVE} disabled={!signals || !commune} onClick={dlWhoWeekly}>
+              {t("msppExportsPage.btnWhoWeeklyJson")}
+            </button>
+            <button type="button" style={MSPP_BTN_APPROVE} disabled={!escalations} onClick={dlWhoAlerts}>
+              {t("msppExportsPage.btnWhoAlertsJson")}
+            </button>
+            <button type="button" style={MSPP_BTN_APPROVE} disabled={!validation} onClick={dlWhoValidation}>
+              {t("msppExportsPage.btnWhoValidationJson")}
             </button>
           </div>
         )}
