@@ -282,6 +282,23 @@ export default {
       RULED_OUT: "Écarté",
     },
   },
+  msppAuditPage: {
+    pageTitle: "MSPP — Historique des validations",
+    subtitle:
+      "Journal des décisions MSPP enregistrées sur les dossiers accessibles à votre périmètre (lecture seule). Les événements proviennent des validations et remises en file.",
+    disclaimer: "Données d’audit : pas de jugement épidémiologique automatique.",
+    loadError: "Impossible de charger l’historique.",
+    empty: "Aucun événement d’audit pour les dossiers visibles.",
+    colDate: "Date et heure",
+    colDossier: "Dossier",
+    colDepartment: "Département",
+    colAction: "Action",
+    colLevel: "Niveau",
+    colStatus: "Statut (avant → après)",
+    colActor: "Acteur",
+    requeuedBadge: "Remise en file",
+    linkValidation: "Ouvrir la file de validation",
+  },
   msppValidation: {
     pageTitle: "MSPP — Validation",
     colPatient: "Patient",
