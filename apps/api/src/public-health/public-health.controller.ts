@@ -5,6 +5,7 @@ import {
   Body,
   Query,
   Req,
+  Param,
   UseGuards,
   BadRequestException,
 } from "@nestjs/common";
@@ -19,6 +20,7 @@ import {
   listDiseaseCaseReportsQuerySchema,
   diseaseSummaryQuerySchema,
   listPatientVaccinationsQuerySchema,
+  parseFacilityMsppFeedbackStatus,
 } from "./dto";
 
 @Controller("public-health")
@@ -179,6 +181,40 @@ export class PublicHealthController {
       this.userId(req),
       req.ip,
       req.headers["user-agent"]
+    );
+  }
+
+  /** Retours qualité MSPP sur une déclaration (lecture établissement). */
+  @Get("disease-reports/:reportId/mspp-feedback")
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]
+  )
+  listMsppFeedbackForFacility(@Param("reportId") reportId: string, @Req() req: any) {
+    return this.publicHealth.listMsppDiseaseReportFeedbackForReport(reportId, {
+      facilityId: this.facilityId(req),
+    });
+  }
+
+  /** Marquer un retour comme vu ou résolu (établissement). */
+  @Post("disease-reports/:reportId/mspp-feedback/:feedbackId/facility-status")
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]
+  )
+  setMsppFeedbackFacilityStatus(
+    @Param("reportId") reportId: string,
+    @Param("feedbackId") feedbackId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const parsed = parseFacilityMsppFeedbackStatus(body);
+    return this.publicHealth.setMsppDiseaseReportFeedbackFacilityStatus(
+      this.facilityId(req),
+      reportId,
+      feedbackId,
+      this.userId(req),
+      parsed.status
     );
   }
 }
