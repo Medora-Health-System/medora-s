@@ -194,6 +194,37 @@ export async function fetchMsppTrends() {
   return apiFetch(`${BASE}/trends`, {}) as Promise<MsppTrendsResponse>;
 }
 
+export type MsppSignalLevel = "LOW" | "MEDIUM" | "HIGH";
+
+export type MsppSanitarySignalRow = {
+  diseaseCode: string;
+  diseaseName: string;
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  currentCount: number;
+  previousCount: number;
+  delta: number;
+  percentChange: number | null;
+  signalLevel: MsppSignalLevel;
+};
+
+export type MsppSanitarySignalsResponse = {
+  generatedAt: string;
+  window: {
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+  };
+  signals: MsppSanitarySignalRow[];
+};
+
+/** Lecture seule : signaux 7+7 jours (revues centrales approuvées). */
+export async function fetchMsppSanitarySignals() {
+  return apiFetch(`${BASE}/alerts/signals`, {}) as Promise<MsppSanitarySignalsResponse>;
+}
+
 export async function msppDepartmentApprove(reviewId: string, body: MsppReviewActionBody) {
   return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/department-approve`, {
     method: "POST",

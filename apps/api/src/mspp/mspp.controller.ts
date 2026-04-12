@@ -155,4 +155,16 @@ export class MsppController {
   diseases(@Req() req: RequestWithJwtAndMspp) {
     return this.mspp.diseases(msppCtx(req));
   }
+
+  /** Read-only decision-support signals (7d vs previous 7d); no writes, no stored alert state. */
+  @Get("alerts/signals")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  sanitarySignals(@Req() req: RequestWithJwtAndMspp) {
+    return this.mspp.sanitarySignals(msppCtx(req));
+  }
 }

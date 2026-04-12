@@ -11,6 +11,8 @@ import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from 
 import {
   DiseaseCaseReviewStatus,
   MsppReviewAuditAction,
+  MsppSignalLevel,
+  type MsppSignalLevelValue,
   NATIONAL_MSPP_ROLES,
   ReviewerLevel,
 } from "./mspp.constants";
@@ -294,6 +296,41 @@ export type MsppReviewAuditTrailItem = {
   requeued: boolean;
   criteriaSnapshot: Record<string, unknown> | null;
   createdAt: string;
+};
+
+/** Rule-based support level for dashboard signals only (not an epidemic declaration). */
+function classifySanitarySignalLevel(currentCount: number, previousCount: number): MsppSignalLevelValue {
+  const delta = currentCount - previousCount;
+  if (delta <= 0) return MsppSignalLevel.LOW;
+  const ratio = previousCount > 0 ? currentCount / previousCount : Number.POSITIVE_INFINITY;
+  if (delta >= 6 || (previousCount >= 4 && ratio >= 2)) return MsppSignalLevel.HIGH;
+  if (delta >= 3 || ratio >= 1.5 || (previousCount === 0 && currentCount >= 4)) return MsppSignalLevel.MEDIUM;
+  return MsppSignalLevel.LOW;
+}
+
+/** One row of the national sanitary signals table (read-only). */
+export type MsppSanitarySignalRow = {
+  diseaseCode: string;
+  diseaseName: string;
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  currentCount: number;
+  previousCount: number;
+  delta: number;
+  percentChange: number | null;
+  signalLevel: MsppSignalLevelValue;
+};
+
+export type MsppSanitarySignalsResponse = {
+  generatedAt: string;
+  window: {
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+  };
+  signals: MsppSanitarySignalRow[];
 };
 
 @Injectable()
@@ -1115,6 +1152,139 @@ export class MsppService {
       }
     }
     return { diseases: [...agg.values()].sort((a, b) => b.count - a.count) };
+  }
+
+  /**
+   * National decision-support signals: compare central approvals in the last 7 calendar days vs the prior 7 days,
+   * by disease (`DiseaseCaseReport`) and geographic department (`DiseaseCaseReview.departmentId` → GeoDepartment).
+   * Uses `reviewedAt` when status is CENTRAL_APPROVED (same national read as `summary` / `trends`).
+   */
+  async sanitarySignals(ctx: MsppRequestContext): Promise<MsppSanitarySignalsResponse> {
+    const whereBase = reportingWhereForContext(ctx);
+    const ms7d = 7 * 24 * 60 * 60 * 1000;
+    const generatedAt = new Date();
+    const currentEnd = generatedAt.getTime();
+    const currentStart = currentEnd - ms7d;
+    const previousEnd = currentStart;
+    const previousStart = currentEnd - 2 * ms7d;
+
+    const tPrevStart = new Date(previousStart);
+    const tCurrentStart = new Date(currentStart);
+    const tEnd = new Date(currentEnd);
+
+    const rows = await this.prisma.diseaseCaseReview.findMany({
+      where: {
+        ...whereBase,
+        diseaseCaseReportId: { not: null },
+        reviewedAt: { gte: tPrevStart, lt: tEnd },
+      },
+      select: {
+        reviewedAt: true,
+        departmentId: true,
+        diseaseCaseReportId: true,
+      },
+    });
+
+    const reportIds = [...new Set(rows.map((r) => r.diseaseCaseReportId).filter(Boolean))] as string[];
+    const reports =
+      reportIds.length === 0
+        ? []
+        : await this.prisma.diseaseCaseReport.findMany({
+            where: { id: { in: reportIds } },
+            select: { id: true, diseaseCode: true, diseaseName: true },
+          });
+    const reportById = new Map(reports.map((r) => [r.id, r]));
+
+    const prevMap = new Map<string, number>();
+    const currMap = new Map<string, number>();
+    const metaByKey = new Map<string, { diseaseCode: string; diseaseName: string; departmentId: string }>();
+
+    for (const r of rows) {
+      if (!r.reviewedAt || !r.diseaseCaseReportId) continue;
+      const rep = reportById.get(r.diseaseCaseReportId);
+      if (!rep) continue;
+      const t = r.reviewedAt.getTime();
+      const key = `${rep.diseaseCode}\u0000${r.departmentId}`;
+      metaByKey.set(key, {
+        diseaseCode: rep.diseaseCode,
+        diseaseName: rep.diseaseName,
+        departmentId: r.departmentId,
+      });
+      if (t >= previousStart && t < previousEnd) {
+        prevMap.set(key, (prevMap.get(key) ?? 0) + 1);
+      } else if (t >= currentStart && t < currentEnd) {
+        currMap.set(key, (currMap.get(key) ?? 0) + 1);
+      }
+    }
+
+    const allKeys = new Set<string>([...prevMap.keys(), ...currMap.keys()]);
+    const signals: MsppSanitarySignalRow[] = [];
+
+    for (const key of allKeys) {
+      const previousCount = prevMap.get(key) ?? 0;
+      const currentCount = currMap.get(key) ?? 0;
+      const delta = currentCount - previousCount;
+      if (delta <= 0) continue;
+
+      const meta = metaByKey.get(key);
+      if (!meta) continue;
+
+      let percentChange: number | null = null;
+      if (previousCount > 0) {
+        percentChange = Math.round(((currentCount - previousCount) / previousCount) * 1000) / 10;
+      }
+
+      signals.push({
+        diseaseCode: meta.diseaseCode,
+        diseaseName: meta.diseaseName,
+        departmentId: meta.departmentId,
+        departmentCode: null,
+        departmentName: null,
+        currentCount,
+        previousCount,
+        delta,
+        percentChange,
+        signalLevel: classifySanitarySignalLevel(currentCount, previousCount),
+      });
+    }
+
+    const deptIds = [...new Set(signals.map((s) => s.departmentId))];
+    const geo =
+      deptIds.length === 0
+        ? []
+        : await this.prisma.geoDepartment.findMany({
+            where: { id: { in: deptIds } },
+            select: { id: true, code: true, name: true },
+          });
+    const geoById = new Map(geo.map((g) => [g.id, g]));
+
+    for (const s of signals) {
+      const g = geoById.get(s.departmentId);
+      s.departmentCode = g?.code ?? null;
+      s.departmentName = g?.name ?? null;
+    }
+
+    const levelRank: Record<MsppSignalLevelValue, number> = {
+      [MsppSignalLevel.HIGH]: 0,
+      [MsppSignalLevel.MEDIUM]: 1,
+      [MsppSignalLevel.LOW]: 2,
+    };
+    signals.sort((a, b) => {
+      const lr = levelRank[a.signalLevel] - levelRank[b.signalLevel];
+      if (lr !== 0) return lr;
+      return b.delta - a.delta;
+    });
+
+    return {
+      generatedAt: generatedAt.toISOString(),
+      window: {
+        previousStart: tPrevStart.toISOString(),
+        previousEnd: tCurrentStart.toISOString(),
+        currentStart: tCurrentStart.toISOString(),
+        currentEnd: tEnd.toISOString(),
+      },
+      signals,
+    };
   }
 
   private async loadFacilityReportQualitySlice(

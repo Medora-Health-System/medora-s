@@ -600,6 +600,23 @@ export default {
     watchlistDiseaseCaption:
       "Observation par fréquence dans les dossiers affichés — pas de seuil d’alerte ni de jugement clinique.",
   },
+  msppSanitarySignals: {
+    title: "Alertes sanitaires",
+    disclaimer: "Signal automatisé — validation humaine requise.",
+    loading: "Chargement…",
+    empty: "Aucun signal notable sur les fenêtres récentes.",
+    colDisease: "Maladie",
+    colDepartment: "Département",
+    colCurrent: "7 derniers jours",
+    colPrevious: "7 jours précédents",
+    colLevel: "Niveau du signal",
+    windowHint: "Comparaison sur deux fenêtres glissantes (UTC) : période précédente {prev} ; période récente {cur}. Date de référence : revue centrale approuvée.",
+    level: {
+      LOW: "Faible",
+      MEDIUM: "Modéré",
+      HIGH: "Élevé",
+    },
+  },
   msppSignal: {
     loading: "Chargement…",
     ministerKicker: "Vue nationale",

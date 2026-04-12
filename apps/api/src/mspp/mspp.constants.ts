@@ -41,3 +41,12 @@ export const MsppReviewAuditAction = {
 
 export type MsppReviewAuditActionValue =
   (typeof MsppReviewAuditAction)[keyof typeof MsppReviewAuditAction];
+
+/** Descriptive signal strength for national dashboard (not an outbreak declaration). */
+export const MsppSignalLevel = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+} as const;
+
+export type MsppSignalLevelValue = (typeof MsppSignalLevel)[keyof typeof MsppSignalLevel];

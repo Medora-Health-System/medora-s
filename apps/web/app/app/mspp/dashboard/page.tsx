@@ -8,10 +8,12 @@ import {
   fetchMsppTrends,
   fetchMsppDiseases,
   fetchMsppGeography,
+  fetchMsppSanitarySignals,
   type MsppSummaryResponse,
   type MsppTrendsResponse,
   type MsppDiseasesResponse,
   type MsppGeographyResponse,
+  type MsppSanitarySignalsResponse,
 } from "@/lib/msppApi";
 import {
   MsppTrendLineChart,
@@ -22,6 +24,7 @@ import {
 import { MsppSurveillancePanel } from "@/features/mspp/MsppAlertBadges";
 import { MsppMinisterSignalBlock } from "@/features/mspp/MsppMinisterSignal";
 import { MsppDashboardNarrative } from "@/features/mspp/MsppNarrativeInsights";
+import { MsppSanitarySignalsBlock } from "@/features/mspp/MsppSanitarySignalsBlock";
 import {
   MSPP_EMPTY_STATE,
   MSPP_ERROR_CALLOUT,
@@ -50,6 +53,7 @@ export default function MsppDashboardPage() {
   const [trends, setTrends] = useState<MsppTrendsResponse | null>(null);
   const [diseases, setDiseases] = useState<MsppDiseasesResponse | null>(null);
   const [geo, setGeo] = useState<MsppGeographyResponse | null>(null);
+  const [sanitarySignals, setSanitarySignals] = useState<MsppSanitarySignalsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,22 +64,25 @@ export default function MsppDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [s, t, d, g] = await Promise.all([
+      const [s, t, d, g, sig] = await Promise.all([
         fetchMsppSummary(),
         fetchMsppTrends(),
         fetchMsppDiseases(),
         fetchMsppGeography(),
+        fetchMsppSanitarySignals(),
       ]);
       setSummary(s);
       setTrends(t);
       setDiseases(d);
       setGeo(g);
+      setSanitarySignals(sig);
     } catch {
       setError("Impossible de charger les indicateurs.");
       setSummary(null);
       setTrends(null);
       setDiseases(null);
       setGeo(null);
+      setSanitarySignals(null);
     } finally {
       setLoading(false);
     }
@@ -124,6 +131,8 @@ export default function MsppDashboardPage() {
       </div>
 
       <MsppMinisterSignalBlock compact loading={loading} trends={trends} summary={summary} />
+
+      <MsppSanitarySignalsBlock loading={loading} data={sanitarySignals} />
 
       <MsppSurveillancePanel
         compact
