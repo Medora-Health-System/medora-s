@@ -263,6 +263,55 @@ export async function fetchMsppCommuneSanitarySignals(opts?: { departmentId?: st
   return apiFetch(`${BASE}/alerts/communes${q}`, {}) as Promise<MsppCommuneSanitarySignalsResponse>;
 }
 
+export type MsppValidationDeptAnalyticsRow = {
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  pendingDepartment: number;
+  pendingCentral: number;
+  approvedCentral: number;
+  rejectedDepartment: number;
+  rejectedCentral: number;
+  requeueEvents: number;
+  backlogRisk: "LOW" | "ELEVATED";
+  avgMsFullCycle: number | null;
+  fullCycleSampleSize: number;
+};
+
+export type MsppValidationAnalyticsResponse = {
+  generatedAt: string;
+  scopeNote: string;
+  timingLookbackDays: number;
+  summary: {
+    pendingDepartment: number;
+    pendingCentral: number;
+    approvedCentral: number;
+    rejectedTotal: number;
+    requeueEventsTotal: number;
+  };
+  statusCounts: Record<string, number>;
+  reviewerLevelCounts: Record<string, number>;
+  flow: {
+    requeueEventsTotal: number;
+    terminalDecisionEventsTotal: number;
+    requeueShareOfVolume: number | null;
+  };
+  departments: MsppValidationDeptAnalyticsRow[];
+  timing: {
+    sampleSizeReportToFirstDept: number;
+    avgMsReportToFirstDeptDecision: number | null;
+    sampleSizeDeptApproveToCentral: number;
+    avgMsDepartmentApprovalToCentralDecision: number | null;
+    sampleSizeFullCycle: number;
+    avgMsReportToCentralFinal: number | null;
+  };
+};
+
+/** Analytique du pipeline de validation (lecture seule). */
+export async function fetchMsppValidationAnalytics() {
+  return apiFetch(`${BASE}/analytics/validation`, {}) as Promise<MsppValidationAnalyticsResponse>;
+}
+
 export async function msppDepartmentApprove(reviewId: string, body: MsppReviewActionBody) {
   return apiFetch(`${BASE}/reviews/${encodeURIComponent(reviewId)}/department-approve`, {
     method: "POST",

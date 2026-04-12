@@ -365,6 +365,51 @@ export type MsppCommuneSanitarySignalsResponse = {
   signals: MsppCommuneSanitarySignalRow[];
 };
 
+/** Read-only validation pipeline analytics (current state + audit timeline in lookback window). */
+export type MsppValidationDeptAnalyticsRow = {
+  departmentId: string;
+  departmentCode: string | null;
+  departmentName: string | null;
+  pendingDepartment: number;
+  pendingCentral: number;
+  approvedCentral: number;
+  rejectedDepartment: number;
+  rejectedCentral: number;
+  requeueEvents: number;
+  backlogRisk: "LOW" | "ELEVATED";
+  avgMsFullCycle: number | null;
+  fullCycleSampleSize: number;
+};
+
+export type MsppValidationAnalyticsResponse = {
+  generatedAt: string;
+  scopeNote: string;
+  timingLookbackDays: number;
+  summary: {
+    pendingDepartment: number;
+    pendingCentral: number;
+    approvedCentral: number;
+    rejectedTotal: number;
+    requeueEventsTotal: number;
+  };
+  statusCounts: Record<string, number>;
+  reviewerLevelCounts: Record<string, number>;
+  flow: {
+    requeueEventsTotal: number;
+    terminalDecisionEventsTotal: number;
+    requeueShareOfVolume: number | null;
+  };
+  departments: MsppValidationDeptAnalyticsRow[];
+  timing: {
+    sampleSizeReportToFirstDept: number;
+    avgMsReportToFirstDeptDecision: number | null;
+    sampleSizeDeptApproveToCentral: number;
+    avgMsDepartmentApprovalToCentralDecision: number | null;
+    sampleSizeFullCycle: number;
+    avgMsReportToCentralFinal: number | null;
+  };
+};
+
 @Injectable()
 export class MsppService {
   constructor(
@@ -1490,6 +1535,296 @@ export class MsppService {
       truncated: signalsTotalBeforeCap > capped.length,
       signalsTotalBeforeCap,
       signals: capped,
+    };
+  }
+
+  private static readonly VALIDATION_ANALYTICS_TIMING_LOOKBACK_DAYS = 365;
+  private static readonly DEPT_BACKLOG_PENDING_ELEVATED = 12;
+
+  /**
+   * Validation pipeline analytics: snapshot counts from `DiseaseCaseReview`, flow from `MsppReviewAuditEvent`
+   * within {@link VALIDATION_ANALYTICS_TIMING_LOOKBACK_DAYS} for timing averages. Read-only.
+   */
+  async validationAnalytics(ctx: MsppRequestContext): Promise<MsppValidationAnalyticsResponse> {
+    const reviewScope = reviewWhereForContext(ctx);
+    const generatedAt = new Date();
+    const lookbackMs =
+      MsppService.VALIDATION_ANALYTICS_TIMING_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+    const auditWindowStart = new Date(generatedAt.getTime() - lookbackMs);
+
+    const statusGroups = await this.prisma.diseaseCaseReview.groupBy({
+      by: ["status"],
+      where: reviewScope,
+      _count: { _all: true },
+    });
+    const statusCounts: Record<string, number> = {};
+    for (const g of statusGroups) {
+      statusCounts[g.status] = g._count._all;
+    }
+    const n = (s: string) => statusCounts[s] ?? 0;
+    const pendingDepartment = n(DiseaseCaseReviewStatus.PENDING_DEPARTMENT);
+    const pendingCentral =
+      n(DiseaseCaseReviewStatus.DEPARTMENT_APPROVED) + n(DiseaseCaseReviewStatus.PENDING_CENTRAL);
+    const approvedCentral = n(DiseaseCaseReviewStatus.CENTRAL_APPROVED);
+    const rejectedTotal =
+      n(DiseaseCaseReviewStatus.DEPARTMENT_REJECTED) + n(DiseaseCaseReviewStatus.CENTRAL_REJECTED);
+
+    const reviewerGroups = await this.prisma.diseaseCaseReview.groupBy({
+      by: ["reviewerLevel"],
+      where: reviewScope,
+      _count: { _all: true },
+    });
+    const reviewerLevelCounts: Record<string, number> = {};
+    for (const g of reviewerGroups) {
+      reviewerLevelCounts[g.reviewerLevel] = g._count._all;
+    }
+
+    const requeueEventsTotal = await this.prisma.msppReviewAuditEvent.count({
+      where: {
+        action: { in: [MsppReviewAuditAction.DEPARTMENT_REQUEUE, MsppReviewAuditAction.CENTRAL_REQUEUE] },
+        diseaseCaseReview: { is: reviewScope },
+      },
+    });
+    const terminalDecisionEventsTotal = await this.prisma.msppReviewAuditEvent.count({
+      where: {
+        action: {
+          in: [
+            MsppReviewAuditAction.DEPARTMENT_APPROVE,
+            MsppReviewAuditAction.DEPARTMENT_REJECT,
+            MsppReviewAuditAction.CENTRAL_APPROVE,
+            MsppReviewAuditAction.CENTRAL_REJECT,
+          ],
+        },
+        diseaseCaseReview: { is: reviewScope },
+      },
+    });
+    const decisionDen = terminalDecisionEventsTotal + requeueEventsTotal;
+    const requeueShareOfVolume = decisionDen > 0 ? requeueEventsTotal / decisionDen : null;
+
+    const deptStatusGroups = await this.prisma.diseaseCaseReview.groupBy({
+      by: ["departmentId", "status"],
+      where: reviewScope,
+      _count: { _all: true },
+    });
+    type DeptAgg = {
+      pendingDepartment: number;
+      pendingCentral: number;
+      approvedCentral: number;
+      rejectedDepartment: number;
+      rejectedCentral: number;
+    };
+    const deptMap = new Map<string, DeptAgg>();
+    for (const g of deptStatusGroups) {
+      const cur = deptMap.get(g.departmentId) ?? {
+        pendingDepartment: 0,
+        pendingCentral: 0,
+        approvedCentral: 0,
+        rejectedDepartment: 0,
+        rejectedCentral: 0,
+      };
+      const c = g._count._all;
+      if (g.status === DiseaseCaseReviewStatus.PENDING_DEPARTMENT) cur.pendingDepartment += c;
+      else if (
+        g.status === DiseaseCaseReviewStatus.DEPARTMENT_APPROVED ||
+        g.status === DiseaseCaseReviewStatus.PENDING_CENTRAL
+      ) {
+        cur.pendingCentral += c;
+      } else if (g.status === DiseaseCaseReviewStatus.CENTRAL_APPROVED) cur.approvedCentral += c;
+      else if (g.status === DiseaseCaseReviewStatus.DEPARTMENT_REJECTED) cur.rejectedDepartment += c;
+      else if (g.status === DiseaseCaseReviewStatus.CENTRAL_REJECTED) cur.rejectedCentral += c;
+      deptMap.set(g.departmentId, cur);
+    }
+
+    const requeueRows = await this.prisma.msppReviewAuditEvent.findMany({
+      where: {
+        action: { in: [MsppReviewAuditAction.DEPARTMENT_REQUEUE, MsppReviewAuditAction.CENTRAL_REQUEUE] },
+        diseaseCaseReview: { is: reviewScope },
+      },
+      select: {
+        diseaseCaseReview: { select: { departmentId: true } },
+      },
+    });
+    const requeueByDept = new Map<string, number>();
+    for (const r of requeueRows) {
+      const id = r.diseaseCaseReview.departmentId;
+      requeueByDept.set(id, (requeueByDept.get(id) ?? 0) + 1);
+    }
+
+    const deptIds = [...deptMap.keys()];
+    const geoDepts =
+      deptIds.length === 0
+        ? []
+        : await this.prisma.geoDepartment.findMany({
+            where: { id: { in: deptIds } },
+            select: { id: true, code: true, name: true },
+          });
+    const geoById = new Map(geoDepts.map((d) => [d.id, d]));
+
+    const audits = await this.prisma.msppReviewAuditEvent.findMany({
+      where: {
+        createdAt: { gte: auditWindowStart },
+        diseaseCaseReview: { is: reviewScope },
+      },
+      select: {
+        diseaseCaseReviewId: true,
+        action: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const auditsByReview = new Map<string, Array<{ action: string; createdAt: Date }>>();
+    for (const a of audits) {
+      const list = auditsByReview.get(a.diseaseCaseReviewId) ?? [];
+      list.push({ action: a.action, createdAt: a.createdAt });
+      auditsByReview.set(a.diseaseCaseReviewId, list);
+    }
+
+    const reviewIdsForTiming = [...auditsByReview.keys()];
+    const reviewsTiming =
+      reviewIdsForTiming.length === 0
+        ? []
+        : await this.prisma.diseaseCaseReview.findMany({
+            where: { id: { in: reviewIdsForTiming } },
+            select: { id: true, departmentId: true, diseaseCaseReportId: true },
+          });
+    const reviewMeta = new Map(reviewsTiming.map((r) => [r.id, r]));
+    const reportIds = [
+      ...new Set(reviewsTiming.map((r) => r.diseaseCaseReportId).filter((x): x is string => Boolean(x))),
+    ];
+    const reportsForTiming =
+      reportIds.length === 0
+        ? []
+        : await this.prisma.diseaseCaseReport.findMany({
+            where: { id: { in: reportIds } },
+            select: { id: true, reportedAt: true },
+          });
+    const reportReportedAt = new Map(reportsForTiming.map((r) => [r.id, r.reportedAt]));
+
+    const msReportToFirstDept: number[] = [];
+    const msDeptApproveToCentral: number[] = [];
+    const msReportToCentralFinal: number[] = [];
+    const fullCycleMsByDept = new Map<string, number[]>();
+
+    for (const [reviewId, events] of auditsByReview) {
+      const meta = reviewMeta.get(reviewId);
+      if (!meta?.diseaseCaseReportId) continue;
+      const reportedAt = reportReportedAt.get(meta.diseaseCaseReportId);
+      if (!reportedAt || Number.isNaN(reportedAt.getTime())) continue;
+
+      let firstDept: Date | null = null;
+      let firstDeptApprove: Date | null = null;
+      let firstCentralAfterDept: Date | null = null;
+      let lastCentralTerminal: Date | null = null;
+
+      for (const e of events) {
+        if (
+          e.action === MsppReviewAuditAction.DEPARTMENT_APPROVE ||
+          e.action === MsppReviewAuditAction.DEPARTMENT_REJECT
+        ) {
+          if (!firstDept) firstDept = e.createdAt;
+        }
+        if (e.action === MsppReviewAuditAction.DEPARTMENT_APPROVE) {
+          if (!firstDeptApprove) firstDeptApprove = e.createdAt;
+        }
+        if (
+          e.action === MsppReviewAuditAction.CENTRAL_APPROVE ||
+          e.action === MsppReviewAuditAction.CENTRAL_REJECT
+        ) {
+          lastCentralTerminal = e.createdAt;
+        }
+      }
+
+      if (firstDept) {
+        msReportToFirstDept.push(firstDept.getTime() - reportedAt.getTime());
+      }
+
+      if (firstDeptApprove) {
+        for (const e of events) {
+          if (e.createdAt <= firstDeptApprove) continue;
+          if (
+            e.action === MsppReviewAuditAction.CENTRAL_APPROVE ||
+            e.action === MsppReviewAuditAction.CENTRAL_REJECT
+          ) {
+            firstCentralAfterDept = e.createdAt;
+            break;
+          }
+        }
+        if (firstCentralAfterDept) {
+          msDeptApproveToCentral.push(firstCentralAfterDept.getTime() - firstDeptApprove.getTime());
+        }
+      }
+
+      if (lastCentralTerminal) {
+        const full = lastCentralTerminal.getTime() - reportedAt.getTime();
+        if (full > 0) {
+          msReportToCentralFinal.push(full);
+          const arr = fullCycleMsByDept.get(meta.departmentId) ?? [];
+          arr.push(full);
+          fullCycleMsByDept.set(meta.departmentId, arr);
+        }
+      }
+    }
+
+    const avg = (arr: number[]): number | null => {
+      const ok = arr.filter((x) => x > 0 && Number.isFinite(x));
+      if (ok.length === 0) return null;
+      return ok.reduce((a, b) => a + b, 0) / ok.length;
+    };
+
+    const departments: MsppValidationDeptAnalyticsRow[] = deptIds.map((departmentId) => {
+      const d = deptMap.get(departmentId)!;
+      const g = geoById.get(departmentId);
+      const pendingSum = d.pendingDepartment + d.pendingCentral;
+      const backlogRisk =
+        pendingSum >= MsppService.DEPT_BACKLOG_PENDING_ELEVATED ? "ELEVATED" : "LOW";
+      const fcSamples = fullCycleMsByDept.get(departmentId) ?? [];
+      return {
+        departmentId,
+        departmentCode: g?.code ?? null,
+        departmentName: g?.name ?? null,
+        pendingDepartment: d.pendingDepartment,
+        pendingCentral: d.pendingCentral,
+        approvedCentral: d.approvedCentral,
+        rejectedDepartment: d.rejectedDepartment,
+        rejectedCentral: d.rejectedCentral,
+        requeueEvents: requeueByDept.get(departmentId) ?? 0,
+        backlogRisk,
+        avgMsFullCycle: avg(fcSamples),
+        fullCycleSampleSize: fcSamples.length,
+      };
+    });
+    departments.sort((a, b) => (a.departmentName ?? "").localeCompare(b.departmentName ?? "", "fr"));
+
+    return {
+      generatedAt: generatedAt.toISOString(),
+      scopeNote:
+        "Comptages d’état : tous les dossiers de revue visibles pour votre périmètre. Délais : moyennes sur les événements d’audit des " +
+        `${MsppService.VALIDATION_ANALYTICS_TIMING_LOOKBACK_DAYS} derniers jours (revues ayant au moins un événement dans la fenêtre).`,
+      timingLookbackDays: MsppService.VALIDATION_ANALYTICS_TIMING_LOOKBACK_DAYS,
+      summary: {
+        pendingDepartment,
+        pendingCentral,
+        approvedCentral,
+        rejectedTotal,
+        requeueEventsTotal,
+      },
+      statusCounts,
+      reviewerLevelCounts,
+      flow: {
+        requeueEventsTotal,
+        terminalDecisionEventsTotal,
+        requeueShareOfVolume,
+      },
+      departments,
+      timing: {
+        sampleSizeReportToFirstDept: msReportToFirstDept.length,
+        avgMsReportToFirstDeptDecision: avg(msReportToFirstDept),
+        sampleSizeDeptApproveToCentral: msDeptApproveToCentral.length,
+        avgMsDepartmentApprovalToCentralDecision: avg(msDeptApproveToCentral),
+        sampleSizeFullCycle: msReportToCentralFinal.length,
+        avgMsReportToCentralFinal: avg(msReportToCentralFinal),
+      },
     };
   }
 

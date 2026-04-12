@@ -183,4 +183,16 @@ export class MsppController {
     const d = departmentId?.trim();
     return this.mspp.communeSanitarySignals(msppCtx(req), d || undefined);
   }
+
+  /** Read-only validation pipeline analytics (snapshot + audit-based timing in lookback window). */
+  @Get("analytics/validation")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  validationAnalytics(@Req() req: RequestWithJwtAndMspp) {
+    return this.mspp.validationAnalytics(msppCtx(req));
+  }
 }
