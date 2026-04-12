@@ -29,6 +29,10 @@ export const MSPP_ROLE_CODES = [
   "MSPP_VALIDATOR_CENTRAL",
   /** Administration déléguée des accès MSPP (sans pouvoir plateforme). */
   "MSPP_ADMIN",
+  /** Modules santé publique partagés (routes Medora inchangées). */
+  "MSPP_PUBLIC_HEALTH",
+  "MSPP_DISEASE_REPORTS",
+  "MSPP_VACCINATIONS",
 ] as const;
 
 /** Rôles MSPP opérationnels (tableaux de bord, validation) — hors administration des accès. */
@@ -37,6 +41,13 @@ export const MSPP_OPERATIONAL_ROLE_CODES = [
   "MSPP_EPIDEMIOLOGIE",
   "MSPP_VALIDATOR_DEPT",
   "MSPP_VALIDATOR_CENTRAL",
+] as const;
+
+/** Modules UI `/app/public-health/*` côté MSPP (hors rôles opérationnels nationaux). */
+export const MSPP_MODULE_ROLE_CODES = [
+  "MSPP_PUBLIC_HEALTH",
+  "MSPP_DISEASE_REPORTS",
+  "MSPP_VACCINATIONS",
 ] as const;
 
 const ROLE_LANDING: Array<{ role: string; path: string }> = [
@@ -81,10 +92,8 @@ const APP_ROUTE_RULES: RouteRule[] = [
       "ADMIN",
       "PROVIDER",
       "RN",
-      "MSPP_MINISTRE",
-      "MSPP_EPIDEMIOLOGIE",
-      "MSPP_VALIDATOR_DEPT",
-      "MSPP_VALIDATOR_CENTRAL",
+      "MSPP_ADMIN",
+      "MSPP_DISEASE_REPORTS",
     ],
   },
   {
@@ -93,10 +102,8 @@ const APP_ROUTE_RULES: RouteRule[] = [
       "ADMIN",
       "PROVIDER",
       "RN",
-      "MSPP_MINISTRE",
-      "MSPP_EPIDEMIOLOGIE",
-      "MSPP_VALIDATOR_DEPT",
-      "MSPP_VALIDATOR_CENTRAL",
+      "MSPP_ADMIN",
+      "MSPP_VACCINATIONS",
     ],
   },
   {
@@ -105,10 +112,8 @@ const APP_ROUTE_RULES: RouteRule[] = [
       "ADMIN",
       "PROVIDER",
       "RN",
-      "MSPP_MINISTRE",
-      "MSPP_EPIDEMIOLOGIE",
-      "MSPP_VALIDATOR_DEPT",
-      "MSPP_VALIDATOR_CENTRAL",
+      "MSPP_ADMIN",
+      "MSPP_PUBLIC_HEALTH",
     ],
   },
   { prefix: "/app/pharmacy/dispense", roles: ["ADMIN", "PHARMACY"] },
@@ -196,6 +201,16 @@ export function getLandingRouteForRoles(roles: string[]): string {
   if (!hasFacilityAppRole && hasAnyMspp) {
     if (hasMsppAdminOnly) {
       return "/app/admin/mspp-access";
+    }
+    /** Utilisateur MSPP avec seulement des rôles modules (pas tableau de bord national). */
+    const moduleOnly =
+      !hasMsppOperational &&
+      !set.has("MSPP_ADMIN") &&
+      MSPP_MODULE_ROLE_CODES.some((r) => set.has(r));
+    if (moduleOnly) {
+      if (set.has("MSPP_PUBLIC_HEALTH")) return "/app/public-health/summary";
+      if (set.has("MSPP_DISEASE_REPORTS")) return "/app/public-health/disease-reports";
+      if (set.has("MSPP_VACCINATIONS")) return "/app/public-health/vaccinations";
     }
     return "/app/mspp/dashboard";
   }

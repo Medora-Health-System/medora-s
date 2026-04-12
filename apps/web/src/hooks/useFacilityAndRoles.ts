@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { parseApiResponse } from "@/lib/apiClient";
-import { MSPP_OPERATIONAL_ROLE_CODES } from "@/lib/landingRoute";
 
 export type UserFacilityOption = { id: string; name: string };
 
@@ -93,15 +92,24 @@ export function useFacilityAndRoles() {
     canManagePharmacy ||
     roles.includes("PROVIDER") ||
     roles.includes("RN");
-  const hasMsppOperationalForPublicHealth = msppRoles.some((r) =>
-    (MSPP_OPERATIONAL_ROLE_CODES as readonly string[]).includes(r)
-  );
-  /** Peut ouvrir les pages santé publique ; les appels API restent conditionnés à un `facilityId` (voir message sur la page). */
+
+  const medoraPublicHealthRoles =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const isMsppAdmin = msppRoles.includes("MSPP_ADMIN");
+
+  /** Résumé santé publique — Medora inchangé ; MSPP : admin délégué ou rôle module explicite. */
+  const canViewPublicHealthSummary =
+    medoraPublicHealthRoles || isMsppAdmin || msppRoles.includes("MSPP_PUBLIC_HEALTH");
+  /** Déclarations maladies — idem. */
+  const canViewPublicHealthDiseaseReports =
+    medoraPublicHealthRoles || isMsppAdmin || msppRoles.includes("MSPP_DISEASE_REPORTS");
+  /** Vaccinations — idem. */
+  const canViewPublicHealthVaccinations =
+    medoraPublicHealthRoles || isMsppAdmin || msppRoles.includes("MSPP_VACCINATIONS");
+
+  /** Au moins un des trois modules (ex. nav agrégée). */
   const canViewPublicHealth =
-    roles.includes("RN") ||
-    roles.includes("PROVIDER") ||
-    roles.includes("ADMIN") ||
-    hasMsppOperationalForPublicHealth;
+    canViewPublicHealthSummary || canViewPublicHealthDiseaseReports || canViewPublicHealthVaccinations;
   /** Only PROVIDER and ADMIN can prescribe (create medication orders). RN can create LAB/IMAGING orders. */
   const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
 
@@ -116,6 +124,10 @@ export function useFacilityAndRoles() {
     canManagePharmacy,
     canViewPharmacy,
     canViewPublicHealth,
+    canViewPublicHealthSummary,
+    canViewPublicHealthDiseaseReports,
+    canViewPublicHealthVaccinations,
+    isMsppAdmin,
     canPrescribe,
   };
 }

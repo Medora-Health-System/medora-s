@@ -186,6 +186,12 @@ enum MsppRoleCode {
   MSPP_VALIDATOR_CENTRAL
   /// Administration déléguée des accès MSPP (sans pouvoirs plateforme).
   MSPP_ADMIN
+  /// Accès module partagé « Santé publique » (résumé) — UI ; API toujours liée à l’établissement actif.
+  MSPP_PUBLIC_HEALTH
+  /// Accès module « Déclarations maladies » — UI ; API toujours liée à l’établissement actif.
+  MSPP_DISEASE_REPORTS
+  /// Accès module « Vaccinations » — UI ; API toujours liée à l’établissement actif.
+  MSPP_VACCINATIONS
 }
 
 model Facility {

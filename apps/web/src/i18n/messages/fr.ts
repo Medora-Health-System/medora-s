@@ -107,6 +107,9 @@ export default {
       MSPP_VALIDATOR_DEPT: "Validateur départemental",
       MSPP_VALIDATOR_CENTRAL: "Validateur central",
       MSPP_ADMIN: "Administrateur délégué (accès MSPP)",
+      MSPP_PUBLIC_HEALTH: "Santé publique (module partagé)",
+      MSPP_DISEASE_REPORTS: "Déclarations maladies (module partagé)",
+      MSPP_VACCINATIONS: "Vaccinations (module partagé)",
     },
   },
   publicHealthModule: {

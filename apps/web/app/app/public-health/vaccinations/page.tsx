@@ -43,7 +43,7 @@ function formatDate(d: string | null | undefined) {
 
 export default function PublicHealthVaccinationsPage() {
   const { t } = useI18n();
-  const { facilityId, ready, canViewPublicHealth } = useFacilityAndRoles();
+  const { facilityId, ready, canViewPublicHealthVaccinations } = useFacilityAndRoles();
 
   const [catalog, setCatalog] = useState<VaccineCatalogItem[]>([]);
   const [patientQuery, setPatientQuery] = useState("");
@@ -72,23 +72,23 @@ export default function PublicHealthVaccinationsPage() {
   const [loadingDueSoon, setLoadingDueSoon] = useState(false);
 
   useEffect(() => {
-    if (!facilityId || !canViewPublicHealth) return;
+    if (!facilityId || !canViewPublicHealthVaccinations) return;
     fetchVaccineCatalog(facilityId)
       .then((list) => {
         setCatalog(list);
         if (list[0]) setVaccineCatalogId(list[0].id);
       })
       .catch(() => setCatalog([]));
-  }, [facilityId, canViewPublicHealth]);
+  }, [facilityId, canViewPublicHealthVaccinations]);
 
   useEffect(() => {
-    if (!facilityId || !canViewPublicHealth) return;
+    if (!facilityId || !canViewPublicHealthVaccinations) return;
     setLoadingDueSoon(true);
     fetchVaccinationsDueSoon(facilityId)
       .then((res) => setDueSoon({ items: res.items || [], windowEnd: res.windowEnd }))
       .catch(() => setDueSoon({ items: [] }))
       .finally(() => setLoadingDueSoon(false));
-  }, [facilityId, canViewPublicHealth]);
+  }, [facilityId, canViewPublicHealthVaccinations]);
 
   const searchPatients = async () => {
     if (!facilityId || !patientQuery.trim()) return;
@@ -157,7 +157,7 @@ export default function PublicHealthVaccinationsPage() {
   };
 
   if (!ready) return <p>{t("common.loading")}</p>;
-  if (!canViewPublicHealth) {
+  if (!canViewPublicHealthVaccinations) {
     return (
       <div>
         <h1>{t("nav.vaccinations")}</h1>

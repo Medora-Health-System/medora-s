@@ -27,14 +27,14 @@ const cardStyle: React.CSSProperties = {
 
 export default function PublicHealthSummaryPage() {
   const { t } = useI18n();
-  const { facilityId, ready, canViewPublicHealth } = useFacilityAndRoles();
+  const { facilityId, ready, canViewPublicHealthSummary } = useFacilityAndRoles();
   const [summary, setSummary] = useState<DiseaseSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [reportedFrom, setReportedFrom] = useState("");
   const [reportedTo, setReportedTo] = useState("");
 
   const load = useCallback(async () => {
-    if (!facilityId || !canViewPublicHealth) return;
+    if (!facilityId || !canViewPublicHealthSummary) return;
     setLoading(true);
     try {
       const from = reportedFrom || undefined;
@@ -46,11 +46,11 @@ export default function PublicHealthSummaryPage() {
     } finally {
       setLoading(false);
     }
-  }, [facilityId, canViewPublicHealth, reportedFrom, reportedTo]);
+  }, [facilityId, canViewPublicHealthSummary, reportedFrom, reportedTo]);
 
   useEffect(() => {
-    if (ready && facilityId && canViewPublicHealth) load();
-  }, [ready, facilityId, canViewPublicHealth, load]);
+    if (ready && facilityId && canViewPublicHealthSummary) load();
+  }, [ready, facilityId, canViewPublicHealthSummary, load]);
 
   const defaultTo = new Date();
   const defaultFrom = new Date(defaultTo);
@@ -59,7 +59,7 @@ export default function PublicHealthSummaryPage() {
   const toPlaceholder = defaultTo.toISOString().slice(0, 10);
 
   if (!ready) return <p>{t("common.loading")}</p>;
-  if (!canViewPublicHealth) {
+  if (!canViewPublicHealthSummary) {
     return (
       <div>
         <h1>{t("nav.publicHealth")}</h1>

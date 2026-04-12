@@ -31,14 +31,14 @@ function truncateNote(s: string | null | undefined, max: number) {
 
 export default function DiseaseReportsPage() {
   const { t } = useI18n();
-  const { facilityId, facilities, ready, canViewPublicHealth } = useFacilityAndRoles();
+  const { facilityId, facilities, ready, canViewPublicHealthDiseaseReports } = useFacilityAndRoles();
   const facilityName = facilities.find((f) => f.id === facilityId)?.name ?? "";
 
   const [geoDepartments, setGeoDepartments] = useState<HaitiGeoDepartment[]>([]);
   const [communesByDept, setCommunesByDept] = useState<Record<string, HaitiGeoCommune[]>>({});
 
   useEffect(() => {
-    if (!facilityId || !canViewPublicHealth) return;
+    if (!facilityId || !canViewPublicHealthDiseaseReports) return;
     let cancelled = false;
     void fetchHaitiGeoReference(facilityId)
       .then((data) => {
@@ -55,7 +55,7 @@ export default function DiseaseReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [facilityId, canViewPublicHealth]);
+  }, [facilityId, canViewPublicHealthDiseaseReports]);
 
   const [reports, setReports] = useState<DiseaseCaseReportRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -68,7 +68,7 @@ export default function DiseaseReportsPage() {
   const [filterTo, setFilterTo] = useState("");
 
   const loadReports = useCallback(async () => {
-    if (!facilityId || !canViewPublicHealth) return;
+    if (!facilityId || !canViewPublicHealthDiseaseReports) return;
     setLoading(true);
     try {
       const params: Record<string, string> = { limit: "100" };
@@ -89,7 +89,7 @@ export default function DiseaseReportsPage() {
     }
   }, [
     facilityId,
-    canViewPublicHealth,
+    canViewPublicHealthDiseaseReports,
     filterStatus,
     filterCommune,
     filterDepartment,
@@ -99,8 +99,8 @@ export default function DiseaseReportsPage() {
   ]);
 
   useEffect(() => {
-    if (ready && facilityId && canViewPublicHealth) void loadReports();
-  }, [ready, facilityId, canViewPublicHealth, loadReports]);
+    if (ready && facilityId && canViewPublicHealthDiseaseReports) void loadReports();
+  }, [ready, facilityId, canViewPublicHealthDiseaseReports, loadReports]);
 
   const statusLabel = (code: string) => {
     const key = `diseaseReports.statuses.${code}`;
@@ -116,7 +116,7 @@ export default function DiseaseReportsPage() {
   };
 
   if (!ready) return <p>{t("diseaseReports.loadingPage")}</p>;
-  if (!canViewPublicHealth) {
+  if (!canViewPublicHealthDiseaseReports) {
     return (
       <div>
         <h1>{t("diseaseReports.title")}</h1>
