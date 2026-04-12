@@ -77,6 +77,12 @@ const fr = {
     adminUsers: "Utilisateurs et accès",
     adminMsppAccess: "Accès MSPP (national)",
     msppDashboard: "MSPP — Tableau de bord",
+    /** Menu : section Surveillance nationale (même route que le tableau de bord). */
+    msppSurveillanceNationale: "MSPP — Surveillance nationale",
+    /** Menu : section Alertes (signaux et escalades — même route que le tableau de bord). */
+    msppAlertesEscalades: "MSPP — Alertes et escalades",
+    /** Menu : section Gestion des alertes (triage et investigation). */
+    msppGestionAlertes: "MSPP — Gestion des alertes",
     msppNotificationCenter: "MSPP — Centre de notification",
     msppRapport: "MSPP — Rapport",
     msppBulletin: "MSPP — Bulletin hebdomadaire",

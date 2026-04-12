@@ -92,7 +92,14 @@ export type NavGroupId =
   | "examens"
   | "facturation"
   | "sante_publique"
-  | "mspp"
+  | "mspp_surveillance"
+  | "mspp_validation"
+  | "mspp_supervision"
+  | "mspp_surveillance_nationale"
+  | "mspp_alertes"
+  | "mspp_gestion_alertes"
+  | "mspp_communication"
+  | "mspp_exports"
   | "admin";
 
 export type SidebarNavItem = {
@@ -192,81 +199,89 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     group: "sante_publique",
     accent: "orange",
   },
-  {
-    href: "/app/mspp/dashboard",
-    labelKey: "nav.msppDashboard",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
-  {
-    href: "/app/mspp/alerts",
-    labelKey: "nav.msppNotificationCenter",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
-  {
-    href: "/app/mspp/rapport",
-    labelKey: "nav.msppRapport",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
-  {
-    href: "/app/mspp/bulletin",
-    labelKey: "nav.msppBulletin",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
-  {
-    href: "/app/mspp/exports",
-    labelKey: "nav.msppExports",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
-  {
-    href: "/app/mspp/validation",
-    labelKey: "nav.msppValidation",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
-  {
-    href: "/app/mspp/audit",
-    labelKey: "nav.msppAuditHistory",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
-  {
-    href: "/app/mspp/analytics",
-    labelKey: "nav.msppValidationAnalytics",
-    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
-    group: "mspp",
-    accent: "indigo",
-  },
+  /** MSPP — ordre des entrées : flux opérationnel (groupes séparés, routes et rôles inchangés). */
   {
     href: "/app/public-health/summary",
     labelKey: "nav.publicHealth",
     roles: ["MSPP_ADMIN", "MSPP_PUBLIC_HEALTH"],
-    group: "mspp",
+    group: "mspp_surveillance",
     accent: "indigo",
   },
   {
     href: "/app/public-health/disease-reports",
     labelKey: "nav.diseaseReports",
     roles: ["MSPP_ADMIN", "MSPP_DISEASE_REPORTS"],
-    group: "mspp",
+    group: "mspp_surveillance",
     accent: "indigo",
   },
   {
     href: "/app/public-health/vaccinations",
     labelKey: "nav.vaccinations",
     roles: ["MSPP_ADMIN", "MSPP_VACCINATIONS"],
-    group: "mspp",
+    group: "mspp_surveillance",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/validation",
+    labelKey: "nav.msppValidation",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_validation",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/audit",
+    labelKey: "nav.msppAuditHistory",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_supervision",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/analytics",
+    labelKey: "nav.msppValidationAnalytics",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_supervision",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/dashboard",
+    labelKey: "nav.msppSurveillanceNationale",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_surveillance_nationale",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/dashboard",
+    labelKey: "nav.msppAlertesEscalades",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_alertes",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/alerts",
+    labelKey: "nav.msppGestionAlertes",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_gestion_alertes",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/rapport",
+    labelKey: "nav.msppRapport",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_communication",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/bulletin",
+    labelKey: "nav.msppBulletin",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_communication",
+    accent: "indigo",
+  },
+  {
+    href: "/app/mspp/exports",
+    labelKey: "nav.msppExports",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp_exports",
     accent: "indigo",
   },
   { href: "/app/admin", labelKey: "nav.admin", roles: ["ADMIN"], group: "admin", accent: "redGray" },
@@ -316,7 +331,14 @@ export const NAV_GROUP_ORDER: NavGroupId[] = [
   "examens",
   "facturation",
   "sante_publique",
-  "mspp",
+  "mspp_surveillance",
+  "mspp_validation",
+  "mspp_supervision",
+  "mspp_surveillance_nationale",
+  "mspp_alertes",
+  "mspp_gestion_alertes",
+  "mspp_communication",
+  "mspp_exports",
   "admin",
 ];
 
