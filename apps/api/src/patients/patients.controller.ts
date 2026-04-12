@@ -11,7 +11,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import { RolesGuard, RequireClinicalOrMspp, RequireRoles } from "../common/guards/roles.guard";
 import { PatientsService } from "./patients.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
@@ -25,7 +25,7 @@ import {
   patientUpdateDtoSchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "../encounters/dto";
-import { RoleCode } from "@prisma/client";
+import { MsppRoleCode, RoleCode } from "@prisma/client";
 import { assertZodBody } from "../common/http/zod-parse";
 
 @Controller("patients")
@@ -41,7 +41,10 @@ export class PatientsController {
   ) {}
 
   @Get("search")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.PHARMACY)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK, RoleCode.PHARMACY],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_VACCINATIONS]
+  )
   async search(
     @Query() query: { q?: string; mrn?: string; phone?: string; dob?: string; limit?: string },
     @Req() req: any
@@ -207,7 +210,10 @@ export class PatientsController {
   }
 
   @Get(":id/encounters")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_VACCINATIONS]
+  )
   async getEncounters(
     @Param("id") id: string,
     @Query() query: Record<string, string>,

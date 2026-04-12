@@ -9,8 +9,8 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
-import { RoleCode } from "@prisma/client";
+import { RolesGuard, RequireClinicalOrMspp } from "../common/guards/roles.guard";
+import { MsppRoleCode, RoleCode } from "@prisma/client";
 import { PublicHealthService } from "./public-health.service";
 import {
   createVaccineCatalogDtoSchema,
@@ -39,7 +39,7 @@ export class PublicHealthController {
   }
 
   @Post("vaccines/catalog")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireClinicalOrMspp([RoleCode.ADMIN], [MsppRoleCode.MSPP_ADMIN])
   async createVaccineCatalog(@Body() body: unknown, @Req() req: any) {
     const parsed = createVaccineCatalogDtoSchema.safeParse(body);
     if (!parsed.success) {
@@ -54,14 +54,20 @@ export class PublicHealthController {
   }
 
   @Get("vaccines/catalog")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_VACCINATIONS]
+  )
   async listVaccineCatalog(@Query("includeInactive") inc?: string) {
     const activeOnly = inc !== "true" && inc !== "1";
     return this.publicHealth.listVaccineCatalog(activeOnly);
   }
 
   @Post("vaccinations")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_VACCINATIONS]
+  )
   async recordVaccination(@Body() body: unknown, @Req() req: any) {
     const parsed = recordVaccineAdministrationDtoSchema.safeParse(body);
     if (!parsed.success) {
@@ -77,7 +83,10 @@ export class PublicHealthController {
   }
 
   @Get("vaccinations/due-soon")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_VACCINATIONS]
+  )
   async vaccinesDueSoon(@Req() req: any) {
     return this.publicHealth.listVaccinesDueSoon(
       this.facilityId(req),
@@ -88,7 +97,10 @@ export class PublicHealthController {
   }
 
   @Post("disease-reports")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]
+  )
   async createDiseaseReport(@Body() body: unknown, @Req() req: any) {
     const parsed = createDiseaseCaseReportDtoSchema.safeParse(body);
     if (!parsed.success) {
@@ -104,13 +116,19 @@ export class PublicHealthController {
   }
 
   @Get("haiti-geo")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]
+  )
   async haitiGeo(@Req() req: any) {
     return this.publicHealth.listHaitiGeoReference(this.facilityId(req));
   }
 
   @Get("disease-reports")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]
+  )
   async listDiseaseReports(
     @Query() query: Record<string, string | undefined>,
     @Req() req: any
@@ -129,7 +147,10 @@ export class PublicHealthController {
   }
 
   @Get("disease-summary")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_PUBLIC_HEALTH]
+  )
   async diseaseSummary(
     @Query() query: Record<string, string | undefined>,
     @Req() req: any
