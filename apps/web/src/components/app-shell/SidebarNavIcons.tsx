@@ -129,6 +129,9 @@ export function SidebarNavIcon({ href }: { href: string }) {
   if (href === "/app/mspp/audit") {
     return <IconMsppRapport />;
   }
+  if (href === "/app/mspp/analytics") {
+    return <MsppBrandMark />;
+  }
   if (href === "/app/admin/mspp-access") {
     return <IconMsppAccessAdmin />;
   }
