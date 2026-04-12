@@ -15,6 +15,10 @@ export default {
     activate: "Activer",
     deactivate: "Désactiver",
   },
+  appShell: {
+    msppMinistryTitle:
+      "MINISTÈRE DE LA SANTÉ PUBLIQUE ET DE LA POPULATION",
+  },
   navGroups: {
     accueil: "Accueil",
     soins_dossiers: "Soins et dossiers",

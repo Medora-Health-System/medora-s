@@ -54,14 +54,29 @@ export function AppShell({
   }, []);
 
   const { t } = useI18n();
+  const isMsppArea = pathname.startsWith("/app/mspp");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <header
-        className="flex h-14 shrink-0 items-center justify-between border-b border-slate-700/60 bg-slate-950 px-6 text-slate-100"
+        className="relative flex h-14 shrink-0 items-center justify-between border-b border-slate-700/60 bg-slate-950 px-6 text-slate-100"
         style={{ boxShadow: "inset 0 -1px 0 rgba(148,163,184,0.06)" }}
       >
-        <div className="flex min-w-0 items-center gap-6">
+        {isMsppArea ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex h-full items-center justify-center px-14 sm:px-24 md:px-32"
+            aria-hidden
+          >
+            <p
+              className="line-clamp-2 max-w-[min(72vw,28rem)] text-center text-[10px] font-semibold uppercase leading-snug tracking-wide text-slate-200/95 sm:max-w-[min(65vw,32rem)] sm:text-[11px] md:max-w-[min(55vw,36rem)] md:text-sm lg:text-xl lg:leading-snug"
+              title={t("appShell.msppMinistryTitle")}
+            >
+              {t("appShell.msppMinistryTitle")}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="relative z-10 flex min-w-0 flex-1 items-center gap-6">
           <h1 className="m-0 shrink-0 select-none text-lg font-bold leading-none tracking-tight">
             <span className="text-blue-400">Medora</span>
             <span className="text-teal-400">-S</span>
@@ -81,7 +96,7 @@ export function AppShell({
           )}
         </div>
 
-        <div className="relative flex shrink-0 items-center">
+        <div className="relative z-10 flex shrink-0 items-center">
           <button
             type="button"
             onClick={onToggleUserMenu}

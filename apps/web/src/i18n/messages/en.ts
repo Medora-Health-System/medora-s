@@ -16,6 +16,10 @@ export default {
     activate: "Activate",
     deactivate: "Deactivate",
   },
+  appShell: {
+    msppMinistryTitle:
+      "MINISTÈRE DE LA SANTÉ PUBLIQUE ET DE LA POPULATION",
+  },
   nav: {
     trackboard: "Trackboard",
     emergency: "Emergency",
