@@ -40,6 +40,7 @@ import {
   MsppValidationReporterCell,
   MsppValidationTechnicalIds,
 } from "@/features/mspp/MsppValidationTechnicalIds";
+import { MsppReviewHistoryBlock } from "@/features/mspp/MsppReviewHistoryBlock";
 
 type PendingMsppDecision =
   | { kind: "dept-approve"; reviewId: string }
@@ -262,7 +263,7 @@ export default function MsppValidationPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchMsppReviews();
+      const data = await fetchMsppReviews({ includeAuditEvents: true });
       setRows(data.reviews ?? []);
     } catch {
       setError(t("msppValidation.loadError"));
@@ -526,6 +527,7 @@ export default function MsppValidationPage() {
                             departmentId={r.departmentId}
                           />
                         </div>
+                        <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
                       </>
                     }
                   />
@@ -610,6 +612,7 @@ export default function MsppValidationPage() {
                             departmentId={r.departmentId}
                           />
                         </div>
+                        <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
                       </>
                     }
                   />
@@ -685,6 +688,7 @@ export default function MsppValidationPage() {
                             departmentId={r.departmentId}
                           />
                         </div>
+                        <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
                       </>
                     }
                   />
@@ -760,6 +764,7 @@ export default function MsppValidationPage() {
                             departmentId={r.departmentId}
                           />
                         </div>
+                        <MsppReviewHistoryBlock events={r.auditTrail} t={t} />
                       </>
                     }
                   />

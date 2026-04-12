@@ -28,3 +28,16 @@ export const ReviewerLevel = {
   DEPARTMENT: "DEPARTMENT",
   CENTRAL: "CENTRAL",
 } as const;
+
+/** Append-only audit actions for `MsppReviewAuditEvent.action`. */
+export const MsppReviewAuditAction = {
+  DEPARTMENT_APPROVE: "DEPARTMENT_APPROVE",
+  DEPARTMENT_REJECT: "DEPARTMENT_REJECT",
+  CENTRAL_APPROVE: "CENTRAL_APPROVE",
+  CENTRAL_REJECT: "CENTRAL_REJECT",
+  DEPARTMENT_REQUEUE: "DEPARTMENT_REQUEUE",
+  CENTRAL_REQUEUE: "CENTRAL_REQUEUE",
+} as const;
+
+export type MsppReviewAuditActionValue =
+  (typeof MsppReviewAuditAction)[keyof typeof MsppReviewAuditAction];

@@ -78,6 +78,20 @@ export type MsppFacilityDossier = {
   reportEncounterRoomLabel: string | null;
 };
 
+/** Événement d’audit immuable (backend `MsppReviewAuditEvent`). */
+export type MsppReviewAuditTrailItem = {
+  id: string;
+  action: string;
+  reviewerUserId: string;
+  reviewerDisplayName: string;
+  reviewerLevel: string;
+  statusBefore: string | null;
+  statusAfter: string | null;
+  requeued: boolean;
+  criteriaSnapshot: Record<string, unknown> | null;
+  createdAt: string;
+};
+
 export type MsppReviewRow = {
   id: string;
   diseaseCaseReportId: string | null;
@@ -127,10 +141,14 @@ export type MsppReviewRow = {
     geoIncomplete: boolean;
     geoCommuneLinked: boolean;
   };
+  /** Présent lorsque `includeAuditEvents` est demandé sur la liste. */
+  auditTrail?: MsppReviewAuditTrailItem[];
 };
 
-export async function fetchMsppReviews() {
-  return apiFetch(`${BASE}/reviews`, {}) as Promise<{ reviews: MsppReviewRow[] }>;
+export async function fetchMsppReviews(opts?: { includeAuditEvents?: boolean }) {
+  const q =
+    opts?.includeAuditEvents === true ? "?includeAuditEvents=true" : "";
+  return apiFetch(`${BASE}/reviews${q}`, {}) as Promise<{ reviews: MsppReviewRow[] }>;
 }
 
 export type MsppSummaryResponse = {

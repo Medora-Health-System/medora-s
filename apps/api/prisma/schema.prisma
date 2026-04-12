@@ -283,6 +283,7 @@ model User {
   orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
   ordersCancelled               Order[]     @relation("OrderCancelledBy")
   msppUserRoleAssignments       MsppUserRoleAssignment[]
+  msppReviewAuditEvents         MsppReviewAuditEvent[]
 }
 
 model PasswordResetToken {
@@ -1124,9 +1125,35 @@ model DiseaseCaseReview {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  auditEvents MsppReviewAuditEvent[]
+
   @@unique([diseaseCaseReportId])
   @@index([reviewerUserId])
   @@index([departmentId])
+}
+
+/// Immutable MSPP validation/review events (append-only; complements `notes` on DiseaseCaseReview).
+model MsppReviewAuditEvent {
+  id                  String   @id @default(uuid())
+  diseaseCaseReviewId String
+  diseaseCaseReportId String?
+  /// e.g. DEPARTMENT_APPROVE, CENTRAL_REQUEUE — see `mspp.constants` / app layer.
+  action              String
+  reviewerUserId      String
+  /// DEPARTMENT | CENTRAL — niveau de la décision ou de la file concernée.
+  reviewerLevel       String
+  statusBefore        String?
+  statusAfter         String?
+  requeued            Boolean  @default(false)
+  criteriaSnapshot    Json?
+  createdAt           DateTime @default(now())
+
+  diseaseCaseReview DiseaseCaseReview @relation(fields: [diseaseCaseReviewId], references: [id], onDelete: Cascade)
+  reviewer          User              @relation(fields: [reviewerUserId], references: [id], onDelete: Restrict)
+
+  @@index([diseaseCaseReviewId])
+  @@index([diseaseCaseReportId])
+  @@index([createdAt])
 }
 
 /// Haiti national geographic department (département).

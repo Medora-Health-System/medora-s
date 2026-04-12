@@ -8,7 +8,12 @@ import { AuditAction, MsppLabEvidenceType, MsppRoleCode, Prisma } from "@prisma/
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
-import { DiseaseCaseReviewStatus, NATIONAL_MSPP_ROLES, ReviewerLevel } from "./mspp.constants";
+import {
+  DiseaseCaseReviewStatus,
+  MsppReviewAuditAction,
+  NATIONAL_MSPP_ROLES,
+  ReviewerLevel,
+} from "./mspp.constants";
 import type { MsppRequestContext } from "./guards/mspp-roles.guard";
 import type { MsppReviewActionDto } from "./dto/review-action.dto";
 
@@ -277,6 +282,20 @@ function reportingWhereForContext(ctx: MsppRequestContext): Prisma.DiseaseCaseRe
   return { ...base, departmentId: { in: ctx.allowedDepartments } };
 }
 
+/** Serialized audit row for API / UI (immutable review history). */
+export type MsppReviewAuditTrailItem = {
+  id: string;
+  action: string;
+  reviewerUserId: string;
+  reviewerDisplayName: string;
+  reviewerLevel: string;
+  statusBefore: string | null;
+  statusAfter: string | null;
+  requeued: boolean;
+  criteriaSnapshot: Record<string, unknown> | null;
+  createdAt: string;
+};
+
 @Injectable()
 export class MsppService {
   constructor(
@@ -284,7 +303,116 @@ export class MsppService {
     private readonly audit: AuditService
   ) {}
 
-  async listReviews(ctx: MsppRequestContext) {
+  private criteriaSnapshotFromDto(dto: MsppReviewActionDto): Prisma.InputJsonValue {
+    return {
+      fever: dto.fever,
+      labConfirmed: dto.labConfirmed,
+      exposureRisk: dto.exposureRisk,
+      duration: dto.duration,
+      caseClassification: dto.caseClassification,
+      inclusionCriteriaSummary: dto.inclusionCriteriaSummary,
+      exclusionCriteriaSummary: dto.exclusionCriteriaSummary,
+      symptomOnsetDate: dto.symptomOnsetDate ?? null,
+      hospitalized: dto.hospitalized,
+      outcomeStatus: dto.outcomeStatus,
+      labEvidenceType: dto.labEvidenceType,
+      epiLinkedCase: dto.epiLinkedCase,
+      travelOrExposureContext: dto.travelOrExposureContext,
+      finalDecisionRationale: dto.finalDecisionRationale,
+      comment: dto.comment,
+    };
+  }
+
+  /** Snapshot of structured fields already on `DiseaseCaseReview` (e.g. at requeue). Aligns keys with `criteriaSnapshotFromDto`. */
+  private criteriaSnapshotFromPersistedReview(review: {
+    validationFever: boolean | null;
+    validationDuration: string | null;
+    validationLabConfirmed: boolean | null;
+    validationExposureRisk: string | null;
+    caseClassification: string | null;
+    inclusionCriteriaSummary: string | null;
+    exclusionCriteriaSummary: string | null;
+    symptomOnsetDate: Date | null;
+    hospitalized: boolean | null;
+    outcomeStatus: string | null;
+    labEvidenceType: string | null;
+    epiLinkedCase: boolean | null;
+    travelOrExposureContext: string | null;
+    finalDecisionRationale: string | null;
+  }): Prisma.InputJsonValue {
+    const onset =
+      review.symptomOnsetDate && !Number.isNaN(review.symptomOnsetDate.getTime())
+        ? review.symptomOnsetDate.toISOString().slice(0, 10)
+        : null;
+    return {
+      fever: review.validationFever,
+      labConfirmed: review.validationLabConfirmed,
+      exposureRisk: review.validationExposureRisk,
+      duration: review.validationDuration,
+      caseClassification: review.caseClassification,
+      inclusionCriteriaSummary: review.inclusionCriteriaSummary,
+      exclusionCriteriaSummary: review.exclusionCriteriaSummary,
+      symptomOnsetDate: onset,
+      hospitalized: review.hospitalized,
+      outcomeStatus: review.outcomeStatus,
+      labEvidenceType: review.labEvidenceType,
+      epiLinkedCase: review.epiLinkedCase,
+      travelOrExposureContext: review.travelOrExposureContext,
+      finalDecisionRationale: review.finalDecisionRationale,
+      comment: null,
+    };
+  }
+
+  private toAuditTrailDto(e: {
+    id: string;
+    diseaseCaseReviewId: string;
+    action: string;
+    reviewerUserId: string;
+    reviewerLevel: string;
+    statusBefore: string | null;
+    statusAfter: string | null;
+    requeued: boolean;
+    criteriaSnapshot: Prisma.JsonValue;
+    createdAt: Date;
+    reviewer: { firstName: string; lastName: string; id: string } | null;
+  }): MsppReviewAuditTrailItem {
+    const name = e.reviewer ? `${e.reviewer.firstName} ${e.reviewer.lastName}`.trim() : e.reviewerUserId;
+    const snap = e.criteriaSnapshot;
+    return {
+      id: e.id,
+      action: e.action,
+      reviewerUserId: e.reviewerUserId,
+      reviewerDisplayName: name,
+      reviewerLevel: e.reviewerLevel,
+      statusBefore: e.statusBefore,
+      statusAfter: e.statusAfter,
+      requeued: e.requeued,
+      criteriaSnapshot:
+        snap !== null && typeof snap === "object" && !Array.isArray(snap)
+          ? (snap as Record<string, unknown>)
+          : null,
+      createdAt: e.createdAt.toISOString(),
+    };
+  }
+
+  private async loadAuditTrailByReviewIds(reviewIds: string[]): Promise<Map<string, MsppReviewAuditTrailItem[]>> {
+    const map = new Map<string, MsppReviewAuditTrailItem[]>();
+    if (reviewIds.length === 0) return map;
+    const events = await this.prisma.msppReviewAuditEvent.findMany({
+      where: { diseaseCaseReviewId: { in: reviewIds } },
+      orderBy: { createdAt: "desc" },
+      include: { reviewer: { select: { firstName: true, lastName: true, id: true } } },
+    });
+    for (const e of events) {
+      const item = this.toAuditTrailDto(e);
+      const list = map.get(e.diseaseCaseReviewId) ?? [];
+      list.push(item);
+      map.set(e.diseaseCaseReviewId, list);
+    }
+    return map;
+  }
+
+  async listReviews(ctx: MsppRequestContext, includeAuditEvents = false) {
     const where = reviewWhereForContext(ctx);
     const rows = await this.prisma.diseaseCaseReview.findMany({
       where,
@@ -511,7 +639,15 @@ export class MsppService {
       };
     });
 
-    return { reviews };
+    if (!includeAuditEvents || reviews.length === 0) {
+      return { reviews };
+    }
+    const trailByReview = await this.loadAuditTrailByReviewIds(reviews.map((rev) => rev.id));
+    const reviewsWithTrail = reviews.map((rev) => ({
+      ...rev,
+      auditTrail: trailByReview.get(rev.id) ?? [],
+    }));
+    return { reviews: reviewsWithTrail };
   }
 
   async departmentApprove(reviewId: string, ctx: MsppRequestContext, dto: MsppReviewActionDto) {
@@ -542,17 +678,34 @@ export class MsppService {
       review.notes,
       this.validationAuditLine("Validation département — approbation", dto)
     );
-    const updated = await this.prisma.diseaseCaseReview.update({
-      where: { id: reviewId },
-      data: {
-        status: DiseaseCaseReviewStatus.DEPARTMENT_APPROVED,
-        reviewerLevel: ReviewerLevel.DEPARTMENT,
-        reviewerUserId: ctx.userId,
-        reviewedAt: new Date(),
-        notes,
-        ...this.reviewStructuredFields(dto),
-      },
-      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    const statusBefore = review.status;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.diseaseCaseReview.update({
+        where: { id: reviewId },
+        data: {
+          status: DiseaseCaseReviewStatus.DEPARTMENT_APPROVED,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          reviewerUserId: ctx.userId,
+          reviewedAt: new Date(),
+          notes,
+          ...this.reviewStructuredFields(dto),
+        },
+        select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+      });
+      await tx.msppReviewAuditEvent.create({
+        data: {
+          diseaseCaseReviewId: reviewId,
+          diseaseCaseReportId: review.diseaseCaseReportId,
+          action: MsppReviewAuditAction.DEPARTMENT_APPROVE,
+          reviewerUserId: ctx.userId,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          statusBefore,
+          statusAfter: DiseaseCaseReviewStatus.DEPARTMENT_APPROVED,
+          requeued: false,
+          criteriaSnapshot: this.criteriaSnapshotFromDto(dto),
+        },
+      });
+      return u;
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -588,17 +741,34 @@ export class MsppService {
       review.notes,
       this.validationAuditLine("Validation département — rejet", dto)
     );
-    const updated = await this.prisma.diseaseCaseReview.update({
-      where: { id: reviewId },
-      data: {
-        status: DiseaseCaseReviewStatus.DEPARTMENT_REJECTED,
-        reviewerLevel: ReviewerLevel.DEPARTMENT,
-        reviewerUserId: ctx.userId,
-        reviewedAt: new Date(),
-        notes,
-        ...this.reviewStructuredFields(dto),
-      },
-      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    const statusBefore = review.status;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.diseaseCaseReview.update({
+        where: { id: reviewId },
+        data: {
+          status: DiseaseCaseReviewStatus.DEPARTMENT_REJECTED,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          reviewerUserId: ctx.userId,
+          reviewedAt: new Date(),
+          notes,
+          ...this.reviewStructuredFields(dto),
+        },
+        select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+      });
+      await tx.msppReviewAuditEvent.create({
+        data: {
+          diseaseCaseReviewId: reviewId,
+          diseaseCaseReportId: review.diseaseCaseReportId,
+          action: MsppReviewAuditAction.DEPARTMENT_REJECT,
+          reviewerUserId: ctx.userId,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          statusBefore,
+          statusAfter: DiseaseCaseReviewStatus.DEPARTMENT_REJECTED,
+          requeued: false,
+          criteriaSnapshot: this.criteriaSnapshotFromDto(dto),
+        },
+      });
+      return u;
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -631,17 +801,34 @@ export class MsppService {
       review.notes,
       this.validationAuditLine("Validation centrale — approbation", dto)
     );
-    const updated = await this.prisma.diseaseCaseReview.update({
-      where: { id: reviewId },
-      data: {
-        status: DiseaseCaseReviewStatus.CENTRAL_APPROVED,
-        reviewerLevel: ReviewerLevel.CENTRAL,
-        reviewerUserId: ctx.userId,
-        reviewedAt: new Date(),
-        notes,
-        ...this.reviewStructuredFields(dto),
-      },
-      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    const statusBefore = review.status;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.diseaseCaseReview.update({
+        where: { id: reviewId },
+        data: {
+          status: DiseaseCaseReviewStatus.CENTRAL_APPROVED,
+          reviewerLevel: ReviewerLevel.CENTRAL,
+          reviewerUserId: ctx.userId,
+          reviewedAt: new Date(),
+          notes,
+          ...this.reviewStructuredFields(dto),
+        },
+        select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+      });
+      await tx.msppReviewAuditEvent.create({
+        data: {
+          diseaseCaseReviewId: reviewId,
+          diseaseCaseReportId: review.diseaseCaseReportId,
+          action: MsppReviewAuditAction.CENTRAL_APPROVE,
+          reviewerUserId: ctx.userId,
+          reviewerLevel: ReviewerLevel.CENTRAL,
+          statusBefore,
+          statusAfter: DiseaseCaseReviewStatus.CENTRAL_APPROVED,
+          requeued: false,
+          criteriaSnapshot: this.criteriaSnapshotFromDto(dto),
+        },
+      });
+      return u;
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -672,17 +859,34 @@ export class MsppService {
       review.notes,
       this.validationAuditLine("Validation centrale — rejet", dto)
     );
-    const updated = await this.prisma.diseaseCaseReview.update({
-      where: { id: reviewId },
-      data: {
-        status: DiseaseCaseReviewStatus.CENTRAL_REJECTED,
-        reviewerLevel: ReviewerLevel.CENTRAL,
-        reviewerUserId: ctx.userId,
-        reviewedAt: new Date(),
-        notes,
-        ...this.reviewStructuredFields(dto),
-      },
-      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    const statusBefore = review.status;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.diseaseCaseReview.update({
+        where: { id: reviewId },
+        data: {
+          status: DiseaseCaseReviewStatus.CENTRAL_REJECTED,
+          reviewerLevel: ReviewerLevel.CENTRAL,
+          reviewerUserId: ctx.userId,
+          reviewedAt: new Date(),
+          notes,
+          ...this.reviewStructuredFields(dto),
+        },
+        select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+      });
+      await tx.msppReviewAuditEvent.create({
+        data: {
+          diseaseCaseReviewId: reviewId,
+          diseaseCaseReportId: review.diseaseCaseReportId,
+          action: MsppReviewAuditAction.CENTRAL_REJECT,
+          reviewerUserId: ctx.userId,
+          reviewerLevel: ReviewerLevel.CENTRAL,
+          statusBefore,
+          statusAfter: DiseaseCaseReviewStatus.CENTRAL_REJECTED,
+          requeued: false,
+          criteriaSnapshot: this.criteriaSnapshotFromDto(dto),
+        },
+      });
+      return u;
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -722,16 +926,33 @@ export class MsppService {
       review.notes,
       `[MSPP Remise en file département] Demande par l’utilisateur ${ctx.userId} — ${new Date().toISOString()}`
     );
-    const updated = await this.prisma.diseaseCaseReview.update({
-      where: { id: reviewId },
-      data: {
-        status: DiseaseCaseReviewStatus.PENDING_DEPARTMENT,
-        reviewerLevel: ReviewerLevel.DEPARTMENT,
-        reviewerUserId: null,
-        reviewedAt: null,
-        notes,
-      },
-      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    const statusBefore = review.status;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.diseaseCaseReview.update({
+        where: { id: reviewId },
+        data: {
+          status: DiseaseCaseReviewStatus.PENDING_DEPARTMENT,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          reviewerUserId: null,
+          reviewedAt: null,
+          notes,
+        },
+        select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+      });
+      await tx.msppReviewAuditEvent.create({
+        data: {
+          diseaseCaseReviewId: reviewId,
+          diseaseCaseReportId: review.diseaseCaseReportId,
+          action: MsppReviewAuditAction.DEPARTMENT_REQUEUE,
+          reviewerUserId: ctx.userId,
+          reviewerLevel: ReviewerLevel.DEPARTMENT,
+          statusBefore,
+          statusAfter: DiseaseCaseReviewStatus.PENDING_DEPARTMENT,
+          requeued: true,
+          criteriaSnapshot: this.criteriaSnapshotFromPersistedReview(review),
+        },
+      });
+      return u;
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,
@@ -763,16 +984,33 @@ export class MsppService {
       review.notes,
       `[MSPP Remise en file centrale] Demande par l’utilisateur ${ctx.userId} — ${new Date().toISOString()}`
     );
-    const updated = await this.prisma.diseaseCaseReview.update({
-      where: { id: reviewId },
-      data: {
-        status: DiseaseCaseReviewStatus.PENDING_CENTRAL,
-        reviewerLevel: ReviewerLevel.CENTRAL,
-        reviewerUserId: null,
-        reviewedAt: null,
-        notes,
-      },
-      select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+    const statusBefore = review.status;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.diseaseCaseReview.update({
+        where: { id: reviewId },
+        data: {
+          status: DiseaseCaseReviewStatus.PENDING_CENTRAL,
+          reviewerLevel: ReviewerLevel.CENTRAL,
+          reviewerUserId: null,
+          reviewedAt: null,
+          notes,
+        },
+        select: DISEASE_CASE_REVIEW_DECISION_FIELDS_SELECT,
+      });
+      await tx.msppReviewAuditEvent.create({
+        data: {
+          diseaseCaseReviewId: reviewId,
+          diseaseCaseReportId: review.diseaseCaseReportId,
+          action: MsppReviewAuditAction.CENTRAL_REQUEUE,
+          reviewerUserId: ctx.userId,
+          reviewerLevel: ReviewerLevel.CENTRAL,
+          statusBefore,
+          statusAfter: DiseaseCaseReviewStatus.PENDING_CENTRAL,
+          requeued: true,
+          criteriaSnapshot: this.criteriaSnapshotFromPersistedReview(review),
+        },
+      });
+      return u;
     });
     await this.audit.log(AuditAction.UPDATE, "DiseaseCaseReview", {
       userId: ctx.userId,

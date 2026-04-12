@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -51,8 +52,12 @@ export class MsppController {
     MsppRoleCode.MSPP_VALIDATOR_DEPT,
     MsppRoleCode.MSPP_VALIDATOR_CENTRAL
   )
-  listReviews(@Req() req: RequestWithJwtAndMspp) {
-    return this.mspp.listReviews(msppCtx(req));
+  listReviews(
+    @Req() req: RequestWithJwtAndMspp,
+    @Query("includeAuditEvents") includeAuditEvents?: string
+  ) {
+    const inc = includeAuditEvents === "true" || includeAuditEvents === "1";
+    return this.mspp.listReviews(msppCtx(req), inc);
   }
 
   @Post("reviews/:id/department-approve")
