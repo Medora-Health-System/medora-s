@@ -144,7 +144,7 @@ export function SidebarNavIcon({ href }: { href: string }) {
   if (href === "/app/mspp/alerts") {
     return <IconMsppAlerts />;
   }
-  if (href === "/app/mspp/rapport") {
+  if (href === "/app/mspp/rapport" || href === "/app/mspp/bulletin") {
     return <IconMsppRapport />;
   }
   if (href === "/app/mspp/validation") {

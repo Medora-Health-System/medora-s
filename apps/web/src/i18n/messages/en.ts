@@ -46,6 +46,7 @@ export default {
     msppDashboard: "MSPP — Tableau de bord",
     msppNotificationCenter: "MSPP — Notification center",
     msppRapport: "MSPP — Rapport",
+    msppBulletin: "MSPP — Weekly bulletin",
     msppValidation: "MSPP — Validation",
     msppAuditHistory: "MSPP — Historique des validations",
     msppValidationAnalytics: "MSPP — Analyse des validations",
@@ -799,6 +800,56 @@ export default {
     printHeaderGenerated: "Document généré le {date} — Medora-S",
     printHeaderScope:
       "Données : cas approuvés au niveau central uniquement. Tableaux et graphiques filtrables : selon les filtres actifs dans l’interface au moment de l’impression.",
+  },
+  msppBulletinPage: {
+    pageTitle: "MSPP — Weekly epidemiologic bulletin",
+    subtitle:
+      "National summary for ministry use: aggregates, signals, escalations, and validation indicators (read-only).",
+    signalWindowHint:
+      "7+7 day comparisons (signals / escalations / communes) use the API’s current window; the monthly approved-case series is separate.",
+    loading: "Loading…",
+    accessDenied: "You do not have access to the MSPP portal.",
+    errorLoad: "Could not load the bulletin.",
+    printButton: "Print bulletin",
+    printButtonDisabledHint: "Available once data has loaded.",
+    printPreparingHint: "Preparing charts for preview…",
+    printHelper: "Opens the browser print dialog (PDF save depends on the device).",
+    printHeaderTitle: "Weekly epidemiologic bulletin — MSPP",
+    printHeaderGenerated: "Document generated on {date} — Medora-S",
+    printHeaderScope:
+      "Composite view: centrally approved cases, sanitary signals, escalations, commune surveillance where applicable, and validation indicators per methodology notes at the end.",
+    navDashboard: "MSPP dashboard",
+    navRapport: "Aggregate report",
+    sectionKpiTitle: "Key indicators (national situation)",
+    sectionKpiIntro:
+      "Indicative figures from the same sources as the national dashboard; details are in the sections below.",
+    kpiTotalApproved: "Total approved cases (central)",
+    kpiEscalationsListed: "Escalation rows listed (current view)",
+    kpiCommuneSignalsListed: "Commune surveillance rows (current view)",
+    sectionTrendsTitle: "National trends (approved cases)",
+    sectionTrendsIntro: "Monthly series by central review date (UTC), as in the MSPP report.",
+    sectionGeoMapTitle: "Map — intensity by department (sanitary signals)",
+    sectionGeoMapIntro:
+      "Sanitary signals aggregated by geographic department (max level observed in the current window).",
+    sectionDiseaseBarsTitle: "Distribution by disease (approved cases)",
+    sectionDeptBarsTitle: "Distribution by geographic department (approved cases)",
+    chartTruncatedNote: "Showing the top {n} entries only.",
+    chartTruncatedDeptNote: "Showing the top {n} departments only.",
+    sectionValidationTitle: "Validation pipeline (overview)",
+    sectionValidationIntro:
+      "Queue and volume indicators from validation analytics (same scope as the analytics page).",
+    validationPendingDept: "Pending (department)",
+    validationPendingCentral: "Pending (central)",
+    validationApproved: "Approved (central)",
+    validationRejected: "Rejections (total)",
+    validationRequeue: "Requeue events",
+    sectionMethodologyTitle: "Methodology and sources",
+    sectionMethodologyP1:
+      "This bulletin assembles indicators already computed by Medora-S: national aggregates of declared then centrally approved cases, comparative sanitary signals over two 7-day windows, derived escalations, commune-level surveillance when the geographic reference allows, and validation statistics from audit.",
+    sectionMethodologyP2:
+      "No individual-level or facility-identifiable data are shown here. Signal thresholds and profiles are those configured on the server.",
+    sectionMethodologyP3:
+      "For filterable disease and department tables, use the dedicated MSPP report; this bulletin targets a stable weekly leadership printout.",
   },
   msppSurveillance: {
     panelTitle: "Surveillance (indicateurs simples)",

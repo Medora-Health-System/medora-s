@@ -768,6 +768,58 @@ export default {
     printHeaderScope:
       "Données : cas approuvés au niveau central uniquement. Tableaux et graphiques filtrables : selon les filtres actifs dans l’interface au moment de l’impression.",
   },
+  msppBulletinPage: {
+    pageTitle: "MSPP — Bulletin épidémiologique hebdomadaire",
+    subtitle:
+      "Synthèse nationale à destination du ministère : agrégats, signaux, escalades et indicateurs de validation (lecture seule).",
+    signalWindowHint:
+      "Les comparaisons 7+7 jours (signaux / escalades / communes) utilisent la fenêtre courante renvoyée par l’API ; la série mensuelle des cas approuvés est distincte.",
+    loading: "Chargement…",
+    accessDenied: "Vous n’avez pas accès au portail MSPP.",
+    errorLoad: "Impossible de charger le bulletin.",
+    printButton: "Imprimer le bulletin",
+    printButtonDisabledHint: "Disponible une fois les données chargées.",
+    printPreparingHint: "Préparation des graphiques pour l’aperçu…",
+    printHelper:
+      "Ouvre la boîte de dialogue d’impression du navigateur (enregistrement PDF possible selon l’appareil).",
+    printHeaderTitle: "Bulletin épidémiologique hebdomadaire — MSPP",
+    printHeaderGenerated: "Document généré le {date} — Medora-S",
+    printHeaderScope:
+      "Vue composite : cas approuvés au niveau central, signaux sanitaires, escalades, surveillance communale et indicateurs de validation selon les définitions méthodologiques affichées en fin de document.",
+    navDashboard: "Tableau de bord MSPP",
+    navRapport: "Rapport agrégats",
+    sectionKpiTitle: "Indicateurs clés (situation nationale)",
+    sectionKpiIntro:
+      "Chiffres indicatifs issus des mêmes sources que le tableau de bord national ; les détails figurent dans les sections suivantes.",
+    kpiTotalApproved: "Total cas approuvés (central)",
+    kpiEscalationsListed: "Lignes d’escalade listées (vue actuelle)",
+    kpiCommuneSignalsListed: "Lignes surveillance communale (vue actuelle)",
+    sectionTrendsTitle: "Tendances nationales (cas approuvés)",
+    sectionTrendsIntro:
+      "Série mensuelle selon la date de revue centrale (UTC), comme dans le rapport MSPP.",
+    sectionGeoMapTitle: "Carte — intensité par département (signaux sanitaires)",
+    sectionGeoMapIntro:
+      "Agrégation des signaux sanitaires par département géographique (niveau maximal observé sur la période courante).",
+    sectionDiseaseBarsTitle: "Répartition par maladie (cas approuvés)",
+    sectionDeptBarsTitle: "Répartition par département géographique (cas approuvés)",
+    chartTruncatedNote: "Affichage limité aux {n} entrées les plus représentées.",
+    chartTruncatedDeptNote: "Affichage limité aux {n} départements les plus représentés.",
+    sectionValidationTitle: "Circuit de validation (aperçu)",
+    sectionValidationIntro:
+      "Indicateurs de file et volumes issus de l’analytique de validation (même périmètre que la page d’analyse).",
+    validationPendingDept: "Dossiers en attente département",
+    validationPendingCentral: "Dossiers en attente central",
+    validationApproved: "Approuvés (central)",
+    validationRejected: "Rejets (total)",
+    validationRequeue: "Remises en file (événements)",
+    sectionMethodologyTitle: "Notes méthodologiques et sources",
+    sectionMethodologyP1:
+      "Ce bulletin assemble des indicateurs déjà calculés par Medora-S : agrégats nationaux de cas déclarés puis approuvés au niveau central, signaux sanitaires comparatifs sur deux fenêtres de 7 jours, escalades dérivées, surveillance par commune lorsque le référentiel géographique le permet, et statistiques de validation issues de l’audit.",
+    sectionMethodologyP2:
+      "Aucune donnée individuelle ni par établissement n’est exposée ici. Les seuils et profils de signaux sont ceux configurés côté serveur.",
+    sectionMethodologyP3:
+      "Pour une exploration filtrable des tableaux de maladies et départements, utiliser le rapport MSPP dédié ; ce bulletin vise une lecture directionnelle hebdomadaire stable à l’impression.",
+  },
   msppSurveillance: {
     panelTitle: "Surveillance (indicateurs simples)",
     panelDisclaimer:

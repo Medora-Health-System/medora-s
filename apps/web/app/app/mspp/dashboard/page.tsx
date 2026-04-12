@@ -142,6 +142,9 @@ export default function MsppDashboardPage() {
         <Link href="/app/mspp/rapport" style={MSPP_NAV_LINK}>
           Rapport et agrégats
         </Link>
+        <Link href="/app/mspp/bulletin" style={MSPP_NAV_LINK}>
+          {t("nav.msppBulletin")}
+        </Link>
         <Link href="/app/mspp/validation" style={MSPP_NAV_LINK}>
           File de validation
         </Link>

@@ -1,6 +1,6 @@
 /**
- * MSPP Rapport — print stylesheet (browser print / PDF via print dialog).
- * Isolates #mspp-rapport-print-root so the app shell does not appear on paper.
+ * MSPP Rapport + Bulletin hebdomadaire — print stylesheet (browser print / PDF via print dialog).
+ * Isolates #mspp-rapport-print-root / #mspp-bulletin-print-root so the app shell does not appear on paper.
  */
 
 .mspp-rapport-print-only {
@@ -26,11 +26,14 @@
   }
 
   #mspp-rapport-print-root,
-  #mspp-rapport-print-root * {
+  #mspp-rapport-print-root *,
+  #mspp-bulletin-print-root,
+  #mspp-bulletin-print-root * {
     visibility: visible;
   }
 
-  #mspp-rapport-print-root {
+  #mspp-rapport-print-root,
+  #mspp-bulletin-print-root {
     position: absolute;
     left: 0;
     top: 0;
@@ -110,36 +113,44 @@
     display: block !important;
   }
 
-  #mspp-rapport-print-root .recharts-responsive-container {
+  #mspp-rapport-print-root .recharts-responsive-container,
+  #mspp-bulletin-print-root .recharts-responsive-container {
     width: 100% !important;
     min-height: 220px !important;
   }
 
-  #mspp-rapport-print-root .mspp-print-chart-trend .recharts-responsive-container {
+  #mspp-rapport-print-root .mspp-print-chart-trend .recharts-responsive-container,
+  #mspp-bulletin-print-root .mspp-print-chart-trend .recharts-responsive-container {
     min-height: 260px !important;
     height: 280px !important;
   }
 
-  #mspp-rapport-print-root .mspp-print-chart-bars .recharts-responsive-container {
+  #mspp-rapport-print-root .mspp-print-chart-bars .recharts-responsive-container,
+  #mspp-bulletin-print-root .mspp-print-chart-bars .recharts-responsive-container {
     min-height: 200px !important;
   }
 
   #mspp-rapport-print-root .recharts-wrapper,
-  #mspp-rapport-print-root .recharts-surface {
+  #mspp-rapport-print-root .recharts-surface,
+  #mspp-bulletin-print-root .recharts-wrapper,
+  #mspp-bulletin-print-root .recharts-surface {
     max-width: 100% !important;
   }
 
-  #mspp-rapport-print-root .recharts-wrapper {
+  #mspp-rapport-print-root .recharts-wrapper,
+  #mspp-bulletin-print-root .recharts-wrapper {
     width: 100% !important;
     min-height: inherit;
   }
 
-  #mspp-rapport-print-root svg {
+  #mspp-rapport-print-root svg,
+  #mspp-bulletin-print-root svg {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  #mspp-rapport-print-root a[href] {
+  #mspp-rapport-print-root a[href],
+  #mspp-bulletin-print-root a[href] {
     color: #000;
     text-decoration: none;
   }
