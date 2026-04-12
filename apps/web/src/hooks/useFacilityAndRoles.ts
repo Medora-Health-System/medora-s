@@ -5,6 +5,21 @@ import { parseApiResponse } from "@/lib/apiClient";
 
 export type UserFacilityOption = { id: string; name: string };
 
+function parseMsppContextFromMe(
+  d: Record<string, unknown>,
+  msppLen: number,
+  frsLen: number
+): { isMsppUser: boolean; hasFacilityAccess: boolean } {
+  const nested = d.msppContext;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const o = nested as Record<string, unknown>;
+    if (typeof o.isMsppUser === "boolean" && typeof o.hasFacilityAccess === "boolean") {
+      return { isMsppUser: o.isMsppUser, hasFacilityAccess: o.hasFacilityAccess };
+    }
+  }
+  return { isMsppUser: msppLen > 0, hasFacilityAccess: frsLen > 0 };
+}
+
 export function useFacilityAndRoles() {
   const [facilityId, setFacilityId] = useState<string>("");
   const [roles, setRoles] = useState<string[]>([]);
@@ -12,6 +27,8 @@ export function useFacilityAndRoles() {
   const [facilities, setFacilities] = useState<UserFacilityOption[]>([]);
   const [canCreateFacilities, setCanCreateFacilities] = useState(false);
   const [ready, setReady] = useState(false);
+  const [isMsppUser, setIsMsppUser] = useState(false);
+  const [hasFacilityAccess, setHasFacilityAccess] = useState(false);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     setCanCreateFacilities(d.canCreateFacilities === true);
@@ -20,6 +37,9 @@ export function useFacilityAndRoles() {
       : [];
     setMsppRoles(mspp);
     const frs = Array.isArray(d.facilityRoles) ? (d.facilityRoles as { facilityId?: string }[]) : [];
+    const ctx = parseMsppContextFromMe(d, mspp.length, frs.length);
+    setIsMsppUser(ctx.isMsppUser);
+    setHasFacilityAccess(ctx.hasFacilityAccess);
     const cookieValue = document.cookie
       .split("; ")
       .find((row) => row.startsWith("medora_facility_id="))
@@ -113,6 +133,9 @@ export function useFacilityAndRoles() {
   /** Only PROVIDER and ADMIN can prescribe (create medication orders). RN can create LAB/IMAGING orders. */
   const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
 
+  /** Utilisateur MSPP national sans établissement actif en session (cookie / premier établissement). */
+  const isMsppOnlyUser = isMsppUser && !facilityId.trim();
+
   return {
     facilityId,
     roles,
@@ -128,6 +151,9 @@ export function useFacilityAndRoles() {
     canViewPublicHealthDiseaseReports,
     canViewPublicHealthVaccinations,
     isMsppAdmin,
+    isMsppUser,
+    hasFacilityAccess,
+    isMsppOnlyUser,
     canPrescribe,
   };
 }

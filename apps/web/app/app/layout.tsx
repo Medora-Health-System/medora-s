@@ -117,6 +117,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     void loadSession();
   }, [loadSession]);
 
+  /** TEMP: debug MSPP national context (foundation — remove when product wiring ships). */
+  useEffect(() => {
+    if (!sessionReady || !user) return;
+    const msppRoles = Array.isArray(user.msppRoles) ? user.msppRoles : [];
+    const ctx = user.msppContext as { isMsppUser?: boolean } | undefined;
+    const isMsppUser =
+      ctx && typeof ctx.isMsppUser === "boolean" ? ctx.isMsppUser : msppRoles.length > 0;
+    const facilityId = activeFacility || "";
+    const isMsppOnlyUser = isMsppUser && !facilityId;
+    console.log("MSPP CONTEXT", { isMsppUser, isMsppOnlyUser, facilityId });
+  }, [sessionReady, user, activeFacility]);
+
   useEffect(() => {
     const onSessionRefresh = () => {
       void loadSession();

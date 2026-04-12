@@ -15,6 +15,12 @@ export type FacilityRoleDto = {
   departmentId: string | null;
 };
 
+/** Détection mode national MSPP vs accès établissement (lecture seule ; RBAC inchangé). */
+export type MsppContextDto = {
+  isMsppUser: boolean;
+  hasFacilityAccess: boolean;
+};
+
 export type AuthUserDto = {
   id: string;
   username: string;
@@ -25,5 +31,7 @@ export type AuthUserDto = {
   msppRoles: string[];
   /** Plateforme : création d’établissements (hors RBAC par site). */
   canCreateFacilities: boolean;
+  /** Contexte MSPP national (dérivé de `msppRoles` / `facilityRoles`). */
+  msppContext: MsppContextDto;
 };
 

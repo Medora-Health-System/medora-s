@@ -99,20 +99,26 @@ export class AuthService {
       msppRoles = [];
     }
 
+    const facilityRoles = sortedRoles.map((ur) => ({
+      facilityId: ur.facilityId,
+      facilityName: ur.facility?.name,
+      defaultLanguage: ur.facility?.defaultLanguage ?? "fr",
+      role: ur.role.code,
+      departmentId: ur.departmentId ?? null,
+    }));
+
     return {
       id: user.id,
       username: user.email,
       fullName: `${user.firstName} ${user.lastName}`.trim(),
       preferredLang: "fr",
       canCreateFacilities: user.canCreateFacilities === true,
-      facilityRoles: sortedRoles.map((ur) => ({
-        facilityId: ur.facilityId,
-        facilityName: ur.facility?.name,
-        defaultLanguage: ur.facility?.defaultLanguage ?? "fr",
-        role: ur.role.code,
-        departmentId: ur.departmentId ?? null,
-      })),
+      facilityRoles,
       msppRoles,
+      msppContext: {
+        isMsppUser: msppRoles.length > 0,
+        hasFacilityAccess: facilityRoles.length > 0,
+      },
     };
   }
 
