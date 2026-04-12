@@ -4,7 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditAction, MsppLabEvidenceType, MsppRoleCode, Prisma } from "@prisma/client";
+import {
+  AuditAction,
+  MsppAlertTriageStatus,
+  MsppLabEvidenceType,
+  MsppRoleCode,
+  Prisma,
+} from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
@@ -25,6 +31,8 @@ import {
 } from "./mspp-alert-escalation";
 import type { MsppReportingCategory, MsppSurveillancePriority } from "../public-health/haiti-disease-notifiable-catalog";
 import { findNotifiableCatalogEntryByDiseaseCode } from "../public-health/haiti-disease-notifiable-catalog";
+import { computeMsppAlertKey } from "./mspp-alert-triage-key";
+import type { MsppAlertTriageVerifyDto } from "./dto/mspp-alert-triage.dto";
 import type { MsppRequestContext } from "./guards/mspp-roles.guard";
 import type { MsppReviewActionDto } from "./dto/review-action.dto";
 
@@ -370,8 +378,8 @@ export type MsppCommuneSanitarySignalsResponse = {
   signals: MsppCommuneSanitarySignalRow[];
 };
 
-/** Leadership-oriented escalation rows (read-only; derived from sanitary signal outputs + catalog governance). */
-export type MsppAlertEscalationRow = {
+/** Escalation row before `alertKey` is attached (same sliding window for all rows in one response). */
+export type MsppAlertEscalationRowBase = {
   scope: "DEPARTMENT" | "COMMUNE";
   diseaseCode: string;
   diseaseName: string;
@@ -392,6 +400,45 @@ export type MsppAlertEscalationRow = {
   catalogMatched: boolean;
   escalationLevel: MsppEscalationLevel;
   escalationReasonCode: MsppEscalationReasonCode;
+};
+
+/** Leadership-oriented escalation rows (read-only; derived from sanitary signal outputs + catalog governance). */
+export type MsppAlertEscalationRow = MsppAlertEscalationRowBase & {
+  /** Deterministic id for triage / internal handling (same window as `window` on the parent response). */
+  alertKey: string;
+};
+
+/** Triage overlay persisted in `MsppAlertTriage` (internal MSPP handling only). */
+export type MsppAlertTriageOverlayDto = {
+  id: string;
+  triageStatus: MsppAlertTriageStatus;
+  acknowledgedAt: string | null;
+  acknowledgedByUserId: string | null;
+  acknowledgedByDisplayName: string | null;
+  assignedToUserId: string | null;
+  assignedToDisplayName: string | null;
+  triageNote: string | null;
+  updatedAt: string;
+};
+
+export type MsppAlertTriageRowDto = MsppAlertEscalationRow & {
+  triage: MsppAlertTriageOverlayDto | null;
+};
+
+export type MsppAlertTriageSnapshotResponse = {
+  generatedAt: string;
+  window: MsppSanitarySignalsResponse["window"];
+  scopeNote: string;
+  disclaimer: string;
+  truncated: boolean;
+  totalMatchedBeforeCap: number;
+  escalations: MsppAlertTriageRowDto[];
+};
+
+export type MsppAlertTriageAssigneeDto = {
+  userId: string;
+  displayName: string;
+  email: string;
 };
 
 export type MsppAlertEscalationsResponse = {
@@ -1625,7 +1672,7 @@ export class MsppService {
       [MsppSignalLevel.LOW]: 2,
     };
 
-    const out: MsppAlertEscalationRow[] = [];
+    const out: MsppAlertEscalationRowBase[] = [];
 
     const pushDept = (row: MsppSanitarySignalRow) => {
       const entry = findNotifiableCatalogEntryByDiseaseCode(row.diseaseCode);
@@ -1706,6 +1753,18 @@ export class MsppService {
 
     const totalMatchedBeforeCap = out.length;
     const capped = out.slice(0, MsppService.ALERT_ESCALATIONS_MAX_ROWS);
+    const w = dept.window;
+    const escalations: MsppAlertEscalationRow[] = capped.map((r) => ({
+      ...r,
+      alertKey: computeMsppAlertKey({
+        scope: r.scope,
+        diseaseCode: r.diseaseCode,
+        departmentId: r.departmentId,
+        geoCommuneId: r.geoCommuneId,
+        windowCurrentStartIso: w.currentStart,
+        windowCurrentEndIso: w.currentEnd,
+      }),
+    }));
 
     return {
       generatedAt: dept.generatedAt,
@@ -1716,13 +1775,13 @@ export class MsppService {
         "Automated classification for dashboard use only; human validation required. Does not declare an epidemic or change case status.",
       truncated: totalMatchedBeforeCap > capped.length,
       totalMatchedBeforeCap,
-      escalations: capped,
+      escalations,
       notificationFeed: {
         schemaVersion: 1,
         kind: "mspp_escalation_v1",
         generatedAt: dept.generatedAt,
         window: dept.window,
-        items: capped.map((r) => ({
+        items: escalations.map((r) => ({
           scope: r.scope,
           diseaseCode: r.diseaseCode,
           departmentId: r.departmentId,
@@ -1733,6 +1792,216 @@ export class MsppService {
         })),
       },
     };
+  }
+
+  /**
+   * Same escalation rows as {@link alertEscalations} with persisted triage overlay (internal handling only).
+   */
+  async alertTriageSnapshot(ctx: MsppRequestContext): Promise<MsppAlertTriageSnapshotResponse> {
+    const base = await this.alertEscalations(ctx);
+    const keys = base.escalations.map((e) => e.alertKey);
+    if (keys.length === 0) {
+      return {
+        generatedAt: base.generatedAt,
+        window: base.window,
+        scopeNote:
+          "National MSPP alert triage: same 7d vs prior 7d escalation rows as /mspp/alerts/escalations, merged with internal triage state.",
+        disclaimer: base.disclaimer,
+        truncated: base.truncated,
+        totalMatchedBeforeCap: base.totalMatchedBeforeCap,
+        escalations: [],
+      };
+    }
+
+    const triageRows = await this.prisma.msppAlertTriage.findMany({
+      where: { alertKey: { in: keys } },
+      include: {
+        acknowledgedBy: { select: { id: true, firstName: true, lastName: true } },
+        assignedTo: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    const triageByKey = new Map(triageRows.map((t) => [t.alertKey, t]));
+
+    const escalations: MsppAlertTriageRowDto[] = base.escalations.map((row) => {
+      const t = triageByKey.get(row.alertKey);
+      const triage: MsppAlertTriageOverlayDto | null = t
+        ? {
+            id: t.id,
+            triageStatus: t.triageStatus,
+            acknowledgedAt: t.acknowledgedAt?.toISOString() ?? null,
+            acknowledgedByUserId: t.acknowledgedByUserId,
+            acknowledgedByDisplayName: t.acknowledgedBy
+              ? `${t.acknowledgedBy.firstName} ${t.acknowledgedBy.lastName}`.trim()
+              : null,
+            assignedToUserId: t.assignedToUserId,
+            assignedToDisplayName: t.assignedTo
+              ? `${t.assignedTo.firstName} ${t.assignedTo.lastName}`.trim()
+              : null,
+            triageNote: t.triageNote,
+            updatedAt: t.updatedAt.toISOString(),
+          }
+        : null;
+      return { ...row, triage };
+    });
+
+    return {
+      generatedAt: base.generatedAt,
+      window: base.window,
+      scopeNote:
+        "National MSPP alert triage: same 7d vs prior 7d escalation rows as /mspp/alerts/escalations, merged with internal triage state.",
+      disclaimer: base.disclaimer,
+      truncated: base.truncated,
+      totalMatchedBeforeCap: base.totalMatchedBeforeCap,
+      escalations,
+    };
+  }
+
+  private displayName(u: { firstName: string; lastName: string }): string {
+    return `${u.firstName} ${u.lastName}`.trim();
+  }
+
+  private readonly msppTriageAssignableRoles: MsppRoleCode[] = [
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL,
+  ];
+
+  async listAlertTriageAssignees(): Promise<MsppAlertTriageAssigneeDto[]> {
+    const rows = await this.prisma.msppUserRoleAssignment.findMany({
+      where: {
+        isActive: true,
+        role: { in: this.msppTriageAssignableRoles },
+      },
+      select: {
+        userId: true,
+        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+    const byUser = new Map<string, MsppAlertTriageAssigneeDto>();
+    for (const r of rows) {
+      if (!byUser.has(r.userId)) {
+        byUser.set(r.userId, {
+          userId: r.user.id,
+          displayName: this.displayName(r.user),
+          email: r.user.email,
+        });
+      }
+    }
+    return [...byUser.values()].sort((a, b) => a.displayName.localeCompare(b.displayName, "fr"));
+  }
+
+  private async assertAssignableMsppUser(userId: string): Promise<void> {
+    const ok = await this.prisma.msppUserRoleAssignment.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        role: { in: this.msppTriageAssignableRoles },
+      },
+    });
+    if (!ok) {
+      throw new BadRequestException("Le responsable doit avoir un rôle MSPP opérationnel actif.");
+    }
+  }
+
+  private async upsertTriageStub(dto: MsppAlertTriageVerifyDto): Promise<{ id: string; alertKey: string }> {
+    const wcs = new Date(dto.window.currentStart);
+    const wce = new Date(dto.window.currentEnd);
+    const row = await this.prisma.msppAlertTriage.upsert({
+      where: { alertKey: dto.alertKey },
+      create: {
+        alertKey: dto.alertKey,
+        windowCurrentStart: wcs,
+        windowCurrentEnd: wce,
+        scope: dto.scope,
+        escalationLevel: dto.escalationLevel,
+        diseaseCode: dto.diseaseCode,
+        departmentId: dto.departmentId,
+        geoCommuneId: dto.geoCommuneId,
+        triageStatus: MsppAlertTriageStatus.NEW,
+      },
+      update: {},
+    });
+    return { id: row.id, alertKey: row.alertKey };
+  }
+
+  private async logTriageAudit(
+    actorUserId: string,
+    entityId: string,
+    alertKey: string,
+    action: string,
+    extra?: Record<string, unknown>
+  ): Promise<void> {
+    await this.audit.log(AuditAction.UPDATE, "MsppAlertTriage", {
+      userId: actorUserId,
+      entityId,
+      metadata: { action, alertKey, ...extra },
+    });
+  }
+
+  async acknowledgeAlertTriage(_ctx: MsppRequestContext, dto: MsppAlertTriageVerifyDto, actorUserId: string) {
+    await this.upsertTriageStub(dto);
+    const updated = await this.prisma.msppAlertTriage.update({
+      where: { alertKey: dto.alertKey },
+      data: {
+        triageStatus: MsppAlertTriageStatus.ACKNOWLEDGED,
+        acknowledgedAt: new Date(),
+        acknowledgedByUserId: actorUserId,
+      },
+    });
+    await this.logTriageAudit(actorUserId, updated.id, dto.alertKey, "ACKNOWLEDGE");
+    return { ok: true as const, id: updated.id };
+  }
+
+  async updateAlertTriageStatus(
+    _ctx: MsppRequestContext,
+    dto: MsppAlertTriageVerifyDto & { triageStatus: MsppAlertTriageStatus },
+    actorUserId: string
+  ) {
+    await this.upsertTriageStub(dto);
+    const before = await this.prisma.msppAlertTriage.findUnique({ where: { alertKey: dto.alertKey } });
+    const updated = await this.prisma.msppAlertTriage.update({
+      where: { alertKey: dto.alertKey },
+      data: { triageStatus: dto.triageStatus },
+    });
+    await this.logTriageAudit(actorUserId, updated.id, dto.alertKey, "STATUS", {
+      statusBefore: before?.triageStatus,
+      statusAfter: dto.triageStatus,
+    });
+    return { ok: true as const, id: updated.id };
+  }
+
+  async updateAlertTriageNote(
+    _ctx: MsppRequestContext,
+    dto: MsppAlertTriageVerifyDto & { triageNote: string },
+    actorUserId: string
+  ) {
+    await this.upsertTriageStub(dto);
+    const updated = await this.prisma.msppAlertTriage.update({
+      where: { alertKey: dto.alertKey },
+      data: { triageNote: dto.triageNote },
+    });
+    await this.logTriageAudit(actorUserId, updated.id, dto.alertKey, "NOTE");
+    return { ok: true as const, id: updated.id };
+  }
+
+  async assignAlertTriage(
+    _ctx: MsppRequestContext,
+    dto: MsppAlertTriageVerifyDto & { assignedToUserId: string | null },
+    actorUserId: string
+  ) {
+    if (dto.assignedToUserId) {
+      await this.assertAssignableMsppUser(dto.assignedToUserId);
+    }
+    await this.upsertTriageStub(dto);
+    const updated = await this.prisma.msppAlertTriage.update({
+      where: { alertKey: dto.alertKey },
+      data: { assignedToUserId: dto.assignedToUserId },
+    });
+    await this.logTriageAudit(actorUserId, updated.id, dto.alertKey, "ASSIGN", {
+      assignedToUserId: dto.assignedToUserId,
+    });
+    return { ok: true as const, id: updated.id };
   }
 
   private static readonly VALIDATION_ANALYTICS_TIMING_LOOKBACK_DAYS = 365;

@@ -16,6 +16,12 @@ import { MsppRolesGuard, type MsppRequestContext } from "./guards/mspp-roles.gua
 import { RequireMsppRoles } from "./decorators/require-mspp-roles.decorator";
 import { MsppService } from "./mspp.service";
 import { msppReviewActionSchema, type MsppReviewActionDto } from "./dto/review-action.dto";
+import {
+  parseMsppAlertTriageAcknowledge,
+  parseMsppAlertTriageAssign,
+  parseMsppAlertTriageNote,
+  parseMsppAlertTriageStatus,
+} from "./dto/mspp-alert-triage.dto";
 
 type RequestWithJwtAndMspp = {
   user?: { userId: string };
@@ -194,6 +200,86 @@ export class MsppController {
   )
   alertEscalations(@Req() req: RequestWithJwtAndMspp) {
     return this.mspp.alertEscalations(msppCtx(req));
+  }
+
+  /** Escalation rows merged with internal triage state (same national roles as alerts). */
+  @Get("alerts/triage")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  alertTriageSnapshot(@Req() req: RequestWithJwtAndMspp) {
+    return this.mspp.alertTriageSnapshot(msppCtx(req));
+  }
+
+  /** Users who may receive an alert assignment (active MSPP operational roles). */
+  @Get("alerts/triage/assignees")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  alertTriageAssignees() {
+    return this.mspp.listAlertTriageAssignees();
+  }
+
+  @Post("alerts/triage/acknowledge")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  alertTriageAcknowledge(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertTriageAcknowledge(body);
+    return this.mspp.acknowledgeAlertTriage(msppCtx(req), dto, actor);
+  }
+
+  @Post("alerts/triage/status")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  alertTriageStatus(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertTriageStatus(body);
+    return this.mspp.updateAlertTriageStatus(msppCtx(req), dto, actor);
+  }
+
+  @Post("alerts/triage/note")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  alertTriageNote(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertTriageNote(body);
+    return this.mspp.updateAlertTriageNote(msppCtx(req), dto, actor);
+  }
+
+  @Post("alerts/triage/assign")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_MINISTRE,
+    MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+    MsppRoleCode.MSPP_VALIDATOR_DEPT,
+    MsppRoleCode.MSPP_VALIDATOR_CENTRAL
+  )
+  alertTriageAssign(@Req() req: RequestWithJwtAndMspp, @Body() body: unknown) {
+    const actor = req.user?.userId;
+    if (!actor) throw new ForbiddenException();
+    const dto = parseMsppAlertTriageAssign(body);
+    return this.mspp.assignAlertTriage(msppCtx(req), dto, actor);
   }
 
   /** Read-only validation pipeline analytics (snapshot + audit-based timing in lookback window). */

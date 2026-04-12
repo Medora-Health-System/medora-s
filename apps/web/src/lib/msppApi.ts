@@ -294,6 +294,7 @@ export type MsppReportingCategory = "IMMEDIATE" | "WEEKLY" | "ROUTINE";
 export type MsppSurveillancePriority = "HIGH" | "MEDIUM" | "LOW";
 
 export type MsppAlertEscalationRow = {
+  alertKey: string;
   scope: "DEPARTMENT" | "COMMUNE";
   diseaseCode: string;
   diseaseName: string;
@@ -343,6 +344,114 @@ export type MsppAlertEscalationsResponse = {
 /** Escalations prioritaires (lecture seule, dérivée des signaux existants). */
 export async function fetchMsppAlertEscalations() {
   return apiFetch(`${BASE}/alerts/escalations`, {}) as Promise<MsppAlertEscalationsResponse>;
+}
+
+export type MsppAlertTriageStatus =
+  | "NEW"
+  | "ACKNOWLEDGED"
+  | "UNDER_REVIEW"
+  | "ESCALATED_INTERNAL"
+  | "CLOSED";
+
+export type MsppAlertTriageOverlay = {
+  id: string;
+  triageStatus: MsppAlertTriageStatus;
+  acknowledgedAt: string | null;
+  acknowledgedByUserId: string | null;
+  acknowledgedByDisplayName: string | null;
+  assignedToUserId: string | null;
+  assignedToDisplayName: string | null;
+  triageNote: string | null;
+  updatedAt: string;
+};
+
+export type MsppAlertTriageRow = MsppAlertEscalationRow & {
+  triage: MsppAlertTriageOverlay | null;
+};
+
+export type MsppAlertTriageSnapshotResponse = {
+  generatedAt: string;
+  window: MsppSanitarySignalsResponse["window"];
+  scopeNote: string;
+  disclaimer: string;
+  truncated: boolean;
+  totalMatchedBeforeCap: number;
+  escalations: MsppAlertTriageRow[];
+};
+
+export type MsppAlertTriageAssignee = {
+  userId: string;
+  displayName: string;
+  email: string;
+};
+
+export type MsppAlertTriageVerifyBody = {
+  alertKey: string;
+  scope: "DEPARTMENT" | "COMMUNE";
+  diseaseCode: string;
+  departmentId: string;
+  geoCommuneId: string | null;
+  window: { currentStart: string; currentEnd: string };
+  escalationLevel: MsppEscalationLevel;
+};
+
+/** Corps commun pour toutes les actions de triage (aligné sur le backend). */
+export function buildMsppAlertTriageVerifyBody(
+  row: MsppAlertEscalationRow,
+  window: MsppSanitarySignalsResponse["window"]
+): MsppAlertTriageVerifyBody {
+  return {
+    alertKey: row.alertKey,
+    scope: row.scope,
+    diseaseCode: row.diseaseCode,
+    departmentId: row.departmentId,
+    geoCommuneId: row.geoCommuneId,
+    window: {
+      currentStart: window.currentStart,
+      currentEnd: window.currentEnd,
+    },
+    escalationLevel: row.escalationLevel,
+  };
+}
+
+export async function fetchMsppAlertTriageSnapshot() {
+  return apiFetch(`${BASE}/alerts/triage`, {}) as Promise<MsppAlertTriageSnapshotResponse>;
+}
+
+export async function fetchMsppAlertTriageAssignees() {
+  return apiFetch(`${BASE}/alerts/triage/assignees`, {}) as Promise<MsppAlertTriageAssignee[]>;
+}
+
+export async function postMsppAlertTriageAcknowledge(body: MsppAlertTriageVerifyBody) {
+  return apiFetch(`${BASE}/alerts/triage/acknowledge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ ok: true; id: string }>;
+}
+
+export async function postMsppAlertTriageStatus(body: MsppAlertTriageVerifyBody & { triageStatus: MsppAlertTriageStatus }) {
+  return apiFetch(`${BASE}/alerts/triage/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ ok: true; id: string }>;
+}
+
+export async function postMsppAlertTriageNote(body: MsppAlertTriageVerifyBody & { triageNote: string }) {
+  return apiFetch(`${BASE}/alerts/triage/note`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ ok: true; id: string }>;
+}
+
+export async function postMsppAlertTriageAssign(body: MsppAlertTriageVerifyBody & { assignedToUserId: string | null }) {
+  return apiFetch(`${BASE}/alerts/triage/assign`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as Promise<{ ok: true; id: string }>;
 }
 
 export type MsppValidationDeptAnalyticsRow = {

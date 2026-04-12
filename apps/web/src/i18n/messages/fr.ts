@@ -845,6 +845,8 @@ export default {
     pageTitle: "Centre de notification MSPP",
     subtitle:
       "Vue nationale des alertes escaladées (signaux sanitaires et référentiel de maladies). Lecture seule — aucune notification externe.",
+    subtitleTriage:
+      "Traitement interne : accusé de réception, statut et notes — sans lien avec la validation des dossiers ni déclaration d’épidémie.",
     disclaimer: "Validation humaine requise.",
     loadError: "Impossible de charger les alertes.",
     linkDashboard: "Tableau de bord MSPP",
@@ -860,6 +862,29 @@ export default {
     emptyFiltered: "Aucune alerte ne correspond aux filtres.",
     sectionEmpty: "Aucune entrée dans cette catégorie.",
     colDelta: "Écart 7 j.",
+  },
+  msppAlertTriage: {
+    colTriageStatus: "Traitement",
+    colAction: "Action",
+    treatAlert: "Traiter l’alerte",
+    panelHint: "Actions réservées au personnel MSPP autorisé. Aucun impact sur la file de validation des dossiers.",
+    fieldStatus: "Statut de triage",
+    fieldNote: "Note interne",
+    fieldAssignee: "Responsable",
+    assigneeNone: "— Aucun —",
+    saveStatus: "Enregistrer le statut",
+    saveNote: "Enregistrer la note",
+    saveAssign: "Enregistrer le responsable",
+    ackReceipt: "Accuser réception",
+    saveError: "Impossible d’enregistrer. Vérifiez les champs et réessayez.",
+    ackMeta: "Accusé de réception par {name} — {time}",
+    status: {
+      NEW: "Nouveau",
+      ACKNOWLEDGED: "Accusé de réception",
+      UNDER_REVIEW: "En revue",
+      ESCALATED_INTERNAL: "Escalade interne",
+      CLOSED: "Clôturé",
+    },
   },
   msppSignal: {
     loading: "Chargement…",

@@ -5,11 +5,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
-  fetchMsppAlertEscalations,
-  type MsppAlertEscalationRow,
-  type MsppAlertEscalationsResponse,
+  fetchMsppAlertTriageAssignees,
+  fetchMsppAlertTriageSnapshot,
+  type MsppAlertTriageAssignee,
+  type MsppAlertTriageSnapshotResponse,
 } from "@/lib/msppApi";
-import { formatMsppEscalationGeo } from "@/features/mspp/msppEscalationFormatters";
+import { MsppAlertTriageSection } from "@/features/mspp/MsppAlertTriageSection";
 import {
   MSPP_EMPTY_STATE,
   MSPP_ERROR_CALLOUT,
@@ -25,46 +26,9 @@ import {
   MSPP_SECTION_CARD,
   MSPP_SECTION_SUBTITLE,
   MSPP_SECTION_TITLE,
-  MSPP_TABLE,
-  MSPP_TABLE_CELL,
-  MSPP_TABLE_HEAD_CELL,
 } from "@/features/mspp/msppUiChrome";
 
-function signalLevelBadgeStyle(level: MsppAlertEscalationRow["signalLevel"]): React.CSSProperties {
-  if (level === "HIGH") {
-    return {
-      display: "inline-block",
-      padding: "2px 8px",
-      borderRadius: 9999,
-      fontSize: 12,
-      fontWeight: 600,
-      background: "rgba(234, 179, 8, 0.2)",
-      color: "#a16207",
-    };
-  }
-  if (level === "MEDIUM") {
-    return {
-      display: "inline-block",
-      padding: "2px 8px",
-      borderRadius: 9999,
-      fontSize: 12,
-      fontWeight: 600,
-      background: "rgba(59, 130, 246, 0.14)",
-      color: "#1d4ed8",
-    };
-  }
-  return {
-    display: "inline-block",
-    padding: "2px 8px",
-    borderRadius: 9999,
-    fontSize: 12,
-    fontWeight: 600,
-    background: "rgba(100, 116, 139, 0.12)",
-    color: "#475569",
-  };
-}
-
-function formatWindowLine(t: (key: string) => string, win: MsppAlertEscalationsResponse["window"]): string {
+function formatWindowLine(t: (key: string) => string, win: MsppAlertTriageSnapshotResponse["window"]): string {
   try {
     const curS = new Date(win.currentStart);
     const curE = new Date(win.currentEnd);
@@ -87,88 +51,31 @@ function formatWindowLine(t: (key: string) => string, win: MsppAlertEscalationsR
   }
 }
 
-function EscalationSection({
-  title,
-  rows,
-  t,
-}: {
-  title: string;
-  rows: MsppAlertEscalationRow[];
-  t: (key: string) => string;
-}) {
-  if (rows.length === 0) {
-    return (
-      <div style={MSPP_SECTION_CARD}>
-        <h2 style={MSPP_SECTION_TITLE}>{title}</h2>
-        <p style={MSPP_EMPTY_STATE}>{t("msppAlertsInboxPage.sectionEmpty")}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={MSPP_SECTION_CARD}>
-      <h2 style={MSPP_SECTION_TITLE}>{title}</h2>
-      <div style={{ overflowX: "auto" }}>
-        <table style={MSPP_TABLE}>
-          <thead>
-            <tr>
-              <th style={MSPP_TABLE_HEAD_CELL}>{t("msppEscalations.colDisease")}</th>
-              <th style={MSPP_TABLE_HEAD_CELL}>{t("msppEscalations.colGeo")}</th>
-              <th style={MSPP_TABLE_HEAD_CELL}>{t("msppEscalations.colSignalLevel")}</th>
-              <th style={{ ...MSPP_TABLE_HEAD_CELL, textAlign: "right" }}>{t("msppAlertsInboxPage.colDelta")}</th>
-              <th style={MSPP_TABLE_HEAD_CELL}>{t("msppEscalations.colReason")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, idx) => {
-              const sigLabel = t(`msppSanitarySignals.level.${row.signalLevel}`);
-              const reason = t(`msppEscalations.reason.${row.escalationReasonCode}`);
-              const key = `${row.escalationLevel}-${row.scope}-${row.diseaseCode}-${row.departmentId}-${row.geoCommuneId ?? "dept"}-${idx}`;
-              return (
-                <tr key={key}>
-                  <td style={MSPP_TABLE_CELL}>
-                    <div style={{ fontWeight: 600 }}>{row.diseaseName?.trim() || row.diseaseCode}</div>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{row.diseaseCode}</div>
-                  </td>
-                  <td style={MSPP_TABLE_CELL}>{formatMsppEscalationGeo(row)}</td>
-                  <td style={MSPP_TABLE_CELL}>
-                    <span style={signalLevelBadgeStyle(row.signalLevel)}>{sigLabel}</span>
-                  </td>
-                  <td style={{ ...MSPP_TABLE_CELL, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    +{row.delta}
-                  </td>
-                  <td style={{ ...MSPP_TABLE_CELL, fontSize: 13, color: "#475569" }}>{reason}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export default function MsppAlertsInboxPage() {
   const { t } = useI18n();
   const { ready, msppRoles } = useFacilityAndRoles();
   const canMspp = msppRoles.length > 0;
 
-  const [data, setData] = useState<MsppAlertEscalationsResponse | null>(null);
+  const [data, setData] = useState<MsppAlertTriageSnapshotResponse | null>(null);
+  const [assignees, setAssignees] = useState<MsppAlertTriageAssignee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [diseaseQuery, setDiseaseQuery] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [expandedAlertKey, setExpandedAlertKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!canMspp) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchMsppAlertEscalations();
-      setData(res);
+      const [snap, users] = await Promise.all([fetchMsppAlertTriageSnapshot(), fetchMsppAlertTriageAssignees()]);
+      setData(snap);
+      setAssignees(users);
     } catch {
       setError(t("msppAlertsInboxPage.loadError"));
       setData(null);
+      setAssignees([]);
     } finally {
       setLoading(false);
     }
@@ -178,6 +85,10 @@ export default function MsppAlertsInboxPage() {
     if (ready && canMspp) void load();
     else if (ready && !canMspp) setLoading(false);
   }, [ready, canMspp, load]);
+
+  const onRefresh = useCallback(async () => {
+    await load();
+  }, [load]);
 
   const departmentOptions = useMemo(() => {
     const rows = data?.escalations ?? [];
@@ -238,6 +149,10 @@ export default function MsppAlertsInboxPage() {
       )
     : "";
 
+  function toggleExpand(alertKey: string) {
+    setExpandedAlertKey((k) => (k === alertKey ? null : alertKey));
+  }
+
   if (!ready) {
     return (
       <div style={MSPP_PAGE_SHELL}>
@@ -259,9 +174,10 @@ export default function MsppAlertsInboxPage() {
     <div style={MSPP_PAGE_SHELL}>
       <h1 style={MSPP_PAGE_TITLE}>{t("msppAlertsInboxPage.pageTitle")}</h1>
       <p style={MSPP_PAGE_SUBTITLE}>{t("msppAlertsInboxPage.subtitle")}</p>
-      <p style={{ fontSize: 13, color: "#64748b", marginTop: 8, marginBottom: 12, fontWeight: 600 }}>
+      <p style={{ fontSize: 13, color: "#64748b", marginTop: 8, marginBottom: 4, fontWeight: 600 }}>
         {t("msppAlertsInboxPage.disclaimer")}
       </p>
+      <p style={{ fontSize: 13, color: "#64748b", marginTop: 0, marginBottom: 12 }}>{t("msppAlertsInboxPage.subtitleTriage")}</p>
 
       <div style={MSPP_NAV_ROW}>
         <Link href="/app/mspp/dashboard" style={MSPP_NAV_LINK}>
@@ -388,11 +304,35 @@ export default function MsppAlertsInboxPage() {
           ) : (
             <>
               <div style={{ marginTop: 20 }} />
-              <EscalationSection title={t("msppEscalations.level.URGENT")} rows={urgentRows} t={t} />
+              <MsppAlertTriageSection
+                title={t("msppEscalations.level.URGENT")}
+                rows={urgentRows}
+                window={data.window}
+                assignees={assignees}
+                expandedAlertKey={expandedAlertKey}
+                onToggleExpand={toggleExpand}
+                onRefresh={onRefresh}
+              />
               <div style={{ marginTop: 16 }} />
-              <EscalationSection title={t("msppEscalations.level.PRIORITY")} rows={priorityRows} t={t} />
+              <MsppAlertTriageSection
+                title={t("msppEscalations.level.PRIORITY")}
+                rows={priorityRows}
+                window={data.window}
+                assignees={assignees}
+                expandedAlertKey={expandedAlertKey}
+                onToggleExpand={toggleExpand}
+                onRefresh={onRefresh}
+              />
               <div style={{ marginTop: 16 }} />
-              <EscalationSection title={t("msppEscalations.level.WATCH")} rows={watchRows} t={t} />
+              <MsppAlertTriageSection
+                title={t("msppEscalations.level.WATCH")}
+                rows={watchRows}
+                window={data.window}
+                assignees={assignees}
+                expandedAlertKey={expandedAlertKey}
+                onToggleExpand={toggleExpand}
+                onRefresh={onRefresh}
+              />
             </>
           )}
         </>

@@ -284,6 +284,8 @@ model User {
   ordersCancelled               Order[]     @relation("OrderCancelledBy")
   msppUserRoleAssignments       MsppUserRoleAssignment[]
   msppReviewAuditEvents         MsppReviewAuditEvent[]
+  msppAlertTriagesAcknowledged  MsppAlertTriage[]        @relation("MsppAlertTriageAckBy")
+  msppAlertTriagesAssigned      MsppAlertTriage[]        @relation("MsppAlertTriageAssignTo")
 }
 
 model PasswordResetToken {
@@ -1181,6 +1183,42 @@ model GeoCommune {
   @@unique([geoDepartmentId, name])
   @@index([geoDepartmentId])
   @@index([name])
+}
+
+/// Internal handling state for national escalation rows (not disease validation).
+enum MsppAlertTriageStatus {
+  NEW
+  ACKNOWLEDGED
+  UNDER_REVIEW
+  ESCALATED_INTERNAL
+  CLOSED
+}
+
+/// Per-window triage for computed MSPP escalation rows (`alertKey` from `computeMsppAlertKey`).
+model MsppAlertTriage {
+  id                   String                @id @default(uuid())
+  alertKey             String                @unique
+  windowCurrentStart   DateTime
+  windowCurrentEnd     DateTime
+  scope                String
+  escalationLevel      String
+  diseaseCode          String
+  departmentId         String
+  geoCommuneId         String?
+  triageStatus         MsppAlertTriageStatus @default(NEW)
+  acknowledgedAt       DateTime?
+  acknowledgedByUserId String?
+  assignedToUserId     String?
+  triageNote           String?               @db.Text
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  acknowledgedBy User? @relation("MsppAlertTriageAckBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+  assignedTo     User? @relation("MsppAlertTriageAssignTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  @@index([triageStatus])
+  @@index([departmentId])
+  @@index([updatedAt])
 }
 
 /// National MSPP access (not tied to facility `UserRole`). For `MSPP_VALIDATOR_DEPT`: either `geoDepartmentId` or `allGeoDepartments`.

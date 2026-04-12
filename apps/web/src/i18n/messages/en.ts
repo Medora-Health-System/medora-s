@@ -877,6 +877,8 @@ export default {
     pageTitle: "MSPP notification center",
     subtitle:
       "National view of escalated alerts (sanitary signals and disease catalog). Read-only — no external notifications.",
+    subtitleTriage:
+      "Internal handling: acknowledgement, status, and notes — not tied to case validation or outbreak declaration.",
     disclaimer: "Human validation required.",
     loadError: "Could not load alerts.",
     linkDashboard: "MSPP dashboard",
@@ -892,6 +894,29 @@ export default {
     emptyFiltered: "No alerts match the filters.",
     sectionEmpty: "No entries in this category.",
     colDelta: "7d delta",
+  },
+  msppAlertTriage: {
+    colTriageStatus: "Handling",
+    colAction: "Action",
+    treatAlert: "Handle alert",
+    panelHint: "For authorized MSPP staff only. Does not change the case validation queue.",
+    fieldStatus: "Triage status",
+    fieldNote: "Internal note",
+    fieldAssignee: "Owner",
+    assigneeNone: "— None —",
+    saveStatus: "Save status",
+    saveNote: "Save note",
+    saveAssign: "Save assignee",
+    ackReceipt: "Acknowledge receipt",
+    saveError: "Could not save. Check fields and try again.",
+    ackMeta: "Acknowledged by {name} — {time}",
+    status: {
+      NEW: "New",
+      ACKNOWLEDGED: "Acknowledged",
+      UNDER_REVIEW: "Under review",
+      ESCALATED_INTERNAL: "Internal escalation",
+      CLOSED: "Closed",
+    },
   },
   msppSignal: {
     loading: "Chargement…",
