@@ -73,6 +73,16 @@ export class MsppPublicHealthNationalController {
     return this.publicHealth.listHaitiGeoReference("__national__");
   }
 
+  @Get("disease-catalog")
+  @RequireMsppRoles(
+    MsppRoleCode.MSPP_ADMIN,
+    MsppRoleCode.MSPP_DISEASE_REPORTS,
+    MsppRoleCode.MSPP_PUBLIC_HEALTH
+  )
+  diseaseCatalog() {
+    return this.publicHealth.listDiseaseNotifiableCatalog();
+  }
+
   @Get("vaccines/catalog")
   @RequireMsppRoles(MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_VACCINATIONS)
   async listVaccineCatalog(@Query("includeInactive") inc?: string) {

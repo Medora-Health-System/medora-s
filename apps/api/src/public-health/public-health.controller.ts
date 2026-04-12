@@ -124,6 +124,16 @@ export class PublicHealthController {
     return this.publicHealth.listHaitiGeoReference(this.facilityId(req));
   }
 
+  /** Catalogue de maladies à déclaration (MSPP / surveillance) — lecture seule. */
+  @Get("disease-catalog")
+  @RequireClinicalOrMspp(
+    [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],
+    [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]
+  )
+  diseaseCatalog() {
+    return this.publicHealth.listDiseaseNotifiableCatalog();
+  }
+
   @Get("disease-reports")
   @RequireClinicalOrMspp(
     [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN],

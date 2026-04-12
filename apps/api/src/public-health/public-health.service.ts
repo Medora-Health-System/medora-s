@@ -22,6 +22,10 @@ import type {
   ListDiseaseCaseReportsQuery,
   DiseaseSummaryQuery,
 } from "./dto";
+import {
+  activeDiseaseNotifiableCatalog,
+  type HaitiDiseaseNotifiableEntry,
+} from "./haiti-disease-notifiable-catalog";
 
 const DUE_SOON_DAYS = 30;
 
@@ -275,6 +279,27 @@ export class PublicHealthService {
       where: activeOnly ? { isActive: true } : undefined,
       orderBy: { name: "asc" },
     });
+  }
+
+  /** Catalogue national de maladies à déclaration (lecture seule, V1 — module source). */
+  listDiseaseNotifiableCatalog(): {
+    generatedAt: string;
+    source: string;
+    items: HaitiDiseaseNotifiableEntry[];
+  } {
+    const items = activeDiseaseNotifiableCatalog();
+    items.sort((a, b) => {
+      const g = (x: HaitiDiseaseNotifiableEntry) =>
+        x.surveillanceGroup === "IMMEDIATE" ? 0 : x.surveillanceGroup === "WEEKLY" ? 1 : 2;
+      const o = g(a) - g(b);
+      if (o !== 0) return o;
+      return a.labelFr.localeCompare(b.labelFr, "fr");
+    });
+    return {
+      generatedAt: new Date().toISOString(),
+      source: "haiti-disease-notifiable-catalog@v1",
+      items,
+    };
   }
 
   async recordVaccineAdministration(

@@ -138,6 +138,31 @@ export async function fetchVaccinationsDueSoon(facilityId: string) {
   }>;
 }
 
+export type DiseaseNotifiableCatalogItem = {
+  code: string;
+  labelFr: string;
+  aliasesFr: string[];
+  surveillanceGroup: "IMMEDIATE" | "WEEKLY" | "OTHER";
+  isActive: boolean;
+};
+
+export type DiseaseNotifiableCatalogResponse = {
+  generatedAt: string;
+  source: string;
+  items: DiseaseNotifiableCatalogItem[];
+};
+
+/** Catalogue national MSPP / maladies à déclaration (lecture seule). */
+export async function fetchDiseaseCatalog(facilityId: string) {
+  return apiFetch("/public-health/disease-catalog", {
+    facilityId,
+  }) as Promise<DiseaseNotifiableCatalogResponse>;
+}
+
+export async function fetchDiseaseCatalogNational() {
+  return apiFetch("/mspp/public-health/disease-catalog", {}) as Promise<DiseaseNotifiableCatalogResponse>;
+}
+
 export type HaitiGeoDepartment = { id: string; code: string; name: string };
 export type HaitiGeoCommune = { id: string; code: string | null; name: string };
 

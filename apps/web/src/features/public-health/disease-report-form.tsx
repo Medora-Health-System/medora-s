@@ -5,9 +5,12 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import {
   createDiseaseReport,
+  fetchDiseaseCatalog,
   type HaitiGeoDepartment,
   type HaitiGeoCommune,
+  type DiseaseNotifiableCatalogItem,
 } from "@/lib/publicHealthApi";
+import { DiseaseCatalogCombobox } from "@/features/public-health/DiseaseCatalogCombobox";
 import { Field, inputStyle } from "@/components/pharmacy/Modal";
 
 const STATUS_CODES = ["SUSPECTED", "CONFIRMED", "RULED_OUT"] as const;
@@ -101,6 +104,30 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
     setGeoCommuneId("");
   }, [geoDeptId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!facilityId) {
+      setDiseaseCatalogLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    setDiseaseCatalogLoading(true);
+    void fetchDiseaseCatalog(facilityId)
+      .then((res) => {
+        if (!cancelled) setDiseaseCatalog(res.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setDiseaseCatalog([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDiseaseCatalogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
+
   const [patientQuery, setPatientQuery] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientId, setPatientId] = useState("");
@@ -123,6 +150,8 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [diseaseCatalog, setDiseaseCatalog] = useState<DiseaseNotifiableCatalogItem[]>([]);
+  const [diseaseCatalogLoading, setDiseaseCatalogLoading] = useState(true);
 
   const statusLabel = (code: string) => {
     const key = `diseaseReports.statuses.${code}`;
@@ -314,37 +343,61 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
       )}
 
       <div style={sectionTitleStyle}>{t("diseaseReports.sectionDeclaration")}</div>
-      <Field label={`${t("diseaseReports.diseaseCode")}${req}`}>
-        <input
-          style={inputStyle}
-          value={diseaseCode}
-          onChange={(e) => {
-            markDirty();
-            setDiseaseCode(e.target.value);
-          }}
-          placeholder={t("diseaseReports.diseaseCodePlaceholder")}
+      {diseaseCatalogLoading ? (
+        <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 8px" }}>{t("diseaseReports.catalogLoading")}</p>
+      ) : null}
+      {!diseaseCatalogLoading && diseaseCatalog.length === 0 ? (
+        <p style={{ fontSize: 13, color: "#92400e", margin: "0 0 8px", background: "#fffbeb", padding: 8, borderRadius: 8 }}>
+          {t("diseaseReports.catalogUnavailable")}
+        </p>
+      ) : null}
+      {!diseaseCatalogLoading && diseaseCatalog.length > 0 ? (
+        <DiseaseCatalogCombobox
+          catalog={diseaseCatalog}
+          diseaseName={diseaseName}
+          diseaseCode={diseaseCode}
+          onChangeName={setDiseaseName}
+          onChangeCode={setDiseaseCode}
+          markDirty={markDirty}
+          showInvalidHintName={showInvalidHint(Boolean(diseaseName.trim()))}
+          showInvalidHintCode={showInvalidHint(Boolean(diseaseCode.trim()))}
+          requiredStar={req}
         />
-        {showInvalidHint(Boolean(diseaseCode.trim())) ? (
-          <div style={errText}>{t("diseaseReports.validationDiseaseCode")}</div>
-        ) : null}
-        <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
-          {t("diseaseReports.diseaseCodeHint")}
-        </span>
-      </Field>
-      <Field label={`${t("diseaseReports.diseaseName")}${req}`}>
-        <input
-          style={inputStyle}
-          value={diseaseName}
-          onChange={(e) => {
-            markDirty();
-            setDiseaseName(e.target.value);
-          }}
-          placeholder={t("diseaseReports.diseaseNamePlaceholder")}
-        />
-        {showInvalidHint(Boolean(diseaseName.trim())) ? (
-          <div style={errText}>{t("diseaseReports.validationDiseaseName")}</div>
-        ) : null}
-      </Field>
+      ) : (
+        <>
+          <Field label={`${t("diseaseReports.diseaseName")}${req}`}>
+            <input
+              style={inputStyle}
+              value={diseaseName}
+              onChange={(e) => {
+                markDirty();
+                setDiseaseName(e.target.value);
+              }}
+              placeholder={t("diseaseReports.diseaseNamePlaceholder")}
+            />
+            {showInvalidHint(Boolean(diseaseName.trim())) ? (
+              <div style={errText}>{t("diseaseReports.validationDiseaseName")}</div>
+            ) : null}
+          </Field>
+          <Field label={`${t("diseaseReports.diseaseCode")}${req}`}>
+            <input
+              style={inputStyle}
+              value={diseaseCode}
+              onChange={(e) => {
+                markDirty();
+                setDiseaseCode(e.target.value);
+              }}
+              placeholder={t("diseaseReports.diseaseCodePlaceholder")}
+            />
+            {showInvalidHint(Boolean(diseaseCode.trim())) ? (
+              <div style={errText}>{t("diseaseReports.validationDiseaseCode")}</div>
+            ) : null}
+            <span style={{ fontSize: 12, color: "#64748b", display: "block", marginTop: 4 }}>
+              {t("diseaseReports.diseaseCodeHint")}
+            </span>
+          </Field>
+        </>
+      )}
       <Field label={`${t("diseaseReports.status")}${req}`}>
         <select
           style={inputStyle}

@@ -10,6 +10,7 @@
 | GET | `/patients/:id/vaccinations` | RN, PROVIDER, ADMIN |
 | GET | `/public-health/vaccinations/due-soon` | RN, PROVIDER, ADMIN |
 | POST | `/public-health/disease-reports` | RN, PROVIDER, ADMIN |
+| GET | `/public-health/disease-catalog` | RN, PROVIDER, ADMIN |
 | GET | `/public-health/disease-reports` | RN, PROVIDER, ADMIN |
 | GET | `/public-health/disease-summary` | RN, PROVIDER, ADMIN |
 
@@ -47,6 +48,9 @@ All routes require JWT + `x-facility-id` (via guards).
 }
 ```
 Overdue doses (`nextDueAt` before today) are **not** included.
+
+### `GET /public-health/disease-catalog`
+**Returns:** `{ generatedAt, source, items[] }` where each item has `code`, `labelFr`, `aliasesFr`, `surveillanceGroup` (`IMMEDIATE` | `WEEKLY` | `OTHER`), `isActive`. Read-only reference for facility disease declaration UI (no DB migration in V1).
 
 ### `POST /public-health/disease-reports`
 **Body:** optional `patientId`, `encounterId`; required `diseaseCode`, `diseaseName`, `status` (`SUSPECTED` | `CONFIRMED` | `RULED_OUT`); optional `reportedAt`, `onsetDate`, `commune`, `department`, `notes`  
