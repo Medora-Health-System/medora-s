@@ -143,8 +143,15 @@ export type DiseaseNotifiableCatalogItem = {
   labelFr: string;
   aliasesFr: string[];
   surveillanceGroup: "IMMEDIATE" | "WEEKLY" | "OTHER";
+  reportingCategory: "IMMEDIATE" | "WEEKLY" | "ROUTINE";
+  surveillancePriority: "HIGH" | "MEDIUM" | "LOW";
+  sanitarySignalProfile?: string;
+  reviewGuidanceProfile?: string;
   isActive: boolean;
 };
+
+/** Alias — même forme que `DiseaseNotifiableCatalogItem` (catalogue API). */
+export type HaitiDiseaseCatalogItem = DiseaseNotifiableCatalogItem;
 
 export type DiseaseNotifiableCatalogResponse = {
   generatedAt: string;

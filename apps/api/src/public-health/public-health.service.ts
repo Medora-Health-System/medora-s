@@ -281,20 +281,35 @@ export class PublicHealthService {
     });
   }
 
-  /** Catalogue national de maladies à déclaration (lecture seule, V1 — module source). */
+  /**
+   * Catalogue national de maladies à déclaration (lecture seule, V1 — module source).
+   * Chaque entrée inclut la gouvernance : `reportingCategory`, `surveillancePriority`,
+   * et optionnellement `sanitarySignalProfile` / `reviewGuidanceProfile` (liaison moteurs signaux / revue).
+   */
   listDiseaseNotifiableCatalog(): {
     generatedAt: string;
     source: string;
     items: HaitiDiseaseNotifiableEntry[];
   } {
-    const items = activeDiseaseNotifiableCatalog();
-    items.sort((a, b) => {
+    const rows = activeDiseaseNotifiableCatalog();
+    rows.sort((a, b) => {
       const g = (x: HaitiDiseaseNotifiableEntry) =>
         x.surveillanceGroup === "IMMEDIATE" ? 0 : x.surveillanceGroup === "WEEKLY" ? 1 : 2;
       const o = g(a) - g(b);
       if (o !== 0) return o;
       return a.labelFr.localeCompare(b.labelFr, "fr");
     });
+    const items: HaitiDiseaseNotifiableEntry[] = rows.map((e) => ({
+      code: e.code,
+      labelFr: e.labelFr,
+      aliasesFr: e.aliasesFr,
+      surveillanceGroup: e.surveillanceGroup,
+      reportingCategory: e.reportingCategory,
+      surveillancePriority: e.surveillancePriority,
+      sanitarySignalProfile: e.sanitarySignalProfile,
+      reviewGuidanceProfile: e.reviewGuidanceProfile,
+      isActive: e.isActive,
+    }));
     return {
       generatedAt: new Date().toISOString(),
       source: "haiti-disease-notifiable-catalog@v1",

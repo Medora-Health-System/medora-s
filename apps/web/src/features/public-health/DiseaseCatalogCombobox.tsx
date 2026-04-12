@@ -52,6 +52,41 @@ const OPTION_ROW: React.CSSProperties = {
   textAlign: "left",
 };
 
+const ROW_INNER: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  flexWrap: "wrap",
+  gap: "6px 8px",
+  width: "100%",
+};
+
+function reportingCategoryForEntry(e: DiseaseNotifiableCatalogItem): "IMMEDIATE" | "WEEKLY" | "ROUTINE" {
+  if (e.reportingCategory) return e.reportingCategory;
+  if (e.surveillanceGroup === "IMMEDIATE") return "IMMEDIATE";
+  if (e.surveillanceGroup === "WEEKLY") return "WEEKLY";
+  return "ROUTINE";
+}
+
+function reportingCategoryBadgeStyle(cat: "IMMEDIATE" | "WEEKLY" | "ROUTINE"): React.CSSProperties {
+  const base: React.CSSProperties = {
+    display: "inline-block",
+    fontSize: 10,
+    fontWeight: 600,
+    lineHeight: 1.2,
+    padding: "2px 7px",
+    borderRadius: 9999,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  };
+  if (cat === "IMMEDIATE") {
+    return { ...base, background: "rgba(220,38,38,0.14)", color: "#991b1b" };
+  }
+  if (cat === "WEEKLY") {
+    return { ...base, background: "rgba(59,130,246,0.14)", color: "#1d4ed8" };
+  }
+  return { ...base, background: "rgba(100,116,139,0.14)", color: "#475569" };
+}
+
 function normalizeSearch(s: string): string {
   try {
     return s
@@ -185,21 +220,33 @@ export function DiseaseCatalogCombobox({
                 return (
                   <div key={g}>
                     <div style={GROUP_HEAD}>{groupLabel(g)}</div>
-                    {rows.map((e) => (
-                      <button
-                        key={e.code}
-                        type="button"
-                        role="option"
-                        style={OPTION_ROW}
-                        onMouseDown={(ev) => {
-                          ev.preventDefault();
-                          handlePick(e);
-                        }}
-                      >
-                        <span style={{ fontWeight: 600 }}>{e.labelFr}</span>
-                        <span style={{ color: "#64748b", fontSize: 12, marginLeft: 8 }}>({e.code})</span>
-                      </button>
-                    ))}
+                    {rows.map((e) => {
+                      const rc = reportingCategoryForEntry(e);
+                      const badgeKey =
+                        rc === "IMMEDIATE"
+                          ? "diseaseReports.reportingBadgeImmediate"
+                          : rc === "WEEKLY"
+                            ? "diseaseReports.reportingBadgeWeekly"
+                            : "diseaseReports.reportingBadgeRoutine";
+                      return (
+                        <button
+                          key={e.code}
+                          type="button"
+                          role="option"
+                          style={OPTION_ROW}
+                          onMouseDown={(ev) => {
+                            ev.preventDefault();
+                            handlePick(e);
+                          }}
+                        >
+                          <span style={ROW_INNER}>
+                            <span style={{ fontWeight: 600, flex: "1 1 120px", minWidth: 0 }}>{e.labelFr}</span>
+                            <span style={{ color: "#64748b", fontSize: 12 }}>({e.code})</span>
+                            <span style={reportingCategoryBadgeStyle(rc)}>{t(badgeKey)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 );
               })}

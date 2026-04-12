@@ -10,7 +10,10 @@ import {
   type HaitiGeoCommune,
   type DiseaseNotifiableCatalogItem,
 } from "@/lib/publicHealthApi";
-import { DiseaseCatalogCombobox } from "@/features/public-health/DiseaseCatalogCombobox";
+import {
+  DiseaseCatalogCombobox,
+  findCatalogEntryByCode,
+} from "@/features/public-health/DiseaseCatalogCombobox";
 import { Field, inputStyle } from "@/components/pharmacy/Modal";
 
 const STATUS_CODES = ["SUSPECTED", "CONFIRMED", "RULED_OUT"] as const;
@@ -64,6 +67,24 @@ const errText: React.CSSProperties = {
   marginTop: 4,
   fontWeight: 600,
 };
+
+const REPORTING_CONTEXT_HINT: React.CSSProperties = {
+  fontSize: 12,
+  color: "#334155",
+  margin: "10px 0 0",
+  padding: "8px 10px",
+  background: "#f8fafc",
+  borderRadius: 10,
+  border: "1px solid #e2e8f0",
+  lineHeight: 1.45,
+};
+
+function reportingCategoryForCatalogEntry(e: DiseaseNotifiableCatalogItem): "IMMEDIATE" | "WEEKLY" | "ROUTINE" {
+  if (e.reportingCategory) return e.reportingCategory;
+  if (e.surveillanceGroup === "IMMEDIATE") return "IMMEDIATE";
+  if (e.surveillanceGroup === "WEEKLY") return "WEEKLY";
+  return "ROUTINE";
+}
 
 type Patient = { id: string; firstName: string; lastName: string; mrn: string | null };
 
@@ -207,6 +228,19 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
   ]);
 
   const showInvalidHint = (isValid: boolean) => dirty && !isValid;
+
+  const diseaseCatalogMatch = useMemo(() => {
+    if (!diseaseCode.trim() || diseaseCatalog.length === 0) return null;
+    return findCatalogEntryByCode(diseaseCatalog, diseaseCode.trim()) ?? null;
+  }, [diseaseCatalog, diseaseCode]);
+
+  const reportingContextHintKey = useMemo((): string | null => {
+    if (!diseaseCatalogMatch) return null;
+    const rc = reportingCategoryForCatalogEntry(diseaseCatalogMatch);
+    if (rc === "IMMEDIATE") return "diseaseReports.reportingHintImmediate";
+    if (rc === "WEEKLY") return "diseaseReports.reportingHintWeekly";
+    return "diseaseReports.reportingHintRoutine";
+  }, [diseaseCatalogMatch]);
 
   const searchPatients = async () => {
     if (!facilityId || !patientQuery.trim()) return;
@@ -398,6 +432,11 @@ export function DiseaseReportForm({ facilityId, onCreated, geoDepartments, commu
           </Field>
         </>
       )}
+      {reportingContextHintKey ? (
+        <p style={REPORTING_CONTEXT_HINT} role="note">
+          {t(reportingContextHintKey)}
+        </p>
+      ) : null}
       <Field label={`${t("diseaseReports.status")}${req}`}>
         <select
           style={inputStyle}
