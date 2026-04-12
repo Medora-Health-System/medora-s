@@ -224,6 +224,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     return item.roles.some((role) => combinedRolesForNav.includes(role));
   });
+  /** Modules santé publique partagés : même URL que « Santé publique » ; exige un établissement actif (API par site). */
+  const msppGroupPublicHealthHrefs = new Set([
+    "/app/public-health/disease-reports",
+    "/app/public-health/vaccinations",
+  ]);
+  navItems = navItems.filter((item) => {
+    if (item.group !== "mspp" || !msppGroupPublicHealthHrefs.has(item.href)) return true;
+    return facilities.length > 0;
+  });
   /** Portail MSPP national : ne pas réduire le menu à « pharmacie seule » ou « accueil seul » (sinon perte d’Accès MSPP / routes nationales). */
   const hasNationalMsppRoles = msppRolesForNav.length > 0;
   if (!hasNationalMsppRoles && isFrontDeskNavRestricted) {

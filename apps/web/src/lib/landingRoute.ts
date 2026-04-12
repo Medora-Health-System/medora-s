@@ -75,9 +75,42 @@ export function getLandingHomeLabelFr(path: string): string {
 type RouteRule = { prefix: string; roles: string[]; exact?: boolean };
 
 const APP_ROUTE_RULES: RouteRule[] = [
-  { prefix: "/app/public-health/disease-reports", roles: ["ADMIN", "PROVIDER", "RN"] },
-  { prefix: "/app/public-health/vaccinations", roles: ["ADMIN", "PROVIDER", "RN"] },
-  { prefix: "/app/public-health/summary", roles: ["ADMIN", "PROVIDER", "RN"] },
+  {
+    prefix: "/app/public-health/disease-reports",
+    roles: [
+      "ADMIN",
+      "PROVIDER",
+      "RN",
+      "MSPP_MINISTRE",
+      "MSPP_EPIDEMIOLOGIE",
+      "MSPP_VALIDATOR_DEPT",
+      "MSPP_VALIDATOR_CENTRAL",
+    ],
+  },
+  {
+    prefix: "/app/public-health/vaccinations",
+    roles: [
+      "ADMIN",
+      "PROVIDER",
+      "RN",
+      "MSPP_MINISTRE",
+      "MSPP_EPIDEMIOLOGIE",
+      "MSPP_VALIDATOR_DEPT",
+      "MSPP_VALIDATOR_CENTRAL",
+    ],
+  },
+  {
+    prefix: "/app/public-health/summary",
+    roles: [
+      "ADMIN",
+      "PROVIDER",
+      "RN",
+      "MSPP_MINISTRE",
+      "MSPP_EPIDEMIOLOGIE",
+      "MSPP_VALIDATOR_DEPT",
+      "MSPP_VALIDATOR_CENTRAL",
+    ],
+  },
   { prefix: "/app/pharmacy/dispense", roles: ["ADMIN", "PHARMACY"] },
   { prefix: "/app/pharmacy/inventory", roles: ["ADMIN", "PHARMACY"] },
   { prefix: "/app/pharmacy/low-stock", roles: ["ADMIN", "PHARMACY"] },

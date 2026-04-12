@@ -148,7 +148,7 @@ export default {
     title: "Disease case reports",
     introMspp:
       "These reports may be reviewed nationally (MSPP). Structured entry (disease, status, dates, location) improves validation.",
-    pipelineNoteTitle: "Circuit Medora → MSPP",
+    pipelineNoteTitle: "National validation circuit (MSPP)",
     pipelineVisibilityNote:
       "Lorsque le département géographique (Haïti) est identifié, la déclaration peut être rattachée au circuit de validation MSPP (département puis central). Les dossiers approuvés au niveau central alimentent automatiquement les agrégats nationaux MSPP (rapports et indicateurs).",
     tableMsppPipeline: "Revue MSPP",

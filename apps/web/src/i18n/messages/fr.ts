@@ -113,7 +113,7 @@ export default {
     title: "Déclarations de cas",
     introMspp:
       "Ces déclarations peuvent être revues au niveau national (MSPP). Une saisie structurée (maladie, statut, dates, lieu) facilite la validation.",
-    pipelineNoteTitle: "Circuit Medora → MSPP",
+    pipelineNoteTitle: "Circuit de validation national (MSPP)",
     pipelineVisibilityNote:
       "Lorsque le département géographique (Haïti) est identifié, la déclaration peut être rattachée au circuit de validation MSPP (département puis central). Les dossiers approuvés au niveau central alimentent automatiquement les agrégats nationaux MSPP (rapports et indicateurs).",
     tableMsppPipeline: "Revue MSPP",

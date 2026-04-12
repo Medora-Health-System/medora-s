@@ -213,6 +213,20 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     group: "mspp",
     accent: "indigo",
   },
+  {
+    href: "/app/public-health/disease-reports",
+    labelKey: "nav.diseaseReports",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp",
+    accent: "indigo",
+  },
+  {
+    href: "/app/public-health/vaccinations",
+    labelKey: "nav.vaccinations",
+    roles: ["MSPP_MINISTRE", "MSPP_EPIDEMIOLOGIE", "MSPP_VALIDATOR_DEPT", "MSPP_VALIDATOR_CENTRAL"],
+    group: "mspp",
+    accent: "indigo",
+  },
   { href: "/app/admin", labelKey: "nav.admin", roles: ["ADMIN"], group: "admin", accent: "redGray" },
   { href: "/app/admin/users", labelKey: "nav.adminUsers", roles: ["ADMIN"], group: "admin", accent: "redGray" },
   {

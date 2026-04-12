@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { parseApiResponse } from "@/lib/apiClient";
+import { MSPP_OPERATIONAL_ROLE_CODES } from "@/lib/landingRoute";
 
 export type UserFacilityOption = { id: string; name: string };
 
@@ -92,10 +93,15 @@ export function useFacilityAndRoles() {
     canManagePharmacy ||
     roles.includes("PROVIDER") ||
     roles.includes("RN");
+  const hasMsppOperationalForPublicHealth = msppRoles.some((r) =>
+    (MSPP_OPERATIONAL_ROLE_CODES as readonly string[]).includes(r)
+  );
+  /** Santé publique côté API est liée à un établissement : les rôles MSPP nationaux y accèdent avec le même module si un contexte établissement est actif. */
   const canViewPublicHealth =
     roles.includes("RN") ||
     roles.includes("PROVIDER") ||
-    roles.includes("ADMIN");
+    roles.includes("ADMIN") ||
+    (hasMsppOperationalForPublicHealth && Boolean(facilityId));
   /** Only PROVIDER and ADMIN can prescribe (create medication orders). RN can create LAB/IMAGING orders. */
   const canPrescribe = roles.includes("PROVIDER") || roles.includes("ADMIN");
 
