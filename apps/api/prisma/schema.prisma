@@ -292,6 +292,28 @@ model User {
   msppDiseaseReportFeedbacksCreated          MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackCreatedBy")
   msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
   msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackResolvedBy")
+  authSessions                               AuthSession[]
+}
+
+/// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
+model AuthSession {
+  id               String    @id @default(uuid())
+  userId           String
+  refreshTokenHash String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastUsedAt       DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokedReason    String?
+  userAgent        String?
+  ipAddress        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([userId, revokedAt])
 }
 
 model PasswordResetToken {

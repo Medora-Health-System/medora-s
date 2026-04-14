@@ -4,6 +4,8 @@ export type JwtPayload = {
   iss: string;
   type: "access" | "refresh";
   jti?: string;
+  /** Identifiant de session persistant (`AuthSession.id`) pour les jetons refresh multi-appareils. */
+  sid?: string;
 };
 
 export type FacilityRoleDto = {

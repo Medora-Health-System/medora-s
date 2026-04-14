@@ -37,12 +37,15 @@ export class AuthController {
     return this.auth.refresh(body.refreshToken);
   }
 
+  /** Révoque la session refresh correspondant au cookie (un appareil à la fois). */
   @Post("logout")
-  @UseGuards(AuthGuard("jwt"))
-  async logout(@Req() req: any) {
-    const userId = req.user?.userId;
+  async logout(@Body() body: { refreshToken?: string }) {
+    const rt = typeof body?.refreshToken === "string" ? body.refreshToken.trim() : "";
+    if (!rt) {
+      throw new BadRequestException("refreshToken required");
+    }
     // TODO (Epic 0D): write AuditAction.LOGOUT
-    return this.auth.logout(userId);
+    return this.auth.logoutWithRefreshToken(rt);
   }
 
   @Get("me")

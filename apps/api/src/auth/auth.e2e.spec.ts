@@ -21,7 +21,48 @@ describe("Auth (e2e)", () => {
     const facilityId = "f_dr";
     const passwordHash = await argon2.hash("Admin123!");
 
+    const sessions = new Map<
+      string,
+      { userId: string; refreshTokenHash: string; revokedAt: Date | null; expiresAt: Date }
+    >();
+
     const db: any = {
+      authSession: {
+        create: jest.fn(async ({ data }: any) => {
+          sessions.set(data.id, {
+            userId: data.userId,
+            refreshTokenHash: data.refreshTokenHash,
+            revokedAt: null,
+            expiresAt: data.expiresAt,
+          });
+          return { ...data };
+        }),
+        findFirst: jest.fn(async ({ where }: any): Promise<any> => {
+          const id = where?.id;
+          if (!id) return null;
+          const s = sessions.get(id);
+          if (!s || s.userId !== where.userId) return null;
+          return {
+            id,
+            userId: s.userId,
+            refreshTokenHash: s.refreshTokenHash,
+            revokedAt: s.revokedAt,
+            expiresAt: s.expiresAt,
+          };
+        }),
+        update: jest.fn(async ({ where, data }: any) => {
+          const s = sessions.get(where.id);
+          if (!s) return { id: where.id };
+          if (data.refreshTokenHash) s.refreshTokenHash = data.refreshTokenHash;
+          if (data.revokedAt) s.revokedAt = data.revokedAt;
+          if (data.lastUsedAt) {
+            /* noop */
+          }
+          if (data.expiresAt) s.expiresAt = data.expiresAt;
+          return { id: where.id, ...s };
+        }),
+        updateMany: jest.fn(async () => ({ count: 0 })),
+      },
       user: {
         findFirst: jest.fn(async ({ where, include }: any): Promise<any> => {
           if (where?.email === adminEmail) {
