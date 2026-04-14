@@ -9,3 +9,12 @@ The seed creates that user with the same demo password as other seed accounts (`
 Do **not** grant platform powers by flipping `canCreateFacilities` for other emails; it will not work (authorization is email-based). For a new environment, run migrations and seed, or create `atranchant@medora.local` with the correct password and role assignments, then rely on the migration/unique index for the flag.
 
 Re-login or refresh the session so `/api/auth/me` reflects changes.
+
+## Prisma Migration Rules (CRITICAL)
+
+- All migrations must have a unique timestamp prefix (YYYYMMDDHHMMSS)
+- Timestamps must be strictly increasing
+- Migration order defines execution — Prisma does not resolve dependencies
+- Never commit multiple migrations with identical timestamps
+- If a migration depends on another, ensure its timestamp is later
+- Always verify with `prisma migrate reset` before pushing

@@ -1,0 +1,27 @@
+---
+description: Prisma migration naming — unique timestamps, ordering, no duplicate prefixes
+alwaysApply: true
+---
+
+# Prisma migrations (Medora-S)
+
+When adding or renaming migrations under `apps/api/prisma/migrations`:
+
+## Naming
+
+- Each migration folder name **must** start with a **unique** timestamp prefix (recommended: `YYYYMMDDHHMMSS` or finer granularity if needed).
+- **Never** reuse an existing timestamp; **never** create two folders with the same prefix.
+- If several migrations are added in one session, **increment timestamps manually** so every folder name is distinct and sort order matches dependency order (later migration = later timestamp).
+- Before creating a new migration, **list existing folders** (`ls` / glob) and pick a prefix **strictly greater** than the latest one that must run before it.
+
+## Ordering
+
+- Prisma applies migrations in **lexicographic order** of the full folder name. Timestamp prefix must reflect **real dependency order** (e.g. tables before FKs to them).
+
+## Already-deployed databases
+
+- Renaming a migration that **already ran** in an environment breaks `prisma migrate` history. Do not rename applied migrations without a coordinated DB/`_prisma_migrations` plan.
+
+## Verification
+
+- After adding folders, confirm no duplicate prefixes: `ls apps/api/prisma/migrations | cut -c1-14 | sort | uniq -d` (adjust cut length to match timestamp width).
