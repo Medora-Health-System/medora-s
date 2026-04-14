@@ -59,7 +59,13 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const userId = request.user?.userId;
-    const facilityId = request.user?.facilityId || request.headers["x-facility-id"];
+    const rawFacilityId = request.user?.facilityId || request.headers["x-facility-id"];
+    const facilityId =
+      typeof rawFacilityId === "string"
+        ? rawFacilityId
+        : Array.isArray(rawFacilityId)
+          ? rawFacilityId[0]
+          : "";
 
     if (!userId) {
       throw new ForbiddenException("Authentication required");
@@ -67,6 +73,32 @@ export class RolesGuard implements CanActivate {
 
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
+    }
+
+    /**
+     * Un utilisateur peut avoir plusieurs `UserRole` pour le même établissement (ex. ADMIN + PROVIDER).
+     * `findFirst` sans filtre sur le rôle peut renvoyer une ligne arbitraire et refuser à tort l’accès ADMIN.
+     * On vérifie d’abord s’il existe une ligne dont le rôle est dans `requiredRoles`.
+     */
+    const membershipSatisfying = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        facilityId,
+        isActive: true,
+        facility: { isActive: true },
+        role: { code: { in: requiredRoles } },
+      },
+      include: {
+        role: true,
+      },
+    });
+
+    if (membershipSatisfying) {
+      request.userRole = membershipSatisfying.role.code;
+      request.facilityId = facilityId;
+      request.user = request.user || {};
+      request.user.facilityId = facilityId;
+      return true;
     }
 
     const membership = await this.prisma.userRole.findFirst({
@@ -83,14 +115,6 @@ export class RolesGuard implements CanActivate {
 
     if (!membership) {
       throw new ForbiddenException("Access denied for this facility.");
-    }
-
-    if (requiredRoles.includes(membership.role.code)) {
-      request.userRole = membership.role.code;
-      request.facilityId = facilityId;
-      request.user = request.user || {};
-      request.user.facilityId = facilityId;
-      return true;
     }
 
     if (msppAllowed.length === 0) {
