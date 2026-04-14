@@ -2,39 +2,9 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException, BadReque
 import { Reflector } from "@nestjs/core";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MsppRoleCode, RoleCode } from "@prisma/client";
+import { MSPP_ROLES_KEY } from "./roles.decorators";
 
-/** Optional MSPP national roles that may satisfy access when facility `UserRole` is not clinical. */
-export const MSPP_ROLES_KEY = "msppRoles";
-
-export const RequireRoles = (...roles: RoleCode[]) => {
-  return (target: any, propertyKey?: string, descriptor?: PropertyDescriptor) => {
-    if (descriptor) {
-      Reflect.defineMetadata("roles", roles, descriptor.value);
-      Reflect.defineMetadata(MSPP_ROLES_KEY, [] as MsppRoleCode[], descriptor.value);
-    } else {
-      Reflect.defineMetadata("roles", roles, target);
-      Reflect.defineMetadata(MSPP_ROLES_KEY, [] as MsppRoleCode[], target);
-    }
-  };
-};
-
-/**
- * Facility-scoped access: user must have an active `UserRole` at the facility.
- * Authorization if either:
- * - `UserRole.role` is one of `clinical` (Medora clinical / desk roles), or
- * - `UserRole` exists at facility and user has an active MSPP assignment whose role is in `mspp`.
- */
-export const RequireClinicalOrMspp = (clinical: RoleCode[], mspp: MsppRoleCode[]) => {
-  return (target: any, propertyKey?: string, descriptor?: PropertyDescriptor) => {
-    if (descriptor) {
-      Reflect.defineMetadata("roles", clinical, descriptor.value);
-      Reflect.defineMetadata(MSPP_ROLES_KEY, mspp, descriptor.value);
-    } else {
-      Reflect.defineMetadata("roles", clinical, target);
-      Reflect.defineMetadata(MSPP_ROLES_KEY, mspp, target);
-    }
-  };
-};
+export { MSPP_ROLES_KEY, RequireRoles, RequireClinicalOrMspp } from "./roles.decorators";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -138,4 +108,3 @@ export class RolesGuard implements CanActivate {
     return true;
   }
 }
-
