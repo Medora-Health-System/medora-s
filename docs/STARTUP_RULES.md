@@ -72,7 +72,7 @@ Run **from repo root** with the API filter; commands execute in `apps/api` conte
 |-----------|---------|
 | First clone / `schema.prisma` changed / `@prisma/client` out of sync | `pnpm --filter @medora/api prisma:generate` |
 | **Local dev**: apply migrations and update DB | `pnpm --filter @medora/api prisma:migrate` (runs `migrate dev` in this repo) |
-| **Production / CI deploy**: apply existing migrations only | `pnpm --filter @medora/api exec prisma migrate deploy` (or the project’s deploy script if wrapped) |
+| **Production / CI deploy**: apply existing migrations only | `pnpm --filter @medora/api migrate:deploy` (same as `exec prisma migrate deploy` in `apps/api`). **Not** part of `pnpm --filter @medora/api start` — see [OPS.md](./OPS.md#api-production-deployment-critical). |
 | Load seed data (dev) | `pnpm --filter @medora/api prisma:seed` |
 
 **Rule of thumb**
