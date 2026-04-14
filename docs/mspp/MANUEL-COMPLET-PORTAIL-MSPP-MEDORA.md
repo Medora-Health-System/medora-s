@@ -168,7 +168,7 @@ Les **rôles MSPP** sont **nationaux** et **distincts** des rôles d’établiss
 | Prérequis | Détail |
 |-----------|--------|
 | Compte utilisateur | Identifiant Medora **actif**. |
-| Autorisation | `canCreateFacilities` **ou** rôle **MSPP_ADMIN** actif. |
+| Autorisation | Compte principal plateforme (`atranchant@medora.local`, exposé comme `canCreateFacilities` dans `/auth/me`) **ou** rôle **MSPP_ADMIN** actif. |
 | Référentiel géographique | Liste des **départements géographiques Haïti** chargée (sinon message d’erreur explicite sur le chargement des départements). |
 
 ### 5.3 Fonctions de la page (dans l’ordre d’usage recommandé)

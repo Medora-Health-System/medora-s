@@ -5,6 +5,7 @@ import * as argon2 from "argon2";
 import { randomUUID, randomBytes } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUserDto, JwtPayload } from "./types";
+import { isPlatformPrincipalAdminEmail } from "./platform-principal";
 
 @Injectable()
 export class AuthService {
@@ -121,7 +122,7 @@ export class AuthService {
       username: user.email,
       fullName: `${user.firstName} ${user.lastName}`.trim(),
       preferredLang: "fr",
-      canCreateFacilities: user.canCreateFacilities === true,
+      canCreateFacilities: isPlatformPrincipalAdminEmail(user.email),
       facilityRoles,
       msppRoles,
       msppContext: {

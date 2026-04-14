@@ -165,7 +165,7 @@ export async function fetchAdminFacilities(
   return Array.isArray(data) ? (data as AdminFacilityRow[]) : [];
 }
 
-/** PATCH /admin/facilities/:id — activation contractuelle (plateforme `canCreateFacilities` uniquement côté API). */
+/** PATCH /admin/facilities/:id — activation contractuelle (compte principal plateforme uniquement côté API). */
 export async function setAdminFacilityActive(
   facilityId: string,
   id: string,

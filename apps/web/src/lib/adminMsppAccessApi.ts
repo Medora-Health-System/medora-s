@@ -49,7 +49,7 @@ export type MsppAccessAssignmentRow = {
   userFirstName: string;
   userLastName: string;
   userAccountActive: boolean;
-  /** True when the linked user has `canCreateFacilities` (principal) — delegated MSPP admins cannot mutate. */
+  /** True when the linked user is the platform principal — delegated MSPP admins cannot mutate. */
   userIsPlatformPrincipal?: boolean;
   role: string;
   /** Validateur départemental : périmètre national (tous les départements géographiques). */

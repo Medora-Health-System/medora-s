@@ -232,7 +232,7 @@ export function isAppPathAllowedForRoles(
 ): boolean {
   if (!pathname.startsWith("/app")) return false;
   const pathForRules = normalizeAppPathnameForRouteRules(pathname);
-  /** Administrateurs plateforme (`User.canCreateFacilities`) : hub `/app/admin` et sous-routes (sans exiger le rôle ADMIN). */
+  /** Compte principal plateforme (`canCreateFacilities` depuis `/auth/me`) : hub `/app/admin` et sous-routes (sans exiger le rôle ADMIN). */
   if (
     options?.canCreateFacilities === true &&
     (pathForRules === "/app/admin" || pathForRules.startsWith("/app/admin/"))

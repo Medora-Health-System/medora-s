@@ -8,6 +8,7 @@ import type { CreateFacilityDto } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
 import { randomBytes } from "crypto";
+import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
 
 /** Valeurs par défaut — le schéma Prisma exige country et timezone ; non exposés sur POST minimal (nom seul). */
 const DEFAULT_NEW_FACILITY_COUNTRY = "Haiti";
@@ -20,9 +21,9 @@ export class AdminFacilitiesService {
   async create(dto: CreateFacilityDto, userId: string) {
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { canCreateFacilities: true },
+      select: { email: true },
     });
-    if (!actor?.canCreateFacilities) {
+    if (!actor?.email || !isPlatformPrincipalAdminEmail(actor.email)) {
       throw new ForbiddenException("Création d’établissement non autorisée pour ce compte.");
     }
 
@@ -65,15 +66,15 @@ export class AdminFacilitiesService {
   }
 
   /**
-   * Platform principals (`canCreateFacilities`) may list all facilities without per-facility ADMIN.
+   * Platform principal (`atranchant@medora.local`) may list all facilities without per-facility ADMIN.
    * Facility-level ADMIN at the active `x-facility-id` retains the previous list access (global rows).
    */
   async assertCanListFacilities(userId: string, facilityIdHeader: string | undefined) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { canCreateFacilities: true },
+      select: { email: true },
     });
-    if (user?.canCreateFacilities) {
+    if (user?.email && isPlatformPrincipalAdminEmail(user.email)) {
       return;
     }
 
@@ -95,16 +96,16 @@ export class AdminFacilitiesService {
   }
 
   /**
-   * @param includeInactive — If true, only `canCreateFacilities` users may list all facilities (with `isActive`).
-   * Otherwise active facilities are returned: all for principals (`canCreateFacilities`), or only those the user belongs to.
+   * @param includeInactive — If true, only the platform principal may list all facilities (with `isActive`).
+   * Otherwise active facilities are returned: all for the principal, or only those the user belongs to.
    */
   async list(userId: string, includeInactive: boolean) {
     if (includeInactive) {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { canCreateFacilities: true },
+        select: { email: true },
       });
-      if (!user?.canCreateFacilities) {
+      if (!user?.email || !isPlatformPrincipalAdminEmail(user.email)) {
         throw new ForbiddenException("Liste complète des établissements non autorisée pour ce compte.");
       }
       return this.prisma.facility.findMany({
@@ -114,9 +115,9 @@ export class AdminFacilitiesService {
     }
     const principal = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { canCreateFacilities: true },
+      select: { email: true },
     });
-    if (principal?.canCreateFacilities) {
+    if (principal?.email && isPlatformPrincipalAdminEmail(principal.email)) {
       return this.prisma.facility.findMany({
         where: { isActive: true },
         orderBy: { name: "asc" },
@@ -144,9 +145,9 @@ export class AdminFacilitiesService {
   async setFacilityLanguage(id: string, defaultLanguage: "fr" | "en", userId: string) {
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { canCreateFacilities: true },
+      select: { email: true },
     });
-    if (!actor?.canCreateFacilities) {
+    if (!actor?.email || !isPlatformPrincipalAdminEmail(actor.email)) {
       throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
     }
 
@@ -168,9 +169,9 @@ export class AdminFacilitiesService {
   async setFacilityActive(id: string, isActive: boolean, userId: string) {
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { canCreateFacilities: true },
+      select: { email: true },
     });
-    if (!actor?.canCreateFacilities) {
+    if (!actor?.email || !isPlatformPrincipalAdminEmail(actor.email)) {
       throw new ForbiddenException("Modification de l’établissement non autorisée pour ce compte.");
     }
 

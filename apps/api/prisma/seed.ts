@@ -109,20 +109,20 @@ async function main() {
     });
   }
 
-  // Admin user (deterministic credentials for local dev)
+  // Admin user (deterministic credentials for local dev) — facility ADMIN only (not platform principal)
   // Username/email: admin@medora.local
   // Password: Admin123!
   const passwordHash = await argon2.hash("Admin123!");
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@medora.local" },
-    update: { firstName: "Admin", lastName: "User", isActive: true, canCreateFacilities: true },
+    update: { firstName: "Admin", lastName: "User", isActive: true, canCreateFacilities: false },
     create: {
       email: "admin@medora.local",
       firstName: "Admin",
       lastName: "User",
       passwordHash,
       isActive: true,
-      canCreateFacilities: true,
+      canCreateFacilities: false,
     }
   });
 
@@ -139,6 +139,41 @@ async function main() {
         },
         update: { isActive: true },
         create: { userId: adminUser.id, roleId: adminRole.id, facilityId }
+      })
+    )
+  );
+
+  // Platform principal (single account): création d’établissements et contrôles plateforme — atranchant@medora.local uniquement
+  const platformPrincipalUser = await prisma.user.upsert({
+    where: { email: "atranchant@medora.local" },
+    update: {
+      firstName: "Platform",
+      lastName: "Principal",
+      isActive: true,
+      canCreateFacilities: true,
+    },
+    create: {
+      email: "atranchant@medora.local",
+      firstName: "Platform",
+      lastName: "Principal",
+      passwordHash,
+      isActive: true,
+      canCreateFacilities: true,
+    },
+  });
+
+  await Promise.all(
+    [facilityDR.id, facilityHT.id].map((facilityId) =>
+      prisma.userRole.upsert({
+        where: {
+          userId_roleId_facilityId: {
+            userId: platformPrincipalUser.id,
+            roleId: adminRole.id,
+            facilityId,
+          },
+        },
+        update: { isActive: true },
+        create: { userId: platformPrincipalUser.id, roleId: adminRole.id, facilityId },
       })
     )
   );

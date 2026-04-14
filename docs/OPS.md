@@ -2,12 +2,10 @@
 
 ## Facility creation (platform owner)
 
-Users need `User.canCreateFacilities = true` to use **Ajouter un établissement** and `POST /admin/facilities`. The seed sets this only for `admin@medora.local`. For another account, run against your database (replace the email):
+Only **`atranchant@medora.local`** is the platform principal: `POST /admin/facilities`, listing inactive facilities, and facility language/activation toggles are enforced server-side by that fixed email (see `apps/api/src/auth/platform-principal.ts`). `/auth/me` exposes `canCreateFacilities: true` only for that account.
 
-```sql
-UPDATE "User"
-SET "canCreateFacilities" = true
-WHERE email = 'owner@example.com';
-```
+The seed creates that user with the same demo password as other seed accounts (`Admin123!`) and sets `User.canCreateFacilities = true` only for that row. A **partial unique index** on `User` ensures at most one row has `canCreateFacilities = true`.
 
-Re-login or refresh session so `/api/auth/me` picks up the flag.
+Do **not** grant platform powers by flipping `canCreateFacilities` for other emails; it will not work (authorization is email-based). For a new environment, run migrations and seed, or create `atranchant@medora.local` with the correct password and role assignments, then rely on the migration/unique index for the flag.
+
+Re-login or refresh the session so `/api/auth/me` reflects changes.

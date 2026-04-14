@@ -262,7 +262,7 @@ model User {
   passwordHash     String
   refreshTokenHash String?
   isActive         Boolean  @default(true)
-  /// Plateforme : autorise la création d’établissements (indépendant du rôle ADMIN par site).
+  /// Plateforme : réservé au compte principal unique (`atranchant@medora.local`); tenir aligné avec les migrations (index unique partiel).
   canCreateFacilities Boolean @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

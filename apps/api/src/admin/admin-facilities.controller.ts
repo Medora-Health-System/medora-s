@@ -14,7 +14,7 @@ function facilityIdFromReq(req: { user?: { facilityId?: string }; headers: Recor
 export class AdminFacilitiesController {
   constructor(private readonly facilities: AdminFacilitiesService) {}
 
-  /** Création d'établissement : JWT + `User.canCreateFacilities` (service) — pas de rôle ADMIN par établissement courant. */
+  /** Création d'établissement : JWT + compte principal plateforme fixe (service) — pas de rôle ADMIN par établissement courant. */
   @Post("facilities")
   @UseGuards(AuthGuard("jwt"))
   async create(@Body() body: unknown, @Req() req: { user: { userId: string } }) {
@@ -27,7 +27,7 @@ export class AdminFacilitiesController {
     return this.facilities.create(parsed.data, req.user.userId);
   }
 
-  /** Langue d’interface par établissement : JWT + `User.canCreateFacilities` (service). */
+  /** Langue d’interface par établissement : JWT + compte principal plateforme (service). */
   @Patch("facilities/:id/language")
   @UseGuards(AuthGuard("jwt"))
   async setLanguage(
@@ -44,7 +44,7 @@ export class AdminFacilitiesController {
     return this.facilities.setFacilityLanguage(id, parsed.data.defaultLanguage, req.user.userId);
   }
 
-  /** Activation / désactivation contractuelle : JWT + `User.canCreateFacilities` (service). */
+  /** Activation / désactivation contractuelle : JWT + compte principal plateforme (service). */
   @Patch("facilities/:id")
   @UseGuards(AuthGuard("jwt"))
   async setActive(
@@ -61,7 +61,7 @@ export class AdminFacilitiesController {
     return this.facilities.setFacilityActive(id, parsed.data.isActive, req.user.userId);
   }
 
-  /** Liste globale : plateforme (`canCreateFacilities`) ou ADMIN à l'établissement actif (header). */
+  /** Liste globale : principal plateforme ou ADMIN à l'établissement actif (header). */
   @Get("facilities")
   @UseGuards(AuthGuard("jwt"))
   async list(@Req() req: any, @Query("includeInactive") includeInactive?: string) {

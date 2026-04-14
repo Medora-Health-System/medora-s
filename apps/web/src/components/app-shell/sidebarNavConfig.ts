@@ -109,7 +109,7 @@ export type SidebarNavItem = {
   roles: string[];
   group: NavGroupId;
   accent: NavAccent;
-  /** Si vrai : afficher seulement si `User.canCreateFacilities` (admin plateforme). */
+  /** Si vrai : afficher seulement pour le compte principal plateforme (`/auth/me` → canCreateFacilities). */
   platformAdminOnly?: boolean;
 };
 

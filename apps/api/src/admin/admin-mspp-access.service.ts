@@ -8,6 +8,7 @@ import {
 import * as argon2 from "argon2";
 import { MsppRoleCode } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
 import type { CreateMsppAccessDto, MsppOnboardDto, PatchMsppAccessDto } from "./dto/admin-mspp-access.dto";
 
 function resolvedGeoIdForRole(role: MsppRoleCode, geoDepartmentId: string | null | undefined): string | null {
@@ -24,9 +25,9 @@ export class AdminMsppAccessService {
   private async isPlatformPrincipal(userId: string): Promise<boolean> {
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { canCreateFacilities: true },
+      select: { email: true },
     });
-    return actor?.canCreateFacilities === true;
+    return actor?.email != null && isPlatformPrincipalAdminEmail(actor.email);
   }
 
   private async hasActiveMsppAdminRole(userId: string): Promise<boolean> {
@@ -37,7 +38,7 @@ export class AdminMsppAccessService {
     return Boolean(row);
   }
 
-  /** Platform principal (`canCreateFacilities`) or active `MSPP_ADMIN` assignment. */
+  /** Platform principal (`atranchant@medora.local`) or active `MSPP_ADMIN` assignment. */
   private async assertCanManageMsppAccess(actorId: string): Promise<void> {
     if (await this.isPlatformPrincipal(actorId)) return;
     if (await this.hasActiveMsppAdminRole(actorId)) return;
@@ -51,9 +52,9 @@ export class AdminMsppAccessService {
     if (await this.isPlatformPrincipal(actorId)) return;
     const target = await this.prisma.user.findUnique({
       where: { id: targetUserId },
-      select: { canCreateFacilities: true },
+      select: { email: true },
     });
-    if (target?.canCreateFacilities === true) {
+    if (target?.email && isPlatformPrincipalAdminEmail(target.email)) {
       throw new ForbiddenException(
         "Les comptes administrateurs plateforme ne peuvent pas être modifiés par un délégué MSPP."
       );
@@ -178,7 +179,6 @@ export class AdminMsppAccessService {
             firstName: true,
             lastName: true,
             isActive: true,
-            canCreateFacilities: true,
           },
         },
       },
@@ -210,7 +210,7 @@ export class AdminMsppAccessService {
         geoDepartmentName: r.geoDepartmentId ? geoById.get(r.geoDepartmentId)?.name ?? null : null,
         geoDepartmentCode: r.geoDepartmentId ? geoById.get(r.geoDepartmentId)?.code ?? null : null,
         isActive: r.isActive,
-        userIsPlatformPrincipal: r.user.canCreateFacilities === true,
+        userIsPlatformPrincipal: isPlatformPrincipalAdminEmail(r.user.email),
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
       })),
