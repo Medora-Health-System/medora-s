@@ -47,14 +47,26 @@ export default function DiseaseReportsPage() {
     canViewPublicHealthDiseaseReports,
     isMsppOnlyUser,
     msppRoles,
+    canCreateFacilities,
   } = useFacilityAndRoles();
   const facilityName = facilities.find((f) => f.id === facilityId)?.name ?? "";
   const nationalRead = Boolean(isMsppOnlyUser && canViewPublicHealthDiseaseReports);
+  /** Même périmètre que `userMayViewPatientIdentityOnFacilityDiseaseReportList` (API) pour colonne Identifiant (dont UUID dossier). */
+  const msppRolesAllowingFacilityDiseaseReportIdentity = [
+    "MSPP_ADMIN",
+    "MSPP_DISEASE_REPORTS",
+    "MSPP_VALIDATOR_DEPT",
+    "MSPP_VALIDATOR_CENTRAL",
+    "MSPP_EPIDEMIOLOGIE",
+    "MSPP_MINISTRE",
+  ] as const;
   /** Aligné API : identifiants opérationnels (y compris dossier global type UUID) lorsque le backend expose l’identité. */
   const showOperationalPatientIdentifier =
     nationalRead ||
-    msppRoles.includes("MSPP_ADMIN") ||
-    msppRoles.includes("MSPP_DISEASE_REPORTS");
+    canCreateFacilities === true ||
+    msppRoles.some((r) =>
+      (msppRolesAllowingFacilityDiseaseReportIdentity as readonly string[]).includes(r)
+    );
 
   const [geoDepartments, setGeoDepartments] = useState<HaitiGeoDepartment[]>([]);
   const [communesByDept, setCommunesByDept] = useState<Record<string, HaitiGeoCommune[]>>({});

@@ -15,6 +15,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
+import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
 import type {
@@ -52,16 +53,31 @@ export class PublicHealthService {
   ) {}
 
   /**
-   * Facility disease-report list: patient identity (name + NIR/MRN/global dossier) is revealed only to users
-   * with national MSPP assignments that include disease-report visibility (aligned with MSPP portal scope).
-   * Pure Medora clinical roles at the facility receive redacted list rows (see `listDiseaseCaseReports`).
+   * Facility disease-report list: patient identity (name + NIR/MRN/global dossier) is revealed only when allowed.
+   * - Platform principal (`atranchant@medora.local`) — operational oversight (same boundary as `canCreateFacilities` on `/auth/me`).
+   * - Active MSPP assignments for national disease surveillance / validation (not generic clinical facility roles).
+   * Pure Medora clinical roles at the facility without the above receive redacted list rows (see `listDiseaseCaseReports`).
    */
   async userMayViewPatientIdentityOnFacilityDiseaseReportList(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (user?.email && isPlatformPrincipalAdminEmail(user.email)) {
+      return true;
+    }
     const rows = await this.prisma.msppUserRoleAssignment.findMany({
       where: { userId, isActive: true },
       select: { role: true },
     });
-    const allowed = new Set<MsppRoleCode>([MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_DISEASE_REPORTS]);
+    const allowed = new Set<MsppRoleCode>([
+      MsppRoleCode.MSPP_ADMIN,
+      MsppRoleCode.MSPP_DISEASE_REPORTS,
+      MsppRoleCode.MSPP_VALIDATOR_DEPT,
+      MsppRoleCode.MSPP_VALIDATOR_CENTRAL,
+      MsppRoleCode.MSPP_EPIDEMIOLOGIE,
+      MsppRoleCode.MSPP_MINISTRE,
+    ]);
     return rows.some((row) => allowed.has(row.role));
   }
 
