@@ -50,6 +50,7 @@ import {
   emergencyTrackboardPath,
   genericEncounterPath,
 } from "@/features/emergency/emergencyRoutes";
+import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -164,6 +165,7 @@ export function EmergencyChartView() {
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOperationalPanel, setShowOperationalPanel] = useState(false);
 
   const fid = facilityId || facilityIdFromHook;
   const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
@@ -352,6 +354,16 @@ export function EmergencyChartView() {
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
 
+  const canEditOperationalEncounter = roles.includes("RN") || roles.includes("ADMIN");
+  const physicianAssignedForOperational =
+    encounter.physicianAssigned?.id != null && String(encounter.physicianAssigned.id).trim() !== ""
+      ? {
+          id: String(encounter.physicianAssigned.id),
+          firstName: encounter.physicianAssigned.firstName ?? "",
+          lastName: encounter.physicianAssigned.lastName ?? "",
+        }
+      : null;
+
   const headerEsiLevel = esiLevelFromUnknown(clinicalStripModel.esi.trim());
 
   return (
@@ -503,8 +515,21 @@ export function EmergencyChartView() {
                   }}
                 >
                   <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setShowOperationalPanel((prev) => !prev)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setShowOperationalPanel((prev) => !prev);
+                      }
+                    }}
+                    aria-expanded={showOperationalPanel}
+                    aria-label="Paramètres opérationnels — salle"
                     style={{
                       padding: "8px 12px",
+                      alignSelf: "flex-end",
+                      cursor: "pointer",
                       borderRadius: 10,
                       border: "1px solid #bae6fd",
                       backgroundColor: "#f0f9ff",
@@ -525,6 +550,7 @@ export function EmergencyChartView() {
                     >
                       {ui.common.room}
                     </div>
+
                     <div
                       style={{
                         marginTop: 2,
@@ -550,6 +576,20 @@ export function EmergencyChartView() {
             </MedoraCardInner>
           </MedoraCard>
         </div>
+
+        {showOperationalPanel && fid ? (
+          <EncounterOperationalPanel
+            encounterId={encounter.id}
+            facilityId={fid}
+            canEdit={canEditOperationalEncounter && encounter.status === "OPEN"}
+            roomLabel={encounter.roomLabel}
+            physicianAssigned={physicianAssignedForOperational}
+            onUpdated={async () => {
+              setShowOperationalPanel(false);
+              await load();
+            }}
+          />
+        ) : null}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <section aria-labelledby="section-triage">
