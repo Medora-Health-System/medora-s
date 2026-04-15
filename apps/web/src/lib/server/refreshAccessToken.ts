@@ -7,8 +7,6 @@ import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
 export type RefreshedTokens = {
   accessToken: string;
   refreshToken: string;
@@ -28,11 +26,13 @@ export async function refreshAccessTokenFromCookies(requestId?: string): Promise
     return null;
   }
 
+  const apiUrl = resolveApiUrl();
+
   let r: Response;
   try {
     const refreshHeaders: Record<string, string> = { "Content-Type": "application/json" };
     if (requestId) refreshHeaders["x-request-id"] = requestId;
-    r = await fetch(`${API_URL}/auth/refresh`, {
+    r = await fetch(`${apiUrl}/auth/refresh`, {
       method: "POST",
       headers: refreshHeaders,
       body: JSON.stringify({ refreshToken }),

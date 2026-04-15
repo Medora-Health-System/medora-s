@@ -3,10 +3,10 @@ import type { NextRequest } from "next/server";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
 export async function POST(request: NextRequest) {
   try {
+    const apiUrl = resolveApiUrl();
+
     const body = await request.json();
     const { id, token, newPassword } = body;
 
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const r = await fetch(`${API_URL}/auth/reset-password`, {
+    const r = await fetch(`${apiUrl}/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, token, newPassword }),

@@ -6,8 +6,6 @@ import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
 export async function GET(request: NextRequest) {
   const requestId = request.headers.get("x-request-id")?.trim() ?? "";
   const withRequestId = (res: NextResponse) => {
@@ -15,6 +13,8 @@ export async function GET(request: NextRequest) {
     return res;
   };
   try {
+    const apiUrl = resolveApiUrl();
+
     const cookieStore = await cookies();
     let accessToken =
       cookieStore.get("accessToken")?.value ?? cookieStore.get("medora_session")?.value;
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const fetchMe = (token: string) =>
-      fetch(`${API_URL}/auth/me`, {
+      fetch(`${apiUrl}/auth/me`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

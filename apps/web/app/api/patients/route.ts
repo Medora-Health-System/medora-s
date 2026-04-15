@@ -6,9 +6,7 @@ import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
-async function getFacilityId(req: NextRequest): Promise<string | null> {
+async function getFacilityId(req: NextRequest, apiUrl: string): Promise<string | null> {
   // Priority: header > cookie > fetch from /auth/me
   const headerFacilityId = req.headers.get("x-facility-id");
   if (headerFacilityId) return headerFacilityId;
@@ -22,7 +20,7 @@ async function getFacilityId(req: NextRequest): Promise<string | null> {
     cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
   if (accessToken) {
     try {
-      const meResponse = await fetch(`${API_URL}/auth/me`, {
+      const meResponse = await fetch(`${apiUrl}/auth/me`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -50,6 +48,8 @@ export async function POST(req: NextRequest) {
     const originDenied = validateRequestOrigin(req);
     if (originDenied) return originDenied;
 
+    const apiUrl = resolveApiUrl();
+
     const cookieStore = await cookies();
     const accessToken =
       cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
@@ -58,14 +58,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
     }
 
-    const facilityId = await getFacilityId(req);
+    const facilityId = await getFacilityId(req, apiUrl);
     if (!facilityId) {
       return NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
     }
 
     const body = await req.json();
 
-    const r = await fetch(`${API_URL}/patients`, {
+    const r = await fetch(`${apiUrl}/patients`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -87,6 +87,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const apiUrl = resolveApiUrl();
+
     const cookieStore = await cookies();
     const accessToken =
       cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
@@ -95,7 +97,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "Non authentifié." }, { status: 401 });
     }
 
-    const facilityId = await getFacilityId(req);
+    const facilityId = await getFacilityId(req, apiUrl);
     if (!facilityId) {
       return NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
     }
@@ -103,7 +105,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const queryString = searchParams.toString();
 
-    const r = await fetch(`${API_URL}/patients${queryString ? `?${queryString}` : ""}`, {
+    const r = await fetch(`${apiUrl}/patients${queryString ? `?${queryString}` : ""}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,

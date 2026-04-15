@@ -9,8 +9,6 @@ import {
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
 function isNetworkError(err: unknown): boolean {
   if (err instanceof TypeError && err.message?.includes("fetch")) return true;
   const c = err as { code?: string; cause?: { code?: string } };
@@ -24,6 +22,8 @@ export async function POST(request: NextRequest) {
     return res;
   };
   try {
+    const apiUrl = resolveApiUrl();
+
     const body = await request.json();
 
     const username = body.username ?? body.email ?? body.identifier ?? body.user ?? "";
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     let r: Response;
     try {
-      r = await fetch(`${API_URL}/auth/login`, {
+      r = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

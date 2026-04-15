@@ -5,9 +5,7 @@ import { facilityIdHttpOnlyCookieOptions } from "@/lib/server/authCookieOptions"
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
-async function getFacilityId(req: NextRequest): Promise<string | null> {
+async function getFacilityId(req: NextRequest, apiUrl: string): Promise<string | null> {
   // Priority: header > cookie > fetch from /auth/me
   const headerFacilityId = req.headers.get("x-facility-id");
   if (headerFacilityId) return headerFacilityId;
@@ -21,7 +19,7 @@ async function getFacilityId(req: NextRequest): Promise<string | null> {
     cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
   if (accessToken) {
     try {
-      const meResponse = await fetch(`${API_URL}/auth/me`, {
+      const meResponse = await fetch(`${apiUrl}/auth/me`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -46,6 +44,8 @@ async function getFacilityId(req: NextRequest): Promise<string | null> {
 
 export async function GET(req: NextRequest) {
   try {
+    const apiUrl = resolveApiUrl();
+
     const cookieStore = await cookies();
     const accessToken =
       cookieStore.get("medora_session")?.value ?? cookieStore.get("accessToken")?.value;
@@ -57,12 +57,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q") ?? "";
 
-    const facilityId = await getFacilityId(req);
+    const facilityId = await getFacilityId(req, apiUrl);
     if (!facilityId) {
       return NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
     }
 
-    const r = await fetch(`${API_URL}/patients/search?q=${encodeURIComponent(q)}`, {
+    const r = await fetch(`${apiUrl}/patients/search?q=${encodeURIComponent(q)}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,

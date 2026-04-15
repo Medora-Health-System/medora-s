@@ -6,8 +6,6 @@ import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
 export async function POST(request: NextRequest) {
   const requestId = request.headers.get("x-request-id")?.trim() ?? "";
   const withRequestId = (res: NextResponse) => {
@@ -17,11 +15,13 @@ export async function POST(request: NextRequest) {
   const originDenied = validateRequestOrigin(request);
   if (originDenied) return withRequestId(originDenied);
 
+  const apiUrl = resolveApiUrl();
+
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value;
   if (refreshToken) {
     try {
-      await fetch(`${API_URL}/auth/logout`, {
+      await fetch(`${apiUrl}/auth/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

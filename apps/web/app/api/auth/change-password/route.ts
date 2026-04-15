@@ -6,12 +6,12 @@ import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
 export async function POST(request: NextRequest) {
   try {
     const originDenied = validateRequestOrigin(request);
     if (originDenied) return originDenied;
+
+    const apiUrl = resolveApiUrl();
 
     const body = await request.json();
     const currentPassword = body.currentPassword;
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     const doChange = (token: string) =>
-      fetch(`${API_URL}/auth/change-password`, {
+      fetch(`${apiUrl}/auth/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

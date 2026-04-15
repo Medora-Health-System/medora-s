@@ -8,8 +8,6 @@ import {
 import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = resolveApiUrl();
-
 function parseCookieHeader(cookieHeader: string | null, name: string): string | null {
   if (!cookieHeader) return null;
   const match = new RegExp(`(?:^|;\\s*)${name}=([^;]*)`).exec(cookieHeader);
@@ -36,7 +34,11 @@ function devLogProxy(msg: string, data: Record<string, unknown>) {
   }
 }
 
-async function getFacilityId(req: NextRequest, accessToken: string | null): Promise<string | null> {
+async function getFacilityId(
+  req: NextRequest,
+  accessToken: string | null,
+  apiUrl: string
+): Promise<string | null> {
   const headerFacilityId = req.headers.get("x-facility-id");
   if (headerFacilityId) return headerFacilityId;
 
@@ -58,7 +60,7 @@ async function getFacilityId(req: NextRequest, accessToken: string | null): Prom
         "Content-Type": "application/json",
       };
       if (requestId) meHeaders["x-request-id"] = requestId;
-      const meResponse = await fetch(`${API_URL}/auth/me`, {
+      const meResponse = await fetch(`${apiUrl}/auth/me`, {
         headers: meHeaders,
       });
       if (meResponse.ok) {
@@ -86,8 +88,9 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     return originDenied;
   }
 
+  const apiUrl = resolveApiUrl();
   const normalized = nestPath.replace(/^\/+/, "");
-  const url = `${API_URL}/${normalized}${req.nextUrl.search}`;
+  const url = `${apiUrl}/${normalized}${req.nextUrl.search}`;
 
   const cookieHeader = req.headers.get("cookie");
   devLogProxy("Cookie header", {
@@ -138,12 +141,12 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     return true;
   };
 
-  let facilityId = await getFacilityId(req, accessToken);
+  let facilityId = await getFacilityId(req, accessToken, apiUrl);
 
   /** Jeton d’accès expiré : /auth/me échoue → pas d’établissement sans refresh (avant : 400 au lieu de laisser le client rafraîchir). */
   if (!facilityId) {
     await refreshOnce();
-    facilityId = await getFacilityId(req, accessToken);
+    facilityId = await getFacilityId(req, accessToken, apiUrl);
   }
 
   if (!facilityId) {
