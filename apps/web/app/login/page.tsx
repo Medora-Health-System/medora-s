@@ -88,7 +88,7 @@ function LoginForm() {
               lineHeight: 1.5,
             }}
           >
-            Dossier patient et suivi des soins pour structures de santé en milieu à ressources limitées.
+            Plateforme intégrée de dossier patient électronique et de surveillance de santé publique.
           </p>
         </div>
       </div>
