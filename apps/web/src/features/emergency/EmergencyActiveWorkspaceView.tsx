@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -38,6 +38,7 @@ import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel"
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
+import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import {
   MEDORA_CARD_SHELL,
@@ -150,31 +151,24 @@ export type ErWorkspaceSection =
   | "results"
   | "mar"
   | "orders"
+  | "diagnostics"
   | "notes"
   | "nursing"
   | "providerMse"
   | "disposition";
 
-type ErDashboardTile =
-  | {
-      kind: "section";
-      id: ErWorkspaceSection;
-      accent: string;
-      initials: string;
-      ariaLabel: string;
-      disabled: boolean;
-    }
-  | {
-      kind: "link";
-      id: string;
-      accent: string;
-      initials: string;
-      ariaLabel: string;
-      href: string;
-    };
+type ErDashboardTile = {
+  kind: "section";
+  id: ErWorkspaceSection;
+  accent: string;
+  initials: string;
+  ariaLabel: string;
+  disabled: boolean;
+};
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
+  const router = useRouter();
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
     useFacilityAndRoles();
@@ -359,6 +353,7 @@ export function EmergencyActiveWorkspaceView() {
     results: "Résultats et examens (urgences)",
     mar: "Administration médicamenteuse",
     orders: "Ordres",
+    diagnostics: "Diagnostics",
     notes: "Notes",
     nursing: "Réévaluation infirmière (urgences)",
     providerMse: "Évaluation médicale (urgences)",
@@ -718,12 +713,12 @@ export function EmergencyActiveWorkspaceView() {
                   disabled: false,
                 },
                 {
-                  kind: "link" as const,
-                  id: "shortcut-diagnostics",
+                  kind: "section" as const,
+                  id: "diagnostics" as const,
                   accent: "#9333ea",
                   initials: "Dx",
                   ariaLabel: "Diagnostics",
-                  href: tabHref("diagnostics"),
+                  disabled: false,
                 },
                 {
                   kind: "section" as const,
@@ -759,29 +754,6 @@ export function EmergencyActiveWorkspaceView() {
                 },
               ] satisfies ErDashboardTile[]
             ).map((q) => {
-              if (q.kind === "link") {
-                return (
-                  <div key={q.id} style={{ minWidth: 0, borderRadius: 16, outline: "1px solid transparent", outlineOffset: 0 }}>
-                    <Link
-                      href={q.href}
-                      aria-label={q.ariaLabel}
-                      style={{
-                        display: "block",
-                        textDecoration: "none",
-                        color: "inherit",
-                        width: "100%",
-                        minWidth: 0,
-                      }}
-                    >
-                      <MedoraCard leftAccentColor={q.accent} variant="default">
-                        <MedoraCardInner>
-                          <MedoraCardIdentity initials={q.initials}>{null}</MedoraCardIdentity>
-                        </MedoraCardInner>
-                      </MedoraCard>
-                    </Link>
-                  </div>
-                );
-              }
               const selected = activeSection === q.id;
               return (
                 <div
@@ -838,6 +810,20 @@ export function EmergencyActiveWorkspaceView() {
               resultsRefresh={resultsRefresh}
               resultsTabHref={tabHref("results")}
               diagnosticsTabHref={tabHref("diagnostics")}
+            />
+          ) : null}
+
+          {activeSection === "diagnostics" ? (
+            <EncounterDiagnosticsPanel
+              encounterId={encounter.id}
+              patientId={encounter.patient?.id ?? ""}
+              facilityId={fid}
+              canPrescribe={canPrescribe}
+              isLocked={isLocked}
+              onGoPatientChart={() => {
+                const pid = encounter.patient?.id;
+                if (pid) router.push(`/app/patients/${pid}`);
+              }}
             />
           ) : null}
 
