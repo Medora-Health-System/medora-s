@@ -19,7 +19,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (isHttpException) {
       const statusCode = exception.getStatus();
       if (statusCode >= 400 && statusCode < 500) {
-        console.warn("[FILTER_V2] HTTP exception:", {
+        console.warn("HTTP exception:", {
           statusCode,
           name: exception.name,
           message: exception.message,
