@@ -11,6 +11,7 @@ export class AuthController {
 
   @Post("login")
   async login(@Body() body: unknown): Promise<any> {
+    let attemptedEmail: string | undefined;
     try {
       const parsed = loginDtoSchema.safeParse(body);
       if (!parsed.success) {
@@ -18,9 +19,20 @@ export class AuthController {
       }
 
       const { username, password } = parsed.data;
-      // TODO (Epic 0D): write AuditAction.LOGIN
-      return await this.auth.login(username, password);
+      attemptedEmail = username.toLowerCase().trim();
+
+      const result = await this.auth.login(username, password);
+      console.log("[AUTH] LOGIN_SUCCESS", {
+        userId: result.user.id,
+        email: result.user.username,
+        timestamp: new Date().toISOString(),
+      });
+      return result;
     } catch (error) {
+      console.warn("[AUTH] LOGIN_FAILED", {
+        email: attemptedEmail,
+        timestamp: new Date().toISOString(),
+      });
       // Re-throw HttpExceptions (BadRequestException, UnauthorizedException) as-is
       if (error instanceof BadRequestException || error instanceof UnauthorizedException) {
         throw error;
@@ -44,8 +56,19 @@ export class AuthController {
     if (!rt) {
       throw new BadRequestException("refreshToken required");
     }
-    // TODO (Epic 0D): write AuditAction.LOGOUT
-    return this.auth.logoutWithRefreshToken(rt);
+    const result = await this.auth.logoutWithRefreshToken(rt);
+    let userId: string | undefined;
+    try {
+      const payload = JSON.parse(Buffer.from(rt.split(".")[1], "base64url").toString("utf8")) as { sub?: string };
+      userId = typeof payload.sub === "string" ? payload.sub : undefined;
+    } catch {
+      userId = undefined;
+    }
+    console.log("[AUTH] LOGOUT", {
+      userId,
+      timestamp: new Date().toISOString(),
+    });
+    return result;
   }
 
   @Get("me")
