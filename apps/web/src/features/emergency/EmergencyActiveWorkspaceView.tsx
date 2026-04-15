@@ -145,6 +145,23 @@ const shellBox: React.CSSProperties = {
   padding: "14px 16px",
 };
 
+/** TEMP (ER-Dx-2): pas de GET /diagnoses/search côté API — assistance code / libellé locale uniquement. */
+type ErDxSuggestion = { code: string; label: string };
+const TEMP_DX_ICD10_ASSIST: ErDxSuggestion[] = [
+  { code: "I10", label: "Hypertension essentielle (primitive)" },
+  { code: "E11.9", label: "Diabète de type 2 sans complication" },
+  { code: "J18.9", label: "Pneumopathie infectieuse, sans précision" },
+  { code: "R50.9", label: "Fièvre, sans précision" },
+  { code: "R51", label: "Céphalée" },
+  { code: "K29.7", label: "Gastrite, sans précision" },
+  { code: "N39.0", label: "Infection des voies urinaires, siège sans précision" },
+  { code: "S09.90", label: "Traumatisme de la tête, sans précision" },
+  { code: "T14.90", label: "Traumatisme, sans précision" },
+  { code: "R07.4", label: "Douleur thoracique, sans précision" },
+  { code: "R06.02", label: "Essoufflement" },
+  { code: "A09", label: "Diarrhée et gastro-entérite d'origine infectieuse présumée" },
+];
+
 /** Zones du tableau de bord urgences (navigation locale + zone active). */
 export type ErWorkspaceSection =
   | "triage"
@@ -194,6 +211,8 @@ export function EmergencyActiveWorkspaceView() {
   const [dxNotes, setDxNotes] = useState("");
   const [dxSubmitting, setDxSubmitting] = useState(false);
   const [dxError, setDxError] = useState<string | null>(null);
+  const [dxSuggestions, setDxSuggestions] = useState<ErDxSuggestion[]>([]);
+  const [dxLoadingSuggestions, setDxLoadingSuggestions] = useState(false);
 
   const fid = facilityId || facilityIdFromHook;
   const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
@@ -355,6 +374,25 @@ export function EmergencyActiveWorkspaceView() {
     }
   }, [showNursingTab, activeSection]);
 
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const q = dxCode.trim();
+      if (q.length < 2) {
+        setDxSuggestions([]);
+        setDxLoadingSuggestions(false);
+        return;
+      }
+      setDxLoadingSuggestions(true);
+      const ql = q.toLowerCase();
+      const filtered = TEMP_DX_ICD10_ASSIST.filter(
+        (s) => s.code.toLowerCase().includes(ql) || s.label.toLowerCase().includes(ql)
+      ).slice(0, 8);
+      setDxSuggestions(filtered);
+      setDxLoadingSuggestions(false);
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [dxCode]);
+
   const sectionTitleFr: Record<ErWorkspaceSection, string> = {
     triage: "Triage urgences",
     visitSummary: "Synthèse de visite (urgences)",
@@ -376,10 +414,11 @@ export function EmergencyActiveWorkspaceView() {
     setDxDescription("");
     setDxOnsetDate("");
     setDxNotes("");
+    setDxSuggestions([]);
   }, [dxSubmitting]);
 
   const submitCreateDx = useCallback(async () => {
-    if (!encounter || !fid) return;
+    if (!encounter?.id || !fid) return;
     const code = dxCode.trim();
     if (!code) return;
     setDxSubmitting(true);
@@ -397,6 +436,7 @@ export function EmergencyActiveWorkspaceView() {
       setDxDescription("");
       setDxOnsetDate("");
       setDxNotes("");
+      setDxSuggestions([]);
     } catch (e) {
       console.error(e);
       setDxError(
@@ -406,7 +446,7 @@ export function EmergencyActiveWorkspaceView() {
     } finally {
       setDxSubmitting(false);
     }
-  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter]);
+  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter?.id]);
 
   if (!rolesReady || !fid) {
     return (
@@ -1144,12 +1184,25 @@ export function EmergencyActiveWorkspaceView() {
                 Nouveau diagnostic
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#334155",
+                    position: "relative",
+                  }}
+                >
                   Code
                   <input
                     type="text"
                     value={dxCode}
                     onChange={(e) => setDxCode(e.target.value)}
+                    onBlur={() => {
+                      window.setTimeout(() => setDxSuggestions([]), 150);
+                    }}
                     autoComplete="off"
                     disabled={dxSubmitting}
                     style={{
@@ -1159,6 +1212,61 @@ export function EmergencyActiveWorkspaceView() {
                       fontSize: 14,
                     }}
                   />
+                  {dxLoadingSuggestions ? (
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "#64748b" }}>Chargement…</span>
+                  ) : null}
+                  {dxSuggestions.length > 0 ? (
+                    <ul
+                      role="listbox"
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        top: "100%",
+                        margin: "4px 0 0 0",
+                        padding: 4,
+                        listStyle: "none",
+                        maxHeight: 200,
+                        overflowY: "auto",
+                        borderRadius: 10,
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: "#fff",
+                        boxShadow: "0 4px 12px rgba(15, 23, 42, 0.12)",
+                        zIndex: 2,
+                      }}
+                    >
+                      {dxSuggestions.map((s) => (
+                        <li key={`${s.code}:${s.label}`}>
+                          <button
+                            type="button"
+                            role="option"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setDxCode(s.code);
+                              setDxDescription(s.label);
+                              setDxSuggestions([]);
+                            }}
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              textAlign: "left",
+                              padding: "6px 8px",
+                              margin: 0,
+                              border: "none",
+                              borderRadius: 6,
+                              background: "transparent",
+                              cursor: "pointer",
+                              fontSize: 13,
+                              color: "#0f172a",
+                            }}
+                          >
+                            <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.code}</span>
+                            <span style={{ color: "#64748b", fontWeight: 500 }}> — {s.label}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
                   Description
