@@ -1,5 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { json, urlencoded } from "body-parser";
+import { randomUUID } from "crypto";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { buildCorsOriginList } from "./config/cors-origins";
@@ -9,6 +10,14 @@ async function bootstrap() {
   /** Résultats labo/imagerie avec pièces jointes base64 — évite PayloadTooLargeError (limite express par défaut ~100 ko). */
   app.use(json({ limit: "50mb" }));
   app.use(urlencoded({ limit: "50mb", extended: true }));
+  app.use((req: any, res: any, next: () => void) => {
+    const incoming = req.headers?.["x-request-id"];
+    const fromHeader = typeof incoming === "string" && incoming.trim() ? incoming.trim() : "";
+    const requestId = fromHeader || randomUUID();
+    req.requestId = requestId;
+    res.setHeader("x-request-id", requestId);
+    next();
+  });
 
   // [DEV] Log incoming Authorization header for auth debugging (local dev only)
   if (process.env.NODE_ENV !== "production") {

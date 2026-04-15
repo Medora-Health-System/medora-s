@@ -23,6 +23,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           statusCode,
           name: exception.name,
           message: exception.message,
+          requestId: request.requestId,
           url: request.url,
           method: request.method,
         });
@@ -31,22 +32,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
           name: exception.name,
           message: exception.message,
           stack: exception.stack,
+          requestId: request.requestId,
           url: request.url,
           method: request.method,
         });
       } else {
-        console.error("Unknown exception:", exception);
+        console.error("Unknown exception:", { exception, requestId: request.requestId });
       }
     } else if (exception instanceof Error) {
       console.error("Exception caught:", {
         name: exception.name,
         message: exception.message,
         stack: exception.stack,
+        requestId: request.requestId,
         url: request.url,
         method: request.method,
       });
     } else {
-      console.error("Unknown exception:", exception);
+      console.error("Unknown exception:", { exception, requestId: request.requestId });
     }
 
     let status: number;

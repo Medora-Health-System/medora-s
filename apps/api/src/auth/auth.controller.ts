@@ -10,7 +10,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post("login")
-  async login(@Body() body: unknown): Promise<any> {
+  async login(@Body() body: unknown, @Req() req: any): Promise<any> {
     let attemptedEmail: string | undefined;
     try {
       const parsed = loginDtoSchema.safeParse(body);
@@ -25,12 +25,14 @@ export class AuthController {
       console.log("[AUTH] LOGIN_SUCCESS", {
         userId: result.user.id,
         email: result.user.username,
+        requestId: req.requestId,
         timestamp: new Date().toISOString(),
       });
       return result;
     } catch (error) {
       console.warn("[AUTH] LOGIN_FAILED", {
         email: attemptedEmail,
+        requestId: req.requestId,
         timestamp: new Date().toISOString(),
       });
       // Re-throw HttpExceptions (BadRequestException, UnauthorizedException) as-is
@@ -51,7 +53,7 @@ export class AuthController {
 
   /** Révoque la session refresh correspondant au cookie (un appareil à la fois). */
   @Post("logout")
-  async logout(@Body() body: { refreshToken?: string }) {
+  async logout(@Body() body: { refreshToken?: string }, @Req() req: any) {
     const rt = typeof body?.refreshToken === "string" ? body.refreshToken.trim() : "";
     if (!rt) {
       throw new BadRequestException("refreshToken required");
@@ -66,6 +68,7 @@ export class AuthController {
     }
     console.log("[AUTH] LOGOUT", {
       userId,
+      requestId: req.requestId,
       timestamp: new Date().toISOString(),
     });
     return result;
