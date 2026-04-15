@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  accessTokenCookieOptions,
+  facilityIdHttpOnlyCookieOptions,
+  facilityIdReadableCookieOptions,
+  refreshTokenCookieOptions,
+} from "@/lib/server/authCookieOptions";
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
@@ -67,49 +73,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isProduction = process.env.NODE_ENV === "production";
-
     const res = NextResponse.json({ user: json.user });
 
     /** Aligné sur JWT_ACCESS_TTL côté API (variable d’environnement partagée recommandée). */
     const accessSeconds = jwtAccessTtlSeconds();
-    const sessionCookieOpts = {
-      httpOnly: true,
-      sameSite: "lax" as const,
-      secure: isProduction,
-      path: "/",
-      maxAge: accessSeconds,
-    };
+    const sessionCookieOpts = accessTokenCookieOptions(accessSeconds);
     res.cookies.set("medora_session", json.accessToken, sessionCookieOpts);
     res.cookies.set("accessToken", json.accessToken, sessionCookieOpts);
 
-    res.cookies.set("refreshToken", json.refreshToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: isProduction,
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    });
+    res.cookies.set("refreshToken", json.refreshToken, refreshTokenCookieOptions());
 
     const sortedRoles = [...(json.user?.facilityRoles ?? [])].sort((a, b) =>
       String(a.facilityId).localeCompare(String(b.facilityId), "en")
     );
     const defaultFacilityId = sortedRoles[0]?.facilityId;
     if (defaultFacilityId) {
-      res.cookies.set("facilityId", defaultFacilityId, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: isProduction,
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60,
-      });
-      res.cookies.set("medora_facility_id", defaultFacilityId, {
-        httpOnly: false,
-        sameSite: "lax",
-        secure: isProduction,
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60,
-      });
+      res.cookies.set("facilityId", defaultFacilityId, facilityIdHttpOnlyCookieOptions());
+      res.cookies.set("medora_facility_id", defaultFacilityId, facilityIdReadableCookieOptions());
     }
 
     return res;

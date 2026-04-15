@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { facilityIdHttpOnlyCookieOptions } from "@/lib/server/authCookieOptions";
 import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
@@ -30,12 +31,7 @@ async function getFacilityId(req: NextRequest): Promise<string | null> {
         const firstFacilityId = userData?.facilityRoles?.[0]?.facilityId;
         if (firstFacilityId) {
           // Cache it in cookie for next time
-          cookieStore.set("facilityId", firstFacilityId, {
-            httpOnly: true,
-            sameSite: "lax",
-            path: "/",
-            maxAge: 7 * 24 * 60 * 60,
-          });
+          cookieStore.set("facilityId", firstFacilityId, facilityIdHttpOnlyCookieOptions());
           return firstFacilityId;
         }
       }

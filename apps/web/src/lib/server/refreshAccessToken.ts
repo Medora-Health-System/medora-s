@@ -1,4 +1,8 @@
 import { cookies } from "next/headers";
+import {
+  accessTokenCookieOptions,
+  refreshTokenCookieOptions,
+} from "@/lib/server/authCookieOptions";
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
@@ -59,22 +63,10 @@ export function applyAuthCookiesToResponse(
   res: { cookies: { set: (name: string, value: string, options: object) => void } },
   tokens: RefreshedTokens
 ): void {
-  const isProduction = process.env.NODE_ENV === "production";
   const accessSeconds = jwtAccessTtlSeconds();
-  const opts = {
-    httpOnly: true,
-    sameSite: "lax" as const,
-    secure: isProduction,
-    path: "/",
-    maxAge: accessSeconds,
-  };
-  res.cookies.set("medora_session", tokens.accessToken, opts);
-  res.cookies.set("accessToken", tokens.accessToken, opts);
-  res.cookies.set("refreshToken", tokens.refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction,
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  });
+  const accessOpts = accessTokenCookieOptions(accessSeconds);
+  const refreshOpts = refreshTokenCookieOptions();
+  res.cookies.set("medora_session", tokens.accessToken, accessOpts);
+  res.cookies.set("accessToken", tokens.accessToken, accessOpts);
+  res.cookies.set("refreshToken", tokens.refreshToken, refreshOpts);
 }

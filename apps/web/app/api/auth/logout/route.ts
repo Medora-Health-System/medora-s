@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { clearAuthCookieOptions } from "@/lib/server/authCookieOptions";
 import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
 const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
@@ -23,25 +24,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const isProduction = process.env.NODE_ENV === "production";
-
-  const clearOpts = {
-    httpOnly: true,
-    sameSite: "lax" as const,
-    secure: isProduction,
-    path: "/",
-    maxAge: 0,
-  };
+  const clearOpts = clearAuthCookieOptions();
   cookieStore.set("medora_session", "", clearOpts);
   cookieStore.set("accessToken", "", clearOpts);
 
-  cookieStore.set("refreshToken", "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction,
-    path: "/",
-    maxAge: 0,
-  });
+  cookieStore.set("refreshToken", "", clearOpts);
 
   return NextResponse.json({ success: true });
 }
