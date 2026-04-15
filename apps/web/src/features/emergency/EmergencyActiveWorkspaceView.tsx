@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
+import { createDiagnosis } from "@/lib/chartApi";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
@@ -168,7 +169,6 @@ type ErDashboardTile = {
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
-  const router = useRouter();
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
     useFacilityAndRoles();
@@ -186,6 +186,14 @@ export function EmergencyActiveWorkspaceView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOperationalPanel, setShowOperationalPanel] = useState(false);
+  const [showCreateDx, setShowCreateDx] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [dxCode, setDxCode] = useState("");
+  const [dxDescription, setDxDescription] = useState("");
+  const [dxOnsetDate, setDxOnsetDate] = useState("");
+  const [dxNotes, setDxNotes] = useState("");
+  const [dxSubmitting, setDxSubmitting] = useState(false);
+  const [dxError, setDxError] = useState<string | null>(null);
 
   const fid = facilityId || facilityIdFromHook;
   const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
@@ -399,6 +407,45 @@ export function EmergencyActiveWorkspaceView() {
   const roomDisplay = encounter.roomLabel?.trim() || ui.common.dash;
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
+
+  const closeCreateDx = useCallback(() => {
+    if (dxSubmitting) return;
+    setShowCreateDx(false);
+    setDxError(null);
+    setDxCode("");
+    setDxDescription("");
+    setDxOnsetDate("");
+    setDxNotes("");
+  }, [dxSubmitting]);
+
+  const submitCreateDx = useCallback(async () => {
+    const code = dxCode.trim();
+    if (!code) return;
+    setDxSubmitting(true);
+    setDxError(null);
+    try {
+      await createDiagnosis(fid, encounter.id, {
+        code,
+        description: dxDescription.trim() || undefined,
+        onsetDate: dxOnsetDate.trim() || undefined,
+        notes: dxNotes.trim() || undefined,
+      });
+      setShowCreateDx(false);
+      setRefreshTick((prev) => prev + 1);
+      setDxCode("");
+      setDxDescription("");
+      setDxOnsetDate("");
+      setDxNotes("");
+    } catch (e) {
+      console.error(e);
+      setDxError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null) ??
+          "Impossible d'enregistrer le diagnostic."
+      );
+    } finally {
+      setDxSubmitting(false);
+    }
+  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter.id]);
 
   const canEditOperationalEncounter = roles.includes("RN") || roles.includes("ADMIN");
   const physicianAssignedForOperational =
@@ -815,15 +862,13 @@ export function EmergencyActiveWorkspaceView() {
 
           {activeSection === "diagnostics" ? (
             <EncounterDiagnosticsPanel
+              key={refreshTick}
               encounterId={encounter.id}
               patientId={encounter.patient?.id ?? ""}
               facilityId={fid}
               canPrescribe={canPrescribe}
               isLocked={isLocked}
-              onGoPatientChart={() => {
-                const pid = encounter.patient?.id;
-                if (pid) router.push(`/app/patients/${pid}`);
-              }}
+              onGoPatientChart={() => setShowCreateDx(true)}
             />
           ) : null}
 
@@ -1070,6 +1115,141 @@ export function EmergencyActiveWorkspaceView() {
             </>
           ) : null}
         </section>
+
+        {showCreateDx ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="er-create-dx-title"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 60,
+              backgroundColor: "rgba(15, 23, 42, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeCreateDx();
+            }}
+          >
+            <div
+              style={{ ...shellBox, maxWidth: 440, width: "100%" }}
+              onClick={(ev) => ev.stopPropagation()}
+            >
+              <h2 id="er-create-dx-title" style={{ margin: "0 0 14px", fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
+                Nouveau diagnostic
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                  Code
+                  <input
+                    type="text"
+                    value={dxCode}
+                    onChange={(e) => setDxCode(e.target.value)}
+                    autoComplete="off"
+                    disabled={dxSubmitting}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 14,
+                    }}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                  Description
+                  <input
+                    type="text"
+                    value={dxDescription}
+                    onChange={(e) => setDxDescription(e.target.value)}
+                    autoComplete="off"
+                    disabled={dxSubmitting}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 14,
+                    }}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                  Date de début
+                  <input
+                    type="date"
+                    value={dxOnsetDate}
+                    onChange={(e) => setDxOnsetDate(e.target.value)}
+                    disabled={dxSubmitting}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 14,
+                    }}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                  Notes
+                  <textarea
+                    value={dxNotes}
+                    onChange={(e) => setDxNotes(e.target.value)}
+                    rows={3}
+                    disabled={dxSubmitting}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 14,
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </label>
+              </div>
+              {dxError ? (
+                <p style={{ margin: "12px 0 0", fontSize: 13, color: "#b91c1c" }}>{dxError}</p>
+              ) : null}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+                <button
+                  type="button"
+                  onClick={closeCreateDx}
+                  disabled={dxSubmitting}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "#fff",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#475569",
+                    cursor: dxSubmitting ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void submitCreateDx()}
+                  disabled={!dxCode.trim() || dxSubmitting}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    border: "1px solid #2563eb",
+                    backgroundColor: !dxCode.trim() || dxSubmitting ? "#e2e8f0" : "#2563eb",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: !dxCode.trim() || dxSubmitting ? "#94a3b8" : "#fff",
+                    cursor: !dxCode.trim() || dxSubmitting ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
