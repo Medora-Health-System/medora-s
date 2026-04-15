@@ -212,7 +212,6 @@ export function EmergencyActiveWorkspaceView() {
   const [dxSubmitting, setDxSubmitting] = useState(false);
   const [dxError, setDxError] = useState<string | null>(null);
   const [dxSuggestions, setDxSuggestions] = useState<ErDxSuggestion[]>([]);
-  const [dxLoadingSuggestions, setDxLoadingSuggestions] = useState(false);
 
   const fid = facilityId || facilityIdFromHook;
   const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
@@ -376,22 +375,19 @@ export function EmergencyActiveWorkspaceView() {
 
   useEffect(() => {
     const t = window.setTimeout(() => {
-      const q = dxCode.trim();
+      const q = dxDescription.trim();
       if (q.length < 2) {
         setDxSuggestions([]);
-        setDxLoadingSuggestions(false);
         return;
       }
-      setDxLoadingSuggestions(true);
       const ql = q.toLowerCase();
       const filtered = TEMP_DX_ICD10_ASSIST.filter(
         (s) => s.code.toLowerCase().includes(ql) || s.label.toLowerCase().includes(ql)
       ).slice(0, 8);
       setDxSuggestions(filtered);
-      setDxLoadingSuggestions(false);
     }, 300);
     return () => window.clearTimeout(t);
-  }, [dxCode]);
+  }, [dxDescription]);
 
   const sectionTitleFr: Record<ErWorkspaceSection, string> = {
     triage: "Triage urgences",
@@ -1184,6 +1180,21 @@ export function EmergencyActiveWorkspaceView() {
                 Nouveau diagnostic
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                  Code
+                  <input
+                    type="text"
+                    value={dxCode}
+                    onChange={(e) => setDxCode(e.target.value)}
+                    disabled={dxSubmitting}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 14,
+                    }}
+                  />
+                </label>
                 <label
                   style={{
                     display: "flex",
@@ -1195,11 +1206,11 @@ export function EmergencyActiveWorkspaceView() {
                     position: "relative",
                   }}
                 >
-                  Code
+                  Description
                   <input
                     type="text"
-                    value={dxCode}
-                    onChange={(e) => setDxCode(e.target.value)}
+                    value={dxDescription}
+                    onChange={(e) => setDxDescription(e.target.value)}
                     onBlur={() => {
                       window.setTimeout(() => setDxSuggestions([]), 150);
                     }}
@@ -1212,10 +1223,7 @@ export function EmergencyActiveWorkspaceView() {
                       fontSize: 14,
                     }}
                   />
-                  {dxLoadingSuggestions ? (
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "#64748b" }}>Chargement…</span>
-                  ) : null}
-                  {dxSuggestions.length > 0 ? (
+                  {dxSuggestions.length > 0 && (
                     <ul
                       role="listbox"
                       style={{
@@ -1236,53 +1244,28 @@ export function EmergencyActiveWorkspaceView() {
                       }}
                     >
                       {dxSuggestions.map((s) => (
-                        <li key={`${s.code}:${s.label}`}>
-                          <button
-                            type="button"
-                            role="option"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setDxCode(s.code);
-                              setDxDescription(s.label);
-                              setDxSuggestions([]);
-                            }}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              textAlign: "left",
-                              padding: "6px 8px",
-                              margin: 0,
-                              border: "none",
-                              borderRadius: 6,
-                              background: "transparent",
-                              cursor: "pointer",
-                              fontSize: 13,
-                              color: "#0f172a",
-                            }}
-                          >
-                            <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{s.code}</span>
-                            <span style={{ color: "#64748b", fontWeight: 500 }}> — {s.label}</span>
-                          </button>
+                        <li
+                          key={s.code}
+                          role="option"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setDxCode(s.code);
+                            setDxDescription(s.label);
+                            setDxSuggestions([]);
+                          }}
+                          style={{
+                            cursor: "pointer",
+                            padding: "6px 8px",
+                            borderRadius: 6,
+                            fontSize: 13,
+                            color: "#0f172a",
+                          }}
+                        >
+                          <strong style={{ fontVariantNumeric: "tabular-nums" }}>{s.code}</strong> — {s.label}
                         </li>
                       ))}
                     </ul>
-                  ) : null}
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                  Description
-                  <input
-                    type="text"
-                    value={dxDescription}
-                    onChange={(e) => setDxDescription(e.target.value)}
-                    autoComplete="off"
-                    disabled={dxSubmitting}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #e2e8f0",
-                      fontSize: 14,
-                    }}
-                  />
+                  )}
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
                   Date de début
