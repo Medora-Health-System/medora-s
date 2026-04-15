@@ -1,6 +1,7 @@
 /**
  * Resolves the Nest API base URL for Next.js Route Handlers (BFF).
  * In production, rejects missing or localhost URLs to avoid silent misconfiguration.
+ * Production: API_URL / MEDORA_API_URL. Dev: API_URL / MEDORA_API_URL or localhost.
  */
 export function resolveApiUrl(): string {
   const raw = process.env.API_URL?.trim() || process.env.MEDORA_API_URL?.trim() || "";
