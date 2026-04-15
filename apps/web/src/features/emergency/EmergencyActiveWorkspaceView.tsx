@@ -368,6 +368,46 @@ export function EmergencyActiveWorkspaceView() {
     disposition: "Disposition",
   };
 
+  const closeCreateDx = useCallback(() => {
+    if (dxSubmitting) return;
+    setShowCreateDx(false);
+    setDxError(null);
+    setDxCode("");
+    setDxDescription("");
+    setDxOnsetDate("");
+    setDxNotes("");
+  }, [dxSubmitting]);
+
+  const submitCreateDx = useCallback(async () => {
+    if (!encounter || !fid) return;
+    const code = dxCode.trim();
+    if (!code) return;
+    setDxSubmitting(true);
+    setDxError(null);
+    try {
+      await createDiagnosis(fid, encounter.id, {
+        code,
+        description: dxDescription.trim() || undefined,
+        onsetDate: dxOnsetDate.trim() || undefined,
+        notes: dxNotes.trim() || undefined,
+      });
+      setShowCreateDx(false);
+      setRefreshTick((prev) => prev + 1);
+      setDxCode("");
+      setDxDescription("");
+      setDxOnsetDate("");
+      setDxNotes("");
+    } catch (e) {
+      console.error(e);
+      setDxError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null) ??
+          "Impossible d'enregistrer le diagnostic."
+      );
+    } finally {
+      setDxSubmitting(false);
+    }
+  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter]);
+
   if (!rolesReady || !fid) {
     return (
       <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{ui.common.loading}</div>
@@ -407,45 +447,6 @@ export function EmergencyActiveWorkspaceView() {
   const roomDisplay = encounter.roomLabel?.trim() || ui.common.dash;
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
-
-  const closeCreateDx = useCallback(() => {
-    if (dxSubmitting) return;
-    setShowCreateDx(false);
-    setDxError(null);
-    setDxCode("");
-    setDxDescription("");
-    setDxOnsetDate("");
-    setDxNotes("");
-  }, [dxSubmitting]);
-
-  const submitCreateDx = useCallback(async () => {
-    const code = dxCode.trim();
-    if (!code) return;
-    setDxSubmitting(true);
-    setDxError(null);
-    try {
-      await createDiagnosis(fid, encounter.id, {
-        code,
-        description: dxDescription.trim() || undefined,
-        onsetDate: dxOnsetDate.trim() || undefined,
-        notes: dxNotes.trim() || undefined,
-      });
-      setShowCreateDx(false);
-      setRefreshTick((prev) => prev + 1);
-      setDxCode("");
-      setDxDescription("");
-      setDxOnsetDate("");
-      setDxNotes("");
-    } catch (e) {
-      console.error(e);
-      setDxError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ??
-          "Impossible d'enregistrer le diagnostic."
-      );
-    } finally {
-      setDxSubmitting(false);
-    }
-  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter.id]);
 
   const canEditOperationalEncounter = roles.includes("RN") || roles.includes("ADMIN");
   const physicianAssignedForOperational =
