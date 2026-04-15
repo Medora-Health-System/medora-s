@@ -16,8 +16,28 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const isDev = process.env.NODE_ENV !== "production";
     const isHttpException = exception instanceof HttpException;
 
-    // Log full stack trace to console
-    if (exception instanceof Error) {
+    if (isHttpException) {
+      const statusCode = exception.getStatus();
+      if (statusCode >= 400 && statusCode < 500) {
+        console.warn("HTTP exception:", {
+          statusCode,
+          name: exception.name,
+          message: exception.message,
+          url: request.url,
+          method: request.method,
+        });
+      } else if (exception instanceof Error) {
+        console.error("Exception caught:", {
+          name: exception.name,
+          message: exception.message,
+          stack: exception.stack,
+          url: request.url,
+          method: request.method,
+        });
+      } else {
+        console.error("Unknown exception:", exception);
+      }
+    } else if (exception instanceof Error) {
       console.error("Exception caught:", {
         name: exception.name,
         message: exception.message,
