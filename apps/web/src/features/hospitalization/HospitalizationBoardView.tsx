@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
+import { apiFetch } from "@/lib/apiClient";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { ui } from "@/lib/uiLabels";
 import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
@@ -83,6 +85,7 @@ export function HospitalizationBoardView() {
   const [encounters, setEncounters] = useState<HospitalisationBoardEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [dischargingId, setDischargingId] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
@@ -124,6 +127,48 @@ export function HospitalizationBoardView() {
       setFetchError("Impossible de charger la liste.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const dischargeEncounter = async (encounter: HospitalisationBoardEncounterRow) => {
+    const fid = effectiveFacilityId;
+    if (!fid) return;
+    const isClosable =
+      encounter.status === "OPEN" && (encounter.type ?? "").trim() === "INPATIENT";
+    if (!isClosable) return;
+    setDischargingId(encounter.id);
+    setFetchError(null);
+    try {
+      const check = await apiFetch(`/encounters/${encounter.id}/close-check`, {
+        method: "POST",
+        facilityId: fid,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dischargeStatus: "DISCHARGED" }),
+      });
+      const hasDeficiencies =
+        Boolean(check) &&
+        typeof check === "object" &&
+        !Array.isArray(check) &&
+        (check as { hasDeficiencies?: unknown }).hasDeficiencies === true;
+
+      const payload: Record<string, unknown> = { dischargeStatus: "DISCHARGED" };
+      if (hasDeficiencies) payload.acknowledgeDeficiencies = true;
+
+      await apiFetch(`/encounters/${encounter.id}/close`, {
+        method: "POST",
+        facilityId: fid,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      await loadEncounters();
+    } catch (error) {
+      console.error("Failed to discharge inpatient encounter:", error);
+      setFetchError(
+        normalizeUserFacingError(error instanceof Error ? error.message : null) ||
+          "Impossible d'effectuer la sortie du patient."
+      );
+    } finally {
+      setDischargingId(null);
     }
   };
 
@@ -183,6 +228,14 @@ export function HospitalizationBoardView() {
       return true;
     });
   }, [encounters, search, filterAcuity, filterUnit, filterPhysician]);
+
+  const singleOpenInpatientRow = useMemo(() => {
+    if (filteredEncounters.length !== 1) return null;
+    const e = filteredEncounters[0];
+    if (e.status !== "OPEN") return null;
+    if ((e.type ?? "").trim() !== "INPATIENT") return null;
+    return e;
+  }, [filteredEncounters]);
 
   const formatTime = (date: string | null) => {
     if (!date) return ui.common.dash;
@@ -336,26 +389,73 @@ export function HospitalizationBoardView() {
             </button>
             <button
               type="button"
-              disabled
-              title="À utiliser depuis la fiche consultation du patient (pas depuis le tableau)."
-              aria-disabled="true"
+              disabled={
+                mockMode === "error" ||
+                mockMode === "empty" ||
+                !effectiveFacilityId ||
+                !singleOpenInpatientRow ||
+                dischargingId !== null
+              }
+              title={
+                mockMode === "error" || mockMode === "empty"
+                  ? "Non disponible en mode démo."
+                  : !effectiveFacilityId
+                    ? "Établissement requis."
+                    : !singleOpenInpatientRow
+                      ? "Affinez les filtres pour n’afficher qu’un seul patient hospitalisé ouvert, ou utilisez « Sortie » sur la ligne."
+                      : undefined
+              }
+              onClick={() => {
+                if (singleOpenInpatientRow) void dischargeEncounter(singleOpenInpatientRow);
+              }}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
                 height: 40,
                 padding: "0 16px",
-                backgroundColor: "#f1f5f9",
-                color: "#64748b",
+                backgroundColor:
+                  mockMode === "error" ||
+                  mockMode === "empty" ||
+                  !effectiveFacilityId ||
+                  !singleOpenInpatientRow ||
+                  dischargingId !== null
+                    ? "#f1f5f9"
+                    : "#fff",
+                color:
+                  mockMode === "error" ||
+                  mockMode === "empty" ||
+                  !effectiveFacilityId ||
+                  !singleOpenInpatientRow ||
+                  dischargingId !== null
+                    ? "#64748b"
+                    : "#334155",
                 border: "1px solid #e2e8f0",
                 borderRadius: 12,
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: "not-allowed",
+                cursor:
+                  mockMode === "error" ||
+                  mockMode === "empty" ||
+                  !effectiveFacilityId ||
+                  !singleOpenInpatientRow ||
+                  dischargingId !== null
+                    ? "not-allowed"
+                    : "pointer",
                 whiteSpace: "nowrap",
+                boxShadow:
+                  mockMode === "error" ||
+                  mockMode === "empty" ||
+                  !effectiveFacilityId ||
+                  !singleOpenInpatientRow ||
+                  dischargingId !== null
+                    ? undefined
+                    : "0 1px 2px rgba(15, 23, 42, 0.05)",
               }}
             >
-              Sortie patient
+              {singleOpenInpatientRow && dischargingId === singleOpenInpatientRow.id
+                ? "Sortie…"
+                : "Sortie patient"}
             </button>
           </div>
         </div>
@@ -548,8 +648,14 @@ export function HospitalizationBoardView() {
                               >
                                 {ui.common.view}
                               </Link>
-                              <Link
-                                href={`/app/encounters/${encounter.id}`}
+                              <button
+                                type="button"
+                                onClick={() => void dischargeEncounter(encounter)}
+                                disabled={
+                                  dischargingId === encounter.id ||
+                                  encounter.status !== "OPEN" ||
+                                  (encounter.type ?? "").trim() !== "INPATIENT"
+                                }
                                 style={{
                                   display: "inline-flex",
                                   alignItems: "center",
@@ -561,12 +667,23 @@ export function HospitalizationBoardView() {
                                   color: "#475569",
                                   fontSize: 12,
                                   fontWeight: 600,
-                                  textDecoration: "none",
+                                  cursor:
+                                    dischargingId === encounter.id ||
+                                    encounter.status !== "OPEN" ||
+                                    (encounter.type ?? "").trim() !== "INPATIENT"
+                                      ? "not-allowed"
+                                      : "pointer",
+                                  opacity:
+                                    dischargingId === encounter.id ||
+                                    encounter.status !== "OPEN" ||
+                                    (encounter.type ?? "").trim() !== "INPATIENT"
+                                      ? 0.6
+                                      : 1,
                                 }}
-                                aria-label="Ouvrir la consultation pour accéder au dossier de sortie"
+                                aria-label="Sortie patient"
                               >
-                                Sortie
-                              </Link>
+                                {dischargingId === encounter.id ? "Sortie..." : "Sortie"}
+                              </button>
                             </div>
                           </>
                         }

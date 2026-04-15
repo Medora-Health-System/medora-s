@@ -25,6 +25,8 @@ export type HospitalisationBoardPhysician = {
 
 export type HospitalisationBoardEncounterRow = {
   id: string;
+  /** Prisma `EncounterType`; board query is `type=INPATIENT` but field is included on full row at runtime. */
+  type?: string | null;
   chiefComplaint?: string | null;
   roomLabel?: string | null;
   status: string;
