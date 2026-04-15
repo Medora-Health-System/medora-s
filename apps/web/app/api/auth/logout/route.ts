@@ -9,8 +9,13 @@ import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 const API_URL = resolveApiUrl();
 
 export async function POST(request: NextRequest) {
+  const requestId = request.headers.get("x-request-id")?.trim() ?? "";
+  const withRequestId = (res: NextResponse) => {
+    if (requestId) res.headers.set("x-request-id", requestId);
+    return res;
+  };
   const originDenied = validateRequestOrigin(request);
-  if (originDenied) return originDenied;
+  if (originDenied) return withRequestId(originDenied);
 
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value;
@@ -18,7 +23,10 @@ export async function POST(request: NextRequest) {
     try {
       await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(requestId ? { "x-request-id": requestId } : {}),
+        },
         body: JSON.stringify({ refreshToken }),
       });
     } catch (e) {
@@ -32,6 +40,6 @@ export async function POST(request: NextRequest) {
 
   cookieStore.set("refreshToken", "", clearOpts);
 
-  return NextResponse.json({ success: true });
+  return withRequestId(NextResponse.json({ success: true }));
 }
 

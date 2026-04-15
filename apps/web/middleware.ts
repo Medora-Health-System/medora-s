@@ -3,6 +3,20 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const incomingRequestId = request.headers.get("x-request-id")?.trim() ?? "";
+  const requestId =
+    incomingRequestId ||
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const headers = new Headers(request.headers);
+  headers.set("x-request-id", requestId);
+
+  const nextWithRequestId = () => {
+    const res = NextResponse.next({ request: { headers } });
+    res.headers.set("x-request-id", requestId);
+    return res;
+  };
 
   // PWA / public assets (must never go through session checks)
   if (
@@ -10,7 +24,7 @@ export function middleware(request: NextRequest) {
     pathname === "/sw.js" ||
     pathname.startsWith("/icons/")
   ) {
-    return NextResponse.next();
+    return nextWithRequestId();
   }
 
   const sessionCookie =
@@ -20,9 +34,11 @@ export function middleware(request: NextRequest) {
   const publicAuthPaths = ["/login", "/mot-de-passe-oublie", "/reinitialiser-mot-de-passe"];
   if (publicAuthPaths.includes(pathname) || pathname.startsWith("/api/auth/")) {
     if (pathname === "/login" && sessionCookie) {
-      return NextResponse.redirect(new URL("/app", request.url));
+      const res = NextResponse.redirect(new URL("/app", request.url));
+      res.headers.set("x-request-id", requestId);
+      return res;
     }
-    return NextResponse.next();
+    return nextWithRequestId();
   }
 
   // Protect /app routes - redirect to /login if no session
@@ -30,11 +46,13 @@ export function middleware(request: NextRequest) {
     if (!sessionCookie) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+      const res = NextResponse.redirect(loginUrl);
+      res.headers.set("x-request-id", requestId);
+      return res;
     }
   }
 
-  return NextResponse.next();
+  return nextWithRequestId();
 }
 
 export const config = {
@@ -42,6 +60,7 @@ export const config = {
     "/manifest.webmanifest",
     "/sw.js",
     "/icons/:path*",
+    "/api/backend/:path*",
     "/app/:path*",
     "/login",
     "/mot-de-passe-oublie",

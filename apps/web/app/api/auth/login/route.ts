@@ -18,6 +18,11 @@ function isNetworkError(err: unknown): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = request.headers.get("x-request-id")?.trim() ?? "";
+  const withRequestId = (res: NextResponse) => {
+    if (requestId) res.headers.set("x-request-id", requestId);
+    return res;
+  };
   try {
     const body = await request.json();
 
@@ -25,25 +30,28 @@ export async function POST(request: NextRequest) {
     const password = body.password ?? "";
 
     if (!username || !password) {
-      return NextResponse.json(
+      return withRequestId(NextResponse.json(
         { error: "Identifiant et mot de passe requis." },
         { status: 400 }
-      );
+      ));
     }
 
     let r: Response;
     try {
       r = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(requestId ? { "x-request-id": requestId } : {}),
+        },
         body: JSON.stringify({ username, password }),
       });
     } catch (fetchErr) {
       console.error("Login API unreachable:", fetchErr);
-      return NextResponse.json(
+      return withRequestId(NextResponse.json(
         { error: "Service indisponible. Vérifiez que le serveur est démarré ou contactez l'administrateur." },
         { status: 503 }
-      );
+      ));
     }
 
     if (!r.ok) {
@@ -51,27 +59,27 @@ export async function POST(request: NextRequest) {
       const message = r.status === 401
         ? "Identifiants incorrects."
         : (errorData.message ?? errorData.error ?? "Échec de la connexion");
-      return NextResponse.json(
+      return withRequestId(NextResponse.json(
         { error: typeof message === "string" ? message : "Échec de la connexion" },
         { status: r.status }
-      );
+      ));
     }
 
     let json: { accessToken?: string; refreshToken?: string; user?: { facilityRoles?: Array<{ facilityId: string }> } };
     try {
       json = await r.json();
     } catch {
-      return NextResponse.json(
+      return withRequestId(NextResponse.json(
         { error: "Réponse du serveur invalide. Réessayez plus tard." },
         { status: 502 }
-      );
+      ));
     }
 
     if (!json.accessToken || !json.refreshToken) {
-      return NextResponse.json(
+      return withRequestId(NextResponse.json(
         { error: "Réponse du serveur invalide. Réessayez plus tard." },
         { status: 502 }
-      );
+      ));
     }
 
     const res = NextResponse.json({ user: json.user });
@@ -93,16 +101,16 @@ export async function POST(request: NextRequest) {
       res.cookies.set("medora_facility_id", defaultFacilityId, facilityIdReadableCookieOptions());
     }
 
-    return res;
+    return withRequestId(res);
   } catch (error) {
     console.error("Login error:", error);
     const message = isNetworkError(error)
       ? "Service indisponible. Vérifiez votre connexion ou contactez l'administrateur."
       : "Une erreur inattendue s'est produite. Réessayez.";
-    return NextResponse.json(
+    return withRequestId(NextResponse.json(
       { error: message },
       { status: 500 }
-    );
+    ));
   }
 }
 

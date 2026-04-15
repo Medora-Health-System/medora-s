@@ -52,11 +52,14 @@ async function getFacilityId(req: NextRequest, accessToken: string | null): Prom
 
   if (accessToken) {
     try {
+      const requestId = req.headers.get("x-request-id")?.trim();
+      const meHeaders: Record<string, string> = {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      };
+      if (requestId) meHeaders["x-request-id"] = requestId;
       const meResponse = await fetch(`${API_URL}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+        headers: meHeaders,
       });
       if (meResponse.ok) {
         const userData = await meResponse.json();
@@ -76,8 +79,12 @@ async function getFacilityId(req: NextRequest, accessToken: string | null): Prom
  * @param nestPath Path after API root, no leading slash (e.g. `patients/search`, `admin/users`).
  */
 export async function proxyNestRequest(req: NextRequest, nestPath: string): Promise<NextResponse> {
+  const requestId = req.headers.get("x-request-id")?.trim() ?? "";
   const originDenied = validateRequestOrigin(req);
-  if (originDenied) return originDenied;
+  if (originDenied) {
+    if (requestId) originDenied.headers.set("x-request-id", requestId);
+    return originDenied;
+  }
 
   const normalized = nestPath.replace(/^\/+/, "");
   const url = `${API_URL}/${normalized}${req.nextUrl.search}`;
@@ -108,7 +115,9 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
 
   if (!accessToken) {
     if (isDev) console.log("[proxy auth] No token found, returning 401");
-    return NextResponse.json({ message: "Authentification requise." }, { status: 401 });
+    const res = NextResponse.json({ message: "Authentification requise." }, { status: 401 });
+    if (requestId) res.headers.set("x-request-id", requestId);
+    return res;
   }
 
   let lastRefreshed: RefreshedTokens | null = null;
@@ -121,7 +130,7 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     refreshAttempted = true;
     const hasRt = !!cookieStore.get("refreshToken")?.value;
     if (!hasRt) return false;
-    const t = await refreshAccessTokenFromCookies();
+    const t = await refreshAccessTokenFromCookies(requestId || undefined);
     if (!t) return false;
     didRefresh = true;
     lastRefreshed = t;
@@ -138,7 +147,9 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
   }
 
   if (!facilityId) {
-    return NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
+    const res = NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
+    if (requestId) res.headers.set("x-request-id", requestId);
+    return res;
   }
 
   const bodyText =
@@ -149,6 +160,7 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     headers.set("Content-Type", "application/json");
     headers.set("Authorization", `Bearer ${token}`);
     headers.set("x-facility-id", facilityId!);
+    if (requestId) headers.set("x-request-id", requestId);
     return {
       method: req.method,
       headers,
@@ -173,6 +185,7 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
       "Content-Type": r.headers.get("content-type") || "application/json",
     },
   });
+  if (requestId) res.headers.set("x-request-id", requestId);
 
   if (lastRefreshed) {
     applyAuthCookiesToResponse(res, lastRefreshed);

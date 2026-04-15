@@ -18,7 +18,7 @@ export type RefreshedTokens = {
  * Lit le cookie refreshToken et appelle Nest /auth/refresh.
  * Utilisé par GET /api/auth/me et POST /api/auth/refresh.
  */
-export async function refreshAccessTokenFromCookies(): Promise<RefreshedTokens | null> {
+export async function refreshAccessTokenFromCookies(requestId?: string): Promise<RefreshedTokens | null> {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value;
   if (!refreshToken) {
@@ -30,9 +30,11 @@ export async function refreshAccessTokenFromCookies(): Promise<RefreshedTokens |
 
   let r: Response;
   try {
+    const refreshHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (requestId) refreshHeaders["x-request-id"] = requestId;
     r = await fetch(`${API_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: refreshHeaders,
       body: JSON.stringify({ refreshToken }),
     });
   } catch (e) {
