@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
+import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
+
+const API_URL = resolveApiUrl();
 
 export async function POST(request: NextRequest) {
   try {

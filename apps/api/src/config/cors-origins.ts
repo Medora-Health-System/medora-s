@@ -28,7 +28,7 @@ export function buildCorsOriginList(): string[] {
 
   if (isProd && out.length === 0) {
     console.warn(
-      "[Medora API] CORS_ORIGINS is empty in production. Browser cross-origin requests to this API will be denied. Set CORS_ORIGINS to your frontend origin(s), e.g. https://app.example.com"
+      "⚠️ CORS_ORIGINS is empty in production. API will reject all browser-origin requests. This is expected only if using BFF proxy. Verify configuration."
     );
   }
 

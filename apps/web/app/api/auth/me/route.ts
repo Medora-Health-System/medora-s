@@ -3,7 +3,9 @@ import { cookies } from "next/headers";
 import { applyAuthCookiesToResponse, refreshAccessTokenFromCookies } from "@/lib/server/refreshAccessToken";
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
-const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
+import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
+
+const API_URL = resolveApiUrl();
 
 export async function GET() {
   try {

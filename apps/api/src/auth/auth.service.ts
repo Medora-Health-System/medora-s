@@ -432,7 +432,11 @@ export class AuthService {
 
   /** Base URL for password reset links (e.g. https://app.medora.local or http://localhost:3000) */
   private resetPasswordBaseUrl(): string {
-    return this.config.get<string>("RESET_PASSWORD_BASE_URL") ?? "http://localhost:3000";
+    const url = this.config.get<string>("RESET_PASSWORD_BASE_URL") ?? "http://localhost:3000";
+    if (process.env.NODE_ENV === "production" && url.includes("localhost")) {
+      console.error("RESET_PASSWORD_BASE_URL is not configured correctly for production");
+    }
+    return url;
   }
 
   /** Expiry for password reset tokens (1 hour) */

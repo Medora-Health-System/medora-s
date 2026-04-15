@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 import { facilityIdHttpOnlyCookieOptions } from "@/lib/server/authCookieOptions";
 import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
-const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
+import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
+
+const API_URL = resolveApiUrl();
 
 async function getFacilityId(req: NextRequest): Promise<string | null> {
   // Priority: header > cookie > fetch from /auth/me

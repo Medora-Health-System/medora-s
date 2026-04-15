@@ -7,8 +7,9 @@ import {
   refreshTokenCookieOptions,
 } from "@/lib/server/authCookieOptions";
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
+import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
+const API_URL = resolveApiUrl();
 
 function isNetworkError(err: unknown): boolean {
   if (err instanceof TypeError && err.message?.includes("fetch")) return true;

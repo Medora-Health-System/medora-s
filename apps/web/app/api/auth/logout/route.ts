@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 import { clearAuthCookieOptions } from "@/lib/server/authCookieOptions";
 import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
 
-const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
+import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
+
+const API_URL = resolveApiUrl();
 
 export async function POST(request: NextRequest) {
   const originDenied = validateRequestOrigin(request);

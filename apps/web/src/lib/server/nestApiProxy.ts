@@ -6,8 +6,9 @@ import {
   type RefreshedTokens,
 } from "@/lib/server/refreshAccessToken";
 import { validateRequestOrigin } from "@/lib/server/validateRequestOrigin";
+import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
-const API_URL = process.env.API_URL ?? process.env.MEDORA_API_URL ?? "http://localhost:3001";
+const API_URL = resolveApiUrl();
 
 function parseCookieHeader(cookieHeader: string | null, name: string): string | null {
   if (!cookieHeader) return null;
