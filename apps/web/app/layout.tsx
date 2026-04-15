@@ -7,10 +7,14 @@ import { I18nProvider } from "@/i18n/provider";
 export const metadata: Metadata = {
   title: "Medora-S",
   applicationName: "Medora-S",
-  description: "Medora-S dossier patient et suivi des soins",
+  description:
+    "Plateforme intégrée de dossier patient électronique et de surveillance de santé publique.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icons/icon-192.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/icons/icon-192.svg", type: "image/svg+xml", sizes: "any" },
+    ],
     apple: "/icons/icon-192.svg",
   },
 };

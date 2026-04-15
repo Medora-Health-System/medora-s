@@ -1,7 +1,7 @@
 {
   "name": "Medora-S",
   "short_name": "Medora",
-  "description": "Dossier patient et suivi des soins",
+  "description": "Plateforme intégrée de dossier patient électronique et de surveillance de santé publique.",
   "start_url": "/app",
   "display": "standalone",
   "background_color": "#ffffff",
