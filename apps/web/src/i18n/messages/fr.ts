@@ -1284,4 +1284,9 @@ export default {
     presetRespiratory: "Respiratoire",
     presetAbdominal: "Abdominal",
   },
+  erTriageComplaintTemplates: {
+    helper: "Modèles de motifs fréquents — cliquez pour préremplir le motif (et le récit triage si vide).",
+    searchPlaceholder: "Rechercher un motif…",
+    noResults: "Aucun motif correspondant.",
+  },
 };

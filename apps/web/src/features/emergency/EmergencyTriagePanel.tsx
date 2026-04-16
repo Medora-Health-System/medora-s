@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/apiClient";
+import { useI18n } from "@/lib/i18n";
 import {
   hasVitalsJson,
   MEDORA_PATIENT_VITALS_UPDATED,
@@ -37,6 +38,10 @@ import {
   erTriageV1FormFromVitalsJson,
   type ErTriageV1Form,
 } from "./medoraErTriageV1";
+import {
+  filterErChiefComplaintTemplates,
+  type ErChiefComplaintTemplate,
+} from "./erChiefComplaintTemplates";
 
 type EncounterLite = {
   id: string;
@@ -166,14 +171,31 @@ export function EmergencyTriagePanel({
   patientChartHref?: string;
   onSaved: () => void | Promise<void>;
 }) {
+  const { t } = useI18n();
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [formData, setFormData] = useState<TriageFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
+  const [complaintTemplateQuery, setComplaintTemplateQuery] = useState("");
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
+
+  const complaintTemplateMatches = useMemo(
+    () => filterErChiefComplaintTemplates(complaintTemplateQuery),
+    [complaintTemplateQuery]
+  );
+
+  const applyChiefComplaintTemplate = useCallback((tpl: ErChiefComplaintTemplate) => {
+    setFormData((f) => {
+      const next: TriageFormState = { ...f, chiefComplaint: tpl.chiefComplaint };
+      if (tpl.triageNarrativeStarter && !f.erV1.triageNarrative.trim()) {
+        next.erV1 = { ...f.erV1, triageNarrative: tpl.triageNarrativeStarter };
+      }
+      return next;
+    });
+  }, []);
 
   const patchErV1 = useCallback((patch: Partial<ErTriageV1Form>) => {
     setFormData((f) => ({ ...f, erV1: { ...f.erV1, ...patch } }));
@@ -414,6 +436,62 @@ export function EmergencyTriagePanel({
                       style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                       placeholder="Plainte principale"
                     />
+                    {!formDisabled ? (
+                      <div style={{ marginTop: 8 }}>
+                        <p style={{ margin: "0 0 6px 0", fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+                          {t("erTriageComplaintTemplates.helper")}
+                        </p>
+                        <input
+                          type="search"
+                          value={complaintTemplateQuery}
+                          onChange={(e) => setComplaintTemplateQuery(e.target.value)}
+                          placeholder={t("erTriageComplaintTemplates.searchPlaceholder")}
+                          style={{
+                            ...inputBase,
+                            fontSize: 13,
+                            padding: "8px 10px",
+                            marginBottom: 8,
+                            backgroundColor: "#fff",
+                          }}
+                          autoComplete="off"
+                        />
+                        {complaintTemplateMatches.length === 0 ? (
+                          <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>
+                            {t("erTriageComplaintTemplates.noResults")}
+                          </p>
+                        ) : (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 6,
+                              maxHeight: 132,
+                              overflowY: "auto",
+                            }}
+                          >
+                            {complaintTemplateMatches.map((tpl) => (
+                              <button
+                                key={tpl.id}
+                                type="button"
+                                onClick={() => applyChiefComplaintTemplate(tpl)}
+                                style={{
+                                  border: "1px solid #e2e8f0",
+                                  background: "#f8fafc",
+                                  borderRadius: 9999,
+                                  padding: "4px 10px",
+                                  fontSize: 12,
+                                  color: "#334155",
+                                  cursor: "pointer",
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {tpl.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                   <div style={grid2}>
                     <div>

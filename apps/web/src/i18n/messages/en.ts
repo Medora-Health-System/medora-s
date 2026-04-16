@@ -1320,4 +1320,10 @@ export default {
     presetRespiratory: "Respiratory",
     presetAbdominal: "Abdominal",
   },
+  erTriageComplaintTemplates: {
+    helper:
+      "Common chief-complaint templates — click to fill the chief complaint (and triage narrative only if empty).",
+    searchPlaceholder: "Search templates…",
+    noResults: "No matching templates.",
+  },
 };
