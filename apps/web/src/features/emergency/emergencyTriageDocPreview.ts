@@ -4,7 +4,7 @@
  */
 
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
-import { erTriageV1FormFromVitalsJson, type ErTriageV1Form } from "./medoraErTriageV1";
+import { erTriageV1FormFromVitalsJson, type ErTraumaLevel, type ErTriageV1Form } from "./medoraErTriageV1";
 
 /** Stored as `Triage.strokeScreen` / `Triage.sepsisScreen` JSON (ER triage screening). */
 export type ErScreeningYnu = "" | "yes" | "no" | "unknown";
@@ -333,6 +333,14 @@ function abcFr(v: string): string {
   return "";
 }
 
+function traumaLevelFr(v: ErTraumaLevel): string {
+  if (v === "LEVEL_1") return "Niveau 1";
+  if (v === "LEVEL_2") return "Niveau 2";
+  if (v === "LEVEL_3") return "Niveau 3";
+  if (v === "LEVEL_4") return "Niveau 4";
+  return "";
+}
+
 function pushIf(lines: string[], prefix: string, text: string) {
   const t = text.trim();
   if (t) lines.push(`${prefix}${t}`);
@@ -426,6 +434,7 @@ export function buildTriageDocumentationPreviewModel(
   if (er.breathing) etatInitial.push(`Ventilation : ${abcFr(er.breathing)}`);
   if (er.circulation) etatInitial.push(`Circulation : ${abcFr(er.circulation)}`);
   if (er.gcs15) etatInitial.push(`GCS 15 : ${ynuFr(er.gcs15)}`);
+  if (er.traumaLevel) etatInitial.push(`Niveau de trauma : ${traumaLevelFr(er.traumaLevel)}`);
   pushIf(etatInitial, "Exceptions au profil attendu : ", er.triageExceptionsNote);
   if (er.painScale0to10.trim()) {
     const n = parseInt(er.painScale0to10, 10);

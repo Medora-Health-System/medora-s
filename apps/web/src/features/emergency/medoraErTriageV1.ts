@@ -11,6 +11,9 @@ export type ErAbcOption = "" | "wnl" | "yes" | "no" | "unknown";
 /** Yes / no / unknown (incl. sécurité). */
 export type ErYesNoUnknown = "" | "yes" | "no" | "unknown";
 
+/** Trauma center / activation level (optional). */
+export type ErTraumaLevel = "" | "LEVEL_1" | "LEVEL_2" | "LEVEL_3" | "LEVEL_4";
+
 export type ErTriageV1Form = {
   triageNarrative: string;
   ppeNote: string;
@@ -22,6 +25,7 @@ export type ErTriageV1Form = {
   painScale0to10: string;
   referralSource: string;
   triageStartedAt: string;
+  traumaLevel: ErTraumaLevel;
 
   nursingCareNote: string;
   callLightInReach: ErYesNoUnknown;
@@ -65,6 +69,7 @@ export function emptyErTriageV1Form(): ErTriageV1Form {
     painScale0to10: "",
     referralSource: "",
     triageStartedAt: "",
+    traumaLevel: "",
 
     nursingCareNote: "",
     callLightInReach: "",
@@ -127,6 +132,12 @@ function ynuFromStorage(v: unknown): ErYesNoUnknown {
   return "";
 }
 
+function traumaLevelFromStorage(v: unknown): ErTraumaLevel {
+  const s = stringFromStorage(v);
+  if (s === "LEVEL_1" || s === "LEVEL_2" || s === "LEVEL_3" || s === "LEVEL_4") return s;
+  return "";
+}
+
 /** Load ER V1 form fields from GET vitalsJson (unknown keys inside medoraErTriageV1 are ignored for form). */
 export function erTriageV1FormFromVitalsJson(vitalsJson: unknown): ErTriageV1Form {
   const o = extractMedoraObject(vitalsJson);
@@ -160,6 +171,7 @@ export function erTriageV1FormFromVitalsJson(vitalsJson: unknown): ErTriageV1For
         return "";
       }
     })(),
+    traumaLevel: traumaLevelFromStorage(g("traumaLevel")),
 
     nursingCareNote: stringFromStorage(g("nursingCareNote")),
     callLightInReach: ynuFromStorage(g("callLightInReach")),
@@ -203,6 +215,7 @@ const KNOWN_KEYS: (keyof ErTriageV1Form)[] = [
   "painScale0to10",
   "referralSource",
   "triageStartedAt",
+  "traumaLevel",
   "nursingCareNote",
   "callLightInReach",
   "bedLockedLow",
@@ -251,6 +264,10 @@ function valueForStorage(key: keyof ErTriageV1Form, form: ErTriageV1Form): unkno
   }
   if (key === "airway" || key === "breathing" || key === "circulation") {
     if (t === "wnl" || t === "yes" || t === "no" || t === "unknown") return t;
+    return undefined;
+  }
+  if (key === "traumaLevel") {
+    if (t === "LEVEL_1" || t === "LEVEL_2" || t === "LEVEL_3" || t === "LEVEL_4") return t;
     return undefined;
   }
   if (

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import type { ErAbcOption, ErTriageV1Form, ErYesNoUnknown } from "./medoraErTriageV1";
+import type { ErAbcOption, ErTraumaLevel, ErTriageV1Form, ErYesNoUnknown } from "./medoraErTriageV1";
 import { erTriageV1FormHasAnyContent } from "./medoraErTriageV1";
 import { MedoraCardBadge } from "@/components/medora-card";
 
@@ -45,6 +45,14 @@ const ynuOptions: { value: ErYesNoUnknown; label: string }[] = [
   { value: "yes", label: "Oui" },
   { value: "no", label: "Non" },
   { value: "unknown", label: "Inconnu" },
+];
+
+const traumaLevelOptions: { value: ErTraumaLevel; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "LEVEL_1", label: "Niveau 1" },
+  { value: "LEVEL_2", label: "Niveau 2" },
+  { value: "LEVEL_3", label: "Niveau 3" },
+  { value: "LEVEL_4", label: "Niveau 4" },
 ];
 
 function painOptions(): { value: string; label: string }[] {
@@ -149,6 +157,10 @@ export function EmergencyTriageV1Sections({
             <div>
               <label style={labelStyle}>GCS 15</label>
               {sel("gcs15", ynuOptions)}
+            </div>
+            <div>
+              <label style={labelStyle}>Niveau de trauma</label>
+              {sel("traumaLevel", traumaLevelOptions)}
             </div>
             <div>
               <label style={labelStyle}>Douleur (0–10)</label>
