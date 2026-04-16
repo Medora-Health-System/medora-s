@@ -501,3 +501,14 @@ export function erTriageV1FormHasAnyContent(form: ErTriageV1Form): boolean {
   if (traumaActivationHasAnyContent(form.traumaActivation)) return true;
   return FLAT_FORM_KEYS.some((k) => !isEmptyString(form[k]));
 }
+
+/** ER trauma protocol assist (orders panel): visible only for EMERGENCY + trauma activation on triage. */
+export function erTraumaProtocolAssistContext(
+  encounterType: string | null | undefined,
+  vitalsJson: unknown
+): { visible: boolean; traumaLevel: ErTraumaLevel } {
+  if (encounterType !== "EMERGENCY") return { visible: false, traumaLevel: "" };
+  const er = erTriageV1FormFromVitalsJson(vitalsJson);
+  if (!er.traumaActivation.activated) return { visible: false, traumaLevel: "" };
+  return { visible: true, traumaLevel: er.traumaActivation.level };
+}

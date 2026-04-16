@@ -1011,6 +1011,9 @@ export function EmergencyActiveWorkspaceView() {
               onOrdersCreated={async () => {
                 setResultsRefresh((r) => r + 1);
               }}
+              encounterType={encounter?.type}
+              vitalsJsonForTraumaProtocol={triageSnapshot?.vitalsJson}
+              roles={roles}
             />
           ) : null}
 

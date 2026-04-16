@@ -710,7 +710,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-orders">
             <h2 id="section-orders" style={sectionTitle}>
-              Ordres & interventions
+              Ordres &amp; interventions
             </h2>
             <EmergencyErOrdersPanel
               encounterId={encounterId}
@@ -721,6 +721,9 @@ export function EmergencyChartView() {
               onOrdersCreated={async () => {
                 setResultsRefresh((r) => r + 1);
               }}
+              encounterType={encounter?.type}
+              vitalsJsonForTraumaProtocol={triageSnapshot?.vitalsJson}
+              roles={roles}
             />
           </section>
 

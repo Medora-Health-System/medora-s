@@ -8,6 +8,7 @@ import { CreateOrderModal } from "@/components/orders";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { formatDomainLabelFr, type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
+import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -62,6 +63,9 @@ export function EmergencyErOrdersPanel({
   encounterForOrderModal,
   onRefetchEncounter,
   onOrdersCreated,
+  encounterType,
+  vitalsJsonForTraumaProtocol,
+  roles,
 }: {
   encounterId: string;
   facilityId: string;
@@ -69,6 +73,10 @@ export function EmergencyErOrdersPanel({
   encounterForOrderModal: EncounterPatientForOrder | null | undefined;
   onRefetchEncounter: () => Promise<void>;
   onOrdersCreated?: () => void | Promise<void>;
+  /** Pour assistant protocole trauma (urgences + triage activé). Absent tant que le triage n&apos;est pas chargé. */
+  encounterType?: string | null;
+  vitalsJsonForTraumaProtocol?: unknown | null;
+  roles?: string[];
 }) {
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +121,21 @@ export function EmergencyErOrdersPanel({
   return (
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
       <MedoraCardInner>
+        {roles !== undefined ? (
+          <TraumaProtocolAssistPanel
+            encounterId={encounterId}
+            facilityId={facilityId}
+            encounterType={encounterType}
+            vitalsJson={vitalsJsonForTraumaProtocol ?? null}
+            roles={roles}
+            canPrescribe={canPrescribe}
+            onRefetchEncounter={onRefetchEncounter}
+            onOrdersApplied={async () => {
+              setOrdersRefresh((x) => x + 1);
+              await onOrdersCreated?.();
+            }}
+          />
+        ) : null}
         {loading ? (
           <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{ui.common.loading}</p>
         ) : labelsByDomain == null ? (
