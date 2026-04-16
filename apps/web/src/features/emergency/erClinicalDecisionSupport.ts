@@ -301,6 +301,15 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
     out.push(instantVitalRec);
   }
 
+  /**
+   * Trend cards (hemodynamic / respiratory) — precedence vs instant vitals:
+   * - Instant snapshot rules run first; trend detection uses separate same-encounter history (2+ readings).
+   * - Suppress hemodynamic trend if sepsis bundle already covers overlapping hemodynamic signal, or
+   *   multi-trigger vitals escalation is shown, or a single instant card is already hypotension/tachycardia.
+   * - Suppress respiratory trend if sepsis bundle applies, vitals escalation (multi), or instant
+   *   hypoxemia/tachypnea already covers that axis.
+   * - Trauma / stroke / sepsis cards below are unchanged; trends are additive when not suppressed.
+   */
   const suppressHemodynamicTrend =
     !!sepsisConcern ||
     vitalConcerns.length >= 2 ||
