@@ -9,7 +9,8 @@ import {
   type ErTraumaLevel,
 } from "@/features/emergency/medoraErTriageV1";
 
-const PROTOCOL_NOTE = "Assistant protocole trauma — saisie guidée (non automatique).";
+const PROTOCOL_NOTE_TRAUMA = "Assistant protocole trauma — saisie guidée (non automatique).";
+const PROTOCOL_NOTE_SEPSIS = "Assistant protocole sepsis — saisie guidée (non automatique).";
 
 type ProtocolItemId =
   | "cbc"
@@ -146,6 +147,10 @@ export function TraumaProtocolAssistPanel({
   const userModifiedProtocolRef = useRef(false);
 
   const [assistIntentFlash, setAssistIntentFlash] = useState(false);
+  /** CDS / context label — sepsis assist uses the same checkbox UI but a distinct title. */
+  const [assistDisplayMode, setAssistDisplayMode] = useState<"trauma" | "sepsis">("trauma");
+  /** After a successful apply, collapse until user reopens or CDS fires again. */
+  const [protocolPanelExpanded, setProtocolPanelExpanded] = useState(true);
 
   const [rnChecks, setRnChecks] = useState({
     iv2: true,
@@ -164,6 +169,7 @@ export function TraumaProtocolAssistPanel({
   useEffect(() => {
     userModifiedProtocolRef.current = false;
     setProvSel(initialSelection(ctx.traumaLevel));
+    setAssistDisplayMode("trauma");
   }, [ctx.traumaLevel, ctx.visible]);
 
   useEffect(() => {
@@ -185,11 +191,15 @@ export function TraumaProtocolAssistPanel({
       return;
     }
     if (cdsIntent === "trauma_protocol") {
+      setAssistDisplayMode("trauma");
       setProvSel(initialSelection(ctx.traumaLevel));
       setAssistIntentFlash(true);
+      setProtocolPanelExpanded(true);
     } else if (cdsIntent === "sepsis_protocol") {
+      setAssistDisplayMode("sepsis");
       setProvSel(initialSelectionSepsisAssist());
       setAssistIntentFlash(true);
+      setProtocolPanelExpanded(true);
     }
     onConsumeIntent();
   }, [cdsIntent, ctx.traumaLevel, ctx.visible, isProviderLike, onConsumeIntent]);
@@ -250,12 +260,15 @@ export function TraumaProtocolAssistPanel({
         return;
       }
 
+      const protocolNote =
+        assistDisplayMode === "sepsis" ? PROTOCOL_NOTE_SEPSIS : PROTOCOL_NOTE_TRAUMA;
+
       let created = false;
       if (labItems.length) {
         await postOrder({
           type: "LAB",
           priority: "STAT",
-          notes: PROTOCOL_NOTE,
+          notes: protocolNote,
           items: labItems,
         });
         created = true;
@@ -264,14 +277,17 @@ export function TraumaProtocolAssistPanel({
         await postOrder({
           type: "IMAGING",
           priority: "STAT",
-          notes: PROTOCOL_NOTE,
+          notes: protocolNote,
           items: imgItems,
         });
         created = true;
       }
       if (medItemsRaw.length) {
         if (!canPrescribe) {
-          if (created) await onOrdersApplied?.();
+          if (created) {
+            await onOrdersApplied?.();
+            setProtocolPanelExpanded(false);
+          }
           setApplyMsg(
             created
               ? "Ordres créés (analyses / imagerie). Les médicaments nécessitent un profil avec prescription."
@@ -283,7 +299,7 @@ export function TraumaProtocolAssistPanel({
         await postOrder({
           type: "MEDICATION",
           priority: "STAT",
-          notes: PROTOCOL_NOTE,
+          notes: protocolNote,
           prescriberName,
           items: medItemsRaw.map((d) => ({
             catalogItemId: null,
@@ -303,6 +319,7 @@ export function TraumaProtocolAssistPanel({
 
       await onOrdersApplied?.();
       setApplyMsg("Protocole appliqué — ordres créés.");
+      setProtocolPanelExpanded(false);
     } catch (e) {
       const raw = e instanceof Error ? e.message : "";
       if (isEncounterMustBeOpenForOrderError(raw)) {
@@ -312,9 +329,23 @@ export function TraumaProtocolAssistPanel({
     } finally {
       setApplying(false);
     }
-  }, [canPrescribe, encounterId, facilityId, onOrdersApplied, onRefetchEncounter, postOrder, provSel]);
+  }, [
+    assistDisplayMode,
+    canPrescribe,
+    encounterId,
+    facilityId,
+    onOrdersApplied,
+    onRefetchEncounter,
+    postOrder,
+    provSel,
+  ]);
 
   if (!ctx.visible) return null;
+
+  const protocolTitleFr =
+    assistDisplayMode === "sepsis"
+      ? "Protocole sepsis — sélection assistée"
+      : `Protocole trauma — ${traumaLevelTitleFr(ctx.traumaLevel)}`;
 
   const shell: React.CSSProperties = {
     marginBottom: 14,
@@ -375,12 +406,55 @@ export function TraumaProtocolAssistPanel({
   }
 
   if (isProviderLike) {
-    const levelTitle = traumaLevelTitleFr(ctx.traumaLevel);
+    if (!protocolPanelExpanded) {
+      return (
+        <div style={shell}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>{protocolTitleFr}</p>
+            <button
+              type="button"
+              onClick={() => setProtocolPanelExpanded(true)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid #fecaca",
+                backgroundColor: "#fff",
+                color: "#b91c1c",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Rouvrir le protocole
+            </button>
+          </div>
+          {applyMsg ? (
+            <p
+              style={{
+                margin: "8px 0 0 0",
+                fontSize: 12,
+                color: applyMsg.includes("Impossible") || applyMsg.includes("nécessitent") ? "#b91c1c" : "#15803d",
+              }}
+            >
+              {applyMsg}
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
     return (
       <div style={shell}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>
-          Protocole trauma — {levelTitle}
-        </p>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>{protocolTitleFr}</p>
         <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#64748b" }}>
           Cocher les éléments puis appliquer — création d&apos;ordres via le flux existant (STAT).
         </p>
