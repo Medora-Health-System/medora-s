@@ -17,7 +17,19 @@ import {
   MedoraCardInner,
   MedoraCardTitle,
 } from "@/components/medora-card";
-import { buildTriageDocumentationPreviewModel } from "./emergencyTriageDocPreview";
+import {
+  buildTriageDocumentationPreviewModel,
+  emptySepsisScreenForm,
+  emptyStrokeScreenForm,
+  type ErSepsisScreenForm,
+  type ErScreeningYnu,
+  type ErStrokeScreenForm,
+  sepsisScreenFormToJson,
+  sepsisScreenFromUnknown,
+  strokeScreenFormToJson,
+  strokeScreenFromUnknown,
+  type TriageDocPreviewFormSlice,
+} from "./emergencyTriageDocPreview";
 import { EmergencyTriageV1Sections } from "./EmergencyTriageV1Sections";
 import {
   MEDORA_ER_TRIAGE_V1_KEY,
@@ -48,8 +60,8 @@ type TriageFormState = {
   weightKg: string;
   heightCm: string;
   allergyNote: string;
-  strokeScreen: string;
-  sepsisScreen: string;
+  strokeScreen: ErStrokeScreenForm;
+  sepsisScreen: ErSepsisScreenForm;
   triageCompleteAt: string;
   erV1: ErTriageV1Form;
 };
@@ -67,8 +79,8 @@ const emptyForm = (): TriageFormState => ({
   weightKg: "",
   heightCm: "",
   allergyNote: "",
-  strokeScreen: "",
-  sepsisScreen: "",
+  strokeScreen: emptyStrokeScreenForm(),
+  sepsisScreen: emptySepsisScreenForm(),
   triageCompleteAt: "",
   erV1: emptyErTriageV1Form(),
 });
@@ -123,6 +135,19 @@ const PREVIEW_SECTION_ACCENTS: Record<string, string> = {
   histoire: "#64748b",
   empty: "#cbd5e1",
 };
+
+const SCREENING_YNU_OPTIONS: { value: ErScreeningYnu; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "yes", label: "Oui" },
+  { value: "no", label: "Non" },
+  { value: "unknown", label: "Inconnu" },
+];
+
+const SCREENING_YN_OPTIONS: { value: "" | "yes" | "no"; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "yes", label: "Oui" },
+  { value: "no", label: "Non" },
+];
 
 /** Merge GET vitalsJson with form fields so unknown keys are kept on PUT. */
 function mergeVitalsJsonForSave(previous: unknown, form: TriageFormState): Record<string, unknown> | null {
@@ -213,8 +238,8 @@ export function EmergencyTriagePanel({
           weightKg: v.weightKg?.toString() ?? "",
           heightCm: v.heightCm?.toString() ?? "",
           allergyNote: (v as { allergyNote?: string | null }).allergyNote ?? "",
-          strokeScreen: d.strokeScreen ? JSON.stringify(d.strokeScreen, null, 2) : "",
-          sepsisScreen: d.sepsisScreen ? JSON.stringify(d.sepsisScreen, null, 2) : "",
+          strokeScreen: strokeScreenFromUnknown(d.strokeScreen),
+          sepsisScreen: sepsisScreenFromUnknown(d.sepsisScreen),
           triageCompleteAt: d.triageCompleteAt
             ? new Date(d.triageCompleteAt as string).toISOString().slice(0, 16)
             : "",
@@ -245,38 +270,10 @@ export function EmergencyTriagePanel({
     setSaving(true);
     setSaveInfo(null);
 
-    const screenWarnings: string[] = [];
-    let strokeScreenParsed: unknown = null;
-    if (formData.strokeScreen.trim()) {
-      try {
-        strokeScreenParsed = JSON.parse(formData.strokeScreen);
-      } catch {
-        strokeScreenParsed = triage?.strokeScreen ?? null;
-        screenWarnings.push(
-          triage?.strokeScreen != null
-            ? "strokeScreen : JSON invalide — valeur serveur conservée."
-            : "strokeScreen : JSON invalide, champ ignoré."
-        );
-      }
-    } else if (triage?.strokeScreen != null) {
-      strokeScreenParsed = triage.strokeScreen;
-    }
-
-    let sepsisScreenParsed: unknown = null;
-    if (formData.sepsisScreen.trim()) {
-      try {
-        sepsisScreenParsed = JSON.parse(formData.sepsisScreen);
-      } catch {
-        sepsisScreenParsed = triage?.sepsisScreen ?? null;
-        screenWarnings.push(
-          triage?.sepsisScreen != null
-            ? "sepsisScreen : JSON invalide — valeur serveur conservée."
-            : "sepsisScreen : JSON invalide, champ ignoré."
-        );
-      }
-    } else if (triage?.sepsisScreen != null) {
-      sepsisScreenParsed = triage.sepsisScreen;
-    }
+    const strokeJson = strokeScreenFormToJson(formData.strokeScreen, triage?.strokeScreen);
+    const sepsisJson = sepsisScreenFormToJson(formData.sepsisScreen, triage?.sepsisScreen);
+    const strokeScreenParsed = Object.keys(strokeJson).length > 0 ? strokeJson : null;
+    const sepsisScreenParsed = Object.keys(sepsisJson).length > 0 ? sepsisJson : null;
 
     try {
       const vitalsMerged = mergeVitalsJsonForSave(triage?.vitalsJson, formData);
@@ -332,7 +329,7 @@ export function EmergencyTriagePanel({
         res && typeof res === "object" && (res as { queued?: boolean }).queued === true
           ? "En attente de synchronisation"
           : "Triage enregistré";
-      setSaveInfo(screenWarnings.length ? `${baseMsg} — ${screenWarnings.join(" ")}` : baseMsg);
+      setSaveInfo(baseMsg);
     } catch (e) {
       console.error(e);
       setSaveInfo(
@@ -351,15 +348,28 @@ export function EmergencyTriagePanel({
         ).toLocaleString("fr-FR")}`
       : null;
 
-  const previewModel = useMemo(
-    () =>
-      buildTriageDocumentationPreviewModel(formData, {
-        strokeScreenPresent: Boolean(formData.strokeScreen.trim()),
-        sepsisScreenPresent: Boolean(formData.sepsisScreen.trim()),
-        erV1: formData.erV1,
-      }),
-    [formData]
-  );
+  const previewModel = useMemo(() => {
+    const slice: TriageDocPreviewFormSlice = {
+      chiefComplaint: formData.chiefComplaint,
+      onsetAt: formData.onsetAt,
+      esi: formData.esi,
+      tempC: formData.tempC,
+      hr: formData.hr,
+      rr: formData.rr,
+      bpSys: formData.bpSys,
+      bpDia: formData.bpDia,
+      spo2: formData.spo2,
+      weightKg: formData.weightKg,
+      heightCm: formData.heightCm,
+      allergyNote: formData.allergyNote,
+      triageCompleteAt: formData.triageCompleteAt,
+    };
+    return buildTriageDocumentationPreviewModel(slice, {
+      strokeScreen: formData.strokeScreen,
+      sepsisScreen: formData.sepsisScreen,
+      erV1: formData.erV1,
+    });
+  }, [formData]);
 
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
@@ -598,49 +608,273 @@ export function EmergencyTriagePanel({
 
               <details style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", backgroundColor: "#fff" }}>
                 <summary style={{ cursor: formDisabled ? "default" : "pointer", fontWeight: 600, fontSize: 13, color: "#334155" }}>
-                  Dépistages AVC / sepsis (JSON, optionnel)
+                  Dépistages AVC / sepsis
                 </summary>
                 <p style={{ margin: "10px 0 8px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  Même structure que le dossier de consultation. Laissez vide pour conserver les données déjà enregistrées.
+                  Champs structurés enregistrés avec le triage (JSON côté serveur). Laissez vide si non applicable.
                 </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div>
-                    <label style={labelStyle}>Dépistage AVC (JSON)</label>
-                    <textarea
-                      value={formData.strokeScreen}
-                      onChange={(e) => setFormData((f) => ({ ...f, strokeScreen: e.target.value }))}
-                      disabled={formDisabled}
-                      rows={4}
-                      spellCheck={false}
-                      style={{
-                        ...inputBase,
-                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                        fontSize: 12,
-                        minHeight: 88,
-                        resize: "vertical",
-                        backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                      }}
-                      placeholder="{}"
-                    />
+                    <p style={{ ...sectionHeading, marginBottom: 8 }}>Dépistage AVC</p>
+                    <div style={{ ...grid2 }}>
+                      <div>
+                        <label style={labelStyle}>Asymétrie faciale</label>
+                        <select
+                          value={formData.strokeScreen.faceDroop}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              strokeScreen: { ...f.strokeScreen, faceDroop: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Faiblesse membre supérieur</label>
+                        <select
+                          value={formData.strokeScreen.armWeakness}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              strokeScreen: { ...f.strokeScreen, armWeakness: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Trouble de la parole</label>
+                        <select
+                          value={formData.strokeScreen.speechDifficulty}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              strokeScreen: { ...f.strokeScreen, speechDifficulty: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Dernière fois vu normal</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.strokeScreen.lastKnownWell}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              strokeScreen: { ...f.strokeScreen, lastKnownWell: e.target.value },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Alerte AVC activée</label>
+                        <select
+                          value={formData.strokeScreen.strokeAlertActivated}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              strokeScreen: {
+                                ...f.strokeScreen,
+                                strokeAlertActivated: e.target.value as "" | "yes" | "no",
+                              },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YN_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <label style={labelStyle}>Commentaires (AVC)</label>
+                      <textarea
+                        value={formData.strokeScreen.comments}
+                        onChange={(e) =>
+                          setFormData((f) => ({
+                            ...f,
+                            strokeScreen: { ...f.strokeScreen, comments: e.target.value },
+                          }))
+                        }
+                        disabled={formDisabled}
+                        rows={2}
+                        style={{ ...inputBase, resize: "vertical", minHeight: 56, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                      />
+                    </div>
                   </div>
+
                   <div>
-                    <label style={labelStyle}>Dépistage sepsis (JSON)</label>
-                    <textarea
-                      value={formData.sepsisScreen}
-                      onChange={(e) => setFormData((f) => ({ ...f, sepsisScreen: e.target.value }))}
-                      disabled={formDisabled}
-                      rows={4}
-                      spellCheck={false}
-                      style={{
-                        ...inputBase,
-                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                        fontSize: 12,
-                        minHeight: 88,
-                        resize: "vertical",
-                        backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                      }}
-                      placeholder="{}"
-                    />
+                    <p style={{ ...sectionHeading, marginBottom: 8 }}>Dépistage sepsis</p>
+                    <div style={{ ...grid2 }}>
+                      <div>
+                        <label style={labelStyle}>Infection suspectée</label>
+                        <select
+                          value={formData.sepsisScreen.suspectedInfection}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              sepsisScreen: { ...f.sepsisScreen, suspectedInfection: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>FR ≥ 22/min</label>
+                        <select
+                          value={formData.sepsisScreen.rrGte22}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              sepsisScreen: { ...f.sepsisScreen, rrGte22: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>TA systolique ≤ 100</label>
+                        <select
+                          value={formData.sepsisScreen.sbpLte100}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              sepsisScreen: { ...f.sepsisScreen, sbpLte100: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Troubles de conscience</label>
+                        <select
+                          value={formData.sepsisScreen.alteredMentalStatus}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              sepsisScreen: { ...f.sepsisScreen, alteredMentalStatus: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Lactate prescrit / demandé</label>
+                        <select
+                          value={formData.sepsisScreen.lactateOrdered}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              sepsisScreen: { ...f.sepsisScreen, lactateOrdered: e.target.value as ErScreeningYnu },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YNU_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Alerte sepsis activée</label>
+                        <select
+                          value={formData.sepsisScreen.sepsisAlertActivated}
+                          onChange={(e) =>
+                            setFormData((f) => ({
+                              ...f,
+                              sepsisScreen: {
+                                ...f.sepsisScreen,
+                                sepsisAlertActivated: e.target.value as "" | "yes" | "no",
+                              },
+                            }))
+                          }
+                          disabled={formDisabled}
+                          style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                        >
+                          {SCREENING_YN_OPTIONS.map((o) => (
+                            <option key={o.value === "" ? "e" : o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <label style={labelStyle}>Commentaires (sepsis)</label>
+                      <textarea
+                        value={formData.sepsisScreen.comments}
+                        onChange={(e) =>
+                          setFormData((f) => ({
+                            ...f,
+                            sepsisScreen: { ...f.sepsisScreen, comments: e.target.value },
+                          }))
+                        }
+                        disabled={formDisabled}
+                        rows={2}
+                        style={{ ...inputBase, resize: "vertical", minHeight: 56, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                      />
+                    </div>
                   </div>
                 </div>
               </details>

@@ -6,6 +6,201 @@
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
 import { erTriageV1FormFromVitalsJson, type ErTriageV1Form } from "./medoraErTriageV1";
 
+/** Stored as `Triage.strokeScreen` / `Triage.sepsisScreen` JSON (ER triage screening). */
+export type ErScreeningYnu = "" | "yes" | "no" | "unknown";
+
+function screeningYnuFromUnknown(v: unknown): ErScreeningYnu {
+  const s = typeof v === "string" ? v : "";
+  if (s === "yes" || s === "no" || s === "unknown") return s;
+  return "";
+}
+
+function screeningYnFromUnknown(v: unknown): "" | "yes" | "no" {
+  const s = typeof v === "string" ? v : "";
+  if (s === "yes" || s === "no") return s;
+  return "";
+}
+
+export type ErStrokeScreenForm = {
+  faceDroop: ErScreeningYnu;
+  armWeakness: ErScreeningYnu;
+  speechDifficulty: ErScreeningYnu;
+  lastKnownWell: string;
+  strokeAlertActivated: "" | "yes" | "no";
+  comments: string;
+};
+
+export type ErSepsisScreenForm = {
+  suspectedInfection: ErScreeningYnu;
+  rrGte22: ErScreeningYnu;
+  sbpLte100: ErScreeningYnu;
+  alteredMentalStatus: ErScreeningYnu;
+  lactateOrdered: ErScreeningYnu;
+  sepsisAlertActivated: "" | "yes" | "no";
+  comments: string;
+};
+
+export function emptyStrokeScreenForm(): ErStrokeScreenForm {
+  return {
+    faceDroop: "",
+    armWeakness: "",
+    speechDifficulty: "",
+    lastKnownWell: "",
+    strokeAlertActivated: "",
+    comments: "",
+  };
+}
+
+export function emptySepsisScreenForm(): ErSepsisScreenForm {
+  return {
+    suspectedInfection: "",
+    rrGte22: "",
+    sbpLte100: "",
+    alteredMentalStatus: "",
+    lactateOrdered: "",
+    sepsisAlertActivated: "",
+    comments: "",
+  };
+}
+
+export function strokeScreenFromUnknown(raw: unknown): ErStrokeScreenForm {
+  const e = emptyStrokeScreenForm();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return e;
+  const o = raw as Record<string, unknown>;
+  e.faceDroop = screeningYnuFromUnknown(o.faceDroop);
+  e.armWeakness = screeningYnuFromUnknown(o.armWeakness);
+  e.speechDifficulty = screeningYnuFromUnknown(o.speechDifficulty);
+  e.lastKnownWell = typeof o.lastKnownWell === "string" ? o.lastKnownWell : "";
+  e.strokeAlertActivated = screeningYnFromUnknown(o.strokeAlertActivated);
+  e.comments = typeof o.comments === "string" ? o.comments : "";
+  return e;
+}
+
+export function sepsisScreenFromUnknown(raw: unknown): ErSepsisScreenForm {
+  const e = emptySepsisScreenForm();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return e;
+  const o = raw as Record<string, unknown>;
+  e.suspectedInfection = screeningYnuFromUnknown(o.suspectedInfection);
+  e.rrGte22 = screeningYnuFromUnknown(o.rrGte22);
+  e.sbpLte100 = screeningYnuFromUnknown(o.sbpLte100);
+  e.alteredMentalStatus = screeningYnuFromUnknown(o.alteredMentalStatus);
+  e.lactateOrdered = screeningYnuFromUnknown(o.lactateOrdered);
+  e.sepsisAlertActivated = screeningYnFromUnknown(o.sepsisAlertActivated);
+  e.comments = typeof o.comments === "string" ? o.comments : "";
+  return e;
+}
+
+export function strokeScreenFormHasContent(f: ErStrokeScreenForm): boolean {
+  return !!(
+    f.faceDroop ||
+    f.armWeakness ||
+    f.speechDifficulty ||
+    f.lastKnownWell.trim() ||
+    f.strokeAlertActivated ||
+    f.comments.trim()
+  );
+}
+
+export function sepsisScreenFormHasContent(f: ErSepsisScreenForm): boolean {
+  return !!(
+    f.suspectedInfection ||
+    f.rrGte22 ||
+    f.sbpLte100 ||
+    f.alteredMentalStatus ||
+    f.lactateOrdered ||
+    f.sepsisAlertActivated ||
+    f.comments.trim()
+  );
+}
+
+/** Merges into a copy of `previous` so unknown JSON keys are preserved until overwritten. */
+export function strokeScreenFormToJson(f: ErStrokeScreenForm, previous?: unknown): Record<string, unknown> {
+  const base: Record<string, unknown> =
+    previous && typeof previous === "object" && !Array.isArray(previous)
+      ? { ...(previous as Record<string, unknown>) }
+      : {};
+  const setOrDel = (k: string, v: string | undefined) => {
+    if (v) base[k] = v;
+    else delete base[k];
+  };
+  setOrDel("faceDroop", f.faceDroop);
+  setOrDel("armWeakness", f.armWeakness);
+  setOrDel("speechDifficulty", f.speechDifficulty);
+  if (f.lastKnownWell.trim()) base.lastKnownWell = f.lastKnownWell.trim();
+  else delete base.lastKnownWell;
+  setOrDel("strokeAlertActivated", f.strokeAlertActivated);
+  if (f.comments.trim()) base.comments = f.comments.trim();
+  else delete base.comments;
+  return base;
+}
+
+export function sepsisScreenFormToJson(f: ErSepsisScreenForm, previous?: unknown): Record<string, unknown> {
+  const base: Record<string, unknown> =
+    previous && typeof previous === "object" && !Array.isArray(previous)
+      ? { ...(previous as Record<string, unknown>) }
+      : {};
+  const setOrDel = (k: string, v: string | undefined) => {
+    if (v) base[k] = v;
+    else delete base[k];
+  };
+  setOrDel("suspectedInfection", f.suspectedInfection);
+  setOrDel("rrGte22", f.rrGte22);
+  setOrDel("sbpLte100", f.sbpLte100);
+  setOrDel("alteredMentalStatus", f.alteredMentalStatus);
+  setOrDel("lactateOrdered", f.lactateOrdered);
+  setOrDel("sepsisAlertActivated", f.sepsisAlertActivated);
+  if (f.comments.trim()) base.comments = f.comments.trim();
+  else delete base.comments;
+  return base;
+}
+
+function screeningYnuFr(v: ErScreeningYnu): string {
+  if (v === "yes") return "Oui";
+  if (v === "no") return "Non";
+  if (v === "unknown") return "Inconnu";
+  return "—";
+}
+
+function screeningYnFr(v: "" | "yes" | "no"): string {
+  if (v === "yes") return "Oui";
+  if (v === "no") return "Non";
+  return "—";
+}
+
+export function strokeScreenToPreviewLines(raw: unknown): string[] {
+  const f = strokeScreenFromUnknown(raw);
+  if (!strokeScreenFormHasContent(f)) return [];
+  const lines: string[] = [];
+  if (f.faceDroop) lines.push(`Asymétrie faciale : ${screeningYnuFr(f.faceDroop)}`);
+  if (f.armWeakness) lines.push(`Faiblesse membre supérieur : ${screeningYnuFr(f.armWeakness)}`);
+  if (f.speechDifficulty) lines.push(`Trouble de la parole : ${screeningYnuFr(f.speechDifficulty)}`);
+  if (f.lastKnownWell.trim()) {
+    const d = new Date(f.lastKnownWell);
+    lines.push(
+      !Number.isNaN(d.getTime())
+        ? `Dernière fois vu normal : ${d.toLocaleString("fr-FR")}`
+        : `Dernière fois vu normal : ${f.lastKnownWell.trim()}`
+    );
+  }
+  if (f.strokeAlertActivated) lines.push(`Alerte AVC activée : ${screeningYnFr(f.strokeAlertActivated)}`);
+  if (f.comments.trim()) lines.push(`Commentaires : ${f.comments.trim()}`);
+  return lines;
+}
+
+export function sepsisScreenToPreviewLines(raw: unknown): string[] {
+  const f = sepsisScreenFromUnknown(raw);
+  if (!sepsisScreenFormHasContent(f)) return [];
+  const lines: string[] = [];
+  if (f.suspectedInfection) lines.push(`Infection suspectée : ${screeningYnuFr(f.suspectedInfection)}`);
+  if (f.rrGte22) lines.push(`FR ≥ 22/min : ${screeningYnuFr(f.rrGte22)}`);
+  if (f.sbpLte100) lines.push(`TA systolique ≤ 100 : ${screeningYnuFr(f.sbpLte100)}`);
+  if (f.alteredMentalStatus) lines.push(`Troubles de conscience : ${screeningYnuFr(f.alteredMentalStatus)}`);
+  if (f.lactateOrdered) lines.push(`Lactate prescrit / demandé : ${screeningYnuFr(f.lactateOrdered)}`);
+  if (f.sepsisAlertActivated) lines.push(`Alerte sepsis activée : ${screeningYnFr(f.sepsisAlertActivated)}`);
+  if (f.comments.trim()) lines.push(`Commentaires : ${f.comments.trim()}`);
+  return lines;
+}
+
 export type TriageDocPreviewFormSlice = {
   chiefComplaint: string;
   onsetAt: string;
@@ -206,8 +401,8 @@ function buildNarrative(f: TriageDocPreviewFormSlice, er: ErTriageV1Form): strin
 export function buildTriageDocumentationPreviewModel(
   f: TriageDocPreviewFormSlice,
   opts: {
-    strokeScreenPresent: boolean;
-    sepsisScreenPresent: boolean;
+    strokeScreen: unknown;
+    sepsisScreen: unknown;
     erV1: ErTriageV1Form;
   }
 ): TriagePreviewModel {
@@ -266,8 +461,16 @@ export function buildTriageDocumentationPreviewModel(
   pushIf(securite, "Notes infirmières / addendum : ", er.nursingNotesAddendum);
   if (er.feelsSafeAtHome) securite.push(`Sécurité au domicile : ${ynuFr(er.feelsSafeAtHome)}`);
   if (er.travelOutsideCountry14d) securite.push(`Voyage hors pays (<14 j) : ${ynuFr(er.travelOutsideCountry14d)}`);
-  if (opts.strokeScreenPresent) securite.push("Dépistage AVC : données présentes.");
-  if (opts.sepsisScreenPresent) securite.push("Dépistage sepsis : données présentes.");
+  const strokeLines = strokeScreenToPreviewLines(opts.strokeScreen);
+  if (strokeLines.length) {
+    securite.push("Dépistage AVC");
+    strokeLines.forEach((line) => securite.push(`  · ${line}`));
+  }
+  const sepsisLines = sepsisScreenToPreviewLines(opts.sepsisScreen);
+  if (sepsisLines.length) {
+    securite.push("Dépistage sepsis");
+    sepsisLines.forEach((line) => securite.push(`  · ${line}`));
+  }
   if (securite.length) sections.push({ id: "securite", title: "Sécurité et orientation", lines: securite });
 
   const meds: string[] = [];

@@ -190,11 +190,9 @@ export function buildEmergencyVisitSummaryModel(
 
   if (parsed && triage) {
     const { slice, er } = parsed;
-    const strokeScreenPresent = Boolean(triage.strokeScreen);
-    const sepsisScreenPresent = Boolean(triage.sepsisScreen);
     const triageModel = buildTriageDocumentationPreviewModel(slice, {
-      strokeScreenPresent,
-      sepsisScreenPresent,
+      strokeScreen: triage.strokeScreen,
+      sepsisScreen: triage.sepsisScreen,
       erV1: er,
     });
 
