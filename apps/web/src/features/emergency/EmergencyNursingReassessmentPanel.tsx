@@ -23,6 +23,13 @@ import {
   type ErNursingReassessmentForm,
   type ErTrend,
 } from "./emergencyNursingReassessmentV1";
+import {
+  buildErTraumaSurveyV1PreviewModel,
+  erTraumaSurveyV1FormFromEncounter,
+  mergeErTraumaSurveyV1IntoNursingAssessment,
+  type ErAbcdeOption,
+  type ErTraumaSurveyV1,
+} from "./erTraumaSurveyV1";
 
 type EncounterLite = {
   id: string;
@@ -79,6 +86,8 @@ const PREVIEW_ACCENTS: Record<string, string> = {
   response: "#7c3aed",
   soins: "#d97706",
   addendum: "#64748b",
+  trauma_primary: "#b45309",
+  trauma_secondary: "#a16207",
   empty: "#cbd5e1",
 };
 
@@ -103,6 +112,26 @@ function abcSelect(
   );
 }
 
+function abcdeSelectTrauma(
+  value: ErAbcdeOption,
+  onChange: (v: ErAbcdeOption) => void,
+  disabled: boolean
+): React.ReactNode {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as ErAbcdeOption)}
+      disabled={disabled}
+      style={{ ...inputBase, cursor: disabled ? "not-allowed" : "pointer", backgroundColor: disabled ? "#f8fafc" : "#fff" }}
+    >
+      <option value="">—</option>
+      <option value="normal">Normal</option>
+      <option value="abnormal">Anormal</option>
+      <option value="unknown">Inconnu</option>
+    </select>
+  );
+}
+
 export function EmergencyNursingReassessmentPanel({
   encounterId,
   facilityId,
@@ -122,6 +151,9 @@ export function EmergencyNursingReassessmentPanel({
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState<ErNursingReassessmentForm>(() =>
     erNursingReassessmentFormFromEncounter(encounter.nursingAssessment)
+  );
+  const [traumaForm, setTraumaForm] = useState<ErTraumaSurveyV1>(() =>
+    erTraumaSurveyV1FormFromEncounter(encounter.nursingAssessment)
   );
   const [loadingTriage, setLoadingTriage] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -149,6 +181,7 @@ export function EmergencyNursingReassessmentPanel({
 
   useEffect(() => {
     setForm(erNursingReassessmentFormFromEncounter(encounter.nursingAssessment));
+    setTraumaForm(erTraumaSurveyV1FormFromEncounter(encounter.nursingAssessment));
   }, [encounter.nursingAssessment, encounter.updatedAt]);
 
   const [wideLayout, setWideLayout] = useState(false);
@@ -210,10 +243,31 @@ export function EmergencyNursingReassessmentPanel({
     return { savedAt: at, savedByDisplayName: by };
   }, [encounter.nursingAssessment]);
 
-  const previewModel = useMemo(() => buildErNursingReassessmentPreviewModel(form), [form]);
+  const previewModel = useMemo(() => {
+    const reassess = buildErNursingReassessmentPreviewModel(form);
+    const trauma = buildErTraumaSurveyV1PreviewModel(traumaForm);
+    const rSecs = reassess.sections.filter((s) => s.id !== "empty");
+    const tSecs = trauma.sections;
+    const sections = [...rSecs, ...tSecs];
+    const narrative = [reassess.narrative, trauma.narrative].filter(Boolean).join(" ").trim();
+    if (sections.length === 0 && !narrative) {
+      return {
+        sections: [{ id: "empty", title: "Aperçu", lines: ["Aucune donnée saisie pour l'aperçu."] }],
+        narrative: "",
+      };
+    }
+    return {
+      sections: sections.length > 0 ? sections : reassess.sections,
+      narrative,
+    };
+  }, [form, traumaForm]);
 
   const patchForm = useCallback((patch: Partial<ErNursingReassessmentForm>) => {
     setForm((f) => ({ ...f, ...patch }));
+  }, []);
+
+  const patchTraumaForm = useCallback((patch: Partial<ErTraumaSurveyV1>) => {
+    setTraumaForm((f) => ({ ...f, ...patch }));
   }, []);
 
   const handleSave = async () => {
@@ -237,11 +291,12 @@ export function EmergencyNursingReassessmentPanel({
         savedByDisplayName,
       };
       const mergedNav = mergeErNursingReassessmentIntoNursingAssessment(encounter.nursingAssessment, form, signature);
+      const finalNav = mergeErTraumaSurveyV1IntoNursingAssessment(mergedNav, traumaForm);
       const res = await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         facilityId,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nursingAssessment: mergedNav }),
+        body: JSON.stringify({ nursingAssessment: finalNav }),
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
@@ -523,6 +578,135 @@ export function EmergencyNursingReassessmentPanel({
                         rows={2}
                         style={{ ...inputBase, resize: "vertical", minHeight: 56, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                       />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p style={sectionHeading}>Documentation trauma</p>
+                  <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                    Examen primaire / secondaire — enregistré avec le dossier (JSON).
+                  </p>
+                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div>
+                      <p style={{ ...sectionHeading, fontSize: 10 }}>Examen primaire (ABCDE)</p>
+                      <div style={{ marginTop: 10, ...grid3 }}>
+                        <div>
+                          <label style={labelStyle}>Voie aérienne</label>
+                          {abcdeSelectTrauma(traumaForm.primaryAirway, (v) => patchTraumaForm({ primaryAirway: v }), formDisabled)}
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Respiration</label>
+                          {abcdeSelectTrauma(traumaForm.primaryBreathing, (v) => patchTraumaForm({ primaryBreathing: v }), formDisabled)}
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Circulation</label>
+                          {abcdeSelectTrauma(traumaForm.primaryCirculation, (v) => patchTraumaForm({ primaryCirculation: v }), formDisabled)}
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Déficit neurologique</label>
+                          {abcdeSelectTrauma(traumaForm.primaryDisability, (v) => patchTraumaForm({ primaryDisability: v }), formDisabled)}
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Exposition</label>
+                          {abcdeSelectTrauma(traumaForm.primaryExposure, (v) => patchTraumaForm({ primaryExposure: v }), formDisabled)}
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 10 }}>
+                        <label style={labelStyle}>Notes (primaire)</label>
+                        <textarea
+                          value={traumaForm.primaryNotes}
+                          onChange={(e) => patchTraumaForm({ primaryNotes: e.target.value })}
+                          disabled={formDisabled}
+                          rows={2}
+                          style={{ ...inputBase, resize: "vertical", minHeight: 56, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p style={{ ...sectionHeading, fontSize: 10 }}>Examen secondaire</p>
+                      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div>
+                          <label style={labelStyle}>Tête / face</label>
+                          <textarea
+                            value={traumaForm.secondaryHeadFace}
+                            onChange={(e) => patchTraumaForm({ secondaryHeadFace: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Cou</label>
+                          <textarea
+                            value={traumaForm.secondaryNeck}
+                            onChange={(e) => patchTraumaForm({ secondaryNeck: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Thorax</label>
+                          <textarea
+                            value={traumaForm.secondaryChest}
+                            onChange={(e) => patchTraumaForm({ secondaryChest: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Abdomen / bassin</label>
+                          <textarea
+                            value={traumaForm.secondaryAbdomenPelvis}
+                            onChange={(e) => patchTraumaForm({ secondaryAbdomenPelvis: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Dos / rachis</label>
+                          <textarea
+                            value={traumaForm.secondaryBackSpine}
+                            onChange={(e) => patchTraumaForm({ secondaryBackSpine: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Extrémités</label>
+                          <textarea
+                            value={traumaForm.secondaryExtremities}
+                            onChange={(e) => patchTraumaForm({ secondaryExtremities: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Peau / plaies</label>
+                          <textarea
+                            value={traumaForm.secondarySkinWounds}
+                            onChange={(e) => patchTraumaForm({ secondarySkinWounds: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Notes secondaires</label>
+                          <textarea
+                            value={traumaForm.secondaryNotes}
+                            onChange={(e) => patchTraumaForm({ secondaryNotes: e.target.value })}
+                            disabled={formDisabled}
+                            rows={2}
+                            style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
