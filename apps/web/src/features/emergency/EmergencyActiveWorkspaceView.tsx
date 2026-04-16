@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { createDiagnosis } from "@/lib/chartApi";
 import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
+import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
   getEncounterStatusBoardLabelFr,
@@ -32,6 +33,7 @@ import {
 } from "@/features/emergency/erClinicalDecisionSupport";
 import { ErClinicalDecisionSupportPanel } from "@/features/emergency/ErClinicalDecisionSupportPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
+import { EmergencyQuickVitalsEditor } from "@/features/emergency/EmergencyQuickVitalsEditor";
 import {
   EmergencyWorkspaceAllergiesCard,
   EmergencyWorkspaceVitalsCard,
@@ -192,6 +194,7 @@ type ErDashboardTile = {
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
+  const { t } = useI18n();
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
     useFacilityAndRoles();
@@ -202,6 +205,7 @@ export function EmergencyActiveWorkspaceView() {
   const [triageRefresh, setTriageRefresh] = useState(0);
   const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
   const [triageLoading, setTriageLoading] = useState(false);
+  const [showQuickVitals, setShowQuickVitals] = useState(false);
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
 
@@ -517,6 +521,8 @@ export function EmergencyActiveWorkspaceView() {
   const roomDisplay = encounter.roomLabel?.trim() || ui.common.dash;
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
+  const vitalsQuickEditEnabled =
+    canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 
   const canEditOperationalEncounter = roles.includes("RN") || roles.includes("ADMIN");
   const physicianAssignedForOperational =
@@ -649,18 +655,39 @@ export function EmergencyActiveWorkspaceView() {
               <div
                 style={{
                   display: "flex",
-                  flexWrap: "wrap",
+                  flexDirection: "column",
                   gap: 8,
                   flex: "1 1 260px",
                   alignItems: "stretch",
                   minWidth: 0,
                 }}
               >
-                <EmergencyWorkspaceVitalsCard vitalPairs={clinicalStripModel.pairs} loading={triageLoading} />
-                <EmergencyWorkspaceAllergiesCard
-                  allergySummary={clinicalStripModel.allergyText}
-                  loading={triageLoading}
-                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "stretch" }}>
+                  <EmergencyWorkspaceVitalsCard
+                    vitalPairs={clinicalStripModel.pairs}
+                    loading={triageLoading}
+                    editable={vitalsQuickEditEnabled}
+                    onEditClick={vitalsQuickEditEnabled ? () => setShowQuickVitals(true) : undefined}
+                    editAriaLabel={t("erQuickVitals.vitalsEditAria")}
+                  />
+                  <EmergencyWorkspaceAllergiesCard
+                    allergySummary={clinicalStripModel.allergyText}
+                    loading={triageLoading}
+                  />
+                </div>
+                {showQuickVitals && vitalsQuickEditEnabled && fid ? (
+                  <EmergencyQuickVitalsEditor
+                    open={showQuickVitals}
+                    onClose={() => setShowQuickVitals(false)}
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    patientId={patient?.id}
+                    triageSnapshot={triageSnapshot}
+                    onSaved={async () => {
+                      setTriageRefresh((r) => r + 1);
+                    }}
+                  />
+                ) : null}
               </div>
 
               {/* Droite : salle (haut) + statut + lien — style salle distinct d’ESI (bleu, pas rouge) */}

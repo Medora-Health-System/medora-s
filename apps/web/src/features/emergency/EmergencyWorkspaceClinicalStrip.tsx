@@ -27,9 +27,16 @@ function VitalPair({ label, value }: { label: string; value: string }) {
 export function EmergencyWorkspaceVitalsCard({
   vitalPairs,
   loading,
+  editable = false,
+  onEditClick,
+  editAriaLabel,
 }: {
   vitalPairs: { label: string; value: string }[];
   loading: boolean;
+  /** When true and onEditClick is set, the vitals block is clickable (quick triage vitals edit). */
+  editable?: boolean;
+  onEditClick?: () => void;
+  editAriaLabel?: string;
 }) {
   if (loading) {
     return (
@@ -55,18 +62,36 @@ export function EmergencyWorkspaceVitalsCard({
   const rowC = p.length >= 6 && p[2] && p[5] ? [p[2], p[5]] : null;
   const taille = p.length >= 7 ? p[6] : null;
 
+  const interactive = Boolean(editable && onEditClick);
+  const shellStyle: React.CSSProperties = {
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: interactive ? "1px solid #bae6fd" : "1px solid #e2e8f0",
+    backgroundColor: interactive ? "#f8fafc" : "#fff",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+    minWidth: 200,
+    maxWidth: 280,
+    boxSizing: "border-box",
+    cursor: interactive ? "pointer" : "default",
+  };
+
   return (
     <div
-      style={{
-        padding: "8px 10px",
-        borderRadius: 10,
-        border: "1px solid #e2e8f0",
-        backgroundColor: "#fff",
-        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-        minWidth: 200,
-        maxWidth: 280,
-        boxSizing: "border-box",
-      }}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? onEditClick : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onEditClick?.();
+              }
+            }
+          : undefined
+      }
+      aria-label={interactive ? editAriaLabel : undefined}
+      style={shellStyle}
     >
       <p
         style={{

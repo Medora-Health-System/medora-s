@@ -1176,6 +1176,23 @@ export default {
         "Série mensuelle insuffisante pour comparer deux mois consécutifs dans les données retournées.",
     },
   },
+  erQuickVitals: {
+    vitalsEditAria: "Modifier les signes vitaux (triage)",
+    title: "Signes vitaux — saisie rapide",
+    tempC: "Température (°C)",
+    hr: "FC (/min)",
+    rr: "FR (/min)",
+    bpSys: "TA systolique",
+    bpDia: "TA diastolique",
+    spo2: "SpO₂ (%)",
+    weightKg: "Poids (kg)",
+    heightCm: "Taille (cm)",
+    allergyNote: "Note allergies (triage)",
+    save: "Enregistrer",
+    saving: "Enregistrement…",
+    cancel: "Annuler",
+    saveError: "Impossible d’enregistrer les signes vitaux.",
+  },
   erCds: {
     severity: {
       info: "Info",

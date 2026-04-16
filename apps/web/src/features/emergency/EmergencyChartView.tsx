@@ -8,6 +8,7 @@ import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { getEncounterStatusBoardLabelFr, getEncounterTypeLabelFr, ui } from "@/lib/uiLabels";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import {
   esiDisplayChar,
@@ -21,6 +22,7 @@ import {
   triagePreviewSliceFromTriageGet,
 } from "@/features/emergency/emergencyTriageDocPreview";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
+import { EmergencyQuickVitalsEditor } from "@/features/emergency/EmergencyQuickVitalsEditor";
 import {
   EmergencyWorkspaceAllergiesCard,
   EmergencyWorkspaceVitalsCard,
@@ -153,6 +155,7 @@ const sectionTitle: React.CSSProperties = {
 
 export function EmergencyChartView() {
   const params = useParams();
+  const { t } = useI18n();
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
     useFacilityAndRoles();
@@ -161,6 +164,7 @@ export function EmergencyChartView() {
   const [triageRefresh, setTriageRefresh] = useState(0);
   const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
   const [triageLoading, setTriageLoading] = useState(false);
+  const [showQuickVitals, setShowQuickVitals] = useState(false);
 
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
   const [loading, setLoading] = useState(true);
@@ -353,6 +357,8 @@ export function EmergencyChartView() {
   const roomDisplay = encounter.roomLabel?.trim() || ui.common.dash;
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
+  const vitalsQuickEditEnabled =
+    canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 
   const canEditOperationalEncounter = roles.includes("RN") || roles.includes("ADMIN");
   const physicianAssignedForOperational =
@@ -489,18 +495,39 @@ export function EmergencyChartView() {
                 <div
                   style={{
                     display: "flex",
-                    flexWrap: "wrap",
+                    flexDirection: "column",
                     gap: 8,
                     flex: "1 1 260px",
                     alignItems: "stretch",
                     minWidth: 0,
                   }}
                 >
-                  <EmergencyWorkspaceVitalsCard vitalPairs={clinicalStripModel.pairs} loading={triageLoading} />
-                  <EmergencyWorkspaceAllergiesCard
-                    allergySummary={clinicalStripModel.allergyText}
-                    loading={triageLoading}
-                  />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "stretch" }}>
+                    <EmergencyWorkspaceVitalsCard
+                      vitalPairs={clinicalStripModel.pairs}
+                      loading={triageLoading}
+                      editable={vitalsQuickEditEnabled}
+                      onEditClick={vitalsQuickEditEnabled ? () => setShowQuickVitals(true) : undefined}
+                      editAriaLabel={t("erQuickVitals.vitalsEditAria")}
+                    />
+                    <EmergencyWorkspaceAllergiesCard
+                      allergySummary={clinicalStripModel.allergyText}
+                      loading={triageLoading}
+                    />
+                  </div>
+                  {showQuickVitals && vitalsQuickEditEnabled && fid ? (
+                    <EmergencyQuickVitalsEditor
+                      open={showQuickVitals}
+                      onClose={() => setShowQuickVitals(false)}
+                      encounterId={encounterId}
+                      facilityId={fid}
+                      patientId={patient?.id}
+                      triageSnapshot={triageSnapshot}
+                      onSaved={async () => {
+                        setTriageRefresh((r) => r + 1);
+                      }}
+                    />
+                  ) : null}
                 </div>
 
                 <div

@@ -1212,6 +1212,23 @@ export default {
         "Série mensuelle insuffisante pour comparer deux mois consécutifs dans les données retournées.",
     },
   },
+  erQuickVitals: {
+    vitalsEditAria: "Edit vital signs (triage)",
+    title: "Vital signs — quick entry",
+    tempC: "Temperature (°C)",
+    hr: "HR (/min)",
+    rr: "RR (/min)",
+    bpSys: "Systolic BP",
+    bpDia: "Diastolic BP",
+    spo2: "SpO₂ (%)",
+    weightKg: "Weight (kg)",
+    heightCm: "Height (cm)",
+    allergyNote: "Allergy note (triage)",
+    save: "Save",
+    saving: "Saving…",
+    cancel: "Cancel",
+    saveError: "Could not save vital signs.",
+  },
   erCds: {
     severity: {
       info: "Info",
