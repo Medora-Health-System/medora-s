@@ -582,9 +582,25 @@ export function EmergencyNursingReassessmentPanel({
                   </div>
                 </div>
 
-                <div>
-                  <p style={sectionHeading}>Documentation trauma</p>
-                  <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                <details
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <summary
+                    style={{
+                      cursor: formDisabled ? "default" : "pointer",
+                      fontWeight: 600,
+                      fontSize: 13,
+                      color: "#334155",
+                    }}
+                  >
+                    Documentation trauma
+                  </summary>
+                  <p style={{ margin: "10px 0 8px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
                     Examen primaire / secondaire — enregistré avec le dossier (JSON).
                   </p>
                   <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -709,7 +725,7 @@ export function EmergencyNursingReassessmentPanel({
                       </div>
                     </div>
                   </div>
-                </div>
+                </details>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                   <button
