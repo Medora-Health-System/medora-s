@@ -1176,4 +1176,46 @@ export default {
         "Série mensuelle insuffisante pour comparer deux mois consécutifs dans les données retournées.",
     },
   },
+  erCds: {
+    severity: {
+      info: "Info",
+      warning: "Attention",
+      critical: "Critique",
+    },
+    panelTitle: "Aide à la décision (règles v1)",
+    panelHint:
+      "Suggestions assistives basées sur le triage et les écrans structurés. Aucune commande automatique ni remplacement du jugement clinique.",
+    recommendations: {
+      cds_er_trauma_protocol: {
+        title: "Trauma activé — assistance protocole",
+        body:
+          "Niveau trauma documenté : {level}. Utilisez l’assistant protocole dans la zone Ordres pour préparer les lignes (confirmation manuelle requise).",
+      },
+      cds_er_vitals_escalation: {
+        title: "Signes vitaux à risque — réévaluation urgente",
+        body:
+          "Les valeurs enregistrées au triage dépassent des seuils simples (température extrême, tachycardie, polypnée, hypotension, SpO₂ basse). Faites réévaluer le patient et adapter la prise en charge.",
+      },
+      cds_er_esi_urgent: {
+        title: "ESI prioritaire (1–2)",
+        body:
+          "Gravité triage ESI 1 ou 2 : privilégier une réévaluation clinique rapide et une coordination d’équipe.",
+      },
+      cds_er_stroke_pathway: {
+        title: "Suspicion AVC — revue de filière",
+        body:
+          "Le dépistage structuré suggère une préoccupation neurologique. Envisager une évaluation neuro urgente et la suite imagerie selon protocole local (aucune commande automatique).",
+      },
+      cds_er_sepsis_bundle: {
+        title: "Sepsis — revue de prise en charge",
+        body:
+          "Infection suspectée avec au moins un indicateur associé : revoir lactate, perfusion, bilan biologique et hémocultures selon protocole (sélection manuelle dans Ordres).",
+      },
+    },
+    actions: {
+      goOrders: "Aller aux ordres",
+      openTriage: "Ouvrir le triage",
+      seeDiagnostics: "Voir diagnostics",
+    },
+  },
 };

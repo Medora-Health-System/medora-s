@@ -1212,4 +1212,46 @@ export default {
         "Série mensuelle insuffisante pour comparer deux mois consécutifs dans les données retournées.",
     },
   },
+  erCds: {
+    severity: {
+      info: "Info",
+      warning: "Warning",
+      critical: "Critical",
+    },
+    panelTitle: "Decision support (rules v1)",
+    panelHint:
+      "Assistive suggestions from triage and structured screens. No automatic orders; clinical judgment remains required.",
+    recommendations: {
+      cds_er_trauma_protocol: {
+        title: "Trauma activation — protocol assist",
+        body:
+          "Documented trauma level: {level}. Use the protocol assist in Orders to prepare lines (manual confirmation required).",
+      },
+      cds_er_vitals_escalation: {
+        title: "Concerning vitals — urgent reassessment",
+        body:
+          "Triage vitals exceed simple thresholds (extreme temperature, tachycardia, tachypnea, hypotension, low SpO₂). Reassess and adjust care.",
+      },
+      cds_er_esi_urgent: {
+        title: "Priority ESI (1–2)",
+        body:
+          "ESI 1–2: favor rapid reassessment and team coordination.",
+      },
+      cds_er_stroke_pathway: {
+        title: "Stroke concern — pathway review",
+        body:
+          "Structured screening suggests neurological concern. Consider urgent neuro evaluation and imaging per local protocol (no automatic orders).",
+      },
+      cds_er_sepsis_bundle: {
+        title: "Sepsis — care bundle review",
+        body:
+          "Suspected infection with at least one associated indicator: review lactate, fluids, labs, and blood cultures per protocol (manual selection in Orders).",
+      },
+    },
+    actions: {
+      goOrders: "Go to orders",
+      openTriage: "Open triage",
+      seeDiagnostics: "View diagnostics",
+    },
+  },
 };

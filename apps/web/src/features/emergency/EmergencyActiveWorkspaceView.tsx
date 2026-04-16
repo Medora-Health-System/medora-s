@@ -25,6 +25,11 @@ import {
   buildErWorkspaceVitalPairs,
   triagePreviewSliceFromTriageGet,
 } from "@/features/emergency/emergencyTriageDocPreview";
+import {
+  buildErCdsRecommendations,
+  type ErCdsNavigableSection,
+} from "@/features/emergency/erClinicalDecisionSupport";
+import { ErClinicalDecisionSupportPanel } from "@/features/emergency/ErClinicalDecisionSupportPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import {
   EmergencyWorkspaceAllergiesCard,
@@ -353,6 +358,19 @@ export function EmergencyActiveWorkspaceView() {
       pairs: buildErWorkspaceVitalPairs(parsed.slice),
     };
   }, [triageSnapshot]);
+
+  const erCdsRecommendations = useMemo(
+    () =>
+      buildErCdsRecommendations({
+        encounterType: encounter?.type,
+        triage: triageSnapshot,
+      }),
+    [encounter?.type, triageSnapshot]
+  );
+
+  const handleErCdsNavigate = useCallback((section: ErCdsNavigableSection) => {
+    setActiveSection(section);
+  }, []);
 
   const complaintLine = useMemo(() => {
     if (!encounter) return ui.common.dash;
@@ -718,6 +736,13 @@ export function EmergencyActiveWorkspaceView() {
           </MedoraCardInner>
         </MedoraCard>
         </div>
+
+        {erCdsRecommendations.length > 0 && (
+          <ErClinicalDecisionSupportPanel
+            recommendations={erCdsRecommendations}
+            onNavigate={handleErCdsNavigate}
+          />
+        )}
 
         {showOperationalPanel && fid ? (
           <EncounterOperationalPanel
