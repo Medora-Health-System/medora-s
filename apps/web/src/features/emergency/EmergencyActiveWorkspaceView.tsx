@@ -27,8 +27,8 @@ import {
 } from "@/features/emergency/emergencyTriageDocPreview";
 import {
   buildErCdsRecommendations,
-  type ErCdsAssistPreselectKey,
   type ErCdsNavigableSection,
+  type ErCdsRecommendation,
 } from "@/features/emergency/erClinicalDecisionSupport";
 import { ErClinicalDecisionSupportPanel } from "@/features/emergency/ErClinicalDecisionSupportPanel";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
@@ -370,25 +370,22 @@ export function EmergencyActiveWorkspaceView() {
   );
 
   /** CDS v2 — one-shot UI intent for order-assist preselection (never auto-submits). */
-  const [cdsAssistIntent, setCdsAssistIntent] = useState<{
-    key: ErCdsAssistPreselectKey;
-    token: number;
-  } | null>(null);
+  const [cdsIntent, setCdsIntent] = useState<string | null>(null);
 
   const handleErCdsNavigate = useCallback(
-    (section: ErCdsNavigableSection, options?: { preselectKey?: ErCdsAssistPreselectKey }) => {
+    (section: ErCdsNavigableSection, recommendation: ErCdsRecommendation) => {
       setActiveSection(section);
-      if (section === "orders" && options?.preselectKey) {
-        setCdsAssistIntent({ key: options.preselectKey, token: Date.now() });
+      if (recommendation.preselectKey) {
+        setCdsIntent(recommendation.preselectKey);
       } else {
-        setCdsAssistIntent(null);
+        setCdsIntent(null);
       }
     },
     []
   );
 
-  const handleCdsAssistIntentConsumed = useCallback(() => {
-    setCdsAssistIntent(null);
+  const handleConsumeIntent = useCallback(() => {
+    setCdsIntent(null);
   }, []);
 
   const complaintLine = useMemo(() => {
@@ -1058,8 +1055,8 @@ export function EmergencyActiveWorkspaceView() {
               encounterType={encounter?.type}
               vitalsJsonForTraumaProtocol={triageSnapshot?.vitalsJson}
               roles={roles}
-              cdsAssistIntent={cdsAssistIntent}
-              onCdsAssistIntentConsumed={handleCdsAssistIntentConsumed}
+              cdsIntent={cdsIntent}
+              onConsumeIntent={handleConsumeIntent}
             />
           ) : null}
 

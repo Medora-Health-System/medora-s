@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { OrderCreateDto } from "@medora/shared";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
-import type { ErCdsAssistPreselectKey } from "@/features/emergency/erClinicalDecisionSupport";
 import {
   erTraumaProtocolAssistContext,
   type ErTraumaLevel,
@@ -123,8 +122,8 @@ export function TraumaProtocolAssistPanel({
   canPrescribe,
   onRefetchEncounter,
   onOrdersApplied,
-  cdsAssistIntent,
-  onCdsAssistIntentConsumed,
+  cdsIntent,
+  onConsumeIntent,
 }: {
   encounterId: string;
   facilityId: string;
@@ -134,14 +133,17 @@ export function TraumaProtocolAssistPanel({
   canPrescribe: boolean;
   onRefetchEncounter?: () => Promise<void>;
   onOrdersApplied?: () => void | Promise<void>;
-  /** Rules-based CDS v2 — one-shot checkbox hint; consumed immediately after apply. */
-  cdsAssistIntent?: { key: ErCdsAssistPreselectKey; token: number } | null;
-  onCdsAssistIntentConsumed?: () => void;
+  /** Rules-based CDS v2 — one-shot checkbox hint (no API). */
+  cdsIntent?: string | null;
+  onConsumeIntent?: () => void;
 }) {
   const ctx = useMemo(() => erTraumaProtocolAssistContext(encounterType, vitalsJson), [encounterType, vitalsJson]);
 
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const isRn = roles.includes("RN");
+
+  /** True after user toggles provider protocol checkboxes — CDS must not override. */
+  const userModifiedProtocolRef = useRef(false);
 
   const [assistIntentFlash, setAssistIntentFlash] = useState(false);
 
@@ -160,35 +162,37 @@ export function TraumaProtocolAssistPanel({
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    userModifiedProtocolRef.current = false;
     setProvSel(initialSelection(ctx.traumaLevel));
   }, [ctx.traumaLevel, ctx.visible]);
 
   useEffect(() => {
-    if (!cdsAssistIntent || !onCdsAssistIntentConsumed) return;
+    if (!cdsIntent || !onConsumeIntent) return;
     if (!ctx.visible) {
-      onCdsAssistIntentConsumed();
+      onConsumeIntent();
       return;
     }
     if (!isProviderLike) {
-      onCdsAssistIntentConsumed();
+      onConsumeIntent();
       return;
     }
-    const key = cdsAssistIntent.key;
-    if (key === "trauma_protocol_level") {
+    if (userModifiedProtocolRef.current) {
+      onConsumeIntent();
+      return;
+    }
+    if (cdsIntent === "stroke_pathway") {
+      onConsumeIntent();
+      return;
+    }
+    if (cdsIntent === "trauma_protocol") {
       setProvSel(initialSelection(ctx.traumaLevel));
       setAssistIntentFlash(true);
-    } else if (key === "sepsis_bundle") {
+    } else if (cdsIntent === "sepsis_protocol") {
       setProvSel(initialSelectionSepsisAssist());
       setAssistIntentFlash(true);
     }
-    onCdsAssistIntentConsumed();
-  }, [
-    cdsAssistIntent,
-    ctx.traumaLevel,
-    ctx.visible,
-    isProviderLike,
-    onCdsAssistIntentConsumed,
-  ]);
+    onConsumeIntent();
+  }, [cdsIntent, ctx.traumaLevel, ctx.visible, isProviderLike, onConsumeIntent]);
 
   useEffect(() => {
     if (!assistIntentFlash) return;
@@ -197,6 +201,7 @@ export function TraumaProtocolAssistPanel({
   }, [assistIntentFlash]);
 
   const toggleProv = useCallback((id: ProtocolItemId) => {
+    userModifiedProtocolRef.current = true;
     setProvSel((s) => ({ ...s, [id]: !s[id] }));
   }, []);
 

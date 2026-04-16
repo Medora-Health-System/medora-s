@@ -17,10 +17,7 @@ export type ErCdsNavigableSection = "orders" | "triage" | "nursing" | "diagnosti
  * Rules-based CDS v2 — safe preselection hint only (UI); never triggers API or orders.
  * Receiving panels apply once then clear parent intent.
  */
-export type ErCdsAssistPreselectKey =
-  | "trauma_protocol_level"
-  | "sepsis_bundle"
-  | "stroke_pathway";
+export type ErCdsAssistPreselectKey = "trauma_protocol" | "sepsis_protocol" | "stroke_pathway";
 
 /** Machine ids; copy lives in i18n (`erCds.recommendations.<id>`). */
 export type ErCdsRecommendationId =
@@ -119,7 +116,7 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
       params: { level: lvl },
       actionKey: "goOrders",
       actionTarget: "orders",
-      preselectKey: "trauma_protocol_level",
+      preselectKey: "trauma_protocol",
     });
   }
 
@@ -150,6 +147,7 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
       severity: strokePositive ? "critical" : "warning",
       actionKey: "seeDiagnostics",
       actionTarget: "diagnostics",
+      preselectKey: "stroke_pathway",
     });
   }
 
@@ -162,7 +160,7 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
       severity: "warning",
       actionKey: "goOrders",
       actionTarget: "orders",
-      preselectKey: "sepsis_bundle",
+      preselectKey: "sepsis_protocol",
     });
   }
 
