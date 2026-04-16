@@ -27,6 +27,7 @@ import {
 } from "@/features/emergency/emergencyTriageDocPreview";
 import {
   buildErCdsRecommendations,
+  type ErCdsAssistPreselectKey,
   type ErCdsNavigableSection,
 } from "@/features/emergency/erClinicalDecisionSupport";
 import { ErClinicalDecisionSupportPanel } from "@/features/emergency/ErClinicalDecisionSupportPanel";
@@ -368,8 +369,26 @@ export function EmergencyActiveWorkspaceView() {
     [encounter?.type, triageSnapshot]
   );
 
-  const handleErCdsNavigate = useCallback((section: ErCdsNavigableSection) => {
-    setActiveSection(section);
+  /** CDS v2 — one-shot UI intent for order-assist preselection (never auto-submits). */
+  const [cdsAssistIntent, setCdsAssistIntent] = useState<{
+    key: ErCdsAssistPreselectKey;
+    token: number;
+  } | null>(null);
+
+  const handleErCdsNavigate = useCallback(
+    (section: ErCdsNavigableSection, options?: { preselectKey?: ErCdsAssistPreselectKey }) => {
+      setActiveSection(section);
+      if (section === "orders" && options?.preselectKey) {
+        setCdsAssistIntent({ key: options.preselectKey, token: Date.now() });
+      } else {
+        setCdsAssistIntent(null);
+      }
+    },
+    []
+  );
+
+  const handleCdsAssistIntentConsumed = useCallback(() => {
+    setCdsAssistIntent(null);
   }, []);
 
   const complaintLine = useMemo(() => {
@@ -1039,6 +1058,8 @@ export function EmergencyActiveWorkspaceView() {
               encounterType={encounter?.type}
               vitalsJsonForTraumaProtocol={triageSnapshot?.vitalsJson}
               roles={roles}
+              cdsAssistIntent={cdsAssistIntent}
+              onCdsAssistIntentConsumed={handleCdsAssistIntentConsumed}
             />
           ) : null}
 

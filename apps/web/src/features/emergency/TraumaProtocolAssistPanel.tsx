@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { OrderCreateDto } from "@medora/shared";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
+import type { ErCdsAssistPreselectKey } from "@/features/emergency/erClinicalDecisionSupport";
 import {
   erTraumaProtocolAssistContext,
   type ErTraumaLevel,
@@ -79,6 +80,21 @@ function initialSelection(level: ErTraumaLevel): Record<ProtocolItemId, boolean>
   return base;
 }
 
+/** CDS sepsis hint — subset of existing protocol checkboxes only (no API). */
+function initialSelectionSepsisAssist(): Record<ProtocolItemId, boolean> {
+  return {
+    cbc: true,
+    cmp: true,
+    lactate: true,
+    type_screen: true,
+    ct_head: false,
+    ct_cspine: false,
+    ct_cap: false,
+    txa: false,
+    fluids: true,
+  };
+}
+
 async function fetchPrescriberName(): Promise<string> {
   try {
     const res = await fetch("/api/auth/me");
@@ -107,6 +123,8 @@ export function TraumaProtocolAssistPanel({
   canPrescribe,
   onRefetchEncounter,
   onOrdersApplied,
+  cdsAssistIntent,
+  onCdsAssistIntentConsumed,
 }: {
   encounterId: string;
   facilityId: string;
@@ -116,11 +134,16 @@ export function TraumaProtocolAssistPanel({
   canPrescribe: boolean;
   onRefetchEncounter?: () => Promise<void>;
   onOrdersApplied?: () => void | Promise<void>;
+  /** Rules-based CDS v2 — one-shot checkbox hint; consumed immediately after apply. */
+  cdsAssistIntent?: { key: ErCdsAssistPreselectKey; token: number } | null;
+  onCdsAssistIntentConsumed?: () => void;
 }) {
   const ctx = useMemo(() => erTraumaProtocolAssistContext(encounterType, vitalsJson), [encounterType, vitalsJson]);
 
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const isRn = roles.includes("RN");
+
+  const [assistIntentFlash, setAssistIntentFlash] = useState(false);
 
   const [rnChecks, setRnChecks] = useState({
     iv2: true,
@@ -133,12 +156,45 @@ export function TraumaProtocolAssistPanel({
     initialSelection(ctx.traumaLevel)
   );
 
+  const [applying, setApplying] = useState(false);
+  const [applyMsg, setApplyMsg] = useState<string | null>(null);
+
   useEffect(() => {
     setProvSel(initialSelection(ctx.traumaLevel));
   }, [ctx.traumaLevel, ctx.visible]);
 
-  const [applying, setApplying] = useState(false);
-  const [applyMsg, setApplyMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!cdsAssistIntent || !onCdsAssistIntentConsumed) return;
+    if (!ctx.visible) {
+      onCdsAssistIntentConsumed();
+      return;
+    }
+    if (!isProviderLike) {
+      onCdsAssistIntentConsumed();
+      return;
+    }
+    const key = cdsAssistIntent.key;
+    if (key === "trauma_protocol_level") {
+      setProvSel(initialSelection(ctx.traumaLevel));
+      setAssistIntentFlash(true);
+    } else if (key === "sepsis_bundle") {
+      setProvSel(initialSelectionSepsisAssist());
+      setAssistIntentFlash(true);
+    }
+    onCdsAssistIntentConsumed();
+  }, [
+    cdsAssistIntent,
+    ctx.traumaLevel,
+    ctx.visible,
+    isProviderLike,
+    onCdsAssistIntentConsumed,
+  ]);
+
+  useEffect(() => {
+    if (!assistIntentFlash) return;
+    const id = window.setTimeout(() => setAssistIntentFlash(false), 2200);
+    return () => window.clearTimeout(id);
+  }, [assistIntentFlash]);
 
   const toggleProv = useCallback((id: ProtocolItemId) => {
     setProvSel((s) => ({ ...s, [id]: !s[id] }));
@@ -259,7 +315,7 @@ export function TraumaProtocolAssistPanel({
     marginBottom: 14,
     padding: "12px 14px",
     borderRadius: 10,
-    border: "1px solid #fecaca",
+    border: assistIntentFlash ? "2px solid #2563eb" : "1px solid #fecaca",
     backgroundColor: "#fffafa",
   };
 

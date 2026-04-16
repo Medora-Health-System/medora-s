@@ -13,6 +13,15 @@ import {
 /** Subset of ER workspace sections CDS actions may target (no circular imports with the view). */
 export type ErCdsNavigableSection = "orders" | "triage" | "nursing" | "diagnostics";
 
+/**
+ * Rules-based CDS v2 — safe preselection hint only (UI); never triggers API or orders.
+ * Receiving panels apply once then clear parent intent.
+ */
+export type ErCdsAssistPreselectKey =
+  | "trauma_protocol_level"
+  | "sepsis_bundle"
+  | "stroke_pathway";
+
 /** Machine ids; copy lives in i18n (`erCds.recommendations.<id>`). */
 export type ErCdsRecommendationId =
   | "cds_er_trauma_protocol"
@@ -32,6 +41,8 @@ export type ErCdsRecommendation = {
   /** Maps to `erCds.actions.*` in messages. */
   actionKey?: "goOrders" | "openTriage" | "seeDiagnostics";
   actionTarget?: ErCdsNavigableSection;
+  /** Optional assist hint when navigating to Ordres (consumed once client-side). */
+  preselectKey?: ErCdsAssistPreselectKey;
 };
 
 export type ErCdsContext = {
@@ -108,6 +119,7 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
       params: { level: lvl },
       actionKey: "goOrders",
       actionTarget: "orders",
+      preselectKey: "trauma_protocol_level",
     });
   }
 
@@ -150,6 +162,7 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
       severity: "warning",
       actionKey: "goOrders",
       actionTarget: "orders",
+      preselectKey: "sepsis_bundle",
     });
   }
 

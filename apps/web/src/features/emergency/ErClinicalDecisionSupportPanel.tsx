@@ -3,7 +3,11 @@
 import React from "react";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
-import type { ErCdsNavigableSection, ErCdsRecommendation } from "./erClinicalDecisionSupport";
+import type {
+  ErCdsAssistPreselectKey,
+  ErCdsNavigableSection,
+  ErCdsRecommendation,
+} from "./erClinicalDecisionSupport";
 
 function interpolate(template: string, params?: Record<string, string | number>): string {
   if (!params) return template;
@@ -23,7 +27,10 @@ const SEVERITY_STYLE: Record<
 
 type Props = {
   recommendations: ErCdsRecommendation[];
-  onNavigate: (section: ErCdsNavigableSection) => void;
+  onNavigate: (
+    section: ErCdsNavigableSection,
+    options?: { preselectKey?: ErCdsAssistPreselectKey }
+  ) => void;
 };
 
 export function ErClinicalDecisionSupportPanel({ recommendations, onNavigate }: Props) {
@@ -104,7 +111,11 @@ export function ErClinicalDecisionSupportPanel({ recommendations, onNavigate }: 
                 <div style={{ marginTop: 10 }}>
                   <button
                     type="button"
-                    onClick={() => onNavigate(rec.actionTarget as ErCdsNavigableSection)}
+                    onClick={() =>
+                      onNavigate(rec.actionTarget as ErCdsNavigableSection, {
+                        preselectKey: rec.preselectKey,
+                      })
+                    }
                     style={{
                       fontSize: 13,
                       fontWeight: 600,

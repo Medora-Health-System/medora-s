@@ -8,6 +8,7 @@ import { CreateOrderModal } from "@/components/orders";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { formatDomainLabelFr, type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
+import type { ErCdsAssistPreselectKey } from "@/features/emergency/erClinicalDecisionSupport";
 import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
 
 const btn: React.CSSProperties = {
@@ -66,6 +67,8 @@ export function EmergencyErOrdersPanel({
   encounterType,
   vitalsJsonForTraumaProtocol,
   roles,
+  cdsAssistIntent,
+  onCdsAssistIntentConsumed,
 }: {
   encounterId: string;
   facilityId: string;
@@ -77,6 +80,9 @@ export function EmergencyErOrdersPanel({
   encounterType?: string | null;
   vitalsJsonForTraumaProtocol?: unknown | null;
   roles?: string[];
+  /** CDS v2 — one-shot preselect intent (workspace only). */
+  cdsAssistIntent?: { key: ErCdsAssistPreselectKey; token: number } | null;
+  onCdsAssistIntentConsumed?: () => void;
 }) {
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,6 +140,8 @@ export function EmergencyErOrdersPanel({
               setOrdersRefresh((x) => x + 1);
               await onOrdersCreated?.();
             }}
+            cdsAssistIntent={cdsAssistIntent}
+            onCdsAssistIntentConsumed={onCdsAssistIntentConsumed}
           />
         ) : null}
         {loading ? (
