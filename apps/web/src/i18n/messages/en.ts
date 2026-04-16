@@ -1311,4 +1311,13 @@ export default {
     prefillFromTriage: "Prefill from triage",
     helperNote: "Prefill uses already documented data only.",
   },
+  erMseExamTemplates: {
+    helperLine: "Physical exam templates — editable prefill.",
+    presetNormal: "Normal exam",
+    presetChestPain: "Chest pain",
+    presetStroke: "Stroke",
+    presetTrauma: "Trauma",
+    presetRespiratory: "Respiratory",
+    presetAbdominal: "Abdominal",
+  },
 };

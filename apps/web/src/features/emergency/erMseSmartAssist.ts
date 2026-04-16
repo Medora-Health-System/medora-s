@@ -1,6 +1,7 @@
 /**
  * Deterministic ER MSE prefill suggestions from data already documented in the workflow.
  * No network, no AI, no inference beyond explicit structured facts.
+ * Wording kept concise and clinician-style (French).
  */
 
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
@@ -37,7 +38,18 @@ function pickChiefFromEncounter(enc: ErMseSmartAssistContext["encounterLine"]): 
   return vr || cc || "";
 }
 
-/** French reminders only — factual linkage to active CDS rules, no orders. */
+/** Chief text suggests thoracic pain — deterministic keyword hint only. */
+function chiefSuggestsChestPain(chief: string): boolean {
+  const s = chief.toLowerCase();
+  return (
+    s.includes("thoracique") ||
+    s.includes("thorax") ||
+    s.includes("précordial") ||
+    s.includes("precordial")
+  );
+}
+
+/** Physician-style checklist lines from active CDS ids (no product-style “rappel aide à la décision”). */
 function planLinesFromCdsIds(ids: readonly string[] | undefined): string {
   if (!ids?.length) return "";
   const lines: string[] = [];
@@ -45,37 +57,25 @@ function planLinesFromCdsIds(ids: readonly string[] | undefined): string {
   for (const id of ids) {
     if (seen.has(id)) continue;
     seen.add(id);
-    const line = CDS_REMINDER_FR[id];
+    const line = CDS_PLAN_LINE_FR[id];
     if (line) lines.push(line);
   }
   return lines.join("\n");
 }
 
-/** Neutral wording; keys mirror `ErCdsRecommendationId` where applicable. */
-const CDS_REMINDER_FR: Record<string, string> = {
-  cds_er_trauma_protocol:
-    "Rappel (aide à la décision) : protocole trauma — à confirmer manuellement dans les ordres si indiqué.",
-  cds_er_vitals_escalation:
-    "Rappel (aide à la décision) : signes vitaux à risque — réévaluation urgente documentée.",
-  cds_er_hypotension:
-    "Rappel (aide à la décision) : hypotension — vigilance hémodynamique (assistif uniquement).",
-  cds_er_tachycardia:
-    "Rappel (aide à la décision) : tachycardie — réévaluation (assistif uniquement).",
-  cds_er_hypoxemia:
-    "Rappel (aide à la décision) : hypoxémie — attention respiratoire (assistif uniquement).",
-  cds_er_tachypnea:
-    "Rappel (aide à la décision) : polypnée — réévaluation (assistif uniquement).",
-  cds_er_temperature_concern:
-    "Rappel (aide à la décision) : température extrême — réévaluation (assistif uniquement).",
-  cds_er_hemodynamic_trend:
-    "Rappel (aide à la décision) : tendance hémodynamique défavorable sur relevés récents (assistif uniquement).",
-  cds_er_respiratory_trend:
-    "Rappel (aide à la décision) : tendance respiratoire défavorable sur relevés récents (assistif uniquement).",
-  cds_er_esi_urgent: "Rappel (aide à la décision) : ESI prioritaire (1–2) documenté au triage.",
-  cds_er_stroke_pathway:
-    "Rappel (aide à la décision) : filière AVC — revue selon protocole local (assistif uniquement).",
-  cds_er_sepsis_bundle:
-    "Rappel (aide à la décision) : bundle sepsis — revue selon protocole local (assistif uniquement).",
+const CDS_PLAN_LINE_FR: Record<string, string> = {
+  cds_er_trauma_protocol: "Protocole trauma à confirmer selon l’évaluation clinique.",
+  cds_er_vitals_escalation: "Signes vitaux à risque — réévaluation clinique urgente.",
+  cds_er_hypotension: "Hypotension — vigilance hémodynamique et réévaluation.",
+  cds_er_tachycardia: "Tachycardie — réévaluation du contexte et des causes.",
+  cds_er_hypoxemia: "Hypoxémie — réévaluation respiratoire et support si indiqué.",
+  cds_er_tachypnea: "Polypnée — réévaluation ventilatoire.",
+  cds_er_temperature_concern: "Température extrême — réévaluation et cause à préciser.",
+  cds_er_hemodynamic_trend: "Tendance hémodynamique défavorable sur relevés récents — réévaluation.",
+  cds_er_respiratory_trend: "Tendance respiratoire défavorable sur relevés récents — réévaluation.",
+  cds_er_esi_urgent: "ESI prioritaire (1–2) — coordination et réévaluation rapide.",
+  cds_er_stroke_pathway: "Orientation filière AVC selon protocole local.",
+  cds_er_sepsis_bundle: "Réévaluer la prise en charge sepsis selon protocole local.",
 };
 
 function vitalsRecordFromSlice(slice: {
@@ -133,87 +133,83 @@ export function buildErMseSmartAssistSuggestions(ctx: ErMseSmartAssistContext): 
     const { slice, er } = parsed;
     const onset = (slice.onsetAt ?? "").trim();
     if (onset) {
-      out.onsetTimingContext = `Début / chronologie (champ triage) : ${onset}.`;
+      out.onsetTimingContext = `Début / évolution : ${onset}.`;
     }
 
     const esi = (slice.esi ?? "").trim();
-    const hpiParts: string[] = [];
+
+    const hpiSentences: string[] = [];
     if (esi) {
-      hpiParts.push(`ESI documenté au triage : ${esi}.`);
+      hpiSentences.push(`Priorisation ESI ${esi}.`);
     }
     if (strokePositive || strokeAlert) {
-      const bits: string[] = [];
-      if (stroke.faceDroop === "yes") bits.push("asymétrie faciale");
-      if (stroke.armWeakness === "yes") bits.push("faiblesse du membre");
-      if (stroke.speechDifficulty === "yes") bits.push("trouble de la parole");
-      if (strokeAlert) bits.push("alerte AVC activée au triage");
-      hpiParts.push(
-        `Dépistage structuré au triage : ${bits.length ? bits.join(", ") + " (éléments renseignés comme présents)." : "éléments documentés dans l’écran de dépistage."}`
-      );
+      const pos: string[] = [];
+      if (stroke.faceDroop === "yes") pos.push("asymétrie faciale");
+      if (stroke.armWeakness === "yes") pos.push("faiblesse de membre");
+      if (stroke.speechDifficulty === "yes") pos.push("trouble de la parole");
+      if (strokeAlert) pos.push("alerte AVC activée");
+      if (pos.length) {
+        hpiSentences.push(`Dépistage initial : ${pos.join(", ")}.`);
+      }
     }
     if (sepsisConcern) {
-      hpiParts.push(
-        "Écran sepsis au triage : infection suspectée avec au moins un critère associé renseigné (données factuelles du formulaire)."
-      );
+      hpiSentences.push("Infection suspectée avec critères associés compatibles sepsis (criblage initial).");
     }
-    if (hpiParts.length) {
-      out.hpiNarrative = hpiParts.join("\n\n");
+    if (hpiSentences.length) {
+      out.hpiNarrative = hpiSentences.join(" ");
     }
 
     const assoc: string[] = [];
-    if (stroke.faceDroop === "yes") assoc.push("asymétrie faciale (oui au dépistage)");
-    if (stroke.armWeakness === "yes") assoc.push("faiblesse moteure d’un membre (oui au dépistage)");
-    if (stroke.speechDifficulty === "yes") assoc.push("trouble de la parole (oui au dépistage)");
+    if (stroke.faceDroop === "yes") assoc.push("asymétrie faciale");
+    if (stroke.armWeakness === "yes") assoc.push("faiblesse motrice");
+    if (stroke.speechDifficulty === "yes") assoc.push("trouble de la parole");
     if (assoc.length) {
       out.associatedSymptoms = assoc.join(" · ");
     }
 
     if (er.traumaActivation.activated) {
-      const lvl = traumaLevelLabelFr(er.traumaActivation.level);
-      out.severityKeyConcern = `Trauma activé — ${lvl} (documenté au triage dans le bilan initial).`;
+      out.severityKeyConcern = `Trauma ${traumaLevelLabelFr(er.traumaActivation.level)} activé.`;
+    } else if (strokePositive || strokeAlert) {
+      out.severityKeyConcern = "Alerte AVC au triage.";
+    } else if (sepsisConcern) {
+      out.severityKeyConcern = "Suspicion infectieuse avec critères de sepsis documentés.";
+    } else if (chief && chiefSuggestsChestPain(chief)) {
+      out.severityKeyConcern = "Douleur thoracique à préciser.";
     }
 
     if (strokePositive || strokeAlert) {
-      out.focusedImpression =
-        "Dépistage AVC au triage : au moins un élément positif ou une alerte documentée (voir HPI).";
+      out.focusedImpression = "Suspicion neurologique aiguë (criblage initial positif).";
     } else if (sepsisConcern) {
-      out.focusedImpression =
-        "Écran sepsis au triage : infection suspectée avec critères associés renseignés (données factuelles).";
+      out.focusedImpression = "Sepsis possible — corréler clinique et bilan.";
     }
 
     const vitalsLine = formatVitalsHeaderLine(vitalsRecordFromSlice(slice));
     if (vitalsLine) {
-      out.examReassessmentExtra = `Signes vitaux au triage (dernier relevé documenté) : ${vitalsLine}.`;
+      out.examReassessmentExtra = `SV relevés : ${vitalsLine}.`;
     }
 
-    if (esi || chief) {
-      out.mdmWorkingAssessment = [
-        "Synthèse factuelle à partir du triage :",
-        esi ? `ESI : ${esi}.` : null,
-        chief ? `Motif / préoccupation principale : ${chief}.` : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
+    if (esi) {
+      out.mdmWorkingAssessment = `ESI ${esi} — intégrer à la synthèse et au plan.`;
+    } else if ((slice.chiefComplaint ?? "").trim() || chiefEnc) {
+      out.mdmWorkingAssessment = "Motif à intégrer à la synthèse clinique et au plan.";
     }
-  } else if (chiefEnc) {
-    out.mdmWorkingAssessment = `Motif / préoccupation (dossier consultation) : ${chiefEnc}.`;
+  }
+
+  if (!parsed && chiefEnc) {
+    out.mdmWorkingAssessment = "Motif à intégrer à la synthèse clinique et au plan.";
   }
 
   const immediateParts: string[] = [];
   if (parsed?.er.traumaActivation.activated) {
     immediateParts.push(
-      `Trauma activé (${traumaLevelLabelFr(parsed.er.traumaActivation.level)}) — adapter la prise en charge selon protocole local (décision manuelle).`
+      `Protocole trauma (${traumaLevelLabelFr(parsed.er.traumaActivation.level)}) à ajuster selon l’évaluation et les ordres.`
     );
   }
   if (sepsisConcern) {
-    immediateParts.push(
-      "Critères documentés sur l’écran sepsis au triage — revoir la prise en charge selon protocole local si indiqué."
-    );
+    immediateParts.push("Réévaluer la prise en charge sepsis selon protocole local.");
   }
   if (strokePositive || strokeAlert) {
-    immediateParts.push(
-      "Éléments de dépistage AVC documentés au triage — orientation selon protocole local (décision manuelle)."
-    );
+    immediateParts.push("Orientation filière AVC selon protocole local.");
   }
   if (immediateParts.length) {
     out.mdmImmediateActionsRationale = immediateParts.join("\n\n");
@@ -221,7 +217,7 @@ export function buildErMseSmartAssistSuggestions(ctx: ErMseSmartAssistContext): 
 
   const plan = planLinesFromCdsIds(ctx.cdsRecommendationIds);
   if (plan) {
-    out.mdmPlanSummary = `Rappels issus de l’aide à la décision (assistif, sans commande automatique) :\n${plan}`;
+    out.mdmPlanSummary = plan;
   }
 
   return out;

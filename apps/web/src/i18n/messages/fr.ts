@@ -1275,4 +1275,13 @@ export default {
     prefillFromTriage: "Pré-remplir depuis le triage",
     helperNote: "Pré-remplissage à partir des données déjà documentées.",
   },
+  erMseExamTemplates: {
+    helperLine: "Modèles d’examen physique — pré-remplissage éditable.",
+    presetNormal: "Examen normal",
+    presetChestPain: "Douleur thoracique",
+    presetStroke: "AVC",
+    presetTrauma: "Trauma",
+    presetRespiratory: "Respiratoire",
+    presetAbdominal: "Abdominal",
+  },
 };

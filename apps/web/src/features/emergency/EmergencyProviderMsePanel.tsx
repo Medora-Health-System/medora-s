@@ -24,6 +24,12 @@ import {
   buildErMseSmartAssistSuggestions,
   type ErMseSmartAssistContext,
 } from "./erMseSmartAssist";
+import {
+  ER_PHYSICAL_EXAM_TEMPLATE_KEYS,
+  ER_PHYSICAL_EXAM_TEMPLATE_ORDER,
+  getErPhysicalExamTemplatePreset,
+  type ErPhysicalExamTemplateId,
+} from "./erPhysicalExamTemplatePresets";
 
 type EncounterLite = {
   id: string;
@@ -73,6 +79,15 @@ const PREVIEW_ACCENTS: Record<string, string> = {
   exam: "#059669",
   mdm: "#7c3aed",
   empty: "#cbd5e1",
+};
+
+const EXAM_PRESET_I18N_KEY: Record<ErPhysicalExamTemplateId, string> = {
+  normal: "erMseExamTemplates.presetNormal",
+  chest_pain: "erMseExamTemplates.presetChestPain",
+  stroke: "erMseExamTemplates.presetStroke",
+  trauma: "erMseExamTemplates.presetTrauma",
+  respiratory: "erMseExamTemplates.presetRespiratory",
+  abdominal: "erMseExamTemplates.presetAbdominal",
 };
 
 export function EmergencyProviderMsePanel({
@@ -195,6 +210,25 @@ export function EmergencyProviderMsePanel({
       return next;
     });
   }, [formDisabled, mseAssistContext]);
+
+  const applyPhysicalExamPreset = useCallback(
+    (id: ErPhysicalExamTemplateId) => {
+      if (formDisabled) return;
+      const preset = getErPhysicalExamTemplatePreset(id);
+      setForm((f) => {
+        const next = { ...f };
+        for (const k of ER_PHYSICAL_EXAM_TEMPLATE_KEYS) {
+          const val = preset[k];
+          if (typeof val !== "string" || !val.trim()) continue;
+          const cur = f[k];
+          if (typeof cur === "string" && cur.trim() !== "") continue;
+          next[k] = val;
+        }
+        return next;
+      });
+    },
+    [formDisabled]
+  );
 
   const handleSave = async () => {
     if (formDisabled) return;
@@ -406,6 +440,41 @@ export function EmergencyProviderMsePanel({
 
             <div>
               <p style={sectionHeading}>Examen (aperçu)</p>
+              <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                {t("erMseExamTemplates.helperLine")}
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  marginTop: 8,
+                  alignItems: "center",
+                }}
+              >
+                {ER_PHYSICAL_EXAM_TEMPLATE_ORDER.map((pid) => (
+                  <button
+                    key={pid}
+                    type="button"
+                    disabled={formDisabled}
+                    onClick={() => applyPhysicalExamPreset(pid)}
+                    style={{
+                      fontSize: 12,
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #e2e8f0",
+                      backgroundColor: formDisabled ? "#f1f5f9" : "#fff",
+                      color: formDisabled ? "#94a3b8" : "#334155",
+                      fontWeight: 600,
+                      cursor: formDisabled ? "not-allowed" : "pointer",
+                      fontFamily: "inherit",
+                      boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+                    }}
+                  >
+                    {t(EXAM_PRESET_I18N_KEY[pid])}
+                  </button>
+                ))}
+              </div>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={grid2}>
                   <div>
