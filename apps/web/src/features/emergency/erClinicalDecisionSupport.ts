@@ -4,6 +4,7 @@
  * Does not place orders or alter server state.
  */
 
+import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import {
   strokeScreenFromUnknown,
   sepsisScreenFromUnknown,
@@ -28,6 +29,8 @@ export type ErCdsRecommendationId =
   | "cds_er_hypoxemia"
   | "cds_er_tachypnea"
   | "cds_er_temperature_concern"
+  | "cds_er_hemodynamic_trend"
+  | "cds_er_respiratory_trend"
   | "cds_er_esi_urgent"
   | "cds_er_stroke_pathway"
   | "cds_er_sepsis_bundle";
@@ -41,7 +44,7 @@ export type ErCdsRecommendation = {
   /** Interpolation values for i18n templates. */
   params?: Record<string, string | number>;
   /** Maps to `erCds.actions.*` in messages. */
-  actionKey?: "goOrders" | "openTriage" | "seeDiagnostics";
+  actionKey?: "goOrders" | "openTriage" | "openNursing" | "seeDiagnostics";
   actionTarget?: ErCdsNavigableSection;
   /** Optional assist hint when navigating to Ordres (consumed once client-side). */
   preselectKey?: ErCdsAssistPreselectKey;
@@ -52,6 +55,11 @@ export type ErCdsContext = {
   encounterType: string | null | undefined;
   /** GET `/encounters/:id/triage` payload (or equivalent). */
   triage: Record<string, unknown> | null;
+  /**
+   * Same-encounter vitals snapshots, oldest → newest (e.g. from GET `/patients/:id/triage?latest=true`, filtered).
+   * Used only for deterministic trend rules; omit or pass [] when unavailable.
+   */
+  encounterVitalsSnapshotsOldestFirst?: PatientTriageVitalsSnapshot[] | null;
 };
 
 function traumaLevelLabelFr(level: string): string {
@@ -152,6 +160,80 @@ function vitalConcernToRecommendation(
   }
 }
 
+/** Pull numeric vitals from stored triage vitalsJson (same keys as triage preview). */
+function vitalsNumsFromSnapshot(s: PatientTriageVitalsSnapshot): {
+  hr: number | null;
+  rr: number | null;
+  spo2: number | null;
+  sys: number | null;
+} {
+  const v = s.vitalsJson;
+  if (!v || typeof v !== "object" || Array.isArray(v)) {
+    return { hr: null, rr: null, spo2: null, sys: null };
+  }
+  const o = v as Record<string, unknown>;
+  const n = (x: unknown) => parseNum(String(x ?? "").trim());
+  return {
+    hr: n(o.hr),
+    rr: n(o.rr),
+    spo2: n(o.spo2),
+    sys: n(o.bpSys),
+  };
+}
+
+/**
+ * Trend rules — explicit step thresholds (audit-friendly).
+ * Two points: require a larger single-step change.
+ * Three+ points: require monotonic worsening with a minimum per-step delta.
+ */
+const TREND_HR_STEP_MIN = 8; // bpm between consecutive readings (3+ points)
+const TREND_HR_TWO_POINT_MIN = 15; // bpm when only two readings
+const TREND_SBP_STEP_MIN = 8; // mmHg drop per step (3+ points)
+const TREND_SBP_TWO_POINT_MIN = 15; // mmHg when only two readings
+const TREND_SPO2_STEP_MIN = 2; // % points per step (3+)
+const TREND_SPO2_TWO_POINT_MIN = 4; // % when only two readings
+const TREND_RR_STEP_MIN = 2; // /min per step (3+)
+const TREND_RR_TWO_POINT_MIN = 4; // /min when only two readings
+
+function seriesRisingWorsening(values: number[], stepMin: number, twoPointMin: number): boolean {
+  if (values.length < 2) return false;
+  if (values.length === 2) {
+    return values[1]! > values[0]! + twoPointMin;
+  }
+  for (let i = 1; i < values.length; i++) {
+    if (values[i]! <= values[i - 1]! + stepMin) return false;
+  }
+  return true;
+}
+
+function seriesFallingWorsening(values: number[], stepMin: number, twoPointMin: number): boolean {
+  if (values.length < 2) return false;
+  if (values.length === 2) {
+    return values[0]! > values[1]! + twoPointMin;
+  }
+  for (let i = 1; i < values.length; i++) {
+    if (values[i]! >= values[i - 1]! - stepMin) return false;
+  }
+  return true;
+}
+
+function hemodynamicTrendFromSnapshots(snapshotsOldestFirst: PatientTriageVitalsSnapshot[]): boolean {
+  const hrs = snapshotsOldestFirst.map((s) => vitalsNumsFromSnapshot(s).hr).filter((x): x is number => x != null);
+  const sbps = snapshotsOldestFirst.map((s) => vitalsNumsFromSnapshot(s).sys).filter((x): x is number => x != null);
+  const hrTrend = hrs.length >= 2 && seriesRisingWorsening(hrs, TREND_HR_STEP_MIN, TREND_HR_TWO_POINT_MIN);
+  const sbpTrend = sbps.length >= 2 && seriesFallingWorsening(sbps, TREND_SBP_STEP_MIN, TREND_SBP_TWO_POINT_MIN);
+  return hrTrend || sbpTrend;
+}
+
+function respiratoryTrendFromSnapshots(snapshotsOldestFirst: PatientTriageVitalsSnapshot[]): boolean {
+  const spo2s = snapshotsOldestFirst.map((s) => vitalsNumsFromSnapshot(s).spo2).filter((x): x is number => x != null);
+  const rrs = snapshotsOldestFirst.map((s) => vitalsNumsFromSnapshot(s).rr).filter((x): x is number => x != null);
+  const spo2Trend =
+    spo2s.length >= 2 && seriesFallingWorsening(spo2s, TREND_SPO2_STEP_MIN, TREND_SPO2_TWO_POINT_MIN);
+  const rrTrend = rrs.length >= 2 && seriesRisingWorsening(rrs, TREND_RR_STEP_MIN, TREND_RR_TWO_POINT_MIN);
+  return spo2Trend || rrTrend;
+}
+
 function esiIsUrgent(esi: string): boolean {
   const n = parseInt(esi.trim(), 10);
   return !Number.isNaN(n) && n <= 2;
@@ -197,22 +279,58 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
     );
   }
 
+  let instantVitalRec: ErCdsRecommendation | null = null;
   if (vitalConcerns.length >= 2) {
-    out.push({
+    instantVitalRec = {
       id: "cds_er_vitals_escalation",
       severity: "critical",
       actionKey: "openTriage",
       actionTarget: "triage",
-    });
+    };
   } else if (vitalConcerns.length === 1) {
-    out.push(vitalConcernToRecommendation(vitalConcerns[0], slice));
+    instantVitalRec = vitalConcernToRecommendation(vitalConcerns[0], slice);
   } else if (esiIsUrgent(slice.esi)) {
-    out.push({
+    instantVitalRec = {
       id: "cds_er_esi_urgent",
       severity: "warning",
       actionKey: "openTriage",
       actionTarget: "triage",
-    });
+    };
+  }
+  if (instantVitalRec) {
+    out.push(instantVitalRec);
+  }
+
+  const suppressHemodynamicTrend =
+    !!sepsisConcern ||
+    vitalConcerns.length >= 2 ||
+    (vitalConcerns.length === 1 &&
+      (vitalConcerns[0] === "hypotension" || vitalConcerns[0] === "tachycardia"));
+
+  const suppressRespiratoryTrend =
+    !!sepsisConcern ||
+    vitalConcerns.length >= 2 ||
+    (vitalConcerns.length === 1 &&
+      (vitalConcerns[0] === "hypoxemia" || vitalConcerns[0] === "tachypnea"));
+
+  const trendSnaps = ctx.encounterVitalsSnapshotsOldestFirst;
+  if (Array.isArray(trendSnaps) && trendSnaps.length >= 2) {
+    if (!suppressHemodynamicTrend && hemodynamicTrendFromSnapshots(trendSnaps)) {
+      out.push({
+        id: "cds_er_hemodynamic_trend",
+        severity: "warning",
+        actionKey: "openNursing",
+        actionTarget: "nursing",
+      });
+    }
+    if (!suppressRespiratoryTrend && respiratoryTrendFromSnapshots(trendSnaps)) {
+      out.push({
+        id: "cds_er_respiratory_trend",
+        severity: "warning",
+        actionKey: "openNursing",
+        actionTarget: "nursing",
+      });
+    }
   }
 
   const strokePositive =

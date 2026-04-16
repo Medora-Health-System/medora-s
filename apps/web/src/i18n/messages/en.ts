@@ -1274,6 +1274,16 @@ export default {
         body:
           "Fever or hypothermia by simple thresholds: reassess the patient and underlying cause. Clinical judgment required.",
       },
+      cds_er_hemodynamic_trend: {
+        title: "Worsening hemodynamic trend",
+        body:
+          "Recent triage readings for this encounter show a concerning trend (rising HR and/or falling systolic BP by simple step rules). Consider prompt clinical reassessment.",
+      },
+      cds_er_respiratory_trend: {
+        title: "Worsening respiratory trend",
+        body:
+          "Recent readings show a concerning trend (falling SpO₂ and/or rising RR by simple step rules). Consider prompt respiratory reassessment.",
+      },
       cds_er_esi_urgent: {
         title: "Priority ESI (1–2)",
         body:
@@ -1293,6 +1303,7 @@ export default {
     actions: {
       goOrders: "Go to orders",
       openTriage: "Open triage",
+      openNursing: "Open nursing",
       seeDiagnostics: "View diagnostics",
     },
   },

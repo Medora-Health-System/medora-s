@@ -15,6 +15,12 @@ import {
 } from "@/lib/uiLabels";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
+import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
+import {
+  buildVitalsTimelineNewestFirst,
+  hasVitalsJson,
+  vitalsSnapshotMeasuredAtMs,
+} from "@/lib/patientVitals";
 import {
   esiDisplayChar,
   esiLevelFromUnknown,
@@ -204,6 +210,10 @@ export function EmergencyActiveWorkspaceView() {
   /** Recharge le GET triage pour le bandeau clinique partagé (après enregistrement triage, etc.). */
   const [triageRefresh, setTriageRefresh] = useState(0);
   const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
+  /** GET `/patients/:id/triage?latest=true` — vitals timeline for CDS trends (existing endpoint). */
+  const [patientVitalsTimeline, setPatientVitalsTimeline] = useState<PatientTriageVitalsResponse | null>(
+    null
+  );
   const [triageLoading, setTriageLoading] = useState(false);
   const [showQuickVitals, setShowQuickVitals] = useState(false);
 
@@ -333,6 +343,45 @@ export function EmergencyActiveWorkspaceView() {
     void loadTriageForStrip();
   }, [encounterId, fid, loadTriageForStrip]);
 
+  const loadPatientTriageForCds = useCallback(async () => {
+    const pid = encounter?.patient?.id?.trim();
+    if (!fid || !pid) {
+      setPatientVitalsTimeline(null);
+      return;
+    }
+    try {
+      const data = (await apiFetch(`/patients/${pid}/triage?latest=true`, {
+        facilityId: fid,
+      })) as PatientTriageVitalsResponse;
+      setPatientVitalsTimeline({
+        latest: data?.latest ?? null,
+        history: Array.isArray(data?.history) ? data.history : [],
+      });
+    } catch {
+      setPatientVitalsTimeline(null);
+    }
+  }, [encounter?.patient?.id, fid, triageRefresh]);
+
+  useEffect(() => {
+    void loadPatientTriageForCds();
+  }, [loadPatientTriageForCds]);
+
+  const encounterVitalsSnapshotsOldestFirst = useMemo(() => {
+    if (!patientVitalsTimeline) return null;
+    const merged = buildVitalsTimelineNewestFirst(
+      patientVitalsTimeline.latest,
+      patientVitalsTimeline.history,
+      []
+    );
+    const forEnc = merged.filter(
+      (s) => s.encounterId === encounterId && hasVitalsJson(s.vitalsJson)
+    );
+    if (forEnc.length < 2) return null;
+    return [...forEnc].sort(
+      (a, b) => vitalsSnapshotMeasuredAtMs(a) - vitalsSnapshotMeasuredAtMs(b)
+    );
+  }, [patientVitalsTimeline, encounterId]);
+
   const clinicalStripModel = useMemo(() => {
     const parsed = triagePreviewSliceFromTriageGet(triageSnapshot);
     if (!parsed) {
@@ -369,8 +418,9 @@ export function EmergencyActiveWorkspaceView() {
       buildErCdsRecommendations({
         encounterType: encounter?.type,
         triage: triageSnapshot,
+        encounterVitalsSnapshotsOldestFirst,
       }),
-    [encounter?.type, triageSnapshot]
+    [encounter?.type, triageSnapshot, encounterVitalsSnapshotsOldestFirst]
   );
 
   /** CDS v2 — one-shot UI intent for order-assist preselection (never auto-submits). */

@@ -1238,6 +1238,16 @@ export default {
         body:
           "Fièvre ou hypothermie selon seuils simples : réévaluer le patient et la cause ; jugement clinique requis.",
       },
+      cds_er_hemodynamic_trend: {
+        title: "Tendance hémodynamique défavorable",
+        body:
+          "Les derniers relevés de triage pour cette consultation montrent une évolution défavorable (FC en hausse et/ou TA systolique en baisse selon règles simples). Envisager une réévaluation clinique rapide.",
+      },
+      cds_er_respiratory_trend: {
+        title: "Tendance respiratoire défavorable",
+        body:
+          "Les derniers relevés montrent une évolution défavorable (SpO₂ en baisse et/ou FR en hausse selon règles simples). Envisager une réévaluation respiratoire rapide.",
+      },
       cds_er_esi_urgent: {
         title: "ESI prioritaire (1–2)",
         body:
@@ -1257,6 +1267,7 @@ export default {
     actions: {
       goOrders: "Aller aux ordres",
       openTriage: "Ouvrir le triage",
+      openNursing: "Ouvrir les soins infirmiers",
       seeDiagnostics: "Voir diagnostics",
     },
   },
