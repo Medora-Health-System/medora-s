@@ -3,7 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import type { ErAbcOption, ErTraumaLevel, ErTriageV1Form, ErYesNoUnknown } from "./medoraErTriageV1";
-import { erTriageV1FormHasAnyContent } from "./medoraErTriageV1";
+import {
+  ER_TRAUMA_ACTIVATION_CRITERIA_OPTIONS,
+  emptyErTraumaActivationForm,
+  erTriageV1FormHasAnyContent,
+} from "./medoraErTriageV1";
 import { MedoraCardBadge } from "@/components/medora-card";
 
 const detailsShell: React.CSSProperties = {
@@ -159,10 +163,6 @@ export function EmergencyTriageV1Sections({
               {sel("gcs15", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Niveau de trauma</label>
-              {sel("traumaLevel", traumaLevelOptions)}
-            </div>
-            <div>
               <label style={labelStyle}>Douleur (0–10)</label>
               {sel("painScale0to10", painOptions())}
             </div>
@@ -187,6 +187,149 @@ export function EmergencyTriageV1Sections({
                 style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
             </div>
+          </div>
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: 10,
+              border: "1px solid #fecaca",
+              backgroundColor: "#fffafa",
+            }}
+          >
+            <p style={{ ...sectionHeading, marginBottom: 8 }}>Activation trauma</p>
+            {!er.traumaActivation.activated ? (
+              <button
+                type="button"
+                onClick={() =>
+                  patchErV1({
+                    traumaActivation: { ...er.traumaActivation, activated: true },
+                  })
+                }
+                disabled={formDisabled}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #b91c1c",
+                  backgroundColor: formDisabled ? "#f1f5f9" : "#b91c1c",
+                  color: formDisabled ? "#94a3b8" : "#fff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: formDisabled ? "not-allowed" : "pointer",
+                }}
+              >
+                Activer trauma
+              </button>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#991b1b" }}>Trauma activé</span>
+                  <button
+                    type="button"
+                    onClick={() => patchErV1({ traumaActivation: emptyErTraumaActivationForm() })}
+                    disabled={formDisabled}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#fff",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#64748b",
+                      cursor: formDisabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Désactiver
+                  </button>
+                </div>
+                <div style={grid2}>
+                  <div>
+                    <label style={labelStyle}>Niveau trauma</label>
+                    <select
+                      value={er.traumaActivation.level}
+                      onChange={(e) =>
+                        patchErV1({
+                          traumaActivation: {
+                            ...er.traumaActivation,
+                            level: e.target.value as ErTraumaLevel,
+                          },
+                        })
+                      }
+                      disabled={formDisabled}
+                      style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                    >
+                      {traumaLevelOptions.map((o) => (
+                        <option key={o.value === "" ? "empty" : o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Heure d&apos;activation</label>
+                    <input
+                      type="datetime-local"
+                      value={er.traumaActivation.activatedAt}
+                      onChange={(e) =>
+                        patchErV1({
+                          traumaActivation: { ...er.traumaActivation, activatedAt: e.target.value },
+                        })
+                      }
+                      disabled={formDisabled}
+                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Critères d&apos;activation</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+                    {ER_TRAUMA_ACTIVATION_CRITERIA_OPTIONS.map((opt) => {
+                      const on = er.traumaActivation.criteria.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            const cur = er.traumaActivation.criteria;
+                            const id = opt.id;
+                            const next = on ? cur.filter((x) => x !== id) : [...cur, id];
+                            patchErV1({
+                              traumaActivation: { ...er.traumaActivation, criteria: next },
+                            });
+                          }}
+                          disabled={formDisabled}
+                          style={{
+                            padding: "6px 10px",
+                            fontSize: 12,
+                            borderRadius: 9999,
+                            border: `1px solid ${on ? "#93c5fd" : "#e2e8f0"}`,
+                            backgroundColor: on ? "#eff6ff" : "#fff",
+                            color: "#0f172a",
+                            cursor: formDisabled ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {opt.labelFr}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Notes (trauma)</label>
+                  <textarea
+                    value={er.traumaActivation.notes}
+                    onChange={(e) =>
+                      patchErV1({
+                        traumaActivation: { ...er.traumaActivation, notes: e.target.value },
+                      })
+                    }
+                    disabled={formDisabled}
+                    rows={2}
+                    maxLength={4000}
+                    style={{ ...inputBase, resize: "vertical", minHeight: 52, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Exceptions au profil attendu</label>
