@@ -76,9 +76,9 @@ export function EmergencyProviderMsePanel({
   encounter,
   isLocked,
   onSaved,
-  clinicTabHref,
+  clinicTabHref: _clinicTabHref,
   erChartHref,
-  genericEncounterHref,
+  genericEncounterHref: _genericEncounterHref,
 }: {
   encounterId: string;
   facilityId: string;
@@ -232,23 +232,6 @@ export function EmergencyProviderMsePanel({
 
         <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0} alignItems="flex-start">
           <Link
-            href={clinicTabHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #c7d2fe",
-              backgroundColor: "#eef2ff",
-              color: "#4338ca",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Ouvrir l&apos;évaluation clinique (dossier)
-          </Link>
-          <Link
             href={erChartHref}
             style={{
               display: "inline-flex",
@@ -264,23 +247,6 @@ export function EmergencyProviderMsePanel({
             }}
           >
             Consultation complète
-          </Link>
-          <Link
-            href={genericEncounterHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#f8fafc",
-              color: "#64748b",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Dossier Medora (référence)
           </Link>
         </MedoraCardActions>
 
@@ -469,7 +435,7 @@ export function EmergencyProviderMsePanel({
                   cursor: formDisabled || saving ? "not-allowed" : "pointer",
                 }}
               >
-                {saving ? "Enregistrement…" : "Enregistrer l&apos;évaluation"}
+                {saving ? "Enregistrement…" : "Enregistrer l'évaluation"}
               </button>
               {isLocked ? (
                 <span style={{ fontSize: 12, color: "#b45309" }}>Documentation signée — saisie verrouillée.</span>
