@@ -1307,4 +1307,8 @@ export default {
       seeDiagnostics: "View diagnostics",
     },
   },
+  erMseAssist: {
+    prefillFromTriage: "Prefill from triage",
+    helperNote: "Prefill uses already documented data only.",
+  },
 };

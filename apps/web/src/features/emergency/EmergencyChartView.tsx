@@ -16,6 +16,7 @@ import {
   EMERGENCY_AVATAR_CIRCLE_STYLE,
   esiUnderAvatarNumberStyle,
 } from "@/features/emergency/emergencyEsiDisplay";
+import { buildErCdsRecommendations } from "@/features/emergency/erClinicalDecisionSupport";
 import {
   buildAllergyStripSummary,
   buildErWorkspaceVitalPairs,
@@ -317,6 +318,32 @@ export function EmergencyChartView() {
       (encounter.visitReason || "").trim() || (encounter.chiefComplaint || "").trim();
     return raw || ui.common.dash;
   }, [encounter]);
+
+  const erCdsRecommendations = useMemo(
+    () =>
+      buildErCdsRecommendations({
+        encounterType: encounter?.type,
+        triage: triageSnapshot,
+        encounterVitalsSnapshotsOldestFirst: null,
+      }),
+    [encounter?.type, triageSnapshot]
+  );
+
+  const mseAssistContext = useMemo(
+    () =>
+      encounter && encounter.type === EMERGENCY_TYPE
+        ? {
+            encounterType: encounter.type,
+            triage: triageSnapshot,
+            encounterLine: {
+              visitReason: encounter.visitReason,
+              chiefComplaint: encounter.chiefComplaint,
+            },
+            cdsRecommendationIds: erCdsRecommendations.map((r) => r.id),
+          }
+        : null,
+    [encounter, triageSnapshot, erCdsRecommendations]
+  );
 
   if (!rolesReady || !fid) {
     return (
@@ -829,6 +856,7 @@ export function EmergencyChartView() {
                 clinicTabHref={tabHref("clinic")}
                 erChartHref={emergencyChartPath(encounterId)}
                 genericEncounterHref={genericEncounterHref}
+                mseAssistContext={mseAssistContext}
               />
             ) : (
               <MedoraCard leftAccentColor="#4f46e5" variant="default">

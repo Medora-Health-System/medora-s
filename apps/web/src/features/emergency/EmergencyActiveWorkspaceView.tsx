@@ -423,6 +423,22 @@ export function EmergencyActiveWorkspaceView() {
     [encounter?.type, triageSnapshot, encounterVitalsSnapshotsOldestFirst]
   );
 
+  const mseAssistContext = useMemo(
+    () =>
+      encounter && encounter.type === EMERGENCY_TYPE
+        ? {
+            encounterType: encounter.type,
+            triage: triageSnapshot,
+            encounterLine: {
+              visitReason: encounter.visitReason,
+              chiefComplaint: encounter.chiefComplaint,
+            },
+            cdsRecommendationIds: erCdsRecommendations.map((r) => r.id),
+          }
+        : null,
+    [encounter, triageSnapshot, erCdsRecommendations]
+  );
+
   /** CDS v2 — one-shot UI intent for order-assist preselection (never auto-submits). */
   const [cdsIntent, setCdsIntent] = useState<string | null>(null);
 
@@ -1218,6 +1234,7 @@ export function EmergencyActiveWorkspaceView() {
               clinicTabHref={tabHref("clinic")}
               erChartHref={erChartHref}
               genericEncounterHref={genericEncounterHref}
+              mseAssistContext={mseAssistContext}
             />
           ) : null}
 

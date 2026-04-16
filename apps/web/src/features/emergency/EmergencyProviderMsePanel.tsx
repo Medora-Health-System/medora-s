@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { useI18n } from "@/lib/i18n";
 import { ui } from "@/lib/uiLabels";
 import {
   MedoraCard,
@@ -19,6 +20,10 @@ import {
   mergeErProviderMseIntoNursingAssessment,
   type ErProviderMseForm,
 } from "./emergencyProviderMseV1";
+import {
+  buildErMseSmartAssistSuggestions,
+  type ErMseSmartAssistContext,
+} from "./erMseSmartAssist";
 
 type EncounterLite = {
   id: string;
@@ -79,6 +84,7 @@ export function EmergencyProviderMsePanel({
   clinicTabHref: _clinicTabHref,
   erChartHref,
   genericEncounterHref: _genericEncounterHref,
+  mseAssistContext,
 }: {
   encounterId: string;
   facilityId: string;
@@ -91,7 +97,10 @@ export function EmergencyProviderMsePanel({
   erChartHref: string;
   /** Dossier consultation Medora générique (référence secondaire). */
   genericEncounterHref: string;
+  /** Données déjà chargées dans le flux urgences (aucun GET supplémentaire). */
+  mseAssistContext?: ErMseSmartAssistContext | null;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<ErProviderMseForm>(() => erProviderMseFormFromEncounter(encounter.nursingAssessment));
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
@@ -157,6 +166,35 @@ export function EmergencyProviderMsePanel({
   const patchForm = useCallback((patch: Partial<ErProviderMseForm>) => {
     setForm((f) => ({ ...f, ...patch }));
   }, []);
+
+  const assistApplicable = useMemo(() => {
+    if (!mseAssistContext || formDisabled) return false;
+    const sug = buildErMseSmartAssistSuggestions(mseAssistContext);
+    for (const k of Object.keys(sug) as (keyof ErProviderMseForm)[]) {
+      const val = sug[k];
+      if (typeof val !== "string" || !val.trim()) continue;
+      const cur = form[k];
+      if (typeof cur === "string" && cur.trim() !== "") continue;
+      return true;
+    }
+    return false;
+  }, [mseAssistContext, formDisabled, form]);
+
+  const applyPrefillFromTriage = useCallback(() => {
+    if (formDisabled || !mseAssistContext) return;
+    const sug = buildErMseSmartAssistSuggestions(mseAssistContext);
+    setForm((f) => {
+      const next = { ...f };
+      for (const k of Object.keys(sug) as (keyof ErProviderMseForm)[]) {
+        const val = sug[k];
+        if (typeof val !== "string" || !val.trim()) continue;
+        const cur = f[k];
+        if (typeof cur === "string" && cur.trim() !== "") continue;
+        next[k] = val;
+      }
+      return next;
+    });
+  }, [formDisabled, mseAssistContext]);
 
   const handleSave = async () => {
     if (formDisabled) return;
@@ -249,6 +287,39 @@ export function EmergencyProviderMsePanel({
             Consultation complète
           </Link>
         </MedoraCardActions>
+
+        {mseAssistContext ? (
+          <div
+            style={{
+              marginTop: 10,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => applyPrefillFromTriage()}
+              disabled={formDisabled || !assistApplicable}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "1px solid #c7d2fe",
+                backgroundColor: formDisabled || !assistApplicable ? "#f1f5f9" : "#eef2ff",
+                color: formDisabled || !assistApplicable ? "#94a3b8" : "#4338ca",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: formDisabled || !assistApplicable ? "not-allowed" : "pointer",
+              }}
+            >
+              {t("erMseAssist.prefillFromTriage")}
+            </button>
+            <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.45, maxWidth: 480 }}>
+              {t("erMseAssist.helperNote")}
+            </span>
+          </div>
+        ) : null}
 
         {saveInfo ? (
           <p

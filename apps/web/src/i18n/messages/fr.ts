@@ -1271,4 +1271,8 @@ export default {
       seeDiagnostics: "Voir diagnostics",
     },
   },
+  erMseAssist: {
+    prefillFromTriage: "Pré-remplir depuis le triage",
+    helperNote: "Pré-remplissage à partir des données déjà documentées.",
+  },
 };
