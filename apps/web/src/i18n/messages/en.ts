@@ -1249,6 +1249,31 @@ export default {
         body:
           "Triage vitals exceed simple thresholds (extreme temperature, tachycardia, tachypnea, hypotension, low SpO₂). Reassess and adjust care.",
       },
+      cds_er_hypotension: {
+        title: "Hypotension — hemodynamic vigilance",
+        body:
+          "Low systolic BP by simple threshold: urgent clinical reassessment; review perfusion and causes. Orders require manual confirmation.",
+      },
+      cds_er_tachycardia: {
+        title: "Tachycardia — reassessment",
+        body:
+          "Elevated heart rate by simple threshold: reassess clinical context, pain, and contributing causes.",
+      },
+      cds_er_hypoxemia: {
+        title: "Hypoxemia — respiratory attention",
+        body:
+          "Low SpO₂ by simple threshold: immediate reassessment; review oxygen therapy and causes. Select interventions manually in Orders if needed.",
+      },
+      cds_er_tachypnea: {
+        title: "Tachypnea — respiratory reassessment",
+        body:
+          "Elevated respiratory rate by simple threshold: reassess work of breathing and contributing causes.",
+      },
+      cds_er_temperature_concern: {
+        title: "Extreme temperature — reassessment",
+        body:
+          "Fever or hypothermia by simple thresholds: reassess the patient and underlying cause. Clinical judgment required.",
+      },
       cds_er_esi_urgent: {
         title: "Priority ESI (1–2)",
         body:

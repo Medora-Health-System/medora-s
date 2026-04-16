@@ -23,6 +23,11 @@ export type ErCdsAssistPreselectKey = "trauma_protocol" | "sepsis_protocol" | "s
 export type ErCdsRecommendationId =
   | "cds_er_trauma_protocol"
   | "cds_er_vitals_escalation"
+  | "cds_er_hypotension"
+  | "cds_er_tachycardia"
+  | "cds_er_hypoxemia"
+  | "cds_er_tachypnea"
+  | "cds_er_temperature_concern"
   | "cds_er_esi_urgent"
   | "cds_er_stroke_pathway"
   | "cds_er_sepsis_bundle";
@@ -64,26 +69,87 @@ function parseNum(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Basic numeric instability flags from triage vitals slice (aligned with triage preview spirit). */
-function vitalsSuggestEscalation(vitalsSlice: {
+/** Simple explicit thresholds (audit-friendly). °C, mmHg, bpm, /min, %. */
+const VITAL_HYPOTENSION_SBP_LT = 90;
+const VITAL_TACHYCARDIA_HR_GT = 130;
+const VITAL_TACHYPNEA_RR_GT = 28;
+const VITAL_HYPOXEMIA_SPO2_LT = 92;
+const VITAL_FEVER_GT = 39.5;
+const VITAL_HYPOTHERMIA_LT = 35.0;
+
+type VitalConcernKind =
+  | "hypotension"
+  | "tachycardia"
+  | "hypoxemia"
+  | "tachypnea"
+  | "temperature";
+
+function collectVitalConcerns(vitalsSlice: {
   tempC: string;
   hr: string;
   rr: string;
   bpSys: string;
   spo2: string;
-}): boolean {
+}): VitalConcernKind[] {
+  const out: VitalConcernKind[] = [];
   const t = parseNum(vitalsSlice.tempC);
   const hr = parseNum(vitalsSlice.hr);
   const rr = parseNum(vitalsSlice.rr);
   const sys = parseNum(vitalsSlice.bpSys);
   const spo2 = parseNum(vitalsSlice.spo2);
 
-  if (t != null && (t > 39.5 || t < 35.0)) return true;
-  if (hr != null && hr > 130) return true;
-  if (rr != null && rr > 28) return true;
-  if (sys != null && sys < 90) return true;
-  if (spo2 != null && spo2 < 92) return true;
-  return false;
+  if (t != null && (t > VITAL_FEVER_GT || t < VITAL_HYPOTHERMIA_LT)) out.push("temperature");
+  if (hr != null && hr > VITAL_TACHYCARDIA_HR_GT) out.push("tachycardia");
+  if (rr != null && rr > VITAL_TACHYPNEA_RR_GT) out.push("tachypnea");
+  if (sys != null && sys < VITAL_HYPOTENSION_SBP_LT) out.push("hypotension");
+  if (spo2 != null && spo2 < VITAL_HYPOXEMIA_SPO2_LT) out.push("hypoxemia");
+  return out;
+}
+
+function vitalConcernToRecommendation(
+  kind: VitalConcernKind,
+  vitalsSlice: { tempC: string }
+): ErCdsRecommendation {
+  switch (kind) {
+    case "hypotension":
+      return {
+        id: "cds_er_hypotension",
+        severity: "critical",
+        actionKey: "goOrders",
+        actionTarget: "orders",
+      };
+    case "tachycardia":
+      return {
+        id: "cds_er_tachycardia",
+        severity: "warning",
+        actionKey: "openTriage",
+        actionTarget: "triage",
+      };
+    case "hypoxemia":
+      return {
+        id: "cds_er_hypoxemia",
+        severity: "critical",
+        actionKey: "goOrders",
+        actionTarget: "orders",
+      };
+    case "tachypnea":
+      return {
+        id: "cds_er_tachypnea",
+        severity: "warning",
+        actionKey: "openTriage",
+        actionTarget: "triage",
+      };
+    case "temperature": {
+      const t = parseNum(vitalsSlice.tempC);
+      const hypothermia = t != null && t < VITAL_HYPOTHERMIA_LT;
+      return {
+        id: "cds_er_temperature_concern",
+        severity: hypothermia ? "critical" : "warning",
+        actionKey: "openTriage",
+        actionTarget: "triage",
+      };
+    }
+  }
 }
 
 function esiIsUrgent(esi: string): boolean {
@@ -106,6 +172,10 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
   const stroke = strokeScreenFromUnknown(ctx.triage.strokeScreen);
   const sepsis = sepsisScreenFromUnknown(ctx.triage.sepsisScreen);
 
+  const sepsisConcern =
+    sepsis.suspectedInfection === "yes" &&
+    (sepsis.rrGte22 === "yes" || sepsis.sbpLte100 === "yes" || sepsis.alteredMentalStatus === "yes");
+
   const out: ErCdsRecommendation[] = [];
 
   if (er.traumaActivation.activated) {
@@ -120,13 +190,22 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
     });
   }
 
-  if (vitalsSuggestEscalation(slice)) {
+  let vitalConcerns = collectVitalConcerns(slice);
+  if (sepsisConcern) {
+    vitalConcerns = vitalConcerns.filter(
+      (c) => c !== "hypotension" && c !== "tachycardia" && c !== "tachypnea"
+    );
+  }
+
+  if (vitalConcerns.length >= 2) {
     out.push({
       id: "cds_er_vitals_escalation",
       severity: "critical",
       actionKey: "openTriage",
       actionTarget: "triage",
     });
+  } else if (vitalConcerns.length === 1) {
+    out.push(vitalConcernToRecommendation(vitalConcerns[0], slice));
   } else if (esiIsUrgent(slice.esi)) {
     out.push({
       id: "cds_er_esi_urgent",
@@ -151,9 +230,6 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
     });
   }
 
-  const sepsisConcern =
-    sepsis.suspectedInfection === "yes" &&
-    (sepsis.rrGte22 === "yes" || sepsis.sbpLte100 === "yes" || sepsis.alteredMentalStatus === "yes");
   if (sepsisConcern) {
     out.push({
       id: "cds_er_sepsis_bundle",

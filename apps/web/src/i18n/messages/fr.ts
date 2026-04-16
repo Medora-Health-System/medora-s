@@ -1213,6 +1213,31 @@ export default {
         body:
           "Les valeurs enregistrées au triage dépassent des seuils simples (température extrême, tachycardie, polypnée, hypotension, SpO₂ basse). Faites réévaluer le patient et adapter la prise en charge.",
       },
+      cds_er_hypotension: {
+        title: "Hypotension — vigilance hémodynamique",
+        body:
+          "TA systolique basse selon seuil simple : réévaluation clinique urgente, revoir perfusion et causes ; les ordres restent à confirmer manuellement.",
+      },
+      cds_er_tachycardia: {
+        title: "Tachycardie — réévaluation",
+        body:
+          "Fréquence cardiaque élevée selon seuil simple : réévaluer le contexte clinique, la douleur et les causes associées.",
+      },
+      cds_er_hypoxemia: {
+        title: "Hypoxémie — attention respiratoire",
+        body:
+          "SpO₂ basse selon seuil simple : réévaluation immédiate, revoir oxygénothérapie et causes ; sélection manuelle dans Ordres si besoin.",
+      },
+      cds_er_tachypnea: {
+        title: "Polypnée — réévaluation respiratoire",
+        body:
+          "Fréquence respiratoire élevée selon seuil simple : réévaluer ventilation, effort et causes associées.",
+      },
+      cds_er_temperature_concern: {
+        title: "Température extrême — réévaluation",
+        body:
+          "Fièvre ou hypothermie selon seuils simples : réévaluer le patient et la cause ; jugement clinique requis.",
+      },
       cds_er_esi_urgent: {
         title: "ESI prioritaire (1–2)",
         body:
