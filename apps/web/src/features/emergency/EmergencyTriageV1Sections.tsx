@@ -1,14 +1,26 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
-import type { ErAbcOption, ErTraumaLevel, ErTriageV1Form, ErYesNoUnknown } from "./medoraErTriageV1";
+import { useI18n } from "@/lib/i18n";
+import type { ErAbcOption, ErTraumaActivationCriterionId, ErTraumaLevel, ErTriageV1Form, ErYesNoUnknown } from "./medoraErTriageV1";
 import {
-  ER_TRAUMA_ACTIVATION_CRITERIA_OPTIONS,
+  ER_TRAUMA_ACTIVATION_CRITERIA_IDS,
   emptyErTraumaActivationForm,
   erTriageV1FormHasAnyContent,
 } from "./medoraErTriageV1";
 import { MedoraCardBadge } from "@/components/medora-card";
+
+const TRAUMA_CRITERION_I18N_KEY: Record<ErTraumaActivationCriterionId, string> = {
+  hypotension: "erTriage.v1.traumaCriteriaHypotension",
+  respiratory_distress: "erTriage.v1.traumaCriteriaRespiratory",
+  neuro_alteration: "erTriage.v1.traumaCriteriaNeuro",
+  major_fall: "erTriage.v1.traumaCriteriaFall",
+  high_energy_mechanism: "erTriage.v1.traumaCriteriaHighEnergy",
+  penetrating_wound: "erTriage.v1.traumaCriteriaPenetrating",
+  amputation_crush: "erTriage.v1.traumaCriteriaAmputation",
+  other_major: "erTriage.v1.traumaCriteriaOther",
+};
 
 const detailsShell: React.CSSProperties = {
   border: "1px solid #e2e8f0",
@@ -36,31 +48,8 @@ const help: React.CSSProperties = {
   lineHeight: 1.45,
 };
 
-const abcOptions: { value: ErAbcOption; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "wnl", label: "Dans les limites (WNL)" },
-  { value: "yes", label: "Oui" },
-  { value: "no", label: "Non" },
-  { value: "unknown", label: "Inconnu" },
-];
-
-const ynuOptions: { value: ErYesNoUnknown; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "yes", label: "Oui" },
-  { value: "no", label: "Non" },
-  { value: "unknown", label: "Inconnu" },
-];
-
-const traumaLevelOptions: { value: ErTraumaLevel; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "LEVEL_1", label: "Niveau 1" },
-  { value: "LEVEL_2", label: "Niveau 2" },
-  { value: "LEVEL_3", label: "Niveau 3" },
-  { value: "LEVEL_4", label: "Niveau 4" },
-];
-
-function painOptions(): { value: string; label: string }[] {
-  const o: { value: string; label: string }[] = [{ value: "", label: "—" }];
+function painOptions(dash: string): { value: string; label: string }[] {
+  const o: { value: string; label: string }[] = [{ value: "", label: dash }];
   for (let i = 0; i <= 10; i += 1) o.push({ value: String(i), label: `${i}/10` });
   return o;
 }
@@ -88,7 +77,39 @@ export function EmergencyTriageV1Sections({
   sectionHeading,
   patientChartHref,
 }: EmergencyTriageV1SectionsProps) {
+  const { t } = useI18n();
   const v1Any = erTriageV1FormHasAnyContent(er);
+
+  const dash = t("erTriage.preview.emptyOption");
+  const abcOptions: { value: ErAbcOption; label: string }[] = useMemo(
+    () => [
+      { value: "", label: dash },
+      { value: "wnl", label: t("erTriage.preview.abcWnl") },
+      { value: "yes", label: t("erTriage.preview.ynuYes") },
+      { value: "no", label: t("erTriage.preview.ynuNo") },
+      { value: "unknown", label: t("erTriage.preview.ynuUnknown") },
+    ],
+    [t, dash]
+  );
+  const ynuOptions: { value: ErYesNoUnknown; label: string }[] = useMemo(
+    () => [
+      { value: "", label: dash },
+      { value: "yes", label: t("erTriage.preview.ynuYes") },
+      { value: "no", label: t("erTriage.preview.ynuNo") },
+      { value: "unknown", label: t("erTriage.preview.ynuUnknown") },
+    ],
+    [t, dash]
+  );
+  const traumaLevelOptions: { value: ErTraumaLevel; label: string }[] = useMemo(
+    () => [
+      { value: "", label: dash },
+      { value: "LEVEL_1", label: t("erTriage.v1.traumaLevelN1") },
+      { value: "LEVEL_2", label: t("erTriage.v1.traumaLevelN2") },
+      { value: "LEVEL_3", label: t("erTriage.v1.traumaLevelN3") },
+      { value: "LEVEL_4", label: t("erTriage.v1.traumaLevelN4") },
+    ],
+    [t, dash]
+  );
 
   const sel = (key: keyof ErTriageV1Form, options: { value: string; label: string }[]) => (
     <select
@@ -109,21 +130,19 @@ export function EmergencyTriageV1Sections({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {v1Any ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          <MedoraCardBadge soft={{ bg: "#fef2f2", text: "#991b1b", border: "#fecaca" }}>Triage V1</MedoraCardBadge>
-          <span style={{ fontSize: 12, color: "#64748b" }}>Champs étendus enregistrés avec le triage.</span>
+          <MedoraCardBadge soft={{ bg: "#fef2f2", text: "#991b1b", border: "#fecaca" }}>{t("erTriage.v1.badge")}</MedoraCardBadge>
+          <span style={{ fontSize: 12, color: "#64748b" }}>{t("erTriage.v1.extendedHint")}</span>
         </div>
       ) : null}
 
       <details open style={detailsShell}>
         <summary style={summaryRow}>
-          <span>1 — Triage rapide</span>
+          <span>{t("erTriage.v1.s1Title")}</span>
         </summary>
-        <p style={help}>
-          Narratif, EPI, évaluation ABC, douleur, orientation. La gravité principale reste l&apos;ESI ci-dessus.
-        </p>
+        <p style={help}>{t("erTriage.v1.s1Help")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div>
-            <p style={sectionHeading}>Narratif de triage</p>
+            <p style={sectionHeading}>{t("erTriage.v1.narrativeHeading")}</p>
             <textarea
               value={er.triageNarrative}
               onChange={(e) => patchErV1({ triageNarrative: e.target.value })}
@@ -131,54 +150,54 @@ export function EmergencyTriageV1Sections({
               rows={3}
               maxLength={8000}
               style={{ ...inputBase, minHeight: 72, resize: "vertical", marginTop: 8, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              placeholder="Contexte court, évolution, examen ciblé…"
+              placeholder={t("erTriage.v1.narrativePlaceholder")}
             />
           </div>
           <div>
-            <label style={labelStyle}>EPI / précautions</label>
+            <label style={labelStyle}>{t("erTriage.v1.ppe")}</label>
             <input
               type="text"
               value={er.ppeNote}
               onChange={(e) => patchErV1({ ppeNote: e.target.value })}
               disabled={formDisabled}
               style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              placeholder="Gants, masque, isolement, etc."
+              placeholder={t("erTriage.v1.ppePlaceholder")}
             />
           </div>
           <div style={grid2}>
             <div>
-              <label style={labelStyle}>Voie aérienne</label>
+              <label style={labelStyle}>{t("erTriage.v1.airway")}</label>
               {sel("airway", abcOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Ventilation</label>
+              <label style={labelStyle}>{t("erTriage.v1.breathing")}</label>
               {sel("breathing", abcOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Circulation</label>
+              <label style={labelStyle}>{t("erTriage.v1.circulation")}</label>
               {sel("circulation", abcOptions)}
             </div>
             <div>
-              <label style={labelStyle}>GCS 15</label>
+              <label style={labelStyle}>{t("erTriage.v1.gcs15")}</label>
               {sel("gcs15", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Douleur (0–10)</label>
-              {sel("painScale0to10", painOptions())}
+              <label style={labelStyle}>{t("erTriage.v1.pain010")}</label>
+              {sel("painScale0to10", painOptions(dash))}
             </div>
             <div>
-              <label style={labelStyle}>Provenance / orientation</label>
+              <label style={labelStyle}>{t("erTriage.v1.referral")}</label>
               <input
                 type="text"
                 value={er.referralSource}
                 onChange={(e) => patchErV1({ referralSource: e.target.value })}
                 disabled={formDisabled}
                 style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                placeholder="Auto, ambulance, autre établissement…"
+                placeholder={t("erTriage.v1.referralPlaceholder")}
               />
             </div>
             <div>
-              <label style={labelStyle}>Heure de début du triage</label>
+              <label style={labelStyle}>{t("erTriage.v1.triageStart")}</label>
               <input
                 type="datetime-local"
                 value={er.triageStartedAt}
@@ -196,7 +215,7 @@ export function EmergencyTriageV1Sections({
               backgroundColor: "#fffafa",
             }}
           >
-            <p style={{ ...sectionHeading, marginBottom: 8 }}>Activation trauma</p>
+            <p style={{ ...sectionHeading, marginBottom: 8 }}>{t("erTriage.v1.traumaBlockTitle")}</p>
             {!er.traumaActivation.activated ? (
               <button
                 type="button"
@@ -217,12 +236,12 @@ export function EmergencyTriageV1Sections({
                   cursor: formDisabled ? "not-allowed" : "pointer",
                 }}
               >
-                Activer trauma
+                {t("erTriage.v1.traumaActivate")}
               </button>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#991b1b" }}>Trauma activé</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#991b1b" }}>{t("erTriage.v1.traumaActive")}</span>
                   <button
                     type="button"
                     onClick={() => patchErV1({ traumaActivation: emptyErTraumaActivationForm() })}
@@ -238,12 +257,12 @@ export function EmergencyTriageV1Sections({
                       cursor: formDisabled ? "not-allowed" : "pointer",
                     }}
                   >
-                    Désactiver
+                    {t("erTriage.v1.traumaDeactivate")}
                   </button>
                 </div>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Niveau trauma</label>
+                    <label style={labelStyle}>{t("erTriage.v1.traumaLevel")}</label>
                     <select
                       value={er.traumaActivation.level}
                       onChange={(e) =>
@@ -265,7 +284,7 @@ export function EmergencyTriageV1Sections({
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>Heure d&apos;activation</label>
+                    <label style={labelStyle}>{t("erTriage.v1.traumaActivatedAt")}</label>
                     <input
                       type="datetime-local"
                       value={er.traumaActivation.activatedAt}
@@ -280,17 +299,16 @@ export function EmergencyTriageV1Sections({
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Critères d&apos;activation</label>
+                  <label style={labelStyle}>{t("erTriage.v1.traumaCriteria")}</label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
-                    {ER_TRAUMA_ACTIVATION_CRITERIA_OPTIONS.map((opt) => {
-                      const on = er.traumaActivation.criteria.includes(opt.id);
+                    {ER_TRAUMA_ACTIVATION_CRITERIA_IDS.map((id) => {
+                      const on = er.traumaActivation.criteria.includes(id);
                       return (
                         <button
-                          key={opt.id}
+                          key={id}
                           type="button"
                           onClick={() => {
                             const cur = er.traumaActivation.criteria;
-                            const id = opt.id;
                             const next = on ? cur.filter((x) => x !== id) : [...cur, id];
                             patchErV1({
                               traumaActivation: { ...er.traumaActivation, criteria: next },
@@ -307,14 +325,14 @@ export function EmergencyTriageV1Sections({
                             cursor: formDisabled ? "not-allowed" : "pointer",
                           }}
                         >
-                          {opt.labelFr}
+                          {t(TRAUMA_CRITERION_I18N_KEY[id as ErTraumaActivationCriterionId])}
                         </button>
                       );
                     })}
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Notes (trauma)</label>
+                  <label style={labelStyle}>{t("erTriage.v1.traumaNotes")}</label>
                   <textarea
                     value={er.traumaActivation.notes}
                     onChange={(e) =>
@@ -332,7 +350,7 @@ export function EmergencyTriageV1Sections({
             )}
           </div>
           <div>
-            <label style={labelStyle}>Exceptions au profil attendu</label>
+            <label style={labelStyle}>{t("erTriage.v1.exceptions")}</label>
             <textarea
               value={er.triageExceptionsNote}
               onChange={(e) => patchErV1({ triageExceptionsNote: e.target.value })}
@@ -340,7 +358,7 @@ export function EmergencyTriageV1Sections({
               rows={2}
               maxLength={4000}
               style={{ ...inputBase, minHeight: 56, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              placeholder="Écarts par rapport à un ABC/GCS attendu…"
+              placeholder={t("erTriage.v1.exceptionsPlaceholder")}
             />
           </div>
         </div>
@@ -348,12 +366,12 @@ export function EmergencyTriageV1Sections({
 
       <details style={detailsShell}>
         <summary style={summaryRow}>
-          <span>2 — Soins infirmiers et sécurité</span>
+          <span>{t("erTriage.v1.s2Title")}</span>
         </summary>
-        <p style={help}>Repères de sécurité au box ; compléter l&apos;évaluation infirmière structurée via le dossier si besoin.</p>
+        <p style={help}>{t("erTriage.v1.s2Help")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div>
-            <label style={labelStyle}>Soins / surveillance (résumé)</label>
+            <label style={labelStyle}>{t("erTriage.v1.nursingSummary")}</label>
             <textarea
               value={er.nursingCareNote}
               onChange={(e) => patchErV1({ nursingCareNote: e.target.value })}
@@ -365,40 +383,40 @@ export function EmergencyTriageV1Sections({
           </div>
           <div style={grid3}>
             <div>
-              <label style={labelStyle}>Appel accessible</label>
+              <label style={labelStyle}>{t("erTriage.v1.callLight")}</label>
               {sel("callLightInReach", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Lit verrouillé / bas</label>
+              <label style={labelStyle}>{t("erTriage.v1.bedLow")}</label>
               {sel("bedLockedLow", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Entourage au chevet</label>
+              <label style={labelStyle}>{t("erTriage.v1.familyBedside")}</label>
               {sel("familyAtBedside", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>En vue du poste</label>
+              <label style={labelStyle}>{t("erTriage.v1.inView")}</label>
               {sel("inViewOfNursingStation", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Plan expliqué</label>
+              <label style={labelStyle}>{t("erTriage.v1.planExplained")}</label>
               {sel("patientUpdatedOnPlan", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Mesures de confort</label>
+              <label style={labelStyle}>{t("erTriage.v1.comfort")}</label>
               {sel("comfortMeasuresProvided", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Sécurité au domicile</label>
+              <label style={labelStyle}>{t("erTriage.v1.safeHome")}</label>
               {sel("feelsSafeAtHome", ynuOptions)}
             </div>
             <div>
-              <label style={labelStyle}>Voyage hors pays (&lt;14 j)</label>
+              <label style={labelStyle}>{t("erTriage.v1.travel14")}</label>
               {sel("travelOutsideCountry14d", ynuOptions)}
             </div>
           </div>
           <div>
-            <label style={labelStyle}>EPI — parcours aux urgences</label>
+            <label style={labelStyle}>{t("erTriage.v1.edPpe")}</label>
             <input
               type="text"
               value={er.edCoursePpeNote}
@@ -408,7 +426,7 @@ export function EmergencyTriageV1Sections({
             />
           </div>
           <div>
-            <label style={labelStyle}>Notes infirmières / addendum</label>
+            <label style={labelStyle}>{t("erTriage.v1.nursingAddendum")}</label>
             <textarea
               value={er.nursingNotesAddendum}
               onChange={(e) => patchErV1({ nursingNotesAddendum: e.target.value })}
@@ -423,15 +441,12 @@ export function EmergencyTriageV1Sections({
 
       <details style={detailsShell}>
         <summary style={summaryRow}>
-          <span>3 — Médicaments, allergies, vaccination</span>
+          <span>{t("erTriage.v1.s3Title")}</span>
         </summary>
-        <p style={help}>
-          Saisie unique des allergies ici (alimentaires, autres, précisions). Les enregistrements antérieurs sous
-          « allergies médicamenteuses » restent inclus dans l&apos;aperçu s&apos;ils existent déjà.
-        </p>
+        <p style={help}>{t("erTriage.v1.s3Help")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div>
-            <label style={labelStyle}>Médicaments (résumé)</label>
+            <label style={labelStyle}>{t("erTriage.v1.medsSummary")}</label>
             <textarea
               value={er.medicationsSummary}
               onChange={(e) => patchErV1({ medicationsSummary: e.target.value })}
@@ -442,7 +457,7 @@ export function EmergencyTriageV1Sections({
             />
           </div>
           <div>
-            <label style={labelStyle}>Allergies alimentaires / autres</label>
+            <label style={labelStyle}>{t("erTriage.v1.foodAllergy")}</label>
             <textarea
               value={er.foodAllergiesDetail}
               onChange={(e) => patchErV1({ foodAllergiesDetail: e.target.value })}
@@ -450,11 +465,11 @@ export function EmergencyTriageV1Sections({
               rows={3}
               maxLength={4000}
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              placeholder="Alimentaires, latex, autres allergènes…"
+              placeholder={t("erTriage.v1.foodAllergyPlaceholder")}
             />
           </div>
           <div>
-            <label style={labelStyle}>Allergies — précisions additionnelles</label>
+            <label style={labelStyle}>{t("erTriage.v1.allergyExtra")}</label>
             <textarea
               value={er.additionalAllergyInfo}
               onChange={(e) => patchErV1({ additionalAllergyInfo: e.target.value })}
@@ -462,12 +477,12 @@ export function EmergencyTriageV1Sections({
               rows={3}
               maxLength={4000}
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              placeholder="Réactions, médicaments à éviter, détails…"
+              placeholder={t("erTriage.v1.allergyExtraPlaceholder")}
             />
           </div>
           <div style={grid2}>
             <div>
-              <label style={labelStyle}>Pharmacie préférée</label>
+              <label style={labelStyle}>{t("erTriage.v1.preferredPharmacy")}</label>
               <input
                 type="text"
                 value={er.preferredPharmacy}
@@ -477,14 +492,14 @@ export function EmergencyTriageV1Sections({
               />
             </div>
             <div>
-              <label style={labelStyle}>Vaccination / statut</label>
+              <label style={labelStyle}>{t("erTriage.v1.immuStatus")}</label>
               <input
                 type="text"
                 value={er.immunizationStatusNote}
                 onChange={(e) => patchErV1({ immunizationStatusNote: e.target.value })}
                 disabled={formDisabled}
                 style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                placeholder="À jour, partiel, inconnu…"
+                placeholder={t("erTriage.v1.immuPlaceholder")}
               />
             </div>
           </div>
@@ -493,25 +508,25 @@ export function EmergencyTriageV1Sections({
 
       <details style={detailsShell}>
         <summary style={summaryRow}>
-          <span>4 — Antécédents et contexte social</span>
+          <span>{t("erTriage.v1.s4Title")}</span>
         </summary>
         <p style={help}>
           {patientChartHref ? (
             <>
-              Pour l&apos;historique structuré à long terme, utilisez aussi le{" "}
+              {t("erTriage.v1.s4HelpChart")}{" "}
               <Link href={patientChartHref} style={{ color: "#1d4ed8", fontWeight: 600 }}>
-                dossier patient
+                {t("erTriage.v1.s4HelpChartLink")}
               </Link>
               .
             </>
           ) : (
-            "Saisie libre pour le passage ; consolidation ultérieure au dossier patient."
+            t("erTriage.v1.s4HelpNoChart")
           )}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div style={grid2}>
             <div>
-              <label style={labelStyle}>Antécédents médicaux</label>
+              <label style={labelStyle}>{t("erTriage.v1.pmh")}</label>
               <textarea
                 value={er.pastMedicalHistory}
                 onChange={(e) => patchErV1({ pastMedicalHistory: e.target.value })}
@@ -522,7 +537,7 @@ export function EmergencyTriageV1Sections({
               />
             </div>
             <div>
-              <label style={labelStyle}>Antécédents chirurgicaux</label>
+              <label style={labelStyle}>{t("erTriage.v1.psh")}</label>
               <textarea
                 value={er.pastSurgicalHistory}
                 onChange={(e) => patchErV1({ pastSurgicalHistory: e.target.value })}
@@ -534,7 +549,7 @@ export function EmergencyTriageV1Sections({
             </div>
           </div>
           <div>
-            <label style={labelStyle}>Antécédents familiaux</label>
+            <label style={labelStyle}>{t("erTriage.v1.fh")}</label>
             <textarea
               value={er.familyHistory}
               onChange={(e) => patchErV1({ familyHistory: e.target.value })}
@@ -546,18 +561,18 @@ export function EmergencyTriageV1Sections({
           </div>
           <div style={grid3}>
             <div>
-              <label style={labelStyle}>Tabagisme</label>
+              <label style={labelStyle}>{t("erTriage.v1.smoking")}</label>
               <input
                 type="text"
                 value={er.smokingStatus}
                 onChange={(e) => patchErV1({ smokingStatus: e.target.value })}
                 disabled={formDisabled}
                 style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                placeholder="Non, actif, sevré…"
+                placeholder={t("erTriage.v1.smokingPlaceholder")}
               />
             </div>
             <div>
-              <label style={labelStyle}>Alcool</label>
+              <label style={labelStyle}>{t("erTriage.v1.alcohol")}</label>
               <input
                 type="text"
                 value={er.alcoholUse}
@@ -567,7 +582,7 @@ export function EmergencyTriageV1Sections({
               />
             </div>
             <div>
-              <label style={labelStyle}>Cannabis</label>
+              <label style={labelStyle}>{t("erTriage.v1.cannabis")}</label>
               <input
                 type="text"
                 value={er.marijuanaUse}
@@ -577,7 +592,7 @@ export function EmergencyTriageV1Sections({
               />
             </div>
             <div>
-              <label style={labelStyle}>Stimulants (ex. amphétamine, cocaïne)</label>
+              <label style={labelStyle}>{t("erTriage.v1.stimulants")}</label>
               <input
                 type="text"
                 value={er.stimulantUse}
@@ -587,7 +602,7 @@ export function EmergencyTriageV1Sections({
               />
             </div>
             <div>
-              <label style={labelStyle}>Opioïdes / héroïne</label>
+              <label style={labelStyle}>{t("erTriage.v1.opioids")}</label>
               <input
                 type="text"
                 value={er.opioidHeroinUse}
@@ -598,7 +613,7 @@ export function EmergencyTriageV1Sections({
             </div>
           </div>
           <div>
-            <label style={labelStyle}>Commentaires (social / contexte)</label>
+            <label style={labelStyle}>{t("erTriage.v1.socialComments")}</label>
             <textarea
               value={er.historySocialComments}
               onChange={(e) => patchErV1({ historySocialComments: e.target.value })}

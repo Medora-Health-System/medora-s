@@ -1,3 +1,5 @@
+import { erTriageMessagesEn } from "./erTriage.en";
+
 export default {
   common: {
     yes: "Yes",
@@ -1316,6 +1318,7 @@ export default {
       seeDiagnostics: "View diagnostics",
     },
   },
+  erTriage: erTriageMessagesEn,
   erMseAssist: {
     prefillFromTriage: "Prefill from triage",
     helperNote: "Prefill uses already documented data only.",

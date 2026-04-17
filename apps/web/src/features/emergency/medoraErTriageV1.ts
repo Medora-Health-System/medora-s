@@ -24,24 +24,19 @@ export type ErTraumaActivationCriterionId =
   | "amputation_crush"
   | "other_major";
 
-/** Stable criterion ids with French labels (UI + preview). */
-export const ER_TRAUMA_ACTIVATION_CRITERIA_OPTIONS: { id: ErTraumaActivationCriterionId; labelFr: string }[] = [
-  { id: "hypotension", labelFr: "Hypotension" },
-  { id: "respiratory_distress", labelFr: "Détresse respiratoire" },
-  { id: "neuro_alteration", labelFr: "Altération neurologique" },
-  { id: "major_fall", labelFr: "Chute importante" },
-  { id: "high_energy_mechanism", labelFr: "Mécanisme à haute énergie" },
-  { id: "penetrating_wound", labelFr: "Plaie pénétrante" },
-  { id: "amputation_crush", labelFr: "Amputation / écrasement" },
-  { id: "other_major", labelFr: "Autre critère majeur" },
-];
+/** Stable criterion ids — labels from i18n (`erTriage.v1.traumaCriteria*`). */
+export const ER_TRAUMA_ACTIVATION_CRITERIA_IDS: readonly ErTraumaActivationCriterionId[] = [
+  "hypotension",
+  "respiratory_distress",
+  "neuro_alteration",
+  "major_fall",
+  "high_energy_mechanism",
+  "penetrating_wound",
+  "amputation_crush",
+  "other_major",
+] as const;
 
-const CRITERION_ID_SET = new Set<string>(ER_TRAUMA_ACTIVATION_CRITERIA_OPTIONS.map((o) => o.id));
-
-export function traumaActivationCriterionLabelFr(id: string): string {
-  const f = ER_TRAUMA_ACTIVATION_CRITERIA_OPTIONS.find((o) => o.id === id);
-  return f ? f.labelFr : id;
-}
+const CRITERION_ID_SET = new Set<string>(ER_TRAUMA_ACTIVATION_CRITERIA_IDS);
 
 /**
  * Stored under `medoraErTriageV1.traumaActivation` (JSON).
@@ -236,37 +231,6 @@ function traumaActivationFromMedoraObject(o: Record<string, unknown>): ErTraumaA
     };
   }
   return e;
-}
-
-/** Concise preview lines (French) when `traumaActivation.activated` — for triage résumé / état initial. */
-export function traumaActivationPreviewLinesFrench(ta: ErTraumaActivationForm): string[] {
-  if (!ta.activated) return [];
-  const lines: string[] = [];
-  const level = ta.level ? traumaLevelFrShort(ta.level) : null;
-  if (level) lines.push(`Trauma activé : ${level}`);
-  else lines.push("Trauma activé");
-  if (ta.activatedAt) {
-    const d = new Date(ta.activatedAt);
-    if (!Number.isNaN(d.getTime())) {
-      lines.push(`Heure d'activation : ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`);
-    }
-  }
-  if (ta.criteria.length) {
-    const labels = ta.criteria.map((id) => traumaActivationCriterionLabelFr(id).toLowerCase());
-    lines.push(`Critères : ${labels.join(", ")}`);
-  }
-  if (ta.notes.trim()) {
-    lines.push(`Notes : ${ta.notes.trim()}`);
-  }
-  return lines;
-}
-
-function traumaLevelFrShort(v: ErTraumaLevel): string | null {
-  if (v === "LEVEL_1") return "Niveau 1";
-  if (v === "LEVEL_2") return "Niveau 2";
-  if (v === "LEVEL_3") return "Niveau 3";
-  if (v === "LEVEL_4") return "Niveau 4";
-  return null;
 }
 
 /** Load ER V1 form fields from GET vitalsJson (unknown keys inside medoraErTriageV1 are ignored for form). */

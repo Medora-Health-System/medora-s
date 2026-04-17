@@ -200,7 +200,7 @@ type ErDashboardTile = {
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
     useFacilityAndRoles();
@@ -403,15 +403,15 @@ export function EmergencyActiveWorkspaceView() {
       return {
         esi: "",
         allergyText: "",
-        pairs: buildErWorkspaceVitalPairs(emptySlice),
+        pairs: buildErWorkspaceVitalPairs(emptySlice, language),
       };
     }
     return {
       esi: parsed.slice.esi,
       allergyText: buildAllergyStripSummary(parsed.slice, parsed.er),
-      pairs: buildErWorkspaceVitalPairs(parsed.slice),
+      pairs: buildErWorkspaceVitalPairs(parsed.slice, language),
     };
-  }, [triageSnapshot]);
+  }, [triageSnapshot, language]);
 
   const erCdsRecommendations = useMemo(
     () =>

@@ -3,8 +3,98 @@
  * Uses only structured fields already carried by GET/PUT triage.
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
+import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
+import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
-import { erTriageV1FormFromVitalsJson, traumaActivationPreviewLinesFrench, type ErTriageV1Form } from "./medoraErTriageV1";
+import { erTriageT } from "./erTriageI18nLookup";
+import {
+  erTriageV1FormFromVitalsJson,
+  type ErTraumaActivationForm,
+  type ErTraumaLevel,
+  type ErTriageV1Form,
+} from "./medoraErTriageV1";
+
+function interpolatePreview(template: string, params: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k: string) =>
+    params[k] !== undefined ? String(params[k]) : `{${k}}`
+  );
+}
+
+function previewLocaleTag(locale: SupportedLanguage): string {
+  return locale === "en" ? "en-US" : "fr-FR";
+}
+
+function ynuPreview(locale: SupportedLanguage, v: string): string {
+  if (v === "yes") return erTriageT(locale, "erTriage.preview.ynuYes");
+  if (v === "no") return erTriageT(locale, "erTriage.preview.ynuNo");
+  if (v === "unknown") return erTriageT(locale, "erTriage.preview.ynuUnknown");
+  return "";
+}
+
+function abcPreview(locale: SupportedLanguage, v: string): string {
+  if (v === "wnl") return erTriageT(locale, "erTriage.preview.abcWnl");
+  return ynuPreview(locale, v);
+}
+
+function ynPreview(locale: SupportedLanguage, v: "" | "yes" | "no"): string {
+  if (v === "yes") return erTriageT(locale, "erTriage.preview.ynuYes");
+  if (v === "no") return erTriageT(locale, "erTriage.preview.ynuNo");
+  return erTriageT(locale, "erTriage.preview.emptyOption");
+}
+
+const TRAUMA_CRITERION_I18N: Record<string, string> = {
+  hypotension: "erTriage.v1.traumaCriteriaHypotension",
+  respiratory_distress: "erTriage.v1.traumaCriteriaRespiratory",
+  neuro_alteration: "erTriage.v1.traumaCriteriaNeuro",
+  major_fall: "erTriage.v1.traumaCriteriaFall",
+  high_energy_mechanism: "erTriage.v1.traumaCriteriaHighEnergy",
+  penetrating_wound: "erTriage.v1.traumaCriteriaPenetrating",
+  amputation_crush: "erTriage.v1.traumaCriteriaAmputation",
+  other_major: "erTriage.v1.traumaCriteriaOther",
+};
+
+function traumaCriterionPreviewLabel(locale: SupportedLanguage, id: string): string {
+  const p = TRAUMA_CRITERION_I18N[id];
+  return p ? erTriageT(locale, p) : id;
+}
+
+function traumaLevelShortPreview(locale: SupportedLanguage, level: ErTraumaLevel): string | null {
+  if (level === "LEVEL_1") return erTriageT(locale, "erTriage.preview.traumaLevel1");
+  if (level === "LEVEL_2") return erTriageT(locale, "erTriage.preview.traumaLevel2");
+  if (level === "LEVEL_3") return erTriageT(locale, "erTriage.preview.traumaLevel3");
+  if (level === "LEVEL_4") return erTriageT(locale, "erTriage.preview.traumaLevel4");
+  return null;
+}
+
+/** Locale-aware trauma lines for triage documentation preview (replaces French-only helper). */
+export function traumaActivationPreviewLines(ta: ErTraumaActivationForm, locale: SupportedLanguage): string[] {
+  if (!ta.activated) return [];
+  const lines: string[] = [];
+  const level = ta.level ? traumaLevelShortPreview(locale, ta.level) : null;
+  if (level) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.traumaActivatedWithLevel"), { level })
+    );
+  } else {
+    lines.push(erTriageT(locale, "erTriage.preview.traumaActivated"));
+  }
+  if (ta.activatedAt) {
+    const d = new Date(ta.activatedAt);
+    if (!Number.isNaN(d.getTime())) {
+      const time = d.toLocaleTimeString(previewLocaleTag(locale), { hour: "2-digit", minute: "2-digit" });
+      lines.push(interpolatePreview(erTriageT(locale, "erTriage.preview.traumaActivationTime"), { time }));
+    }
+  }
+  if (ta.criteria.length) {
+    const labels = ta.criteria.map((id) => traumaCriterionPreviewLabel(locale, id).toLowerCase());
+    lines.push(interpolatePreview(erTriageT(locale, "erTriage.preview.traumaCriteria"), { list: labels.join(", ") }));
+  }
+  if (ta.notes.trim()) {
+    lines.push(interpolatePreview(erTriageT(locale, "erTriage.preview.traumaNotes"), { text: ta.notes.trim() }));
+  }
+  return lines;
+}
 
 /** Stored as `Triage.strokeScreen` / `Triage.sepsisScreen` JSON (ER triage screening). */
 export type ErScreeningYnu = "" | "yes" | "no" | "unknown";
@@ -154,50 +244,114 @@ export function sepsisScreenFormToJson(f: ErSepsisScreenForm, previous?: unknown
   return base;
 }
 
-function screeningYnuFr(v: ErScreeningYnu): string {
-  if (v === "yes") return "Oui";
-  if (v === "no") return "Non";
-  if (v === "unknown") return "Inconnu";
-  return "—";
+function screeningYnuPreview(locale: SupportedLanguage, v: ErScreeningYnu): string {
+  if (v === "yes" || v === "no" || v === "unknown") return ynuPreview(locale, v);
+  return erTriageT(locale, "erTriage.preview.emptyOption");
 }
 
-function screeningYnFr(v: "" | "yes" | "no"): string {
-  if (v === "yes") return "Oui";
-  if (v === "no") return "Non";
-  return "—";
-}
-
-export function strokeScreenToPreviewLines(raw: unknown): string[] {
+export function strokeScreenToPreviewLines(raw: unknown, locale: SupportedLanguage): string[] {
   const f = strokeScreenFromUnknown(raw);
   if (!strokeScreenFormHasContent(f)) return [];
   const lines: string[] = [];
-  if (f.faceDroop) lines.push(`Asymétrie faciale : ${screeningYnuFr(f.faceDroop)}`);
-  if (f.armWeakness) lines.push(`Faiblesse membre supérieur : ${screeningYnuFr(f.armWeakness)}`);
-  if (f.speechDifficulty) lines.push(`Trouble de la parole : ${screeningYnuFr(f.speechDifficulty)}`);
+  if (f.faceDroop) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.strokeFace"), {
+        value: screeningYnuPreview(locale, f.faceDroop),
+      })
+    );
+  }
+  if (f.armWeakness) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.strokeArm"), {
+        value: screeningYnuPreview(locale, f.armWeakness),
+      })
+    );
+  }
+  if (f.speechDifficulty) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.strokeSpeech"), {
+        value: screeningYnuPreview(locale, f.speechDifficulty),
+      })
+    );
+  }
   if (f.lastKnownWell.trim()) {
     const d = new Date(f.lastKnownWell);
     lines.push(
       !Number.isNaN(d.getTime())
-        ? `Dernière fois vu normal : ${d.toLocaleString("fr-FR")}`
-        : `Dernière fois vu normal : ${f.lastKnownWell.trim()}`
+        ? interpolatePreview(erTriageT(locale, "erTriage.preview.strokeLkw"), {
+            datetime: d.toLocaleString(previewLocaleTag(locale)),
+          })
+        : interpolatePreview(erTriageT(locale, "erTriage.preview.strokeLkw"), {
+            datetime: f.lastKnownWell.trim(),
+          })
     );
   }
-  if (f.strokeAlertActivated) lines.push(`Alerte AVC activée : ${screeningYnFr(f.strokeAlertActivated)}`);
-  if (f.comments.trim()) lines.push(`Commentaires : ${f.comments.trim()}`);
+  if (f.strokeAlertActivated) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.strokeAlert"), {
+        value: ynPreview(locale, f.strokeAlertActivated),
+      })
+    );
+  }
+  if (f.comments.trim()) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.strokeComments"), { text: f.comments.trim() })
+    );
+  }
   return lines;
 }
 
-export function sepsisScreenToPreviewLines(raw: unknown): string[] {
+export function sepsisScreenToPreviewLines(raw: unknown, locale: SupportedLanguage): string[] {
   const f = sepsisScreenFromUnknown(raw);
   if (!sepsisScreenFormHasContent(f)) return [];
   const lines: string[] = [];
-  if (f.suspectedInfection) lines.push(`Infection suspectée : ${screeningYnuFr(f.suspectedInfection)}`);
-  if (f.rrGte22) lines.push(`FR ≥ 22/min : ${screeningYnuFr(f.rrGte22)}`);
-  if (f.sbpLte100) lines.push(`TA systolique ≤ 100 : ${screeningYnuFr(f.sbpLte100)}`);
-  if (f.alteredMentalStatus) lines.push(`Troubles de conscience : ${screeningYnuFr(f.alteredMentalStatus)}`);
-  if (f.lactateOrdered) lines.push(`Lactate prescrit / demandé : ${screeningYnuFr(f.lactateOrdered)}`);
-  if (f.sepsisAlertActivated) lines.push(`Alerte sepsis activée : ${screeningYnFr(f.sepsisAlertActivated)}`);
-  if (f.comments.trim()) lines.push(`Commentaires : ${f.comments.trim()}`);
+  if (f.suspectedInfection) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.sepsisSuspected"), {
+        value: screeningYnuPreview(locale, f.suspectedInfection),
+      })
+    );
+  }
+  if (f.rrGte22) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.sepsisRr"), {
+        value: screeningYnuPreview(locale, f.rrGte22),
+      })
+    );
+  }
+  if (f.sbpLte100) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.sepsisSbp"), {
+        value: screeningYnuPreview(locale, f.sbpLte100),
+      })
+    );
+  }
+  if (f.alteredMentalStatus) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.sepsisAms"), {
+        value: screeningYnuPreview(locale, f.alteredMentalStatus),
+      })
+    );
+  }
+  if (f.lactateOrdered) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.sepsisLactate"), {
+        value: screeningYnuPreview(locale, f.lactateOrdered),
+      })
+    );
+  }
+  if (f.sepsisAlertActivated) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.sepsisAlert"), {
+        value: ynPreview(locale, f.sepsisAlertActivated),
+      })
+    );
+  }
+  if (f.comments.trim()) {
+    lines.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.sepsisComments"), { text: f.comments.trim() })
+    );
+  }
   return lines;
 }
 
@@ -255,25 +409,65 @@ export function triagePreviewSliceFromTriageGet(triage: Record<string, unknown> 
 }
 
 /** TA syst./diast. for compact strip (no wide label/value gap). */
-export function formatTriageBpStrip(sys: string, dia: string): string {
+export function formatTriageBpStrip(sys: string, dia: string, locale: SupportedLanguage): string {
+  const dash = erTriageT(locale, "erTriage.preview.emptyOption");
   const s = String(sys ?? "").trim();
   const d = String(dia ?? "").trim();
-  if (!s && !d) return "—";
-  return `${s || "—"}/${d || "—"}`;
+  if (!s && !d) return dash;
+  return `${s || dash}/${d || dash}`;
 }
 
 /** One row per vital for the ER workspace header strip (order: TA, FC, FR, Temp, SpO₂, Poids, Taille). */
-export function buildErWorkspaceVitalPairs(slice: TriageDocPreviewFormSlice): { label: string; value: string }[] {
+export function buildErWorkspaceVitalPairs(
+  slice: TriageDocPreviewFormSlice,
+  locale: SupportedLanguage
+): { label: string; value: string }[] {
   const f = slice;
+  const dash = erTriageT(locale, "erTriage.preview.emptyOption");
+  const vs = erTriageMessagesForLocale(locale).preview.vitalStrip;
   return [
-    { label: "TA", value: formatTriageBpStrip(f.bpSys, f.bpDia) },
-    { label: "FC", value: f.hr.trim() ? `${f.hr.trim()} /min` : "—" },
-    { label: "FR", value: f.rr.trim() ? `${f.rr.trim()} /min` : "—" },
-    { label: "Temp", value: f.tempC.trim() ? `${f.tempC.trim()} °C` : "—" },
-    { label: "SpO₂", value: f.spo2.trim() ? `${f.spo2.trim()} %` : "—" },
-    { label: "Poids", value: f.weightKg.trim() ? `${f.weightKg.trim()} kg` : "—" },
-    { label: "Taille", value: f.heightCm.trim() ? `${f.heightCm.trim()} cm` : "—" },
+    { label: vs.ta, value: formatTriageBpStrip(f.bpSys, f.bpDia, locale) },
+    {
+      label: vs.hr,
+      value: f.hr.trim()
+        ? interpolatePreview(vs.perMin, { n: f.hr.trim() })
+        : dash,
+    },
+    {
+      label: vs.rr,
+      value: f.rr.trim()
+        ? interpolatePreview(vs.perMin, { n: f.rr.trim() })
+        : dash,
+    },
+    {
+      label: vs.temp,
+      value: f.tempC.trim()
+        ? interpolatePreview(vs.degC, { n: f.tempC.trim() })
+        : dash,
+    },
+    {
+      label: vs.spo2,
+      value: f.spo2.trim()
+        ? interpolatePreview(vs.pct, { n: f.spo2.trim() })
+        : dash,
+    },
+    {
+      label: vs.weight,
+      value: f.weightKg.trim()
+        ? interpolatePreview(vs.kg, { n: f.weightKg.trim() })
+        : dash,
+    },
+    {
+      label: vs.height,
+      value: f.heightCm.trim()
+        ? interpolatePreview(vs.cm, { n: f.heightCm.trim() })
+        : dash,
+    },
   ];
+}
+
+function erTriageMessagesForLocale(locale: SupportedLanguage) {
+  return locale === "en" ? erTriageMessagesEn : erTriageMessagesFr;
 }
 
 function vitalsRecordForHeader(f: TriageDocPreviewFormSlice): Record<string, number | string | null | undefined> {
@@ -289,48 +483,33 @@ function vitalsRecordForHeader(f: TriageDocPreviewFormSlice): Record<string, num
   };
 }
 
-function collectVitalAbnormalities(f: TriageDocPreviewFormSlice): string[] {
+function collectVitalAbnormalities(f: TriageDocPreviewFormSlice, locale: SupportedLanguage): string[] {
   const out: string[] = [];
   const t = f.tempC ? parseFloat(f.tempC) : NaN;
   if (!Number.isNaN(t)) {
-    if (t > 38.0) out.push("fièvre possible (température élevée)");
-    if (t < 36.0) out.push("hypothermie possible");
+    if (t > 38.0) out.push(erTriageT(locale, "erTriage.preview.vitalFever"));
+    if (t < 36.0) out.push(erTriageT(locale, "erTriage.preview.vitalHypothermia"));
   }
   const hr = f.hr ? parseInt(f.hr, 10) : NaN;
   if (!Number.isNaN(hr)) {
-    if (hr > 120) out.push("tachycardie");
-    if (hr < 50) out.push("bradycardie");
+    if (hr > 120) out.push(erTriageT(locale, "erTriage.preview.vitalTachy"));
+    if (hr < 50) out.push(erTriageT(locale, "erTriage.preview.vitalBrady"));
   }
   const rr = f.rr ? parseInt(f.rr, 10) : NaN;
   if (!Number.isNaN(rr)) {
-    if (rr > 24) out.push("polypnée");
-    if (rr < 10) out.push("fréquence respiratoire basse");
+    if (rr > 24) out.push(erTriageT(locale, "erTriage.preview.vitalTachypnea"));
+    if (rr < 10) out.push(erTriageT(locale, "erTriage.preview.vitalRrLow"));
   }
   const spo2 = f.spo2 ? parseInt(f.spo2, 10) : NaN;
-  if (!Number.isNaN(spo2) && spo2 < 94) out.push("SpO₂ basse");
+  if (!Number.isNaN(spo2) && spo2 < 94) out.push(erTriageT(locale, "erTriage.preview.vitalSpo2Low"));
   const sys = f.bpSys ? parseInt(f.bpSys, 10) : NaN;
   const dia = f.bpDia ? parseInt(f.bpDia, 10) : NaN;
   if (!Number.isNaN(sys)) {
-    if (sys < 90) out.push("TA systolique basse");
-    if (sys > 180) out.push("TA systolique très élevée");
+    if (sys < 90) out.push(erTriageT(locale, "erTriage.preview.vitalSbpLow"));
+    if (sys > 180) out.push(erTriageT(locale, "erTriage.preview.vitalSbpHigh"));
   }
-  if (!Number.isNaN(dia) && dia > 110) out.push("TA diastolique élevée");
+  if (!Number.isNaN(dia) && dia > 110) out.push(erTriageT(locale, "erTriage.preview.vitalDbpHigh"));
   return out;
-}
-
-function ynuFr(v: string): string {
-  if (v === "yes") return "Oui";
-  if (v === "no") return "Non";
-  if (v === "unknown") return "Inconnu";
-  return "";
-}
-
-function abcFr(v: string): string {
-  if (v === "wnl") return "Dans les limites (WNL)";
-  if (v === "yes") return "Oui";
-  if (v === "no") return "Non";
-  if (v === "unknown") return "Inconnu";
-  return "";
 }
 
 function pushIf(lines: string[], prefix: string, text: string) {
@@ -339,18 +518,22 @@ function pushIf(lines: string[], prefix: string, text: string) {
 }
 
 /** Combined allergy text (no duplicate labels — legacy medicationAllergiesDetail still included if present). */
-function allergyDetailLines(f: TriageDocPreviewFormSlice, er: ErTriageV1Form): string[] {
+function allergyDetailLines(f: TriageDocPreviewFormSlice, er: ErTriageV1Form, locale: SupportedLanguage): string[] {
   const chunks: string[] = [];
   const note = f.allergyNote.trim();
   if (note) chunks.push(note);
   const med = er.medicationAllergiesDetail.trim();
-  if (med) chunks.push(`Médicaments : ${med}`);
+  if (med) chunks.push(interpolatePreview(erTriageT(locale, "erTriage.preview.allergyMedLine"), { text: med }));
   const food = er.foodAllergiesDetail.trim();
-  if (food) chunks.push(`Alimentaires / autres : ${food}`);
+  if (food) chunks.push(interpolatePreview(erTriageT(locale, "erTriage.preview.allergyFoodLine"), { text: food }));
   const add = er.additionalAllergyInfo.trim();
   if (add) chunks.push(add);
   if (chunks.length === 0) return [];
-  return [`Allergies : ${chunks.join(" — ")}`];
+  return [
+    interpolatePreview(erTriageT(locale, "erTriage.preview.allergyCombined"), {
+      text: chunks.join(" — "),
+    }),
+  ];
 }
 
 /** Latest vitals one-liner for clinical strip (same logic as chart header). */
@@ -380,19 +563,31 @@ export type TriagePreviewModel = {
   narrative: string;
 };
 
-function buildNarrative(f: TriageDocPreviewFormSlice, er: ErTriageV1Form): string {
+function buildNarrative(f: TriageDocPreviewFormSlice, er: ErTriageV1Form, locale: SupportedLanguage): string {
   const parts: string[] = [];
   const m = f.chiefComplaint.trim();
-  if (m) parts.push(`motif « ${m.length > 100 ? `${m.slice(0, 100)}…` : m} »`);
-  if (f.esi) parts.push(`ESI ${f.esi}/5`);
+  if (m) {
+    parts.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.narrativeMotif"), {
+        text: m.length > 100 ? `${m.slice(0, 100)}…` : m,
+      })
+    );
+  }
+  if (f.esi) {
+    parts.push(interpolatePreview(erTriageT(locale, "erTriage.preview.narrativeEsi"), { n: f.esi }));
+  }
   const vitalsLine = formatVitalsHeaderLine(vitalsRecordForHeader(f));
   if (vitalsLine) parts.push(vitalsLine);
   if (er.painScale0to10.trim()) {
     const n = parseInt(er.painScale0to10, 10);
-    if (!Number.isNaN(n)) parts.push(`douleur ${n}/10`);
+    if (!Number.isNaN(n)) {
+      parts.push(interpolatePreview(erTriageT(locale, "erTriage.preview.narrativePain"), { n: String(n) }));
+    }
   }
   if (parts.length === 0) return "";
-  return `Résumé synthétique : ${parts.join(" · ")}.`;
+  return interpolatePreview(erTriageT(locale, "erTriage.preview.narrativeIntro"), {
+    parts: parts.join(" · "),
+  });
 }
 
 /**
@@ -404,102 +599,248 @@ export function buildTriageDocumentationPreviewModel(
     strokeScreen: unknown;
     sepsisScreen: unknown;
     erV1: ErTriageV1Form;
+    locale: SupportedLanguage;
   }
 ): TriagePreviewModel {
+  const { locale } = opts;
   const er = opts.erV1;
   const sections: TriagePreviewSection[] = [];
 
   const presentation: string[] = [];
   const complaint = f.chiefComplaint.trim();
-  if (complaint) presentation.push(`Motif principal : ${complaint}`);
+  if (complaint) {
+    presentation.push(interpolatePreview(erTriageT(locale, "erTriage.preview.lineChief"), { text: complaint }));
+  }
   if (f.onsetAt) {
     const d = new Date(f.onsetAt);
-    if (!Number.isNaN(d.getTime())) presentation.push(`Début des symptômes : ${d.toLocaleString("fr-FR")}`);
+    if (!Number.isNaN(d.getTime())) {
+      presentation.push(
+        interpolatePreview(erTriageT(locale, "erTriage.preview.lineOnset"), {
+          datetime: d.toLocaleString(previewLocaleTag(locale)),
+        })
+      );
+    }
   }
-  if (f.esi) presentation.push(`ESI : ${f.esi}/5`);
-  if (presentation.length) sections.push({ id: "presentation", title: "Présentation", lines: presentation });
+  if (f.esi) {
+    presentation.push(interpolatePreview(erTriageT(locale, "erTriage.preview.lineEsi"), { n: f.esi }));
+  }
+  if (presentation.length) {
+    sections.push({
+      id: "presentation",
+      title: erTriageT(locale, "erTriage.preview.sections.presentation"),
+      lines: presentation,
+    });
+  }
 
   const etatInitial: string[] = [];
-  pushIf(etatInitial, "Récit triage : ", er.triageNarrative);
-  pushIf(etatInitial, "EPI / précautions : ", er.ppeNote);
-  if (er.airway) etatInitial.push(`Voie aérienne : ${abcFr(er.airway)}`);
-  if (er.breathing) etatInitial.push(`Ventilation : ${abcFr(er.breathing)}`);
-  if (er.circulation) etatInitial.push(`Circulation : ${abcFr(er.circulation)}`);
-  if (er.gcs15) etatInitial.push(`GCS 15 : ${ynuFr(er.gcs15)}`);
-  if (er.traumaActivation.activated) {
-    etatInitial.push(...traumaActivationPreviewLinesFrench(er.traumaActivation));
+  pushIf(etatInitial, erTriageT(locale, "erTriage.preview.prefixTriageNarrative"), er.triageNarrative);
+  pushIf(etatInitial, erTriageT(locale, "erTriage.preview.prefixPpe"), er.ppeNote);
+  if (er.airway) {
+    etatInitial.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineAirway"), { value: abcPreview(locale, er.airway) })
+    );
   }
-  pushIf(etatInitial, "Exceptions au profil attendu : ", er.triageExceptionsNote);
+  if (er.breathing) {
+    etatInitial.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineBreathing"), {
+        value: abcPreview(locale, er.breathing),
+      })
+    );
+  }
+  if (er.circulation) {
+    etatInitial.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineCirculation"), {
+        value: abcPreview(locale, er.circulation),
+      })
+    );
+  }
+  if (er.gcs15) {
+    etatInitial.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineGcs"), { value: ynuPreview(locale, er.gcs15) })
+    );
+  }
+  if (er.traumaActivation.activated) {
+    etatInitial.push(...traumaActivationPreviewLines(er.traumaActivation, locale));
+  }
+  pushIf(etatInitial, erTriageT(locale, "erTriage.preview.prefixExceptions"), er.triageExceptionsNote);
   if (er.painScale0to10.trim()) {
     const n = parseInt(er.painScale0to10, 10);
-    if (!Number.isNaN(n)) etatInitial.push(`Douleur (0–10) : ${n}`);
+    if (!Number.isNaN(n)) {
+      etatInitial.push(
+        interpolatePreview(erTriageT(locale, "erTriage.preview.linePain"), { n: String(n) })
+      );
+    }
   }
-  pushIf(etatInitial, "Provenance / orientation : ", er.referralSource);
+  pushIf(etatInitial, erTriageT(locale, "erTriage.preview.prefixReferral"), er.referralSource);
   if (er.triageStartedAt) {
     const d = new Date(er.triageStartedAt);
-    if (!Number.isNaN(d.getTime())) etatInitial.push(`Heure de début triage : ${d.toLocaleString("fr-FR")}`);
+    if (!Number.isNaN(d.getTime())) {
+      etatInitial.push(
+        interpolatePreview(erTriageT(locale, "erTriage.preview.lineTriageStart"), {
+          datetime: d.toLocaleString(previewLocaleTag(locale)),
+        })
+      );
+    }
   }
-  if (etatInitial.length) sections.push({ id: "etat_initial", title: "État initial", lines: etatInitial });
+  if (etatInitial.length) {
+    sections.push({
+      id: "etat_initial",
+      title: erTriageT(locale, "erTriage.preview.sections.etat_initial"),
+      lines: etatInitial,
+    });
+  }
 
   const signes: string[] = [];
   const vitalsLine = formatVitalsHeaderLine(vitalsRecordForHeader(f));
-  if (vitalsLine) signes.push(`Relevé : ${vitalsLine}`);
-  const abn = collectVitalAbnormalities(f);
-  if (abn.length) signes.push(`À noter : ${abn.join(" ; ")}`);
+  if (vitalsLine) {
+    signes.push(interpolatePreview(erTriageT(locale, "erTriage.preview.vitalsRecorded"), { line: vitalsLine }));
+  }
+  const abn = collectVitalAbnormalities(f, locale);
+  if (abn.length) {
+    signes.push(interpolatePreview(erTriageT(locale, "erTriage.preview.vitalsNote"), { items: abn.join(" ; ") }));
+  }
   if (f.triageCompleteAt) {
     const d = new Date(f.triageCompleteAt);
-    if (!Number.isNaN(d.getTime())) signes.push(`Triage complété à : ${d.toLocaleString("fr-FR")}`);
+    if (!Number.isNaN(d.getTime())) {
+      signes.push(
+        interpolatePreview(erTriageT(locale, "erTriage.preview.triageCompletedAt"), {
+          datetime: d.toLocaleString(previewLocaleTag(locale)),
+        })
+      );
+    }
   }
-  if (signes.length) sections.push({ id: "signes_vitaux", title: "Signes vitaux", lines: signes });
+  if (signes.length) {
+    sections.push({
+      id: "signes_vitaux",
+      title: erTriageT(locale, "erTriage.preview.sections.signes_vitaux"),
+      lines: signes,
+    });
+  }
 
   const securite: string[] = [];
-  pushIf(securite, "Soins infirmiers (résumé) : ", er.nursingCareNote);
-  if (er.callLightInReach) securite.push(`Appel accessible : ${ynuFr(er.callLightInReach)}`);
-  if (er.bedLockedLow) securite.push(`Lit verrouillé / bas : ${ynuFr(er.bedLockedLow)}`);
-  if (er.familyAtBedside) securite.push(`Entourage au chevet : ${ynuFr(er.familyAtBedside)}`);
-  if (er.inViewOfNursingStation) securite.push(`En vue du poste : ${ynuFr(er.inViewOfNursingStation)}`);
-  if (er.patientUpdatedOnPlan) securite.push(`Plan de soins expliqué : ${ynuFr(er.patientUpdatedOnPlan)}`);
-  if (er.comfortMeasuresProvided) securite.push(`Mesures de confort : ${ynuFr(er.comfortMeasuresProvided)}`);
-  pushIf(securite, "EPI (parcours aux urgences) : ", er.edCoursePpeNote);
-  pushIf(securite, "Notes infirmières / addendum : ", er.nursingNotesAddendum);
-  if (er.feelsSafeAtHome) securite.push(`Sécurité au domicile : ${ynuFr(er.feelsSafeAtHome)}`);
-  if (er.travelOutsideCountry14d) securite.push(`Voyage hors pays (<14 j) : ${ynuFr(er.travelOutsideCountry14d)}`);
-  const strokeLines = strokeScreenToPreviewLines(opts.strokeScreen);
+  pushIf(securite, erTriageT(locale, "erTriage.preview.prefixNursingCare"), er.nursingCareNote);
+  if (er.callLightInReach) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineCallLight"), {
+        value: ynuPreview(locale, er.callLightInReach),
+      })
+    );
+  }
+  if (er.bedLockedLow) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineBedLow"), {
+        value: ynuPreview(locale, er.bedLockedLow),
+      })
+    );
+  }
+  if (er.familyAtBedside) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineFamily"), {
+        value: ynuPreview(locale, er.familyAtBedside),
+      })
+    );
+  }
+  if (er.inViewOfNursingStation) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineInView"), {
+        value: ynuPreview(locale, er.inViewOfNursingStation),
+      })
+    );
+  }
+  if (er.patientUpdatedOnPlan) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.linePlan"), {
+        value: ynuPreview(locale, er.patientUpdatedOnPlan),
+      })
+    );
+  }
+  if (er.comfortMeasuresProvided) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineComfort"), {
+        value: ynuPreview(locale, er.comfortMeasuresProvided),
+      })
+    );
+  }
+  pushIf(securite, erTriageT(locale, "erTriage.preview.prefixEdPpe"), er.edCoursePpeNote);
+  pushIf(securite, erTriageT(locale, "erTriage.preview.prefixNursingNotes"), er.nursingNotesAddendum);
+  if (er.feelsSafeAtHome) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineSafeHome"), {
+        value: ynuPreview(locale, er.feelsSafeAtHome),
+      })
+    );
+  }
+  if (er.travelOutsideCountry14d) {
+    securite.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineTravel"), {
+        value: ynuPreview(locale, er.travelOutsideCountry14d),
+      })
+    );
+  }
+  const strokeLines = strokeScreenToPreviewLines(opts.strokeScreen, locale);
   if (strokeLines.length) {
-    securite.push("Dépistage AVC");
-    strokeLines.forEach((line) => securite.push(`  · ${line}`));
+    securite.push(erTriageT(locale, "erTriage.preview.strokeHeader"));
+    strokeLines.forEach((line) =>
+      securite.push(interpolatePreview(erTriageT(locale, "erTriage.preview.strokeBullet"), { line }))
+    );
   }
-  const sepsisLines = sepsisScreenToPreviewLines(opts.sepsisScreen);
+  const sepsisLines = sepsisScreenToPreviewLines(opts.sepsisScreen, locale);
   if (sepsisLines.length) {
-    securite.push("Dépistage sepsis");
-    sepsisLines.forEach((line) => securite.push(`  · ${line}`));
+    securite.push(erTriageT(locale, "erTriage.preview.sepsisHeader"));
+    sepsisLines.forEach((line) =>
+      securite.push(interpolatePreview(erTriageT(locale, "erTriage.preview.strokeBullet"), { line }))
+    );
   }
-  if (securite.length) sections.push({ id: "securite", title: "Sécurité et orientation", lines: securite });
+  if (securite.length) {
+    sections.push({
+      id: "securite",
+      title: erTriageT(locale, "erTriage.preview.sections.securite"),
+      lines: securite,
+    });
+  }
 
   const meds: string[] = [];
-  pushIf(meds, "Médicaments (résumé) : ", er.medicationsSummary);
-  meds.push(...allergyDetailLines(f, er));
-  pushIf(meds, "Pharmacie préférée : ", er.preferredPharmacy);
-  pushIf(meds, "Vaccination / à jour : ", er.immunizationStatusNote);
-  if (meds.length) sections.push({ id: "meds", title: "Médicaments / allergies / vaccination", lines: meds });
+  pushIf(meds, erTriageT(locale, "erTriage.preview.prefixMeds"), er.medicationsSummary);
+  meds.push(...allergyDetailLines(f, er, locale));
+  pushIf(meds, erTriageT(locale, "erTriage.preview.prefixPharmacy"), er.preferredPharmacy);
+  pushIf(meds, erTriageT(locale, "erTriage.preview.prefixImmu"), er.immunizationStatusNote);
+  if (meds.length) {
+    sections.push({
+      id: "meds",
+      title: erTriageT(locale, "erTriage.preview.sections.meds"),
+      lines: meds,
+    });
+  }
 
   const hist: string[] = [];
-  pushIf(hist, "Antécédents médicaux : ", er.pastMedicalHistory);
-  pushIf(hist, "Antécédents chirurgicaux : ", er.pastSurgicalHistory);
-  pushIf(hist, "Antécédents familiaux : ", er.familyHistory);
-  pushIf(hist, "Tabagisme : ", er.smokingStatus);
-  pushIf(hist, "Alcool : ", er.alcoholUse);
-  pushIf(hist, "Cannabis : ", er.marijuanaUse);
-  pushIf(hist, "Stimulants (ex. amphétamine/cocaïne) : ", er.stimulantUse);
-  pushIf(hist, "Opioïdes / héroïne : ", er.opioidHeroinUse);
-  pushIf(hist, "Commentaires sociaux / contexte : ", er.historySocialComments);
-  if (hist.length) sections.push({ id: "histoire", title: "Antécédents / social", lines: hist });
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixPmh"), er.pastMedicalHistory);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixPsh"), er.pastSurgicalHistory);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixFh"), er.familyHistory);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixSmoking"), er.smokingStatus);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixAlcohol"), er.alcoholUse);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixCannabis"), er.marijuanaUse);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixStimulant"), er.stimulantUse);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixOpioid"), er.opioidHeroinUse);
+  pushIf(hist, erTriageT(locale, "erTriage.preview.prefixSocial"), er.historySocialComments);
+  if (hist.length) {
+    sections.push({
+      id: "histoire",
+      title: erTriageT(locale, "erTriage.preview.sections.histoire"),
+      lines: hist,
+    });
+  }
 
-  const narrative = buildNarrative(f, er);
+  const narrative = buildNarrative(f, er, locale);
 
   if (sections.length === 0 && !narrative) {
     return {
-      sections: [{ id: "empty", title: "Aperçu", lines: ["Aucune donnée structurée saisie pour l’aperçu."] }],
+      sections: [
+        {
+          id: "empty",
+          title: erTriageT(locale, "erTriage.preview.sections.empty"),
+          lines: [erTriageT(locale, "erTriage.preview.emptyBody")],
+        },
+      ],
       narrative: "",
     };
   }

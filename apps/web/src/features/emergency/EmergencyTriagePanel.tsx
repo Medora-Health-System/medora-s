@@ -10,7 +10,6 @@ import {
   type PatientTriageVitalsSnapshot,
 } from "@/lib/patientVitals";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { ui } from "@/lib/uiLabels";
 import {
   MedoraCard,
   MedoraCardActions,
@@ -40,6 +39,7 @@ import {
 } from "./medoraErTriageV1";
 import {
   filterErChiefComplaintTemplates,
+  pickChiefComplaintLocale,
   type ErChiefComplaintTemplate,
 } from "./erChiefComplaintTemplates";
 
@@ -140,19 +140,6 @@ const PREVIEW_SECTION_ACCENTS: Record<string, string> = {
   empty: "#cbd5e1",
 };
 
-const SCREENING_YNU_OPTIONS: { value: ErScreeningYnu; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "yes", label: "Oui" },
-  { value: "no", label: "Non" },
-  { value: "unknown", label: "Inconnu" },
-];
-
-const SCREENING_YN_OPTIONS: { value: "" | "yes" | "no"; label: string }[] = [
-  { value: "", label: "—" },
-  { value: "yes", label: "Oui" },
-  { value: "no", label: "Non" },
-];
-
 export function EmergencyTriagePanel({
   encounterId: _encounterId,
   facilityId,
@@ -171,7 +158,7 @@ export function EmergencyTriagePanel({
   patientChartHref?: string;
   onSaved: () => void | Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [formData, setFormData] = useState<TriageFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -182,20 +169,48 @@ export function EmergencyTriagePanel({
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
 
-  const complaintTemplateMatches = useMemo(
-    () => filterErChiefComplaintTemplates(complaintTemplateQuery),
-    [complaintTemplateQuery]
+  const screeningYnuOptions: { value: ErScreeningYnu; label: string }[] = useMemo(
+    () => [
+      { value: "", label: t("erTriage.preview.emptyOption") },
+      { value: "yes", label: t("erTriage.preview.ynuYes") },
+      { value: "no", label: t("erTriage.preview.ynuNo") },
+      { value: "unknown", label: t("erTriage.preview.ynuUnknown") },
+    ],
+    [t]
   );
 
-  const applyChiefComplaintTemplate = useCallback((tpl: ErChiefComplaintTemplate) => {
-    setFormData((f) => {
-      const next: TriageFormState = { ...f, chiefComplaint: tpl.chiefComplaint };
-      if (tpl.triageNarrativeStarter && !f.erV1.triageNarrative.trim()) {
-        next.erV1 = { ...f.erV1, triageNarrative: tpl.triageNarrativeStarter };
-      }
-      return next;
-    });
-  }, []);
+  const screeningYnOptions: { value: "" | "yes" | "no"; label: string }[] = useMemo(
+    () => [
+      { value: "", label: t("erTriage.preview.emptyOption") },
+      { value: "yes", label: t("erTriage.preview.ynuYes") },
+      { value: "no", label: t("erTriage.preview.ynuNo") },
+    ],
+    [t]
+  );
+
+  const complaintTemplateMatches = useMemo(
+    () => filterErChiefComplaintTemplates(complaintTemplateQuery, language),
+    [complaintTemplateQuery, language]
+  );
+
+  const applyChiefComplaintTemplate = useCallback(
+    (tpl: ErChiefComplaintTemplate) => {
+      setFormData((f) => {
+        const next: TriageFormState = {
+          ...f,
+          chiefComplaint: pickChiefComplaintLocale(tpl.chiefComplaint, language),
+        };
+        if (tpl.triageNarrativeStarter && !f.erV1.triageNarrative.trim()) {
+          next.erV1 = {
+            ...f.erV1,
+            triageNarrative: pickChiefComplaintLocale(tpl.triageNarrativeStarter, language),
+          };
+        }
+        return next;
+      });
+    },
+    [language]
+  );
 
   const patchErV1 = useCallback((patch: Partial<ErTriageV1Form>) => {
     setFormData((f) => ({ ...f, erV1: { ...f.erV1, ...patch } }));
@@ -238,13 +253,12 @@ export function EmergencyTriagePanel({
       setTriage(null);
       setFormData(emptyForm());
       setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-          "Impossible de charger le triage."
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erTriage.panel.loadError")
       );
     } finally {
       setLoading(false);
     }
-  }, [encounter.id, facilityId]);
+  }, [encounter.id, facilityId, t]);
 
   useEffect(() => {
     void loadTriage();
@@ -312,14 +326,13 @@ export function EmergencyTriagePanel({
       await onSaved();
       const baseMsg =
         res && typeof res === "object" && (res as { queued?: boolean }).queued === true
-          ? "En attente de synchronisation"
-          : "Triage enregistré";
+          ? t("erTriage.panel.saveQueued")
+          : t("erTriage.panel.saveOk");
       setSaveInfo(baseMsg);
     } catch (e) {
       console.error(e);
       setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-          "Impossible d'enregistrer le triage."
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erTriage.panel.saveError")
       );
     } finally {
       setSaving(false);
@@ -328,9 +341,12 @@ export function EmergencyTriagePanel({
 
   const updatedLine =
     triage?.updatedByDisplayFr && triage?.updatedAt
-      ? `Dernière mise à jour par ${String(triage.updatedByDisplayFr).trim()} — ${new Date(
-          triage.updatedAt as string
-        ).toLocaleString("fr-FR")}`
+      ? t("erTriage.panel.updatedLine")
+          .replace("{user}", String(triage.updatedByDisplayFr).trim())
+          .replace(
+            "{datetime}",
+            new Date(triage.updatedAt as string).toLocaleString(language === "en" ? "en-US" : "fr-FR")
+          )
       : null;
 
   const previewModel = useMemo(() => {
@@ -353,8 +369,9 @@ export function EmergencyTriagePanel({
       strokeScreen: formData.strokeScreen,
       sepsisScreen: formData.sepsisScreen,
       erV1: formData.erV1,
+      locale: language,
     });
-  }, [formData]);
+  }, [formData, language]);
 
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
@@ -396,16 +413,16 @@ export function EmergencyTriagePanel({
     <MedoraCard leftAccentColor="#b91c1c" variant="default">
       <MedoraCardInner>
         <MedoraCardTitle
-          title="Triage urgences"
+          title={t("erTriage.panel.title")}
           subline={
             <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
-              Même enregistrement que le dossier de consultation.
+              {t("erTriage.panel.sublineSameAsEncounter")}
             </p>
           }
         />
 
         {loading ? (
-          <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{ui.common.loading}</p>
+          <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("common.loading")}</p>
         ) : (
           <>
             {saveInfo ? (
@@ -413,7 +430,10 @@ export function EmergencyTriagePanel({
                 style={{
                   margin: "10px 0 0 0",
                   fontSize: 13,
-                  color: saveInfo.includes("Impossible") ? "#b91c1c" : "#15803d",
+                  color:
+                    saveInfo === t("erTriage.panel.saveError") || saveInfo === t("erTriage.panel.loadError")
+                      ? "#b91c1c"
+                      : "#15803d",
                   lineHeight: 1.45,
                 }}
               >
@@ -424,17 +444,17 @@ export function EmergencyTriagePanel({
             <div style={{ ...workspaceStyle, marginTop: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
                 <div>
-                <p style={sectionHeading}>Plainte et gravité</p>
+                <p style={sectionHeading}>{t("erTriage.panel.sectionPlainteGravite")}</p>
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div>
-                    <label style={labelStyle}>Motif principal</label>
+                    <label style={labelStyle}>{t("erTriage.panel.motifPrincipal")}</label>
                     <input
                       type="text"
                       value={formData.chiefComplaint}
                       onChange={(e) => setFormData((f) => ({ ...f, chiefComplaint: e.target.value }))}
                       disabled={formDisabled}
                       style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                      placeholder="Plainte principale"
+                      placeholder={t("erTriage.panel.placeholderMotif")}
                     />
                     {!formDisabled ? (
                       <div style={{ marginTop: 8 }}>
@@ -485,7 +505,7 @@ export function EmergencyTriagePanel({
                                   lineHeight: 1.3,
                                 }}
                               >
-                                {tpl.label}
+                                {pickChiefComplaintLocale(tpl.label, language)}
                               </button>
                             ))}
                           </div>
@@ -495,23 +515,23 @@ export function EmergencyTriagePanel({
                   </div>
                   <div style={grid2}>
                     <div>
-                      <label style={labelStyle}>ESI (1–5)</label>
+                      <label style={labelStyle}>{t("erTriage.panel.esiLabel")}</label>
                       <select
                         value={formData.esi}
                         onChange={(e) => setFormData((f) => ({ ...f, esi: e.target.value }))}
                         disabled={formDisabled}
                         style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                       >
-                        <option value="">—</option>
-                        <option value="1">1 — Réanimation</option>
-                        <option value="2">2 — Émergent</option>
-                        <option value="3">3 — Urgent</option>
-                        <option value="4">4 — Moins urgent</option>
-                        <option value="5">5 — Non urgent</option>
+                        <option value="">{t("erTriage.preview.emptyOption")}</option>
+                        <option value="1">{t("erTriage.panel.esi1")}</option>
+                        <option value="2">{t("erTriage.panel.esi2")}</option>
+                        <option value="3">{t("erTriage.panel.esi3")}</option>
+                        <option value="4">{t("erTriage.panel.esi4")}</option>
+                        <option value="5">{t("erTriage.panel.esi5")}</option>
                       </select>
                     </div>
                     <div>
-                      <label style={labelStyle}>Début des symptômes</label>
+                      <label style={labelStyle}>{t("erTriage.panel.onsetAt")}</label>
                       <input
                         type="datetime-local"
                         value={formData.onsetAt}
@@ -521,7 +541,7 @@ export function EmergencyTriagePanel({
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Triage complété à</label>
+                      <label style={labelStyle}>{t("erTriage.panel.triageCompleteAt")}</label>
                       <input
                         type="datetime-local"
                         value={formData.triageCompleteAt}
@@ -535,10 +555,10 @@ export function EmergencyTriagePanel({
               </div>
 
               <div>
-                <p style={sectionHeading}>Signes vitaux</p>
+                <p style={sectionHeading}>{t("erTriage.panel.sectionVitals")}</p>
                 <div style={{ marginTop: 10, ...grid3 }}>
                   <div>
-                    <label style={labelStyle}>Température (°C)</label>
+                    <label style={labelStyle}>{t("erTriage.panel.tempC")}</label>
                     <input
                       type="number"
                       step="0.1"
@@ -549,7 +569,7 @@ export function EmergencyTriagePanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>FC (bpm)</label>
+                    <label style={labelStyle}>{t("erTriage.panel.hr")}</label>
                     <input
                       type="number"
                       value={formData.hr}
@@ -559,7 +579,7 @@ export function EmergencyTriagePanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>FR</label>
+                    <label style={labelStyle}>{t("erTriage.panel.rr")}</label>
                     <input
                       type="number"
                       value={formData.rr}
@@ -569,7 +589,7 @@ export function EmergencyTriagePanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>TA systolique</label>
+                    <label style={labelStyle}>{t("erTriage.panel.bpSys")}</label>
                     <input
                       type="number"
                       value={formData.bpSys}
@@ -579,7 +599,7 @@ export function EmergencyTriagePanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>TA diastolique</label>
+                    <label style={labelStyle}>{t("erTriage.panel.bpDia")}</label>
                     <input
                       type="number"
                       value={formData.bpDia}
@@ -589,7 +609,7 @@ export function EmergencyTriagePanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>SpO₂ (%)</label>
+                    <label style={labelStyle}>{t("erTriage.panel.spo2")}</label>
                     <input
                       type="number"
                       min={0}
@@ -601,7 +621,7 @@ export function EmergencyTriagePanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Poids (kg)</label>
+                    <label style={labelStyle}>{t("erTriage.panel.weightKg")}</label>
                     <input
                       type="number"
                       step="0.1"
@@ -612,7 +632,7 @@ export function EmergencyTriagePanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Taille (cm)</label>
+                    <label style={labelStyle}>{t("erTriage.panel.heightCm")}</label>
                     <input
                       type="number"
                       step="0.1"
@@ -626,11 +646,9 @@ export function EmergencyTriagePanel({
               </div>
 
               <div>
-                <p style={sectionHeading}>Triage urgences — complément V1</p>
+                <p style={sectionHeading}>{t("erTriage.panel.sectionV1")}</p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  Données stockées dans le triage (JSON). Un enregistrement depuis l&apos;onglet Signes vitaux du dossier qui
-                  remplace entièrement les signes vitaux peut effacer cette extension — privilégier la sauvegarde depuis cette
-                  page pour les passages urgences.
+                  {t("erTriage.panel.v1StorageHint")}
                 </p>
                 <div style={{ marginTop: 12 }}>
                   <EmergencyTriageV1Sections
@@ -649,17 +667,17 @@ export function EmergencyTriagePanel({
 
               <details style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", backgroundColor: "#fff" }}>
                 <summary style={{ cursor: formDisabled ? "default" : "pointer", fontWeight: 600, fontSize: 13, color: "#334155" }}>
-                  Dépistages AVC / sepsis
+                  {t("erTriage.panel.sectionScreenings")}
                 </summary>
                 <p style={{ margin: "10px 0 8px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  Champs structurés enregistrés avec le triage (JSON côté serveur). Laissez vide si non applicable.
+                  {t("erTriage.panel.screeningsHint")}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div>
-                    <p style={{ ...sectionHeading, marginBottom: 8 }}>Dépistage AVC</p>
+                    <p style={{ ...sectionHeading, marginBottom: 8 }}>{t("erTriage.panel.strokeTitle")}</p>
                     <div style={{ ...grid2 }}>
                       <div>
-                        <label style={labelStyle}>Asymétrie faciale</label>
+                        <label style={labelStyle}>{t("erTriage.panel.strokeFace")}</label>
                         <select
                           value={formData.strokeScreen.faceDroop}
                           onChange={(e) =>
@@ -671,7 +689,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -679,7 +697,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>Faiblesse membre supérieur</label>
+                        <label style={labelStyle}>{t("erTriage.panel.strokeArm")}</label>
                         <select
                           value={formData.strokeScreen.armWeakness}
                           onChange={(e) =>
@@ -691,7 +709,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -699,7 +717,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>Trouble de la parole</label>
+                        <label style={labelStyle}>{t("erTriage.panel.strokeSpeech")}</label>
                         <select
                           value={formData.strokeScreen.speechDifficulty}
                           onChange={(e) =>
@@ -711,7 +729,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -719,7 +737,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>Dernière fois vu normal</label>
+                        <label style={labelStyle}>{t("erTriage.panel.strokeLkw")}</label>
                         <input
                           type="datetime-local"
                           value={formData.strokeScreen.lastKnownWell}
@@ -734,7 +752,7 @@ export function EmergencyTriagePanel({
                         />
                       </div>
                       <div>
-                        <label style={labelStyle}>Alerte AVC activée</label>
+                        <label style={labelStyle}>{t("erTriage.panel.strokeAlert")}</label>
                         <select
                           value={formData.strokeScreen.strokeAlertActivated}
                           onChange={(e) =>
@@ -749,7 +767,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YN_OPTIONS.map((o) => (
+                          {screeningYnOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -758,7 +776,7 @@ export function EmergencyTriagePanel({
                       </div>
                     </div>
                     <div style={{ marginTop: 10 }}>
-                      <label style={labelStyle}>Commentaires (AVC)</label>
+                      <label style={labelStyle}>{t("erTriage.panel.strokeComments")}</label>
                       <textarea
                         value={formData.strokeScreen.comments}
                         onChange={(e) =>
@@ -775,10 +793,10 @@ export function EmergencyTriagePanel({
                   </div>
 
                   <div>
-                    <p style={{ ...sectionHeading, marginBottom: 8 }}>Dépistage sepsis</p>
+                    <p style={{ ...sectionHeading, marginBottom: 8 }}>{t("erTriage.panel.sepsisTitle")}</p>
                     <div style={{ ...grid2 }}>
                       <div>
-                        <label style={labelStyle}>Infection suspectée</label>
+                        <label style={labelStyle}>{t("erTriage.panel.sepsisSuspected")}</label>
                         <select
                           value={formData.sepsisScreen.suspectedInfection}
                           onChange={(e) =>
@@ -790,7 +808,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -798,7 +816,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>FR ≥ 22/min</label>
+                        <label style={labelStyle}>{t("erTriage.panel.sepsisRr")}</label>
                         <select
                           value={formData.sepsisScreen.rrGte22}
                           onChange={(e) =>
@@ -810,7 +828,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -818,7 +836,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>TA systolique ≤ 100</label>
+                        <label style={labelStyle}>{t("erTriage.panel.sepsisSbp")}</label>
                         <select
                           value={formData.sepsisScreen.sbpLte100}
                           onChange={(e) =>
@@ -830,7 +848,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -838,7 +856,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>Troubles de conscience</label>
+                        <label style={labelStyle}>{t("erTriage.panel.sepsisAms")}</label>
                         <select
                           value={formData.sepsisScreen.alteredMentalStatus}
                           onChange={(e) =>
@@ -850,7 +868,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -858,7 +876,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>Lactate prescrit / demandé</label>
+                        <label style={labelStyle}>{t("erTriage.panel.sepsisLactate")}</label>
                         <select
                           value={formData.sepsisScreen.lactateOrdered}
                           onChange={(e) =>
@@ -870,7 +888,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YNU_OPTIONS.map((o) => (
+                          {screeningYnuOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -878,7 +896,7 @@ export function EmergencyTriagePanel({
                         </select>
                       </div>
                       <div>
-                        <label style={labelStyle}>Alerte sepsis activée</label>
+                        <label style={labelStyle}>{t("erTriage.panel.sepsisAlert")}</label>
                         <select
                           value={formData.sepsisScreen.sepsisAlertActivated}
                           onChange={(e) =>
@@ -893,7 +911,7 @@ export function EmergencyTriagePanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
                         >
-                          {SCREENING_YN_OPTIONS.map((o) => (
+                          {screeningYnOptions.map((o) => (
                             <option key={o.value === "" ? "e" : o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -902,7 +920,7 @@ export function EmergencyTriagePanel({
                       </div>
                     </div>
                     <div style={{ marginTop: 10 }}>
-                      <label style={labelStyle}>Commentaires (sepsis)</label>
+                      <label style={labelStyle}>{t("erTriage.panel.sepsisComments")}</label>
                       <textarea
                         value={formData.sepsisScreen.comments}
                         onChange={(e) =>
@@ -922,9 +940,9 @@ export function EmergencyTriagePanel({
               </div>
 
               <div style={resumeColumnStyle}>
-                <p style={sectionHeading}>Triage résumé</p>
+                <p style={sectionHeading}>{t("erTriage.panel.sectionResume")}</p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  Aperçu structuré à partir des champs saisis — lecture seule.
+                  {t("erTriage.panel.resumeHint")}
                 </p>
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }} aria-live="polite">
                   {previewModel.sections.map((sec) => (
@@ -961,10 +979,10 @@ export function EmergencyTriagePanel({
                       <MedoraCardInner>
                         <MedoraCardIdentity initials="R">
                           <MedoraCardTitle
-                            title="Synthèse courte"
+                            title={t("erTriage.panel.synthTitle")}
                             subline={
                               <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                                Phrase générée à partir des éléments saisis (pas d&apos;inférence clinique).
+                                {t("erTriage.panel.synthSubline")}
                               </p>
                             }
                           />
@@ -980,25 +998,30 @@ export function EmergencyTriagePanel({
                     <MedoraCardInner>
                       <MedoraCardIdentity initials="S">
                         <MedoraCardTitle
-                          title="Signature triage"
+                          title={t("erTriage.panel.signatureTitle")}
                           subline={
                             <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                              Données fournies par le serveur après enregistrement.
+                              {t("erTriage.panel.signatureSubline")}
                             </p>
                           }
                         />
                       </MedoraCardIdentity>
                       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                         <p style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
-                          {updatedLine ?? "Aucune mise à jour enregistrée côté serveur pour ce triage."}
+                          {updatedLine ?? t("erTriage.panel.noServerUpdate")}
                         </p>
                         {formData.triageCompleteAt ? (
                           <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                            Triage complété (saisi) :{" "}
-                            {new Date(formData.triageCompleteAt).toLocaleString("fr-FR", {
-                              dateStyle: "short",
-                              timeStyle: "short",
-                            })}
+                            {t("erTriage.panel.triageCompleteEntered").replace(
+                              "{datetime}",
+                              new Date(formData.triageCompleteAt).toLocaleString(
+                                language === "en" ? "en-US" : "fr-FR",
+                                {
+                                  dateStyle: "short",
+                                  timeStyle: "short",
+                                }
+                              )
+                            )}
                           </p>
                         ) : null}
                       </div>
@@ -1026,17 +1049,15 @@ export function EmergencyTriagePanel({
                     opacity: saving ? 0.85 : 1,
                   }}
                 >
-                  {saving ? "Enregistrement…" : "Enregistrer le triage"}
+                  {saving ? t("erTriage.panel.saveSaving") : t("erTriage.panel.saveButton")}
                 </button>
               ) : (
                 <p style={{ margin: 0, fontSize: 13, color: "#92400e", lineHeight: 1.45 }}>
-                  {isReadOnly
-                    ? "Consultation fermée — triage en lecture seule."
-                    : "Dossier médical signé — triage en lecture seule."}
+                  {isReadOnly ? t("erTriage.panel.readonlyEncounter") : t("erTriage.panel.readonlyLocked")}
                 </p>
               )}
               <Link href={encounterTriageTabHref} style={{ ...linkPillStyle, alignSelf: "center" }}>
-                Onglet triage (dossier complet)
+                {t("erTriage.panel.linkFullTriageTab")}
               </Link>
             </MedoraCardActions>
           </>

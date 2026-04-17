@@ -11,6 +11,7 @@ import {
   MedoraCardInner,
   MedoraCardTitle,
 } from "@/components/medora-card";
+import { useI18n } from "@/lib/i18n";
 import { buildEmergencyVisitSummaryModel, type VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
 
 const sectionTitle: React.CSSProperties = {
@@ -84,14 +85,15 @@ export function EmergencyVisitSummaryPanel({
   resultsTabHref: string;
   diagnosticsTabHref: string;
 }) {
+  const { language } = useI18n();
   const [resultsSnap, setResultsSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
   const onLabRadSnapshot = useCallback((s: EncounterResultsLabRadSnapshot) => {
     setResultsSnap(s);
   }, []);
 
   const model = useMemo(
-    () => buildEmergencyVisitSummaryModel(encounter, triageSnapshot, resultsSnap),
-    [encounter, triageSnapshot, resultsSnap]
+    () => buildEmergencyVisitSummaryModel(encounter, triageSnapshot, resultsSnap, language),
+    [encounter, triageSnapshot, resultsSnap, language]
   );
 
   const hasStructuredContent = useMemo(() => {

@@ -1,4 +1,5 @@
 import { labels } from "@/lib/uiLabels";
+import { erTriageMessagesFr } from "./erTriage.fr";
 
 export default {
   ...labels.fr,
@@ -1280,6 +1281,7 @@ export default {
       seeDiagnostics: "Voir diagnostics",
     },
   },
+  erTriage: erTriageMessagesFr,
   erMseAssist: {
     prefillFromTriage: "Pré-remplir depuis le triage",
     helperNote: "Pré-remplissage à partir des données déjà documentées.",
