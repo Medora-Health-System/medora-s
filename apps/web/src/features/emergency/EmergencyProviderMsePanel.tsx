@@ -5,7 +5,6 @@ import Link from "next/link";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
-import { ui } from "@/lib/uiLabels";
 import {
   MedoraCard,
   MedoraCardActions,
@@ -115,10 +114,10 @@ export function EmergencyProviderMsePanel({
   /** Données déjà chargées dans le flux urgences (aucun GET supplémentaire). */
   mseAssistContext?: ErMseSmartAssistContext | null;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [form, setForm] = useState<ErProviderMseForm>(() => erProviderMseFormFromEncounter(encounter.nursingAssessment));
   const [saving, setSaving] = useState(false);
-  const [saveInfo, setSaveInfo] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<{ variant: "success" | "error"; message: string } | null>(null);
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
@@ -184,7 +183,7 @@ export function EmergencyProviderMsePanel({
 
   const assistApplicable = useMemo(() => {
     if (!mseAssistContext || formDisabled) return false;
-    const sug = buildErMseSmartAssistSuggestions(mseAssistContext);
+    const sug = buildErMseSmartAssistSuggestions(mseAssistContext, language);
     for (const k of Object.keys(sug) as (keyof ErProviderMseForm)[]) {
       const val = sug[k];
       if (typeof val !== "string" || !val.trim()) continue;
@@ -193,11 +192,11 @@ export function EmergencyProviderMsePanel({
       return true;
     }
     return false;
-  }, [mseAssistContext, formDisabled, form]);
+  }, [mseAssistContext, formDisabled, form, language]);
 
   const applyPrefillFromTriage = useCallback(() => {
     if (formDisabled || !mseAssistContext) return;
-    const sug = buildErMseSmartAssistSuggestions(mseAssistContext);
+    const sug = buildErMseSmartAssistSuggestions(mseAssistContext, language);
     setForm((f) => {
       const next = { ...f };
       for (const k of Object.keys(sug) as (keyof ErProviderMseForm)[]) {
@@ -209,12 +208,12 @@ export function EmergencyProviderMsePanel({
       }
       return next;
     });
-  }, [formDisabled, mseAssistContext]);
+  }, [formDisabled, mseAssistContext, language]);
 
   const applyPhysicalExamPreset = useCallback(
     (id: ErPhysicalExamTemplateId) => {
       if (formDisabled) return;
-      const preset = getErPhysicalExamTemplatePreset(id);
+      const preset = getErPhysicalExamTemplatePreset(id, language);
       setForm((f) => {
         const next = { ...f };
         for (const k of ER_PHYSICAL_EXAM_TEMPLATE_KEYS) {
@@ -227,15 +226,15 @@ export function EmergencyProviderMsePanel({
         return next;
       });
     },
-    [formDisabled]
+    [formDisabled, language]
   );
 
   const handleSave = async () => {
     if (formDisabled) return;
     setSaving(true);
-    setSaveInfo(null);
+    setSaveFeedback(null);
     try {
-      let savedByDisplayName = "Professionnel";
+      let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
       try {
         const meRes = await fetch("/api/auth/me");
         const me = await parseApiResponse(meRes);
@@ -260,12 +259,18 @@ export function EmergencyProviderMsePanel({
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       await onSaved();
-      setSaveInfo(queued ? "En attente de synchronisation." : "Évaluation enregistrée.");
+      setSaveFeedback({
+        variant: "success",
+        message: queued ? t("erMseProviderPanel.saveQueued") : t("erMseProviderPanel.saveSuccess"),
+      });
     } catch (e) {
       console.error(e);
-      setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'enregistrer."
-      );
+      setSaveFeedback({
+        variant: "error",
+        message:
+          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          t("erMseProviderPanel.saveErrorFallback"),
+      });
     } finally {
       setSaving(false);
     }
@@ -292,11 +297,10 @@ export function EmergencyProviderMsePanel({
       <MedoraCardInner>
         <MedoraCardIdentity initials="M">
           <MedoraCardTitle
-            title="Évaluation médicale (urgences)"
+            title={t("erMseProviderPanel.title")}
             subline={
               <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                Documentation structurée rapide pour le médecin — enregistrée avec le dossier. Pour l&apos;évaluation clinique
-                complète (parcours, ordres détaillés), utilisez les liens ci-dessous.
+                {t("erMseProviderPanel.subline")}
               </p>
             }
           />
@@ -318,7 +322,7 @@ export function EmergencyProviderMsePanel({
               textDecoration: "none",
             }}
           >
-            Consultation complète
+            {t("erMseProviderPanel.linkFullEncounter")}
           </Link>
         </MedoraCardActions>
 
@@ -355,26 +359,26 @@ export function EmergencyProviderMsePanel({
           </div>
         ) : null}
 
-        {saveInfo ? (
+        {saveFeedback ? (
           <p
             style={{
               margin: "10px 0 0 0",
               fontSize: 13,
-              color: saveInfo.includes("Impossible") ? "#b91c1c" : "#15803d",
+              color: saveFeedback.variant === "error" ? "#b91c1c" : "#15803d",
               lineHeight: 1.45,
             }}
           >
-            {saveInfo}
+            {saveFeedback.message}
           </p>
         ) : null}
 
         <div style={{ ...workspaceStyle, marginTop: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
             <div>
-              <p style={sectionHeading}>Présentation / motif</p>
+              <p style={sectionHeading}>{t("erMseProviderPanel.sectionPresentation")}</p>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
-                  <label style={labelStyle}>Motif / préoccupation principale</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelChiefConcern")}</label>
                   <textarea
                     value={form.chiefConcern}
                     onChange={(e) => patchForm({ chiefConcern: e.target.value })}
@@ -384,21 +388,21 @@ export function EmergencyProviderMsePanel({
                   />
                 </div>
                 <div>
-                  <label style={labelStyle}>HPI / récit court (urgences)</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelHpi")}</label>
                   {ta(3, "hpiNarrative")}
                 </div>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Début / chronologie / contexte</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelOnsetTiming")}</label>
                     {ta(2, "onsetTimingContext")}
                   </div>
                   <div>
-                    <label style={labelStyle}>Symptômes associés</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelAssociatedSymptoms")}</label>
                     {ta(2, "associatedSymptoms")}
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Gravité / préoccupation clé</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelSeverityKeyConcern")}</label>
                   <input
                     type="text"
                     value={form.severityKeyConcern}
@@ -411,35 +415,35 @@ export function EmergencyProviderMsePanel({
             </div>
 
             <div>
-              <p style={sectionHeading}>Revue ciblée (médecin)</p>
+              <p style={sectionHeading}>{t("erMseProviderPanel.sectionReview")}</p>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
-                  <label style={labelStyle}>Impression ciblée</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelFocusedImpression")}</label>
                   {ta(2, "focusedImpression")}
                 </div>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Positifs importants</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelImportantPositives")}</label>
                     {ta(2, "importantPositives")}
                   </div>
                   <div>
-                    <label style={labelStyle}>Négatifs importants</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelImportantNegatives")}</label>
                     {ta(2, "importantNegatives")}
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Signaux d&apos;alerte</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelRedFlags")}</label>
                   {ta(2, "redFlagsText")}
                 </div>
                 <div>
-                  <label style={labelStyle}>Différentiel / synthèse d&apos;évaluation (texte libre)</label>
-                  {ta(3, "differentialAssessmentText", "Pas de moteur de diagnostics — texte clinique uniquement.")}
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelDifferential")}</label>
+                  {ta(3, "differentialAssessmentText", t("erMseProviderPanel.placeholderDifferential"))}
                 </div>
               </div>
             </div>
 
             <div>
-              <p style={sectionHeading}>Examen (aperçu)</p>
+              <p style={sectionHeading}>{t("erMseProviderPanel.sectionExam")}</p>
               <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
                 {t("erMseExamTemplates.helperLine")}
               </p>
@@ -478,82 +482,82 @@ export function EmergencyProviderMsePanel({
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Apparence générale</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamGeneralAppearance")}</label>
                     {ta(2, "examGeneralAppearance")}
                   </div>
                   <div>
-                    <label style={labelStyle}>Neuro / statut mental</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamNeuroMental")}</label>
                     {ta(2, "examNeuroMental")}
                   </div>
                 </div>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Tête / cou / ORL</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamHeent")}</label>
                     {ta(2, "examHeent")}
                   </div>
                   <div>
-                    <label style={labelStyle}>Cardiovasculaire</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamCardiac")}</label>
                     {ta(2, "examCardiac")}
                   </div>
                 </div>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Respiratoire</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamRespiratory")}</label>
                     {ta(2, "examRespiratory")}
                   </div>
                   <div>
-                    <label style={labelStyle}>Abdomen</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamAbdomen")}</label>
                     {ta(2, "examAbdomen")}
                   </div>
                 </div>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Musculo-squelettique</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamMusculoskeletal")}</label>
                     {ta(2, "examMusculoskeletal")}
                   </div>
                   <div>
-                    <label style={labelStyle}>Peau</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelExamSkin")}</label>
                     {ta(2, "examSkin")}
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Psych / comportement</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelExamPsychBehavior")}</label>
                   {ta(2, "examPsychBehavior")}
                 </div>
                 <div>
-                  <label style={labelStyle}>Réévaluation / examen complémentaire</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelExamReassessmentExtra")}</label>
                   {ta(2, "examReassessmentExtra")}
                 </div>
               </div>
             </div>
 
             <div>
-              <p style={sectionHeading}>Décision médicale (résumé)</p>
+              <p style={sectionHeading}>{t("erMseProviderPanel.sectionMdm")}</p>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
-                  <label style={labelStyle}>Évaluation de travail</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelMdmWorkingAssessment")}</label>
                   {ta(2, "mdmWorkingAssessment")}
                 </div>
                 <div>
-                  <label style={labelStyle}>Plan (résumé)</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelMdmPlanSummary")}</label>
                   {ta(2, "mdmPlanSummary")}
                 </div>
                 <div>
-                  <label style={labelStyle}>Actions immédiates / justification</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelMdmImmediateActions")}</label>
                   {ta(2, "mdmImmediateActionsRationale")}
                 </div>
                 <div style={grid2}>
                   <div>
-                    <label style={labelStyle}>Consultations évoquées</label>
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelMdmConsultsDiscussed")}</label>
                     {ta(2, "mdmConsultsDiscussed")}
                   </div>
                   <div>
-                    <label style={labelStyle}>Hospitalisation / observation / sortie</label>
-                    {ta(2, "mdmAdmitObserveDischarge", "Réflexion de haut niveau — pas de décision automatique.")}
+                    <label style={labelStyle}>{t("erMseProviderPanel.labelMdmAdmitObserveDischarge")}</label>
+                    {ta(2, "mdmAdmitObserveDischarge", t("erMseProviderPanel.placeholderMdmAdmitObserveDischarge"))}
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Addendum médecin</label>
+                  <label style={labelStyle}>{t("erMseProviderPanel.labelMdmProviderAddendum")}</label>
                   {ta(2, "mdmProviderAddendum")}
                 </div>
               </div>
@@ -575,21 +579,21 @@ export function EmergencyProviderMsePanel({
                   cursor: formDisabled || saving ? "not-allowed" : "pointer",
                 }}
               >
-                {saving ? "Enregistrement…" : "Enregistrer l'évaluation"}
+                {saving ? t("erMseProviderPanel.saving") : t("erMseProviderPanel.saveButton")}
               </button>
               {isLocked ? (
-                <span style={{ fontSize: 12, color: "#b45309" }}>Documentation signée — saisie verrouillée.</span>
+                <span style={{ fontSize: 12, color: "#b45309" }}>{t("erMseProviderPanel.lockedDocumentation")}</span>
               ) : null}
               {isReadOnly ? (
-                <span style={{ fontSize: 12, color: "#64748b" }}>Consultation fermée — lecture seule.</span>
+                <span style={{ fontSize: 12, color: "#64748b" }}>{t("erMseProviderPanel.readOnlyEncounter")}</span>
               ) : null}
             </div>
           </div>
 
           <div style={resumeColumnStyle}>
-            <p style={sectionHeading}>Aperçu de la note (généré)</p>
+            <p style={sectionHeading}>{t("erMseProviderPanel.previewHeading")}</p>
             <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              Dérivé uniquement des champs saisis — pas d&apos;IA, pas d&apos;inférence.
+              {t("erMseProviderPanel.previewSubline")}
             </p>
             <div
               style={{
@@ -640,16 +644,19 @@ export function EmergencyProviderMsePanel({
               }}
             >
               <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color: "#4338ca" }}>
-                Dernière mise à jour (enregistrement)
+                {t("erMseProviderPanel.lastSavedHeading")}
               </p>
               {storedSig ? (
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#312e81", lineHeight: 1.45 }}>
                   {storedSig.savedByDisplayName}
                   <br />
-                  {new Date(storedSig.savedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                  {new Date(storedSig.savedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
                 </p>
               ) : (
-                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>{ui.common.dash}</p>
+                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>{t("common.dash")}</p>
               )}
             </div>
           </div>
