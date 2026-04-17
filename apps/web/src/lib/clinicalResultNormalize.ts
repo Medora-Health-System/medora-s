@@ -52,9 +52,11 @@ export function clinicalResultFromOrderItemLike(item: {
     resultData?: unknown;
     enteredByDisplayFr?: string | null;
   } | null;
+  /** When no display label is available (locale-aware UI). */
+  emptyTitleFallback?: string;
 }): ClinicalResultViewerInput {
   const title =
-    (item.displayLabelFr ?? item.displayLabel ?? "").trim() || "Examen";
+    (item.displayLabel ?? item.displayLabelFr ?? "").trim() || item.emptyTitleFallback?.trim() || "Examen";
   const r = item.result;
   return {
     title,

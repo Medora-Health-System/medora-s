@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { apiFetch } from "@/lib/apiClient";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
+import { useI18n } from "@/lib/i18n";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import {
   attachmentsFromResultDataAll,
@@ -90,6 +91,7 @@ export function EncounterResultsTab({
   compactResultViewer?: boolean;
   suppressEmptyDetailPlaceholder?: boolean;
 }) {
+  const { t, language } = useI18n();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   /** true si le GET commandes a échoué et qu’aucun cache exploitable n’était disponible (ids manquants pour fusion locale). */
@@ -187,7 +189,7 @@ export function EncounterResultsTab({
 
   if (loading) {
     return (
-      <div style={{ fontSize: 14, color: "#64748b", padding: "4px 2px" }}>Chargement des résultats…</div>
+      <div style={{ fontSize: 14, color: "#64748b", padding: "4px 2px" }}>{t("patientChartUi.encounterResultsLoading")}</div>
     );
   }
 
@@ -207,8 +209,7 @@ export function EncounterResultsTab({
             fontWeight: 600,
           }}
         >
-          Impossible de charger les commandes depuis le serveur. Les résultats en attente de synchronisation sur cet
-          appareil peuvent être temporairement masqués jusqu&apos;à une reconnexion réussie.
+          {t("patientChartUi.encounterResultsOrdersFailed")}
         </div>
       );
     }
@@ -225,8 +226,7 @@ export function EncounterResultsTab({
           lineHeight: 1.5,
         }}
       >
-        Aucun résultat laboratoire ou imagerie enregistré pour cette consultation. Les résultats saisis depuis les files
-        apparaîtront ici automatiquement.
+        {t("patientChartUi.encounterResultsEmpty")}
       </div>
     );
   }
@@ -235,18 +235,17 @@ export function EncounterResultsTab({
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {!hideIntroNote ? (
         <div style={{ ...resultCardShell, padding: "14px 16px" }}>
-          <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
-            Résultats liés à cette consultation (laboratoire et imagerie). Les mêmes données sont visibles dans le dossier
-            patient (onglet « Résultats »).
-          </p>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{t("patientChartUi.encounterResultsIntro")}</p>
         </div>
       ) : null}
       {rows.map(({ item, pendingSync }) => {
         const v = clinicalResultFromOrderItemLike({
-          displayLabelFr: getOrderItemDisplayLabelFr(item),
+          displayLabel: getOrderItemDisplayLabelForLanguage(item, language, t),
+          displayLabelFr: item.displayLabelFr,
           status: item.status,
           catalogItemType: item.catalogItemType,
           result: item.result,
+          emptyTitleFallback: t("patientChartUi.clinicalResultTitleFallback"),
         });
         return (
           <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -263,7 +262,7 @@ export function EncounterResultsTab({
                   borderRadius: 12,
                 }}
               >
-                En attente de synchronisation — affichage local sur cet appareil uniquement.
+                {t("patientChartUi.encounterResultsPendingSync")}
               </div>
             ) : null}
             <div style={{ ...resultCardShell, padding: "16px 18px", overflow: "hidden" }}>

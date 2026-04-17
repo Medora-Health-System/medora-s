@@ -13,9 +13,15 @@ import {
 import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { PatientVitalsHistory } from "./PatientVitalsHistory";
 import { diagnosisDisplayFr } from "./patientChartHelpers";
-import { getFollowUpStatusLabelFr } from "@/lib/uiLabels";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { EncounterClinicalTimeline } from "./EncounterClinicalTimeline";
+import { useI18n } from "@/lib/i18n";
+import {
+  formatEncounterChromeDate,
+  formatEncounterChromeDateTime,
+  formatEncounterChromeDateTimeFromDate,
+  tFollowUpStatus,
+} from "@/lib/encounterChromeI18n";
 
 const emptyStateStyle: React.CSSProperties = {
   padding: "16px 14px",
@@ -27,13 +33,14 @@ const emptyStateStyle: React.CSSProperties = {
 };
 
 function FollowUpStatusBadge({ status }: { status: string }) {
+  const { t } = useI18n();
   const style: React.CSSProperties =
     status === "OPEN"
       ? { padding: "2px 8px", borderRadius: 4, fontSize: 12, fontWeight: 600, backgroundColor: "#e3f2fd", color: "#1565c0" }
       : status === "COMPLETED"
         ? { padding: "2px 8px", borderRadius: 4, fontSize: 12, fontWeight: 600, backgroundColor: "#e8f5e9", color: "#2e7d32" }
         : { padding: "2px 8px", borderRadius: 4, fontSize: 12, fontWeight: 600, backgroundColor: "#f5f5f5", color: "#616161" };
-  return <span style={style}>{getFollowUpStatusLabelFr(status)}</span>;
+  return <span style={style}>{tFollowUpStatus(t, status)}</span>;
 }
 
 function FollowUpRowActions({
@@ -45,6 +52,7 @@ function FollowUpRowActions({
   followUpId: string;
   onDone: () => void;
 }) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const handleComplete = async () => {
     if (loading) return;
@@ -73,7 +81,7 @@ function FollowUpRowActions({
   return (
     <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <button type="button" style={btnSecondary} onClick={handleComplete} disabled={loading}>
-        {loading ? "…" : "Marquer réalisé"}
+        {loading ? "…" : t("patientChartUi.followUpMarkDone")}
       </button>
       <button
         type="button"
@@ -81,7 +89,7 @@ function FollowUpRowActions({
         onClick={handleCancel}
         disabled={loading}
       >
-        Annuler
+        {t("patientChartUi.followUpCancel")}
       </button>
     </span>
   );
@@ -96,6 +104,7 @@ function ResolveDiagnosisButton({
   diagnosisId: string;
   onResolved: () => void;
 }) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const handleResolve = async () => {
@@ -107,8 +116,7 @@ function ResolveDiagnosisButton({
       onResolved();
     } catch (e: unknown) {
       const msg =
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-        "Impossible de clôturer le diagnostic.";
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("patientChartUi.resolveDxFailed");
       setError(msg);
     } finally {
       setLoading(false);
@@ -117,7 +125,7 @@ function ResolveDiagnosisButton({
   return (
     <span>
       <button type="button" style={btnSecondary} onClick={handleResolve} disabled={loading}>
-        {loading ? "…" : "Résoudre"}
+        {loading ? "…" : t("patientChartUi.resolveDx")}
       </button>
       {error && <span style={{ marginLeft: 8, fontSize: 12, color: "#c00" }}>{error}</span>}
     </span>
@@ -158,25 +166,25 @@ export function PatientSummaryTab({
   /** Impression dossier (données déjà chargées) — en-tête du fil chronologique */
   onPrintMedicalRecord?: () => void;
 }) {
-  const formatDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
-  const formatDateTime = (d: Date) =>
-    d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-  const formatDateTimeIso = (iso: string) =>
-    new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+  const { t, language } = useI18n();
+  const formatDate = (d: string | null | undefined) =>
+    d ? formatEncounterChromeDate(d, language) : t("common.dash");
+  const formatDateTime = (d: Date) => formatEncounterChromeDateTimeFromDate(d, language);
+  const formatDateTimeIso = (iso: string) => formatEncounterChromeDateTime(iso, language);
 
   if (chartLoading && !chartSummary) {
     return (
       <div style={{ padding: "32px 16px", minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "#666", fontSize: 15 }}>Chargement du dossier…</div>
+        <div style={{ color: "#666", fontSize: 15 }}>{t("patientChartUi.summaryLoadingChart")}</div>
       </div>
     );
   }
   if (!chartSummary) {
     return (
       <div style={{ padding: 24 }}>
-        <p style={{ marginBottom: 12 }}>Impossible de charger le résumé du dossier.</p>
+        <p style={{ marginBottom: 12 }}>{t("patientChartUi.summaryLoadError")}</p>
         <button type="button" style={btnPrimary} onClick={onRefresh}>
-          Réessayer
+          {t("patientChartUi.summaryRetry")}
         </button>
       </div>
     );
@@ -194,15 +202,17 @@ export function PatientSummaryTab({
     <div>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <button type="button" style={btnSecondary} onClick={() => onRefresh()} disabled={chartLoading}>
-          {chartLoading ? "Actualisation…" : "Actualiser"}
+          {chartLoading ? t("patientChartUi.summaryRefreshing") : t("patientChartUi.summaryRefresh")}
         </button>
         {chartLastFetchedAt && (
-          <span style={{ fontSize: 12, color: "#9e9e9e" }}>Mise à jour : {formatDateTime(chartLastFetchedAt)}</span>
+          <span style={{ fontSize: 12, color: "#9e9e9e" }}>
+            {t("patientChartUi.summaryUpdatedPrefix")} {formatDateTime(chartLastFetchedAt)}
+          </span>
         )}
       </div>
 
       <ChartSection
-        title="Fil chronologique clinique (par consultation)"
+        title={t("patientChartUi.summaryTimelineTitle")}
         action={
           onPrintMedicalRecord ? (
             <button
@@ -219,47 +229,41 @@ export function PatientSummaryTab({
                 fontSize: 13,
               }}
             >
-              Imprimer le dossier
+              {t("patientChartUi.summaryPrintMedicalRecord")}
             </button>
           ) : undefined
         }
       >
-        <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>
-          Synthèse par visite : signes vitaux d&apos;accueil, évaluation infirmière, ordres, résultats, dispensation et résumé
-          de sortie lorsque disponibles. Du plus récent au plus ancien.
-        </p>
+        <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>{t("patientChartUi.summaryTimelineIntro")}</p>
         <EncounterClinicalTimeline encounters={recentEncounters} followUps={followUps} />
       </ChartSection>
 
-      <ChartSection title="Signes vitaux récents">
-        <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>
-          Historique complet du patient (toutes consultations), du plus récent au plus ancien. Le dernier relevé correspond
-          aussi à l&apos;en-tête du dossier.
-        </p>
+      <ChartSection title={t("patientChartUi.summaryVitalsTitle")}>
+        <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>{t("patientChartUi.summaryVitalsIntro")}</p>
         <PatientVitalsHistory items={vitalsFullHistory} loading={vitalsHistoryLoading} />
       </ChartSection>
 
       <ChartSection
-        title="Diagnostics actifs"
+        title={t("patientChartUi.summaryDxTitle")}
         action={
           canPrescribe ? (
             <button type="button" style={btnPrimary} onClick={onAddDiagnosis}>
-              Ajouter un diagnostic
+              {t("patientChartUi.summaryDxAdd")}
             </button>
           ) : undefined
         }
       >
         {activeDiagnoses.length === 0 ? (
           <div style={emptyStateStyle}>
-            {canPrescribe ? "Aucun diagnostic actif." : "Aucun diagnostic actif (lecture seule)."}
+            {canPrescribe ? t("patientChartUi.summaryDxEmpty") : t("patientChartUi.summaryDxEmptyReadonly")}
           </div>
         ) : (
           <table style={tableStyles.table}>
             <thead>
               <tr>
-                <th style={tableStyles.th}>Code</th>
-                <th style={tableStyles.th}>Libellé</th>
-                <th style={tableStyles.th}>Début</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThCode")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThLabel")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThOnset")}</th>
                 {canPrescribe ? <th style={tableStyles.th}></th> : null}
               </tr>
             </thead>
@@ -282,42 +286,39 @@ export function PatientSummaryTab({
       </ChartSection>
 
       <ChartSection
-        title="Résultats récents"
+        title={t("patientChartUi.summaryResultsTitle")}
         action={
           <button type="button" style={{ ...btnSecondary, border: "none", background: "none", color: "#1a1a1a", textDecoration: "underline" }} onClick={onTabResults}>
-            Voir l&apos;onglet Résultats
+            {t("patientChartUi.summaryResultsLinkTab")}
           </button>
         }
       >
         <div style={emptyStateStyle}>
-          Un aperçu des résultats de laboratoire et d&apos;imagerie est inclus dans le fil chronologique ci-dessus lorsque des
-          résultats sont disponibles. Le détail complet se trouve dans l&apos;onglet{" "}
+          {t("patientChartUi.summaryResultsBlurbPrefix")}
           <button
             type="button"
             onClick={onTabResults}
             style={{ border: "none", background: "none", color: "#1565c0", cursor: "pointer", textDecoration: "underline", padding: 0, font: "inherit" }}
           >
-            Résultats
+            {t("patientChartUi.summaryResultsTabName")}
           </button>
-          .
+          {t("patientChartUi.summaryResultsBlurbSuffix")}
         </div>
       </ChartSection>
 
-      <ChartSection title="Dispensations récentes (toutes consultations)">
-        <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>
-          Vue globale des dernières dispensations. Le détail par consultation figure aussi dans le fil chronologique.
-        </p>
+      <ChartSection title={t("patientChartUi.summaryDispenseTitle")}>
+        <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>{t("patientChartUi.summaryDispenseIntro")}</p>
         {recentMedicationDispenses.length === 0 ? (
-          <div style={emptyStateStyle}>Aucune dispensation récente.</div>
+          <div style={emptyStateStyle}>{t("patientChartUi.summaryDispenseEmpty")}</div>
         ) : (
           <table style={tableStyles.table}>
             <thead>
               <tr>
-                <th style={tableStyles.th}>Médicament</th>
-                <th style={tableStyles.th}>Quantité</th>
-                <th style={tableStyles.th}>Date et heure</th>
-                <th style={tableStyles.th}>Dispensé par</th>
-                <th style={tableStyles.th}>Instructions</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThMedication")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThQty")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThDateTime")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThBy")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThInstr")}</th>
               </tr>
             </thead>
             <tbody>
@@ -327,16 +328,16 @@ export function PatientSummaryTab({
                     {m.catalogMedication?.displayNameFr?.trim() ||
                       m.catalogMedication?.name ||
                       m.catalogMedication?.code ||
-                      "—"}
+                      t("common.dash")}
                   </td>
                   <td style={tableStyles.td}>{m.quantityDispensed}</td>
                   <td style={tableStyles.td}>{formatDateTimeIso(m.dispensedAt)}</td>
                   <td style={tableStyles.td}>
                     {m.dispensedBy
                       ? `${m.dispensedBy.firstName} ${m.dispensedBy.lastName}`.trim()
-                      : "—"}
+                      : t("common.dash")}
                   </td>
-                  <td style={tableStyles.td}>{m.dosageInstructions || "—"}</td>
+                  <td style={tableStyles.td}>{m.dosageInstructions || t("common.dash")}</td>
                 </tr>
               ))}
             </tbody>
@@ -344,19 +345,26 @@ export function PatientSummaryTab({
         )}
       </ChartSection>
 
-      <ChartSection title="Suivis à venir" action={<button type="button" style={btnPrimary} onClick={onAddFollowUp}>Ajouter un suivi</button>}>
+      <ChartSection
+        title={t("patientChartUi.summaryFollowUpTitle")}
+        action={
+          <button type="button" style={btnPrimary} onClick={onAddFollowUp}>
+            {t("patientChartUi.summaryFollowUpAdd")}
+          </button>
+        }
+      >
         {followUpsLoading ? (
-          <div style={emptyStateStyle}>Chargement des suivis…</div>
+          <div style={emptyStateStyle}>{t("patientChartUi.summaryFollowUpLoading")}</div>
         ) : upcomingFollowUps.length === 0 ? (
-          <div style={emptyStateStyle}>Aucun suivi à venir.</div>
+          <div style={emptyStateStyle}>{t("patientChartUi.summaryFollowUpEmpty")}</div>
         ) : (
           <table style={tableStyles.table}>
             <thead>
               <tr>
-                <th style={tableStyles.th}>Date prévue</th>
-                <th style={tableStyles.th}>Motif</th>
-                <th style={tableStyles.th}>Notes</th>
-                <th style={tableStyles.th}>Statut</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryFuThDue")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryFuThReason")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryFuThNotes")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryFuThStatus")}</th>
                 <th style={tableStyles.th}></th>
               </tr>
             </thead>
@@ -364,9 +372,9 @@ export function PatientSummaryTab({
               {upcomingFollowUps.map((fu) => (
                 <tr key={fu.id}>
                   <td style={tableStyles.td}>{formatDate(fu.dueDate)}</td>
-                  <td style={tableStyles.td}>{fu.reason || "—"}</td>
+                  <td style={tableStyles.td}>{fu.reason || t("common.dash")}</td>
                   <td style={tableStyles.td}>
-                    {fu.notes ? (fu.notes.length > 50 ? fu.notes.slice(0, 50) + "…" : fu.notes) : "—"}
+                    {fu.notes ? (fu.notes.length > 50 ? fu.notes.slice(0, 50) + "…" : fu.notes) : t("common.dash")}
                   </td>
                   <td style={tableStyles.td}>
                     <FollowUpStatusBadge status={fu.status} />
@@ -383,27 +391,34 @@ export function PatientSummaryTab({
         )}
       </ChartSection>
 
-      <ChartSection title="Vaccinations récentes" action={<Link href="/app/public-health/vaccinations" style={{ fontSize: 13 }}>Saisir une vaccination</Link>}>
+      <ChartSection
+        title={t("patientChartUi.summaryVaxTitle")}
+        action={
+          <Link href="/app/public-health/vaccinations" style={{ fontSize: 13 }}>
+            {t("patientChartUi.summaryVaxLink")}
+          </Link>
+        }
+      >
         {recentVaccinations.length === 0 ? (
           <div style={emptyStateStyle}>
-            Aucune vaccination récente —{" "}
-            <Link href="/app/public-health/vaccinations">module santé publique</Link>.
+            {t("patientChartUi.summaryVaxEmpty")}{" "}
+            <Link href="/app/public-health/vaccinations">{t("patientChartUi.summaryVaxModuleLink")}</Link>.
           </div>
         ) : (
           <table style={tableStyles.table}>
             <thead>
               <tr>
-                <th style={tableStyles.th}>Vaccin</th>
-                <th style={tableStyles.th}>Dose</th>
-                <th style={tableStyles.th}>Administré le</th>
-                <th style={tableStyles.th}>Prochaine dose</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThVax")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThDose")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThAdmin")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.summaryThNext")}</th>
               </tr>
             </thead>
             <tbody>
               {recentVaccinations.map((v) => (
                 <tr key={v.id}>
-                  <td style={tableStyles.td}>{v.vaccineCatalog?.name ?? v.vaccineCatalog?.code ?? "—"}</td>
-                  <td style={tableStyles.td}>{v.doseNumber ?? "—"}</td>
+                  <td style={tableStyles.td}>{v.vaccineCatalog?.name ?? v.vaccineCatalog?.code ?? t("common.dash")}</td>
+                  <td style={tableStyles.td}>{v.doseNumber ?? t("common.dash")}</td>
                   <td style={tableStyles.td}>{formatDate(v.administeredAt)}</td>
                   <td style={tableStyles.td}>{formatDate(v.nextDueAt)}</td>
                 </tr>

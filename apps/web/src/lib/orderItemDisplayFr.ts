@@ -1,3 +1,5 @@
+import type { SupportedLanguage } from "@/i18n/config";
+
 /**
  * Libellé affichable pour une ligne d’ordre (priorité alignée sur l’API enrichOrderItemsForDisplay).
  * Ne jamais exposer catalogItemId dans l’UI.
@@ -34,6 +36,44 @@ export function getOrderItemDisplayLabelFr(item: {
   }
 
   return typeFallbackFr(resolvedType);
+}
+
+/** Locale-aware chrome label for order rows (facility language). */
+export function getOrderItemDisplayLabelForLanguage(
+  item: {
+    displayLabel?: string | null;
+    displayLabelFr?: string | null;
+    manualLabel?: string | null;
+    manualSecondaryText?: string | null;
+    catalogItemType?: string | null;
+    catalogLabTest?: { displayNameFr?: string | null; name?: string | null } | null;
+    catalogImagingStudy?: { displayNameFr?: string | null; name?: string | null; modality?: string | null } | null;
+    catalogMedication?: {
+      displayNameFr?: string | null;
+      name?: string | null;
+      strength?: string | null;
+      dosageForm?: string | null;
+      route?: string | null;
+    } | null;
+    strength?: string | null;
+    notes?: string | null;
+  },
+  language: SupportedLanguage,
+  t: (key: string) => string
+): string {
+  if (language === "fr") return getOrderItemDisplayLabelFr(item);
+  const generic = item.displayLabel?.trim();
+  if (generic) return generic;
+  if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
+  const resolvedType = resolveCatalogItemType(item);
+  const fromCatalog = catalogDisplayLabelEn(item, resolvedType);
+  if (fromCatalog) return fromCatalog;
+  const man = item.manualLabel?.trim();
+  if (man) {
+    const sec = item.manualSecondaryText?.trim();
+    return sec ? `${man} — ${sec}` : man;
+  }
+  return typeFallbackEn(resolvedType, t);
 }
 
 function resolveCatalogItemType(item: {
@@ -95,10 +135,63 @@ function catalogDisplayLabelFr(
   return null;
 }
 
+function catalogDisplayLabelEn(
+  item: {
+    catalogLabTest?: { displayNameFr?: string | null; name?: string | null } | null;
+    catalogImagingStudy?: { displayNameFr?: string | null; name?: string | null; modality?: string | null } | null;
+    catalogMedication?: {
+      displayNameFr?: string | null;
+      name?: string | null;
+      strength?: string | null;
+      dosageForm?: string | null;
+      route?: string | null;
+    } | null;
+    strength?: string | null;
+  },
+  t: string | null
+): string | null {
+  if (t === "LAB_TEST") {
+    const c = item.catalogLabTest;
+    if (c?.name?.trim()) return c.name.trim();
+    if (c?.displayNameFr?.trim()) return c.displayNameFr.trim();
+    return null;
+  }
+  if (t === "IMAGING_STUDY") {
+    const c = item.catalogImagingStudy;
+    const base = c?.name?.trim() || c?.displayNameFr?.trim();
+    if (base) {
+      const mod = c?.modality ? ` (${c.modality})` : "";
+      return `${base}${mod}`;
+    }
+    return null;
+  }
+  if (t === "MEDICATION") {
+    const c = item.catalogMedication;
+    const n = c?.name?.trim() || c?.displayNameFr?.trim();
+    const parts = [
+      n,
+      item.strength?.trim() || c?.strength?.trim(),
+      c?.dosageForm,
+      c?.route,
+    ].filter(Boolean);
+    if (parts.length) return parts.join(" · ");
+    return null;
+  }
+  return null;
+}
+
 function typeFallbackFr(t: string | null): string {
   if (t === "LAB_TEST") return "Analyse (libellé indisponible)";
   if (t === "IMAGING_STUDY") return "Imagerie (libellé indisponible)";
   if (t === "MEDICATION") return "Médicament (libellé indisponible)";
   if (t === "CARE") return "Soin (libellé indisponible)";
   return "—";
+}
+
+function typeFallbackEn(t: string | null, tr: (key: string) => string): string {
+  if (t === "LAB_TEST") return tr("patientChartUi.orderDisplayFallback.labTest");
+  if (t === "IMAGING_STUDY") return tr("patientChartUi.orderDisplayFallback.imaging");
+  if (t === "MEDICATION") return tr("patientChartUi.orderDisplayFallback.medication");
+  if (t === "CARE") return tr("patientChartUi.orderDisplayFallback.care");
+  return tr("common.dash");
 }

@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { createDiagnosis } from "@/lib/chartApi";
-import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
-  getEncounterStatusBoardLabelFr,
-  getEncounterTypeLabelFr,
-  ui,
-} from "@/lib/uiLabels";
+  formatEncounterChromeDateTime,
+  formatPatientAgeSexLine,
+  tEncounterStatus,
+  tEncounterType,
+} from "@/lib/encounterChromeI18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
@@ -120,17 +120,8 @@ function patientInitials(p: PatientLite | null | undefined): string {
   return (a + b).toUpperCase() || "?";
 }
 
-function fullPatientName(p: PatientLite | null | undefined): string {
-  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
-}
-
-function formatDateTimeFr(iso: string | null | undefined): string {
-  if (!iso) return ui.common.dash;
-  try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-  } catch {
-    return ui.common.dash;
-  }
+function fullPatientName(p: PatientLite | null | undefined, t: (key: string) => string): string {
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || t("common.dash");
 }
 
 function statusSoft(status: string): PriorityBadgeSoft {
@@ -273,7 +264,7 @@ export function EmergencyActiveWorkspaceView() {
       if (rolesReady && !canViewEncounterDetail) {
         setEncounter(null);
         setLoading(false);
-        setError("Accès non autorisé à cette consultation.");
+        setError(t("emergencyWorkspace.errUnauthorizedEncounter"));
       }
       return;
     }
@@ -292,26 +283,24 @@ export function EmergencyActiveWorkspaceView() {
         });
       } else {
         setEncounter(null);
-        setError("Consultation indisponible (hors ligne ou synchronisation en cours).");
+        setError(t("emergencyWorkspace.errEncounterUnavailable"));
       }
 
     } catch (e) {
       console.error(e);
       const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
-      setError(msg || "Impossible de charger la consultation.");
+      setError(msg || t("emergencyWorkspace.errLoadEncounter"));
       const cached = await getCachedRecord<EncounterShell>("encounter_summaries", cacheKey);
       if (cached?.data) {
         setEncounter(cached.data);
-        setError(
-          (msg || "Données en cache.") + " Certaines informations peuvent être obsolètes."
-        );
+        setError((msg || t("emergencyWorkspace.errCachePrefix")) + t("emergencyWorkspace.errCacheStale"));
       } else {
         setEncounter(null);
       }
     } finally {
       setLoading(false);
     }
-  }, [encounterId, fid, rolesReady, canViewEncounterDetail]);
+  }, [encounterId, fid, rolesReady, canViewEncounterDetail, t]);
 
   useEffect(() => {
     void load();
@@ -459,11 +448,20 @@ export function EmergencyActiveWorkspaceView() {
   }, []);
 
   const complaintLine = useMemo(() => {
-    if (!encounter) return ui.common.dash;
+    if (!encounter) return t("common.dash");
     const raw =
       (encounter.visitReason || "").trim() || (encounter.chiefComplaint || "").trim();
-    return raw || ui.common.dash;
-  }, [encounter]);
+    return raw || t("common.dash");
+  }, [encounter, t]);
+
+  const tempDxAssistLocalized = useMemo(
+    () =>
+      TEMP_DX_ICD10_ASSIST.map((s) => ({
+        ...s,
+        label: t(`emergencyWorkspace.dxAssist.${s.code.replace(/\./g, "_")}`),
+      })),
+    [t]
+  );
 
   useEffect(() => {
     if (!canFetchEncounterTriage && activeSection === "triage") {
@@ -478,33 +476,122 @@ export function EmergencyActiveWorkspaceView() {
   }, [showNursingTab, activeSection]);
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
+    const timerId = window.setTimeout(() => {
       const q = dxDescription.trim();
       if (q.length < 2) {
         setDxSuggestions([]);
         return;
       }
       const ql = q.toLowerCase();
-      const filtered = TEMP_DX_ICD10_ASSIST.filter(
+      const filtered = tempDxAssistLocalized.filter(
         (s) => s.code.toLowerCase().includes(ql) || s.label.toLowerCase().includes(ql)
       ).slice(0, 8);
       setDxSuggestions(filtered);
     }, 300);
-    return () => window.clearTimeout(t);
-  }, [dxDescription]);
+    return () => window.clearTimeout(timerId);
+  }, [dxDescription, tempDxAssistLocalized]);
 
-  const sectionTitleFr: Record<ErWorkspaceSection, string> = {
-    triage: "Triage urgences",
-    visitSummary: "Synthèse de visite (urgences)",
-    results: "Résultats et examens (urgences)",
-    mar: "Administration médicamenteuse",
-    orders: "Ordres",
-    diagnostics: "Diagnostics",
-    notes: "Notes",
-    nursing: "Réévaluation infirmière (urgences)",
-    providerMse: "Évaluation médicale (urgences)",
-    disposition: "Disposition",
-  };
+  const sectionTitle = useMemo(
+    (): Record<ErWorkspaceSection, string> => ({
+      triage: t("emergencyWorkspace.sectionTitle.triage"),
+      visitSummary: t("emergencyWorkspace.sectionTitle.visitSummary"),
+      results: t("emergencyWorkspace.sectionTitle.results"),
+      mar: t("emergencyWorkspace.sectionTitle.mar"),
+      orders: t("emergencyWorkspace.sectionTitle.orders"),
+      diagnostics: t("emergencyWorkspace.sectionTitle.diagnostics"),
+      notes: t("emergencyWorkspace.sectionTitle.notes"),
+      nursing: t("emergencyWorkspace.sectionTitle.nursing"),
+      providerMse: t("emergencyWorkspace.sectionTitle.providerMse"),
+      disposition: t("emergencyWorkspace.sectionTitle.disposition"),
+    }),
+    [t]
+  );
+
+  const erDashboardTiles = useMemo(
+    (): ErDashboardTile[] => [
+      {
+        kind: "section",
+        id: "triage",
+        accent: "#b91c1c",
+        initials: "T",
+        ariaLabel: t("emergencyWorkspace.tileAria.triage"),
+        disabled: !canFetchEncounterTriage,
+      },
+      {
+        kind: "section",
+        id: "providerMse",
+        accent: "#4f46e5",
+        initials: "EM",
+        ariaLabel: t("emergencyWorkspace.tileAria.providerMse"),
+        disabled: !showNursingTab,
+      },
+      {
+        kind: "section",
+        id: "orders",
+        accent: "#7c3aed",
+        initials: "O",
+        ariaLabel: t("emergencyWorkspace.tileAria.orders"),
+        disabled: false,
+      },
+      {
+        kind: "section",
+        id: "mar",
+        accent: "#059669",
+        initials: "M",
+        ariaLabel: t("emergencyWorkspace.tileAria.mar"),
+        disabled: !canFetchMarTab,
+      },
+      {
+        kind: "section",
+        id: "results",
+        accent: "#6366f1",
+        initials: "R",
+        ariaLabel: t("emergencyWorkspace.tileAria.results"),
+        disabled: false,
+      },
+      {
+        kind: "section",
+        id: "diagnostics",
+        accent: "#9333ea",
+        initials: "Dx",
+        ariaLabel: t("emergencyWorkspace.tileAria.diagnostics"),
+        disabled: false,
+      },
+      {
+        kind: "section",
+        id: "nursing",
+        accent: "#0ea5e9",
+        initials: "SI",
+        ariaLabel: t("emergencyWorkspace.tileAria.nursing"),
+        disabled: !showNursingTab,
+      },
+      {
+        kind: "section",
+        id: "notes",
+        accent: "#475569",
+        initials: "N",
+        ariaLabel: t("emergencyWorkspace.tileAria.notes"),
+        disabled: false,
+      },
+      {
+        kind: "section",
+        id: "disposition",
+        accent: "#94a3b8",
+        initials: "D",
+        ariaLabel: t("emergencyWorkspace.tileAria.disposition"),
+        disabled: false,
+      },
+      {
+        kind: "section",
+        id: "visitSummary",
+        accent: "#0f172a",
+        initials: "S",
+        ariaLabel: t("emergencyWorkspace.tileAria.visitSummary"),
+        disabled: false,
+      },
+    ],
+    [t, canFetchEncounterTriage, showNursingTab, canFetchMarTab]
+  );
 
   const closeCreateDx = useCallback(() => {
     if (dxSubmitting) return;
@@ -540,41 +627,40 @@ export function EmergencyActiveWorkspaceView() {
     } catch (e) {
       console.error(e);
       setDxError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ??
-          "Impossible d'enregistrer le diagnostic."
+        normalizeUserFacingError(e instanceof Error ? e.message : null) ?? t("emergencyWorkspace.errSaveDx")
       );
     } finally {
       setDxSubmitting(false);
     }
-  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter?.id]);
+  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter?.id, t]);
 
   if (!rolesReady || !fid) {
     return (
-      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{ui.common.loading}</div>
+      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{t("emergencyWorkspace.loading")}</div>
     );
   }
 
   if (!canViewEncounterDetail) {
     return (
       <div style={{ padding: 24, maxWidth: 560 }}>
-        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? "Accès non autorisé."}</p>
+        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? t("emergencyWorkspace.errUnauthorizedShort")}</p>
       </div>
     );
   }
 
   if (loading && !encounter) {
     return (
-      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{ui.common.loading}</div>
+      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{t("emergencyWorkspace.loading")}</div>
     );
   }
 
   if (!encounter) {
     return (
       <div style={{ padding: 24, maxWidth: 560 }}>
-        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? "Consultation introuvable."}</p>
+        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? t("emergencyWorkspace.errEncounterNotFound")}</p>
         <p style={{ margin: "16px 0 0 0" }}>
           <Link href="/app/emergency/trackboard" style={{ color: "#2563eb", fontWeight: 600 }}>
-            ← Tableau des urgences
+            {t("emergencyWorkspace.backTrackboardLong")}
           </Link>
         </p>
       </div>
@@ -584,7 +670,7 @@ export function EmergencyActiveWorkspaceView() {
   const patient = encounter.patient;
   const statusKey = (encounter.status ?? "").trim() || "OPEN";
   const typeKey = (encounter.type ?? "").trim() || "—";
-  const roomDisplay = encounter.roomLabel?.trim() || ui.common.dash;
+  const roomDisplay = encounter.roomLabel?.trim() || t("common.dash");
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
   const vitalsQuickEditEnabled =
@@ -602,6 +688,9 @@ export function EmergencyActiveWorkspaceView() {
 
   const headerEsiLevel = esiLevelFromUnknown(clinicalStripModel.esi.trim());
 
+  const formatEncounterDt = (iso: string | null | undefined) =>
+    iso ? formatEncounterChromeDateTime(iso, language) : t("common.dash");
+
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
@@ -610,7 +699,7 @@ export function EmergencyActiveWorkspaceView() {
         <header style={{ marginBottom: 20 }}>
           <p style={{ margin: "0 0 8px 0", fontSize: 13 }}>
             <Link href="/app/emergency/trackboard" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-              ← Urgences
+              {t("emergencyWorkspace.backTrackboard")}
             </Link>
           </p>
           <h1
@@ -621,19 +710,16 @@ export function EmergencyActiveWorkspaceView() {
               color: "#0f172a",
             }}
           >
-            Espace urgence actif
+            {t("emergencyWorkspace.pageTitle")}
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.5 }}>
-            Choisissez une zone du tableau de bord, puis travaillez dans la zone active. La charte urgence complète est le
-            parcours principal ; le dossier consultation Medora reste disponible en référence.
+            {t("emergencyWorkspace.pageSubtitle")}
           </p>
         </header>
 
         {!isEmergencyType && (
           <div style={{ ...shellBox, marginBottom: 16, borderColor: "#fde68a", backgroundColor: "#fffbeb" }}>
-            <p style={{ margin: 0, fontSize: 13, color: "#92400e" }}>
-              Cette consultation n&apos;est pas de type urgence. Vous pouvez ouvrir le dossier complet ci-dessous.
-            </p>
+            <p style={{ margin: 0, fontSize: 13, color: "#92400e" }}>{t("emergencyWorkspace.notEmergencyBanner")}</p>
           </div>
         )}
 
@@ -688,30 +774,37 @@ export function EmergencyActiveWorkspaceView() {
               {/* Centre : identité patient */}
               <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                 <MedoraCardTitle
-                  title={fullPatientName(patient ?? undefined)}
+                  title={fullPatientName(patient ?? undefined, t)}
                   subline={
                     <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>
-                      <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
-                      {(patient?.mrn ?? patient?.nationalId ?? "").trim() || ui.common.dash}
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("printOutput.patientChart.nirMrn")}</span>{" "}
+                      {(patient?.mrn ?? patient?.nationalId ?? "").trim() || t("common.dash")}
                       {" · "}
-                      <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
-                      {formatAgeYearsSexFr(patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyTrackboard.ageSexLabel")}</span>{" "}
+                      {formatPatientAgeSexLine(
+                        patient?.dob ?? null,
+                        patient?.sexAtBirth ?? null,
+                        patient?.sex ?? null,
+                        t
+                      )}
                     </p>
                   }
                 />
                 <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>{ui.common.chiefComplaintShort}</span>
+                  <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>
+                    {t("emergencyTrackboard.chiefComplaintShort")}
+                  </span>
                   {" — "}
                   {complaintLine}
                 </p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                  <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                  {formatDateTimeFr(encounter.createdAt ?? null)}
+                  <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyTrackboard.arrivalLabel")}</span>{" "}
+                  {formatEncounterDt(encounter.createdAt ?? null)}
                   {encounter.admittedAt ? (
                     <>
                       {" · "}
-                      <span style={{ fontWeight: 600, color: "#475569" }}>Admission</span>{" "}
-                      {formatDateTimeFr(encounter.admittedAt)}
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyWorkspace.admissionLabel")}</span>{" "}
+                      {formatEncounterDt(encounter.admittedAt)}
                     </>
                   ) : null}
                 </p>
@@ -779,7 +872,7 @@ export function EmergencyActiveWorkspaceView() {
                     }
                   }}
                   aria-expanded={showOperationalPanel}
-                  aria-label="Paramètres opérationnels — salle"
+                  aria-label={t("emergencyWorkspace.operationalRoomAria")}
                   style={{
                     padding: "8px 12px",
                     alignSelf: "flex-end",
@@ -802,7 +895,7 @@ export function EmergencyActiveWorkspaceView() {
                       color: "#0369a1",
                     }}
                   >
-                    {ui.common.room}
+                    {t("printOutput.patientChart.room")}
                   </div>
 
                   <div
@@ -820,13 +913,13 @@ export function EmergencyActiveWorkspaceView() {
                   </div>
                 </div>
                 <MedoraCardBadgeRow marginTop={0}>
-                  <MedoraCardBadge soft={statusSoft(statusKey)}>{getEncounterStatusBoardLabelFr(statusKey)}</MedoraCardBadge>
+                  <MedoraCardBadge soft={statusSoft(statusKey)}>{tEncounterStatus(t, statusKey)}</MedoraCardBadge>
                   <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
-                    {getEncounterTypeLabelFr(typeKey)}
+                    {tEncounterType(t, typeKey)}
                   </MedoraCardBadge>
                 </MedoraCardBadgeRow>
                 <Link href={erChartHref} style={{ ...linkPill, alignSelf: "flex-end", fontSize: 13, padding: "7px 12px" }}>
-                  Consultation complète
+                  {t("emergencyWorkspace.linkFullEncounter")}
                 </Link>
                 <Link
                   href={genericEncounterHref}
@@ -838,7 +931,7 @@ export function EmergencyActiveWorkspaceView() {
                     textDecoration: "none",
                   }}
                 >
-                  Dossier Medora (référence)
+                  {t("emergencyWorkspace.linkMedoraChartRef")}
                 </Link>
               </div>
             </div>
@@ -867,7 +960,7 @@ export function EmergencyActiveWorkspaceView() {
           />
         ) : null}
 
-        <section aria-label="Tableau de bord urgences" style={{ marginBottom: 20 }}>
+        <section aria-label={t("emergencyWorkspace.dashboardHeading")} style={{ marginBottom: 20 }}>
           <h2
             style={{
               margin: "0 0 12px 0",
@@ -878,7 +971,7 @@ export function EmergencyActiveWorkspaceView() {
               textTransform: "uppercase",
             }}
           >
-            Tableau de bord
+            {t("emergencyWorkspace.dashboardHeading")}
           </h2>
           <div
             style={{
@@ -888,90 +981,7 @@ export function EmergencyActiveWorkspaceView() {
               width: "100%",
             }}
           >
-            {(
-              [
-                {
-                  kind: "section" as const,
-                  id: "triage" as const,
-                  accent: "#b91c1c",
-                  initials: "T",
-                  ariaLabel: "Triage",
-                  disabled: !canFetchEncounterTriage,
-                },
-                {
-                  kind: "section" as const,
-                  id: "providerMse" as const,
-                  accent: "#4f46e5",
-                  initials: "EM",
-                  ariaLabel: "Évaluation médicale",
-                  disabled: !showNursingTab,
-                },
-                {
-                  kind: "section" as const,
-                  id: "orders" as const,
-                  accent: "#7c3aed",
-                  initials: "O",
-                  ariaLabel: "Ordres",
-                  disabled: false,
-                },
-                {
-                  kind: "section" as const,
-                  id: "mar" as const,
-                  accent: "#059669",
-                  initials: "M",
-                  ariaLabel: "MAR",
-                  disabled: !canFetchMarTab,
-                },
-                {
-                  kind: "section" as const,
-                  id: "results" as const,
-                  accent: "#6366f1",
-                  initials: "R",
-                  ariaLabel: "Résultats",
-                  disabled: false,
-                },
-                {
-                  kind: "section" as const,
-                  id: "diagnostics" as const,
-                  accent: "#9333ea",
-                  initials: "Dx",
-                  ariaLabel: "Diagnostics",
-                  disabled: false,
-                },
-                {
-                  kind: "section" as const,
-                  id: "nursing" as const,
-                  accent: "#0ea5e9",
-                  initials: "SI",
-                  ariaLabel: "Soins infirmiers",
-                  disabled: !showNursingTab,
-                },
-                {
-                  kind: "section" as const,
-                  id: "notes" as const,
-                  accent: "#475569",
-                  initials: "N",
-                  ariaLabel: "Notes",
-                  disabled: false,
-                },
-                {
-                  kind: "section" as const,
-                  id: "disposition" as const,
-                  accent: "#94a3b8",
-                  initials: "D",
-                  ariaLabel: "Disposition",
-                  disabled: false,
-                },
-                {
-                  kind: "section" as const,
-                  id: "visitSummary" as const,
-                  accent: "#0f172a",
-                  initials: "S",
-                  ariaLabel: "Synthèse",
-                  disabled: false,
-                },
-              ] satisfies ErDashboardTile[]
-            ).map((q) => {
+            {erDashboardTiles.map((q) => {
               const selected = activeSection === q.id;
               return (
                 <div
@@ -1016,8 +1026,8 @@ export function EmergencyActiveWorkspaceView() {
           </div>
         </section>
 
-        <section aria-label="Zone active" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitleFr[activeSection]}</h2>
+        <section aria-label={t("emergencyWorkspace.activeZoneAria")} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitle[activeSection]}</h2>
 
           {activeSection === "visitSummary" ? (
             <EmergencyVisitSummaryPanel
@@ -1062,17 +1072,15 @@ export function EmergencyActiveWorkspaceView() {
               <MedoraCardInner>
                 <MedoraCardIdentity initials="T">
                   <MedoraCardTitle
-                    title="Triage"
+                    title={t("emergencyWorkspace.triageCardTitle")}
                     subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Réservé à certains rôles sur cette page. Utilisez le dossier complet.
-                      </p>
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("emergencyWorkspace.triageCardSubline")}</p>
                     }
                   />
                 </MedoraCardIdentity>
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                   <Link href={tabHref("triage")} style={linkPill}>
-                    Ouvrir le triage (dossier)
+                    {t("emergencyWorkspace.triageOpenLink")}
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
@@ -1094,11 +1102,9 @@ export function EmergencyActiveWorkspaceView() {
               <MedoraCardInner>
                 <MedoraCardIdentity initials="M">
                   <MedoraCardTitle
-                    title="Administration médicamenteuse (MAR)"
+                    title={t("emergencyWorkspace.marTitle")}
                     subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Même outil que l&apos;onglet MAR du dossier.
-                      </p>
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("emergencyWorkspace.marSubline")}</p>
                     }
                   />
                 </MedoraCardIdentity>
@@ -1118,17 +1124,15 @@ export function EmergencyActiveWorkspaceView() {
               <MedoraCardInner>
                 <MedoraCardIdentity initials="M">
                   <MedoraCardTitle
-                    title="MAR"
+                    title={t("emergencyWorkspace.marUnavailableTitle")}
                     subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Non disponible pour ce rôle sur cette page.
-                      </p>
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("emergencyWorkspace.marUnavailableSubline")}</p>
                     }
                   />
                 </MedoraCardIdentity>
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                   <Link href={tabHref("mar")} style={linkPill}>
-                    Onglet MAR (dossier)
+                    {t("emergencyWorkspace.marTabLink")}
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
@@ -1158,17 +1162,17 @@ export function EmergencyActiveWorkspaceView() {
               <MedoraCardInner>
                 <MedoraCardIdentity initials="N">
                   <MedoraCardTitle
-                    title="Notes"
+                    title={t("emergencyWorkspace.notesTitle")}
                     subline={
                       <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                        Notes infirmières et court texte — dossier complet.
+                        {t("emergencyWorkspace.notesSubline")}
                       </p>
                     }
                   />
                 </MedoraCardIdentity>
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                   <Link href={tabHref("notes")} style={linkPill}>
-                    Onglet notes
+                    {t("emergencyWorkspace.notesTabLink")}
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
@@ -1207,17 +1211,15 @@ export function EmergencyActiveWorkspaceView() {
               <MedoraCardInner>
                 <MedoraCardIdentity initials="I">
                   <MedoraCardTitle
-                    title="Soins infirmiers"
+                    title={t("emergencyWorkspace.nursingDeniedTitle")}
                     subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Évaluation réservée à certains rôles. Ouvrez le dossier complet.
-                      </p>
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("emergencyWorkspace.nursingDeniedSubline")}</p>
                     }
                   />
                 </MedoraCardIdentity>
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                   <Link href={tabHref("nursing")} style={linkPill}>
-                    Onglet soins infirmiers
+                    {t("emergencyWorkspace.nursingTabLink")}
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
@@ -1243,17 +1245,15 @@ export function EmergencyActiveWorkspaceView() {
               <MedoraCardInner>
                 <MedoraCardIdentity initials="M">
                   <MedoraCardTitle
-                    title="Évaluation médicale"
+                    title={t("emergencyWorkspace.mseDeniedTitle")}
                     subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        Zone réservée à certains rôles. Ouvrez le dossier complet.
-                      </p>
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("emergencyWorkspace.mseDeniedSubline")}</p>
                     }
                   />
                 </MedoraCardIdentity>
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                   <Link href={tabHref("clinic")} style={linkPill}>
-                    Onglet évaluation clinique
+                    {t("emergencyWorkspace.mseTabLink")}
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
@@ -1317,11 +1317,11 @@ export function EmergencyActiveWorkspaceView() {
               onClick={(ev) => ev.stopPropagation()}
             >
               <h2 id="er-create-dx-title" style={{ margin: "0 0 14px", fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
-                Nouveau diagnostic
+                {t("emergencyWorkspace.createDxTitle")}
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                  Code
+                  {t("emergencyWorkspace.createDxCode")}
                   <input
                     type="text"
                     value={dxCode}
@@ -1346,7 +1346,7 @@ export function EmergencyActiveWorkspaceView() {
                     position: "relative",
                   }}
                 >
-                  Description
+                  {t("emergencyWorkspace.createDxDescription")}
                   <input
                     type="text"
                     value={dxDescription}
@@ -1408,7 +1408,7 @@ export function EmergencyActiveWorkspaceView() {
                   )}
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                  Date de début
+                  {t("emergencyWorkspace.createDxOnset")}
                   <input
                     type="date"
                     value={dxOnsetDate}
@@ -1423,7 +1423,7 @@ export function EmergencyActiveWorkspaceView() {
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                  Notes
+                  {t("emergencyWorkspace.createDxNotes")}
                   <textarea
                     value={dxNotes}
                     onChange={(e) => setDxNotes(e.target.value)}
@@ -1459,7 +1459,7 @@ export function EmergencyActiveWorkspaceView() {
                     cursor: dxSubmitting ? "not-allowed" : "pointer",
                   }}
                 >
-                  Annuler
+                  {t("emergencyWorkspace.createDxCancel")}
                 </button>
                 <button
                   type="button"
@@ -1476,7 +1476,7 @@ export function EmergencyActiveWorkspaceView() {
                     cursor: !dxCode.trim() || dxSubmitting ? "not-allowed" : "pointer",
                   }}
                 >
-                  Enregistrer
+                  {t("emergencyWorkspace.createDxSave")}
                 </button>
               </div>
             </div>

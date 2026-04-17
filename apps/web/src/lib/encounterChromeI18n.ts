@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "@/i18n/config";
+import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { calculateAge } from "@/lib/patientDisplay";
 
 export function encounterBcp47(language: SupportedLanguage): string {
@@ -74,6 +75,17 @@ export function tOrderPriority(t: (key: string) => string, priority: string): st
   return tEnumKey(t, "encounterChrome.orderPriorities", priority);
 }
 
+/** Follow-up row status (mirrors `printOutput.patientChart.followUpStatus`). */
+export function tFollowUpStatus(t: (key: string) => string, status: string): string {
+  return tEnumKey(t, "printOutput.patientChart.followUpStatus", status);
+}
+
+/** Worklist / table: maps backend order-item status to `printOutput.orderItemChart.*`. */
+export function tOrderItemStatusForWorklist(t: (key: string) => string, status: string): string {
+  if (isOrderItemDoneForChart(status)) return t("printOutput.orderItemChart.terminalDone");
+  return tEnumKey(t, "printOutput.orderItemChart", status);
+}
+
 export function tMedicationFulfillmentIntent(
   t: (key: string) => string,
   intent: string | null | undefined
@@ -87,6 +99,10 @@ export function formatEncounterChromeDateTime(iso: string, language: SupportedLa
     dateStyle: "short",
     timeStyle: "short",
   });
+}
+
+export function formatEncounterChromeDateTimeFromDate(d: Date, language: SupportedLanguage): string {
+  return d.toLocaleString(encounterBcp47(language), { dateStyle: "short", timeStyle: "short" });
 }
 
 export function formatEncounterChromeDate(iso: string, language: SupportedLanguage): string {

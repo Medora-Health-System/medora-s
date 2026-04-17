@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { apiFetch } from "@/lib/apiClient";
@@ -25,7 +25,11 @@ import {
   PatientImagingTabContent,
   PatientMedicationsTabContent,
 } from "@/components/patient-chart/PatientChartClinicalTabs";
-import { getEncounterTypeLabelFr, getFollowUpStatusLabelFr } from "@/lib/uiLabels";
+import {
+  formatEncounterChromeDate,
+  tEncounterType,
+  tFollowUpStatus,
+} from "@/lib/encounterChromeI18n";
 import {
   MEDORA_PATIENT_VITALS_UPDATED,
   type PatientTriageVitalsResponse,
@@ -64,7 +68,7 @@ export default function PatientDetailPage() {
   const [vitalsLoading, setVitalsLoading] = useState(false);
   const [supersededVitals, setSupersededVitals] = useState<PatientTriageVitalsSnapshot[]>([]);
   const { facilityId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const triageLoadFailedRef = useRef(false);
 
   useEffect(() => {
@@ -316,7 +320,7 @@ export default function PatientDetailPage() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("fr-FR");
+    return formatEncounterChromeDate(dateStr, language);
   };
 
   const openEncounterFromChart =
@@ -350,29 +354,32 @@ export default function PatientDetailPage() {
     rolesReady &&
     (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
 
+  const tabs = useMemo(
+    () => [
+      { id: "summary", label: t("patientChartUi.tabsSummary") },
+      { id: "encounters", label: t("patientChartUi.tabsEncounters") },
+      ...(clinicalChartAccess ? [{ id: "history" as const, label: t("patientChartUi.tabsChartHistory") }] : []),
+      ...(clinicalChartAccess ? [{ id: "vaccinations" as const, label: t("patientChartUi.tabsVaccinations") }] : []),
+      { id: "notes", label: t("patientChartUi.tabsNotes") },
+      { id: "orders", label: t("patientChartUi.tabsOrders") },
+      { id: "results", label: t("patientChartUi.tabsResults") },
+      { id: "medications", label: t("patientChartUi.tabsMedications") },
+      { id: "imaging", label: t("patientChartUi.tabsImaging") },
+    ],
+    [t, clinicalChartAccess]
+  );
+
   if (rolesReady && !canAccessPatientDetail) {
     return null;
   }
 
   if (loading) {
-    return <div style={{ padding: 24 }}>Chargement…</div>;
+    return <div style={{ padding: 24 }}>{t("patientChartUi.loading")}</div>;
   }
 
   if (!patient) {
-    return <div style={{ padding: 24 }}>Patient introuvable</div>;
+    return <div style={{ padding: 24 }}>{t("patientChartUi.patientNotFound")}</div>;
   }
-
-  const tabs = [
-    { id: "summary", label: "Résumé du patient" },
-    { id: "encounters", label: "Consultations" },
-    ...(clinicalChartAccess ? [{ id: "history", label: "Historique du dossier" as const }] : []),
-    ...(clinicalChartAccess ? [{ id: "vaccinations", label: "Vaccinations" as const }] : []),
-    { id: "notes", label: "Notes" },
-    { id: "orders", label: "Ordres" },
-    { id: "results", label: "Résultats" },
-    { id: "medications", label: "Médicaments" },
-    { id: "imaging", label: "Imagerie" },
-  ];
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 8px 32px" }}>
@@ -496,9 +503,7 @@ export default function PatientDetailPage() {
             (clinicalChartAccess && chartSummary ? (
               <PatientAuditTimelineTabContent chartSummary={chartSummary} />
             ) : (
-              <div style={{ color: "#616161", fontSize: 14 }}>
-                Historique disponible pour l&apos;équipe clinique sur ce dossier.
-              </div>
+              <div style={{ color: "#616161", fontSize: 14 }}>{t("patientChartUi.placeholderHistory")}</div>
             ))}
           {activeTab === "encounters" && (
             <PatientConsultationsTab
@@ -520,39 +525,31 @@ export default function PatientDetailPage() {
           )}
           {activeTab === "vaccinations" && <PatientVaccinationsTab patientId={patientId} facilityId={facilityId} />}
           {activeTab === "notes" && (
-            <div style={{ color: "#616161", fontSize: 14 }}>Contenu des notes : à intégrer au dossier (consultation ou module dédié).</div>
+            <div style={{ color: "#616161", fontSize: 14 }}>{t("patientChartUi.placeholderNotes")}</div>
           )}
           {activeTab === "orders" &&
             (clinicalChartAccess && chartSummary ? (
               <PatientOrdersTabContent chartSummary={chartSummary} />
             ) : (
-              <div style={{ color: "#616161", fontSize: 14 }}>
-                Vue ordres disponible pour l&apos;équipe clinique sur ce dossier.
-              </div>
+              <div style={{ color: "#616161", fontSize: 14 }}>{t("patientChartUi.placeholderOrders")}</div>
             ))}
           {activeTab === "results" &&
             (clinicalChartAccess && chartSummary ? (
               <PatientResultsTabContent chartSummary={chartSummary} />
             ) : (
-              <div style={{ color: "#616161", fontSize: 14 }}>
-                Vue résultats disponible pour l&apos;équipe clinique sur ce dossier.
-              </div>
+              <div style={{ color: "#616161", fontSize: 14 }}>{t("patientChartUi.placeholderResults")}</div>
             ))}
           {activeTab === "medications" &&
             (clinicalChartAccess && chartSummary ? (
               <PatientMedicationsTabContent chartSummary={chartSummary} />
             ) : (
-              <div style={{ color: "#616161", fontSize: 14 }}>
-                Vue médicaments disponible pour l&apos;équipe clinique sur ce dossier.
-              </div>
+              <div style={{ color: "#616161", fontSize: 14 }}>{t("patientChartUi.placeholderMedications")}</div>
             ))}
           {activeTab === "imaging" &&
             (clinicalChartAccess && chartSummary ? (
               <PatientImagingTabContent chartSummary={chartSummary} />
             ) : (
-              <div style={{ color: "#616161", fontSize: 14 }}>
-                Vue imagerie disponible pour l&apos;équipe clinique sur ce dossier.
-              </div>
+              <div style={{ color: "#616161", fontSize: 14 }}>{t("patientChartUi.placeholderImaging")}</div>
             ))}
         </div>
       </div>
@@ -618,7 +615,9 @@ function FrontDeskSummaryTab({
   followUpsLoading: boolean;
   onGoEncounters: () => void;
 }) {
-  const formatDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
+  const { t, language } = useI18n();
+  const formatDate = (d: string | null | undefined) =>
+    d ? formatEncounterChromeDate(d, language) : t("common.dash");
   return (
     <div>
       <div
@@ -633,34 +632,32 @@ function FrontDeskSummaryTab({
           lineHeight: 1.55,
         }}
       >
-        <strong style={{ color: "#0d47a1" }}>Accès administratif.</strong> Le dossier clinique (résumé, résultats,
-        ordres, médicaments, imagerie, notes) est réservé à l&apos;équipe soignante. Vous pouvez consulter
-        l&apos;identité ci-dessus, modifier les coordonnées si besoin, et gérer les visites depuis l&apos;onglet
-        « Visites ».
+        <strong style={{ color: "#0d47a1" }}>{t("patientChartUi.frontDeskLead")}</strong>{" "}
+        {t("patientChartUi.frontDeskBody")}
       </div>
       <button type="button" style={{ ...btnPrimary, marginBottom: 20 }} onClick={onGoEncounters}>
-        Aller aux visites
+        {t("patientChartUi.frontDeskGoEncounters")}
       </button>
-      <ChartSection title="Suivis planifiés">
+      <ChartSection title={t("patientChartUi.frontDeskFollowUpsTitle")}>
         {followUpsLoading ? (
-          <div style={emptyStateStyle}>Chargement…</div>
+          <div style={emptyStateStyle}>{t("patientChartUi.frontDeskLoading")}</div>
         ) : followUps.length === 0 ? (
-          <div style={emptyStateStyle}>Aucun suivi enregistré.</div>
+          <div style={emptyStateStyle}>{t("patientChartUi.frontDeskNoFollowUps")}</div>
         ) : (
           <table style={tableStyles.table}>
             <thead>
               <tr>
-                <th style={tableStyles.th}>Date prévue</th>
-                <th style={tableStyles.th}>Motif</th>
-                <th style={tableStyles.th}>Statut</th>
+                <th style={tableStyles.th}>{t("patientChartUi.frontDeskThDue")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.frontDeskThReason")}</th>
+                <th style={tableStyles.th}>{t("patientChartUi.frontDeskThStatus")}</th>
               </tr>
             </thead>
             <tbody>
               {followUps.map((fu) => (
                 <tr key={fu.id}>
                   <td style={tableStyles.td}>{formatDate(fu.dueDate)}</td>
-                  <td style={tableStyles.td}>{fu.reason || "—"}</td>
-                  <td style={tableStyles.td}>{getFollowUpStatusLabelFr(fu.status)}</td>
+                  <td style={tableStyles.td}>{fu.reason || t("common.dash")}</td>
+                  <td style={tableStyles.td}>{tFollowUpStatus(t, fu.status)}</td>
                 </tr>
               ))}
             </tbody>
@@ -683,6 +680,7 @@ function AddDiagnosisModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t, language } = useI18n();
   const [encounterId, setEncounterId] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
@@ -698,8 +696,8 @@ function AddDiagnosisModal({
     setError("");
     setFieldErrors({});
     const errs: { encounter?: string; code?: string } = {};
-    if (!encounterId.trim()) errs.encounter = "Sélectionnez la consultation concernée.";
-    if (!code.trim()) errs.code = "Saisissez un code diagnostic (ex. CIM-10).";
+    if (!encounterId.trim()) errs.encounter = t("patientChartUi.addDiagnosisErrEncounter");
+    if (!code.trim()) errs.code = t("patientChartUi.addDiagnosisErrCode");
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
       return;
@@ -717,20 +715,15 @@ function AddDiagnosisModal({
         onSuccess();
       }, 1200);
     } catch (err: any) {
-      setError(
-        normalizeUserFacingError(err?.message) ||
-          "Impossible d'ajouter le diagnostic. Vérifiez le code et réessayez."
-      );
+      setError(normalizeUserFacingError(err?.message) || t("patientChartUi.addDiagnosisError"));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("fr-FR");
-
   const encounterLabel = (e: ChartSummary["recentEncounters"][0]) => {
     const reason = e.visitReason || e.chiefComplaint;
-    const parts = [getEncounterTypeLabelFr(e.type), formatDate(e.createdAt)];
+    const parts = [tEncounterType(t, e.type ?? ""), formatEncounterChromeDate(e.createdAt, language)];
     if (reason) parts.push(reason.length > 40 ? reason.slice(0, 40) + "…" : reason);
     return parts.join(" · ");
   };
@@ -738,30 +731,30 @@ function AddDiagnosisModal({
   return (
     <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
       <div style={{ backgroundColor: "white", borderRadius: 8, padding: 24, maxWidth: 480, width: "90%" }}>
-        <h3 style={{ margin: "0 0 4px 0" }}>Ajouter un diagnostic</h3>
-        <p style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>Associer un diagnostic à une consultation récente.</p>
+        <h3 style={{ margin: "0 0 4px 0" }}>{t("patientChartUi.addDiagnosisTitle")}</h3>
+        <p style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>{t("patientChartUi.addDiagnosisIntro")}</p>
         {recentEncounters.length === 0 ? (
           <>
-            <div style={{ ...emptyStateStyle, marginBottom: 16 }}>
-              Aucune consultation pour l&apos;instant. Créez une consultation depuis l&apos;onglet <strong>Consultations</strong>, puis ajoutez un diagnostic ici.
-            </div>
-            <button type="button" style={btnSecondary} onClick={onClose}>Fermer</button>
+            <div style={{ ...emptyStateStyle, marginBottom: 16 }}>{t("patientChartUi.addDiagnosisEmpty")}</div>
+            <button type="button" style={btnSecondary} onClick={onClose}>
+              {t("patientChartUi.addDiagnosisClose")}
+            </button>
           </>
         ) : success ? (
-          <div style={{ padding: "16px 0", color: "#2e7d32", fontSize: 15 }}>
-            Diagnostic ajouté. Mise à jour du dossier…
-          </div>
+          <div style={{ padding: "16px 0", color: "#2e7d32", fontSize: 15 }}>{t("patientChartUi.addDiagnosisSuccess")}</div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Consultation *</label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>
+                {t("patientChartUi.addDiagnosisEncounterLabel")}
+              </label>
               <select
                 value={encounterId}
                 onChange={(e) => { setEncounterId(e.target.value); setFieldErrors((prev) => ({ ...prev, encounter: undefined })); }}
                 style={{ width: "100%", padding: 10, fontSize: 14, border: fieldErrors.encounter ? "1px solid #c62828" : "1px solid #ccc", borderRadius: 4 }}
                 aria-invalid={!!fieldErrors.encounter}
               >
-                <option value="">— Choisir la consultation —</option>
+                <option value="">{t("patientChartUi.addDiagnosisEncounterPlaceholder")}</option>
                 {recentEncounters.map((e) => (
                   <option key={e.id} value={e.id}>{encounterLabel(e)}</option>
                 ))}
@@ -769,7 +762,7 @@ function AddDiagnosisModal({
               {fieldErrors.encounter && <div style={{ fontSize: 13, color: "#c62828", marginTop: 4 }}>{fieldErrors.encounter}</div>}
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>Diagnostics courants</label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisCommonLabel")}</label>
               <select
                 value=""
                 onChange={(e) => {
@@ -784,9 +777,9 @@ function AddDiagnosisModal({
                   }
                 }}
                 style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
-                aria-label="Choisir un diagnostic courant"
+                aria-label={t("patientChartUi.addDiagnosisCommonAria")}
               >
-                <option value="">— Choisir un diagnostic courant —</option>
+                <option value="">{t("patientChartUi.addDiagnosisCommonPlaceholder")}</option>
                 {COMMON_DIAGNOSES.map((d) => (
                   <option key={d.code} value={`${d.code} - ${d.label}`}>
                     {d.code} — {d.label}
@@ -795,7 +788,7 @@ function AddDiagnosisModal({
               </select>
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Code *</label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>{t("patientChartUi.addDiagnosisCodeLabel")}</label>
               <input
                 type="text"
                 value={code}
@@ -807,21 +800,37 @@ function AddDiagnosisModal({
               {fieldErrors.code && <div style={{ fontSize: 13, color: "#c62828", marginTop: 4 }}>{fieldErrors.code}</div>}
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>Description</label>
-              <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }} placeholder="Optionnel" />
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisDescriptionLabel")}</label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
+                placeholder={t("patientChartUi.addDiagnosisOptionalPh")}
+              />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>Date de début</label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisOnsetLabel")}</label>
               <input type="date" value={onsetDate} onChange={(e) => setOnsetDate(e.target.value)} style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }} />
             </div>
             <div style={{ marginBottom: 18 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>Notes</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }} placeholder="Optionnel" />
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisNotesLabel")}</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
+                placeholder={t("patientChartUi.addDiagnosisOptionalPh")}
+              />
             </div>
             {error && <div style={{ color: "#c62828", marginBottom: 12, fontSize: 14 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button type="button" style={btnSecondary} onClick={onClose}>Annuler</button>
-              <button type="submit" style={btnPrimary} disabled={submitting}>{submitting ? "Enregistrement…" : "Ajouter le diagnostic"}</button>
+              <button type="button" style={btnSecondary} onClick={onClose}>
+                {t("patientChartUi.addDiagnosisCancel")}
+              </button>
+              <button type="submit" style={btnPrimary} disabled={submitting}>
+                {submitting ? t("patientChartUi.addDiagnosisSaving") : t("patientChartUi.addDiagnosisSubmit")}
+              </button>
             </div>
           </form>
         )}
@@ -850,6 +859,7 @@ function EditPatientModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     firstName: patient.firstName || "",
     lastName: patient.lastName || "",
@@ -888,8 +898,7 @@ function EditPatientModal({
       onSuccess();
     } catch (err) {
       setError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-          "Impossible de modifier le patient."
+        normalizeUserFacingError(err instanceof Error ? err.message : null) || t("patientChartUi.editPatientError")
       );
     } finally {
       setLoading(false);
@@ -924,11 +933,11 @@ function EditPatientModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ marginTop: 0 }}>Modifier le patient</h2>
+        <h2 style={{ marginTop: 0 }}>{t("patientChartUi.editPatientTitle")}</h2>
         <form onSubmit={handleSubmit}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Prénom *</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientFirstName")}</label>
               <input
                 type="text"
                 required
@@ -938,7 +947,7 @@ function EditPatientModal({
               />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Nom *</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientLastName")}</label>
               <input
                 type="text"
                 required
@@ -951,7 +960,7 @@ function EditPatientModal({
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Date de naissance</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientDob")}</label>
               <input
                 type="date"
                 value={formData.dob}
@@ -960,23 +969,23 @@ function EditPatientModal({
               />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Sexe</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientSex")}</label>
               <select
                 value={formData.sexAtBirth}
                 onChange={(e) => setFormData({ ...formData, sexAtBirth: e.target.value })}
                 style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
               >
-                <option value="">—</option>
-                <option value="M">Homme</option>
-                <option value="F">Femme</option>
-                <option value="X">Autre</option>
-                <option value="U">Inconnu</option>
+                <option value="">{t("patientChartUi.editPatientSexPh")}</option>
+                <option value="M">{t("patientChartUi.editPatientSexM")}</option>
+                <option value="F">{t("patientChartUi.editPatientSexF")}</option>
+                <option value="X">{t("patientChartUi.editPatientSexX")}</option>
+                <option value="U">{t("patientChartUi.editPatientSexU")}</option>
               </select>
             </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Téléphone</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientPhone")}</label>
             <input
               type="tel"
               value={formData.phone}
@@ -993,7 +1002,7 @@ function EditPatientModal({
 
           <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
             <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "1px solid #ddd", borderRadius: 4, cursor: "pointer" }}>
-              Annuler
+              {t("patientChartUi.editPatientCancel")}
             </button>
             <button
               type="submit"
@@ -1008,7 +1017,7 @@ function EditPatientModal({
                 opacity: loading ? 0.6 : 1,
               }}
             >
-              {loading ? "Enregistrement…" : "Enregistrer"}
+              {loading ? t("patientChartUi.editPatientSaving") : t("patientChartUi.editPatientSave")}
             </button>
           </div>
         </form>

@@ -5,9 +5,13 @@ import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { getOrderPriorityLabelFr, getPathwayTypeLabelFr, ui } from "@/lib/uiLabels";
+import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
+import {
+  formatEncounterChromeDateTime,
+  tOrderItemStatusForWorklist,
+  tOrderPriority,
+  tPathwayType,
+} from "@/lib/encounterChromeI18n";
 import {
   getEncounterPatientLabelFromCache,
   getPendingPharmacyMedicationOrderRowsForFacility,
@@ -44,7 +48,7 @@ function PendingEncounterPatientCells({
 }
 
 export default function PharmacyWorklistPage() {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -110,14 +114,10 @@ export default function PharmacyWorklistPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(
-        queued
-          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : null
-      );
+      setQueuedActionNotice(queued ? t("pharmacyWorklistPage.queuedNotice") : null);
       loadQueue();
     } catch (error) {
-      alert("Impossible d'acquitter");
+      alert(t("pharmacyWorklistPage.alertAckFailed"));
     }
   };
 
@@ -130,14 +130,10 @@ export default function PharmacyWorklistPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(
-        queued
-          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : null
-      );
+      setQueuedActionNotice(queued ? t("pharmacyWorklistPage.queuedNotice") : null);
       loadQueue();
     } catch (error) {
-      alert("Impossible de démarrer");
+      alert(t("pharmacyWorklistPage.alertStartFailed"));
     }
   };
 
@@ -150,14 +146,10 @@ export default function PharmacyWorklistPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(
-        queued
-          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : null
-      );
+      setQueuedActionNotice(queued ? t("pharmacyWorklistPage.queuedNotice") : null);
       loadQueue();
     } catch (error) {
-      alert("Impossible de terminer");
+      alert(t("pharmacyWorklistPage.alertCompleteFailed"));
     }
   };
 
@@ -175,14 +167,14 @@ export default function PharmacyWorklistPage() {
     });
   };
 
-  const medicationLabel = (it: any) => getOrderItemDisplayLabelFr(it);
+  const medicationLabel = (it: any) => getOrderItemDisplayLabelForLanguage(it, language, t);
 
   const openRecordModal = (order: any, item: any) => {
     if (orderIsCancelled(order)) return;
     if (isAlreadyDispensed(item)) return;
     setRecordModal({
       orderItemId: item.id,
-      medicationLine: `${medicationLabel(item)} · Qté ${item.quantity ?? "—"} · Posologie : ${(item.notes as string) || "—"}`,
+      medicationLine: `${medicationLabel(item)} · ${t("pharmacyWorklistPage.recordLineQty")} ${item.quantity ?? t("common.dash")} · ${t("pharmacyWorklistPage.recordLineDirections")}: ${(item.notes as string) || t("common.dash")}`,
       prescriber: order.prescriberName as string | undefined,
     });
     setRecordQty(String(item.quantity ?? 1));
@@ -198,7 +190,7 @@ export default function PharmacyWorklistPage() {
     if (!item || isAlreadyDispensed(item)) return;
     const q = parseInt(recordQty, 10);
     if (!Number.isFinite(q) || q < 1) {
-      alert("Quantité invalide");
+      alert(t("pharmacyWorklistPage.alertInvalidQty"));
       return;
     }
     setRecordSubmitting(true);
@@ -216,15 +208,11 @@ export default function PharmacyWorklistPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(
-        queued
-          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : null
-      );
+      setQueuedActionNotice(queued ? t("pharmacyWorklistPage.queuedNotice") : null);
       setRecordModal(null);
       loadQueue();
     } catch {
-      alert("Impossible d'enregistrer la dispensation");
+      alert(t("pharmacyWorklistPage.alertDispenseFailed"));
     } finally {
       setRecordSubmitting(false);
     }
@@ -232,8 +220,8 @@ export default function PharmacyWorklistPage() {
 
   return (
     <div>
-      <h1>Liste pharmacie</h1>
-      <p>Ordres de médicaments à vérifier et dispenser.</p>
+      <h1>{t("pharmacyWorklistPage.title")}</h1>
+      <p>{t("pharmacyWorklistPage.subtitle")}</p>
       {queuedActionNotice ? (
         <div
           role="alert"
@@ -254,10 +242,10 @@ export default function PharmacyWorklistPage() {
         </div>
       ) : null}
       {loading && queue.length === 0 && pendingLocal.length === 0 ? (
-        <p>Chargement…</p>
+        <p>{t("pharmacyWorklistPage.loading")}</p>
       ) : queue.length === 0 && pendingLocal.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>Aucun ordre médicament dans la liste.</p>
+          <p>{t("pharmacyWorklistPage.loadEmpty")}</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
@@ -265,19 +253,19 @@ export default function PharmacyWorklistPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.dosage}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.quantity}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.refills}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.posology}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.prescriber}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.contact}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.date}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPatient")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colId")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colMedication")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colStrength")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colQuantity")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colRefills")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colDirections")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPrescriber")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colContact")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colDate")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPriority")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colStatus")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colActions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -296,10 +284,10 @@ export default function PharmacyWorklistPage() {
                     <td style={{ padding: 12 }}>{(order.prescriberName as string) || "—"}</td>
                     <td style={{ padding: 12 }}>{(order.prescriberContact as string) || "—"}</td>
                     <td style={{ padding: 12 }}>
-                      {order.createdAt ? new Date(order.createdAt).toLocaleString("fr-FR") : "—"}
+                      {order.createdAt ? formatEncounterChromeDateTime(order.createdAt, language) : t("common.dash")}
                     </td>
                     <td style={{ padding: 12 }}>
-                      {getOrderPriorityLabelFr(order.priority)}
+                      {tOrderPriority(t, order.priority)}
                       {order.pathwaySession && (
                         <span
                           style={{
@@ -311,29 +299,29 @@ export default function PharmacyWorklistPage() {
                             fontSize: 11,
                           }}
                         >
-                          {getPathwayTypeLabelFr(order.pathwaySession.type)}
+                          {tPathwayType(t, order.pathwaySession.type)}
                         </span>
                       )}
                     </td>
                     <td style={{ padding: 12 }}>
                       {orderIsCancelled(order) ? (
-                        <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
+                        <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>{t("pharmacyWorklistPage.orderCancelled")}</span>
                       ) : (
-                        getOrderItemStatusLabel(item.status)
+                        tOrderItemStatusForWorklist(t, item.status)
                       )}
                     </td>
                     <td style={{ padding: 12 }}>
                       {orderIsCancelled(order) ? (
                         <div>
                           <p style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 600, color: "#b71c1c", lineHeight: 1.45 }}>
-                            Commande annulée — aucune action possible
+                            {t("pharmacyWorklistPage.orderCancelledNoAction")}
                           </p>
                           <Link
                             href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
                             style={{ fontSize: 13 }}
                             title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
                           >
-                            Voir le détail
+                            {t("pharmacyWorklistPage.viewDetail")}
                           </Link>
                         </div>
                       ) : (
@@ -343,7 +331,7 @@ export default function PharmacyWorklistPage() {
                             style={{ marginRight: 8, fontSize: 13 }}
                             title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
                           >
-                            Voir le détail
+                            {t("pharmacyWorklistPage.viewDetail")}
                           </Link>
                           {!isAlreadyDispensed(item) ? (
                             <button
@@ -351,7 +339,7 @@ export default function PharmacyWorklistPage() {
                               onClick={() => openRecordModal(order, item)}
                               style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
                             >
-                              Enregistrer dispensation
+                              {t("pharmacyWorklistPage.recordDispense")}
                             </button>
                           ) : null}
                           <button
@@ -359,14 +347,14 @@ export default function PharmacyWorklistPage() {
                             onClick={() => handlePrintRx(order)}
                             style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
                           >
-                            Imprimer
+                            {t("pharmacyWorklistPage.print")}
                           </button>
                           {(item.status === "PLACED" || item.status === "SIGNED") && (
                             <button
                               onClick={() => handleAcknowledge(item.id)}
                               style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                             >
-                              Accuser réception
+                              {t("pharmacyWorklistPage.acknowledge")}
                             </button>
                           )}
                           {item.status === "ACKNOWLEDGED" && (
@@ -374,7 +362,7 @@ export default function PharmacyWorklistPage() {
                               onClick={() => handleStart(item.id)}
                               style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                             >
-                              Démarrer
+                              {t("pharmacyWorklistPage.start")}
                             </button>
                           )}
                           {item.status === "IN_PROGRESS" && (
@@ -382,7 +370,7 @@ export default function PharmacyWorklistPage() {
                               onClick={() => handleComplete(item.id)}
                               style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                             >
-                              Terminer
+                              {t("pharmacyWorklistPage.complete")}
                             </button>
                           )}
                         </>
@@ -396,10 +384,8 @@ export default function PharmacyWorklistPage() {
           ) : null}
           {pendingLocal.length > 0 ? (
             <div style={{ marginTop: queue.length > 0 ? 28 : 0 }}>
-              <h2 style={{ fontSize: 16, marginBottom: 8 }}>En attente de synchronisation</h2>
-              <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>
-                Ordres créés sur cet appareil, non encore synchronisés avec le serveur.
-              </p>
+              <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("pharmacyWorklistPage.pendingSyncTitle")}</h2>
+              <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>{t("pharmacyWorklistPage.pendingSyncBody")}</p>
               <table
                 style={{
                   width: "100%",
@@ -411,13 +397,13 @@ export default function PharmacyWorklistPage() {
               >
                 <thead>
                   <tr style={{ borderBottom: "2px solid #ddd" }}>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.date}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPatient")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colId")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colMedication")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colDate")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPriority")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colStatus")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colActions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -428,13 +414,13 @@ export default function PharmacyWorklistPage() {
                         {row.itemLabels.filter(Boolean).join(", ") || "—"}
                       </td>
                       <td style={{ padding: 12 }}>
-                        {new Date(row.createdAt).toLocaleString("fr-FR")}
+                        {formatEncounterChromeDateTime(row.createdAt, language)}
                       </td>
-                      <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(row.priority)}</td>
-                      <td style={{ padding: 12 }}>En attente de synchronisation</td>
+                      <td style={{ padding: 12 }}>{tOrderPriority(t, row.priority)}</td>
+                      <td style={{ padding: 12 }}>{t("pharmacyWorklistPage.pendingSyncStatus")}</td>
                       <td style={{ padding: 12 }}>
                         <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>
-                          Consultation
+                          {t("pharmacyWorklistPage.linkEncounter")}
                         </Link>
                       </td>
                     </tr>
@@ -466,13 +452,15 @@ export default function PharmacyWorklistPage() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
           >
-            <h2 style={{ marginTop: 0, fontSize: 18 }}>Dispensation</h2>
+            <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("pharmacyWorklistPage.modalTitle")}</h2>
             <p style={{ fontSize: 14, color: "#333" }}>{recordModal.medicationLine}</p>
             {recordModal.prescriber ? (
-              <p style={{ fontSize: 13, color: "#555" }}>Prescripteur : {recordModal.prescriber}</p>
+              <p style={{ fontSize: 13, color: "#555" }}>
+                {t("pharmacyWorklistPage.modalPrescriberPrefix")} {recordModal.prescriber}
+              </p>
             ) : null}
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
-              Quantité délivrée
+              {t("pharmacyWorklistPage.modalQtyLabel")}
               <input
                 type="number"
                 min={1}
@@ -482,7 +470,7 @@ export default function PharmacyWorklistPage() {
               />
             </label>
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
-              Posologie (rappel)
+              {t("pharmacyWorklistPage.modalDirectionsLabel")}
               <textarea
                 value={recordInstr}
                 onChange={(e) => setRecordInstr(e.target.value)}
@@ -491,7 +479,7 @@ export default function PharmacyWorklistPage() {
               />
             </label>
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
-              Notes pharmacie
+              {t("pharmacyWorklistPage.modalNotesLabel")}
               <textarea
                 value={recordNotes}
                 onChange={(e) => setRecordNotes(e.target.value)}
@@ -501,7 +489,7 @@ export default function PharmacyWorklistPage() {
             </label>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
               <button type="button" disabled={recordSubmitting} onClick={() => setRecordModal(null)}>
-                Annuler
+                {t("pharmacyWorklistPage.modalCancel")}
               </button>
               <button
                 type="button"
@@ -509,7 +497,7 @@ export default function PharmacyWorklistPage() {
                 onClick={() => void submitRecordDispense()}
                 style={{ fontWeight: 600 }}
               >
-                {recordSubmitting ? "…" : "Valider"}
+                {recordSubmitting ? t("pharmacyWorklistPage.modalSubmitting") : t("pharmacyWorklistPage.modalSubmit")}
               </button>
             </div>
           </div>
