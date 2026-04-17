@@ -2,11 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import {
-  APP_ROLE_CODES,
-  getLandingRouteForRoles,
-  getLandingHomeLabelFr,
-} from "@/lib/landingRoute";
+import { APP_ROLE_CODES, getLandingRouteForRoles, getLandingHomeLabel } from "@/lib/landingRoute";
 import { useFacilityAndRoles, type UserFacilityOption } from "@/hooks/useFacilityAndRoles";
 import {
   fetchAdminUsers,
@@ -18,14 +14,19 @@ import {
   patchAdminUserStatus,
   type AdminUserRow,
 } from "@/lib/adminUsersApi";
-import { genericUserFacingError, normalizeUserFacingError } from "@/lib/userFacingError";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
-import { getAdminAssignableRoleLabelFr } from "@/lib/uiLabels";
 import { useI18n } from "@/lib/i18n";
+
+function formatRoleList(codes: string[], t: (key: string) => string): string {
+  if (!codes.length) return t("common.dash");
+  return codes.map((code) => t(`adminUsers.roleLabels.${code}`) || code).join(", ");
+}
 
 function roleCheckboxes(
   selected: Set<string>,
   onToggle: (code: string) => void,
+  t: (key: string) => string,
   disabled?: boolean
 ) {
   return (
@@ -47,7 +48,7 @@ function roleCheckboxes(
             disabled={disabled}
             onChange={() => onToggle(code)}
           />
-          <span>{getAdminAssignableRoleLabelFr(code)}</span>
+          <span>{t(`adminUsers.roleLabels.${code}`)}</span>
         </label>
       ))}
     </div>
@@ -55,19 +56,14 @@ function roleCheckboxes(
 }
 
 /** Statut d’accès pour l’établissement affiché (colonne Statut). */
-function accessStatusColumn(u: AdminUserRow): string {
-  if (!u.isActive) return "Compte inactif";
-  if (!u.facilityAccessActive) return "Accès désactivé";
-  return "Accès actif";
-}
-
-function rolesListFr(codes: string[]): string {
-  if (!codes.length) return "—";
-  return codes.map((r) => getAdminAssignableRoleLabelFr(r)).join(", ");
+function accessStatusColumn(u: AdminUserRow, t: (key: string) => string): string {
+  if (!u.isActive) return t("adminUsers.accessInactiveAccount");
+  if (!u.facilityAccessActive) return t("adminUsers.accessDisabled");
+  return t("adminUsers.accessActive");
 }
 
 export default function AdminUsersPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { facilityId, facilities, roles, ready, refreshFromMe, canCreateFacilities } = useFacilityAndRoles();
   const [items, setItems] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +77,7 @@ export default function AdminUsersPage() {
 
   const isAdmin = ready && roles.includes("ADMIN");
   const currentFacilityName =
-    facilities.find((f) => f.id === facilityId)?.name ?? "—";
+    facilities.find((f) => f.id === facilityId)?.name ?? t("common.dash");
 
   const load = useCallback(async () => {
     if (!facilityId || !isAdmin) return;
@@ -114,19 +110,19 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   if (!ready) {
-    return <div style={{ padding: 24 }}>Chargement…</div>;
+    return <div style={{ padding: 24 }}>{t("adminUsers.loading")}</div>;
   }
 
   if (!isAdmin && !canCreateFacilities) {
     return (
       <div style={{ padding: 24 }}>
-        <p>Accès réservé aux administrateurs.</p>
-        <Link href="/app">Retour</Link>
+        <p>{t("adminUsers.forbidden")}</p>
+        <Link href="/app">{t("adminUsers.back")}</Link>
       </div>
     );
   }
@@ -163,14 +159,12 @@ export default function AdminUsersPage() {
           <h1 style={{ margin: "0 0 8px 0" }}>{t("adminUsers.title")}</h1>
           {isAdmin ? (
             <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
-              Établissement géré : <strong>{currentFacilityName}</strong>. Les comptes listés ont au moins un lien avec cet
-              établissement. Les rôles ci-dessous sont ceux <strong>pour cet établissement uniquement</strong> ; les accès
-              dans d&apos;autres établissements ne sont pas modifiés par cette page.
+              {t("adminUsers.introManagedBefore")} <strong>{currentFacilityName}</strong>.{" "}
+              {t("adminUsers.introManagedAfter")}
             </p>
           ) : (
             <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
-              La gestion des utilisateurs de cet établissement est réservée aux comptes avec le rôle Administrateur pour
-              l&apos;établissement affiché. Vous pouvez toutefois ajouter un établissement si votre compte y est autorisé.
+              {t("adminUsers.introNonAdmin")}
             </p>
           )}
         </div>
@@ -189,7 +183,7 @@ export default function AdminUsersPage() {
                 cursor: "pointer",
               }}
             >
-              Ajouter un établissement
+              {t("adminUsers.addFacility")}
             </button>
           ) : null}
           {isAdmin ? (
@@ -206,20 +200,20 @@ export default function AdminUsersPage() {
                 cursor: "pointer",
               }}
             >
-              Créer un utilisateur
+              {t("adminUsers.createUser")}
             </button>
           ) : null}
         </div>
       </div>
       <p style={{ fontSize: 13, color: "#666", marginTop: 12 }}>
         <Link href="/app/admin" style={{ color: "#1565c0" }}>
-          ← Administration
+          {t("adminUsers.backToAdmin")}
         </Link>
       </p>
 
       {isAdmin ? (
         loading ? (
-          <p style={{ marginTop: 24 }}>Chargement…</p>
+          <p style={{ marginTop: 24 }}>{t("adminUsers.loading")}</p>
         ) : items.length === 0 ? (
           <div
             style={{
@@ -232,7 +226,7 @@ export default function AdminUsersPage() {
               fontSize: 14,
             }}
           >
-            Aucun utilisateur lié à cet établissement. Utilisez « Créer un utilisateur » pour ajouter un compte.
+            {t("adminUsers.emptyUsers")}
           </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 14 }}>
@@ -257,19 +251,26 @@ export default function AdminUsersPage() {
                 <td style={{ padding: 10 }}>
                   <span>
                     {u.roles.length > 0
-                      ? rolesListFr(u.roles)
+                      ? formatRoleList(u.roles, t)
                       : u.rolesInactive && u.rolesInactive.length > 0
-                        ? `${rolesListFr(u.rolesInactive)} (inactifs dans cet établissement)`
-                        : "—"}
+                        ? t("adminUsers.rolesInactiveAtFacility").replace(
+                            "{roles}",
+                            formatRoleList(u.rolesInactive, t)
+                          )
+                        : t("common.dash")}
                   </span>
                   {!u.isActive && (
-                    <span style={{ color: "#c62828", marginLeft: 8, fontSize: 12 }}>(compte inactif)</span>
+                    <span style={{ color: "#c62828", marginLeft: 8, fontSize: 12 }}>
+                      {t("adminUsers.tagAccountInactive")}
+                    </span>
                   )}
                   {u.isActive && !u.facilityAccessActive && u.roles.length > 0 && (
-                    <span style={{ color: "#c62828", marginLeft: 8, fontSize: 12 }}>(accès désactivé ici)</span>
+                    <span style={{ color: "#c62828", marginLeft: 8, fontSize: 12 }}>
+                      {t("adminUsers.tagAccessDisabled")}
+                    </span>
                   )}
                 </td>
-                <td style={{ padding: 10 }}>{accessStatusColumn(u)}</td>
+                <td style={{ padding: 10 }}>{accessStatusColumn(u, t)}</td>
                 <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
                   <button
                     type="button"
@@ -299,7 +300,7 @@ export default function AdminUsersPage() {
                       cursor: "pointer",
                     }}
                   >
-                    Gérer les rôles
+                    {t("adminUsers.manageRoles")}
                   </button>
                   {u.id !== currentUserId ? (
                     <button
@@ -315,7 +316,7 @@ export default function AdminUsersPage() {
                         cursor: "pointer",
                       }}
                     >
-                      Réinitialiser le mot de passe
+                      {t("adminUsers.resetPasswordAction")}
                     </button>
                   ) : null}
                   {u.isActive && u.facilityAccessActive && u.id !== currentUserId ? (
@@ -325,19 +326,21 @@ export default function AdminUsersPage() {
                         if (
                           !facilityId ||
                           !confirm(
-                            `Désactiver l’accès de ${u.email} pour l’établissement « ${currentFacilityName} » ? Les rôles dans les autres établissements ne seront pas retirés.`
+                            t("adminUsers.confirmDeactivateAccess")
+                              .replace("{email}", u.email)
+                              .replace("{facility}", currentFacilityName)
                           )
                         )
                           return;
                         try {
                           await patchAdminUserStatus(facilityId, u.id, { isActive: false });
-                          setToast({ message: "Accès désactivé", ok: true });
+                          setToast({ message: t("adminUsers.toastAccessDisabled"), ok: true });
                           await load();
                         } catch (err: unknown) {
                           setToast({
                             message:
-                              normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-                              genericUserFacingError(),
+                              normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+                              t("adminUsers.errorGeneric"),
                             ok: false,
                           });
                         }
@@ -362,13 +365,13 @@ export default function AdminUsersPage() {
                         if (!facilityId) return;
                         try {
                           await patchAdminUserStatus(facilityId, u.id, { isActive: true });
-                          setToast({ message: "Accès activé", ok: true });
+                          setToast({ message: t("adminUsers.toastAccessEnabled"), ok: true });
                           await load();
                         } catch (err: unknown) {
                           setToast({
                             message:
-                              normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-                              genericUserFacingError(),
+                              normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+                              t("adminUsers.errorGeneric"),
                             ok: false,
                           });
                         }
@@ -407,7 +410,7 @@ export default function AdminUsersPage() {
             }
             window.dispatchEvent(new Event("medora:session-refresh"));
             setShowAddFacility(false);
-            setToast({ message: "Établissement créé.", ok: true });
+            setToast({ message: t("adminUsers.toastFacilityCreated"), ok: true });
           }}
           onError={(m) => setToast({ message: m, ok: false })}
         />
@@ -420,7 +423,7 @@ export default function AdminUsersPage() {
           onClose={() => setShowCreate(false)}
           onSuccess={async () => {
             setShowCreate(false);
-            setToast({ message: "Utilisateur créé", ok: true });
+            setToast({ message: t("adminUsers.toastUserCreated"), ok: true });
             await load();
           }}
           onError={(m) => setToast({ message: m, ok: false })}
@@ -435,7 +438,7 @@ export default function AdminUsersPage() {
           onClose={() => setEditUser(null)}
           onSuccess={async () => {
             setEditUser(null);
-            setToast({ message: "Rôles mis à jour", ok: true });
+            setToast({ message: t("adminUsers.toastRolesUpdated"), ok: true });
             await load();
           }}
           onError={(m) => setToast({ message: m, ok: false })}
@@ -449,7 +452,7 @@ export default function AdminUsersPage() {
           onClose={() => setProfileUser(null)}
           onSuccess={async () => {
             setProfileUser(null);
-            setToast({ message: "Utilisateur mis à jour", ok: true });
+            setToast({ message: t("adminUsers.toastUserUpdated"), ok: true });
             await load();
           }}
           onError={(m) => setToast({ message: m, ok: false })}
@@ -464,7 +467,7 @@ export default function AdminUsersPage() {
           onClose={() => setResetPasswordUser(null)}
           onSuccess={async () => {
             setResetPasswordUser(null);
-            setToast({ message: "Mot de passe réinitialisé", ok: true });
+            setToast({ message: t("adminUsers.toastPasswordReset"), ok: true });
           }}
           onError={(m) => setToast({ message: m, ok: false })}
         />
@@ -484,7 +487,7 @@ function AddFacilityModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [name, setName] = useState("");
   const [defaultLanguage, setDefaultLanguage] = useState<"fr" | "en">("fr");
   const [submitting, setSubmitting] = useState(false);
@@ -492,7 +495,7 @@ function AddFacilityModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      onError("Le nom de l’établissement est requis.");
+      onError(t("adminUsers.valFacilityNameRequired"));
       return;
     }
     setSubmitting(true);
@@ -504,8 +507,8 @@ function AddFacilityModal({
       await onSuccess();
     } catch (err: unknown) {
       onError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-          "Impossible de créer l’établissement."
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+          t("adminUsers.errCreateFacility")
       );
     } finally {
       setSubmitting(false);
@@ -542,12 +545,12 @@ function AddFacilityModal({
         aria-labelledby="add-facility-title"
       >
         <h2 id="add-facility-title" style={{ marginTop: 0 }}>
-          Ajouter un établissement
+          {t("adminUsers.addFacilityTitle")}
         </h2>
         <form onSubmit={submit}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
-              Nom de l’établissement *
+              {t("adminUsers.facilityNameLabel")}
             </label>
             <input
               value={name}
@@ -558,15 +561,15 @@ function AddFacilityModal({
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
-              Langue par défaut *
+              {t("adminUsers.defaultLanguageLabel")}
             </label>
             <select
               value={defaultLanguage}
               onChange={(e) => setDefaultLanguage(e.target.value as "fr" | "en")}
               style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
             >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
+              <option value="fr">{t("adminUsers.langFr")}</option>
+              <option value="en">{t("adminUsers.langEn")}</option>
             </select>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -597,7 +600,7 @@ function AddFacilityModal({
                 cursor: submitting ? "default" : "pointer",
               }}
             >
-              {submitting ? "Création…" : t("common.create")}
+              {submitting ? t("adminUsers.savingCreate") : t("common.create")}
             </button>
           </div>
         </form>
@@ -619,7 +622,7 @@ function CreateUserModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [selectedFacilityId, setSelectedFacilityId] = useState(defaultFacilityId);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -639,36 +642,36 @@ function CreateUserModal({
   };
 
   const previewPath = getLandingRouteForRoles(Array.from(selected));
-  const previewLabel = getLandingHomeLabelFr(previewPath);
+  const previewLabel = getLandingHomeLabel(previewPath, t);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim()) {
-      onError("Le prénom est requis");
+      onError(t("adminUsers.valFirstName"));
       return;
     }
     if (!lastName.trim()) {
-      onError("Le nom est requis");
+      onError(t("adminUsers.valLastName"));
       return;
     }
     if (!email.trim()) {
-      onError("Le courriel est requis");
+      onError(t("adminUsers.valEmail"));
       return;
     }
     if (!password?.trim()) {
-      onError("Le mot de passe temporaire est requis");
+      onError(t("adminUsers.valTempPassword"));
       return;
     }
     if (password.length < 8) {
-      onError("Le mot de passe temporaire doit contenir au moins 8 caractères");
+      onError(t("adminUsers.valTempPasswordMin"));
       return;
     }
     if (!selectedFacilityId?.trim()) {
-      onError("L’établissement est requis");
+      onError(t("adminUsers.valFacilityRequired"));
       return;
     }
     if (selected.size === 0) {
-      onError("Au moins un rôle est requis");
+      onError(t("adminUsers.valAtLeastOneRole"));
       return;
     }
     setSubmitting(true);
@@ -685,8 +688,8 @@ function CreateUserModal({
       await onSuccess();
     } catch (err: unknown) {
       onError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-          "Impossible de créer l’utilisateur."
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+          t("adminUsers.errCreateUser")
       );
     } finally {
       setSubmitting(false);
@@ -725,15 +728,17 @@ function CreateUserModal({
         aria-labelledby="create-user-title"
       >
         <h2 id="create-user-title" style={{ marginTop: 0 }}>
-          Créer un utilisateur
+          {t("adminUsers.createUserTitle")}
         </h2>
         <p style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-          Après connexion, accueil prévu (selon les rôles cochés) : <strong>{previewLabel}</strong>
+          {t("adminUsers.homeAfterSignIn")} <strong>{previewLabel}</strong>
         </p>
         <form onSubmit={submit}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Prénom *</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+                {t("adminUsers.labelFirstName")}
+              </label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -741,7 +746,9 @@ function CreateUserModal({
               />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Nom *</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+                {t("adminUsers.labelLastName")}
+              </label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -750,7 +757,9 @@ function CreateUserModal({
             </div>
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Courriel *</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              {t("adminUsers.labelEmail")}
+            </label>
             <input
               type="email"
               value={email}
@@ -760,7 +769,7 @@ function CreateUserModal({
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
-              Mot de passe temporaire *
+              {t("adminUsers.labelTempPassword")}
             </label>
             <input
               type="password"
@@ -769,11 +778,13 @@ function CreateUserModal({
               onChange={(e) => setPassword(e.target.value)}
               style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
             />
-            <p style={{ fontSize: 12, color: "#888", margin: "6px 0 0 0" }}>Au moins 8 caractères.</p>
+            <p style={{ fontSize: 12, color: "#888", margin: "6px 0 0 0" }}>{t("adminUsers.tempPasswordHint")}</p>
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Établissement *</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              {t("adminUsers.labelFacility")}
+            </label>
             {facilities.length > 1 ? (
               <select
                 value={selectedFacilityId}
@@ -792,7 +803,7 @@ function CreateUserModal({
               </div>
             )}
             <p style={{ fontSize: 12, color: "#888", margin: "6px 0 0 0" }}>
-              Les rôles sont enregistrés uniquement pour cet établissement.
+              {t("adminUsers.rolesSavedForFacilityHint")}
             </p>
           </div>
 
@@ -807,12 +818,14 @@ function CreateUserModal({
             }}
           >
             <input type="checkbox" checked={accountActive} onChange={(e) => setAccountActive(e.target.checked)} />
-            Compte actif (connexion autorisée si au moins un accès actif)
+            {t("adminUsers.accountActiveLabel")}
           </label>
 
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontWeight: 600, fontSize: 13, display: "block", marginBottom: 8 }}>Rôles *</span>
-            {roleCheckboxes(selected, toggle)}
+            <span style={{ fontWeight: 600, fontSize: 13, display: "block", marginBottom: 8 }}>
+              {t("adminUsers.rolesSectionLabel")}
+            </span>
+            {roleCheckboxes(selected, toggle, t)}
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
@@ -841,7 +854,7 @@ function CreateUserModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Création…" : t("common.create")}
+              {submitting ? t("adminUsers.savingCreate") : t("common.create")}
             </button>
           </div>
         </form>
@@ -865,7 +878,7 @@ function EditRolesModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(user.roles));
   const [submitting, setSubmitting] = useState(false);
 
@@ -879,13 +892,13 @@ function EditRolesModal({
   };
 
   const previewPath = getLandingRouteForRoles(Array.from(selected));
-  const previewLabel = getLandingHomeLabelFr(previewPath);
-  const effectiveFr = rolesListFr(Array.from(selected).sort());
+  const previewLabel = getLandingHomeLabel(previewPath, t);
+  const effectiveRoles = formatRoleList(Array.from(selected).sort(), t);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selected.size === 0) {
-      onError("Au moins un rôle est requis");
+      onError(t("adminUsers.valAtLeastOneRole"));
       return;
     }
     setSubmitting(true);
@@ -897,8 +910,8 @@ function EditRolesModal({
       await onSuccess();
     } catch (err: unknown) {
       onError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-          "Impossible de mettre à jour les rôles."
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+          t("adminUsers.errUpdateRoles")
       );
     } finally {
       setSubmitting(false);
@@ -907,7 +920,10 @@ function EditRolesModal({
 
   const inactiveHint =
     user.rolesInactive && user.rolesInactive.length > 0
-      ? `Rôles actuellement inactifs dans cet établissement : ${rolesListFr(user.rolesInactive)}. Cochez-les pour les réactiver.`
+      ? t("adminUsers.editRolesInactiveHint").replace(
+          "{roles}",
+          formatRoleList(user.rolesInactive, t)
+        )
       : null;
 
   return (
@@ -940,28 +956,26 @@ function EditRolesModal({
         aria-labelledby="edit-roles-title"
       >
         <h2 id="edit-roles-title" style={{ marginTop: 0 }}>
-          Gérer les rôles
+          {t("adminUsers.editRolesTitle")}
         </h2>
         <p style={{ fontSize: 13, color: "#666", marginTop: 0 }}>
           {user.firstName} {user.lastName} — {user.email}
         </p>
         <p style={{ fontSize: 13, color: "#444", marginBottom: 8 }}>
-          <strong>Établissement :</strong> {facilityDisplayName}
+          <strong>{t("adminUsers.facilityLabelStrong")}</strong> {facilityDisplayName}
         </p>
-        <p style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-          Seuls les rôles de cet établissement sont modifiés. Les accès dans d&apos;autres établissements restent inchangés.
-        </p>
+        <p style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>{t("adminUsers.editRolesScopeHint")}</p>
         {inactiveHint ? (
           <p style={{ fontSize: 12, color: "#856404", background: "#fff8e1", padding: 8, borderRadius: 4 }}>{inactiveHint}</p>
         ) : null}
         <p style={{ fontSize: 13, color: "#333", marginBottom: 12 }}>
-          <strong>Rôles effectifs (aperçu après enregistrement) :</strong> {effectiveFr}
+          {t("adminUsers.editRolesEffectiveLine").replace("{roles}", effectiveRoles)}
         </p>
         <p style={{ fontSize: 13, color: "#444", marginBottom: 12 }}>
-          Accueil après connexion (aperçu) : <strong>{previewLabel}</strong>
+          {t("adminUsers.homePreviewLine")} <strong>{previewLabel}</strong>
         </p>
         <form onSubmit={submit}>
-          <div style={{ marginBottom: 16 }}>{roleCheckboxes(selected, toggle)}</div>
+          <div style={{ marginBottom: 16 }}>{roleCheckboxes(selected, toggle, t)}</div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
               type="button"
@@ -989,7 +1003,7 @@ function EditRolesModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Enregistrement…" : t("common.save")}
+              {submitting ? t("adminUsers.saving") : t("common.save")}
             </button>
           </div>
         </form>
@@ -1013,7 +1027,7 @@ function ResetPasswordModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -1021,11 +1035,11 @@ function ResetPasswordModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      onError("Les deux mots de passe ne correspondent pas.");
+      onError(t("adminUsers.valPasswordMismatch"));
       return;
     }
     if (newPassword.length < 8) {
-      onError("Le mot de passe doit contenir au moins 8 caractères.");
+      onError(t("adminUsers.valPasswordMin"));
       return;
     }
     setSubmitting(true);
@@ -1034,8 +1048,8 @@ function ResetPasswordModal({
       await onSuccess();
     } catch (err: unknown) {
       onError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-          "Impossible de réinitialiser le mot de passe."
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+          t("adminUsers.errResetPassword")
       );
     } finally {
       setSubmitting(false);
@@ -1072,18 +1086,18 @@ function ResetPasswordModal({
         aria-labelledby="reset-password-title"
       >
         <h2 id="reset-password-title" style={{ marginTop: 0 }}>
-          Réinitialiser le mot de passe
+          {t("adminUsers.resetPasswordTitle")}
         </h2>
         <p style={{ fontSize: 13, color: "#666", marginTop: 0 }}>
           {user.firstName} {user.lastName} — {user.email}
         </p>
         <p style={{ fontSize: 13, color: "#444", marginBottom: 12 }}>
-          <strong>Établissement :</strong> {facilityDisplayName}
+          <strong>{t("adminUsers.facilityLabelStrong")}</strong> {facilityDisplayName}
         </p>
         <form onSubmit={submit}>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
-              Nouveau mot de passe *
+              {t("adminUsers.labelNewPassword")}
             </label>
             <input
               type="password"
@@ -1093,11 +1107,11 @@ function ResetPasswordModal({
               autoComplete="new-password"
               style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
             />
-            <p style={{ fontSize: 12, color: "#888", margin: "6px 0 0 0" }}>Au moins 8 caractères.</p>
+            <p style={{ fontSize: 12, color: "#888", margin: "6px 0 0 0" }}>{t("adminUsers.tempPasswordHint")}</p>
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
-              Confirmer le mot de passe *
+              {t("adminUsers.labelConfirmPassword")}
             </label>
             <input
               type="password"
@@ -1136,7 +1150,7 @@ function ResetPasswordModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Enregistrement…" : t("common.save")}
+              {submitting ? t("adminUsers.saving") : t("common.save")}
             </button>
           </div>
         </form>
@@ -1158,7 +1172,7 @@ function EditProfileModal({
   onSuccess: () => Promise<void>;
   onError: (m: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [email, setEmail] = useState(user.email);
@@ -1167,15 +1181,15 @@ function EditProfileModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim()) {
-      onError("Le prénom est requis");
+      onError(t("adminUsers.valFirstName"));
       return;
     }
     if (!lastName.trim()) {
-      onError("Le nom est requis");
+      onError(t("adminUsers.valLastName"));
       return;
     }
     if (!email.trim()) {
-      onError("Le courriel est requis");
+      onError(t("adminUsers.valEmail"));
       return;
     }
     const body: { firstName?: string; lastName?: string; email?: string } = {};
@@ -1193,8 +1207,8 @@ function EditProfileModal({
       await onSuccess();
     } catch (err: unknown) {
       onError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-          "Impossible de mettre à jour le profil."
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+          t("adminUsers.errUpdateProfile")
       );
     } finally {
       setSubmitting(false);
@@ -1229,14 +1243,16 @@ function EditProfileModal({
         aria-labelledby="edit-profile-title"
       >
         <h2 id="edit-profile-title" style={{ marginTop: 0 }}>
-          Modifier le profil
+          {t("adminUsers.editProfileTitle")}
         </h2>
         <p style={{ fontSize: 13, color: "#666", marginTop: 0 }}>
           {user.firstName} {user.lastName}
         </p>
         <form onSubmit={submit}>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Prénom *</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              {t("adminUsers.labelFirstName")}
+            </label>
             <input
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
@@ -1244,7 +1260,9 @@ function EditProfileModal({
             />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Nom *</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              {t("adminUsers.labelLastName")}
+            </label>
             <input
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
@@ -1252,7 +1270,9 @@ function EditProfileModal({
             />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>Courriel *</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13 }}>
+              {t("adminUsers.labelEmail")}
+            </label>
             <input
               type="email"
               value={email}
@@ -1287,7 +1307,7 @@ function EditProfileModal({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "Enregistrement…" : t("common.save")}
+              {submitting ? t("adminUsers.saving") : t("common.save")}
             </button>
           </div>
         </form>

@@ -64,22 +64,26 @@ const ROLE_LANDING: Array<{ role: string; path: string }> = [
 /** When no ROLE_LANDING role matches (edge case), send user to clinical trackboard */
 const DEFAULT_LANDING = "/app/trackboard";
 
-/** Libellés français pour l’aperçu « accueil après connexion » (pas d’URL affichée aux utilisateurs finaux si possible). */
-export const LANDING_HOME_LABEL_FR: Record<string, string> = {
-  "/app/admin": "Espace administration",
-  "/app/provider": "Espace médecin",
-  "/app/nursing": "Soins infirmiers",
-  "/app/pharmacy": "Pharmacie",
-  "/app/registration": "Accueil et inscription",
-  "/app/lab-worklist": "File laboratoire",
-  "/app/rad-worklist": "File imagerie",
-  "/app/billing": "Facturation",
-  "/app/fracture": "Fracture",
-  "/app/trackboard": "Tableau clinique",
+/**
+ * Landing path → i18n key (`landingHome.*` in `messages/en.ts` and `messages/fr.ts`).
+ * Used for role-home previews (e.g. admin user editor); unknown paths fall back to the raw path.
+ */
+export const LANDING_HOME_I18N_KEY_BY_PATH: Record<string, string> = {
+  "/app/admin": "landingHome.previewAdmin",
+  "/app/provider": "landingHome.previewProvider",
+  "/app/nursing": "landingHome.previewNursing",
+  "/app/pharmacy": "landingHome.previewPharmacy",
+  "/app/registration": "landingHome.previewRegistration",
+  "/app/lab-worklist": "landingHome.previewLabWorklist",
+  "/app/rad-worklist": "landingHome.previewRadWorklist",
+  "/app/billing": "landingHome.previewBilling",
+  "/app/fracture": "landingHome.previewFracture",
+  "/app/trackboard": "landingHome.previewTrackboard",
 };
 
-export function getLandingHomeLabelFr(path: string): string {
-  return LANDING_HOME_LABEL_FR[path] ?? path;
+export function getLandingHomeLabel(path: string, t: (key: string) => string): string {
+  const key = LANDING_HOME_I18N_KEY_BY_PATH[path];
+  return key ? t(key) : path;
 }
 
 /** Longest prefix wins. `exact` means pathname must equal prefix (not subpaths). */

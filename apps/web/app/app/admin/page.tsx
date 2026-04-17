@@ -9,6 +9,7 @@ import {
   setAdminFacilityLanguage,
   type AdminFacilityRow,
 } from "@/lib/adminUsersApi";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 
 const FACILITY_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
@@ -19,7 +20,7 @@ function switchSessionToFacility(facilityId: string) {
 }
 
 export default function AdminPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { ready, canCreateFacilities, facilityId, refreshFromMe } = useFacilityAndRoles();
   const [facilities, setFacilities] = useState<AdminFacilityRow[] | null>(null);
   const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
@@ -37,18 +38,19 @@ export default function AdminPage() {
       setFacilities(rows);
     } catch (e: unknown) {
       setFacilities(null);
+      const raw = e instanceof Error ? e.message : "";
       setFacilitiesError(
-        e instanceof Error ? e.message : "Impossible de charger les établissements."
+        normalizeUserFacingError(raw, language) || t("adminHub.errorLoadFacilities")
       );
     } finally {
       setFacilitiesLoading(false);
     }
-  }, [facilityId]);
+  }, [facilityId, language, t]);
 
   const handleFacilityActiveChange = useCallback(
     async (row: AdminFacilityRow, isActive: boolean) => {
       if (!facilityId) {
-        setFacilitiesError("Sélectionnez un établissement pour cette action.");
+        setFacilitiesError(t("adminHub.errorSelectFacility"));
         return;
       }
       setFacilityToggleId(row.id);
@@ -57,14 +59,15 @@ export default function AdminPage() {
         await setAdminFacilityActive(facilityId, row.id, isActive);
         await loadFacilities();
       } catch (e: unknown) {
+        const raw = e instanceof Error ? e.message : "";
         setFacilitiesError(
-          e instanceof Error ? e.message : "Impossible de mettre à jour l’établissement."
+          normalizeUserFacingError(raw, language) || t("adminHub.errorUpdateFacility")
         );
       } finally {
         setFacilityToggleId(null);
       }
     },
-    [facilityId, loadFacilities]
+    [facilityId, loadFacilities, language, t]
   );
 
   useEffect(() => {
@@ -74,10 +77,8 @@ export default function AdminPage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ marginTop: 0 }}>Administration</h1>
-      <p style={{ color: "#555", marginBottom: 20 }}>
-        Gestion de la plateforme pour les administrateurs de l&apos;établissement.
-      </p>
+      <h1 style={{ marginTop: 0 }}>{t("adminHub.title")}</h1>
+      <p style={{ color: "#555", marginBottom: 20 }}>{t("adminHub.intro")}</p>
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
         <li>
           <Link
@@ -92,7 +93,7 @@ export default function AdminPage() {
               fontWeight: 600,
             }}
           >
-            Utilisateurs et accès
+            {t("adminHub.usersAndAccess")}
           </Link>
         </li>
         {ready && canCreateFacilities ? (
@@ -118,22 +119,22 @@ export default function AdminPage() {
 
       {ready && canCreateFacilities ? (
         <section style={{ marginTop: 32 }}>
-          <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>Établissements</h2>
+          <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>{t("adminHub.facilities")}</h2>
           {facilitiesLoading ? (
-            <p style={{ color: "#555", fontSize: 14 }}>Chargement…</p>
+            <p style={{ color: "#555", fontSize: 14 }}>{t("adminHub.loading")}</p>
           ) : facilitiesError ? (
             <p style={{ color: "#b71c1c", fontSize: 14 }}>{facilitiesError}</p>
           ) : facilities && facilities.length === 0 ? (
-            <p style={{ color: "#555", fontSize: 14 }}>Aucun établissement.</p>
+            <p style={{ color: "#555", fontSize: 14 }}>{t("adminHub.emptyFacilities")}</p>
           ) : facilities && facilities.length > 0 ? (
             <div style={{ overflowX: "auto", border: "1px solid #e0e0e0", borderRadius: 8 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e0e0e0", background: "#fafafa" }}>
-                    <th style={{ textAlign: "left", padding: 10 }}>Nom</th>
-                    <th style={{ textAlign: "left", padding: 10 }}>État</th>
-                    <th style={{ textAlign: "left", padding: 10 }}>ID</th>
-                    <th style={{ textAlign: "right", padding: 10 }}>Actions</th>
+                    <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colName")}</th>
+                    <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colState")}</th>
+                    <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colId")}</th>
+                    <th style={{ textAlign: "right", padding: 10 }}>{t("adminHub.colActions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -152,7 +153,7 @@ export default function AdminPage() {
                               marginTop: 8,
                             }}
                           >
-                            <span style={{ fontSize: 12, color: "#666" }}>Langue:</span>
+                            <span style={{ fontSize: 12, color: "#666" }}>{t("adminHub.languageLabel")}</span>
                             <select
                               value={f.defaultLanguage ?? "fr"}
                               disabled={!facilityId || languageSavingId === f.id}
@@ -170,19 +171,21 @@ export default function AdminPage() {
                                   }
                                   window.dispatchEvent(new Event("medora:session-refresh"));
                                 } catch {
-                                  alert("Impossible de modifier la langue.");
+                                  alert(t("adminHub.alertLanguageFailed"));
                                 } finally {
                                   setLanguageSavingId(null);
                                 }
                               }}
                               style={{ padding: 4, borderRadius: 4 }}
                             >
-                              <option value="fr">FR</option>
-                              <option value="en">EN</option>
+                              <option value="fr">{t("adminUsers.langFr")}</option>
+                              <option value="en">{t("adminUsers.langEn")}</option>
                             </select>
                           </div>
                         </td>
-                        <td style={{ padding: 10 }}>{rowActive ? "Actif" : "Inactif"}</td>
+                        <td style={{ padding: 10 }}>
+                          {rowActive ? t("adminHub.statusActive") : t("adminHub.statusInactive")}
+                        </td>
                         <td style={{ padding: 10, fontFamily: "monospace", fontSize: 13 }}>{f.id}</td>
                         <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
                           {rowActive ? (
@@ -218,7 +221,7 @@ export default function AdminPage() {
                                   fontWeight: 600,
                                 }}
                               >
-                                Utiliser cet établissement
+                                {t("adminHub.useThisFacility")}
                               </button>
                             </>
                           ) : (
@@ -236,7 +239,7 @@ export default function AdminPage() {
                                 fontWeight: 600,
                               }}
                             >
-                              Réactiver
+                              {t("adminHub.reactivate")}
                             </button>
                           )}
                         </td>
