@@ -1238,6 +1238,15 @@ export default {
     panelTitle: "Decision support (rules v1)",
     panelHint:
       "Assistive suggestions from triage and structured screens. No automatic orders; clinical judgment remains required.",
+    params: {
+      traumaLevel: {
+        LEVEL_1: "Level 1",
+        LEVEL_2: "Level 2",
+        LEVEL_3: "Level 3",
+        LEVEL_4: "Level 4",
+        UNSPECIFIED: "not specified",
+      },
+    },
     recommendations: {
       cds_er_trauma_protocol: {
         title: "Trauma activation — protocol assist",

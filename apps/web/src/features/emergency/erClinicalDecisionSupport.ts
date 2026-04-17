@@ -36,12 +36,21 @@ export type ErCdsRecommendationId =
   | "cds_er_sepsis_bundle";
 
 /**
+ * Neutral trauma level codes for CDS params — must match `erCds.params.traumaLevel.*` i18n keys.
+ * Not for display; the panel resolves localized wording.
+ */
+export type ErCdsTraumaLevelCode = "LEVEL_1" | "LEVEL_2" | "LEVEL_3" | "LEVEL_4" | "UNSPECIFIED";
+
+/**
  * One assistive card worth of logic output (no user-facing strings here).
  */
 export type ErCdsRecommendation = {
   id: ErCdsRecommendationId;
   severity: "info" | "warning" | "critical";
-  /** Interpolation values for i18n templates. */
+  /**
+   * Locale-agnostic interpolation inputs only (e.g. `levelCode` for trauma).
+   * Display strings are resolved in the UI via i18n.
+   */
   params?: Record<string, string | number>;
   /** Maps to `erCds.actions.*` in messages. */
   actionKey?: "goOrders" | "openTriage" | "openNursing" | "seeDiagnostics";
@@ -62,12 +71,11 @@ export type ErCdsContext = {
   encounterVitalsSnapshotsOldestFirst?: PatientTriageVitalsSnapshot[] | null;
 };
 
-function traumaLevelLabelFr(level: string): string {
-  if (level === "LEVEL_1") return "Niveau 1";
-  if (level === "LEVEL_2") return "Niveau 2";
-  if (level === "LEVEL_3") return "Niveau 3";
-  if (level === "LEVEL_4") return "Niveau 4";
-  return "non précisé";
+function normalizeTraumaLevelCodeForCds(level: string): ErCdsTraumaLevelCode {
+  if (level === "LEVEL_1" || level === "LEVEL_2" || level === "LEVEL_3" || level === "LEVEL_4") {
+    return level;
+  }
+  return "UNSPECIFIED";
 }
 
 function parseNum(s: string): number | null {
@@ -261,11 +269,10 @@ export function buildErCdsRecommendations(ctx: ErCdsContext): ErCdsRecommendatio
   const out: ErCdsRecommendation[] = [];
 
   if (er.traumaActivation.activated) {
-    const lvl = traumaLevelLabelFr(er.traumaActivation.level);
     out.push({
       id: "cds_er_trauma_protocol",
       severity: "warning",
-      params: { level: lvl },
+      params: { levelCode: normalizeTraumaLevelCodeForCds(er.traumaActivation.level) },
       actionKey: "goOrders",
       actionTarget: "orders",
       preselectKey: "trauma_protocol",

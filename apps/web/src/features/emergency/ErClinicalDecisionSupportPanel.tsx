@@ -12,6 +12,20 @@ function interpolate(template: string, params?: Record<string, string | number>)
   );
 }
 
+/** Maps locale-neutral CDS params to i18n interpolation values (e.g. trauma level code → label). */
+function cdsParamsForInterpolation(
+  rec: ErCdsRecommendation,
+  t: (key: string) => string
+): Record<string, string | number> | undefined {
+  if (!rec.params) return undefined;
+  if (rec.id === "cds_er_trauma_protocol") {
+    const code =
+      typeof rec.params.levelCode === "string" ? rec.params.levelCode : "UNSPECIFIED";
+    return { level: t(`erCds.params.traumaLevel.${code}`) };
+  }
+  return rec.params;
+}
+
 const SEVERITY_STYLE: Record<
   ErCdsRecommendation["severity"],
   { borderLeft: string; labelBg: string; labelText: string }
@@ -64,7 +78,7 @@ export function ErClinicalDecisionSupportPanel({ recommendations, onNavigate }: 
           const st = SEVERITY_STYLE[rec.severity];
           const title = t(`erCds.recommendations.${rec.id}.title`);
           const bodyRaw = t(`erCds.recommendations.${rec.id}.body`);
-          const body = interpolate(bodyRaw, rec.params);
+          const body = interpolate(bodyRaw, cdsParamsForInterpolation(rec, t));
           const actionLabel =
             rec.actionKey && rec.actionTarget ? t(`erCds.actions.${rec.actionKey}`) : null;
 

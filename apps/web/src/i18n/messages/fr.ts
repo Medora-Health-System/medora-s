@@ -1202,6 +1202,15 @@ export default {
     panelTitle: "Aide à la décision (règles v1)",
     panelHint:
       "Suggestions assistives basées sur le triage et les écrans structurés. Aucune commande automatique ni remplacement du jugement clinique.",
+    params: {
+      traumaLevel: {
+        LEVEL_1: "Niveau 1",
+        LEVEL_2: "Niveau 2",
+        LEVEL_3: "Niveau 3",
+        LEVEL_4: "Niveau 4",
+        UNSPECIFIED: "non précisé",
+      },
+    },
     recommendations: {
       cds_er_trauma_protocol: {
         title: "Trauma activé — assistance protocole",
