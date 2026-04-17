@@ -1,6 +1,7 @@
 /**
- * Libellés interface utilisateur (i18n-ready).
- * Langue active : français uniquement pour l’instant.
+ * Libellés interface utilisateur (legacy FR bundle + helpers).
+ * Sidebar and app shell use `useI18n().t("nav.*")` / `t("navGroups.*")` with keys in `i18n/messages`
+ * (EN: `en.ts`; FR: merged from this file via `messages/fr.ts`). Prefer `t()` for new nav-related UI.
  * Ne pas utiliser pour les routes API, DTO ou enums backend.
  */
 
