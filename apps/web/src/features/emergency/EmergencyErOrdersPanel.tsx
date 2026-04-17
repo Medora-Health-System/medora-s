@@ -3,11 +3,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
-import { ui } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
 import { CreateOrderModal } from "@/components/orders";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
-import { formatDomainLabelFr, type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
+import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
 import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
 
 const btn: React.CSSProperties = {
@@ -28,6 +28,21 @@ const btn: React.CSSProperties = {
 };
 
 const DOMAIN_ORDER: ErOrderDomain[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
+
+function domainHeadingKey(d: ErOrderDomain): string {
+  switch (d) {
+    case "LAB":
+      return "erEmergencyOrders.domainLab";
+    case "IMAGING":
+      return "erEmergencyOrders.domainImaging";
+    case "MEDICATION":
+      return "erEmergencyOrders.domainMedication";
+    case "CARE":
+      return "erEmergencyOrders.domainCare";
+    default:
+      return d;
+  }
+}
 
 function extractLineLabelsForDomain(orders: unknown[], domain: ErOrderDomain): string[] {
   const out: string[] = [];
@@ -83,6 +98,7 @@ export function EmergencyErOrdersPanel({
   cdsIntent?: string | null;
   onConsumeIntent?: () => void;
 }) {
+  const { t } = useI18n();
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
@@ -144,11 +160,9 @@ export function EmergencyErOrdersPanel({
           />
         ) : null}
         {loading ? (
-          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{ui.common.loading}</p>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
         ) : labelsByDomain == null ? (
-          <p style={{ margin: 0, fontSize: 13, color: "#b91c1c" }}>
-            Impossible de charger les ordres pour cette consultation.
-          </p>
+          <p style={{ margin: 0, fontSize: 13, color: "#b91c1c" }}>{t("erEmergencyOrders.loadOrdersError")}</p>
         ) : (
           <div
             style={{
@@ -171,16 +185,16 @@ export function EmergencyErOrdersPanel({
               }}
             >
               <button type="button" onClick={() => openModal("LAB")} style={btn}>
-                Analyses
+                {t("erEmergencyOrders.quickLab")}
               </button>
               <button type="button" onClick={() => openModal("IMAGING")} style={btn}>
-                Imagerie
+                {t("erEmergencyOrders.quickImaging")}
               </button>
               <button type="button" onClick={() => openModal("MEDICATION")} style={btn}>
-                Médicaments
+                {t("erEmergencyOrders.quickMedication")}
               </button>
               <button type="button" onClick={() => openModal("CARE")} style={btn}>
-                Soins / procédures
+                {t("erEmergencyOrders.quickCare")}
               </button>
             </div>
 
@@ -211,9 +225,9 @@ export function EmergencyErOrdersPanel({
                       minHeight: 72,
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{formatDomainLabelFr(d)}</div>
+                    <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{t(domainHeadingKey(d))}</div>
                     {empty ? (
-                      <div style={{ color: "#64748b" }}>Aucun ordre</div>
+                      <div style={{ color: "#64748b" }}>{t("erEmergencyOrders.emptyDomain")}</div>
                     ) : (
                       <ul style={{ margin: 0, paddingLeft: 14, maxHeight: 120, overflow: "auto" }}>
                         {lines.slice(0, 12).map((line, i) => (
@@ -223,7 +237,10 @@ export function EmergencyErOrdersPanel({
                         ))}
                         {lines.length > 12 ? (
                           <li style={{ color: "#64748b", listStyle: "none", marginLeft: -14 }}>
-                            +{lines.length - 12} autre(s)…
+                            {t("erEmergencyOrders.moreItems").replace(
+                              "{count}",
+                              String(lines.length - 12)
+                            )}
                           </li>
                         ) : null}
                       </ul>

@@ -4,13 +4,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { OrderCreateDto } from "@medora/shared";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
+import { useI18n } from "@/lib/i18n";
 import {
   erTraumaProtocolAssistContext,
   type ErTraumaLevel,
 } from "@/features/emergency/medoraErTriageV1";
-
-const PROTOCOL_NOTE_TRAUMA = "Assistant protocole trauma — saisie guidée (non automatique).";
-const PROTOCOL_NOTE_SEPSIS = "Assistant protocole sepsis — saisie guidée (non automatique).";
 
 type ProtocolItemId =
   | "cbc"
@@ -23,30 +21,12 @@ type ProtocolItemId =
   | "txa"
   | "fluids";
 
-const LAB_DEF: { id: ProtocolItemId; manualLabel: string }[] = [
-  { id: "cbc", manualLabel: "NFS (CBC)" },
-  { id: "cmp", manualLabel: "Bilan biologique (CMP / ionogramme)" },
-  { id: "lactate", manualLabel: "Lactate" },
-  { id: "type_screen", manualLabel: "Groupage / réserve (type & screen)" },
-];
-
-const IMAGING_DEF: { id: ProtocolItemId; manualLabel: string }[] = [
-  { id: "ct_head", manualLabel: "TDM cérébrale" },
-  { id: "ct_cspine", manualLabel: "TDM rachis cervical" },
-  { id: "ct_cap", manualLabel: "TDM thorax / abdomen / bassin" },
-];
-
-const MED_DEF: { id: ProtocolItemId; manualLabel: string }[] = [
-  { id: "txa", manualLabel: "Acide tranexamique (TXA)" },
-  { id: "fluids", manualLabel: "Perfusion cristalloïdes (volume à adapter)" },
-];
-
-function traumaLevelTitleFr(level: ErTraumaLevel): string {
-  if (level === "LEVEL_1") return "Niveau 1";
-  if (level === "LEVEL_2") return "Niveau 2";
-  if (level === "LEVEL_3") return "Niveau 3";
-  if (level === "LEVEL_4") return "Niveau 4";
-  return "—";
+function traumaLevelDisplay(t: (key: string) => string, level: ErTraumaLevel): string {
+  if (level === "LEVEL_1") return t("erMseSmartAssist.traumaLevels.LEVEL_1");
+  if (level === "LEVEL_2") return t("erMseSmartAssist.traumaLevels.LEVEL_2");
+  if (level === "LEVEL_3") return t("erMseSmartAssist.traumaLevels.LEVEL_3");
+  if (level === "LEVEL_4") return t("erMseSmartAssist.traumaLevels.LEVEL_4");
+  return t("common.dash");
 }
 
 function initialSelection(level: ErTraumaLevel): Record<ProtocolItemId, boolean> {
@@ -95,25 +75,6 @@ function initialSelectionSepsisAssist(): Record<ProtocolItemId, boolean> {
   };
 }
 
-async function fetchPrescriberName(): Promise<string> {
-  try {
-    const res = await fetch("/api/auth/me");
-    const me = await parseApiResponse(res);
-    if (me && typeof me === "object" && !Array.isArray(me)) {
-      const fn = (me as { fullName?: string }).fullName?.trim();
-      if (fn) return fn;
-    }
-  } catch {
-    /* ignore */
-  }
-  return "Prescripteur";
-}
-
-function mapOrderCreateError(err: unknown): string {
-  const msg = err instanceof Error ? err.message : "";
-  return normalizeUserFacingError(msg.trim() || null) || "Impossible de créer l'ordre.";
-}
-
 export function TraumaProtocolAssistPanel({
   encounterId,
   facilityId,
@@ -138,6 +99,65 @@ export function TraumaProtocolAssistPanel({
   cdsIntent?: string | null;
   onConsumeIntent?: () => void;
 }) {
+  const { t } = useI18n();
+
+  const labDef = useMemo((): { id: ProtocolItemId; manualLabel: string }[] => {
+    return [
+      { id: "cbc", manualLabel: t("erProtocolAssist.orderLabelCbc") },
+      { id: "cmp", manualLabel: t("erProtocolAssist.orderLabelCmp") },
+      { id: "lactate", manualLabel: t("erProtocolAssist.orderLabelLactate") },
+      { id: "type_screen", manualLabel: t("erProtocolAssist.orderLabelTypeScreen") },
+    ];
+  }, [t]);
+
+  const imagingDef = useMemo((): { id: ProtocolItemId; manualLabel: string }[] => {
+    return [
+      { id: "ct_head", manualLabel: t("erProtocolAssist.orderLabelCtHead") },
+      { id: "ct_cspine", manualLabel: t("erProtocolAssist.orderLabelCtCspine") },
+      { id: "ct_cap", manualLabel: t("erProtocolAssist.orderLabelCtCap") },
+    ];
+  }, [t]);
+
+  const medDef = useMemo((): { id: ProtocolItemId; manualLabel: string }[] => {
+    return [
+      { id: "txa", manualLabel: t("erProtocolAssist.orderLabelTxa") },
+      { id: "fluids", manualLabel: t("erProtocolAssist.orderLabelFluids") },
+    ];
+  }, [t]);
+
+  const rnChecklistItems = useMemo(
+    () =>
+      [
+        ["iv2", t("erProtocolAssist.rnIv2")] as const,
+        ["monitor", t("erProtocolAssist.rnMonitor")] as const,
+        ["o2", t("erProtocolAssist.rnO2")] as const,
+        ["tubes", t("erProtocolAssist.rnTubes")] as const,
+      ],
+    [t]
+  );
+
+  const mapOrderCreateError = useCallback(
+    (err: unknown): string => {
+      const msg = err instanceof Error ? err.message : "";
+      return normalizeUserFacingError(msg.trim() || null) || t("erProtocolAssist.orderCreateFailed");
+    },
+    [t]
+  );
+
+  const fetchPrescriberName = useCallback(async (): Promise<string> => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const me = await parseApiResponse(res);
+      if (me && typeof me === "object" && !Array.isArray(me)) {
+        const fn = (me as { fullName?: string }).fullName?.trim();
+        if (fn) return fn;
+      }
+    } catch {
+      /* ignore */
+    }
+    return t("erProtocolAssist.prescriberFallback");
+  }, [t]);
+
   const ctx = useMemo(() => erTraumaProtocolAssistContext(encounterType, vitalsJson), [encounterType, vitalsJson]);
 
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
@@ -164,7 +184,7 @@ export function TraumaProtocolAssistPanel({
   );
 
   const [applying, setApplying] = useState(false);
-  const [applyMsg, setApplyMsg] = useState<string | null>(null);
+  const [applyFeedback, setApplyFeedback] = useState<{ message: string; isError: boolean } | null>(null);
 
   useEffect(() => {
     userModifiedProtocolRef.current = false;
@@ -228,7 +248,7 @@ export function TraumaProtocolAssistPanel({
   );
 
   const handleApplyProtocol = useCallback(async () => {
-    setApplyMsg(null);
+    setApplyFeedback(null);
     setApplying(true);
     try {
       try {
@@ -236,32 +256,34 @@ export function TraumaProtocolAssistPanel({
         const latest = asApiObject(latestRaw) as { status?: string } | null;
         if (latest && typeof latest.status === "string" && latest.status !== "OPEN") {
           await onRefetchEncounter?.();
-          setApplyMsg("Impossible de créer un ordre : la consultation doit être ouverte.");
+          setApplyFeedback({ message: t("erProtocolAssist.errEncounterNotOpen"), isError: true });
           return;
         }
       } catch {
         /* API will validate */
       }
 
-      const labItems = LAB_DEF.filter((d) => provSel[d.id]).map((d) => ({
+      const labItems = labDef.filter((d) => provSel[d.id]).map((d) => ({
         catalogItemId: null,
         catalogItemType: "LAB_TEST" as const,
         manualLabel: d.manualLabel,
       }));
-      const imgItems = IMAGING_DEF.filter((d) => provSel[d.id]).map((d) => ({
+      const imgItems = imagingDef.filter((d) => provSel[d.id]).map((d) => ({
         catalogItemId: null,
         catalogItemType: "IMAGING_STUDY" as const,
         manualLabel: d.manualLabel,
       }));
-      const medItemsRaw = MED_DEF.filter((d) => provSel[d.id]);
+      const medItemsRaw = medDef.filter((d) => provSel[d.id]);
 
       if (!labItems.length && !imgItems.length && !medItemsRaw.length) {
-        setApplyMsg("Aucun élément sélectionné.");
+        setApplyFeedback({ message: t("erProtocolAssist.errNothingSelected"), isError: true });
         return;
       }
 
       const protocolNote =
-        assistDisplayMode === "sepsis" ? PROTOCOL_NOTE_SEPSIS : PROTOCOL_NOTE_TRAUMA;
+        assistDisplayMode === "sepsis"
+          ? t("erProtocolAssist.protocolNoteSepsis")
+          : t("erProtocolAssist.protocolNoteTrauma");
 
       let created = false;
       if (labItems.length) {
@@ -288,11 +310,12 @@ export function TraumaProtocolAssistPanel({
             await onOrdersApplied?.();
             setProtocolPanelExpanded(false);
           }
-          setApplyMsg(
-            created
-              ? "Ordres créés (analyses / imagerie). Les médicaments nécessitent un profil avec prescription."
-              : "Les médicaments nécessitent un profil avec prescription — aucun ordre créé."
-          );
+          setApplyFeedback({
+            message: created
+              ? t("erProtocolAssist.errLabsImgCreatedMedNeedsRx")
+              : t("erProtocolAssist.errMedNeedsRxNoOrders"),
+            isError: true,
+          });
           return;
         }
         const prescriberName = await fetchPrescriberName();
@@ -313,19 +336,19 @@ export function TraumaProtocolAssistPanel({
       }
 
       if (!created) {
-        setApplyMsg("Aucun ordre créé.");
+        setApplyFeedback({ message: t("erProtocolAssist.errNoOrdersCreated"), isError: true });
         return;
       }
 
       await onOrdersApplied?.();
-      setApplyMsg("Protocole appliqué — ordres créés.");
+      setApplyFeedback({ message: t("erProtocolAssist.successProtocolApplied"), isError: false });
       setProtocolPanelExpanded(false);
     } catch (e) {
       const raw = e instanceof Error ? e.message : "";
       if (isEncounterMustBeOpenForOrderError(raw)) {
         await onRefetchEncounter?.();
       }
-      setApplyMsg(mapOrderCreateError(e));
+      setApplyFeedback({ message: mapOrderCreateError(e), isError: true });
     } finally {
       setApplying(false);
     }
@@ -334,18 +357,24 @@ export function TraumaProtocolAssistPanel({
     canPrescribe,
     encounterId,
     facilityId,
+    fetchPrescriberName,
+    imagingDef,
+    labDef,
+    mapOrderCreateError,
+    medDef,
     onOrdersApplied,
     onRefetchEncounter,
     postOrder,
     provSel,
+    t,
   ]);
 
-  if (!ctx.visible) return null;
+  const protocolTitle = useMemo(() => {
+    if (assistDisplayMode === "sepsis") return t("erProtocolAssist.protocolTitleSepsis");
+    return t("erProtocolAssist.protocolTitleTraumaPrefix") + traumaLevelDisplay(t, ctx.traumaLevel);
+  }, [assistDisplayMode, ctx.traumaLevel, t]);
 
-  const protocolTitleFr =
-    assistDisplayMode === "sepsis"
-      ? "Protocole sepsis — sélection assistée"
-      : `Protocole trauma — ${traumaLevelTitleFr(ctx.traumaLevel)}`;
+  if (!ctx.visible) return null;
 
   const shell: React.CSSProperties = {
     marginBottom: 14,
@@ -359,18 +388,13 @@ export function TraumaProtocolAssistPanel({
     return (
       <div style={shell}>
         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", color: "#991b1b" }}>
-          Préparation trauma
+          {t("erProtocolAssist.rnTitle")}
         </p>
         <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-          Liste de contrôle locale — ne remplace pas la prescription médicale.
+          {t("erProtocolAssist.rnSubtitle")}
         </p>
         <ul style={{ margin: "10px 0 0 0", paddingLeft: 18, fontSize: 13, color: "#334155" }}>
-          {[
-            ["iv2", "IV x2"],
-            ["monitor", "Monitor"],
-            ["o2", "O2"],
-            ["tubes", "Tubes sanguins (prélèvements)"],
-          ].map(([k, label]) => (
+          {rnChecklistItems.map(([k, label]) => (
             <li key={k} style={{ marginBottom: 6 }}>
               <label style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
                 <input
@@ -399,7 +423,7 @@ export function TraumaProtocolAssistPanel({
             cursor: "default",
           }}
         >
-          Pré-remplir pour médecin
+          {t("erProtocolAssist.rnPrefillDisabled")}
         </button>
       </div>
     );
@@ -418,7 +442,7 @@ export function TraumaProtocolAssistPanel({
               gap: 10,
             }}
           >
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>{protocolTitleFr}</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>{protocolTitle}</p>
             <button
               type="button"
               onClick={() => setProtocolPanelExpanded(true)}
@@ -434,18 +458,18 @@ export function TraumaProtocolAssistPanel({
                 fontFamily: "inherit",
               }}
             >
-              Rouvrir le protocole
+              {t("erProtocolAssist.reopenProtocol")}
             </button>
           </div>
-          {applyMsg ? (
+          {applyFeedback ? (
             <p
               style={{
                 margin: "8px 0 0 0",
                 fontSize: 12,
-                color: applyMsg.includes("Impossible") || applyMsg.includes("nécessitent") ? "#b91c1c" : "#15803d",
+                color: applyFeedback.isError ? "#b91c1c" : "#15803d",
               }}
             >
-              {applyMsg}
+              {applyFeedback.message}
             </p>
           ) : null}
         </div>
@@ -454,24 +478,18 @@ export function TraumaProtocolAssistPanel({
 
     return (
       <div style={shell}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>{protocolTitleFr}</p>
-        <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#64748b" }}>
-          Cocher les éléments puis appliquer — création d&apos;ordres via le flux existant (STAT).
-        </p>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#991b1b" }}>{protocolTitle}</p>
+        <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#64748b" }}>{t("erProtocolAssist.checkboxHelper")}</p>
 
         <div style={{ marginTop: 10 }}>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569" }}>Analyses</p>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569" }}>{t("erProtocolAssist.sectionLab")}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
-            {LAB_DEF.map((d) => (
+            {labDef.map((d) => (
               <label
                 key={d.id}
                 style={{ fontSize: 13, color: "#334155", display: "flex", alignItems: "center", gap: 8 }}
               >
-                <input
-                  type="checkbox"
-                  checked={provSel[d.id]}
-                  onChange={() => toggleProv(d.id)}
-                />
+                <input type="checkbox" checked={provSel[d.id]} onChange={() => toggleProv(d.id)} />
                 {d.manualLabel}
               </label>
             ))}
@@ -479,18 +497,16 @@ export function TraumaProtocolAssistPanel({
         </div>
 
         <div style={{ marginTop: 10 }}>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569" }}>Imagerie</p>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569" }}>
+            {t("erProtocolAssist.sectionImaging")}
+          </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
-            {IMAGING_DEF.map((d) => (
+            {imagingDef.map((d) => (
               <label
                 key={d.id}
                 style={{ fontSize: 13, color: "#334155", display: "flex", alignItems: "center", gap: 8 }}
               >
-                <input
-                  type="checkbox"
-                  checked={provSel[d.id]}
-                  onChange={() => toggleProv(d.id)}
-                />
+                <input type="checkbox" checked={provSel[d.id]} onChange={() => toggleProv(d.id)} />
                 {d.manualLabel}
               </label>
             ))}
@@ -498,9 +514,11 @@ export function TraumaProtocolAssistPanel({
         </div>
 
         <div style={{ marginTop: 10 }}>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569" }}>Médicaments</p>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569" }}>
+            {t("erProtocolAssist.sectionMedications")}
+          </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
-            {MED_DEF.map((d) => (
+            {medDef.map((d) => (
               <label
                 key={d.id}
                 style={{ fontSize: 13, color: "#334155", display: "flex", alignItems: "center", gap: 8 }}
@@ -517,8 +535,7 @@ export function TraumaProtocolAssistPanel({
           </div>
           {!canPrescribe ? (
             <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#b45309" }}>
-              Prescription médicamenteuse non disponible pour ce compte — décochez les médicaments ou utilisez le
-              dossier complet.
+              {t("erProtocolAssist.medNoPrescribeHint")}
             </p>
           ) : null}
         </div>
@@ -539,17 +556,17 @@ export function TraumaProtocolAssistPanel({
             cursor: applying ? "wait" : "pointer",
           }}
         >
-          {applying ? "Envoi…" : "Appliquer protocole"}
+          {applying ? t("erProtocolAssist.applySending") : t("erProtocolAssist.applyProtocol")}
         </button>
-        {applyMsg ? (
+        {applyFeedback ? (
           <p
             style={{
               margin: "8px 0 0 0",
               fontSize: 12,
-              color: applyMsg.includes("Impossible") || applyMsg.includes("nécessitent") ? "#b91c1c" : "#15803d",
+              color: applyFeedback.isError ? "#b91c1c" : "#15803d",
             }}
           >
-            {applyMsg}
+            {applyFeedback.message}
           </p>
         ) : null}
       </div>
