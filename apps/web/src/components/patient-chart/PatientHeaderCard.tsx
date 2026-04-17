@@ -2,9 +2,15 @@
 
 import React from "react";
 import Link from "next/link";
-import { calculateAge, patientSexDisplayFr } from "@/lib/patientDisplay";
+import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLine, hasVitalsJson } from "@/lib/patientVitals";
-import { getEncounterStatusLabelFr, getEncounterTypeLabelFr } from "@/lib/uiLabels";
+import {
+  encounterBcp47,
+  tEncounterStatus,
+  tEncounterType,
+  tPatientSex,
+} from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { nirMrnDisplay } from "./patientChartHelpers";
 
 export function PatientHeaderCard({
@@ -40,21 +46,30 @@ export function PatientHeaderCard({
   onEditClick: () => void;
   administrativeShell?: boolean;
 }) {
+  const { t, language } = useI18n();
+  const locale = encounterBcp47(language);
+
   const formatDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("fr-FR");
+    if (!dateStr) return t("common.dash");
+    return new Date(dateStr).toLocaleDateString(locale);
   };
 
   const ageText = (() => {
-    if (!patient.dob) return "—";
-    const t = new Date(patient.dob).getTime();
-    if (Number.isNaN(t)) return "—";
+    if (!patient.dob) return t("common.dash");
+    const t0 = new Date(patient.dob).getTime();
+    if (Number.isNaN(t0)) return t("common.dash");
     const age = calculateAge(patient.dob);
-    if (!Number.isFinite(age) || age < 0) return "—";
-    return `${age} ans`;
+    if (!Number.isFinite(age) || age < 0) return t("common.dash");
+    return `${age} ${t("encounterChrome.ageYearsSuffix")}`;
   })();
 
-  const sexText = patientSexDisplayFr(patient.sex ?? null, patient.sexAtBirth ?? null);
+  const sexText = tPatientSex(patient.sex ?? null, patient.sexAtBirth ?? null, t);
+
+  const openBanner = openEncounter
+    ? t("encounterChrome.patientHeader.openEncounter")
+        .replace("{type}", tEncounterType(t, openEncounter.type))
+        .replace("{status}", tEncounterStatus(t, openEncounter.status))
+    : "";
 
   return (
     <div
@@ -90,24 +105,34 @@ export function PatientHeaderCard({
             }}
           >
             <div>
-              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>Âge</span>
+              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>
+                {t("encounterChrome.patientHeader.labelAge")}
+              </span>
               {ageText}
             </div>
             <div>
-              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>Sexe</span>
+              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>
+                {t("encounterChrome.patientHeader.labelSex")}
+              </span>
               {sexText}
             </div>
             <div>
-              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>NIR / MRN</span>
+              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>
+                {t("encounterChrome.patientHeader.labelNirMrn")}
+              </span>
               {nirMrnDisplay(patient)}
             </div>
             <div>
-              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>Date de naissance</span>
+              <span style={{ color: "#757575", fontSize: 12, display: "block" }}>
+                {t("encounterChrome.patientHeader.labelDob")}
+              </span>
               {formatDate(patient.dob ?? null)}
             </div>
             {patient.phone ? (
               <div style={{ gridColumn: "span 2" }}>
-                <span style={{ color: "#757575", fontSize: 12, display: "block" }}>Téléphone</span>
+                <span style={{ color: "#757575", fontSize: 12, display: "block" }}>
+                  {t("encounterChrome.patientHeader.labelPhone")}
+                </span>
                 {patient.phone}
               </div>
             ) : null}
@@ -128,12 +153,11 @@ export function PatientHeaderCard({
               }}
             >
               <span style={{ fontSize: 13, fontWeight: 600, color: administrativeShell ? "#e65100" : "#1565c0" }}>
-                Consultation ouverte — {getEncounterTypeLabelFr(openEncounter.type)} (
-                {getEncounterStatusLabelFr(openEncounter.status)})
+                {openBanner}
               </span>
               {administrativeShell ? (
                 <span style={{ fontSize: 12, color: "#bf360c" }}>
-                  Le dossier clinique de cette visite est réservé à l’équipe soignante.
+                  {t("encounterChrome.patientHeader.clinicalTeamOnly")}
                 </span>
               ) : canOpenEncounterDetail ? (
                 <Link
@@ -148,16 +172,18 @@ export function PatientHeaderCard({
                     fontWeight: 600,
                   }}
                 >
-                  Ouvrir la consultation
+                  {t("encounterChrome.patientHeader.openEncounterLink")}
                 </Link>
               ) : (
                 <span style={{ fontSize: 12, color: "#1565c0" }}>
-                  Détail : rôle clinique ou facturation requis.
+                  {t("encounterChrome.patientHeader.detailRequiresRole")}
                 </span>
               )}
             </div>
           ) : (
-            <p style={{ margin: "10px 0 0", fontSize: 13, color: "#9e9e9e" }}>Aucune consultation ouverte.</p>
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: "#9e9e9e" }}>
+              {t("encounterChrome.patientHeader.noOpenEncounter")}
+            </p>
           )}
         </div>
 
@@ -174,15 +200,15 @@ export function PatientHeaderCard({
             }}
           >
             <span style={{ color: "#546e7a", fontWeight: 600, fontSize: 11, textTransform: "uppercase" }}>
-              Derniers signes vitaux
+              {t("encounterChrome.patientHeader.lastVitals")}
             </span>
             <div style={{ marginTop: 8, color: "#263238" }}>
               {vitalsLoading ? (
-                <span style={{ fontStyle: "italic", color: "#78909c" }}>Chargement…</span>
+                <span style={{ fontStyle: "italic", color: "#78909c" }}>{t("encounterChrome.patientHeader.loading")}</span>
               ) : hasVitals && headerVitalsLine ? (
                 <span style={{ fontFamily: "ui-monospace, SFMono-Regular, monospace", fontSize: 12 }}>{headerVitalsLine}</span>
               ) : (
-                <span style={{ color: "#78909c", fontStyle: "italic" }}>Aucun signe vital enregistré</span>
+                <span style={{ color: "#78909c", fontStyle: "italic" }}>{t("encounterChrome.patientHeader.noVitals")}</span>
               )}
             </div>
           </div>
@@ -198,7 +224,7 @@ export function PatientHeaderCard({
                 lineHeight: 1.5,
               }}
             >
-              <strong>Accueil</strong> — les signes vitaux et le détail clinique ne sont pas affichés ici.
+              {t("encounterChrome.patientHeader.frontDeskNoVitals")}
             </div>
           )}
 
@@ -217,7 +243,7 @@ export function PatientHeaderCard({
                 alignSelf: "flex-start",
               }}
             >
-              Modifier les informations du patient
+              {t("encounterChrome.patientHeader.editPatient")}
             </button>
           ) : null}
         </div>

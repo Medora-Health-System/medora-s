@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
@@ -26,12 +26,18 @@ import {
   orderAllowsWholeCancelOnline,
 } from "@/lib/orderEncounterUi";
 import {
-  getEncounterStatusLabelFr,
-  getEncounterTypeLabelFr,
-  getOrderPriorityLabelFr,
-  getPathwayTypeLabelFr,
-  getPatientSexLabelFr,
-} from "@/lib/uiLabels";
+  formatEncounterChromeDate,
+  formatEncounterChromeDateTime,
+  formatLatestVitalsLine,
+  tEncounterStatus,
+  tEncounterType,
+  tMedicationFulfillmentIntent,
+  tOrderPriority,
+  tPathwayStatus,
+  tPathwayType,
+  tPatientSex,
+} from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError, USER_FACING_ENCOUNTER_NOT_FOUND_FR } from "@/lib/userFacingError";
 import { ORDER_CANCELLATION_REASON_VALUES } from "@medora/shared";
 import { calculateAge } from "@/lib/patientDisplay";
@@ -131,36 +137,6 @@ function encounterWorkflowModalBtnSecondary(disabled: boolean): React.CSSPropert
   };
 }
 
-function formatEncounterAuditDt(iso: string) {
-  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-}
-
-function getPathwayStatusLabelFr(status: string): string {
-  if (status === "ACTIVE") return "Actif";
-  if (status === "PAUSED") return "En pause";
-  if (status === "COMPLETED") return "Terminé";
-  if (status === "CANCELLED") return "Annulé";
-  return status;
-}
-
-function formatLatestVitalsLineFr(
-  vitals: Record<string, number | string | null | undefined>,
-  esi?: number | null
-): string {
-  const parts: string[] = [];
-  if (vitals.bpSys != null && vitals.bpDia != null && vitals.bpSys !== "" && vitals.bpDia !== "") {
-    parts.push(`TA : ${vitals.bpSys}/${vitals.bpDia}`);
-  }
-  if (vitals.hr != null && vitals.hr !== "") parts.push(`FC : ${vitals.hr}/min`);
-  if (vitals.rr != null && vitals.rr !== "") parts.push(`FR : ${vitals.rr}/min`);
-  if (vitals.tempC != null && vitals.tempC !== "") parts.push(`Température : ${vitals.tempC} °C`);
-  if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO₂ : ${vitals.spo2} %`);
-  if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Poids : ${vitals.weightKg} kg`);
-  if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Taille : ${vitals.heightCm} cm`);
-  if (esi != null) parts.push(`ESI : ${esi}`);
-  return parts.length ? parts.join(" · ") : "Aucun signe vital enregistré";
-}
-
 const ENCOUNTER_TAB_IDS = new Set([
   "summary",
   "triage",
@@ -178,6 +154,7 @@ const ENCOUNTER_TAB_IDS = new Set([
 export default function EncounterDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t, language } = useI18n();
   const encounterId = params.id as string;
   const { facilityId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
   const encounterDetailPath = `/app/encounters/${encounterId}`;
@@ -753,7 +730,7 @@ export default function EncounterDetailPage() {
   if (!facilityId || !encounterId) {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 15, color: "#475569" }}>Chargement…</div>
+        <div style={{ fontSize: 15, color: "#475569" }}>{t("common.loading")}</div>
       </div>
     );
   }
@@ -761,7 +738,7 @@ export default function EncounterDetailPage() {
   if (!rolesReady) {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 15, color: "#475569" }}>Chargement…</div>
+        <div style={{ fontSize: 15, color: "#475569" }}>{t("common.loading")}</div>
       </div>
     );
   }
@@ -774,7 +751,7 @@ export default function EncounterDetailPage() {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ fontSize: 15, color: "#475569" }}>
-          {encounterHasLoadedOnceRef.current ? "Chargement…" : "Ouverture de la consultation…"}
+          {encounterHasLoadedOnceRef.current ? t("common.loading") : t("encounterChrome.loadingOpeningEncounter")}
         </div>
       </div>
     );
@@ -783,7 +760,7 @@ export default function EncounterDetailPage() {
   if (loading) {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 15, color: "#475569" }}>Chargement…</div>
+        <div style={{ fontSize: 15, color: "#475569" }}>{t("common.loading")}</div>
       </div>
     );
   }
@@ -796,29 +773,33 @@ export default function EncounterDetailPage() {
         <div style={{ maxWidth: 520, margin: "0 auto", width: "100%", textAlign: "center" }}>
           {isEncounterNotFound ? (
             <>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Consultation introuvable</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                {t("encounterChrome.notFoundTitle")}
+              </p>
               <p style={{ margin: "14px 0 0 0", color: "#64748b", lineHeight: 1.55 }}>
-                Cette consultation n&apos;existe pas dans l&apos;établissement actif, a été supprimée, ou le lien est
-                obsolète (autre établissement).
+                {t("encounterChrome.notFoundBodyEstablishment")}
               </p>
               <p style={{ margin: "20px 0 0 0" }}>
-                <Link href="/app/encounters">Retour à la liste des consultations</Link>
+                <Link href="/app/encounters">{t("encounterChrome.backToEncounterList")}</Link>
               </p>
             </>
           ) : encounterFetchError ? (
             <>
               <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
-                Impossible de charger la consultation.
+                {t("encounterChrome.loadFailedTitle")}
               </p>
-              {encounterFetchError.trim() !== "Impossible de charger la consultation." ? (
+              {encounterFetchError.trim() !== "Impossible de charger la consultation." &&
+              encounterFetchError.trim() !== t("encounterChrome.loadFailedTitle").trim() ? (
                 <p style={{ margin: "14px 0 0 0", color: "#b91c1c", lineHeight: 1.55 }}>{encounterFetchError}</p>
               ) : null}
             </>
           ) : (
             <>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Consultation introuvable</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                {t("encounterChrome.notFoundTitle")}
+              </p>
               <p style={{ margin: "14px 0 0 0", color: "#64748b", lineHeight: 1.55 }}>
-                Cette consultation n&apos;existe pas, a été supprimée, ou vous n&apos;avez pas accès à cet établissement.
+                {t("encounterChrome.notFoundBodyGeneric")}
               </p>
             </>
           )}
@@ -837,26 +818,23 @@ export default function EncounterDetailPage() {
   const canAdmitPatient = canPrescribe && encounter.status === "OPEN";
   const patient = encounter.patient;
   const motif =
-    (encounter.visitReason || encounter.chiefComplaint || quickTriage?.chiefComplaint || "").trim() || "—";
+    (encounter.visitReason || encounter.chiefComplaint || quickTriage?.chiefComplaint || "").trim() ||
+    t("common.dash");
   const vitalsJson = (quickTriage?.vitalsJson || {}) as Record<string, number | string | null | undefined>;
   const vitalsAtRaw = quickTriage?.triageCompleteAt || quickTriage?.updatedAt || null;
-  const vitalsAt = vitalsAtRaw ? new Date(vitalsAtRaw).toLocaleString("fr-FR") : null;
+  const vitalsAt = vitalsAtRaw ? formatEncounterChromeDateTime(vitalsAtRaw, language) : null;
   const vitalsLine = hasVitalsJson(vitalsJson)
-    ? formatLatestVitalsLineFr(vitalsJson, quickTriage?.esi ?? null)
-    : "Aucun signe vital enregistré";
+    ? formatLatestVitalsLine(vitalsJson, quickTriage?.esi ?? null, language, t)
+    : t("encounterChrome.noVitalsLine");
   const medOrderCount = quickOrders.filter((o) => o.type === "MEDICATION").length;
   const totalOrderCount = quickOrders.length;
   const ageText =
-    patient?.dob && !Number.isNaN(new Date(patient.dob).getTime()) ? `${calculateAge(patient.dob)} ans` : "—";
-  const sexText = getPatientSexLabelFr(patient?.sex ?? null, patient?.sexAtBirth ?? null);
+    patient?.dob && !Number.isNaN(new Date(patient.dob).getTime())
+      ? `${calculateAge(patient.dob)} ${t("encounterChrome.ageYearsSuffix")}`
+      : t("common.dash");
+  const sexText = tPatientSex(patient?.sex ?? null, patient?.sexAtBirth ?? null, t);
   const patientDob =
-    patient?.dob != null
-      ? new Date(patient.dob).toLocaleDateString("fr-FR", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
-      : null;
+    patient?.dob != null ? formatEncounterChromeDate(patient.dob, language) : null;
 
   const dischargePreviewForPrint = parseDischargeSummaryForChart(encounter.dischargeSummaryJson);
   const showPrintDischarge =
@@ -876,19 +854,22 @@ export default function EncounterDetailPage() {
     boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
   };
 
-  const tabs = [
-    { id: "summary", label: "Résumé de la consultation" },
-    { id: "triage", label: "Signes vitaux" },
-    ...(showNursingTab ? [{ id: "nursing", label: "Évaluation infirmière" }] : []),
-    { id: "clinic", label: "Évaluation médicale" },
-    { id: "diagnostics", label: "Diagnostics" },
-    { id: "orders", label: "Ordres" },
-    ...(canFetchMarTab ? [{ id: "mar" as const, label: "Administration médicamenteuse" }] : []),
-    { id: "results", label: "Résultats" },
-    { id: "notes", label: "Notes Inf." },
-    { id: "pathways", label: "Parcours cliniques" },
-    { id: "history", label: "Historique" },
-  ];
+  const tabs = useMemo(
+    () => [
+      { id: "summary", label: t("encounterChrome.tabs.summary") },
+      { id: "triage", label: t("encounterChrome.tabs.triage") },
+      ...(showNursingTab ? [{ id: "nursing", label: t("encounterChrome.tabs.nursing") }] : []),
+      { id: "clinic", label: t("encounterChrome.tabs.clinic") },
+      { id: "diagnostics", label: t("encounterChrome.tabs.diagnostics") },
+      { id: "orders", label: t("encounterChrome.tabs.orders") },
+      ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
+      { id: "results", label: t("encounterChrome.tabs.results") },
+      { id: "notes", label: t("encounterChrome.tabs.notes") },
+      { id: "pathways", label: t("encounterChrome.tabs.pathways") },
+      { id: "history", label: t("encounterChrome.tabs.history") },
+    ],
+    [t, showNursingTab, canFetchMarTab]
+  );
 
   return (
     <div style={encounterPageShell}>
@@ -924,7 +905,7 @@ export default function EncounterDetailPage() {
               lineHeight: 1.5,
             }}
           >
-            Dossier signé — modifications verrouillées
+            {t("encounterChrome.lockedSignedBanner")}
           </div>
         ) : null}
         {queuedClosePendingSync && encounter?.status === "OPEN" ? (
@@ -942,9 +923,7 @@ export default function EncounterDetailPage() {
               fontWeight: 600,
             }}
           >
-            La demande de clôture a été enregistrée sur cet appareil et est en attente de synchronisation avec le
-            serveur. La consultation n&apos;est pas encore confirmée fermée : les autres postes peuvent encore afficher la
-            visite comme ouverte jusqu&apos;à la fin de la synchronisation.
+            {t("encounterChrome.queuedCloseBanner")}
           </div>
         ) : null}
         {queuedDischargeSaveNotice ? (
@@ -962,8 +941,7 @@ export default function EncounterDetailPage() {
               fontWeight: 600,
             }}
           >
-            Le dossier de sortie a été enregistré sur cet appareil et est en attente de synchronisation avec le serveur. Il
-            n&apos;est pas encore confirmé côté serveur.
+            {t("encounterChrome.queuedDischargeBanner")}
           </div>
         ) : null}
         {showEncounterHospitalizationBanner ? (
@@ -987,10 +965,10 @@ export default function EncounterDetailPage() {
                 marginBottom: 8,
               }}
             >
-              Hospitalisation
+              {t("encounterChrome.hospitalizationBadge")}
             </div>
             <p style={{ margin: "0 0 12px 0", fontSize: 15, fontWeight: 600, color: "#0f172a", lineHeight: 1.4 }}>
-              {getEncounterTypeLabelFr(encounter.type)} — vous consultez un dossier de soins hospitaliers.
+              {t("encounterChrome.hospitalizationLead").replace("{type}", tEncounterType(t, encounter.type))}
             </p>
             <div
               style={{
@@ -1003,25 +981,32 @@ export default function EncounterDetailPage() {
               }}
             >
               <div>
-                <span style={{ color: "#64748b" }}>Salle :</span> {encounter.roomLabel?.trim() || "—"}
+                <span style={{ color: "#64748b" }}>{t("encounterChrome.labelRoom")}:</span>{" "}
+                {encounter.roomLabel?.trim() || t("common.dash")}
               </div>
               {encounter.admittedAt ? (
                 <div>
-                  <span style={{ color: "#64748b" }}>Admission :</span>{" "}
-                  {`Décision enregistrée le ${new Date(encounter.admittedAt).toLocaleString("fr-FR")}`}
+                  <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAdmission")}:</span>{" "}
+                  {t("encounterChrome.admissionDecisionRecorded").replace(
+                    "{datetime}",
+                    formatEncounterChromeDateTime(encounter.admittedAt, language)
+                  )}
                 </div>
               ) : admissionBannerPreview ? (
                 <div>
-                  <span style={{ color: "#64748b" }}>Dossier d&apos;admission :</span> renseigné
+                  <span style={{ color: "#64748b" }}>{t("encounterChrome.admissionRecordLabel")}:</span>{" "}
+                  {t("encounterChrome.admissionRecordFilled")}
                 </div>
               ) : (
                 <div>
-                  <span style={{ color: "#64748b" }}>Dossier d&apos;admission :</span> non renseigné
+                  <span style={{ color: "#64748b" }}>{t("encounterChrome.admissionRecordLabel")}:</span>{" "}
+                  {t("encounterChrome.admissionRecordEmpty")}
                 </div>
               )}
               {admissionBannerPreview?.admissionReason ? (
                 <div style={{ wordBreak: "break-word" }}>
-                  <span style={{ color: "#64748b" }}>Motif d&apos;admission :</span> {admissionBannerPreview.admissionReason}
+                  <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAdmissionReason")}:</span>{" "}
+                  {admissionBannerPreview.admissionReason}
                 </div>
               ) : null}
               {dischargePreviewForPrint ? (
@@ -1036,8 +1021,8 @@ export default function EncounterDetailPage() {
                     color: "#334155",
                   }}
                 >
-                  <span style={{ fontWeight: 600, color: "#0f172a" }}>Sortie :</span> dossier de sortie avec contenu
-                  enregistré.
+                  <span style={{ fontWeight: 600, color: "#0f172a" }}>{t("encounterChrome.labelDischargeSummary")}:</span>{" "}
+                  {t("encounterChrome.dischargeSummaryRecordedHint")}
                 </div>
               ) : null}
             </div>
@@ -1068,21 +1053,22 @@ export default function EncounterDetailPage() {
                 </h1>
                 <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.55 }}>
                   <div>
-                    <span style={{ color: "#64748b" }}>Âge :</span> {ageText}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAge")}:</span> {ageText}
                   </div>
                   <div>
-                    <span style={{ color: "#64748b" }}>Sexe :</span> {sexText}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelSex")}:</span> {sexText}
                   </div>
                   {patientDob && (
                     <div>
-                      <span style={{ color: "#64748b" }}>Date de naissance :</span> {patientDob}
+                      <span style={{ color: "#64748b" }}>{t("encounterChrome.labelDob")}:</span> {patientDob}
                     </div>
                   )}
                   <div style={{ marginTop: 4 }}>
-                    <span style={{ color: "#64748b" }}>NIR / MRN :</span> {patient.mrn || "—"}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelNirMrn")}:</span>{" "}
+                    {patient.mrn || t("common.dash")}
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 10 }}>
-                    <span style={{ color: "#64748b" }}>Statut :</span>
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelStatus")}:</span>
                     <span
                       style={{
                         padding: "2px 10px",
@@ -1093,7 +1079,7 @@ export default function EncounterDetailPage() {
                         color: encounter.status === "OPEN" ? "#1565c0" : "#616161",
                       }}
                     >
-                      {getEncounterStatusLabelFr(encounter.status)}
+                      {tEncounterStatus(t, encounter.status)}
                     </span>
                     {encounter.admittedAt || parseAdmissionSummaryForChart(encounter.admissionSummaryJson) ? (
                       <span
@@ -1107,11 +1093,14 @@ export default function EncounterDetailPage() {
                         }}
                         title={
                           encounter.admittedAt
-                            ? `Décision d'admission le ${new Date(encounter.admittedAt).toLocaleString("fr-FR")}`
-                            : "Dossier d'admission enregistré"
+                            ? t("encounterChrome.tooltipAdmissionDecision").replace(
+                                "{datetime}",
+                                formatEncounterChromeDateTime(encounter.admittedAt, language)
+                              )
+                            : t("encounterChrome.tooltipAdmissionRecorded")
                         }
                       >
-                        Patient admis (hospitalisation)
+                        {t("encounterChrome.patientAdmittedBadge")}
                       </span>
                     ) : null}
                   </div>
@@ -1130,48 +1119,64 @@ export default function EncounterDetailPage() {
                   }}
                 >
                   <div>
-                    <span style={{ color: "#64748b" }}>Motif :</span>{" "}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelChiefComplaint")}:</span>{" "}
                     <span style={{ wordBreak: "break-word" }}>{motif}</span>
                   </div>
                   <div>
-                    <span style={{ color: "#64748b" }}>Type de consultation :</span>{" "}
-                    {getEncounterTypeLabelFr(encounter.type)}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelEncounterType")}:</span>{" "}
+                    {tEncounterType(t, encounter.type)}
                   </div>
                   <div>
-                    <span style={{ color: "#64748b" }}>Diagnostics (visite) :</span>{" "}
-                    {quickContextLoading ? "…" : quickDiagnosisCount !== null ? quickDiagnosisCount : "—"}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelVisitDiagnoses")}:</span>{" "}
+                    {quickContextLoading ? "…" : quickDiagnosisCount !== null ? quickDiagnosisCount : t("common.dash")}
                   </div>
                   <div>
-                    <span style={{ color: "#64748b" }}>Ordonnances :</span>{" "}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelPrescriptions")}:</span>{" "}
                     {quickContextLoading ? "…" : medOrderCount}
                     {totalOrderCount > 0 && (
-                      <span style={{ color: "#64748b" }}> · Ordres : {totalOrderCount}</span>
+                      <span style={{ color: "#64748b" }}>
+                        {" "}
+                        · {t("encounterChrome.labelOrdersTotal")}: {totalOrderCount}
+                      </span>
                     )}
                   </div>
                   {encounter.followUpDate && (
                     <div>
-                      <span style={{ color: "#64748b" }}>Suivi :</span>{" "}
-                      {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
+                      <span style={{ color: "#64748b" }}>{t("encounterChrome.labelFollowUp")}:</span>{" "}
+                      {formatEncounterChromeDate(encounter.followUpDate, language)}
                     </div>
                   )}
                   <div>
-                    <span style={{ color: "#64748b" }}>Salle :</span> {encounter.roomLabel?.trim() || "—"}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelRoom")}:</span>{" "}
+                    {encounter.roomLabel?.trim() || t("common.dash")}
                   </div>
                   <div>
-                    <span style={{ color: "#64748b" }}>Médecin attribué :</span>{" "}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAssignedPhysician")}:</span>{" "}
                     {formatEncounterPhysicianAssignedFr(encounter)}
                   </div>
                   <div>
-                    <span style={{ color: "#64748b" }}>Ouverture :</span>{" "}
-                    {new Date(encounter.createdAt).toLocaleString("fr-FR")}
+                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelOpenedAt")}:</span>{" "}
+                    {formatEncounterChromeDateTime(encounter.createdAt, language)}
                   </div>
                   {encounter.status === "CLOSED" && (encounter.dischargedAt || encounter.updatedAt) && (
                     <div style={{ gridColumn: "1 / -1", color: "#334155", fontSize: 13 }}>
                       {encounter.closedByDisplayFr?.trim()
-                        ? `Fermé par ${encounter.closedByDisplayFr.trim()} — ${new Date(
-                            encounter.dischargedAt ?? encounter.updatedAt
-                          ).toLocaleString("fr-FR")}`
-                        : `Fermé le ${new Date(encounter.dischargedAt ?? encounter.updatedAt).toLocaleString("fr-FR")}`}
+                        ? t("encounterChrome.closedByLine")
+                            .replace("{name}", encounter.closedByDisplayFr.trim())
+                            .replace(
+                              "{datetime}",
+                              formatEncounterChromeDateTime(
+                                encounter.dischargedAt ?? encounter.updatedAt,
+                                language
+                              )
+                            )
+                        : t("encounterChrome.closedAtLine").replace(
+                            "{datetime}",
+                            formatEncounterChromeDateTime(
+                              encounter.dischargedAt ?? encounter.updatedAt,
+                              language
+                            )
+                          )}
                     </div>
                   )}
                 </div>
@@ -1191,7 +1196,7 @@ export default function EncounterDetailPage() {
                     background: "#fff",
                   }}
                 >
-                  Retour au dossier patient
+                  {t("encounterChrome.backToPatientChart")}
                 </Link>
                 {canAdmitPatient && (
                   <button
@@ -1209,7 +1214,7 @@ export default function EncounterDetailPage() {
                       flexShrink: 0,
                     }}
                   >
-                    Admettre le patient
+                    {t("encounterChrome.admitPatient")}
                   </button>
                 )}
                 {encounter.status === "OPEN" && canManageEncounterClosure && (
@@ -1229,7 +1234,7 @@ export default function EncounterDetailPage() {
                         flexShrink: 0,
                       }}
                     >
-                      Dossier de sortie
+                      {t("encounterChrome.dischargeSummary")}
                     </button>
                     <button
                       type="button"
@@ -1246,7 +1251,7 @@ export default function EncounterDetailPage() {
                         flexShrink: 0,
                       }}
                     >
-                      Terminer la consultation
+                      {t("encounterChrome.finishEncounter")}
                     </button>
                   </>
                 )}
@@ -1271,16 +1276,20 @@ export default function EncounterDetailPage() {
                     letterSpacing: "0.01em",
                   }}
                 >
-                  Derniers signes vitaux
+                  {t("encounterChrome.lastVitals")}
                 </div>
                 <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
-                  {quickContextLoading ? "Chargement…" : vitalsLine}
+                  {quickContextLoading ? t("common.loading") : vitalsLine}
                   {vitalsJson?.allergyNote && String(vitalsJson.allergyNote).trim() !== "" && (
                     <div style={{ marginTop: 6, color: "#c62828", fontWeight: 700 }}>
-                      ⚠️ Allergie : {String(vitalsJson.allergyNote).trim()}
+                      ⚠️ {t("encounterChrome.allergyPrefix")}: {String(vitalsJson.allergyNote).trim()}
                     </div>
                   )}
-                  {vitalsAt && <div style={{ color: "#64748b" }}>Relevé : {vitalsAt}</div>}
+                  {vitalsAt && (
+                    <div style={{ color: "#64748b" }}>
+                      {t("encounterChrome.vitalsRecordedAt")}: {vitalsAt}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1303,19 +1312,19 @@ export default function EncounterDetailPage() {
                     letterSpacing: "0.01em",
                   }}
                 >
-                  Actions rapides
+                  {t("encounterChrome.quickActions")}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
               {isRNOnly && (
                 <>
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
-                    Saisir les signes vitaux
+                    {t("encounterChrome.rnEnterVitals")}
                   </button>
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
-                    Voir l&apos;évaluation médicale
+                    {t("encounterChrome.rnViewMedicalEval")}
                   </button>
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("orders")}>
-                    Voir les ordres
+                    {t("encounterChrome.rnViewOrders")}
                   </button>
                   {encounter.status === "OPEN" && canManageEncounterClosure ? (
                     <>
@@ -1329,29 +1338,29 @@ export default function EncounterDetailPage() {
                         }}
                         onClick={openDischargeThenClose}
                       >
-                        Dossier de sortie
+                        {t("encounterChrome.dischargeSummary")}
                       </button>
                       <button type="button" style={{ ...quickBtn, borderColor: "#c62828", color: "#c62828" }} onClick={openCloseConfirmModal}>
-                        Terminer la consultation
+                        {t("encounterChrome.finishEncounter")}
                       </button>
                     </>
                   ) : null}
                   <Link href={`/app/patients/${patient.id}`} style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}>
-                    Retour au dossier patient
+                    {t("encounterChrome.backToPatientChart")}
                   </Link>
                 </>
               )}
               {isProviderLike && (
                 <>
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
-                    Évaluation médicale
+                    {t("encounterChrome.providerMedicalEval")}
                   </button>
                   <button
                     type="button"
                     style={quickBtn}
                     onClick={() => setActiveTab("diagnostics")}
                   >
-                    Ajouter un diagnostic
+                    {t("encounterChrome.providerAddDiagnosis")}
                   </button>
                   {canPrescribe ? (
                     <>
@@ -1360,10 +1369,10 @@ export default function EncounterDetailPage() {
                         style={quickBtn}
                         onClick={() => {
                           setActiveTab("orders");
-                          setMedicationModalRequestTick((t) => t + 1);
+                          setMedicationModalRequestTick((tick) => tick + 1);
                         }}
                       >
-                        Créer une ordonnance
+                        {t("encounterChrome.providerCreatePrescription")}
                       </button>
                       <button
                         type="button"
@@ -1371,10 +1380,10 @@ export default function EncounterDetailPage() {
                         onClick={() => {
                           setActiveTab("orders");
                           setCareModalPresetLabel("Pose de voie IV");
-                          setCareModalRequestTick((t) => t + 1);
+                          setCareModalRequestTick((tick) => tick + 1);
                         }}
                       >
-                        Prescrire voie IV
+                        {t("encounterChrome.providerPrescribeIv")}
                       </button>
                       <button
                         type="button"
@@ -1382,10 +1391,10 @@ export default function EncounterDetailPage() {
                         onClick={() => {
                           setActiveTab("orders");
                           setCareModalPresetLabel("Administration d'oxygène");
-                          setCareModalRequestTick((t) => t + 1);
+                          setCareModalRequestTick((tick) => tick + 1);
                         }}
                       >
-                        Prescrire oxygène
+                        {t("encounterChrome.providerPrescribeOxygen")}
                       </button>
                       <button
                         type="button"
@@ -1393,10 +1402,10 @@ export default function EncounterDetailPage() {
                         onClick={() => {
                           setActiveTab("orders");
                           setCareModalPresetLabel("Pansement / soin de plaie");
-                          setCareModalRequestTick((t) => t + 1);
+                          setCareModalRequestTick((tick) => tick + 1);
                         }}
                       >
-                        Prescrire soin de plaie
+                        {t("encounterChrome.providerPrescribeWoundCare")}
                       </button>
                     </>
                   ) : null}
@@ -1412,21 +1421,21 @@ export default function EncounterDetailPage() {
                       }}
                       onClick={() => setShowAdmissionModal(true)}
                     >
-                      Admettre le patient
+                      {t("encounterChrome.admitPatient")}
                     </button>
                   ) : null}
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
-                    Voir les signes vitaux
+                    {t("encounterChrome.providerViewVitals")}
                   </button>
                 </>
               )}
               {!isRNOnly && !isProviderLike && (
                 <>
                   <button type="button" style={quickBtn} onClick={() => setActiveTab("summary")}>
-                    Résumé de la consultation
+                    {t("encounterChrome.otherRoleSummary")}
                   </button>
                   <Link href={`/app/patients/${patient.id}`} style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}>
-                    Retour au dossier patient
+                    {t("encounterChrome.backToPatientChart")}
                   </Link>
                 </>
               )}
@@ -1578,11 +1587,13 @@ export default function EncounterDetailPage() {
                 }}
               >
                 <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                  Qui a fait quoi et quand — lecture seule, pour cette consultation.
+                  {t("encounterChrome.historyTabBlurb")}
                 </p>
               </div>
               {auditTimelineLoading ? (
-                <div style={{ fontSize: 14, color: "#64748b", padding: "4px 2px" }}>Chargement de l’historique…</div>
+                <div style={{ fontSize: 14, color: "#64748b", padding: "4px 2px" }}>
+                  {t("encounterChrome.historyLoading")}
+                </div>
               ) : auditTimelineError ? (
                 <div
                   role="alert"
@@ -1611,7 +1622,7 @@ export default function EncounterDetailPage() {
                     lineHeight: 1.5,
                   }}
                 >
-                  Aucun événement d’historique pour cette consultation.
+                  {t("encounterChrome.historyEmpty")}
                 </div>
               ) : (
                 <div
@@ -1636,11 +1647,11 @@ export default function EncounterDetailPage() {
                       >
                         <div style={{ fontWeight: 600, color: "#0f172a" }}>{it.shortLabelFr}</div>
                         <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-                          {formatEncounterAuditDt(it.createdAt)}
+                          {formatEncounterChromeDateTime(it.createdAt, language)}
                         </div>
                         {it.userDisplayFr ? (
                           <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-                            par {it.userDisplayFr}
+                            {t("encounterChrome.byPrefix")} {it.userDisplayFr}
                           </div>
                         ) : null}
                         {it.detailFr ? (
@@ -1680,7 +1691,7 @@ export default function EncounterDetailPage() {
               id="discharge-title"
               style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
             >
-              Dossier de sortie
+              {t("encounterChrome.modals.dischargeTitle")}
             </h2>
             <div
               style={{
@@ -1692,33 +1703,35 @@ export default function EncounterDetailPage() {
               }}
             >
               <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.55 }}>
-                Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin :
-                disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.
+                {t("encounterChrome.modals.dischargeIntro")}
               </p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {(
                 [
-                  ["disposition", "Disposition", "medical", 2],
-                  ["exitCondition", "État à la sortie", "nursing", 2],
-                  ["dischargeInstructions", "Instructions de sortie", "medical", 3],
-                  ["medicationsGiven", "Médicaments remis / prescrits", "medical", 3],
-                  ["followUp", "Suivi recommandé", "medical", 2],
-                  ["returnIfWorse", "Retour si aggravation", "nursing", 2],
-                  ["patientDestination", "Destination du patient", "nursing", 2],
+                  ["disposition", "medical", 2],
+                  ["exitCondition", "nursing", 2],
+                  ["dischargeInstructions", "medical", 3],
+                  ["medicationsGiven", "medical", 3],
+                  ["followUp", "medical", 2],
+                  ["returnIfWorse", "nursing", 2],
+                  ["patientDestination", "nursing", 2],
                 ] as const
-              ).map(([key, label, kind, rows]) => {
+              ).map(([key, kind, rows]) => {
                 const editable =
                   !isLocked &&
                   ((kind === "nursing" && canEditNursingDischarge) ||
                     (kind === "medical" && canEditMedicalDischarge));
                 const k = key as keyof DischargeFormState;
+                const label = t(`encounterChrome.modals.dischargeField.${key}`);
                 return (
                   <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
                     <span style={{ fontWeight: 600, color: "#334155" }}>
                       {label}
                       {!editable ? (
-                        <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>(lecture seule)</span>
+                        <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>
+                          {t("encounterChrome.modals.readOnly")}
+                        </span>
                       ) : null}
                     </span>
                     <textarea
@@ -1733,9 +1746,11 @@ export default function EncounterDetailPage() {
               })}
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
                 <span style={{ fontWeight: 600, color: "#334155" }}>
-                  Mode de sortie
+                  {t("encounterChrome.modals.dischargeMode")}
                   {!canEditNursingDischarge || isLocked ? (
-                    <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>(lecture seule)</span>
+                    <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>
+                      {t("encounterChrome.modals.readOnly")}
+                    </span>
                   ) : null}
                 </span>
                 <select
@@ -1747,7 +1762,7 @@ export default function EncounterDetailPage() {
                     cursor: !canEditNursingDischarge || isLocked ? "not-allowed" : "pointer",
                   }}
                 >
-                  <option value="">— Sélectionner —</option>
+                  <option value="">{t("encounterChrome.modals.selectPlaceholder")}</option>
                   {DISCHARGE_MODE_OPTIONS_FR.map((opt) => (
                     <option key={opt} value={opt}>
                       {opt}
@@ -1762,7 +1777,7 @@ export default function EncounterDetailPage() {
                 onClick={() => setShowDischargeModal(false)}
                 style={encounterWorkflowModalBtnSecondary(false)}
               >
-                Annuler
+                {t("encounterChrome.modals.cancel")}
               </button>
               <button
                 type="button"
@@ -1779,7 +1794,7 @@ export default function EncounterDetailPage() {
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
-                Continuer vers la clôture
+                {t("encounterChrome.modals.continueToClose")}
               </button>
             </div>
           </div>
@@ -1807,7 +1822,7 @@ export default function EncounterDetailPage() {
               id="admission-title"
               style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#5b21b6", lineHeight: 1.3 }}
             >
-              Dossier d&apos;admission
+              {t("encounterChrome.modals.admissionTitle")}
             </h2>
             <div
               style={{
@@ -1819,14 +1834,14 @@ export default function EncounterDetailPage() {
               }}
             >
               <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.55 }}>
-                Documentez la décision d&apos;hospitalisation depuis cette consultation. La{" "}
-                <strong>sortie de consultation</strong> (autre flux) clôt la visite ; l&apos;
-                <strong>admission</strong> enregistre la décision et le plan initial dans ce même dossier.
+                {t("encounterChrome.modals.admissionIntro")}
               </p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "#334155" }}>Motif d&apos;admission</span>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
+                  {t("encounterChrome.modals.admissionField.admissionReason")}
+                </span>
                 <textarea
                   value={admissionForm.admissionReason}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, admissionReason: e.target.value }))}
@@ -1835,7 +1850,9 @@ export default function EncounterDetailPage() {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "#334155" }}>Service / unité</span>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
+                  {t("encounterChrome.modals.admissionField.serviceUnit")}
+                </span>
                 <input
                   type="text"
                   value={admissionForm.serviceUnit}
@@ -1844,7 +1861,9 @@ export default function EncounterDetailPage() {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "#334155" }}>Diagnostic d&apos;admission</span>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
+                  {t("encounterChrome.modals.admissionField.admissionDiagnosis")}
+                </span>
                 <textarea
                   value={admissionForm.admissionDiagnosis}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, admissionDiagnosis: e.target.value }))}
@@ -1853,11 +1872,13 @@ export default function EncounterDetailPage() {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "#334155" }}>Niveau de soins</span>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
+                  {t("encounterChrome.modals.admissionField.careLevel")}
+                </span>
                 <input
                   type="text"
                   list="medora-care-level-suggestions"
-                  placeholder="Saisie libre ou choix parmi les suggestions"
+                  placeholder={t("encounterChrome.modals.admissionField.careLevelPlaceholder")}
                   value={admissionForm.careLevel}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, careLevel: e.target.value }))}
                   style={encounterWorkflowModalField(true)}
@@ -1869,7 +1890,9 @@ export default function EncounterDetailPage() {
                 </datalist>
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "#334155" }}>Condition à l&apos;admission</span>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
+                  {t("encounterChrome.modals.admissionField.conditionAtAdmission")}
+                </span>
                 <textarea
                   value={admissionForm.conditionAtAdmission}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, conditionAtAdmission: e.target.value }))}
@@ -1878,7 +1901,9 @@ export default function EncounterDetailPage() {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "#334155" }}>Plan initial</span>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
+                  {t("encounterChrome.modals.admissionField.initialPlan")}
+                </span>
                 <textarea
                   value={admissionForm.initialPlan}
                   onChange={(e) => setAdmissionForm((f) => ({ ...f, initialPlan: e.target.value }))}
@@ -1887,7 +1912,9 @@ export default function EncounterDetailPage() {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, color: "#334155" }}>Médecin responsable</span>
+                <span style={{ fontWeight: 600, color: "#334155" }}>
+                  {t("encounterChrome.modals.admissionField.responsiblePhysician")}
+                </span>
                 <input
                   type="text"
                   value={admissionForm.responsiblePhysicianName}
@@ -1903,7 +1930,7 @@ export default function EncounterDetailPage() {
                 onClick={() => setShowAdmissionModal(false)}
                 style={encounterWorkflowModalBtnSecondary(savingAdmission)}
               >
-                Annuler
+                {t("encounterChrome.modals.cancel")}
               </button>
               <button
                 type="button"
@@ -1922,7 +1949,7 @@ export default function EncounterDetailPage() {
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
-                {savingAdmission ? "…" : "Enregistrer le dossier d'admission"}
+                {savingAdmission ? "…" : t("encounterChrome.modals.saveAdmission")}
               </button>
             </div>
           </div>
@@ -1946,10 +1973,10 @@ export default function EncounterDetailPage() {
               id="close-encounter-confirm-title"
               style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
             >
-              Terminer la consultation
+              {t("encounterChrome.modals.closeEncounterTitle")}
             </h2>
             <p style={{ margin: "0 0 20px 0", fontSize: 14, color: "#475569", lineHeight: 1.55 }}>
-              Êtes-vous sûr de vouloir terminer la consultation ?
+              {t("encounterChrome.modals.closeEncounterBody")}
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button
@@ -1961,7 +1988,7 @@ export default function EncounterDetailPage() {
                 }}
                 style={encounterWorkflowModalBtnSecondary(closingEncounter)}
               >
-                Annuler
+                {t("encounterChrome.modals.cancel")}
               </button>
               <button
                 type="button"
@@ -1980,7 +2007,7 @@ export default function EncounterDetailPage() {
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
-                {closingEncounter ? "…" : "Terminer"}
+                {closingEncounter ? "…" : t("encounterChrome.modals.finish")}
               </button>
             </div>
           </div>
@@ -2013,7 +2040,7 @@ export default function EncounterDetailPage() {
               id="documentation-deficiency-title"
               style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
             >
-              Documentation incomplète
+              {t("encounterChrome.modals.documentationDeficiencyTitle")}
             </h2>
             <div
               style={{
@@ -2025,7 +2052,7 @@ export default function EncounterDetailPage() {
               }}
             >
               <p style={{ margin: 0, fontSize: 14, color: "#92400e", lineHeight: 1.55, fontWeight: 600 }}>
-                Les éléments suivants sont manquants ou incomplets :
+                {t("encounterChrome.modals.documentationDeficiencyLead")}
               </p>
             </div>
             <ul
@@ -2056,7 +2083,7 @@ export default function EncounterDetailPage() {
                 }}
                 style={encounterWorkflowModalBtnSecondary(closingEncounter)}
               >
-                Retour au dossier
+                {t("encounterChrome.modals.backToChart")}
               </button>
               <button
                 type="button"
@@ -2075,7 +2102,7 @@ export default function EncounterDetailPage() {
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                 }}
               >
-                {closingEncounter ? "…" : "Terminer quand même"}
+                {closingEncounter ? "…" : t("encounterChrome.modals.closeAnyway")}
               </button>
             </div>
           </div>
@@ -2094,6 +2121,7 @@ function EncounterSummaryTab({
   showPrintDischarge: boolean;
   onPrintDischarge: () => void;
 }) {
+  const { t, language } = useI18n();
   const reason = encounter.visitReason || encounter.chiefComplaint;
   const nursingLines = nursingAssessmentDisplayLines(encounter?.nursingAssessment);
   const nursingSig = nursingAssessmentSignatureLineFr(encounter?.nursingAssessment);
@@ -2123,23 +2151,25 @@ function EncounterSummaryTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={summaryCard}>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#0f172a" }}>Résumé de la consultation</h3>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#0f172a" }}>
+          {t("encounterChrome.summaryTab.title")}
+        </h3>
         <p style={{ color: "#64748b", fontSize: 13, margin: "8px 0 0 0", lineHeight: 1.5 }}>
-          Synthèse clinique — les détails sont dans les onglets Signes vitaux et Évaluation médicale.
+          {t("encounterChrome.summaryTab.intro")}
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14, color: "#334155", marginTop: 16 }}>
           <div style={{ gridColumn: "1 / -1" }}>
-            <strong style={{ color: "#0f172a" }}>Médecin attribué :</strong>{" "}
+            <strong style={{ color: "#0f172a" }}>{t("encounterChrome.summaryTab.assignedPhysician")}:</strong>{" "}
             {formatEncounterPhysicianAssignedFr(encounter)}
           </div>
           {reason && (
             <div style={{ gridColumn: "1 / -1" }}>
-              <strong style={{ color: "#0f172a" }}>Motif :</strong> {reason}
+              <strong style={{ color: "#0f172a" }}>{t("encounterChrome.summaryTab.chiefComplaint")}:</strong> {reason}
             </div>
           )}
           {nursingLines.length > 0 && (
             <div style={{ gridColumn: "1 / -1" }}>
-              <strong style={{ color: "#0f172a" }}>Évaluation infirmière (synthèse)</strong>
+              <strong style={{ color: "#0f172a" }}>{t("encounterChrome.summaryTab.nursingSynthesis")}</strong>
               <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, color: "#334155", lineHeight: 1.5 }}>
                 {nursingLines.map((line, i) => (
                   <li key={i}>{line}</li>
@@ -2152,15 +2182,17 @@ function EncounterSummaryTab({
           )}
           {encounter.followUpDate && (
             <div style={{ gridColumn: "1 / -1" }}>
-              <strong style={{ color: "#0f172a" }}>Date de suivi :</strong>{" "}
-              {new Date(encounter.followUpDate).toLocaleDateString("fr-FR")}
+              <strong style={{ color: "#0f172a" }}>{t("encounterChrome.summaryTab.followUpDate")}:</strong>{" "}
+              {formatEncounterChromeDate(encounter.followUpDate, language)}
             </div>
           )}
         </div>
       </div>
       {physicianDocSections.length > 0 && (
         <div style={summaryCard}>
-          <strong style={{ fontSize: 15, color: "#0f172a" }}>Documentation médicale (HPI / ROS / examen / MDM)</strong>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>
+            {t("encounterChrome.summaryTab.physicianDocSections")}
+          </strong>
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
             {physicianDocSections.map((s, i) => (
               <div key={i}>
@@ -2175,7 +2207,7 @@ function EncounterSummaryTab({
       )}
       {(encounter.clinicianImpression || encounter.providerNote) && (
         <div style={summaryCard}>
-          <strong style={{ fontSize: 15, color: "#0f172a" }}>Impression clinique / Note médecin</strong>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>{t("encounterChrome.summaryTab.impression")}</strong>
           <div style={{ ...summaryMutedBlock, marginTop: 10, color: "#334155", fontSize: 14, lineHeight: 1.55 }}>
             {encounter.clinicianImpression || encounter.providerNote}
           </div>
@@ -2183,7 +2215,7 @@ function EncounterSummaryTab({
       )}
       {encounter.treatmentPlan && (
         <div style={summaryCard}>
-          <strong style={{ fontSize: 15, color: "#0f172a" }}>Plan de traitement</strong>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>{t("encounterChrome.summaryTab.treatmentPlan")}</strong>
           <div style={{ ...summaryMutedBlockBlue, marginTop: 10, color: "#334155", fontSize: 14, lineHeight: 1.55 }}>
             {encounter.treatmentPlan}
           </div>
@@ -2191,10 +2223,11 @@ function EncounterSummaryTab({
       )}
       {(admissionPreview || encounter.admittedAt) && (
         <div style={summaryCard}>
-          <strong style={{ fontSize: 15, color: "#6a1b9a" }}>Décision d&apos;admission (hospitalisation)</strong>
+          <strong style={{ fontSize: 15, color: "#6a1b9a" }}>{t("encounterChrome.summaryTab.admissionDecision")}</strong>
           {encounter.admittedAt ? (
             <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
-              Enregistrée le {new Date(encounter.admittedAt).toLocaleString("fr-FR")}
+              {t("encounterChrome.summaryTab.recordedOn")}{" "}
+              {formatEncounterChromeDateTime(encounter.admittedAt, language)}
             </div>
           ) : null}
           {admissionPreview ? (
@@ -2213,50 +2246,50 @@ function EncounterSummaryTab({
             >
               {admissionPreview.admissionReason ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Motif d&apos;admission : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.admissionReason")}: </span>
                   {admissionPreview.admissionReason}
                 </div>
               ) : null}
               {admissionPreview.serviceUnit ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Service / unité : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.serviceUnit")}: </span>
                   {admissionPreview.serviceUnit}
                 </div>
               ) : null}
               {admissionPreview.admissionDiagnosis ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Diagnostic d&apos;admission : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.admissionDiagnosis")}: </span>
                   {admissionPreview.admissionDiagnosis}
                 </div>
               ) : null}
               {admissionPreview.careLevel ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Niveau de soins : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.careLevel")}: </span>
                   {admissionPreview.careLevel}
                 </div>
               ) : null}
               {admissionPreview.conditionAtAdmission ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Condition à l&apos;admission : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.conditionAtAdmission")}: </span>
                   <span style={{ whiteSpace: "pre-wrap" }}>{admissionPreview.conditionAtAdmission}</span>
                 </div>
               ) : null}
               {admissionPreview.initialPlan ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Plan initial : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.initialPlan")}: </span>
                   <span style={{ whiteSpace: "pre-wrap" }}>{admissionPreview.initialPlan}</span>
                 </div>
               ) : null}
               {admissionPreview.responsiblePhysicianName ? (
                 <div>
-                  <span style={{ fontWeight: 600 }}>Médecin responsable : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.responsiblePhysician")}: </span>
                   {admissionPreview.responsiblePhysicianName}
                 </div>
               ) : null}
             </div>
           ) : (
             <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#64748b" }}>
-              Décision d&apos;admission enregistrée — détail à compléter depuis le bouton « Admettre le patient ».
+              {t("encounterChrome.summaryTab.admissionIncompleteHint")}
             </p>
           )}
         </div>
@@ -2272,7 +2305,7 @@ function EncounterSummaryTab({
               marginBottom: dischargePreview ? 10 : 0,
             }}
           >
-            <strong style={{ fontSize: 15, color: "#0f172a" }}>Sortie de consultation</strong>
+            <strong style={{ fontSize: 15, color: "#0f172a" }}>{t("encounterChrome.summaryTab.dischargeSection")}</strong>
             <button
               type="button"
               onClick={onPrintDischarge}
@@ -2288,7 +2321,7 @@ function EncounterSummaryTab({
                 boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
               }}
             >
-              Imprimer la sortie
+              {t("encounterChrome.summaryTab.printDischarge")}
             </button>
           </div>
           {dischargePreview ? (
@@ -2306,64 +2339,63 @@ function EncounterSummaryTab({
             >
               {dischargePreview.disposition ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Disposition : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewDisposition")}: </span>
                   {dischargePreview.disposition}
                 </div>
               ) : null}
               {dischargePreview.exitCondition ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>État à la sortie : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewExitCondition")}: </span>
                   {dischargePreview.exitCondition}
                 </div>
               ) : null}
               {dischargePreview.dischargeInstructions ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Instructions de sortie : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewInstructions")}: </span>
                   {dischargePreview.dischargeInstructions}
                 </div>
               ) : null}
               {dischargePreview.medicationsGiven ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Médicaments remis / prescrits : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewMedications")}: </span>
                   {dischargePreview.medicationsGiven}
                 </div>
               ) : null}
               {dischargePreview.followUp ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Suivi recommandé : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewFollowUp")}: </span>
                   {dischargePreview.followUp}
                 </div>
               ) : null}
               {dischargePreview.returnIfWorse ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Retour si aggravation : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewReturnIfWorse")}: </span>
                   {dischargePreview.returnIfWorse}
                 </div>
               ) : null}
               {dischargePreview.patientDestination ? (
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600 }}>Destination du patient : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewDestination")}: </span>
                   {dischargePreview.patientDestination}
                 </div>
               ) : null}
               {dischargePreview.dischargeMode ? (
                 <div>
-                  <span style={{ fontWeight: 600 }}>Mode de sortie : </span>
+                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.summaryTab.dischargePreviewMode")}: </span>
                   {dischargePreview.dischargeMode}
                 </div>
               ) : null}
             </div>
           ) : (
             <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
-              Aucun résumé de sortie structuré enregistré pour l&apos;instant — vous pouvez tout de même imprimer un
-              document avec l&apos;identité patient et les informations de consultation.
+              {t("encounterChrome.summaryTab.noStructuredDischargeHint")}
             </p>
           )}
         </div>
       )}
       {encounter.notes && (
         <div style={summaryCard}>
-          <strong style={{ fontSize: 15, color: "#0f172a" }}>Note infirmière, autres</strong>
+          <strong style={{ fontSize: 15, color: "#0f172a" }}>{t("encounterChrome.summaryTab.nurseNotesOther")}</strong>
           <div style={{ ...summaryMutedBlock, marginTop: 10, color: "#334155", fontSize: 14, lineHeight: 1.55 }}>
             {encounter.notes}
           </div>
@@ -3311,6 +3343,7 @@ function NotesTab({
   onUpdate: () => void;
   isLocked: boolean;
 }) {
+  const { t } = useI18n();
   const [notes, setNotes] = useState(encounter.notes || "");
   const [saving, setSaving] = useState(false);
   const notesReadOnly = encounter.status !== "OPEN" || isLocked;
@@ -3327,13 +3360,9 @@ function NotesTab({
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       onUpdate();
-      alert(
-        queued
-          ? "Notes enregistrées sur cet appareil, en attente de synchronisation. Pas encore confirmées côté serveur."
-          : "Notes enregistrées"
-      );
+      alert(queued ? t("encounterChrome.notesTab.saveQueued") : t("encounterChrome.notesTab.saveOk"));
     } catch (error) {
-      alert("Impossible d'enregistrer les notes");
+      alert(t("encounterChrome.notesTab.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -3349,8 +3378,10 @@ function NotesTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ ...notesShell, padding: "16px 18px" }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Notes Inf.</h3>
-        <p style={{ fontSize: 13, color: "#64748b", margin: "8px 0 0 0", lineHeight: 1.45 }}>Raccourcis ci-dessous.</p>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{t("encounterChrome.tabs.notes")}</h3>
+        <p style={{ fontSize: 13, color: "#64748b", margin: "8px 0 0 0", lineHeight: 1.45 }}>
+          {t("encounterChrome.notesTab.shortcutsBelow")}
+        </p>
       </div>
       <div style={{ ...notesShell, padding: "16px 18px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
@@ -3399,7 +3430,7 @@ function NotesTab({
             cursor: notesReadOnly ? "not-allowed" : "text",
             boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
           }}
-          placeholder="Notes infirmières ou médicales…"
+          placeholder={t("encounterChrome.notesTab.placeholder")}
         />
         <button
           onClick={handleSave}
@@ -3417,7 +3448,7 @@ function NotesTab({
             boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
           }}
         >
-          {saving ? "Enregistrement…" : "Enregistrer les notes"}
+          {saving ? t("encounterChrome.notesTab.saving") : t("encounterChrome.notesTab.save")}
         </button>
       </div>
     </div>
@@ -3437,6 +3468,7 @@ function PathwaysTab({
   onUpdate: () => void;
   isLocked: boolean;
 }) {
+  const { t, language } = useI18n();
   const [pathway, setPathway] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
@@ -3466,7 +3498,12 @@ function PathwaysTab({
   };
 
   const handleActivate = async (type: string) => {
-    if (!confirm(`Activer le parcours ${getPathwayTypeLabelFr(type)} ? Des ordres de protocole seront créés.`)) return;
+    if (
+      !confirm(
+        t("encounterChrome.pathways.confirmActivate").replace("{type}", tPathwayType(t, type))
+      )
+    )
+      return;
     setActivating(true);
     try {
       await apiFetch(`/encounters/${encounterId}/pathways/activate`, {
@@ -3479,7 +3516,9 @@ function PathwaysTab({
       onUpdate(); // Refresh encounter
     } catch (error: any) {
       alert(
-        `Impossible d'activer le parcours : ${normalizeUserFacingError(error?.message) || "erreur inconnue"}`
+        `${t("encounterChrome.pathways.activateFailed")} ${
+          normalizeUserFacingError(error?.message) || t("encounterChrome.pathways.confirmUnknownError")
+        }`
       );
     } finally {
       setActivating(false);
@@ -3495,13 +3534,13 @@ function PathwaysTab({
       });
       await loadPathway();
     } catch (error) {
-      alert("Impossible de mettre le parcours en pause");
+      alert(t("encounterChrome.pathways.pauseFailed"));
     }
   };
 
   const handleComplete = async () => {
     if (!pathway?.id) return;
-    if (!confirm("Clôturer ce parcours ?")) return;
+    if (!confirm(t("encounterChrome.pathways.completeConfirm"))) return;
     try {
       await apiFetch(`/pathways/${pathway.id}/complete`, {
         method: "POST",
@@ -3509,7 +3548,7 @@ function PathwaysTab({
       });
       await loadPathway();
     } catch (error) {
-      alert("Impossible de clôturer le parcours");
+      alert(t("encounterChrome.pathways.completeFailed"));
     }
   };
 
@@ -3524,7 +3563,7 @@ function PathwaysTab({
       });
       await loadPathway();
     } catch (error) {
-      alert("Impossible de valider le jalon");
+      alert(t("encounterChrome.pathways.milestoneFailed"));
     }
   };
 
@@ -3557,7 +3596,7 @@ function PathwaysTab({
           fontSize: 14,
         }}
       >
-        Chargement des parcours…
+        {t("encounterChrome.pathways.loading")}
       </div>
     );
   }
@@ -3574,12 +3613,14 @@ function PathwaysTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ ...pathwayShell, padding: "16px 18px" }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Parcours urgences</h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+          {t("encounterChrome.pathways.titleEd")}
+        </h3>
       </div>
       {!pathway ? (
         <div style={{ ...pathwayShell, padding: "18px 20px" }}>
           <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "#334155", lineHeight: 1.55 }}>
-            Aucun parcours actif. Activez un parcours pour lancer les ordres de protocole et les chronos.
+            {t("encounterChrome.pathways.noActive")}
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {["STROKE", "SEPSIS", "STEMI", "TRAUMA"].map((type) => (
@@ -3600,7 +3641,7 @@ function PathwaysTab({
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
                 }}
               >
-                Activer {getPathwayTypeLabelFr(type)}
+                {t("encounterChrome.pathways.activate")} {tPathwayType(t, type)}
               </button>
             ))}
           </div>
@@ -3611,10 +3652,12 @@ function PathwaysTab({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div>
                 <h4 style={{ margin: "0 0 8px 0", fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-                  Parcours {getPathwayTypeLabelFr(pathway.type)} – {getPathwayStatusLabelFr(pathway.status)}
+                  {t("encounterChrome.pathways.pathwayLabel")} {tPathwayType(t, pathway.type)} –{" "}
+                  {tPathwayStatus(t, pathway.status)}
                 </h4>
                 <div style={{ fontSize: 14, color: "#64748b" }}>
-                  Activé le : {new Date(pathway.activatedAt).toLocaleString()}
+                  {t("encounterChrome.pathways.activatedOn")}{" "}
+                  {formatEncounterChromeDateTime(pathway.activatedAt, language)}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -3634,7 +3677,7 @@ function PathwaysTab({
                       boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
                     }}
                   >
-                    Mettre en pause
+                    {t("encounterChrome.pathways.pause")}
                   </button>
                 )}
                 {pathway.status !== "COMPLETED" && (
@@ -3653,7 +3696,7 @@ function PathwaysTab({
                       boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
                     }}
                   >
-                    Terminer
+                    {t("encounterChrome.pathways.complete")}
                   </button>
                 )}
               </div>
@@ -3661,7 +3704,9 @@ function PathwaysTab({
           </div>
 
           <div style={{ ...pathwayShell, padding: "16px 18px" }}>
-            <h4 style={{ margin: "0 0 14px 0", fontSize: 15, fontWeight: 600, color: "#0f172a" }}>Chronos et jalons</h4>
+            <h4 style={{ margin: "0 0 14px 0", fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+              {t("encounterChrome.pathways.milestonesTitle")}
+            </h4>
             {summary && (
               <PathwaySessionSummaryBar
                 summary={summary}
@@ -3694,11 +3739,6 @@ function PathwaysTab({
 
 function formatOrderItemLineFr(it: any): string {
   return getOrderItemDisplayLabelFr(it);
-}
-
-function medicationIntentLabelFr(intent: string | null | undefined): string {
-  if (intent === "ADMINISTER_CHART") return "À administrer au patient";
-  return "À envoyer à la pharmacie";
 }
 
 /** Aligné sur `assertCanTransition(…, CANCELLED)` côté serveur — ordre parent. */
@@ -3740,6 +3780,7 @@ function OrdersTab({
   onOrdersUpdated?: () => void | Promise<void>;
   onRefetchEncounter?: () => Promise<void>;
 }) {
+  const { t, language } = useI18n();
   const { roles } = useFacilityAndRoles();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3806,14 +3847,16 @@ function OrdersTab({
       });
       setCancelConfirmOrderId(null);
       setCancelReasonSelection("");
-      setOrdersFeedback({ type: "ok", text: "La commande a été annulée." });
+      setOrdersFeedback({ type: "ok", text: t("encounterChrome.ordersTab.orderCanceledOk") });
       await loadOrders({ silent: true });
       await onOrdersUpdated?.();
       await onRefetchEncounter?.();
     } catch (e: unknown) {
       setOrdersFeedback({
         type: "err",
-        text: normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'annuler cette commande.",
+        text:
+          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          t("encounterChrome.ordersTab.cancelFailed"),
       });
     } finally {
       setCancelSubmitting(false);
@@ -3847,7 +3890,7 @@ function OrdersTab({
           fontSize: 14,
         }}
       >
-        Chargement des ordres…
+        {t("encounterChrome.ordersTab.loading")}
       </div>
     );
   }
@@ -3873,9 +3916,11 @@ function OrdersTab({
         }}
       >
         <div>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Ordres</h3>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+            {t("encounterChrome.ordersTab.title")}
+          </h3>
           <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#64748b", maxWidth: 480, lineHeight: 1.45 }}>
-            Analyses, imagerie, ordonnances — prescription médicamenteuse : médecins / administrateurs.
+            {t("encounterChrome.ordersTab.subtitle")}
           </p>
         </div>
         {canPrescribe ? (
@@ -3897,7 +3942,7 @@ function OrdersTab({
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
             }}
           >
-            Créer un ordre
+            {t("encounterChrome.ordersTab.createOrder")}
           </button>
         ) : null}
       </div>
@@ -3920,7 +3965,7 @@ function OrdersTab({
 
       {orders.length === 0 ? (
         <div style={{ ...ordersShell, padding: "22px 20px", textAlign: "center", color: "#64748b", fontSize: 14 }}>
-          Aucun ordre trouvé
+          {t("encounterChrome.ordersTab.emptyNone")}
         </div>
       ) : (
         <div style={{ ...ordersShell, overflow: "hidden" }}>
@@ -3928,23 +3973,23 @@ function OrdersTab({
             <thead>
               <tr style={{ backgroundColor: "#f8fafc" }}>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Type
+                  {t("encounterChrome.ordersTab.tableHeaderType")}
                 </th>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Statut
+                  {t("encounterChrome.ordersTab.tableHeaderStatus")}
                 </th>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Priorité
+                  {t("encounterChrome.ordersTab.tableHeaderPriority")}
                 </th>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Détail clinique
+                  {t("encounterChrome.ordersTab.tableHeaderClinicalDetail")}
                 </th>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Saisie de l&apos;ordre
+                  {t("encounterChrome.ordersTab.tableHeaderOrderEntry")}
                 </th>
                 {(canPrescribe || isRn) && (
                   <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                    Actions
+                    {t("encounterChrome.ordersTab.tableHeaderActions")}
                   </th>
                 )}
               </tr>
@@ -3975,39 +4020,43 @@ function OrdersTab({
                           display: "inline-block",
                         }}
                       >
-                        En attente de synchronisation
+                        {t("encounterChrome.ordersTab.pendingSync")}
                       </div>
                     ) : null}
                     {order.type === "LAB" ? (
                       <>
-                        <div style={{ fontWeight: 600 }}>Laboratoire</div>
+                        <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.labSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
-                          <strong>Analyses demandées :</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                          <strong>{t("encounterChrome.ordersTab.labItemsLabel")}</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
+                            t("common.dash")}
                         </div>
                       </>
                     ) : order.type === "IMAGING" ? (
                       <>
-                        <div style={{ fontWeight: 600 }}>Imagerie</div>
+                        <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.imagingSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
-                          <strong>Imagerie demandée :</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                          <strong>{t("encounterChrome.ordersTab.imagingItemsLabel")}</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
+                            t("common.dash")}
                         </div>
                       </>
                     ) : order.type === "MEDICATION" ? (
                       <>
-                        <div style={{ fontWeight: 600 }}>Médicaments</div>
+                        <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.medicationSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
-                          <strong>Médicaments :</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                          <strong>{t("encounterChrome.ordersTab.medicationItemsLabel")}</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
+                            t("common.dash")}
                         </div>
                       </>
                     ) : order.type === "CARE" ? (
                       <>
-                        <div style={{ fontWeight: 600 }}>Soins / procédures</div>
+                        <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.careSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
-                          <strong>Soins demandés :</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") || "—"}
+                          <strong>{t("encounterChrome.ordersTab.careItemsLabel")}</strong>{" "}
+                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
+                            t("common.dash")}
                         </div>
                       </>
                     ) : (
@@ -4051,15 +4100,16 @@ function OrdersTab({
                       <div style={{ fontSize: 12, color: "#616161", marginTop: 8, lineHeight: 1.45 }}>
                         {(order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr ? (
                           <>
-                            Annulée par{" "}
+                            {t("encounterChrome.ordersTab.canceledBy")}{" "}
                             <strong>{(order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr}</strong>
                             {(order as { cancelledAt?: string | null }).cancelledAt ? (
                               <>
                                 {" "}
-                                le{" "}
-                                {new Date(
-                                  String((order as { cancelledAt?: string | null }).cancelledAt)
-                                ).toLocaleString("fr-FR")}
+                                {t("encounterChrome.chartTabs.onDate")}{" "}
+                                {formatEncounterChromeDateTime(
+                                  String((order as { cancelledAt?: string | null }).cancelledAt),
+                                  language
+                                )}
                               </>
                             ) : null}
                           </>
@@ -4067,13 +4117,14 @@ function OrdersTab({
                         {(order as { cancellationReason?: string | null }).cancellationReason ? (
                           <>
                             <br />
-                            Raison : {(order as { cancellationReason?: string | null }).cancellationReason}
+                            {t("encounterChrome.ordersTab.reason")}:{" "}
+                            {(order as { cancellationReason?: string | null }).cancellationReason}
                           </>
                         ) : null}
                       </div>
                     ) : null}
                   </td>
-                  <td style={{ padding: 12, verticalAlign: "top" }}>{getOrderPriorityLabelFr(order.priority)}</td>
+                  <td style={{ padding: 12, verticalAlign: "top" }}>{tOrderPriority(t, order.priority)}</td>
                   <td style={{ padding: 12, verticalAlign: "top", fontSize: 13 }}>
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                       {(order.items || []).map((it: any) => (
@@ -4081,30 +4132,41 @@ function OrdersTab({
                           <strong>{formatOrderItemLineFr(it)}</strong>
                           {order.type === "MEDICATION" && !medicationLineClinicallyExecuted(it) ? (
                             <div style={{ fontSize: 12, color: "#555" }}>
-                              {medicationIntentLabelFr(it.medicationFulfillmentIntent)} · Qté : {it.quantity ?? "—"}
-                              {it.refillCount != null ? ` · Renouvellements : ${it.refillCount}` : ""}
-                              {it.notes ? ` · Posologie : ${it.notes}` : ""}
+                              {tMedicationFulfillmentIntent(t, it.medicationFulfillmentIntent)} ·{" "}
+                              {t("encounterChrome.ordersTab.qtyAbbrev")}: {it.quantity ?? t("common.dash")}
+                              {it.refillCount != null
+                                ? ` · ${t("encounterChrome.ordersTab.refills")}: ${it.refillCount}`
+                                : ""}
+                              {it.notes ? ` · ${t("encounterChrome.ordersTab.dosing")}: ${it.notes}` : ""}
                             </div>
                           ) : null}
                           {it.completedAt && it.completedByNurse ? (
                             <div style={{ fontSize: 12, color: "#2e7d32" }}>
-                              Administré par {it.completedByNurse.firstName} {it.completedByNurse.lastName} le{" "}
-                              {new Date(it.completedAt).toLocaleString("fr-FR")}
+                              {t("encounterChrome.ordersTab.administeredBy")} {it.completedByNurse.firstName}{" "}
+                              {it.completedByNurse.lastName} {t("encounterChrome.chartTabs.onDate")}{" "}
+                              {formatEncounterChromeDateTime(it.completedAt, language)}
                             </div>
                           ) : order.type === "MEDICATION" &&
                             Array.isArray(it.medicationAdministrations) &&
                             it.medicationAdministrations[0]?.administeredAt &&
                             it.medicationAdministrations[0]?.administeredBy ? (
                             <div style={{ fontSize: 12, color: "#2e7d32" }}>
-                              Administré par {it.medicationAdministrations[0].administeredBy.firstName}{" "}
-                              {it.medicationAdministrations[0].administeredBy.lastName} le{" "}
-                              {new Date(it.medicationAdministrations[0].administeredAt).toLocaleString("fr-FR")}
+                              {t("encounterChrome.ordersTab.administeredBy")}{" "}
+                              {it.medicationAdministrations[0].administeredBy.firstName}{" "}
+                              {it.medicationAdministrations[0].administeredBy.lastName}{" "}
+                              {t("encounterChrome.chartTabs.onDate")}{" "}
+                              {formatEncounterChromeDateTime(
+                                it.medicationAdministrations[0].administeredAt,
+                                language
+                              )}
                             </div>
                           ) : order.type === "MEDICATION" && it.pharmacyDispenseRecord?.dispensedAt ? (
                             <div style={{ fontSize: 12, color: "#1565c0" }}>
-                              Délivré par {it.pharmacyDispenseRecord.dispensedBy?.firstName ?? ""}{" "}
-                              {it.pharmacyDispenseRecord.dispensedBy?.lastName ?? ""} le{" "}
-                              {new Date(it.pharmacyDispenseRecord.dispensedAt).toLocaleString("fr-FR")}
+                              {t("encounterChrome.ordersTab.dispensedBy")}{" "}
+                              {it.pharmacyDispenseRecord.dispensedBy?.firstName ?? ""}{" "}
+                              {it.pharmacyDispenseRecord.dispensedBy?.lastName ?? ""}{" "}
+                              {t("encounterChrome.chartTabs.onDate")}{" "}
+                              {formatEncounterChromeDateTime(it.pharmacyDispenseRecord.dispensedAt, language)}
                             </div>
                           ) : null}
                         </li>
@@ -4113,8 +4175,10 @@ function OrdersTab({
                   </td>
                   <td style={{ padding: 12, verticalAlign: "top", whiteSpace: "normal", fontSize: 13 }}>
                     {order.orderedByDisplayFr?.trim()
-                      ? `Ordre saisi par ${order.orderedByDisplayFr.trim()} — ${new Date(order.createdAt).toLocaleString("fr-FR")}`
-                      : new Date(order.createdAt).toLocaleString("fr-FR")}
+                      ? t("encounterChrome.ordersTab.orderedByLine")
+                          .replace("{name}", order.orderedByDisplayFr.trim())
+                          .replace("{datetime}", formatEncounterChromeDateTime(order.createdAt, language))
+                      : formatEncounterChromeDateTime(order.createdAt, language)}
                   </td>
                   {(canPrescribe || isRn) && (
                     <td style={{ padding: 12, verticalAlign: "top" }}>
@@ -4125,7 +4189,7 @@ function OrdersTab({
                             onClick={() => handlePrintRx(order)}
                             style={{ padding: "4px 12px", fontSize: 13, cursor: "pointer", border: "1px solid #ddd", borderRadius: 4 }}
                           >
-                            Imprimer
+                            {t("encounterChrome.ordersTab.print")}
                           </button>
                         ) : null}
                         {canCancelWholeOrder &&
@@ -4149,12 +4213,14 @@ function OrdersTab({
                               color: "#c62828",
                             }}
                           >
-                            Annuler la commande
+                            {t("encounterChrome.ordersTab.cancelOrder")}
                           </button>
                         ) : null}
                       </div>
                       {order.type === "MEDICATION" && order.prescriberName ? (
-                        <div style={{ fontSize: 12, color: "#555", marginTop: 8 }}>Prescripteur : {order.prescriberName}</div>
+                        <div style={{ fontSize: 12, color: "#555", marginTop: 8 }}>
+                          {t("encounterChrome.ordersTab.prescriberLabel")}: {order.prescriberName}
+                        </div>
                       ) : null}
                     </td>
                   )}

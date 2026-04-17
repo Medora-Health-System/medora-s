@@ -3,7 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
-import { getEncounterTypeLabelFr } from "@/lib/uiLabels";
+import type { SupportedLanguage } from "@/i18n/config";
+import {
+  formatEncounterChromeDateTime,
+  tEncounterType,
+  tMedicationFulfillmentIntent,
+} from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { nursingAssessmentDisplayLines, nursingAssessmentSignatureLineFr } from "./patientChartHelpers";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
@@ -18,16 +24,15 @@ const emptyBox: React.CSSProperties = {
   borderRadius: 6,
 };
 
-function formatDt(iso: string) {
-  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-}
-
-function orderTypeFr(t: string): string {
-  if (t === "LAB") return "Laboratoire";
-  if (t === "IMAGING") return "Imagerie";
-  if (t === "MEDICATION") return "Médicaments";
-  if (t === "CARE") return "Soins / procédures";
-  return "Autre";
+function chartOrderTypeLabel(t: (k: string) => string, type: string): string {
+  const map: Record<string, string> = {
+    LAB: "orderTypeLAB",
+    IMAGING: "orderTypeIMAGING",
+    MEDICATION: "orderTypeMEDICATION",
+    CARE: "orderTypeCARE",
+  };
+  const sub = map[type] ?? "orderTypeOTHER";
+  return t(`encounterChrome.chartTabs.${sub}`);
 }
 
 function flattenItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] {
@@ -38,19 +43,30 @@ function flattenItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] {
   return items;
 }
 
-function EncounterBlock({ enc, children }: { enc: ChartSummaryEncounter; children: React.ReactNode }) {
+function EncounterBlock({
+  enc,
+  children,
+  t,
+  language,
+}: {
+  enc: ChartSummaryEncounter;
+  children: React.ReactNode;
+  t: (k: string) => string;
+  language: SupportedLanguage;
+}) {
+  const formatDt = (iso: string) => formatEncounterChromeDateTime(iso, language);
   const nursing = nursingAssessmentDisplayLines(enc.nursingAssessment);
   const nursingSig = nursingAssessmentSignatureLineFr(enc.nursingAssessment);
   return (
     <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>
         <Link href={`/app/encounters/${enc.id}`} style={{ color: "#0d47a1", textDecoration: "none" }}>
-          {getEncounterTypeLabelFr(enc.type)} — le {formatDt(enc.createdAt)}
+          {tEncounterType(t, enc.type)} — {formatDt(enc.createdAt)}
         </Link>
       </div>
       {nursing.length > 0 ? (
         <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
-          <strong>Évaluation infirmière :</strong>
+          <strong>{t("encounterChrome.chartTabs.nursingHeading")}</strong>
           <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
             {nursing.slice(0, 8).map((line, i) => (
               <li key={i}>{line}</li>
@@ -73,7 +89,9 @@ function EncounterBlock({ enc, children }: { enc: ChartSummaryEncounter; childre
             lineHeight: 1.45,
           }}
         >
-          Signé par {enc.providerDocumentationSignedByDisplayFr} le {formatDt(enc.providerDocumentationSignedAt)}
+          {t("encounterChrome.chartTabs.signedBy")
+            .replace("{name}", enc.providerDocumentationSignedByDisplayFr)
+            .replace("{datetime}", formatDt(enc.providerDocumentationSignedAt))}
         </div>
       ) : null}
       {(enc.providerAddenda ?? []).length > 0 ? (
@@ -81,7 +99,9 @@ function EncounterBlock({ enc, children }: { enc: ChartSummaryEncounter; childre
           {(enc.providerAddenda ?? []).map((ad) => (
             <div key={ad.id} style={{ marginBottom: 10 }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                Addendum par {ad.createdByDisplayFr ?? "—"} le {formatDt(ad.createdAt)}
+                {t("encounterChrome.chartTabs.addendumBy")
+                  .replace("{name}", ad.createdByDisplayFr ?? "—")
+                  .replace("{datetime}", formatDt(ad.createdAt))}
               </div>
               <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{ad.text}</div>
             </div>
@@ -94,8 +114,9 @@ function EncounterBlock({ enc, children }: { enc: ChartSummaryEncounter; childre
 }
 
 export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartSummary | null }) {
+  const { t, language } = useI18n();
   if (!chartSummary?.recentEncounters?.length) {
-    return <div style={emptyBox}>Aucune consultation récente.</div>;
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoRecentEncounters")}</div>;
   }
   let hasRows = false;
   const blocks = chartSummary.recentEncounters.map((enc) => {
@@ -103,23 +124,30 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
     if (orders.length === 0) return null;
     hasRows = true;
     return (
-      <EncounterBlock enc={enc} key={enc.id}>
+      <EncounterBlock enc={enc} key={enc.id} t={t} language={language}>
         {orders.map((o) => (
           <div key={o.id} style={{ marginBottom: 12, fontSize: 14 }}>
-            <div style={{ fontWeight: 600, color: "#455a64" }}>{orderTypeFr(o.type)}</div>
+            <div style={{ fontWeight: 600, color: "#455a64" }}>{chartOrderTypeLabel(t, o.type)}</div>
             {o.status === "CANCELLED" &&
             (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason) ? (
               <div style={{ fontSize: 12, color: "#b71c1c", marginTop: 4, marginBottom: 6, lineHeight: 1.45 }}>
                 {o.cancelledByDisplayFr ? (
                   <>
-                    Annulée par <strong>{o.cancelledByDisplayFr}</strong>
-                    {o.cancelledAt ? <> le {formatDt(o.cancelledAt)}</> : null}
+                    {t("encounterChrome.chartTabs.orderCancelledBy")}{" "}
+                    <strong>{o.cancelledByDisplayFr}</strong>
+                    {o.cancelledAt ? (
+                      <>
+                        {" "}
+                        {t("encounterChrome.chartTabs.onDate")}{" "}
+                        {formatEncounterChromeDateTime(o.cancelledAt, language)}
+                      </>
+                    ) : null}
                   </>
                 ) : null}
                 {o.cancellationReason ? (
                   <>
                     {o.cancelledByDisplayFr || o.cancelledAt ? <br /> : null}
-                    Raison : {o.cancellationReason}
+                    {t("encounterChrome.chartTabs.reasonPrefix")}: {o.cancellationReason}
                   </>
                 ) : null}
               </div>
@@ -136,13 +164,14 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
       </EncounterBlock>
     );
   });
-  if (!hasRows) return <div style={emptyBox}>Aucun ordre enregistré sur les consultations récentes.</div>;
+  if (!hasRows) return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoOrders")}</div>;
   return <div>{blocks}</div>;
 }
 
 export function PatientResultsTabContent({ chartSummary }: { chartSummary: ChartSummary | null }) {
+  const { t, language } = useI18n();
   if (!chartSummary?.recentEncounters?.length) {
-    return <div style={emptyBox}>Aucune consultation récente.</div>;
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoRecentEncounters")}</div>;
   }
   const blocks: React.ReactNode[] = [];
   for (const enc of chartSummary.recentEncounters) {
@@ -159,8 +188,10 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
     );
     if (withResults.length === 0) continue;
     blocks.push(
-      <EncounterBlock enc={enc} key={`res-${enc.id}`}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "#455a64" }}>Résultats</div>
+      <EncounterBlock enc={enc} key={`res-${enc.id}`} t={t} language={language}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "#455a64" }}>
+          {t("encounterChrome.chartTabs.sectionResults")}
+        </div>
         {withResults.map((it) => {
           const v = clinicalResultFromChartOrderItem({
             displayLabel: it.displayLabel,
@@ -186,21 +217,26 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
       </EncounterBlock>
     );
   }
-  if (blocks.length === 0) return <div style={emptyBox}>Aucun résultat laboratoire ou imagerie sur le dossier récent.</div>;
+  if (blocks.length === 0) {
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoLabImagingResults")}</div>;
+  }
   return <div>{blocks}</div>;
 }
 
 export function PatientImagingTabContent({ chartSummary }: { chartSummary: ChartSummary | null }) {
+  const { t, language } = useI18n();
   if (!chartSummary?.recentEncounters?.length) {
-    return <div style={emptyBox}>Aucune consultation récente.</div>;
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoRecentEncounters")}</div>;
   }
   const blocks: React.ReactNode[] = [];
   for (const enc of chartSummary.recentEncounters) {
     const all = flattenItems(enc).filter((it) => it.catalogItemType === "IMAGING_STUDY");
     if (all.length === 0) continue;
     blocks.push(
-      <EncounterBlock enc={enc} key={`img-${enc.id}`}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#455a64" }}>Imagerie demandée</div>
+      <EncounterBlock enc={enc} key={`img-${enc.id}`} t={t} language={language}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#455a64" }}>
+          {t("encounterChrome.chartTabs.imagingTabTitle")}
+        </div>
         <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
           {all.map((it) => (
             <li key={it.id}>
@@ -222,7 +258,9 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
           if (withResults.length === 0) return null;
           return (
             <>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "#455a64" }}>Comptes rendus</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "#455a64" }}>
+                {t("encounterChrome.chartTabs.sectionReports")}
+              </div>
               {withResults.map((it) => {
                 const v = clinicalResultFromChartOrderItem({
                   displayLabel: it.displayLabel,
@@ -251,13 +289,16 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
       </EncounterBlock>
     );
   }
-  if (blocks.length === 0) return <div style={emptyBox}>Aucune demande d’imagerie sur les consultations récentes.</div>;
+  if (blocks.length === 0) {
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoImagingRequests")}</div>;
+  }
   return <div>{blocks}</div>;
 }
 
 export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: ChartSummary | null }) {
+  const { t, language } = useI18n();
   if (!chartSummary?.recentEncounters?.length) {
-    return <div style={emptyBox}>Aucune consultation récente.</div>;
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoRecentEncounters")}</div>;
   }
   const globalDisp = chartSummary.recentMedicationDispenses ?? [];
   const blocks: React.ReactNode[] = [];
@@ -267,10 +308,12 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
     const administered = medLines.filter((it) => it.completedAt);
     if (medLines.length === 0 && encDisp.length === 0) continue;
     blocks.push(
-      <EncounterBlock enc={enc} key={`med-${enc.id}`}>
+      <EncounterBlock enc={enc} key={`med-${enc.id}`} t={t} language={language}>
         {medLines.length > 0 ? (
           <>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#455a64" }}>Prescriptions</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#455a64" }}>
+              {t("encounterChrome.chartTabs.sectionPrescriptions")}
+            </div>
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {medLines.map((it) => (
                 <li key={it.id}>
@@ -280,14 +323,21 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                     <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
                       {it.cancelledByDisplayFr ? (
                         <>
-                          Annulée par <strong>{it.cancelledByDisplayFr}</strong>
-                          {it.cancelledAt ? <> le {formatDt(it.cancelledAt)}</> : null}
+                          {t("encounterChrome.chartTabs.orderCancelledBy")}{" "}
+                          <strong>{it.cancelledByDisplayFr}</strong>
+                          {it.cancelledAt ? (
+                            <>
+                              {" "}
+                              {t("encounterChrome.chartTabs.onDate")}{" "}
+                              {formatEncounterChromeDateTime(it.cancelledAt, language)}
+                            </>
+                          ) : null}
                         </>
                       ) : null}
                       {it.cancellationReason ? (
                         <>
                           {it.cancelledByDisplayFr || it.cancelledAt ? <br /> : null}
-                          Raison : {it.cancellationReason}
+                          {t("encounterChrome.chartTabs.reasonPrefix")}: {it.cancellationReason}
                         </>
                       ) : null}
                     </div>
@@ -297,9 +347,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                   !it.completedAt &&
                   !isOrderItemDoneForChart(it.status) ? (
                     <div style={{ fontSize: 12, color: "#616161", marginTop: 4 }}>
-                      {it.medicationFulfillmentIntent === "ADMINISTER_CHART"
-                        ? "À administrer au patient"
-                        : "À envoyer à la pharmacie"}
+                      {tMedicationFulfillmentIntent(t, it.medicationFulfillmentIntent)}
                     </div>
                   ) : null}
                 </li>
@@ -310,16 +358,22 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
         {administered.length > 0 ? (
           <>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#455a64" }}>
-              Médicaments administrés (dossier)
+              {t("encounterChrome.chartTabs.administeredInChart")}
             </div>
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {administered.map((it) => (
                 <li key={`adm-${it.id}`}>
                   <strong>{it.displayLabel}</strong>
                   {it.completedAt && it.completedBy
-                    ? ` — Administré par ${it.completedBy.firstName} ${it.completedBy.lastName} le ${formatDt(it.completedAt)}`
+                    ? t("encounterChrome.chartTabs.medicationAdministeredFull")
+                        .replace("{firstName}", it.completedBy.firstName ?? "")
+                        .replace("{lastName}", it.completedBy.lastName ?? "")
+                        .replace("{datetime}", formatEncounterChromeDateTime(it.completedAt, language))
                     : it.completedAt
-                      ? ` — le ${formatDt(it.completedAt)}`
+                      ? t("encounterChrome.chartTabs.medicationAdministeredShort").replace(
+                          "{datetime}",
+                          formatEncounterChromeDateTime(it.completedAt, language)
+                        )
                       : null}
                 </li>
               ))}
@@ -329,7 +383,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
         {encDisp.length > 0 ? (
           <>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#455a64" }}>
-              Médicaments délivrés par la pharmacie
+              {t("encounterChrome.chartTabs.pharmacyDispensed")}
             </div>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14 }}>
               {encDisp.map((d) => {
@@ -339,9 +393,18 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                   : null;
                 return (
                   <li key={d.id}>
-                    <strong>{label}</strong> × {d.quantityDispensed}
-                    {by ? ` — par ${by}` : null}
-                    {` — le ${formatDt(d.dispensedAt)}`}
+                    <strong>{label}</strong>{" "}
+                    {t("encounterChrome.chartTabs.pharmacyQuantityTimes").replace(
+                      "{quantity}",
+                      String(d.quantityDispensed)
+                    )}
+                    {by
+                      ? t("encounterChrome.chartTabs.pharmacyDispensedBy").replace("{name}", by)
+                      : ""}
+                    {t("encounterChrome.chartTabs.pharmacyDispensedAt").replace(
+                      "{datetime}",
+                      formatEncounterChromeDateTime(d.dispensedAt, language)
+                    )}
                     {d.dosageInstructions ? ` — ${d.dosageInstructions}` : null}
                   </li>
                 );
@@ -353,14 +416,19 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
     );
   }
 
-  return wrapWithGlobalDispenseChart(blocks, globalDisp);
+  return wrapWithGlobalDispenseChart(blocks, globalDisp, t, language);
 }
 
-function wrapWithGlobalDispenseChart(blocks: React.ReactNode[], globalDisp: ChartSummary["recentMedicationDispenses"]) {
+function wrapWithGlobalDispenseChart(
+  blocks: React.ReactNode[],
+  globalDisp: ChartSummary["recentMedicationDispenses"],
+  t: (k: string) => string,
+  language: SupportedLanguage
+) {
   const extra =
     globalDisp.length > 0 ? (
       <div style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Dernières dispensations (toutes consultations)</h3>
+        <h3 style={{ fontSize: 15, marginBottom: 8 }}>{t("encounterChrome.chartTabs.lastDispensesAll")}</h3>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14 }}>
           {globalDisp.slice(0, 25).map((d) => {
             const label = d.catalogMedication.displayNameFr?.trim() || d.catalogMedication.name;
@@ -369,9 +437,16 @@ function wrapWithGlobalDispenseChart(blocks: React.ReactNode[], globalDisp: Char
               : null;
             return (
               <li key={d.id}>
-                <strong>{label}</strong> × {d.quantityDispensed}
-                {by ? ` — par ${by}` : null}
-                {` — le ${formatDt(d.dispensedAt)}`}
+                <strong>{label}</strong>{" "}
+                {t("encounterChrome.chartTabs.pharmacyQuantityTimes").replace(
+                  "{quantity}",
+                  String(d.quantityDispensed)
+                )}
+                {by ? t("encounterChrome.chartTabs.pharmacyDispensedBy").replace("{name}", by) : ""}
+                {t("encounterChrome.chartTabs.pharmacyDispensedAt").replace(
+                  "{datetime}",
+                  formatEncounterChromeDateTime(d.dispensedAt, language)
+                )}
               </li>
             );
           })}
@@ -380,7 +455,7 @@ function wrapWithGlobalDispenseChart(blocks: React.ReactNode[], globalDisp: Char
     ) : null;
 
   if (blocks.length === 0 && !extra) {
-    return <div style={emptyBox}>Aucune prescription ni dispensation sur les consultations récentes.</div>;
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.emptyNoRx")}</div>;
   }
 
   return (
@@ -392,19 +467,18 @@ function wrapWithGlobalDispenseChart(blocks: React.ReactNode[], globalDisp: Char
 }
 
 export function PatientAuditTimelineTabContent({ chartSummary }: { chartSummary: ChartSummary | null }) {
+  const { t, language } = useI18n();
   const items = chartSummary?.auditTimeline ?? [];
   if (items.length === 0) {
-    return (
-      <div style={emptyBox}>
-        Aucun événement d&apos;historique récent pour ce dossier.
-      </div>
-    );
+    return <div style={emptyBox}>{t("encounterChrome.chartTabs.auditEmpty")}</div>;
   }
   return (
     <div>
-      <h3 style={{ fontSize: 15, marginTop: 0, marginBottom: 8, fontWeight: 600 }}>Historique du dossier</h3>
+      <h3 style={{ fontSize: 15, marginTop: 0, marginBottom: 8, fontWeight: 600 }}>
+        {t("encounterChrome.chartTabs.auditTitle")}
+      </h3>
       <p style={{ fontSize: 13, color: "#616161", marginBottom: 16, lineHeight: 1.45 }}>
-        Qui a fait quoi et quand — lecture seule.
+        {t("encounterChrome.chartTabs.auditSubtitle")}
       </p>
       <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
         {items.map((it) => (
@@ -419,9 +493,15 @@ export function PatientAuditTimelineTabContent({ chartSummary }: { chartSummary:
           >
             <div style={{ fontWeight: 600, color: "#37474f" }}>{it.shortLabelFr}</div>
             <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
-              {it.userDisplayFr ? <>par {it.userDisplayFr}</> : <span>—</span>}
+              {it.userDisplayFr ? (
+                <>
+                  {t("encounterChrome.byPrefix")} {it.userDisplayFr}
+                </>
+              ) : (
+                <span>{t("common.dash")}</span>
+              )}
               {" — "}
-              {formatDt(it.createdAt)}
+              {formatEncounterChromeDateTime(it.createdAt, language)}
             </div>
             {it.detailFr ? (
               <div style={{ fontSize: 12, color: "#546e7a", marginTop: 6 }}>{it.detailFr}</div>
