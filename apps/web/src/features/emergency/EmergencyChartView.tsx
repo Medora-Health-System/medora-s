@@ -4,9 +4,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
-import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { getEncounterStatusBoardLabelFr, getEncounterTypeLabelFr, ui } from "@/lib/uiLabels";
+import {
+  formatEncounterChromeDateTime,
+  formatPatientAgeSexLine,
+  tEncounterStatus,
+  tEncounterType,
+} from "@/lib/encounterChromeI18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
@@ -106,17 +110,8 @@ function patientInitials(p: PatientLite | null | undefined): string {
   return (a + b).toUpperCase() || "?";
 }
 
-function fullPatientName(p: PatientLite | null | undefined): string {
-  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
-}
-
-function formatDateTimeFr(iso: string | null | undefined): string {
-  if (!iso) return ui.common.dash;
-  try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-  } catch {
-    return ui.common.dash;
-  }
+function fullPatientName(p: PatientLite | null | undefined, dash: string): string {
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || dash;
 }
 
 function statusSoft(status: string): PriorityBadgeSoft {
@@ -157,6 +152,15 @@ const sectionTitle: React.CSSProperties = {
 export function EmergencyChartView() {
   const params = useParams();
   const { t, language } = useI18n();
+  const dash = t("common.dash");
+  const formatEncounterDt = (iso: string | null | undefined) => {
+    if (!iso) return dash;
+    try {
+      return formatEncounterChromeDateTime(iso, language);
+    } catch {
+      return dash;
+    }
+  };
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
     useFacilityAndRoles();
@@ -313,11 +317,11 @@ export function EmergencyChartView() {
   }, [triageSnapshot, language]);
 
   const complaintLine = useMemo(() => {
-    if (!encounter) return ui.common.dash;
+    if (!encounter) return dash;
     const raw =
       (encounter.visitReason || "").trim() || (encounter.chiefComplaint || "").trim();
-    return raw || ui.common.dash;
-  }, [encounter]);
+    return raw || dash;
+  }, [encounter, dash]);
 
   const erCdsRecommendations = useMemo(
     () =>
@@ -347,7 +351,7 @@ export function EmergencyChartView() {
 
   if (!rolesReady || !fid) {
     return (
-      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{ui.common.loading}</div>
+      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{t("common.loading")}</div>
     );
   }
 
@@ -361,7 +365,7 @@ export function EmergencyChartView() {
 
   if (loading && !encounter) {
     return (
-      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{ui.common.loading}</div>
+      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{t("common.loading")}</div>
     );
   }
 
@@ -381,7 +385,7 @@ export function EmergencyChartView() {
   const patient = encounter.patient;
   const statusKey = (encounter.status ?? "").trim() || "OPEN";
   const typeKey = (encounter.type ?? "").trim() || "—";
-  const roomDisplay = encounter.roomLabel?.trim() || ui.common.dash;
+  const roomDisplay = encounter.roomLabel?.trim() || dash;
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
   const vitalsQuickEditEnabled =
@@ -490,30 +494,37 @@ export function EmergencyChartView() {
 
                 <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                   <MedoraCardTitle
-                    title={fullPatientName(patient ?? undefined)}
+                    title={fullPatientName(patient ?? undefined, dash)}
                     subline={
                       <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>
-                        <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
-                        {(patient?.mrn ?? patient?.nationalId ?? "").trim() || ui.common.dash}
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.nir")}</span>{" "}
+                        {(patient?.mrn ?? patient?.nationalId ?? "").trim() || dash}
                         {" · "}
-                        <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
-                        {formatAgeYearsSexFr(patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.ageSex")}</span>{" "}
+                        {formatPatientAgeSexLine(
+                          patient?.dob ?? null,
+                          patient?.sexAtBirth ?? null,
+                          patient?.sex ?? null,
+                          t
+                        )}
                       </p>
                     }
                   />
                   <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#334155", lineHeight: 1.45 }}>
-                    <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>{ui.common.chiefComplaintShort}</span>
+                    <span style={{ fontWeight: 600, color: "#64748b", fontSize: 12 }}>
+                      {t("encounterChrome.chiefComplaintShort")}
+                    </span>
                     {" — "}
                     {complaintLine}
                   </p>
                   <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                    <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                    {formatDateTimeFr(encounter.createdAt ?? null)}
+                    <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.arrival")}</span>{" "}
+                    {formatEncounterDt(encounter.createdAt ?? null)}
                     {encounter.admittedAt ? (
                       <>
                         {" · "}
-                        <span style={{ fontWeight: 600, color: "#475569" }}>Admission</span>{" "}
-                        {formatDateTimeFr(encounter.admittedAt)}
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("patientChartUi.admissionLabel")}</span>{" "}
+                        {formatEncounterDt(encounter.admittedAt)}
                       </>
                     ) : null}
                   </p>
@@ -602,7 +613,7 @@ export function EmergencyChartView() {
                         color: "#0369a1",
                       }}
                     >
-                      {ui.common.room}
+                      {t("encounterChrome.room")}
                     </div>
 
                     <div
@@ -620,9 +631,9 @@ export function EmergencyChartView() {
                     </div>
                   </div>
                   <MedoraCardBadgeRow marginTop={0}>
-                    <MedoraCardBadge soft={statusSoft(statusKey)}>{getEncounterStatusBoardLabelFr(statusKey)}</MedoraCardBadge>
+                    <MedoraCardBadge soft={statusSoft(statusKey)}>{tEncounterStatus(t, statusKey)}</MedoraCardBadge>
                     <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
-                      {getEncounterTypeLabelFr(typeKey)}
+                      {tEncounterType(t, typeKey)}
                     </MedoraCardBadge>
                   </MedoraCardBadgeRow>
                 </div>

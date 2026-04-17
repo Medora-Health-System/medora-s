@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
+import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
 import { CreateOrderModal } from "@/components/orders";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
@@ -44,7 +45,12 @@ function domainHeadingKey(d: ErOrderDomain): string {
   }
 }
 
-function extractLineLabelsForDomain(orders: unknown[], domain: ErOrderDomain): string[] {
+function extractLineLabelsForDomain(
+  orders: unknown[],
+  domain: ErOrderDomain,
+  language: SupportedLanguage,
+  tr: (k: string) => string
+): string[] {
   const out: string[] = [];
   const typeStr =
     domain === "LAB"
@@ -60,7 +66,11 @@ function extractLineLabelsForDomain(orders: unknown[], domain: ErOrderDomain): s
     if (o.type !== typeStr) continue;
     const items = Array.isArray(o.items) ? o.items : [];
     for (const it of items) {
-      const label = getOrderItemDisplayLabelFr(it as Parameters<typeof getOrderItemDisplayLabelFr>[0]);
+      const label = getOrderItemDisplayLabelForLanguage(
+        it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+        language,
+        tr
+      );
       if (label.trim()) out.push(label.trim());
     }
   }
@@ -98,7 +108,7 @@ export function EmergencyErOrdersPanel({
   cdsIntent?: string | null;
   onConsumeIntent?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
@@ -126,13 +136,13 @@ export function EmergencyErOrdersPanel({
   const labelsByDomain = useMemo(() => {
     if (!ordersRaw) return null;
     const rec: Record<ErOrderDomain, string[]> = {
-      LAB: extractLineLabelsForDomain(ordersRaw, "LAB"),
-      IMAGING: extractLineLabelsForDomain(ordersRaw, "IMAGING"),
-      MEDICATION: extractLineLabelsForDomain(ordersRaw, "MEDICATION"),
-      CARE: extractLineLabelsForDomain(ordersRaw, "CARE"),
+      LAB: extractLineLabelsForDomain(ordersRaw, "LAB", language, t),
+      IMAGING: extractLineLabelsForDomain(ordersRaw, "IMAGING", language, t),
+      MEDICATION: extractLineLabelsForDomain(ordersRaw, "MEDICATION", language, t),
+      CARE: extractLineLabelsForDomain(ordersRaw, "CARE", language, t),
     };
     return rec;
-  }, [ordersRaw]);
+  }, [ordersRaw, language, t]);
 
   const openModal = (tab: OrderModalTab) => {
     setCreateModalInitialTab(tab);

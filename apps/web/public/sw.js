@@ -47,7 +47,13 @@ self.addEventListener("fetch", (event) => {
         .catch(async () => {
           const cached = await caches.match(req);
           if (cached) return cached;
-          return caches.match(OFFLINE_URL);
+          const offline = await caches.match(OFFLINE_URL);
+          if (offline) return offline;
+          return new Response("Service unavailable", {
+            status: 503,
+            statusText: "Service Unavailable",
+            headers: { "Content-Type": "text/plain; charset=UTF-8" },
+          });
         })
     );
     return;
@@ -65,8 +71,14 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       })
-      .catch(() => {
-        return caches.match(req);
+      .catch(async () => {
+        const cached = await caches.match(req);
+        if (cached) return cached;
+        return new Response("Service unavailable", {
+          status: 503,
+          statusText: "Service Unavailable",
+          headers: { "Content-Type": "text/plain; charset=UTF-8" },
+        });
       })
   );
 });

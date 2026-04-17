@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
@@ -19,21 +19,9 @@ import type { CreateOrderLineItem, OrderModalTab } from "./createOrderModal/type
 import { newOrderLineId } from "./createOrderModal/types";
 import { useI18n } from "@/lib/i18n";
 
-/** Préréglages — ordre type CARE, ligne catalogItemType CARE + manualLabel. */
-const CARE_PROCEDURE_PRESETS_FR = [
-  "Pose de voie IV",
-  "Administration d'oxygène",
-  "Pansement / soin de plaie",
-  "Nébulisation",
-  "Pose de sonde urinaire",
-  "Aspiration",
-  "Surveillance",
-  "Autre soin infirmier",
-] as const;
-
-function mapOrderCreateError(err: unknown): string {
+function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
   const msg = err instanceof Error ? err.message : "";
-  return normalizeUserFacingError(msg.trim() || null) || "Impossible de créer l'ordre.";
+  return normalizeUserFacingError(msg.trim() || null) || t("createOrderModal.mapOrderCreateError");
 }
 
 function catalogLineLabel(item: CatalogSearchItem): string {
@@ -171,7 +159,8 @@ export function CreateOrderModal({
   onSuccess: () => void;
   onRefetchEncounter?: () => Promise<void>;
 }) {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
+  const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
   const firstTab: OrderModalTab =
     !canPrescribe && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE") ? "LAB" : initialOrderTab;
 
@@ -334,18 +323,18 @@ export function CreateOrderModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.items.length === 0) {
-      setError("Veuillez sélectionner au moins un élément");
+      setError(t("createOrderModal.errSelectOne"));
       return;
     }
 
     if (formData.type === "MEDICATION") {
       if (!formData.prescriberName.trim()) {
-        setError("Le prescripteur est requis");
+        setError(t("createOrderModal.errPrescriberRequired"));
         return;
       }
       const missingQty = formData.items.some((it) => it.quantity == null || it.quantity < 1);
       if (missingQty) {
-        setError("La quantité est requise");
+        setError(t("createOrderModal.errQuantityRequired"));
         return;
       }
     }
@@ -375,7 +364,7 @@ export function CreateOrderModal({
         // Ne bloquer que si la source de vérité indique explicitement un statut autre qu’OPEN.
         if (latest && typeof latest.status === "string" && latest.status !== "OPEN") {
           await onRefetchEncounter?.();
-          setError("Impossible de créer un ordre : la consultation doit être ouverte.");
+          setError(t("createOrderModal.errEncounterClosed"));
           return;
         }
       } catch {
@@ -409,28 +398,28 @@ export function CreateOrderModal({
       if (isEncounterMustBeOpenForOrderError(raw)) {
         await onRefetchEncounter?.();
       }
-      setError(mapOrderCreateError(err));
+      setError(mapOrderCreateError(err, t));
     } finally {
       setLoading(false);
     }
   };
 
   const title = orderSuccess
-    ? "Ordre créé"
+    ? t("createOrderModal.titleOrderCreated")
     : rxSuccess
-      ? "Ordonnance"
+      ? t("createOrderModal.titlePrescription")
       : activeTab === "MEDICATION"
-        ? "Ordonnance"
-        : "Créer un ordre";
+        ? t("createOrderModal.titlePrescription")
+        : t("createOrderModal.titleCreate");
 
   const searchPlaceholder =
     activeTab === "LAB"
-      ? "Rechercher une analyse (2 caractères min.)"
+      ? t("createOrderModal.searchPlaceholderLab")
       : activeTab === "IMAGING"
-        ? "Rechercher un examen d'imagerie…"
+        ? t("createOrderModal.searchPlaceholderImaging")
         : activeTab === "CARE"
           ? ""
-          : "Rechercher un médicament…";
+          : t("createOrderModal.searchPlaceholderMed");
 
   return (
     <div
@@ -463,9 +452,7 @@ export function CreateOrderModal({
         {orderSuccess && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ fontSize: 14, color: "#444", margin: "0 0 16px", lineHeight: 1.5 }}>
-              {queuedSync
-                ? "Ordre enregistré localement. En attente de synchronisation."
-                : "L&apos;ordre a été enregistré pour cette visite."}
+              {queuedSync ? t("createOrderModal.successQueued") : t("createOrderModal.successOk")}
             </p>
             <button
               type="button"
@@ -484,7 +471,7 @@ export function CreateOrderModal({
                 fontSize: 14,
               }}
             >
-              Continuer
+              {t("createOrderModal.continue")}
             </button>
           </div>
         )}
@@ -504,10 +491,10 @@ export function CreateOrderModal({
                 <>
                   <p style={{ fontSize: 15, color: "#1b5e20", margin: "0 0 16px" }}>
                     {allAdminister
-                      ? "Ordonnance enregistrée — à administrer au patient (dossier de soins)."
+                      ? t("createOrderModal.rxAllAdministerLine")
                       : allPharmacy
-                        ? "Ordonnance enregistrée — à préparer en pharmacie."
-                        : "Ordonnance enregistrée — certaines lignes sont à administrer au patient, d’autres à la pharmacie."}
+                        ? t("createOrderModal.rxAllPharmacyLine")
+                        : t("createOrderModal.rxMixedLine")}
                   </p>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
@@ -550,7 +537,7 @@ export function CreateOrderModal({
                   fontSize: 14,
                 }}
               >
-                Imprimer l&apos;ordonnance
+                {t("createOrderModal.printRx")}
               </button>
               {!allAdminister ? (
               <Link
@@ -566,7 +553,7 @@ export function CreateOrderModal({
                   alignItems: "center",
                 }}
               >
-                Voir la file pharmacie
+                {t("createOrderModal.viewPharmacyQueue")}
               </Link>
               ) : null}
               <button
@@ -585,12 +572,14 @@ export function CreateOrderModal({
                   fontSize: 14,
                 }}
               >
-                Continuer
+                {t("createOrderModal.continue")}
               </button>
             </div>
             <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
-              Date d&apos;enregistrement :{" "}
-              {createdOrder.createdAt ? new Date(createdOrder.createdAt).toLocaleString("fr-FR") : "—"}
+              {t("createOrderModal.recordedAt")}{" "}
+              {createdOrder.createdAt
+                ? new Date(createdOrder.createdAt).toLocaleString(language === "en" ? "en-US" : "fr-FR")
+                : "—"}
             </p>
                 </>
               );
@@ -610,13 +599,14 @@ export function CreateOrderModal({
 
               <div style={{ marginBottom: 12 }}>
                 <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12, color: "#333" }}>
-                  Notes cliniques <span style={{ fontWeight: 400, color: "#888" }}>(optionnel)</span>
+                  {t("createOrderModal.clinicalNotesLabel")}{" "}
+                  <span style={{ fontWeight: 400, color: "#888" }}>{t("createOrderModal.clinicalNotesOptional")}</span>
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData((fd) => ({ ...fd, notes: e.target.value }))}
                   rows={2}
-                  placeholder="Contexte, indication, précisions…"
+                  placeholder={t("createOrderModal.clinicalNotesPlaceholder")}
                   style={{
                     width: "100%",
                     padding: "8px 10px",
@@ -649,10 +639,10 @@ export function CreateOrderModal({
                         textTransform: "uppercase",
                       }}
                     >
-                      Soins / procédures
+                      {t("createOrderModal.sectionCareProcedures")}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                      {CARE_PROCEDURE_PRESETS_FR.map((label) => (
+                      {carePresets.map((label) => (
                         <button
                           key={label}
                           type="button"
@@ -677,7 +667,7 @@ export function CreateOrderModal({
                 ) : (
                   <>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
-                      Recherche et ajout
+                      {t("createOrderModal.sectionSearchAdd")}
                     </div>
                     <SharedCatalogAutocomplete
                       catalogType={catalogTypeForTab(activeTab)}
@@ -710,16 +700,14 @@ export function CreateOrderModal({
                 )}
                 {activeTab === "CARE" && (
                   <SelectedLabItems
-                    listHeading="Soins sélectionnés"
+                    listHeading={t("createOrderModal.selectedCareHeading")}
                     items={formData.items}
                     onRemove={removeItem}
                   />
                 )}
                 {formData.items.length === 0 && (
                   <p style={{ margin: "8px 0 12px", fontSize: 13, color: "#999" }}>
-                    {activeTab === "CARE"
-                      ? "Aucun soin — choisissez un préréglage ci-dessus."
-                      : "Aucun élément — recherchez ci-dessus pour ajouter."}
+                    {activeTab === "CARE" ? t("createOrderModal.emptyCare") : t("createOrderModal.emptyOther")}
                   </p>
                 )}
               </div>
@@ -733,16 +721,18 @@ export function CreateOrderModal({
                   }}
                 >
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 10, textTransform: "uppercase" }}>
-                    Prescription (prescripteur)
+                    {t("createOrderModal.sectionRxHeader")}
                   </div>
                   <div style={{ marginBottom: 10 }}>
-                    <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12 }}>Prescripteur</label>
+                    <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12 }}>
+                      {t("createOrderModal.labelPrescriber")}
+                    </label>
                     <input
                       type="text"
                       readOnly
                       aria-readonly="true"
                       value={formData.prescriberName}
-                      placeholder="Chargement…"
+                      placeholder={t("createOrderModal.prescriberLoadingPlaceholder")}
                       style={{
                         width: "100%",
                         padding: "8px 10px",
@@ -757,25 +747,25 @@ export function CreateOrderModal({
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
                       <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12 }}>
-                        Numéro de licence
+                        {t("createOrderModal.labelLicense")}
                       </label>
                       <input
                         type="text"
                         value={formData.prescriberLicense}
                         onChange={(e) => setFormData((fd) => ({ ...fd, prescriberLicense: e.target.value }))}
-                        placeholder="Optionnel"
+                        placeholder={t("createOrderModal.licenseOptional")}
                         style={{ width: "100%", padding: "8px 10px", border: "1px solid #ccc", borderRadius: 4, fontSize: 14 }}
                       />
                     </div>
                     <div>
                       <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12 }}>
-                        Contact du prescripteur
+                        {t("createOrderModal.labelPrescriberContact")}
                       </label>
                       <input
                         type="text"
                         value={formData.prescriberContact}
                         onChange={(e) => setFormData((fd) => ({ ...fd, prescriberContact: e.target.value }))}
-                        placeholder="Téléphone ou courriel"
+                        placeholder={t("createOrderModal.contactPlaceholder")}
                         style={{ width: "100%", padding: "8px 10px", border: "1px solid #ccc", borderRadius: 4, fontSize: 14 }}
                       />
                     </div>
@@ -804,7 +794,7 @@ export function CreateOrderModal({
                   onClick={onClose}
                   style={{ padding: "10px 18px", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", fontSize: 14, background: "#fff" }}
                 >
-                  Annuler
+                  {t("createOrderModal.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -822,13 +812,13 @@ export function CreateOrderModal({
                 >
                   {loading
                     ? activeTab === "MEDICATION"
-                      ? "Enregistrement…"
-                      : "Envoi…"
+                      ? t("createOrderModal.submitSavingMed")
+                      : t("createOrderModal.submitSending")
                     : activeTab === "MEDICATION"
-                      ? "Enregistrer l'ordonnance"
+                      ? t("createOrderModal.submitSaveRx")
                       : activeTab === "CARE"
-                        ? "Créer l'ordre de soins"
-                        : "Créer l'ordre"}
+                        ? t("createOrderModal.submitCreateCare")
+                        : t("createOrderModal.submitCreateOrder")}
                 </button>
               </div>
             </form>

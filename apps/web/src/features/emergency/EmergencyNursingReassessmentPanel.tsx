@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { ui } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
 import {
   MedoraCard,
   MedoraCardActions,
@@ -91,47 +91,6 @@ const PREVIEW_ACCENTS: Record<string, string> = {
   empty: "#cbd5e1",
 };
 
-function abcSelect(
-  value: ErAbcOption,
-  onChange: (v: ErAbcOption) => void,
-  disabled: boolean
-): React.ReactNode {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as ErAbcOption)}
-      disabled={disabled}
-      style={{ ...inputBase, cursor: disabled ? "not-allowed" : "pointer", backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-    >
-      <option value="">—</option>
-      <option value="wnl">Dans les limites (WNL)</option>
-      <option value="yes">Oui</option>
-      <option value="no">Non</option>
-      <option value="unknown">Inconnu</option>
-    </select>
-  );
-}
-
-function abcdeSelectTrauma(
-  value: ErAbcdeOption,
-  onChange: (v: ErAbcdeOption) => void,
-  disabled: boolean
-): React.ReactNode {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as ErAbcdeOption)}
-      disabled={disabled}
-      style={{ ...inputBase, cursor: disabled ? "not-allowed" : "pointer", backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-    >
-      <option value="">—</option>
-      <option value="normal">Normal</option>
-      <option value="abnormal">Anormal</option>
-      <option value="unknown">Inconnu</option>
-    </select>
-  );
-}
-
 export function EmergencyNursingReassessmentPanel({
   encounterId,
   facilityId,
@@ -148,6 +107,42 @@ export function EmergencyNursingReassessmentPanel({
   /** Lien vers l&apos;onglet évaluation infirmière du dossier (référence complète). */
   nursingTabHref: string;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+
+  const abcSelect = (value: ErAbcOption, onChange: (v: ErAbcOption) => void, disabled: boolean): React.ReactNode => (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as ErAbcOption)}
+      disabled={disabled}
+      style={{ ...inputBase, cursor: disabled ? "not-allowed" : "pointer", backgroundColor: disabled ? "#f8fafc" : "#fff" }}
+    >
+      <option value="">—</option>
+      <option value="wnl">{t("emergencyNursingReassessment.abcOptionWnl")}</option>
+      <option value="yes">{t("emergencyNursingReassessment.abcOptionYes")}</option>
+      <option value="no">{t("emergencyNursingReassessment.abcOptionNo")}</option>
+      <option value="unknown">{t("emergencyNursingReassessment.abcOptionUnknown")}</option>
+    </select>
+  );
+
+  const abcdeSelectTrauma = (
+    value: ErAbcdeOption,
+    onChange: (v: ErAbcdeOption) => void,
+    disabled: boolean
+  ): React.ReactNode => (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as ErAbcdeOption)}
+      disabled={disabled}
+      style={{ ...inputBase, cursor: disabled ? "not-allowed" : "pointer", backgroundColor: disabled ? "#f8fafc" : "#fff" }}
+    >
+      <option value="">—</option>
+      <option value="normal">{t("emergencyNursingReassessment.abcdeOptionNormal")}</option>
+      <option value="abnormal">{t("emergencyNursingReassessment.abcdeOptionAbnormal")}</option>
+      <option value="unknown">{t("emergencyNursingReassessment.abcOptionUnknown")}</option>
+    </select>
+  );
+
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState<ErNursingReassessmentForm>(() =>
     erNursingReassessmentFormFromEncounter(encounter.nursingAssessment)
@@ -222,12 +217,12 @@ export function EmergencyNursingReassessmentPanel({
 
   const esiLine = triage?.esi != null && triage.esi !== "" ? String(triage.esi) : "—";
   const vitalsStrip = useMemo(
-    () => vitalsLineFromTriageVitalsJson(triage?.vitalsJson) || "—",
-    [triage?.vitalsJson]
+    () => vitalsLineFromTriageVitalsJson(triage?.vitalsJson, language) || "—",
+    [triage?.vitalsJson, language]
   );
   const triageUpdated =
     triage?.updatedByDisplayFr && triage?.updatedAt
-      ? `${String(triage.updatedByDisplayFr).trim()} — ${new Date(triage.updatedAt as string).toLocaleString("fr-FR")}`
+      ? `${String(triage.updatedByDisplayFr).trim()} — ${new Date(triage.updatedAt as string).toLocaleString(dateLocale)}`
       : null;
 
   const storedSig = useMemo(() => {
@@ -244,7 +239,7 @@ export function EmergencyNursingReassessmentPanel({
   }, [encounter.nursingAssessment]);
 
   const previewModel = useMemo(() => {
-    const reassess = buildErNursingReassessmentPreviewModel(form);
+    const reassess = buildErNursingReassessmentPreviewModel(form, language);
     const trauma = buildErTraumaSurveyV1PreviewModel(traumaForm);
     const rSecs = reassess.sections.filter((s) => s.id !== "empty");
     const tSecs = trauma.sections;
@@ -252,7 +247,9 @@ export function EmergencyNursingReassessmentPanel({
     const narrative = [reassess.narrative, trauma.narrative].filter(Boolean).join(" ").trim();
     if (sections.length === 0 && !narrative) {
       return {
-        sections: [{ id: "empty", title: "Aperçu", lines: ["Aucune donnée saisie pour l'aperçu."] }],
+        sections: [
+          { id: "empty", title: t("emergencyNursingReassessment.previewEmptyTitle"), lines: [t("emergencyNursingReassessment.previewEmptyLine")] },
+        ],
         narrative: "",
       };
     }
@@ -260,7 +257,7 @@ export function EmergencyNursingReassessmentPanel({
       sections: sections.length > 0 ? sections : reassess.sections,
       narrative,
     };
-  }, [form, traumaForm]);
+  }, [form, traumaForm, t, language]);
 
   const patchForm = useCallback((patch: Partial<ErNursingReassessmentForm>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -275,7 +272,7 @@ export function EmergencyNursingReassessmentPanel({
     setSaving(true);
     setSaveInfo(null);
     try {
-      let savedByDisplayName = "Professionnel";
+      let savedByDisplayName = t("emergencyNursingReassessment.signerFallback");
       try {
         const meRes = await fetch("/api/auth/me");
         const me = await parseApiResponse(meRes);
@@ -301,11 +298,11 @@ export function EmergencyNursingReassessmentPanel({
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       await onSaved();
-      setSaveInfo(queued ? "En attente de synchronisation." : "Réévaluation enregistrée.");
+      setSaveInfo(queued ? t("emergencyNursingReassessment.saveQueued") : t("emergencyNursingReassessment.saveOk"));
     } catch (e) {
       console.error(e);
       setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'enregistrer."
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyNursingReassessment.saveFailed")
       );
     } finally {
       setSaving(false);
@@ -317,11 +314,10 @@ export function EmergencyNursingReassessmentPanel({
       <MedoraCardInner>
         <MedoraCardIdentity initials="S">
           <MedoraCardTitle
-            title="Réévaluation infirmière (urgences)"
+            title={t("emergencyNursingReassessment.cardTitle")}
             subline={
               <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                Progression et réévaluation au box — enregistrée avec le dossier de consultation. Pour
-                l&apos;évaluation structurée par systèmes, ouvrez le lien ci-dessous.
+                {t("emergencyNursingReassessment.cardSubline")}
               </p>
             }
           />
@@ -343,12 +339,12 @@ export function EmergencyNursingReassessmentPanel({
               textDecoration: "none",
             }}
           >
-            Ouvrir l&apos;évaluation infirmière (dossier)
+            {t("emergencyNursingReassessment.openNursingTab")}
           </Link>
         </MedoraCardActions>
 
         {loadingTriage ? (
-          <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{ui.common.loading}</p>
+          <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("common.loading")}</p>
         ) : (
           <>
             {saveInfo ? (
@@ -356,7 +352,10 @@ export function EmergencyNursingReassessmentPanel({
                 style={{
                   margin: "10px 0 0 0",
                   fontSize: 13,
-                  color: saveInfo.includes("Impossible") ? "#b91c1c" : "#15803d",
+                  color:
+                    saveInfo.toLowerCase().includes("impossible") || saveInfo.toLowerCase().includes("unable")
+                      ? "#b91c1c"
+                      : "#15803d",
                   lineHeight: 1.45,
                 }}
               >
@@ -379,7 +378,7 @@ export function EmergencyNursingReassessmentPanel({
                 boxSizing: "border-box",
               }}
             >
-              <MedoraCardRoomBlock label="ESI (triage)" value={esiLine} />
+              <MedoraCardRoomBlock label={t("emergencyNursingReassessment.esiRoomLabel")} value={esiLine} />
               <div style={{ flex: "1 1 200px", minWidth: 180 }}>
                 <p
                   style={{
@@ -391,7 +390,7 @@ export function EmergencyNursingReassessmentPanel({
                     color: "#64748b",
                   }}
                 >
-                  Signes vitaux (triage)
+                  {t("emergencyNursingReassessment.vitalsStripLabel")}
                 </p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#0f172a", lineHeight: 1.45 }}>{vitalsStrip}</p>
               </div>
@@ -406,7 +405,7 @@ export function EmergencyNursingReassessmentPanel({
                     color: "#64748b",
                   }}
                 >
-                  Triage — dernière mise à jour
+                  {t("emergencyNursingReassessment.triageUpdatedLabel")}
                 </p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
                   {triageUpdated ?? "—"}
@@ -417,10 +416,10 @@ export function EmergencyNursingReassessmentPanel({
             <div style={{ ...workspaceStyle, marginTop: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
                 <div>
-                  <p style={sectionHeading}>Réévaluation</p>
+                  <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionReassess")}</p>
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={labelStyle}>Heure de réévaluation</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelReassessmentTime")}</label>
                       <input
                         type="datetime-local"
                         value={form.reassessmentAt}
@@ -430,18 +429,18 @@ export function EmergencyNursingReassessmentPanel({
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Narratif de réévaluation</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelNarrative")}</label>
                       <textarea
                         value={form.narrative}
                         onChange={(e) => patchForm({ narrative: e.target.value })}
                         disabled={formDisabled}
                         rows={4}
                         style={{ ...inputBase, resize: "vertical", minHeight: 88, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                        placeholder="Contexte clinique, événements, observations courtes"
+                        placeholder={t("emergencyNursingReassessment.narrativePlaceholder")}
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Apparence générale</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelGeneralAppearance")}</label>
                       <input
                         type="text"
                         value={form.generalAppearance}
@@ -452,7 +451,7 @@ export function EmergencyNursingReassessmentPanel({
                     </div>
                     <div style={grid2}>
                       <div>
-                        <label style={labelStyle}>Douleur (0–10)</label>
+                        <label style={labelStyle}>{t("emergencyNursingReassessment.labelPain")}</label>
                         <input
                           type="number"
                           min={0}
@@ -464,14 +463,14 @@ export function EmergencyNursingReassessmentPanel({
                         />
                       </div>
                       <div>
-                        <label style={labelStyle}>Statut au lit (mis à jour)</label>
+                        <label style={labelStyle}>{t("emergencyNursingReassessment.labelBedsideStatus")}</label>
                         <input
                           type="text"
                           value={form.bedsideStatus}
                           onChange={(e) => patchForm({ bedsideStatus: e.target.value })}
                           disabled={formDisabled}
                           style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                          placeholder="Position, aide, mobilisation"
+                          placeholder={t("emergencyNursingReassessment.placeholderBedsideStatus")}
                         />
                       </div>
                     </div>
@@ -479,47 +478,46 @@ export function EmergencyNursingReassessmentPanel({
                 </div>
 
                 <div>
-                  <p style={sectionHeading}>ABC</p>
+                  <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionAbc")}</p>
                   <div style={{ marginTop: 10, ...grid3 }}>
                     <div>
-                      <label style={labelStyle}>Voie aérienne</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelAirway")}</label>
                       {abcSelect(form.airway, (v) => patchForm({ airway: v }), formDisabled)}
                     </div>
                     <div>
-                      <label style={labelStyle}>Ventilation</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelBreathing")}</label>
                       {abcSelect(form.breathing, (v) => patchForm({ breathing: v }), formDisabled)}
                     </div>
                     <div>
-                      <label style={labelStyle}>Circulation</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelCirculation")}</label>
                       {abcSelect(form.circulation, (v) => patchForm({ circulation: v }), formDisabled)}
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <p style={sectionHeading}>Signes vitaux (relevé)</p>
+                  <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionVitalsRecheck")}</p>
                   <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                    Le bandeau affiche les valeurs du triage. Complétez ici un résumé textuel si les SV ont été repris au
-                    lit.
+                    {t("emergencyNursingReassessment.vitalsRecheckHelp")}
                   </p>
                   <div style={{ marginTop: 10 }}>
-                    <label style={labelStyle}>Résumé des signes vitaux (texte)</label>
+                    <label style={labelStyle}>{t("emergencyNursingReassessment.labelVitalsSummary")}</label>
                     <textarea
                       value={form.vitalsSummaryNote}
                       onChange={(e) => patchForm({ vitalsSummaryNote: e.target.value })}
                       disabled={formDisabled}
                       rows={3}
                       style={{ ...inputBase, resize: "vertical", minHeight: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                      placeholder="Ex. TA, FC, SpO₂ au moment de la réévaluation"
+                      placeholder={t("emergencyNursingReassessment.placeholderVitalsSummary")}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <p style={sectionHeading}>Réponse et évolution</p>
+                  <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionResponse")}</p>
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={labelStyle}>Réponse au traitement</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelResponseToTreatment")}</label>
                       <textarea
                         value={form.responseToTreatment}
                         onChange={(e) => patchForm({ responseToTreatment: e.target.value })}
@@ -529,7 +527,7 @@ export function EmergencyNursingReassessmentPanel({
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Tendance du patient</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelPatientTrend")}</label>
                       <select
                         value={form.trend}
                         onChange={(e) => patchForm({ trend: e.target.value as ErTrend })}
@@ -537,19 +535,19 @@ export function EmergencyNursingReassessmentPanel({
                         style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                       >
                         <option value="">—</option>
-                        <option value="improved">Amélioration</option>
-                        <option value="unchanged">Stable</option>
-                        <option value="worse">Aggravation</option>
+                        <option value="improved">{t("emergencyNursingReassessment.trendImproved")}</option>
+                        <option value="unchanged">{t("emergencyNursingReassessment.trendUnchanged")}</option>
+                        <option value="worse">{t("emergencyNursingReassessment.trendWorse")}</option>
                       </select>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <p style={sectionHeading}>Soins et sécurité</p>
+                  <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionCareSafety")}</p>
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={labelStyle}>Interventions infirmières réalisées</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelInterventions")}</label>
                       <textarea
                         value={form.interventionsPerformed}
                         onChange={(e) => patchForm({ interventionsPerformed: e.target.value })}
@@ -559,18 +557,18 @@ export function EmergencyNursingReassessmentPanel({
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Sécurité au lit / passage (checklist libre)</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelSafetyRounding")}</label>
                       <textarea
                         value={form.safetyRoundingNote}
                         onChange={(e) => patchForm({ safetyRoundingNote: e.target.value })}
                         disabled={formDisabled}
                         rows={3}
                         style={{ ...inputBase, resize: "vertical", minHeight: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                        placeholder="Rails, risque de chute, voie, surveillance"
+                        placeholder={t("emergencyNursingReassessment.placeholderSafety")}
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Addendum</label>
+                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelAddendum")}</label>
                       <textarea
                         value={form.addendum}
                         onChange={(e) => patchForm({ addendum: e.target.value })}
@@ -598,38 +596,38 @@ export function EmergencyNursingReassessmentPanel({
                       color: "#334155",
                     }}
                   >
-                    Documentation trauma
+                    {t("emergencyNursingReassessment.traumaSummaryLabel")}
                   </summary>
                   <p style={{ margin: "10px 0 8px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                    Examen primaire / secondaire — enregistré avec le dossier (JSON).
+                    {t("emergencyNursingReassessment.traumaSummaryHelp")}
                   </p>
                   <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
                     <div>
-                      <p style={{ ...sectionHeading, fontSize: 10 }}>Examen primaire (ABCDE)</p>
+                      <p style={{ ...sectionHeading, fontSize: 10 }}>{t("emergencyNursingReassessment.traumaPrimaryAbcde")}</p>
                       <div style={{ marginTop: 10, ...grid3 }}>
                         <div>
-                          <label style={labelStyle}>Voie aérienne</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelAirway")}</label>
                           {abcdeSelectTrauma(traumaForm.primaryAirway, (v) => patchTraumaForm({ primaryAirway: v }), formDisabled)}
                         </div>
                         <div>
-                          <label style={labelStyle}>Respiration</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelBreathing")}</label>
                           {abcdeSelectTrauma(traumaForm.primaryBreathing, (v) => patchTraumaForm({ primaryBreathing: v }), formDisabled)}
                         </div>
                         <div>
-                          <label style={labelStyle}>Circulation</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelCirculation")}</label>
                           {abcdeSelectTrauma(traumaForm.primaryCirculation, (v) => patchTraumaForm({ primaryCirculation: v }), formDisabled)}
                         </div>
                         <div>
-                          <label style={labelStyle}>Déficit neurologique</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelNeurologic")}</label>
                           {abcdeSelectTrauma(traumaForm.primaryDisability, (v) => patchTraumaForm({ primaryDisability: v }), formDisabled)}
                         </div>
                         <div>
-                          <label style={labelStyle}>Exposition</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelExposurePrimary")}</label>
                           {abcdeSelectTrauma(traumaForm.primaryExposure, (v) => patchTraumaForm({ primaryExposure: v }), formDisabled)}
                         </div>
                       </div>
                       <div style={{ marginTop: 10 }}>
-                        <label style={labelStyle}>Notes (primaire)</label>
+                        <label style={labelStyle}>{t("emergencyNursingReassessment.traumaPrimaryNotes")}</label>
                         <textarea
                           value={traumaForm.primaryNotes}
                           onChange={(e) => patchTraumaForm({ primaryNotes: e.target.value })}
@@ -640,10 +638,10 @@ export function EmergencyNursingReassessmentPanel({
                       </div>
                     </div>
                     <div>
-                      <p style={{ ...sectionHeading, fontSize: 10 }}>Examen secondaire</p>
+                      <p style={{ ...sectionHeading, fontSize: 10 }}>{t("emergencyNursingReassessment.traumaSecondary")}</p>
                       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
                         <div>
-                          <label style={labelStyle}>Tête / face</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelHeadFace")}</label>
                           <textarea
                             value={traumaForm.secondaryHeadFace}
                             onChange={(e) => patchTraumaForm({ secondaryHeadFace: e.target.value })}
@@ -653,7 +651,7 @@ export function EmergencyNursingReassessmentPanel({
                           />
                         </div>
                         <div>
-                          <label style={labelStyle}>Cou</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelNeck")}</label>
                           <textarea
                             value={traumaForm.secondaryNeck}
                             onChange={(e) => patchTraumaForm({ secondaryNeck: e.target.value })}
@@ -663,7 +661,7 @@ export function EmergencyNursingReassessmentPanel({
                           />
                         </div>
                         <div>
-                          <label style={labelStyle}>Thorax</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelChest")}</label>
                           <textarea
                             value={traumaForm.secondaryChest}
                             onChange={(e) => patchTraumaForm({ secondaryChest: e.target.value })}
@@ -673,7 +671,7 @@ export function EmergencyNursingReassessmentPanel({
                           />
                         </div>
                         <div>
-                          <label style={labelStyle}>Abdomen / bassin</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelAbdomenPelvis")}</label>
                           <textarea
                             value={traumaForm.secondaryAbdomenPelvis}
                             onChange={(e) => patchTraumaForm({ secondaryAbdomenPelvis: e.target.value })}
@@ -683,7 +681,7 @@ export function EmergencyNursingReassessmentPanel({
                           />
                         </div>
                         <div>
-                          <label style={labelStyle}>Dos / rachis</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelBackSpine")}</label>
                           <textarea
                             value={traumaForm.secondaryBackSpine}
                             onChange={(e) => patchTraumaForm({ secondaryBackSpine: e.target.value })}
@@ -693,7 +691,7 @@ export function EmergencyNursingReassessmentPanel({
                           />
                         </div>
                         <div>
-                          <label style={labelStyle}>Extrémités</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelExtremities")}</label>
                           <textarea
                             value={traumaForm.secondaryExtremities}
                             onChange={(e) => patchTraumaForm({ secondaryExtremities: e.target.value })}
@@ -703,7 +701,7 @@ export function EmergencyNursingReassessmentPanel({
                           />
                         </div>
                         <div>
-                          <label style={labelStyle}>Peau / plaies</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelSkinWounds")}</label>
                           <textarea
                             value={traumaForm.secondarySkinWounds}
                             onChange={(e) => patchTraumaForm({ secondarySkinWounds: e.target.value })}
@@ -713,7 +711,7 @@ export function EmergencyNursingReassessmentPanel({
                           />
                         </div>
                         <div>
-                          <label style={labelStyle}>Notes secondaires</label>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelSecondaryNotes")}</label>
                           <textarea
                             value={traumaForm.secondaryNotes}
                             onChange={(e) => patchTraumaForm({ secondaryNotes: e.target.value })}
@@ -743,15 +741,15 @@ export function EmergencyNursingReassessmentPanel({
                       cursor: formDisabled || saving ? "not-allowed" : "pointer",
                     }}
                   >
-                    {saving ? "Enregistrement…" : "Enregistrer la réévaluation"}
+                    {saving ? t("emergencyNursingReassessment.saveButtonSaving") : t("emergencyNursingReassessment.saveButton")}
                   </button>
                 </div>
               </div>
 
               <div style={resumeColumnStyle}>
-                <p style={sectionHeading}>Résumé infirmier (généré)</p>
+                <p style={sectionHeading}>{t("emergencyNursingReassessment.resumeTitle")}</p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  Texte dérivé uniquement des champs saisis — pas d&apos;IA.
+                  {t("emergencyNursingReassessment.resumeHint")}
                 </p>
                 <div
                   style={{
@@ -802,16 +800,16 @@ export function EmergencyNursingReassessmentPanel({
                   }}
                 >
                   <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#0369a1" }}>
-                    Signature (enregistrement)
+                    {t("emergencyNursingReassessment.traumaSignatureHeading")}
                   </p>
                   {storedSig ? (
                     <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#0c4a6e", lineHeight: 1.45 }}>
                       {storedSig.savedByDisplayName}
                       <br />
-                      {new Date(storedSig.savedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                      {new Date(storedSig.savedAt).toLocaleString(dateLocale, { dateStyle: "short", timeStyle: "short" })}
                     </p>
                   ) : (
-                    <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#64748b" }}>Non enregistré</p>
+                    <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#64748b" }}>{t("emergencyNursingReassessment.notRecorded")}</p>
                   )}
                 </div>
               </div>

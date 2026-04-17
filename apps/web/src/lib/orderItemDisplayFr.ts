@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "@/i18n/config";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
 
 /**
  * Libellé affichable pour une ligne d’ordre (priorité alignée sur l’API enrichOrderItemsForDisplay).
@@ -74,6 +75,14 @@ export function getOrderItemDisplayLabelForLanguage(
     return sec ? `${man} — ${sec}` : man;
   }
   return typeFallbackEn(resolvedType, t);
+}
+
+/** Facility-language order label for non-React modules (mirrors {@link getOrderItemDisplayLabelForLanguage}). */
+export function getOrderItemDisplayLabelFromLocale(
+  item: Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+  locale: SupportedLanguage
+): string {
+  return getOrderItemDisplayLabelForLanguage(item, locale, (k) => i18nMessage(locale, k));
 }
 
 function resolveCatalogItemType(item: {

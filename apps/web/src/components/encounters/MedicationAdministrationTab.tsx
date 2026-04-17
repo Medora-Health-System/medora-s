@@ -4,10 +4,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { listQueueItems } from "@/lib/offline/offlineQueue";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
-import { ui } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
+import type { SupportedLanguage } from "@/i18n/config";
 
 type AdminRow = {
   id: string;
@@ -53,40 +54,37 @@ function intendedTimingUrgency(
 
 type MarAction = "administered" | "refused" | "not_available" | "md_changed";
 
-function actionLabelFr(a: MarAction): string {
-  switch (a) {
-    case "administered":
-      return "Administré";
-    case "refused":
-      return "Patient refusé";
-    case "not_available":
-      return "Non disponible";
-    case "md_changed":
-      return "Modifié par le médecin";
-    default:
-      return "";
-  }
+function actionLabel(a: MarAction, tr: (k: string) => string): string {
+  return tr(`marTab.actions.${a}`);
 }
 
-function buildMarNotes(action: MarAction, routeLine: string | undefined, userNotes: string): string {
-  const lines = [`Action : ${actionLabelFr(action)}`];
-  if (routeLine?.trim()) lines.push(`Voie : ${routeLine.trim()}`);
+function buildMarNotes(action: MarAction, routeLine: string | undefined, userNotes: string, tr: (k: string) => string): string {
+  const lines = [`${tr("marTab.noteActionPrefix")} ${actionLabel(action, tr)}`];
+  if (routeLine?.trim()) lines.push(`${tr("marTab.noteRoutePrefix")} ${routeLine.trim()}`);
   const n = userNotes.trim();
   if (n) lines.push(n);
   return lines.join("\n");
 }
 
-/** Latest MAR indicates « administré » (aligné sur la 1re ligne « Action : … »). */
-function latestMarIsAdministered(latest: AdminRow | undefined): boolean {
-  const t = latest?.notes?.trim();
-  if (!t) return false;
-  const m = t.match(/^Action\s*:\s*(.+)$/im);
-  return m?.[1]?.trim().startsWith("Administré") ?? false;
+/** Latest MAR indicates administered (first line after colon). */
+function latestMarIsAdministered(latest: AdminRow | undefined, tr: (k: string) => string): boolean {
+  const body = latest?.notes?.trim();
+  if (!body) return false;
+  const firstLine = body.split("\n")[0] ?? "";
+  const idx = firstLine.indexOf(":");
+  if (idx < 0) return false;
+  const after = firstLine.slice(idx + 1).trim();
+  const administered = tr("marTab.actions.administered");
+  return (
+    after.startsWith(administered) || after.startsWith("Administré") || after.startsWith("Administered")
+  );
 }
 
 async function getPendingMedicationAdminsFromQueue(
   facilityId: string,
-  encounterId: string
+  encounterId: string,
+  pendingSyncFirstName: string,
+  pendingSyncLastName: string
 ): Promise<AdminRow[]> {
   const endpoint = `/encounters/${encounterId}/medication-administrations`;
   const all = await listQueueItems();
@@ -112,7 +110,7 @@ async function getPendingMedicationAdminsFromQueue(
       medicationLabelSnapshot: null,
       administeredAt,
       notes,
-      administeredBy: { id: "pending-sync", firstName: "En attente", lastName: "de synchronisation" },
+      administeredBy: { id: "pending-sync", firstName: pendingSyncFirstName, lastName: pendingSyncLastName },
       pendingSync: true,
     });
   }
@@ -128,6 +126,8 @@ export function MedicationAdministrationTab({
   facilityId: string;
   encounterStatus: string;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [orders, setOrders] = useState<unknown[]>([]);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +150,12 @@ export function MedicationAdministrationTab({
     setError(null);
 
     const [pendingAdmins, pendingOrders] = await Promise.all([
-      getPendingMedicationAdminsFromQueue(facilityId, encounterId).catch(() => [] as AdminRow[]),
+      getPendingMedicationAdminsFromQueue(
+        facilityId,
+        encounterId,
+        t("marTab.pendingSyncFirstName"),
+        t("marTab.pendingSyncLastName")
+      ).catch(() => [] as AdminRow[]),
       getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(() => [] as Record<string, unknown>[]),
     ]);
 
@@ -166,13 +171,13 @@ export function MedicationAdministrationTab({
       setOrders(mergeOrders(serverOrders, pendingOrders));
       setAdmins([...serverAdmins, ...pendingAdmins]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Chargement impossible.");
+      setError(e instanceof Error ? e.message : t("marTab.loadFailed"));
       setOrders(mergeOrders([], pendingOrders));
       setAdmins(pendingAdmins);
     } finally {
       setLoading(false);
     }
-  }, [encounterId, facilityId]);
+  }, [encounterId, facilityId, t]);
 
   useEffect(() => {
     void loadAll();
@@ -209,14 +214,18 @@ export function MedicationAdministrationTab({
         if (!isOrderItemPendingNurseMedication(it)) continue;
         rows.push({
           orderItemId: it.id,
-          label: getOrderItemDisplayLabelFr(it as Parameters<typeof getOrderItemDisplayLabelFr>[0]),
+          label: getOrderItemDisplayLabelForLanguage(
+            it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+            language as SupportedLanguage,
+            t
+          ),
           routeHint: it.catalogMedication?.route?.trim() || "",
           intendedAt: it.intendedAdministrationAt ?? null,
         });
       }
     }
     return rows;
-  }, [orders]);
+  }, [orders, language, t]);
 
   const openModal = (row: (typeof taskRows)[0]) => {
     setModalItem({
@@ -249,7 +258,7 @@ export function MedicationAdministrationTab({
       const body: Record<string, unknown> = {
         orderItemId,
         administeredAt: new Date().toISOString(),
-        notes: buildMarNotes(modalAction, routeLine, modalNotes),
+        notes: buildMarNotes(modalAction, routeLine, modalNotes, t),
       };
       const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
         method: "POST",
@@ -267,7 +276,7 @@ export function MedicationAdministrationTab({
       setModalItem(null);
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Enregistrement impossible.");
+      setError(err instanceof Error ? err.message : t("marTab.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -299,18 +308,17 @@ export function MedicationAdministrationTab({
             fontWeight: 600,
           }}
         >
-          L&apos;administration a été enregistrée sur cet appareil et est en attente de synchronisation avec le serveur.
-          Elle n&apos;est pas encore confirmée côté serveur.
+          {t("marTab.offlineNotice")}
         </div>
       ) : null}
 
-      <h3 style={{ margin: "0 0 8px 0", fontSize: 16 }}>Médicaments à suivre</h3>
-      {!isOpen ? <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{ui.mar.closedHint}</p> : null}
+      <h3 style={{ margin: "0 0 8px 0", fontSize: 16 }}>{t("marTab.title")}</h3>
+      {!isOpen ? <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{t("marTab.closedHint")}</p> : null}
 
       {loading ? (
-        <p>{ui.common.loading}</p>
+        <p>{t("common.loading")}</p>
       ) : taskRows.length === 0 ? (
-        <p style={{ color: "#666", fontSize: 14 }}>Aucune ligne médicament « à administrer au patient » pour cette consultation.</p>
+        <p style={{ color: "#666", fontSize: 14 }}>{t("marTab.emptyTasks")}</p>
       ) : (
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <table
@@ -325,10 +333,10 @@ export function MedicationAdministrationTab({
           >
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd", backgroundColor: "#f5f5f5" }}>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{ui.common.medication}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>Statut</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{ui.mar.columnWhen}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{ui.common.actions}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnMedication")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnStatus")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnWhen")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnActions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -336,7 +344,7 @@ export function MedicationAdministrationTab({
                 const list = adminsByOrderItemId.get(row.orderItemId) ?? [];
                 const latest = list[0];
                 const latestTime = latest ? new Date(latest.administeredAt).getTime() : 0;
-                const marSaysAdministered = latestMarIsAdministered(latest);
+                const marSaysAdministered = latestMarIsAdministered(latest, t);
                 const recent =
                   !marSaysAdministered && latestTime > 0 && nowMs - latestTime < RECENT_MS;
 
@@ -354,27 +362,27 @@ export function MedicationAdministrationTab({
                         fontWeight: 600,
                       }}
                     >
-                      En attente de synchronisation
+                      {t("marTab.statusPendingSync")}
                     </span>
                   );
                 } else if (marSaysAdministered) {
-                  statusCell = <span>🟢 Administré</span>;
+                  statusCell = <span>🟢 {t("marTab.statusAdministered")}</span>;
                 } else if (recent) {
-                  statusCell = <span>🟡 Récent</span>;
+                  statusCell = <span>🟡 {t("marTab.statusRecentLabel")}</span>;
                 } else {
-                  statusCell = <span>🔴 En attente</span>;
+                  statusCell = <span>🔴 {t("marTab.statusPending")}</span>;
                 }
 
                 const timeCell = latest
-                  ? new Date(latest.administeredAt).toLocaleString("fr-FR")
-                  : ui.common.dash;
+                  ? new Date(latest.administeredAt).toLocaleString(dateLocale)
+                  : t("common.dash");
 
                 const displayName =
                   latest?.medicationLabelSnapshot?.trim() || row.label;
 
                 const intendedLine =
                   row.intendedAt != null && String(row.intendedAt).trim() !== ""
-                    ? new Date(row.intendedAt as string).toLocaleString("fr-FR")
+                    ? new Date(row.intendedAt as string).toLocaleString(dateLocale)
                     : null;
 
                 const intendedUrgency = intendedLine
@@ -419,17 +427,19 @@ export function MedicationAdministrationTab({
                           style={intendedLineStyle}
                           title={
                             intendedUrgency === "overdue"
-                              ? "Heure prévue dépassée"
+                              ? t("marTab.intendedOverdueTitle")
                               : intendedUrgency === "dueSoon"
-                                ? "Heure prévue dans moins d’une heure"
+                                ? t("marTab.intendedDueSoonTitle")
                                 : undefined
-                          }
-                        >
-                          Prévu : {intendedLine}
+                        }
+                      >
+                          {t("marTab.intendedPrefix")} {intendedLine}
                         </div>
                       ) : null}
                       {row.routeHint ? (
-                        <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>Voie : {row.routeHint}</div>
+                        <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                          {t("marTab.routePrefix")} {row.routeHint}
+                        </div>
                       ) : null}
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 14 }}>{statusCell}</td>
@@ -453,7 +463,7 @@ export function MedicationAdministrationTab({
                           fontWeight: 600,
                         }}
                       >
-                        Administrer
+                        {t("marTab.administer")}
                       </button>
                     </td>
                   </tr>
@@ -464,9 +474,9 @@ export function MedicationAdministrationTab({
         </div>
       )}
 
-      <h3 style={{ margin: "24px 0 8px 0", fontSize: 16 }}>Historique des enregistrements</h3>
+      <h3 style={{ margin: "24px 0 8px 0", fontSize: 16 }}>{t("marTab.historyTitle")}</h3>
       {loading ? null : admins.length === 0 ? (
-        <p style={{ color: "#666", fontSize: 14 }}>{ui.mar.empty}</p>
+        <p style={{ color: "#666", fontSize: 14 }}>{t("marTab.empty")}</p>
       ) : (
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {admins
@@ -477,8 +487,8 @@ export function MedicationAdministrationTab({
               const label =
                 r.medicationLabelSnapshot?.trim() ||
                 (oid
-                  ? taskRows.find((t) => t.orderItemId === oid)?.label ?? ui.common.dash
-                  : ui.mar.noLinkedOrder);
+                  ? taskRows.find((tr) => tr.orderItemId === oid)?.label ?? t("common.dash")
+                  : t("marTab.noLinkedOrder"));
               return (
                 <li
                   key={r.id}
@@ -493,7 +503,7 @@ export function MedicationAdministrationTab({
                 >
                   <div style={{ fontWeight: 600 }}>{label}</div>
                   <div style={{ color: "#555", marginTop: 4 }}>
-                    {new Date(r.administeredAt).toLocaleString("fr-FR")} · {r.administeredBy.firstName}{" "}
+                    {new Date(r.administeredAt).toLocaleString(dateLocale)} · {r.administeredBy.firstName}{" "}
                     {r.administeredBy.lastName}
                   </div>
                   {r.notes?.trim() ? (
@@ -550,16 +560,18 @@ export function MedicationAdministrationTab({
             onClick={(e) => e.stopPropagation()}
           >
             <h4 id="mar-modal-title" style={{ margin: "0 0 12px 0", fontSize: 17 }}>
-              Enregistrer une administration
+              {t("marTab.modalTitle")}
             </h4>
             <p style={{ margin: "0 0 12px 0", fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>{modalItem.label}</p>
 
-            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>Voie (optionnel)</label>
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+              {t("marTab.routeOptional")}
+            </label>
             <input
               type="text"
               value={modalRoute}
               onChange={(e) => setModalRoute(e.target.value)}
-              placeholder={modalItem.routeHint || "ex. Orale, IV…"}
+              placeholder={modalItem.routeHint || t("marTab.routePlaceholder")}
               disabled={submitting}
               style={{
                 width: "100%",
@@ -572,7 +584,9 @@ export function MedicationAdministrationTab({
               }}
             />
 
-            <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>Action</span>
+            <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+              {t("marTab.actionHeading")}
+            </span>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
               {(
                 [
@@ -602,12 +616,12 @@ export function MedicationAdministrationTab({
                     onChange={() => setModalAction(a)}
                     disabled={submitting}
                   />
-                  {actionLabelFr(a)}
+                  {actionLabel(a, t)}
                 </label>
               ))}
             </div>
 
-            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>{ui.mar.notesLabel}</label>
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>{t("marTab.notesLabel")}</label>
             <textarea
               value={modalNotes}
               onChange={(e) => setModalNotes(e.target.value)}
@@ -624,9 +638,7 @@ export function MedicationAdministrationTab({
                 boxSizing: "border-box",
               }}
             />
-            <p style={{ margin: "0 0 14px 0", fontSize: 12, color: "#666" }}>
-              L’horodatage enregistré sera celui du moment où vous validez.
-            </p>
+            <p style={{ margin: "0 0 14px 0", fontSize: 12, color: "#666" }}>{t("marTab.timestampHint")}</p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
               <button
@@ -643,7 +655,7 @@ export function MedicationAdministrationTab({
                   minHeight: 44,
                 }}
               >
-                Annuler
+                {t("marTab.cancel")}
               </button>
               <button
                 type="button"
@@ -661,7 +673,7 @@ export function MedicationAdministrationTab({
                   minHeight: 44,
                 }}
               >
-                {submitting ? ui.common.loading : "Enregistrer"}
+                {submitting ? t("common.loading") : t("marTab.save")}
               </button>
             </div>
           </div>

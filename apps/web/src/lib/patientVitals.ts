@@ -1,3 +1,5 @@
+import type { SupportedLanguage } from "@/i18n/config";
+
 /** Dispatched after encounter triage vitals save (detail: { patientId, supersededSnapshot? }). */
 export const MEDORA_PATIENT_VITALS_UPDATED = "medora:patient-vitals-updated";
 
@@ -77,10 +79,27 @@ export function hasVitalsJson(vitalsJson: unknown): boolean {
 }
 
 /**
- * Ligne compacte des derniers signes vitaux — libellés français uniquement.
- * TA, FC, température, SpO₂, fréquence respiratoire, poids, taille.
+ * Compact vitals one-liner — locale-aware labels (US clinical English vs FR product copy).
  */
-export function formatVitalsHeaderLine(vitals: Record<string, number | string | null | undefined>): string {
+export function formatVitalsHeaderLineForLocale(
+  vitals: Record<string, number | string | null | undefined>,
+  language: SupportedLanguage
+): string {
+  if (language === "en") {
+    const parts: string[] = [];
+    const sys = vitals.bpSys;
+    const dia = vitals.bpDia;
+    if (sys != null && sys !== "" && dia != null && dia !== "") {
+      parts.push(`BP ${sys}/${dia}`);
+    }
+    if (vitals.hr != null && vitals.hr !== "") parts.push(`HR ${vitals.hr}/min`);
+    if (vitals.tempC != null && vitals.tempC !== "") parts.push(`Temp ${vitals.tempC} °C`);
+    if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO2 ${vitals.spo2}%`);
+    if (vitals.rr != null && vitals.rr !== "") parts.push(`RR ${vitals.rr}/min`);
+    if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Wt ${vitals.weightKg} kg`);
+    if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Ht ${vitals.heightCm} cm`);
+    return parts.length ? parts.join(" · ") : "";
+  }
   const parts: string[] = [];
   const sys = vitals.bpSys;
   const dia = vitals.bpDia;
@@ -94,6 +113,10 @@ export function formatVitalsHeaderLine(vitals: Record<string, number | string | 
   if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Poids : ${vitals.weightKg} kg`);
   if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Taille : ${vitals.heightCm} cm`);
   return parts.length ? parts.join(" · ") : "";
+}
+
+export function formatVitalsHeaderLine(vitals: Record<string, number | string | null | undefined>): string {
+  return formatVitalsHeaderLineForLocale(vitals, "fr");
 }
 
 /** True when the GET /patients/:id/triage payload already carries at least one row (latest ou historique). */

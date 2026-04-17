@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 
 /** Paires label / valeur serrées (label près de la valeur). */
 function VitalPair({ label, value }: { label: string; value: string }) {
@@ -38,6 +39,7 @@ export function EmergencyWorkspaceVitalsCard({
   onEditClick?: () => void;
   editAriaLabel?: string;
 }) {
+  const { t } = useI18n();
   if (loading) {
     return (
       <div
@@ -51,7 +53,7 @@ export function EmergencyWorkspaceVitalsCard({
           boxSizing: "border-box",
         }}
       >
-        <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>Chargement des signes vitaux…</p>
+        <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>{t("emergencyWorkspaceClinicalStrip.vitalsLoading")}</p>
       </div>
     );
   }
@@ -103,7 +105,7 @@ export function EmergencyWorkspaceVitalsCard({
           color: "#64748b",
         }}
       >
-        Signes vitaux
+        {t("emergencyWorkspaceClinicalStrip.vitalsTitle")}
       </p>
       <div
         style={{
@@ -150,6 +152,7 @@ export function EmergencyWorkspaceAllergiesCard({
   allergySummary: string;
   loading: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div
       style={{
@@ -173,7 +176,7 @@ export function EmergencyWorkspaceAllergiesCard({
           color: "#b91c1c",
         }}
       >
-        Allergies
+        {t("emergencyWorkspaceClinicalStrip.allergiesTitle")}
       </p>
       <p
         style={{
@@ -185,7 +188,7 @@ export function EmergencyWorkspaceAllergiesCard({
           wordBreak: "break-word",
         }}
       >
-        {loading ? "…" : allergySummary || "Aucune allergie documentée"}
+        {loading ? "…" : allergySummary || t("emergencyWorkspaceClinicalStrip.allergiesNone")}
       </p>
     </div>
   );

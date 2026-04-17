@@ -56,7 +56,7 @@ export function clinicalResultFromOrderItemLike(item: {
   emptyTitleFallback?: string;
 }): ClinicalResultViewerInput {
   const title =
-    (item.displayLabel ?? item.displayLabelFr ?? "").trim() || item.emptyTitleFallback?.trim() || "Examen";
+    (item.displayLabel ?? item.displayLabelFr ?? "").trim() || item.emptyTitleFallback?.trim() || "—";
   const r = item.result;
   return {
     title,
@@ -86,7 +86,7 @@ export function clinicalResultFromChartOrderItem(item: {
     attachments?: ResultAttachmentRow[] | null;
   } | null;
 }): ClinicalResultViewerInput {
-  const title = item.displayLabel.trim() || "Examen";
+  const title = item.displayLabel.trim() || "—";
   const r = item.result;
   return {
     title,

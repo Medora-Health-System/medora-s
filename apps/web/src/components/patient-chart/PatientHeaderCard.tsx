@@ -3,13 +3,14 @@
 import React from "react";
 import Link from "next/link";
 import { calculateAge } from "@/lib/patientDisplay";
-import { formatVitalsHeaderLine, hasVitalsJson } from "@/lib/patientVitals";
+import { formatVitalsHeaderLineForLocale, hasVitalsJson } from "@/lib/patientVitals";
 import {
   encounterBcp47,
   tEncounterStatus,
   tEncounterType,
   tPatientSex,
 } from "@/lib/encounterChromeI18n";
+import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
 import { nirMrnDisplay } from "./patientChartHelpers";
 
@@ -252,17 +253,21 @@ export function PatientHeaderCard({
   );
 }
 
-/** Calcule la ligne d’en-tête à partir du relevé clinique (triage) ou du dernier snapshot patient. */
+/** Computes header line from clinical triage snapshot or latest patient vitals JSON. */
 export function computeHeaderVitalsLine(
   clinicalLatest: Record<string, number | string | null | undefined> | undefined,
-  patientLatestJson: unknown
+  patientLatestJson: unknown,
+  language: SupportedLanguage
 ): { line: string; hasVitals: boolean } {
   if (clinicalLatest && hasVitalsJson(clinicalLatest)) {
-    const line = formatVitalsHeaderLine(clinicalLatest);
+    const line = formatVitalsHeaderLineForLocale(clinicalLatest, language);
     return { line, hasVitals: Boolean(line) };
   }
   if (patientLatestJson && hasVitalsJson(patientLatestJson)) {
-    const line = formatVitalsHeaderLine(patientLatestJson as Record<string, number | string | null | undefined>);
+    const line = formatVitalsHeaderLineForLocale(
+      patientLatestJson as Record<string, number | string | null | undefined>,
+      language
+    );
     return { line, hasVitals: Boolean(line) };
   }
   return { line: "", hasVitals: false };

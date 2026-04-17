@@ -6,10 +6,15 @@
 import { parseAdmissionSummaryForChart, parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import type { EncounterLabRadRow, EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
 import { clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { hydrateAdmissionFormFromEncounterJson, formatPhysicianName } from "@/lib/encounterAdmission";
 import { hydrateDischargeFormFromEncounterJson } from "@/lib/encounterDischarge";
-import { buildErDispositionPreviewModel, erDispositionSupplementFromEncounter, inferOutcomeUiFromForms } from "./emergencyDispositionV1";
+import {
+  buildErDispositionPreviewModel,
+  dispositionPreviewLabelsFromLocale,
+  erDispositionSupplementFromEncounter,
+  inferOutcomeUiFromForms,
+} from "./emergencyDispositionV1";
 import {
   buildErNursingReassessmentPreviewModel,
   erNursingReassessmentFormFromEncounter,
@@ -94,10 +99,11 @@ function nonEmptyPreviewSections(sections: { id: string; title: string; lines: s
 function oneLineFromRow(row: EncounterLabRadRow | null, locale: SupportedLanguage): string | null {
   if (!row) return null;
   const v = clinicalResultFromOrderItemLike({
-    displayLabelFr: getOrderItemDisplayLabelFr(row.item),
+    displayLabel: getOrderItemDisplayLabelFromLocale(row.item, locale),
     status: row.item.status,
     catalogItemType: row.item.catalogItemType,
     result: row.item.result,
+    emptyTitleFallback: vs(locale, "examDefaultLabel"),
   });
   const label = v.title.trim() || vs(locale, "examDefaultLabel");
   const rt = (v.resultText ?? "").trim();
@@ -282,7 +288,7 @@ export function buildEmergencyVisitSummaryModel(
 
   const nav = encounter.nursingAssessment;
   const nursingForm = erNursingReassessmentFormFromEncounter(nav);
-  const nursingPreview = buildErNursingReassessmentPreviewModel(nursingForm);
+  const nursingPreview = buildErNursingReassessmentPreviewModel(nursingForm, locale);
   const nursingSecs = nonEmptyPreviewSections(nursingPreview.sections.filter((s) => s.id !== "empty"));
   let resumeInfirmier =
     nursingSecs.length > 0
@@ -330,7 +336,13 @@ export function buildEmergencyVisitSummaryModel(
   );
   const supplement = erDispositionSupplementFromEncounter(nav);
   const outcome = inferOutcomeUiFromForms(discharge.dischargeMode, supplement);
-  const dispositionPreview = buildErDispositionPreviewModel(discharge, admission, supplement, outcome);
+  const dispositionPreview = buildErDispositionPreviewModel(
+    discharge,
+    admission,
+    supplement,
+    outcome,
+    dispositionPreviewLabelsFromLocale(locale)
+  );
   const dispSecs = nonEmptyPreviewSections(dispositionPreview.sections.filter((s) => s.id !== "empty"));
   let disposition =
     dispSecs.length > 0 ? flattenSectionsToBlock(vs(locale, "dispositionFlattenTitle"), dispSecs, locale, 20) : null;

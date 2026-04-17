@@ -9,9 +9,9 @@ import {
 } from "@/components/encounters/EncounterResultsTab";
 import { buildErResultsCockpitModel } from "@/features/emergency/emergencyResultsCockpitModel";
 import { clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
-import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
-import { ui } from "@/lib/uiLabels";
+import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
+import { useI18n } from "@/lib/i18n";
+import type { SupportedLanguage } from "@/i18n/config";
 import {
   MedoraCard,
   MedoraCardActions,
@@ -64,10 +64,18 @@ const rowBase: React.CSSProperties = {
 
 const BADGE_SOFT_NEUTRAL: PriorityBadgeSoft = { bg: "#f8fafc", text: "#64748b", border: "#e2e8f0" };
 
-function formatShortTs(iso: string | null | undefined): string {
+function fillTemplate(s: string, vars: Record<string, string | number>) {
+  let out = s;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.split(`{${k}}`).join(String(v));
+  }
+  return out;
+}
+
+function formatShortTs(iso: string | null | undefined, locale: string): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return "—";
   }
@@ -77,43 +85,47 @@ function orderCreatedMs(order: unknown): number {
   if (!order || typeof order !== "object") return 0;
   const c = (order as { createdAt?: string }).createdAt;
   if (typeof c !== "string" || !c.trim()) return 0;
-  const t = Date.parse(c);
-  return Number.isNaN(t) ? 0 : t;
+  const ts = Date.parse(c);
+  return Number.isNaN(ts) ? 0 : ts;
 }
 
-function rowRecencyMs(row: EncounterLabRadRow): number {
-  const v = clinicalResultFromOrderItemLike({
-    displayLabelFr: getOrderItemDisplayLabelFr(row.item),
-    status: row.item.status,
-    catalogItemType: row.item.catalogItemType,
-    result: row.item.result,
-  });
-  if (v.verifiedAt) {
-    const t = Date.parse(v.verifiedAt);
-    if (!Number.isNaN(t)) return t;
+function orderChartStatusDisplay(status: string | null | undefined, tr: (k: string) => string): string {
+  const u = (status || "").toUpperCase();
+  if (u === "COMPLETED" || u === "RESULTED" || u === "VERIFIED") {
+    return tr("printOutput.orderItemChart.terminalDone");
   }
-  return orderCreatedMs(row.order);
+  const k = `printOutput.orderItemChart.${u}`;
+  const r = tr(k);
+  return r !== k ? r : "—";
 }
 
 function CompactResultRow({
   row,
   emphasize,
+  language,
+  t,
 }: {
   row: EncounterLabRadRow;
   emphasize?: boolean;
+  language: SupportedLanguage;
+  t: (k: string) => string;
 }) {
+  const locale = language === "en" ? "en-US" : "fr-FR";
+  const disp = getOrderItemDisplayLabelForLanguage(row.item, language, t);
   const v = clinicalResultFromOrderItemLike({
-    displayLabelFr: getOrderItemDisplayLabelFr(row.item),
+    displayLabel: disp,
+    displayLabelFr: disp,
     status: row.item.status,
     catalogItemType: row.item.catalogItemType,
     result: row.item.result,
+    emptyTitleFallback: t("emergencyResultsPanel.fallbackStudyLabel"),
   });
-  const label = v.title.trim() || "Examen";
-  const statusFr = getOrderItemChartLabel(row.item.status ?? "");
+  const label = v.title.trim() || t("emergencyResultsPanel.fallbackStudyLabel");
+  const statusLabel = orderChartStatusDisplay(row.item.status ?? "", t);
   const tsDisplay = v.verifiedAt
-    ? formatShortTs(v.verifiedAt)
+    ? formatShortTs(v.verifiedAt, locale)
     : orderCreatedMs(row.order) > 0
-      ? formatShortTs(new Date(orderCreatedMs(row.order)).toISOString())
+      ? formatShortTs(new Date(orderCreatedMs(row.order)).toISOString(), locale)
       : "—";
   const crit =
     row.item.result &&
@@ -135,12 +147,16 @@ function CompactResultRow({
       </span>
       <MedoraCardBadgeRow marginTop={0}>
         {crit ? (
-          <MedoraCardBadge soft={{ bg: "#fef2f2", text: "#991b1b", border: "#fecaca" }}>Critique</MedoraCardBadge>
+          <MedoraCardBadge soft={{ bg: "#fef2f2", text: "#991b1b", border: "#fecaca" }}>
+            {t("emergencyResultsPanel.badgeCritical")}
+          </MedoraCardBadge>
         ) : null}
         {row.pendingSync ? (
-          <MedoraCardBadge soft={{ bg: "#fffbeb", text: "#92400e", border: "#fde68a" }}>Sync locale</MedoraCardBadge>
+          <MedoraCardBadge soft={{ bg: "#fffbeb", text: "#92400e", border: "#fde68a" }}>
+            {t("emergencyResultsPanel.badgeLocalSync")}
+          </MedoraCardBadge>
         ) : null}
-        <MedoraCardBadge soft={BADGE_SOFT_NEUTRAL}>{statusFr}</MedoraCardBadge>
+        <MedoraCardBadge soft={BADGE_SOFT_NEUTRAL}>{statusLabel}</MedoraCardBadge>
       </MedoraCardBadgeRow>
       <span style={{ fontSize: 11, color: "#64748b", fontVariantNumeric: "tabular-nums", marginLeft: "auto" }}>{tsDisplay}</span>
     </div>
@@ -160,6 +176,7 @@ export function EmergencyResultsPanel({
   resultsTabHref: string;
   diagnosticsTabHref: string;
 }) {
+  const { t, language } = useI18n();
   const [snap, setSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
   const onLabRadSnapshot = useCallback((s: EncounterResultsLabRadSnapshot) => {
     setSnap(s);
@@ -173,10 +190,10 @@ export function EmergencyResultsPanel({
         <div style={{ width: "100%", margin: "-4px 0 0 0" }}>
           <MedoraCardIdentity initials="R">
             <MedoraCardTitle
-              title="Résultats et examens (urgences)"
+              title={t("emergencyResultsPanel.cardTitle")}
               subline={
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>
-                  Vue cockpit : derniers examens labo / imagerie, priorités et raccourcis vers le dossier et les files.
+                  {t("emergencyResultsPanel.cardSubline")}
                 </p>
               }
             />
@@ -185,32 +202,29 @@ export function EmergencyResultsPanel({
           <MedoraCardActions railBorderTopColor="#e2e8f0" gap={6} minWidth={0} alignItems="stretch" inline>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
               <Link href={resultsTabHref} style={linkPill}>
-                Onglet Résultats (dossier)
+                {t("emergencyResultsPanel.linkResultsTab")}
               </Link>
               <Link href={diagnosticsTabHref} style={linkPillIndigo}>
-                Onglet Diagnostics
+                {t("emergencyResultsPanel.linkDiagnosticsTab")}
               </Link>
               <Link href="/app/lab" style={linkPill}>
-                {ui.lab.title}
+                {t("emergencyResultsPanel.linkLabQueue")}
               </Link>
               <Link href="/app/radiology" style={linkPill}>
-                {ui.radiology.title}
+                {t("emergencyResultsPanel.linkRadiologyQueue")}
               </Link>
             </div>
           </MedoraCardActions>
 
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
             {!model.ready ? (
-              <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Chargement des résultats…</p>
+              <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyResultsPanel.loading")}</p>
             ) : model.failed ? (
               <p style={{ margin: 0, fontSize: 12, color: "#92400e", fontWeight: 600, lineHeight: 1.4 }}>
-                Commandes indisponibles (hors ligne). Ouvrez le dossier ou réessayez après synchronisation.
+                {t("emergencyResultsPanel.offlineHint")}
               </p>
             ) : model.empty ? (
-              <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
-                Aucun résultat laboratoire ou imagerie listé pour l&apos;instant. Les examens saisis depuis les files
-                apparaîtront ici.
-              </p>
+              <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>{t("emergencyResultsPanel.emptyBody")}</p>
             ) : (
               <>
                 <div
@@ -222,48 +236,47 @@ export function EmergencyResultsPanel({
                   }}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <p style={sectionLabel}>Laboratoire</p>
+                    <p style={sectionLabel}>{t("emergencyResultsPanel.sectionLab")}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>
-                      {model.labTotal} examen(s) dans la liste
+                      {fillTemplate(t("emergencyResultsPanel.labCountLine"), { count: model.labTotal })}
                     </p>
                     {model.labLatest ? (
-                      <CompactResultRow row={model.labLatest} />
+                      <CompactResultRow row={model.labLatest} language={language} t={t} />
                     ) : (
-                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Aucun résultat laboratoire listé.</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyResultsPanel.labEmpty")}</p>
                     )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <p style={sectionLabel}>Imagerie</p>
+                    <p style={sectionLabel}>{t("emergencyResultsPanel.sectionImaging")}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>
-                      {model.imagingTotal} examen(s) dans la liste
+                      {fillTemplate(t("emergencyResultsPanel.imagingCountLine"), { count: model.imagingTotal })}
                     </p>
                     {model.imagingLatest ? (
-                      <CompactResultRow row={model.imagingLatest} />
+                      <CompactResultRow row={model.imagingLatest} language={language} t={t} />
                     ) : (
-                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Aucun résultat imagerie listé.</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyResultsPanel.imagingEmpty")}</p>
                     )}
                   </div>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <p style={sectionLabel}>Prioritaires / anormaux</p>
-                  <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>
-                    Basé sur l&apos;indicateur « valeur critique » déjà présent sur le résultat et synchronisation locale
-                    en attente.
-                  </p>
+                  <p style={sectionLabel}>{t("emergencyResultsPanel.sectionPriority")}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>{t("emergencyResultsPanel.priorityHint")}</p>
                   {model.priorityRows.length === 0 ? (
                     <MedoraCardBadgeRow marginTop={0}>
-                      <MedoraCardBadge soft={BADGE_SOFT_NEUTRAL}>Rien à signaler</MedoraCardBadge>
+                      <MedoraCardBadge soft={BADGE_SOFT_NEUTRAL}>{t("emergencyResultsPanel.nothingToReport")}</MedoraCardBadge>
                       {model.pendingSyncCount > 0 ? (
                         <MedoraCardBadge soft={{ bg: "#fffbeb", text: "#92400e", border: "#fde68a" }}>
-                          Sync locale — {model.pendingSyncCount}
+                          {fillTemplate(t("emergencyResultsPanel.pendingSyncBadge"), {
+                            count: model.pendingSyncCount,
+                          })}
                         </MedoraCardBadge>
                       ) : null}
                     </MedoraCardBadgeRow>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {model.priorityRows.map((row) => (
-                        <CompactResultRow key={String(row.item.id)} row={row} emphasize />
+                        <CompactResultRow key={String(row.item.id)} row={row} emphasize language={language} t={t} />
                       ))}
                     </div>
                   )}

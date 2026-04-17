@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+import { useI18n } from "@/lib/i18n";
 
 export function EncounterDiagnosticsPanel({
   encounterId,
@@ -19,6 +20,8 @@ export function EncounterDiagnosticsPanel({
   isLocked: boolean;
   onGoPatientChart: () => void;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Array<{ id: string; code: string; description: string | null; onsetDate: string | null }>>([]);
 
@@ -63,7 +66,7 @@ export function EncounterDiagnosticsPanel({
           fontSize: 14,
         }}
       >
-        Chargement des diagnostics…
+        {t("encounterConsultDiagnostics.loading")}
       </div>
     );
   }
@@ -88,7 +91,9 @@ export function EncounterDiagnosticsPanel({
           flexWrap: "wrap",
         }}
       >
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Diagnostics de la consultation</h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+          {t("encounterConsultDiagnostics.heading")}
+        </h3>
         {canPrescribe ? (
           <button
             type="button"
@@ -107,13 +112,13 @@ export function EncounterDiagnosticsPanel({
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
           >
-            Ajouter un diagnostic
+            {t("encounterConsultDiagnostics.addButton")}
           </button>
         ) : null}
       </div>
       {rows.length === 0 ? (
         <div style={{ ...dxShell, padding: "18px 20px", color: "#64748b", fontSize: 14, lineHeight: 1.5 }}>
-          Aucun diagnostic enregistré pour cette consultation.
+          {t("encounterConsultDiagnostics.empty")}
         </div>
       ) : (
         <div style={{ ...dxShell, overflow: "hidden" }}>
@@ -121,13 +126,13 @@ export function EncounterDiagnosticsPanel({
             <thead>
               <tr style={{ backgroundColor: "#f8fafc" }}>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Code
+                  {t("encounterConsultDiagnostics.colCode")}
                 </th>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Libellé
+                  {t("encounterConsultDiagnostics.colLabel")}
                 </th>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
-                  Début
+                  {t("encounterConsultDiagnostics.colOnset")}
                 </th>
               </tr>
             </thead>
@@ -137,7 +142,7 @@ export function EncounterDiagnosticsPanel({
                   <td style={{ padding: "12px 14px", color: "#0f172a" }}>{r.code}</td>
                   <td style={{ padding: "12px 14px", color: "#334155" }}>{r.description || "—"}</td>
                   <td style={{ padding: "12px 14px", color: "#334155" }}>
-                    {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString("fr-FR") : "—"}
+                    {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString(dateLocale) : "—"}
                   </td>
                 </tr>
               ))}

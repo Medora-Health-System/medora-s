@@ -3,7 +3,9 @@
  * Persists via existing PATCH /encounters/:id (merge with other nursingAssessment keys). No backend migration.
  */
 
-import { formatVitalsHeaderLine } from "@/lib/patientVitals";
+import type { SupportedLanguage } from "@/i18n/config";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
+import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 
 export const ER_NURSING_REASSESSMENT_V1_KEY = "erNursingReassessmentV1" as const;
 
@@ -178,18 +180,37 @@ export function mergeErNursingReassessmentIntoNursingAssessment(
   return base;
 }
 
-function abcFr(v: ErAbcOption): string {
-  if (v === "wnl") return "Dans les limites (WNL)";
-  if (v === "yes") return "Oui";
-  if (v === "no") return "Non";
-  if (v === "unknown") return "Inconnu";
+function interpolatePreviewModel(template: string, vars: Record<string, string | number>): string {
+  let s = template;
+  for (const [k, v] of Object.entries(vars)) {
+    s = s.split(`{${k}}`).join(String(v));
+  }
+  return s;
+}
+
+function previewModelString(locale: SupportedLanguage, key: string): string {
+  return i18nMessage(locale, `emergencyNursingReassessment.previewModel.${key}`);
+}
+
+function abcOptionLabel(locale: SupportedLanguage, v: ErAbcOption): string {
+  if (v === "wnl") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionWnl");
+  if (v === "yes") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionYes");
+  if (v === "no") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionNo");
+  if (v === "unknown") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionUnknown");
   return "";
 }
 
-function trendFr(v: ErTrend): string {
-  if (v === "improved") return "Amélioration";
-  if (v === "unchanged") return "Stable";
-  if (v === "worse") return "Aggravation";
+function trendLineLabel(locale: SupportedLanguage, v: ErTrend): string {
+  if (v === "improved") return i18nMessage(locale, "emergencyNursingReassessment.trendImproved");
+  if (v === "unchanged") return i18nMessage(locale, "emergencyNursingReassessment.trendUnchanged");
+  if (v === "worse") return i18nMessage(locale, "emergencyNursingReassessment.trendWorse");
+  return "";
+}
+
+function trendNarrativeFragment(locale: SupportedLanguage, v: ErTrend): string {
+  if (v === "improved") return previewModelString(locale, "narrativeTrendImproved");
+  if (v === "unchanged") return previewModelString(locale, "narrativeTrendUnchanged");
+  if (v === "worse") return previewModelString(locale, "narrativeTrendWorse");
   return "";
 }
 
@@ -200,71 +221,152 @@ export type ErNursingPreviewModel = {
   narrative: string;
 };
 
-export function buildErNursingReassessmentPreviewModel(form: ErNursingReassessmentForm): ErNursingPreviewModel {
+export function buildErNursingReassessmentPreviewModel(
+  form: ErNursingReassessmentForm,
+  locale: SupportedLanguage
+): ErNursingPreviewModel {
+  const dateTag = locale === "en" ? "en-US" : "fr-FR";
   const sections: ErNursingPreviewSection[] = [];
 
   const timing: string[] = [];
   if (form.reassessmentAt) {
     const d = new Date(form.reassessmentAt);
-    if (!Number.isNaN(d.getTime())) timing.push(`Heure de réévaluation : ${d.toLocaleString("fr-FR")}`);
+    if (!Number.isNaN(d.getTime())) {
+      timing.push(
+        interpolatePreviewModel(previewModelString(locale, "timingLine"), {
+          datetime: d.toLocaleString(dateTag),
+        })
+      );
+    }
   }
-  if (timing.length) sections.push({ id: "timing", title: "Temps / contexte", lines: timing });
+  if (timing.length) {
+    sections.push({ id: "timing", title: previewModelString(locale, "sectionTimingContext"), lines: timing });
+  }
 
   const etat: string[] = [];
   const nar = form.narrative.trim();
-  if (nar) etat.push(`Narratif : ${nar.length > 500 ? `${nar.slice(0, 500)}…` : nar}`);
+  if (nar) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineNarrative"), {
+        text: nar.length > 500 ? `${nar.slice(0, 500)}…` : nar,
+      })
+    );
+  }
   const ga = form.generalAppearance.trim();
-  if (ga) etat.push(`Apparence générale : ${ga}`);
+  if (ga) etat.push(interpolatePreviewModel(previewModelString(locale, "lineAppearance"), { text: ga }));
   if (form.pain0to10.trim()) {
     const n = parseInt(form.pain0to10, 10);
-    if (!Number.isNaN(n)) etat.push(`Douleur (0–10) : ${n}`);
+    if (!Number.isNaN(n)) {
+      etat.push(interpolatePreviewModel(previewModelString(locale, "linePain"), { n: String(n) }));
+    }
   }
-  if (form.airway) etat.push(`Voie aérienne : ${abcFr(form.airway)}`);
-  if (form.breathing) etat.push(`Ventilation : ${abcFr(form.breathing)}`);
-  if (form.circulation) etat.push(`Circulation : ${abcFr(form.circulation)}`);
+  if (form.airway) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineAirway"), {
+        value: abcOptionLabel(locale, form.airway),
+      })
+    );
+  }
+  if (form.breathing) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineBreathing"), {
+        value: abcOptionLabel(locale, form.breathing),
+      })
+    );
+  }
+  if (form.circulation) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineCirculation"), {
+        value: abcOptionLabel(locale, form.circulation),
+      })
+    );
+  }
   const bs = form.bedsideStatus.trim();
-  if (bs) etat.push(`Statut au lit : ${bs}`);
-  if (etat.length) sections.push({ id: "etat", title: "État clinique", lines: etat });
+  if (bs) etat.push(interpolatePreviewModel(previewModelString(locale, "lineBedside"), { text: bs }));
+  if (etat.length) {
+    sections.push({ id: "etat", title: previewModelString(locale, "sectionClinicalState"), lines: etat });
+  }
 
   const vitalsNote: string[] = [];
   const vn = form.vitalsSummaryNote.trim();
-  if (vn) vitalsNote.push(`Note sur les signes vitaux : ${vn}`);
-  if (vitalsNote.length) sections.push({ id: "vitals", title: "Signes vitaux (relevé)", lines: vitalsNote });
+  if (vn) vitalsNote.push(interpolatePreviewModel(previewModelString(locale, "lineVitalsNote"), { text: vn }));
+  if (vitalsNote.length) {
+    sections.push({
+      id: "vitals",
+      title: previewModelString(locale, "sectionVitalsRecording"),
+      lines: vitalsNote,
+    });
+  }
 
   const resp: string[] = [];
   const rt = form.responseToTreatment.trim();
-  if (rt) resp.push(`Réponse au traitement : ${rt}`);
-  if (form.trend) resp.push(`Tendance : ${trendFr(form.trend)}`);
-  if (resp.length) sections.push({ id: "response", title: "Réponse / évolution", lines: resp });
+  if (rt) resp.push(interpolatePreviewModel(previewModelString(locale, "lineResponseToCare"), { text: rt }));
+  if (form.trend) {
+    resp.push(
+      interpolatePreviewModel(previewModelString(locale, "lineTrend"), {
+        value: trendLineLabel(locale, form.trend),
+      })
+    );
+  }
+  if (resp.length) {
+    sections.push({
+      id: "response",
+      title: previewModelString(locale, "sectionResponseEvolution"),
+      lines: resp,
+    });
+  }
 
   const soins: string[] = [];
   const intv = form.interventionsPerformed.trim();
-  if (intv) soins.push(`Interventions : ${intv}`);
+  if (intv) soins.push(interpolatePreviewModel(previewModelString(locale, "lineInterventions"), { text: intv }));
   const safe = form.safetyRoundingNote.trim();
-  if (safe) soins.push(`Sécurité / passage : ${safe}`);
-  if (soins.length) sections.push({ id: "soins", title: "Soins et sécurité", lines: soins });
+  if (safe) soins.push(interpolatePreviewModel(previewModelString(locale, "lineSafetyRounding"), { text: safe }));
+  if (soins.length) {
+    sections.push({ id: "soins", title: previewModelString(locale, "sectionCareSafety"), lines: soins });
+  }
 
   const add: string[] = [];
   const ad = form.addendum.trim();
   if (ad) add.push(ad);
-  if (add.length) sections.push({ id: "addendum", title: "Addendum", lines: add });
+  if (add.length) {
+    sections.push({ id: "addendum", title: previewModelString(locale, "sectionAddendum"), lines: add });
+  }
 
   const parts: string[] = [];
   if (form.reassessmentAt) {
     const d = new Date(form.reassessmentAt);
-    if (!Number.isNaN(d.getTime())) parts.push(`réévaluation ${d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}`);
+    if (!Number.isNaN(d.getTime())) {
+      parts.push(
+        interpolatePreviewModel(previewModelString(locale, "narrativeFragmentReassessment"), {
+          datetime: d.toLocaleString(dateTag, { dateStyle: "short", timeStyle: "short" }),
+        })
+      );
+    }
   }
-  if (form.trend) parts.push(trendFr(form.trend).toLowerCase());
+  if (form.trend) {
+    const frag = trendNarrativeFragment(locale, form.trend);
+    if (frag) parts.push(frag);
+  }
   if (form.pain0to10.trim()) {
     const n = parseInt(form.pain0to10, 10);
-    if (!Number.isNaN(n)) parts.push(`douleur ${n}/10`);
+    if (!Number.isNaN(n)) {
+      parts.push(interpolatePreviewModel(previewModelString(locale, "narrativeFragmentPain"), { n: String(n) }));
+    }
   }
   const narrative =
-    parts.length > 0 ? `Résumé infirmier (urgences) : ${parts.join(" · ")}.` : "";
+    parts.length > 0
+      ? interpolatePreviewModel(previewModelString(locale, "narrativeSummaryFull"), { parts: parts.join(" · ") })
+      : "";
 
   if (sections.length === 0 && !narrative) {
     return {
-      sections: [{ id: "empty", title: "Aperçu", lines: ["Aucune donnée saisie pour l’aperçu."] }],
+      sections: [
+        {
+          id: "empty",
+          title: i18nMessage(locale, "emergencyNursingReassessment.previewEmptyTitle"),
+          lines: [i18nMessage(locale, "emergencyNursingReassessment.previewEmptyLine")],
+        },
+      ],
       narrative: "",
     };
   }
@@ -272,18 +374,24 @@ export function buildErNursingReassessmentPreviewModel(form: ErNursingReassessme
   return { sections, narrative };
 }
 
-/** Vitals one-liner from triage GET vitalsJson (same as bandeau triage). */
-export function vitalsLineFromTriageVitalsJson(vitalsJson: unknown): string {
+/** Vitals one-liner from triage GET vitalsJson (same as triage strip). */
+export function vitalsLineFromTriageVitalsJson(
+  vitalsJson: unknown,
+  language: SupportedLanguage
+): string {
   if (vitalsJson == null || typeof vitalsJson !== "object" || Array.isArray(vitalsJson)) return "";
   const v = vitalsJson as Record<string, number | string | null | undefined>;
-  return formatVitalsHeaderLine({
-    tempC: v.tempC ?? "",
-    hr: v.hr ?? "",
-    rr: v.rr ?? "",
-    bpSys: v.bpSys ?? "",
-    bpDia: v.bpDia ?? "",
-    spo2: v.spo2 ?? "",
-    weightKg: v.weightKg ?? "",
-    heightCm: v.heightCm ?? "",
-  });
+  return formatVitalsHeaderLineForLocale(
+    {
+      tempC: v.tempC ?? "",
+      hr: v.hr ?? "",
+      rr: v.rr ?? "",
+      bpSys: v.bpSys ?? "",
+      bpDia: v.bpDia ?? "",
+      spo2: v.spo2 ?? "",
+      weightKg: v.weightKg ?? "",
+      heightCm: v.heightCm ?? "",
+    },
+    language
+  );
 }

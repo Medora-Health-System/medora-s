@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { fetchLowStock, fetchExpiring, type InventoryItemRow } from "@/lib/pharmacyApi";
+import { useI18n } from "@/lib/i18n";
 
 const EXPIRING_WINDOW_DAYS = 90;
 const NEAR_EXPIRY_DAYS = 30;
@@ -22,9 +23,17 @@ const linkStyle: React.CSSProperties = {
   fontWeight: 500,
 };
 
-function formatDate(d: string | null) {
+function formatDate(d: string | null, locale: string) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString();
+  return new Date(d).toLocaleDateString(locale);
+}
+
+function fillTemplate(s: string, vars: Record<string, string | number>) {
+  let out = s;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.split(`{${k}}`).join(String(v));
+  }
+  return out;
 }
 
 function daysUntil(expirationDate: string | null): number | null {
@@ -53,6 +62,8 @@ export function PharmacyAlertsCard({
   facilityId: string;
   onRefreshInventory?: () => void;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [lowStock, setLowStock] = useState<InventoryItemRow[]>([]);
   const [expiring, setExpiring] = useState<InventoryItemRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,13 +81,13 @@ export function PharmacyAlertsCard({
       setLowStock(Array.isArray(low) ? low : []);
       setExpiring(Array.isArray(exp) ? exp : []);
     } catch (e: any) {
-      setError(e?.message || "Impossible de charger les alertes");
+      setError(e?.message || t("pharmacyAlertsCard.loadFailed"));
       setLowStock([]);
       setExpiring([]);
     } finally {
       setLoading(false);
     }
-  }, [facilityId]);
+  }, [facilityId, t]);
 
   useEffect(() => {
     load();
@@ -85,8 +96,8 @@ export function PharmacyAlertsCard({
   if (loading && lowStock.length === 0 && expiring.length === 0) {
     return (
       <div style={cardStyle}>
-        <h3 style={{ margin: "0 0 8px 0", fontSize: 15 }}>Alertes pharmacie</h3>
-        <p style={{ margin: 0, fontSize: 14, color: "#666" }}>Chargement…</p>
+        <h3 style={{ margin: "0 0 8px 0", fontSize: 15 }}>{t("pharmacyAlertsCard.title")}</h3>
+        <p style={{ margin: 0, fontSize: 14, color: "#666" }}>{t("pharmacyAlertsCard.loading")}</p>
       </div>
     );
   }
@@ -94,7 +105,7 @@ export function PharmacyAlertsCard({
   if (error && lowStock.length === 0 && expiring.length === 0) {
     return (
       <div style={cardStyle}>
-        <h3 style={{ margin: "0 0 8px 0", fontSize: 15 }}>Alertes pharmacie</h3>
+        <h3 style={{ margin: "0 0 8px 0", fontSize: 15 }}>{t("pharmacyAlertsCard.title")}</h3>
         <p style={{ margin: 0, fontSize: 14, color: "#b00020" }}>{error}</p>
         <button
           type="button"
@@ -109,7 +120,7 @@ export function PharmacyAlertsCard({
             background: "#f5f5f5",
           }}
         >
-          Réessayer
+          {t("pharmacyAlertsCard.retry")}
         </button>
       </div>
     );
@@ -123,18 +134,18 @@ export function PharmacyAlertsCard({
   return (
     <div style={cardStyle}>
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Alertes pharmacie</h3>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{t("pharmacyAlertsCard.title")}</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link href="/app/pharmacy/low-stock" style={linkStyle}>
-            Stock faible {lowCount > 0 && `(${lowCount})`}
+            {t("pharmacyAlertsCard.linkLowStock")} {lowCount > 0 && `(${lowCount})`}
           </Link>
           <span style={{ color: "#ccc" }}>·</span>
           <Link href="/app/pharmacy/expiring" style={linkStyle}>
-            À péremption {expCount > 0 && `(${expCount})`}
+            {t("pharmacyAlertsCard.linkExpiring")} {expCount > 0 && `(${expCount})`}
           </Link>
           <span style={{ color: "#ccc" }}>·</span>
           <Link href="/app/pharmacy/inventory" style={linkStyle}>
-            Stock
+            {t("pharmacyAlertsCard.linkInventory")}
           </Link>
           {onRefreshInventory && (
             <>
@@ -144,7 +155,7 @@ export function PharmacyAlertsCard({
                 onClick={() => { load(); onRefreshInventory(); }}
                 style={{ ...linkStyle, background: "none", border: "none", cursor: "pointer", padding: 0 }}
               >
-                Actualiser
+                {t("pharmacyAlertsCard.refresh")}
               </button>
             </>
           )}
@@ -154,15 +165,15 @@ export function PharmacyAlertsCard({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 14 }}>
         <div>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>
-            Stock faible
+            {t("pharmacyAlertsCard.lowStockHeading")}
             {lowCount > 0 && (
               <span style={{ marginLeft: 6, color: "#b45309", fontWeight: 500 }}>
-                {lowCount} article{lowCount !== 1 ? "s" : ""}
+                {fillTemplate(t("pharmacyAlertsCard.articles"), { count: lowCount })}
               </span>
             )}
           </div>
           {topLow.length === 0 ? (
-            <p style={{ margin: 0, color: "#666" }}>Aucun</p>
+            <p style={{ margin: 0, color: "#666" }}>{t("pharmacyAlertsCard.none")}</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {topLow.map((item) => (
@@ -172,7 +183,10 @@ export function PharmacyAlertsCard({
                   </Link>
                   {" "}
                   <span style={{ color: "#666" }}>
-                    {item.quantityOnHand} en stock (réappro. {item.reorderLevel})
+                    {fillTemplate(t("pharmacyAlertsCard.inStock"), {
+                      qty: item.quantityOnHand,
+                      level: item.reorderLevel,
+                    })}
                   </span>
                 </li>
               ))}
@@ -180,22 +194,22 @@ export function PharmacyAlertsCard({
           )}
           {lowCount > TOP_ITEMS_SHOW && (
             <Link href="/app/pharmacy/low-stock" style={{ fontSize: 13, color: "#666" }}>
-              +{lowCount - TOP_ITEMS_SHOW} de plus →
+              {fillTemplate(t("pharmacyAlertsCard.moreLink"), { count: lowCount - TOP_ITEMS_SHOW })}
             </Link>
           )}
         </div>
 
         <div>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>
-            Péremption sous {EXPIRING_WINDOW_DAYS} jours
+            {fillTemplate(t("pharmacyAlertsCard.expiringHeading"), { days: EXPIRING_WINDOW_DAYS })}
             {expCount > 0 && (
               <span style={{ marginLeft: 6, color: "#b45309", fontWeight: 500 }}>
-                {expCount} article{expCount !== 1 ? "s" : ""}
+                {fillTemplate(t("pharmacyAlertsCard.articles"), { count: expCount })}
               </span>
             )}
           </div>
           {topExpiring.length === 0 ? (
-            <p style={{ margin: 0, color: "#666" }}>Aucun</p>
+            <p style={{ margin: 0, color: "#666" }}>{t("pharmacyAlertsCard.none")}</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {topExpiring.map((item) => {
@@ -220,7 +234,9 @@ export function PharmacyAlertsCard({
                     </Link>
                     {" "}
                     <span style={{ color: "#666" }}>
-                      péremption {formatDate(item.expirationDate)}
+                      {fillTemplate(t("pharmacyAlertsCard.expiryOn"), {
+                        date: formatDate(item.expirationDate, dateLocale),
+                      })}
                       {days !== null && (
                         <span
                           style={{
@@ -229,7 +245,11 @@ export function PharmacyAlertsCard({
                             color: expired ? "#b91c1c" : near ? "#b45309" : "#666",
                           }}
                         >
-                          {expired ? "(périmé)" : near ? `(${days}j)` : ""}
+                          {expired
+                            ? t("pharmacyAlertsCard.expiredTag")
+                            : near
+                              ? fillTemplate(t("pharmacyAlertsCard.daysToExpiry"), { days })
+                              : ""}
                         </span>
                       )}
                     </span>
@@ -240,7 +260,7 @@ export function PharmacyAlertsCard({
           )}
           {expCount > TOP_ITEMS_SHOW && (
             <Link href="/app/pharmacy/expiring" style={{ fontSize: 13, color: "#666" }}>
-              +{expCount - TOP_ITEMS_SHOW} de plus →
+              {fillTemplate(t("pharmacyAlertsCard.moreLink"), { count: expCount - TOP_ITEMS_SHOW })}
             </Link>
           )}
         </div>

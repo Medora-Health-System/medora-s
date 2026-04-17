@@ -7,7 +7,7 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import frMessages from "@/i18n/messages/fr";
 import enMessages from "@/i18n/messages/en";
-import { formatVitalsHeaderLine } from "@/lib/patientVitals";
+import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import type { ErProviderMseForm } from "./emergencyProviderMseV1";
 import {
   sepsisScreenFromUnknown,
@@ -119,29 +119,6 @@ function vitalsRecordFromSlice(slice: {
   };
 }
 
-/** Same structure as `formatVitalsHeaderLine` but English labels when `locale === "en"` (avoids mixed-language MSE lines). */
-function formatVitalsHeaderLineForAssist(
-  vitals: Record<string, number | string | null | undefined>,
-  locale: SupportedLanguage
-): string {
-  if (locale !== "en") {
-    return formatVitalsHeaderLine(vitals);
-  }
-  const parts: string[] = [];
-  const sys = vitals.bpSys;
-  const dia = vitals.bpDia;
-  if (sys != null && sys !== "" && dia != null && dia !== "") {
-    parts.push(`BP ${sys}/${dia}`);
-  }
-  if (vitals.hr != null && vitals.hr !== "") parts.push(`HR ${vitals.hr}/min`);
-  if (vitals.tempC != null && vitals.tempC !== "") parts.push(`Temp ${vitals.tempC} °C`);
-  if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO₂ ${vitals.spo2}%`);
-  if (vitals.rr != null && vitals.rr !== "") parts.push(`RR ${vitals.rr}/min`);
-  if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Wt ${vitals.weightKg} kg`);
-  if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Ht ${vitals.heightCm} cm`);
-  return parts.length ? parts.join(" · ") : "";
-}
-
 /**
  * Returns non-empty string fields only. Caller applies to empty MSE fields only.
  */
@@ -227,7 +204,7 @@ export function buildErMseSmartAssistSuggestions(
       out.focusedImpression = mseT(locale, "focusedSepsisPossible");
     }
 
-    const vitalsLine = formatVitalsHeaderLineForAssist(vitalsRecordFromSlice(slice), locale);
+    const vitalsLine = formatVitalsHeaderLineForLocale(vitalsRecordFromSlice(slice), locale);
     if (vitalsLine) {
       out.examReassessmentExtra = mseI(locale, "vitalsRecordedLine", { line: vitalsLine });
     }

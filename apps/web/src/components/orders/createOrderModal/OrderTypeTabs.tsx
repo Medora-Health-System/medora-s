@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { OrderModalTab } from "./types";
+import { useI18n } from "@/lib/i18n";
 
 const tabBtn = (active: boolean): React.CSSProperties => ({
   padding: "8px 14px",
@@ -23,14 +24,15 @@ export function OrderTypeTabs({
   activeTab: OrderModalTab;
   onChange: (tab: OrderModalTab) => void;
 }) {
-  const label = (t: OrderModalTab) =>
-    t === "LAB"
-      ? "Analyses"
-      : t === "IMAGING"
-        ? "Imagerie"
-        : t === "MEDICATION"
-          ? "Médicaments"
-          : "Soins / procédures";
+  const { t } = useI18n();
+  const label = (tab: OrderModalTab) =>
+    tab === "LAB"
+      ? t("encounterChrome.chartTabs.orderTypeLAB")
+      : tab === "IMAGING"
+        ? t("encounterChrome.chartTabs.orderTypeIMAGING")
+        : tab === "MEDICATION"
+          ? t("encounterChrome.chartTabs.orderTypeMEDICATION")
+          : t("encounterChrome.chartTabs.orderTypeCARE");
 
   return (
     <div

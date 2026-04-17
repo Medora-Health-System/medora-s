@@ -337,7 +337,8 @@ export default function PatientDetailPage() {
 
   const { line: headerVitalsLine, hasVitals: hasHeaderVitals } = computeHeaderVitalsLine(
     hasClinicalLatestVitals ? latestVitalsJson : undefined,
-    patient?.latestVitalsJson
+    patient?.latestVitalsJson,
+    language
   );
 
   const headerVitalsLoading = clinicalChartAccess && vitalsLoading && !hasHeaderVitals;

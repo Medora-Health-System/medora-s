@@ -1,6 +1,7 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { calculateAge } from "@/lib/patientDisplay";
+import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 
 export function encounterBcp47(language: SupportedLanguage): string {
   return language === "en" ? "en-US" : "fr-FR";
@@ -119,31 +120,9 @@ export function formatLatestVitalsLine(
   language: SupportedLanguage,
   t: (key: string) => string
 ): string {
-  const en = language === "en";
+  const base = formatVitalsHeaderLineForLocale(vitals, language);
   const parts: string[] = [];
-  if (vitals.bpSys != null && vitals.bpDia != null && vitals.bpSys !== "" && vitals.bpDia !== "") {
-    parts.push(en ? `BP ${vitals.bpSys}/${vitals.bpDia}` : `TA : ${vitals.bpSys}/${vitals.bpDia}`);
-  }
-  if (vitals.hr != null && vitals.hr !== "") {
-    parts.push(en ? `HR ${vitals.hr}/min` : `FC : ${vitals.hr}/min`);
-  }
-  if (vitals.rr != null && vitals.rr !== "") {
-    parts.push(en ? `RR ${vitals.rr}/min` : `FR : ${vitals.rr}/min`);
-  }
-  if (vitals.tempC != null && vitals.tempC !== "") {
-    parts.push(
-      en ? `Temperature ${vitals.tempC} °C` : `Température : ${vitals.tempC} °C`
-    );
-  }
-  if (vitals.spo2 != null && vitals.spo2 !== "") {
-    parts.push(en ? `SpO₂ ${vitals.spo2}%` : `SpO₂ : ${vitals.spo2} %`);
-  }
-  if (vitals.weightKg != null && vitals.weightKg !== "") {
-    parts.push(en ? `Weight ${vitals.weightKg} kg` : `Poids : ${vitals.weightKg} kg`);
-  }
-  if (vitals.heightCm != null && vitals.heightCm !== "") {
-    parts.push(en ? `Height ${vitals.heightCm} cm` : `Taille : ${vitals.heightCm} cm`);
-  }
-  if (esi != null) parts.push(en ? `ESI ${esi}` : `ESI : ${esi}`);
-  return parts.length ? parts.join(en ? " · " : " · ") : t("encounterChrome.noVitalsLine");
+  if (base) parts.push(base);
+  if (esi != null) parts.push(language === "en" ? `ESI ${esi}` : `ESI : ${esi}`);
+  return parts.length ? parts.join(" · ") : t("encounterChrome.noVitalsLine");
 }

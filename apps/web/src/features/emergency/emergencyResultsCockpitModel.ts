@@ -3,8 +3,6 @@
  */
 
 import type { EncounterLabRadRow, EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
-import { clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
 
 function orderCreatedMs(order: unknown): number {
   if (!order || typeof order !== "object") return 0;
@@ -15,14 +13,10 @@ function orderCreatedMs(order: unknown): number {
 }
 
 function rowRecencyMs(row: EncounterLabRadRow): number {
-  const v = clinicalResultFromOrderItemLike({
-    displayLabelFr: getOrderItemDisplayLabelFr(row.item),
-    status: row.item.status,
-    catalogItemType: row.item.catalogItemType,
-    result: row.item.result,
-  });
-  if (v.verifiedAt) {
-    const t = Date.parse(v.verifiedAt);
+  const r = row.item.result;
+  const va = r && typeof r === "object" ? (r as { verifiedAt?: unknown }).verifiedAt : undefined;
+  if (typeof va === "string" && va.trim()) {
+    const t = Date.parse(va);
     if (!Number.isNaN(t)) return t;
   }
   return orderCreatedMs(row.order);

@@ -6,7 +6,7 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
 import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
-import { formatVitalsHeaderLine } from "@/lib/patientVitals";
+import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import { erTriageT } from "./erTriageI18nLookup";
 import {
   erTriageV1FormFromVitalsJson,
@@ -537,8 +537,8 @@ function allergyDetailLines(f: TriageDocPreviewFormSlice, er: ErTriageV1Form, lo
 }
 
 /** Latest vitals one-liner for clinical strip (same logic as chart header). */
-export function buildVitalsStripLine(f: TriageDocPreviewFormSlice): string {
-  return formatVitalsHeaderLine(vitalsRecordForHeader(f));
+export function buildVitalsStripLine(f: TriageDocPreviewFormSlice, locale: SupportedLanguage): string {
+  return formatVitalsHeaderLineForLocale(vitalsRecordForHeader(f), locale);
 }
 
 /**
@@ -576,7 +576,7 @@ function buildNarrative(f: TriageDocPreviewFormSlice, er: ErTriageV1Form, locale
   if (f.esi) {
     parts.push(interpolatePreview(erTriageT(locale, "erTriage.preview.narrativeEsi"), { n: f.esi }));
   }
-  const vitalsLine = formatVitalsHeaderLine(vitalsRecordForHeader(f));
+  const vitalsLine = formatVitalsHeaderLineForLocale(vitalsRecordForHeader(f), locale);
   if (vitalsLine) parts.push(vitalsLine);
   if (er.painScale0to10.trim()) {
     const n = parseInt(er.painScale0to10, 10);
@@ -691,7 +691,7 @@ export function buildTriageDocumentationPreviewModel(
   }
 
   const signes: string[] = [];
-  const vitalsLine = formatVitalsHeaderLine(vitalsRecordForHeader(f));
+  const vitalsLine = formatVitalsHeaderLineForLocale(vitalsRecordForHeader(f), locale);
   if (vitalsLine) {
     signes.push(interpolatePreview(erTriageT(locale, "erTriage.preview.vitalsRecorded"), { line: vitalsLine }));
   }

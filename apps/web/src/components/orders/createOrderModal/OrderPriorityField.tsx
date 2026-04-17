@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { getOrderPriorityLabelFr } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
 
 export function OrderPriorityField({
   value,
@@ -10,19 +10,20 @@ export function OrderPriorityField({
   value: "ROUTINE" | "URGENT" | "STAT";
   onChange: (v: "ROUTINE" | "URGENT" | "STAT") => void;
 }) {
+  const { t } = useI18n();
   return (
     <div style={{ marginBottom: 12 }}>
       <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12, color: "#333" }}>
-        Priorité
+        {t("encounterChrome.ordersTab.tableHeaderPriority")}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as "ROUTINE" | "URGENT" | "STAT")}
         style={{ width: "100%", padding: "8px 10px", border: "1px solid #ccc", borderRadius: 4, fontSize: 14 }}
       >
-        <option value="ROUTINE">{getOrderPriorityLabelFr("ROUTINE")}</option>
-        <option value="URGENT">{getOrderPriorityLabelFr("URGENT")}</option>
-        <option value="STAT">{getOrderPriorityLabelFr("STAT")}</option>
+        <option value="ROUTINE">{t("encounterChrome.orderPriorities.ROUTINE")}</option>
+        <option value="URGENT">{t("encounterChrome.orderPriorities.URGENT")}</option>
+        <option value="STAT">{t("encounterChrome.orderPriorities.STAT")}</option>
       </select>
     </div>
   );

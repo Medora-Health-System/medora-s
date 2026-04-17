@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { ui } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
 import {
   hydrateDischargeFormFromEncounterJson,
   emptyDischargeForm,
@@ -35,6 +35,7 @@ import {
   outcomeUiToDischargeMode,
   readDispositionSignatureFromEncounter,
   type ErDispositionOutcomeUi,
+  type ErDispositionPreviewLabels,
   type ErDispositionSupplementForm,
 } from "./emergencyDispositionV1";
 
@@ -89,16 +90,6 @@ const PREVIEW_ACCENTS: Record<string, string> = {
   empty: "#cbd5e1",
 };
 
-const OUTCOME_OPTIONS: { id: ErDispositionOutcomeUi; label: string }[] = [
-  { id: "HOME", label: "Sortie à domicile" },
-  { id: "ADMISSION", label: "Hospitalisation / admission" },
-  { id: "TRANSFER", label: "Transfert (autre établissement)" },
-  { id: "AMA", label: "Contre avis médical (LAMA)" },
-  { id: "LWBS", label: "Départ avant fin de prise en charge (type LWBS)" },
-  { id: "DECEASED", label: "Décès" },
-  { id: "OTHER", label: "Autre" },
-];
-
 export function EmergencyDispositionPanel({
   encounterId,
   facilityId,
@@ -120,6 +111,59 @@ export function EmergencyDispositionPanel({
   canEditNursingDischarge: boolean;
   canEditMedicalDischarge: boolean;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+
+  const OUTCOME_OPTIONS = useMemo(
+    (): { id: ErDispositionOutcomeUi; label: string }[] => [
+      { id: "HOME", label: t("emergencyDisposition.outcomeHOME") },
+      { id: "ADMISSION", label: t("emergencyDisposition.outcomeADMISSION") },
+      { id: "TRANSFER", label: t("emergencyDisposition.outcomeTRANSFER") },
+      { id: "AMA", label: t("emergencyDisposition.outcomeAMA") },
+      { id: "LWBS", label: t("emergencyDisposition.outcomeLWBS") },
+      { id: "DECEASED", label: t("emergencyDisposition.outcomeDECEASED") },
+      { id: "OTHER", label: t("emergencyDisposition.outcomeOTHER") },
+    ],
+    [t]
+  );
+
+  const dispositionPreviewLabels = useMemo(
+    (): ErDispositionPreviewLabels => ({
+      dischargeModeLinePrefix: t("emergencyDisposition.preview.dischargeModeLinePrefix"),
+      sectionDecisionShared: t("emergencyDisposition.preview.sectionDecisionShared"),
+      sectionDischargeFields: t("emergencyDisposition.preview.sectionDischargeFields"),
+      lineDispositionSummary: t("emergencyDisposition.preview.lineDispositionSummary"),
+      lineExitCondition: t("emergencyDisposition.preview.lineExitCondition"),
+      lineInstructions: t("emergencyDisposition.preview.lineInstructions"),
+      lineMedicationsGiven: t("emergencyDisposition.preview.lineMedicationsGiven"),
+      lineFollowUp: t("emergencyDisposition.preview.lineFollowUp"),
+      lineReturnIfWorse: t("emergencyDisposition.preview.lineReturnIfWorse"),
+      linePatientDestination: t("emergencyDisposition.preview.linePatientDestination"),
+      sectionAdmission: t("emergencyDisposition.preview.sectionAdmission"),
+      lineAdmissionReason: t("emergencyDisposition.preview.lineAdmissionReason"),
+      lineServiceUnit: t("emergencyDisposition.preview.lineServiceUnit"),
+      lineAdmissionDiagnosis: t("emergencyDisposition.preview.lineAdmissionDiagnosis"),
+      lineCareLevel: t("emergencyDisposition.preview.lineCareLevel"),
+      lineConditionAdmission: t("emergencyDisposition.preview.lineConditionAdmission"),
+      lineInitialPlan: t("emergencyDisposition.preview.lineInitialPlan"),
+      lineResponsiblePhysician: t("emergencyDisposition.preview.lineResponsiblePhysician"),
+      sectionErExtra: t("emergencyDisposition.preview.sectionErExtra"),
+      lineTransferNote: t("emergencyDisposition.preview.lineTransferNote"),
+      lineAmaRisks: t("emergencyDisposition.preview.lineAmaRisks"),
+      lineLwbsDetail: t("emergencyDisposition.preview.lineLwbsDetail"),
+      lineDeceasedNote: t("emergencyDisposition.preview.lineDeceasedNote"),
+      sectionEmptyTitle: t("emergencyDisposition.preview.sectionEmptyTitle"),
+      sectionEmptyLine: t("emergencyDisposition.preview.sectionEmptyLine"),
+      headlinePrefix: t("emergencyDisposition.preview.headlinePrefix"),
+    }),
+    [t]
+  );
+
+  const careLevelDisplayOptions = useMemo(
+    () => t("emergencyDisposition.careLevelOptions").split("\n").filter(Boolean),
+    [t]
+  );
+
   const patientDossierPrintHref =
     encounter.patient?.id != null && String(encounter.patient.id).trim() !== ""
       ? `/app/patients/${encodeURIComponent(encounter.patient.id)}?tab=summary`
@@ -193,8 +237,15 @@ export function EmergencyDispositionPanel({
     : { minWidth: 0 };
 
   const previewModel = useMemo(
-    () => buildErDispositionPreviewModel(dischargeForm, admissionForm, supplementForm, outcomeUi),
-    [dischargeForm, admissionForm, supplementForm, outcomeUi]
+    () =>
+      buildErDispositionPreviewModel(
+        dischargeForm,
+        admissionForm,
+        supplementForm,
+        outcomeUi,
+        dispositionPreviewLabels
+      ),
+    [dischargeForm, admissionForm, supplementForm, outcomeUi, dispositionPreviewLabels]
   );
 
   const storedSig = useMemo(
@@ -219,7 +270,7 @@ export function EmergencyDispositionPanel({
     setSaving(true);
     setSaveInfo(null);
     try {
-      let savedByDisplayName = "Professionnel";
+      let savedByDisplayName = t("emergencyDisposition.signerFallback");
       try {
         const meRes = await fetch("/api/auth/me");
         const me = await parseApiResponse(meRes);
@@ -268,11 +319,11 @@ export function EmergencyDispositionPanel({
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       await onSaved();
-      setSaveInfo(queued ? "En attente de synchronisation." : "Disposition enregistrée.");
+      setSaveInfo(queued ? t("emergencyDisposition.saveQueued") : t("emergencyDisposition.saveOk"));
     } catch (e) {
       console.error(e);
       setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'enregistrer."
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyDisposition.saveFailed")
       );
     } finally {
       setSaving(false);
@@ -316,11 +367,10 @@ export function EmergencyDispositionPanel({
       <MedoraCardInner>
         <MedoraCardIdentity initials="D">
           <MedoraCardTitle
-            title="Disposition (urgences)"
+            title={t("emergencyDisposition.cardTitle")}
             subline={
               <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                Décision médicale d&apos;orientation — enregistrée dans le dossier partagé. L&apos;exécution infirmière
-                (sortie, impression, confirmation) se fait dans la section « Exécution équipe » sous cette disposition.
+                {t("emergencyDisposition.cardSubline")}
               </p>
             }
           />
@@ -343,7 +393,7 @@ export function EmergencyDispositionPanel({
                 textDecoration: "none",
               }}
             >
-              Imprimer le dossier
+              {t("emergencyDisposition.printChart")}
             </Link>
           ) : null}
           <Link
@@ -361,7 +411,7 @@ export function EmergencyDispositionPanel({
               textDecoration: "none",
             }}
           >
-            Résumé et clôture
+            {t("emergencyDisposition.summaryClosureLink")}
           </Link>
         </MedoraCardActions>
 
@@ -378,8 +428,7 @@ export function EmergencyDispositionPanel({
               lineHeight: 1.45,
             }}
           >
-            Cette consultation est liée à une hospitalisation (type dossier). Vérifiez le dossier complet pour le détail
-            administratif et clinique.
+            {t("emergencyDisposition.inpatientBanner")}
           </p>
         ) : null}
 
@@ -388,7 +437,10 @@ export function EmergencyDispositionPanel({
             style={{
               margin: "10px 0 0 0",
               fontSize: 13,
-              color: saveInfo.includes("Impossible") ? "#b91c1c" : "#15803d",
+              color:
+                saveInfo.toLowerCase().includes("impossible") || saveInfo.toLowerCase().includes("unable")
+                  ? "#b91c1c"
+                  : "#15803d",
               lineHeight: 1.45,
             }}
           >
@@ -399,7 +451,7 @@ export function EmergencyDispositionPanel({
         <div style={{ ...workspaceStyle, marginTop: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
             <div>
-              <p style={sectionHeading}>Décision principale</p>
+              <p style={sectionHeading}>{t("emergencyDisposition.sectionPrimaryDecision")}</p>
               <div
                 style={{
                   marginTop: 8,
@@ -437,12 +489,10 @@ export function EmergencyDispositionPanel({
                 ))}
               </div>
               <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                Le mode de sortie enregistré dans le dossier correspond au libellé « mode de sortie » (sortie standard
-                Medora).
+                {t("emergencyDisposition.outcomeHint1")}
               </p>
               <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                Pour une prise en charge en <strong>observation</strong>, choisir « Hospitalisation / admission » puis
-                renseigner le dossier d&apos;admission avec le niveau de soins « Observation » (champs Medora existants).
+                {t("emergencyDisposition.outcomeHint2")}
               </p>
             </div>
 
@@ -456,85 +506,77 @@ export function EmergencyDispositionPanel({
                 }}
               >
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#6b21a8" }}>
-                  Attention — dossier d&apos;admission
+                  {t("emergencyDisposition.admissionWarningTitle")}
                 </p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#6b21a8", lineHeight: 1.45 }}>
-                  L&apos;enregistrement d&apos;un dossier d&apos;admission sur une consultation ouverte met à jour le
-                  dossier d&apos;admission côté serveur (règles métier Medora : type hospitalisation et date
-                  d&apos;admission lorsque applicable). Utilisez uniquement si la décision d&apos;admission est
-                  actée.
+                  {t("emergencyDisposition.admissionWarningBody")}
                 </p>
               </div>
             ) : null}
 
             {showAdmissionFields && !canPrescribe ? (
               <p style={{ margin: 0, fontSize: 13, color: "#b45309", lineHeight: 1.45 }}>
-                L&apos;édition du dossier d&apos;admission est réservée au médecin / administration. Ouvrez la
-                consultation complète.
+                {t("emergencyDisposition.admissionRoleHint")}
               </p>
             ) : null}
 
             <div>
-              <p style={sectionHeading}>Dossier de sortie (partagé)</p>
+              <p style={sectionHeading}>{t("emergencyDisposition.sectionDischargeShared")}</p>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
-                  <label style={labelStyle}>Disposition / synthèse (médical)</label>
+                  <label style={labelStyle}>{t("emergencyDisposition.labelDispositionMedical")}</label>
                   {ta(2, dischargeForm.disposition, (v) => patchDischarge({ disposition: v }), medDisabled)}
                 </div>
                 <div>
-                  <label style={labelStyle}>Instructions de sortie (médical)</label>
+                  <label style={labelStyle}>{t("emergencyDisposition.labelDischargeInstructionsMedical")}</label>
                   {ta(2, dischargeForm.dischargeInstructions, (v) => patchDischarge({ dischargeInstructions: v }), medDisabled)}
                 </div>
                 <div>
-                  <label style={labelStyle}>Suivi (médical)</label>
+                  <label style={labelStyle}>{t("emergencyDisposition.labelFollowUpMedical")}</label>
                   {ta(2, dischargeForm.followUp, (v) => patchDischarge({ followUp: v }), medDisabled)}
                 </div>
                 <div>
-                  <label style={labelStyle}>Médicaments donnés / traitement (médical)</label>
+                  <label style={labelStyle}>{t("emergencyDisposition.labelMedicationsMedical")}</label>
                   {ta(2, dischargeForm.medicationsGiven, (v) => patchDischarge({ medicationsGiven: v }), medDisabled)}
                 </div>
                 <div>
-                  <label style={labelStyle}>État à la sortie (infirmier)</label>
+                  <label style={labelStyle}>{t("emergencyDisposition.labelExitConditionNursing")}</label>
                   {ta(2, dischargeForm.exitCondition, (v) => patchDischarge({ exitCondition: v }), nurDisabled)}
                 </div>
                 <div>
-                  <label style={labelStyle}>Destination / lieu (infirmier)</label>
+                  <label style={labelStyle}>{t("emergencyDisposition.labelDestinationNursing")}</label>
                   <input
                     type="text"
                     value={dischargeForm.patientDestination}
                     onChange={(e) => patchDischarge({ patientDestination: e.target.value })}
                     disabled={nurDisabled}
                     style={{ ...inputBase, backgroundColor: nurDisabled ? "#f8fafc" : "#fff" }}
-                    placeholder="Ex. domicile, transfert, service"
+                    placeholder={t("emergencyDisposition.placeholderDestination")}
                   />
                 </div>
                 <div>
-                  <label style={labelStyle}>Réévaluation / signes d&apos;alarme (infirmier)</label>
+                  <label style={labelStyle}>{t("emergencyDisposition.labelReturnIfWorseNursing")}</label>
                   {ta(2, dischargeForm.returnIfWorse, (v) => patchDischarge({ returnIfWorse: v }), nurDisabled)}
                 </div>
                 {!canEditMedicalDischarge ? (
-                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                    Champs médicaux : réservés au médecin / administration sur cette page.
-                  </p>
+                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyDisposition.hintMedicalFields")}</p>
                 ) : null}
                 {!canEditNursingDischarge ? (
-                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                    Champs infirmiers : réservés à l&apos;infirmier / administration sur cette page.
-                  </p>
+                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyDisposition.hintNursingFields")}</p>
                 ) : null}
               </div>
             </div>
 
             {showAdmissionFields && canPrescribe ? (
               <div>
-                <p style={sectionHeading}>Dossier d&apos;admission (médecin)</p>
+                <p style={sectionHeading}>{t("emergencyDisposition.sectionAdmissionPhysician")}</p>
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                   <div>
-                    <label style={labelStyle}>Motif d&apos;admission</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionReason")}</label>
                     {ta(2, admissionForm.admissionReason, (v) => patchAdmission({ admissionReason: v }), medDisabled)}
                   </div>
                   <div>
-                    <label style={labelStyle}>Unité / service</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelServiceUnit")}</label>
                     <input
                       type="text"
                       value={admissionForm.serviceUnit}
@@ -544,11 +586,11 @@ export function EmergencyDispositionPanel({
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Diagnostic d&apos;admission (texte)</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelAdmissionDiagnosis")}</label>
                     {ta(2, admissionForm.admissionDiagnosis, (v) => patchAdmission({ admissionDiagnosis: v }), medDisabled)}
                   </div>
                   <div>
-                    <label style={labelStyle}>Niveau de soins</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelCareLevel")}</label>
                     <select
                       value={admissionForm.careLevel}
                       onChange={(e) => patchAdmission({ careLevel: e.target.value })}
@@ -560,23 +602,23 @@ export function EmergencyDispositionPanel({
                       }}
                     >
                       <option value="">—</option>
-                      {CARE_LEVEL_OPTIONS_FR.map((o) => (
+                      {CARE_LEVEL_OPTIONS_FR.map((o, i) => (
                         <option key={o} value={o}>
-                          {o}
+                          {careLevelDisplayOptions[i] ?? o}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>État à l&apos;admission</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelConditionAdmission")}</label>
                     {ta(2, admissionForm.conditionAtAdmission, (v) => patchAdmission({ conditionAtAdmission: v }), medDisabled)}
                   </div>
                   <div>
-                    <label style={labelStyle}>Plan initial</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelInitialPlan")}</label>
                     {ta(2, admissionForm.initialPlan, (v) => patchAdmission({ initialPlan: v }), medDisabled)}
                   </div>
                   <div>
-                    <label style={labelStyle}>Médecin responsable (nom affiché)</label>
+                    <label style={labelStyle}>{t("emergencyDisposition.labelResponsiblePhysician")}</label>
                     <input
                       type="text"
                       value={admissionForm.responsiblePhysicianName}
@@ -591,47 +633,47 @@ export function EmergencyDispositionPanel({
 
             {(showTransferExtra || showAmaExtra || showLwbsExtra || showDeceasedExtra) && (
               <div>
-                <p style={sectionHeading}>Précisions urgence (V1)</p>
+                <p style={sectionHeading}>{t("emergencyDisposition.sectionErSupplement")}</p>
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                   {showTransferExtra ? (
                     <div>
-                      <label style={labelStyle}>Transfert — transmission / main courante</label>
+                      <label style={labelStyle}>{t("emergencyDisposition.labelTransferHandoff")}</label>
                       {ta(
                         2,
                         supplementForm.transferHandoffNote,
                         (v) => patchSupplement({ transferHandoffNote: v }),
                         formDisabled,
-                        "Complète la destination dans « Destination / lieu » du dossier de sortie."
+                        t("emergencyDisposition.transferPlaceholder")
                       )}
                     </div>
                   ) : null}
                   {showAmaExtra ? (
                     <div>
-                      <label style={labelStyle}>Risques discutés (LAMA)</label>
+                      <label style={labelStyle}>{t("emergencyDisposition.labelAmaRisks")}</label>
                       {ta(2, supplementForm.amaRisksDiscussed, (v) => patchSupplement({ amaRisksDiscussed: v }), formDisabled)}
                     </div>
                   ) : null}
                   {showLwbsExtra ? (
                     <div>
-                      <label style={labelStyle}>Précision LWBS / départ anticipé</label>
+                      <label style={labelStyle}>{t("emergencyDisposition.labelLwbs")}</label>
                       {ta(
                         2,
                         supplementForm.lwbsNarrative,
                         (v) => patchSupplement({ lwbsNarrative: v }),
                         formDisabled,
-                        "Le mode de sortie dossier est « Autre » ; décrire le contexte."
+                        t("emergencyDisposition.lwbsPlaceholder")
                       )}
                     </div>
                   ) : null}
                   {showDeceasedExtra ? (
                     <div>
-                      <label style={labelStyle}>Décès — notes (aperçu local)</label>
+                      <label style={labelStyle}>{t("emergencyDisposition.labelDeceasedNotes")}</label>
                       {ta(
                         3,
                         supplementForm.deceasedPlaceholderNote,
                         (v) => patchSupplement({ deceasedPlaceholderNote: v }),
                         formDisabled,
-                        "Le flux légal et la clôture complète restent sur le dossier et les procédures établies."
+                        t("emergencyDisposition.deceasedPlaceholder")
                       )}
                     </div>
                   ) : null}
@@ -655,21 +697,21 @@ export function EmergencyDispositionPanel({
                   cursor: formDisabled || saving ? "not-allowed" : "pointer",
                 }}
               >
-                {saving ? "Enregistrement…" : "Enregistrer la décision d'orientation"}
+                {saving ? t("emergencyDisposition.saveButtonSaving") : t("emergencyDisposition.saveButton")}
               </button>
               {isLocked ? (
-                <span style={{ fontSize: 12, color: "#b45309" }}>Documentation signée — saisie verrouillée.</span>
+                <span style={{ fontSize: 12, color: "#b45309" }}>{t("emergencyDisposition.lockedSigned")}</span>
               ) : null}
               {isReadOnly ? (
-                <span style={{ fontSize: 12, color: "#64748b" }}>Consultation fermée — lecture seule.</span>
+                <span style={{ fontSize: 12, color: "#64748b" }}>{t("emergencyDisposition.readOnlyClosed")}</span>
               ) : null}
             </div>
           </div>
 
           <div style={resumeColumnStyle}>
-            <p style={sectionHeading}>Résumé de disposition (généré)</p>
+            <p style={sectionHeading}>{t("emergencyDisposition.previewColumnTitle")}</p>
             <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              Texte dérivé des champs saisis — pas d&apos;IA.
+              {t("emergencyDisposition.previewColumnHint")}
             </p>
             <div
               style={{
@@ -720,16 +762,16 @@ export function EmergencyDispositionPanel({
               }}
             >
               <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color: "#475569" }}>
-                Horodatage décision d&apos;orientation (V1)
+                {t("emergencyDisposition.signatureHeading")}
               </p>
               {storedSig ? (
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#334155", lineHeight: 1.45 }}>
                   {storedSig.savedByDisplayName}
                   <br />
-                  {new Date(storedSig.savedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                  {new Date(storedSig.savedAt).toLocaleString(dateLocale, { dateStyle: "short", timeStyle: "short" })}
                 </p>
               ) : (
-                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>{ui.common.dash}</p>
+                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>{t("common.dash")}</p>
               )}
             </div>
           </div>

@@ -4,6 +4,8 @@
  * Persists via existing PATCH /encounters/:id. No backend migration.
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { mergeDischargeForSave } from "@/lib/encounterDischarge";
 import type { DischargeFormState } from "@/lib/encounterDischarge";
 import type { AdmissionFormState } from "@/lib/encounterAdmission";
@@ -215,6 +217,69 @@ export type ErDispositionPreviewModel = {
   headline: string;
 };
 
+/** Localized labels for the rule-based disposition preview (defaults = French product copy). */
+export type ErDispositionPreviewLabels = {
+  dischargeModeLinePrefix: string;
+  sectionDecisionShared: string;
+  sectionDischargeFields: string;
+  lineDispositionSummary: string;
+  lineExitCondition: string;
+  lineInstructions: string;
+  lineMedicationsGiven: string;
+  lineFollowUp: string;
+  lineReturnIfWorse: string;
+  linePatientDestination: string;
+  sectionAdmission: string;
+  lineAdmissionReason: string;
+  lineServiceUnit: string;
+  lineAdmissionDiagnosis: string;
+  lineCareLevel: string;
+  lineConditionAdmission: string;
+  lineInitialPlan: string;
+  lineResponsiblePhysician: string;
+  sectionErExtra: string;
+  lineTransferNote: string;
+  lineAmaRisks: string;
+  lineLwbsDetail: string;
+  lineDeceasedNote: string;
+  sectionEmptyTitle: string;
+  sectionEmptyLine: string;
+  headlinePrefix: string;
+};
+
+export function dispositionPreviewLabelsFromLocale(locale: SupportedLanguage): ErDispositionPreviewLabels {
+  const p = (key: keyof ErDispositionPreviewLabels) =>
+    i18nMessage(locale, `emergencyDisposition.preview.${String(key)}`);
+  return {
+    dischargeModeLinePrefix: p("dischargeModeLinePrefix"),
+    sectionDecisionShared: p("sectionDecisionShared"),
+    sectionDischargeFields: p("sectionDischargeFields"),
+    lineDispositionSummary: p("lineDispositionSummary"),
+    lineExitCondition: p("lineExitCondition"),
+    lineInstructions: p("lineInstructions"),
+    lineMedicationsGiven: p("lineMedicationsGiven"),
+    lineFollowUp: p("lineFollowUp"),
+    lineReturnIfWorse: p("lineReturnIfWorse"),
+    linePatientDestination: p("linePatientDestination"),
+    sectionAdmission: p("sectionAdmission"),
+    lineAdmissionReason: p("lineAdmissionReason"),
+    lineServiceUnit: p("lineServiceUnit"),
+    lineAdmissionDiagnosis: p("lineAdmissionDiagnosis"),
+    lineCareLevel: p("lineCareLevel"),
+    lineConditionAdmission: p("lineConditionAdmission"),
+    lineInitialPlan: p("lineInitialPlan"),
+    lineResponsiblePhysician: p("lineResponsiblePhysician"),
+    sectionErExtra: p("sectionErExtra"),
+    lineTransferNote: p("lineTransferNote"),
+    lineAmaRisks: p("lineAmaRisks"),
+    lineLwbsDetail: p("lineLwbsDetail"),
+    lineDeceasedNote: p("lineDeceasedNote"),
+    sectionEmptyTitle: p("sectionEmptyTitle"),
+    sectionEmptyLine: p("sectionEmptyLine"),
+    headlinePrefix: p("headlinePrefix"),
+  };
+}
+
 function pushLine(lines: string[], label: string, value: string) {
   const v = value.trim();
   if (v) lines.push(`${label} : ${v.length > 500 ? `${v.slice(0, 500)}…` : v}`);
@@ -225,44 +290,45 @@ export function buildErDispositionPreviewModel(
   discharge: DischargeFormState,
   admission: AdmissionFormState,
   supplement: ErDispositionSupplementForm,
-  outcome: ErDispositionOutcomeUi
+  outcome: ErDispositionOutcomeUi,
+  labels: ErDispositionPreviewLabels
 ): ErDispositionPreviewModel {
   const sections: ErDispositionPreviewSection[] = [];
 
   const modeLine: string[] = [];
   if (discharge.dischargeMode.trim()) {
-    modeLine.push(`Mode de sortie (dossier) : ${discharge.dischargeMode.trim()}`);
+    modeLine.push(`${labels.dischargeModeLinePrefix} ${discharge.dischargeMode.trim()}`);
   }
-  if (modeLine.length) sections.push({ id: "mode", title: "Décision (dossier partagé)", lines: modeLine });
+  if (modeLine.length) sections.push({ id: "mode", title: labels.sectionDecisionShared, lines: modeLine });
 
   const disc: string[] = [];
-  pushLine(disc, "Disposition / synthèse", discharge.disposition);
-  pushLine(disc, "État / condition à la sortie", discharge.exitCondition);
-  pushLine(disc, "Instructions", discharge.dischargeInstructions);
-  pushLine(disc, "Médicaments donnés / traitement à la sortie", discharge.medicationsGiven);
-  pushLine(disc, "Suivi", discharge.followUp);
-  pushLine(disc, "Réévaluation / signes d’alarme", discharge.returnIfWorse);
-  pushLine(disc, "Destination / lieu", discharge.patientDestination);
-  if (disc.length) sections.push({ id: "discharge", title: "Sortie (champs dossier)", lines: disc });
+  pushLine(disc, labels.lineDispositionSummary, discharge.disposition);
+  pushLine(disc, labels.lineExitCondition, discharge.exitCondition);
+  pushLine(disc, labels.lineInstructions, discharge.dischargeInstructions);
+  pushLine(disc, labels.lineMedicationsGiven, discharge.medicationsGiven);
+  pushLine(disc, labels.lineFollowUp, discharge.followUp);
+  pushLine(disc, labels.lineReturnIfWorse, discharge.returnIfWorse);
+  pushLine(disc, labels.linePatientDestination, discharge.patientDestination);
+  if (disc.length) sections.push({ id: "discharge", title: labels.sectionDischargeFields, lines: disc });
 
   if (outcome === "ADMISSION" || admission.admissionReason.trim()) {
     const adm: string[] = [];
-    pushLine(adm, "Motif d’admission", admission.admissionReason);
-    pushLine(adm, "Unité / service", admission.serviceUnit);
-    pushLine(adm, "Diagnostic d’admission", admission.admissionDiagnosis);
-    pushLine(adm, "Niveau de soins", admission.careLevel);
-    pushLine(adm, "État à l’admission", admission.conditionAtAdmission);
-    pushLine(adm, "Plan initial", admission.initialPlan);
-    pushLine(adm, "Médecin responsable (texte)", admission.responsiblePhysicianName);
-    if (adm.length) sections.push({ id: "admission", title: "Dossier d’admission", lines: adm });
+    pushLine(adm, labels.lineAdmissionReason, admission.admissionReason);
+    pushLine(adm, labels.lineServiceUnit, admission.serviceUnit);
+    pushLine(adm, labels.lineAdmissionDiagnosis, admission.admissionDiagnosis);
+    pushLine(adm, labels.lineCareLevel, admission.careLevel);
+    pushLine(adm, labels.lineConditionAdmission, admission.conditionAtAdmission);
+    pushLine(adm, labels.lineInitialPlan, admission.initialPlan);
+    pushLine(adm, labels.lineResponsiblePhysician, admission.responsiblePhysicianName);
+    if (adm.length) sections.push({ id: "admission", title: labels.sectionAdmission, lines: adm });
   }
 
   const sup: string[] = [];
-  pushLine(sup, "Transfert — transmission / note", supplement.transferHandoffNote);
-  pushLine(sup, "LAMA — risques discutés", supplement.amaRisksDiscussed);
-  pushLine(sup, "LWBS / départ anticipé — précision", supplement.lwbsNarrative);
-  pushLine(sup, "Décès — notes (aperçu)", supplement.deceasedPlaceholderNote);
-  if (sup.length) sections.push({ id: "erExtra", title: "Précisions urgence (V1)", lines: sup });
+  pushLine(sup, labels.lineTransferNote, supplement.transferHandoffNote);
+  pushLine(sup, labels.lineAmaRisks, supplement.amaRisksDiscussed);
+  pushLine(sup, labels.lineLwbsDetail, supplement.lwbsNarrative);
+  pushLine(sup, labels.lineDeceasedNote, supplement.deceasedPlaceholderNote);
+  if (sup.length) sections.push({ id: "erExtra", title: labels.sectionErExtra, lines: sup });
 
   const headlineParts: string[] = [];
   const om = discharge.dischargeMode.trim();
@@ -271,11 +337,11 @@ export function buildErDispositionPreviewModel(
   if (cc) headlineParts.push(cc.length > 80 ? `${cc.slice(0, 80)}…` : cc);
 
   const headline =
-    headlineParts.length > 0 ? `Disposition (résumé) : ${headlineParts.join(" · ")}` : "";
+    headlineParts.length > 0 ? `${labels.headlinePrefix} ${headlineParts.join(" · ")}` : "";
 
   if (sections.length === 0 && !headline) {
     return {
-      sections: [{ id: "empty", title: "Aperçu", lines: ["Aucune donnée saisie pour l’aperçu."] }],
+      sections: [{ id: "empty", title: labels.sectionEmptyTitle, lines: [labels.sectionEmptyLine] }],
       headline: "",
     };
   }

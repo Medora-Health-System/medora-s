@@ -13,7 +13,7 @@ import {
   printT,
 } from "@/lib/printI18n";
 import { calculateAge } from "@/lib/patientDisplay";
-import { formatVitalsHeaderLine } from "@/lib/patientVitals";
+import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import {
   diagnosisDisplayFr,
   parseDischargeSummaryForChart,
@@ -165,7 +165,7 @@ export function getPatientChartPrintHtml(params: {
   const latestVitalsJson = p.latestVitalsJson as Record<string, number | string | null | undefined> | null | undefined;
   const latestVitalsLine =
     latestVitalsJson && Object.keys(latestVitalsJson).length > 0
-      ? formatVitalsHeaderLine(latestVitalsJson)
+      ? formatVitalsHeaderLineForLocale(latestVitalsJson, lang)
       : "—";
   const latestVitalsWhen = p.latestVitalsAt ? fmtDt(p.latestVitalsAt, lang) : null;
 
@@ -176,7 +176,7 @@ export function getPatientChartPrintHtml(params: {
   const encBlocks = encounters
     .map((enc) => {
       const vitalsJson = enc.triage?.vitalsJson as Record<string, number | string | null | undefined> | null | undefined;
-      const vitalsLine = vitalsJson ? formatVitalsHeaderLine(vitalsJson) : "—";
+      const vitalsLine = vitalsJson ? formatVitalsHeaderLineForLocale(vitalsJson, lang) : "—";
       const dxVisit = (enc.encounterDiagnoses ?? [])
         .map((d) => diagnosisDisplayFr(d.description, d.code))
         .join(" ; ");

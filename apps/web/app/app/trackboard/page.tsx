@@ -5,8 +5,9 @@ import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
-import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
-import { getEncounterStatusBoardLabelFr, ui } from "@/lib/uiLabels";
+import { calculateAge, formatAgeYearsSexFr } from "@/lib/patientDisplay";
+import { useI18n } from "@/lib/i18n";
+import type { SupportedLanguage } from "@/i18n/config";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -44,8 +45,11 @@ function patientInitials(p: { firstName?: string | null; lastName?: string | nul
   return s || "?";
 }
 
-function fullPatientName(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
-  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
+function fullPatientName(
+  p: { firstName?: string | null; lastName?: string | null } | null | undefined,
+  dash: string
+): string {
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || dash;
 }
 
 function physicianLabel(enc: {
@@ -64,21 +68,60 @@ function unitFromRoomLabel(roomLabel: string | null | undefined): string {
 }
 
 /** Trackboard API exposes `patient.mrn`; tolerate `nationalId` if present at runtime. */
-function patientNirDisplay(patient: { mrn?: string | null; nationalId?: string | null } | null | undefined): string {
+function patientNirDisplay(
+  patient: { mrn?: string | null; nationalId?: string | null } | null | undefined,
+  dash: string
+): string {
   const raw = (patient?.mrn ?? patient?.nationalId ?? "").trim();
-  return raw || ui.common.dash;
+  return raw || dash;
 }
 
-function formatArrivalDateTime(iso: string | null | undefined): string {
-  if (!iso) return ui.common.dash;
+function formatArrivalDateTime(iso: string | null | undefined, locale: string, dash: string): string {
+  if (!iso) return dash;
   try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
   } catch {
-    return ui.common.dash;
+    return dash;
   }
 }
 
+function formatAgeSexTrackboard(
+  language: SupportedLanguage,
+  t: (k: string) => string,
+  dob: string | null | undefined,
+  sexAtBirth: string | null | undefined,
+  sex?: string | null | undefined
+): string {
+  if (language === "fr") return formatAgeYearsSexFr(dob, sexAtBirth, sex);
+  if (!dob) return t("common.dash");
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return t("common.dash");
+  const age = calculateAge(dob);
+  if (!Number.isFinite(age) || age < 0) return t("common.dash");
+  let sexPart = t("encounterChrome.patientSex.UNKNOWN");
+  if (sex && sex !== "UNKNOWN") {
+    const k = `encounterChrome.patientSex.${sex}`;
+    const resolved = t(k);
+    sexPart = resolved !== k ? resolved : sexPart;
+  } else if (sexAtBirth?.trim()) {
+    const k = `encounterChrome.sexAtBirth.${String(sexAtBirth).trim()}`;
+    const resolved = t(k);
+    sexPart = resolved !== k ? resolved : sexPart;
+  }
+  return `${age} ${t("clinicalTrackboardPage.ageYearSuffix")} • ${sexPart}`;
+}
+
+function encounterStatusBoardLabel(status: string, t: (k: string) => string): string {
+  const u = (status || "").toUpperCase();
+  const k = `encounterChrome.encounterStatuses.${u}`;
+  const resolved = t(k);
+  return resolved !== k ? resolved : status;
+}
+
 export default function TrackBoardPage() {
+  const { t, language } = useI18n();
+  const locale = language === "en" ? "en-US" : "fr-FR";
+  const collatorLocale = language === "en" ? "en" : "fr";
   const { facilityId: facilityIdFromHook, ready, canManagePharmacy } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<any[]>([]);
@@ -116,7 +159,7 @@ export default function TrackBoardPage() {
       setEncounters(data || []);
     } catch (error) {
       console.error("Failed to load track board:", error);
-      setFetchError("Impossible de charger le tableau de bord.");
+      setFetchError(t("clinicalTrackboardPage.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -128,8 +171,8 @@ export default function TrackBoardPage() {
       const u = unitFromRoomLabel(e.roomLabel);
       if (u) set.add(u);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, collatorLocale));
+  }, [encounters, collatorLocale]);
 
   const physicianOptions = useMemo(() => {
     const set = new Set<string>();
@@ -137,8 +180,8 @@ export default function TrackBoardPage() {
       const pl = physicianLabel(e);
       if (pl) set.add(pl);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, collatorLocale));
+  }, [encounters, collatorLocale]);
 
   const filteredEncounters = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -153,7 +196,7 @@ export default function TrackBoardPage() {
       if (filterPhysician && phys !== filterPhysician) return false;
 
       if (q) {
-        const name = fullPatientName(encounter.patient).toLowerCase();
+        const name = fullPatientName(encounter.patient, t("common.dash")).toLowerCase();
         const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
           .trim()
           .toLowerCase();
@@ -164,7 +207,7 @@ export default function TrackBoardPage() {
       }
       return true;
     });
-  }, [encounters, search, filterAcuity, filterUnit, filterPhysician]);
+  }, [encounters, search, filterAcuity, filterUnit, filterPhysician, t]);
 
   const effectiveFacilityId = facilityId || facilityIdFromHook || null;
 
@@ -211,9 +254,9 @@ export default function TrackBoardPage() {
               color: "#0f172a",
             }}
           >
-            Tableau de bord
+            {t("clinicalTrackboardPage.title")}
           </h1>
-          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vue des consultations ouvertes</p>
+          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("clinicalTrackboardPage.subtitle")}</p>
         </header>
 
         <div
@@ -227,25 +270,25 @@ export default function TrackBoardPage() {
           }}
         >
           <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-            <span style={{ ...filterLabel, marginBottom: 3 }}>Recherche</span>
+            <span style={{ ...filterLabel, marginBottom: 3 }}>{t("clinicalTrackboardPage.searchLabel")}</span>
             <input
               type="search"
-              aria-label="Recherche"
+              aria-label={t("clinicalTrackboardPage.searchAria")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Patient, motif, salle…"
+              placeholder={t("clinicalTrackboardPage.searchPlaceholder")}
               style={{ ...inputBase, height: 40, fontSize: 14 }}
             />
           </div>
 
           <div style={{ flex: "0 0 auto", width: 124 }}>
-            <span style={filterLabel}>Unité</span>
+            <span style={filterLabel}>{t("clinicalTrackboardPage.unitLabel")}</span>
             <select
               value={filterUnit}
               onChange={(e) => setFilterUnit(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Toutes</option>
+              <option value="">{t("clinicalTrackboardPage.unitAll")}</option>
               {unitOptions.map((u) => (
                 <option key={u} value={u}>
                   {u}
@@ -255,27 +298,27 @@ export default function TrackBoardPage() {
           </div>
 
           <div style={{ flex: "0 0 auto", width: 128 }}>
-            <span style={filterLabel}>Statut (ESI)</span>
+            <span style={filterLabel}>{t("clinicalTrackboardPage.esiLabel")}</span>
             <select
               value={filterAcuity}
               onChange={(e) => setFilterAcuity(e.target.value as "" | AcuityTier)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Tous</option>
-              <option value="critical">Critique</option>
-              <option value="monitoring">Surveillance</option>
-              <option value="stable">Stable</option>
+              <option value="">{t("clinicalTrackboardPage.esiAll")}</option>
+              <option value="critical">{t("clinicalTrackboardPage.esiCritical")}</option>
+              <option value="monitoring">{t("clinicalTrackboardPage.esiMonitoring")}</option>
+              <option value="stable">{t("clinicalTrackboardPage.esiStable")}</option>
             </select>
           </div>
 
           <div style={{ flex: "0 1 160px", minWidth: 140 }}>
-            <span style={filterLabel}>Médecin</span>
+            <span style={filterLabel}>{t("clinicalTrackboardPage.physicianLabel")}</span>
             <select
               value={filterPhysician}
               onChange={(e) => setFilterPhysician(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Tous</option>
+              <option value="">{t("clinicalTrackboardPage.physicianAll")}</option>
               {physicianOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -303,7 +346,7 @@ export default function TrackBoardPage() {
                 whiteSpace: "nowrap",
               }}
             >
-              {loading ? ui.common.loading : ui.common.refresh}
+              {loading ? t("common.loading") : t("common.refresh")}
             </button>
           </div>
         </div>
@@ -320,7 +363,9 @@ export default function TrackBoardPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{fetchError}</p>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vérifiez la connexion et réessayez.</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
+              {t("clinicalTrackboardPage.loadFailedHint")}
+            </p>
             <button
               type="button"
               onClick={() => void loadEncounters()}
@@ -336,7 +381,7 @@ export default function TrackBoardPage() {
                 cursor: "pointer",
               }}
             >
-              Réessayer
+              {t("clinicalTrackboardPage.retry")}
             </button>
           </div>
         ) : loading && encounters.length === 0 ? (
@@ -375,12 +420,14 @@ export default function TrackBoardPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
-              {encounters.length === 0 ? "Aucune consultation en cours" : "Aucun résultat pour ces filtres"}
+              {encounters.length === 0
+                ? t("clinicalTrackboardPage.emptyNoEncounters")
+                : t("clinicalTrackboardPage.emptyFiltered")}
             </p>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
               {encounters.length === 0
-                ? "Les consultations ouvertes apparaîtront ici."
-                : "Ajustez la recherche ou les filtres."}
+                ? t("clinicalTrackboardPage.emptyNoEncountersHint")
+                : t("clinicalTrackboardPage.emptyFilteredHint")}
             </p>
           </div>
         ) : (
@@ -389,20 +436,21 @@ export default function TrackBoardPage() {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const patient = encounter.patient;
-              const cc = encounter.triage?.chiefComplaint || encounter.chiefComplaint || ui.common.dash;
-              const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : ui.common.dash;
-              const room = encounter.roomLabel?.trim() || ui.common.dash;
-              const phys = physicianLabel(encounter) || ui.common.dash;
+              const dash = t("common.dash");
+              const cc = encounter.triage?.chiefComplaint || encounter.chiefComplaint || dash;
+              const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : dash;
+              const room = encounter.roomLabel?.trim() || dash;
+              const phys = physicianLabel(encounter) || dash;
               const soft = statusSoft(encounter.status);
-              const nirLine = patientNirDisplay(patient);
-              const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null);
+              const nirLine = patientNirDisplay(patient, dash);
+              const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null, locale, dash);
               return (
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
                       <MedoraCompactPatientCardRow
                         avatarInitials={patientInitials(patient)}
-                        roomLabel={ui.common.room}
+                        roomLabel={t("clinicalTrackboardPage.room")}
                         roomValue={room}
                         identity={
                           <>
@@ -415,29 +463,27 @@ export default function TrackBoardPage() {
                                 lineHeight: 1.2,
                               }}
                             >
-                              {fullPatientName(patient)}
+                              {fullPatientName(patient, dash)}
                             </h2>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicalTrackboardPage.nir")}</span>{" "}
+                              {nirLine}
                               {" · "}
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
-                              {formatAgeYearsSexFr(
-                                patient?.dob ?? null,
-                                patient?.sexAtBirth ?? null,
-                                patient?.sex ?? null
-                              )}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicalTrackboardPage.ageSex")}</span>{" "}
+                              {formatAgeSexTrackboard(language, t, patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
                               <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
-                                {ui.common.chiefComplaintShort}
+                                {t("clinicalTrackboardPage.chiefComplaintShort")}
                               </span>
                               {" — "}
                               {cc}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicalTrackboardPage.esiIndex")}</span>{" "}
+                              {esiDisplay}
                               {" · "}
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicalTrackboardPage.arrival")}</span>{" "}
                               {arrivalDisplay}
                             </p>
                           </>
@@ -459,10 +505,10 @@ export default function TrackBoardPage() {
                               }}
                               title={phys}
                             >
-                              <span style={{ color: "#94a3b8" }}>{ui.common.physician}</span> {phys}
+                              <span style={{ color: "#94a3b8" }}>{t("clinicalTrackboardPage.physician")}</span> {phys}
                             </p>
                             <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", textAlign: "right" }}>
-                              <span style={{ color: "#cbd5e1" }}>{ui.common.nurseAbbr}</span> {ui.common.dash}
+                              <span style={{ color: "#cbd5e1" }}>{t("clinicalTrackboardPage.nurseAbbr")}</span> {dash}
                             </p>
                             <div
                               style={{
@@ -474,7 +520,7 @@ export default function TrackBoardPage() {
                                 justifyContent: "flex-end",
                               }}
                             >
-                              <MedoraCardBadge soft={soft}>{getEncounterStatusBoardLabelFr(encounter.status)}</MedoraCardBadge>
+                              <MedoraCardBadge soft={soft}>{encounterStatusBoardLabel(encounter.status, t)}</MedoraCardBadge>
                               <Link
                                 href={`/app/encounters/${encounter.id}`}
                                 style={{
@@ -491,7 +537,7 @@ export default function TrackBoardPage() {
                                   textDecoration: "none",
                                 }}
                               >
-                                {ui.common.view}
+                                {t("common.view")}
                               </Link>
                             </div>
                           </>
