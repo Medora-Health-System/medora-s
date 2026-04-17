@@ -1,19 +1,19 @@
 /**
- * Impression navigateur du dossier médical patient (résumé chart-summary + suivis).
- * Données déjà chargées — aucun fetch. Libellés FR, pas d’UUID dans le HTML.
+ * Browser print of patient chart (chart summary + follow-ups).
+ * Data already loaded — no fetch.
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
 import type { ChartSummary, ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
 import type { FollowUpRow } from "@/lib/followUpsApi";
 import {
-  getEncounterStatusLabelFr,
-  getEncounterTypeLabelFr,
-  getFollowUpStatusLabelFr,
-  getPatientSexLabelFr,
-} from "@/lib/uiLabels";
+  printDateLocale,
+  printOrderItemChartLabel,
+  printPatientSexLabel,
+  printT,
+} from "@/lib/printI18n";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
-import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
 import {
   diagnosisDisplayFr,
   parseDischargeSummaryForChart,
@@ -31,54 +31,75 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function fmtDt(iso: string | null | undefined): string {
+function fmtDt(iso: string | null | undefined, lang: SupportedLanguage): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("fr-FR");
+    return new Date(iso).toLocaleString(printDateLocale(lang));
   } catch {
     return "—";
   }
 }
 
-function fmtShort(iso: string | null | undefined): string {
+function fmtShort(iso: string | null | undefined, lang: SupportedLanguage): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString(printDateLocale(lang), { dateStyle: "short", timeStyle: "short" });
   } catch {
     return "—";
   }
 }
 
-const DISCHARGE_LABELS: Record<keyof DischargeSummaryFieldsFr, string> = {
-  disposition: "Disposition",
-  exitCondition: "État à la sortie",
-  dischargeInstructions: "Instructions de sortie",
-  medicationsGiven: "Médicaments remis / prescrits",
-  followUp: "Suivi recommandé",
-  returnIfWorse: "Retour si aggravation",
-  patientDestination: "Destination du patient",
-  dischargeMode: "Mode de sortie",
+const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
+  disposition: "encounterChrome.modals.dischargeField.disposition",
+  exitCondition: "encounterChrome.modals.dischargeField.exitCondition",
+  dischargeInstructions: "encounterChrome.modals.dischargeField.dischargeInstructions",
+  medicationsGiven: "encounterChrome.modals.dischargeField.medicationsGiven",
+  followUp: "encounterChrome.modals.dischargeField.followUp",
+  returnIfWorse: "encounterChrome.modals.dischargeField.returnIfWorse",
+  patientDestination: "encounterChrome.modals.dischargeField.patientDestination",
+  dischargeMode: "encounterChrome.modals.dischargeField.dischargeMode",
 };
 
-function dischargeFieldsHtml(d: DischargeSummaryFieldsFr): string {
+function dischargeFieldsHtml(lang: SupportedLanguage, d: DischargeSummaryFieldsFr): string {
   const parts: string[] = [];
-  (Object.keys(DISCHARGE_LABELS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
+  (Object.keys(DISCHARGE_FIELD_KEYS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
     const v = d[k];
     if (typeof v === "string" && v.trim()) {
-      parts.push(`<div style="margin:2px 0;"><strong>${esc(DISCHARGE_LABELS[k])}</strong> ${esc(v)}</div>`);
+      parts.push(
+        `<div style="margin:2px 0;"><strong>${esc(printT(lang, DISCHARGE_FIELD_KEYS[k]))}</strong> ${esc(v)}</div>`
+      );
     }
   });
   return parts.length ? parts.join("") : "";
 }
 
-function orderTypeHeadingFr(orderType: string): string {
-  const m: Record<string, string> = {
-    LAB: "Analyses demandées",
-    IMAGING: "Imagerie demandée",
-    MEDICATION: "Médicaments prescrits",
-    CARE: "Soins / procédures demandés",
+function orderTypeHeading(lang: SupportedLanguage, orderType: string): string {
+  const map: Record<string, string> = {
+    LAB: "encounterChrome.chartTabs.orderTypeLAB",
+    IMAGING: "encounterChrome.chartTabs.orderTypeIMAGING",
+    MEDICATION: "encounterChrome.chartTabs.orderTypeMEDICATION",
+    CARE: "encounterChrome.chartTabs.orderTypeCARE",
   };
-  return m[orderType] ?? "Ordres";
+  const sub = map[orderType];
+  return sub ? printT(lang, sub) : printT(lang, "encounterChrome.chartTabs.orderTypeOTHER");
+}
+
+function encounterTypeLabel(lang: SupportedLanguage, type: string): string {
+  const k = `encounterChrome.encounterTypes.${type}`;
+  const v = printT(lang, k);
+  return v !== k ? v : type;
+}
+
+function encounterStatusLabel(lang: SupportedLanguage, status: string): string {
+  const k = `encounterChrome.encounterStatuses.${status}`;
+  const v = printT(lang, k);
+  return v !== k ? v : status;
+}
+
+function followUpStatusLabel(lang: SupportedLanguage, status: string): string {
+  const k = `printOutput.patientChart.followUpStatus.${status}`;
+  const v = printT(lang, k);
+  return v !== k ? v : status;
 }
 
 function physicianName(u: { firstName: string; lastName: string } | null | undefined): string {
@@ -96,11 +117,15 @@ function flattenOrderItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] 
   return items;
 }
 
-function resultSnippet(it: ChartSummaryOrderItem): string {
+function resultSnippet(lang: SupportedLanguage, it: ChartSummaryOrderItem): string {
   const parts: string[] = [];
   if (it.result?.resultText?.trim()) parts.push(it.result.resultText.trim().slice(0, 500));
   if (it.result?.attachmentSummaryFr?.trim()) parts.push(it.result.attachmentSummaryFr.trim());
-  if (it.result?.verifiedAt) parts.push(`Validé le ${fmtShort(it.result.verifiedAt)}`);
+  if (it.result?.verifiedAt) {
+    parts.push(
+      `${printT(lang, "printOutput.patientChart.resultVerified")} ${fmtShort(it.result.verifiedAt, lang)}`
+    );
+  }
   return parts.join(" — ") || "—";
 }
 
@@ -109,24 +134,28 @@ function isResultLike(it: ChartSummaryOrderItem): boolean {
   return !!(
     it.result?.resultText?.trim() ||
     it.result?.attachmentSummaryFr ||
-    it.result?.verifiedAt ||
+    (it.result?.attachments && it.result.attachments.length > 0) ||
     it.status === "RESULTED" ||
     it.status === "VERIFIED"
   );
 }
 
 /**
- * HTML d’impression du dossier (identité, vitaux, historique, diagnostics, résultats, médicaments, sorties, suivis).
+ * HTML for patient chart print (identity, vitals, history, diagnoses, results, medications, discharge, follow-ups).
  */
 export function getPatientChartPrintHtml(params: {
   chartSummary: ChartSummary;
   facilityName?: string;
   followUps?: FollowUpRow[];
+  language: SupportedLanguage;
 }): string {
-  const { chartSummary, facilityName, followUps } = params;
+  const { chartSummary, facilityName, followUps, language } = params;
+  const lang = language;
+  const loc = printDateLocale(lang);
+  const pc = (key: string) => printT(lang, `printOutput.patientChart.${key}`);
   const p = chartSummary.patient;
   const age = p.dob ? calculateAge(p.dob) : null;
-  const sex = getPatientSexLabelFr(undefined, p.sexAtBirth ?? null);
+  const sex = printPatientSexLabel(lang, undefined, p.sexAtBirth ?? null);
   const ids = nirMrnDisplay({
     nationalId: undefined,
     mrn: p.mrn,
@@ -138,7 +167,7 @@ export function getPatientChartPrintHtml(params: {
     latestVitalsJson && Object.keys(latestVitalsJson).length > 0
       ? formatVitalsHeaderLine(latestVitalsJson)
       : "—";
-  const latestVitalsWhen = p.latestVitalsAt ? fmtDt(p.latestVitalsAt) : null;
+  const latestVitalsWhen = p.latestVitalsAt ? fmtDt(p.latestVitalsAt, lang) : null;
 
   const encounters = [...(chartSummary.recentEncounters ?? [])].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -161,7 +190,11 @@ export function getPatientChartPrintHtml(params: {
           ? `<ul style="margin:4px 0 0 16px;">${nursingLines
               .map((s) => `<li><strong>${esc(s.labelFr)}</strong> — ${esc(s.text)}</li>`)
               .join("")}</ul>`
-          : `<p style="margin:4px 0; color:#000;">—</p>`;
+          : `<p style="margin:4px 0; color:#000;">${esc(pc("emptyDash"))}</p>`;
+
+      const cancelPrefix = printT(lang, "printOutput.patientChart.orderCancelledPrefix");
+      const cancelOn = printT(lang, "printOutput.patientChart.orderCancelledOn");
+      const reasonLbl = printT(lang, "printOutput.patientChart.cancellationReason");
 
       const ordersHtml = (enc.orders ?? [])
         .map((o) => {
@@ -169,22 +202,22 @@ export function getPatientChartPrintHtml(params: {
             o.status === "CANCELLED" && (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason)
               ? `<div style="font-size:11px;color:#b71c1c;margin:4px 0 6px 0;line-height:1.4;">${
                   o.cancelledByDisplayFr
-                    ? `Annulée par ${esc(o.cancelledByDisplayFr)}${o.cancelledAt ? ` le ${esc(fmtDt(o.cancelledAt))}` : ""}`
+                    ? `${esc(cancelPrefix)} ${esc(o.cancelledByDisplayFr)}${o.cancelledAt ? ` ${esc(cancelOn)} ${esc(fmtDt(o.cancelledAt, lang))}` : ""}`
                     : ""
                 }${
                   o.cancellationReason
-                    ? `${o.cancelledByDisplayFr || o.cancelledAt ? "<br/>" : ""}Raison : ${esc(o.cancellationReason)}`
+                    ? `${o.cancelledByDisplayFr || o.cancelledAt ? "<br/>" : ""}${esc(reasonLbl)}: ${esc(o.cancellationReason)}`
                     : ""
                 }</div>`
               : "";
           const items = (o.items ?? [])
             .map((it) => {
               const label = esc(it.displayLabel || "—");
-              const st = esc(getOrderItemChartLabel(it.status));
+              const st = esc(printOrderItemChartLabel(lang, it.status));
               return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
             })
             .join("");
-          return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeadingFr(o.type))}</strong>${cancelNote}<ul style="margin:4px 0 0 16px;">${items || "<li>—</li>"}</ul></div>`;
+          return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeading(lang, o.type))}</strong>${cancelNote}<ul style="margin:4px 0 0 16px;">${items || `<li>${esc(pc("emptyDash"))}</li>`}</ul></div>`;
         })
         .join("");
 
@@ -196,65 +229,71 @@ export function getPatientChartPrintHtml(params: {
               .map((it) => {
                 const who = it.completedBy
                   ? esc(`${it.completedBy.firstName} ${it.completedBy.lastName}`.trim())
-                  : "—";
-                return `<li>${esc(it.displayLabel)} — ${fmtShort(it.completedAt)} — ${who}</li>`;
+                  : esc(pc("emptyDash"));
+                return `<li>${esc(it.displayLabel)} — ${fmtShort(it.completedAt, lang)} — ${who}</li>`;
               })
               .join("")}</ul>`
-          : `<p style="margin:4px 0;">—</p>`;
+          : `<p style="margin:4px 0;">${esc(pc("emptyDash"))}</p>`;
 
       const disp = (enc.encounterMedicationDispenses ?? [])
         .map(
           (d) =>
-            `<li>${esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name)} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt)}</li>`
+            `<li>${esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name)} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt, lang)}</li>`
         )
         .join("");
 
+      const signedOnWord = printT(lang, "printOutput.patientChart.signedOn");
+      const addendumBy = printT(lang, "printOutput.patientChart.addendumBy");
+      const onDateWord = printT(lang, "printOutput.patientChart.onDate");
+
       return `
         <section style="margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #000;">
-          <h3 style="margin:0 0 8px 0; font-size:14px; font-weight:700;">${esc(getEncounterTypeLabelFr(enc.type))} — ${esc(
-        getEncounterStatusLabelFr(enc.status)
-      )} — ${fmtShort(enc.createdAt)}</h3>
+          <h3 style="margin:0 0 8px 0; font-size:14px; font-weight:700;">${esc(encounterTypeLabel(lang, enc.type))} — ${esc(
+        encounterStatusLabel(lang, enc.status)
+      )} — ${fmtShort(enc.createdAt, lang)}</h3>
           <div style="font-size:12px; line-height:1.5; color:#000;">
-            <p style="margin:4px 0;"><strong>Motif :</strong> ${esc(enc.visitReason ?? enc.chiefComplaint ?? "—")}</p>
-            <p style="margin:4px 0;"><strong>Salle :</strong> ${esc(enc.roomLabel?.trim() || "—")} · <strong>Médecin attribué :</strong> ${esc(
+            <p style="margin:4px 0;"><strong>${esc(pc("chiefComplaint"))} :</strong> ${esc(enc.visitReason ?? enc.chiefComplaint ?? "—")}</p>
+            <p style="margin:4px 0;"><strong>${esc(pc("room"))} :</strong> ${esc(enc.roomLabel?.trim() || "—")} · <strong>${esc(pc("assignedPhysician"))} :</strong> ${esc(
         physicianName(enc.physicianAssigned ?? null)
       )}</p>
-            <p style="margin:4px 0;"><strong>Signes vitaux (accueil) :</strong> ${esc(vitalsLine)}</p>
-            <p style="margin:8px 0 4px 0;"><strong>Évaluation infirmière</strong></p>
+            <p style="margin:4px 0;"><strong>${esc(pc("vitalsIntake"))} :</strong> ${esc(vitalsLine)}</p>
+            <p style="margin:8px 0 4px 0;"><strong>${esc(pc("nursingAssessment"))}</strong></p>
             ${nursingHtml}
-            <p style="margin:8px 0 4px 0;"><strong>Évaluation médicale</strong></p>
+            <p style="margin:8px 0 4px 0;"><strong>${esc(pc("physicianDocumentation"))}</strong></p>
             ${
               enc.providerDocumentationStatus === "SIGNED" &&
               enc.providerDocumentationSignedByDisplayFr &&
               enc.providerDocumentationSignedAt
-                ? `<p style="margin:4px 0;font-size:11px;color:#1565c0;"><strong>Évaluation médicale signée par</strong> ${esc(
-                    enc.providerDocumentationSignedByDisplayFr
-                  )} <strong>le</strong> ${esc(fmtDt(enc.providerDocumentationSignedAt))}</p>`
+                ? `<p style="margin:4px 0;font-size:11px;color:#1565c0;"><strong>${esc(
+                    printT(lang, "printOutput.patientChart.signedPhysicianPrefix")
+                  )}</strong> ${esc(enc.providerDocumentationSignedByDisplayFr)} <strong>${esc(signedOnWord)}</strong> ${esc(
+                    fmtDt(enc.providerDocumentationSignedAt, lang)
+                  )}</p>`
                 : ""
             }
             ${
               (enc.providerAddenda ?? []).length > 0
-                ? `<p style="margin:8px 0 4px 0;font-size:12px;"><strong>Addenda</strong></p>${(enc.providerAddenda ?? [])
+                ? `<p style="margin:8px 0 4px 0;font-size:12px;"><strong>${esc(pc("addenda"))}</strong></p>${(enc.providerAddenda ?? [])
                     .map(
                       (ad) =>
-                        `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>Addendum</strong> par ${esc(
+                        `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>${esc(addendumBy)}</strong> ${esc(
                           ad.createdByDisplayFr ?? "—"
-                        )} <strong>le</strong> ${esc(fmtDt(ad.createdAt))}</p><p style="margin:4px 0 0 0;white-space:pre-wrap;">${esc(
+                        )} <strong>${esc(onDateWord)}</strong> ${esc(fmtDt(ad.createdAt, lang))}</p><p style="margin:4px 0 0 0;white-space:pre-wrap;">${esc(
                           ad.text
                         )}</p></div>`
                     )
                     .join("")}`
                 : ""
             }
-            <p style="margin:4px 0;"><strong>Impression clinique :</strong> ${esc(enc.clinicianImpressionPreview ?? "—")}</p>
-            <p style="margin:4px 0;"><strong>Plan thérapeutique :</strong> ${esc(enc.treatmentPlanPreview ?? "—")}</p>
-            <p style="margin:4px 0;"><strong>Diagnostics (cette visite) :</strong> ${esc(dxVisit || "—")}</p>
-            <p style="margin:8px 0 4px 0;"><strong>Ordres</strong></p>
-            ${ordersHtml || "<p style=\"margin:4px 0;\">—</p>"}
-            <p style="margin:8px 0 4px 0;"><strong>Administrations (médicaments)</strong></p>
+            <p style="margin:4px 0;"><strong>${esc(pc("clinicalImpression"))} :</strong> ${esc(enc.clinicianImpressionPreview ?? "—")}</p>
+            <p style="margin:4px 0;"><strong>${esc(pc("treatmentPlan"))} :</strong> ${esc(enc.treatmentPlanPreview ?? "—")}</p>
+            <p style="margin:4px 0;"><strong>${esc(pc("visitDiagnoses"))} :</strong> ${esc(dxVisit || "—")}</p>
+            <p style="margin:8px 0 4px 0;"><strong>${esc(pc("orders"))}</strong></p>
+            ${ordersHtml || `<p style="margin:4px 0;">${esc(pc("emptyDash"))}</p>`}
+            <p style="margin:8px 0 4px 0;"><strong>${esc(pc("medAdministrations"))}</strong></p>
             ${adminHtml}
-            <p style="margin:8px 0 4px 0;"><strong>Dispensation (cette visite)</strong></p>
-            <ul style="margin:4px 0 0 16px;">${disp || "<li>—</li>"}</ul>
+            <p style="margin:8px 0 4px 0;"><strong>${esc(pc("pharmacyDispense"))}</strong></p>
+            <ul style="margin:4px 0 0 16px;">${disp || `<li>${esc(pc("emptyDash"))}</li>`}</ul>
           </div>
         </section>`;
     })
@@ -264,21 +303,23 @@ export function getPatientChartPrintHtml(params: {
     .map(
       (d) =>
         `<li>${esc(diagnosisDisplayFr(d.description, d.code))}${
-          d.onsetDate ? ` <span style="color:#333;">(début ${esc(fmtDt(d.onsetDate))})</span>` : ""
+          d.onsetDate
+            ? ` <span style="color:#333;">(${esc(pc("activeDxOnset"))} ${esc(fmtDt(d.onsetDate, lang))})</span>`
+            : ""
         }</li>`
     )
     .join("");
 
   const resultsLines: string[] = [];
   for (const enc of encounters) {
-    const when = fmtShort(enc.createdAt);
-    const typeLbl = getEncounterTypeLabelFr(enc.type);
+    const when = fmtShort(enc.createdAt, lang);
+    const typeLbl = encounterTypeLabel(lang, enc.type);
     for (const it of flattenOrderItems(enc)) {
       if (!isResultLike(it)) continue;
       const label = esc(it.displayLabel || "—");
-      const snip = esc(resultSnippet(it));
+      const snip = esc(resultSnippet(lang, it));
       resultsLines.push(
-        `<li><strong>${typeLbl}</strong> (${when}) — ${label}<br/><span style="font-size:11px;">${snip}</span></li>`
+        `<li><strong>${esc(typeLbl)}</strong> (${when}) — ${label}<br/><span style="font-size:11px;">${snip}</span></li>`
       );
     }
   }
@@ -288,8 +329,8 @@ export function getPatientChartPrintHtml(params: {
       const med = esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name);
       const by = d.dispensedBy
         ? esc(`${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim())
-        : "—";
-      return `<li>${med} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt)} — ${by}${
+        : esc(pc("emptyDash"));
+      return `<li>${med} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt, lang)} — ${by}${
         d.dosageInstructions ? ` — ${esc(d.dosageInstructions)}` : ""
       }</li>`;
     })
@@ -299,20 +340,21 @@ export function getPatientChartPrintHtml(params: {
     .map((enc) => {
       const d = parseDischargeSummaryForChart(enc.dischargeSummaryJson);
       if (!d) return "";
-      const inner = dischargeFieldsHtml(d);
+      const inner = dischargeFieldsHtml(lang, d);
       if (!inner.trim()) return "";
       return `<div style="margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #ccc;">
-        <p style="margin:0 0 6px 0; font-weight:700;">${esc(getEncounterTypeLabelFr(enc.type))} — ${fmtShort(enc.createdAt)}</p>
+        <p style="margin:0 0 6px 0; font-weight:700;">${esc(encounterTypeLabel(lang, enc.type))} — ${fmtShort(enc.createdAt, lang)}</p>
         ${inner}
       </div>`;
     })
     .join("");
 
   const auditTimelinePrint = (chartSummary.auditTimeline ?? []).slice(0, 25);
+  const auditBy = printT(lang, "printOutput.patientChart.auditBy");
   const auditTimelineHtml = auditTimelinePrint
     .map((it) => {
-      const who = it.userDisplayFr ? esc(`par ${it.userDisplayFr}`) : "—";
-      const when = esc(fmtShort(it.createdAt));
+      const who = it.userDisplayFr ? esc(`${auditBy} ${it.userDisplayFr}`) : esc(pc("emptyDash"));
+      const when = esc(fmtShort(it.createdAt, lang));
       const detail = it.detailFr ? `<br/><span style="font-size:10px;color:#333;">${esc(it.detailFr)}</span>` : "";
       return `<li style="margin:5px 0;font-size:11px;line-height:1.35;"><strong>${esc(it.shortLabelFr)}</strong><br/>${who} — ${when}${detail}</li>`;
     })
@@ -323,18 +365,24 @@ export function getPatientChartPrintHtml(params: {
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .map((fu) => {
       const note = fu.notes?.trim() ? ` — ${esc(fu.notes)}` : "";
-      const reason = fu.reason?.trim() ? esc(fu.reason) : "—";
-      return `<li>${fmtDt(fu.dueDate)} — <strong>${esc(getFollowUpStatusLabelFr(fu.status))}</strong> — ${reason}${note}</li>`;
+      const reason = fu.reason?.trim() ? esc(fu.reason) : esc(pc("emptyDash"));
+      return `<li>${fmtDt(fu.dueDate, lang)} — <strong>${esc(followUpStatusLabel(lang, fu.status))}</strong> — ${reason}${note}</li>`;
     })
     .join("");
 
-  const printedAt = new Date().toLocaleString("fr-FR");
+  const printedAt = new Date().toLocaleString(loc);
+  const htmlLang = lang === "en" ? "en" : "fr";
+  const pt = printT(lang, "printOutput.patientChart.htmlTitlePrefix");
+  const patientTitle = esc([p.firstName, p.lastName].filter(Boolean).join(" "));
+  const ageStr = age != null ? `${age} ${printT(lang, "printOutput.common.yearsSuffix")}` : esc(pc("emptyDash"));
+
+  const footer = esc(printT(lang, "printOutput.common.documentFooter").replace("{date}", printedAt));
 
   return `<!DOCTYPE html>
-<html lang="fr">
+<html lang="${htmlLang}">
 <head>
   <meta charset="utf-8" />
-  <title>Dossier médical — ${esc([p.firstName, p.lastName].filter(Boolean).join(" "))}</title>
+  <title>${esc(pt)} — ${patientTitle}</title>
   <style>
     body { font-family: Georgia, "Times New Roman", serif; padding: 20px; font-size: 13px; color: #000; background: #fff; max-width: 820px; margin: 0 auto; }
     h1 { font-size: 18px; margin: 0 0 10px 0; font-weight: 700; }
@@ -345,67 +393,71 @@ export function getPatientChartPrintHtml(params: {
   </style>
 </head>
 <body>
-  <h1>Dossier médical</h1>
-  ${facilityName ? `<div class="meta"><p><strong>Établissement</strong> ${esc(facilityName)}</p></div>` : ""}
+  <h1>${esc(pc("title"))}</h1>
+  ${facilityName ? `<div class="meta"><p><strong>${esc(pc("establishment"))}</strong> ${esc(facilityName)}</p></div>` : ""}
 
-  <h2>Identité patient</h2>
+  <h2>${esc(pc("sectionIdentity"))}</h2>
   <div class="meta">
-    <p><strong>Nom</strong> ${esc([p.firstName, p.lastName].filter(Boolean).join(" ") || "—")}</p>
-    <p><strong>NIR / MRN</strong> ${esc(ids)}</p>
-    <p><strong>Date de naissance</strong> ${p.dob ? fmtDt(p.dob) : "—"} · <strong>Âge</strong> ${age != null ? `${age} ans` : "—"} · <strong>Sexe</strong> ${esc(sex)}</p>
-    <p><strong>Téléphone</strong> ${esc(p.phone ?? "—")}</p>
-    ${p.address || p.city ? `<p><strong>Adresse</strong> ${esc([p.address, p.city, p.country].filter(Boolean).join(", ") || "—")}</p>` : ""}
+    <p><strong>${esc(pc("name"))}</strong> ${esc([p.firstName, p.lastName].filter(Boolean).join(" ") || "—")}</p>
+    <p><strong>${esc(pc("nirMrn"))}</strong> ${esc(ids)}</p>
+    <p><strong>${esc(pc("dob"))}</strong> ${p.dob ? fmtDt(p.dob, lang) : esc(pc("emptyDash"))} · <strong>${esc(pc("age"))}</strong> ${ageStr} · <strong>${esc(pc("sex"))}</strong> ${esc(sex)}</p>
+    <p><strong>${esc(pc("phone"))}</strong> ${esc(p.phone ?? "—")}</p>
+    ${p.address || p.city ? `<p><strong>${esc(pc("address"))}</strong> ${esc([p.address, p.city, p.country].filter(Boolean).join(", ") || "—")}</p>` : ""}
   </div>
 
-  <h2>Signes vitaux</h2>
+  <h2>${esc(pc("sectionVitals"))}</h2>
   <div class="meta">
-    <p><strong>Dernier relevé</strong> ${esc(latestVitalsLine)}</p>
-    ${latestVitalsWhen ? `<p><strong>Date du relevé</strong> ${esc(latestVitalsWhen)}</p>` : ""}
+    <p><strong>${esc(pc("lastReading"))}</strong> ${esc(latestVitalsLine)}</p>
+    ${latestVitalsWhen ? `<p><strong>${esc(pc("readingDate"))}</strong> ${esc(latestVitalsWhen)}</p>` : ""}
   </div>
 
-  <h2>Historique des actions</h2>
-  <p style="font-size:11px; margin:0 0 6px 0;">Événements récents enregistrés (extrait, lecture seule)</p>
-  <ul style="margin:0; padding-left:16px;">${auditTimelineHtml || "<li>—</li>"}</ul>
+  <h2>${esc(pc("sectionAudit"))}</h2>
+  <p style="font-size:11px; margin:0 0 6px 0;">${esc(pc("auditSub"))}</p>
+  <ul style="margin:0; padding-left:16px;">${auditTimelineHtml || `<li>${esc(pc("emptyDash"))}</li>`}</ul>
 
-  <h2>Historique clinique par consultation</h2>
-  ${encBlocks || "<p>—</p>"}
+  <h2>${esc(pc("sectionEncounters"))}</h2>
+  ${encBlocks || `<p>${esc(pc("emptyDash"))}</p>`}
 
-  <h2>Diagnostics</h2>
-  <ul>${activeDx || "<li>—</li>"}</ul>
+  <h2>${esc(pc("sectionDiagnoses"))}</h2>
+  <ul>${activeDx || `<li>${esc(pc("emptyDash"))}</li>`}</ul>
 
-  <h2>Résultats</h2>
-  <ul>${resultsLines.length ? resultsLines.join("") : "<li>—</li>"}</ul>
+  <h2>${esc(pc("sectionResults"))}</h2>
+  <ul>${resultsLines.length ? resultsLines.join("") : `<li>${esc(pc("emptyDash"))}</li>`}</ul>
 
-  <h2>Médicaments</h2>
-  <p style="font-size:12px; margin:0 0 6px 0;">Dispensations récentes (toutes consultations)</p>
-  <ul>${dispAll || "<li>—</li>"}</ul>
+  <h2>${esc(pc("sectionMedications"))}</h2>
+  <p style="font-size:12px; margin:0 0 6px 0;">${esc(pc("medicationsSub"))}</p>
+  <ul>${dispAll || `<li>${esc(pc("emptyDash"))}</li>`}</ul>
 
-  <h2>Sortie</h2>
-  ${sortieBlocks.trim() ? sortieBlocks : "<p>—</p>"}
+  <h2>${esc(pc("sectionDischarge"))}</h2>
+  ${sortieBlocks.trim() ? sortieBlocks : `<p>${esc(pc("emptyDash"))}</p>`}
 
-  <h2>Suivis</h2>
-  <ul>${followUpsHtml || "<li>—</li>"}</ul>
+  <h2>${esc(pc("sectionFollowUps"))}</h2>
+  <ul>${followUpsHtml || `<li>${esc(pc("emptyDash"))}</li>`}</ul>
 
-  <p style="margin-top:24px; font-size:11px; color:#000;">Document généré le ${esc(printedAt)} — Medora-S</p>
+  <p style="margin-top:24px; font-size:11px; color:#000;">${footer}</p>
 </body>
 </html>`;
 }
 
 /**
- * Ouvre la fenêtre d’impression tout de suite (geste utilisateur), puis génère le HTML.
- * Passer une fabrique pour éviter tout travail lourd avant `window.open` (anti blocage pop-up).
+ * Opens print window immediately (user gesture), then builds HTML via factory (avoids pop-up blocking).
  */
-export function printPatientChart(buildHtml: () => string): void {
+export function printPatientChart(
+  buildHtml: () => string,
+  language: SupportedLanguage
+): void {
   const w = typeof window !== "undefined" ? window.open("", "_blank") : null;
   if (!w) {
-    alert(
-      "Impossible d'ouvrir la fenêtre d'impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups pour ce site et réessayez."
-    );
+    alert(printT(language, "printOutput.common.popupBlocked"));
     return;
   }
   w.document.open();
   w.document.write(
-    `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8" /><title>Impression</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>Préparation de l'impression…</p></body></html>`
+    `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8" /><title>${esc(
+      printT(language, "printOutput.common.printPreparing")
+    )}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>${esc(
+      printT(language, "printOutput.common.printPreparing")
+    )}</p></body></html>`
   );
   w.document.close();
 
@@ -423,7 +475,11 @@ export function printPatientChart(buildHtml: () => string): void {
     } catch {
       w.document.open();
       w.document.write(
-        `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8" /><title>Erreur</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>Impossible de préparer le dossier pour l'impression. Réessayez ou contactez le support.</p></body></html>`
+        `<!DOCTYPE html><html lang="${language === "en" ? "en" : "fr"}"><head><meta charset="utf-8" /><title>${esc(
+          printT(language, "printOutput.common.printErrorTitle")
+        )}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;font-size:14px;color:#333;"><p>${esc(
+          printT(language, "printOutput.common.printError")
+        )}</p></body></html>`
       );
       w.document.close();
     }

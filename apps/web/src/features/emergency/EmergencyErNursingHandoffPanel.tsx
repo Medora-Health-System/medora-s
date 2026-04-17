@@ -17,6 +17,7 @@ import {
   MedoraCardTitle,
 } from "@/components/medora-card";
 import { erDispositionBadgeFromEncounterJson } from "@/features/emergency/erTrackboardDispositionBadge";
+import { useI18n } from "@/lib/i18n";
 import {
   mergeDischargeSortieExecutionIntoNursingAssessment,
   readDischargeSortieExecutionFromEncounter,
@@ -115,6 +116,7 @@ export function EmergencyErNursingHandoffPanel({
   resultsTabHref: string;
   facilityName?: string | null;
 }) {
+  const { language } = useI18n();
   const badge = useMemo(
     () =>
       erDispositionBadgeFromEncounterJson({
@@ -238,6 +240,7 @@ export function EmergencyErNursingHandoffPanel({
       },
       facilityName: facilityName ?? null,
       primaryDiagnosis: null,
+      language,
     });
   };
 

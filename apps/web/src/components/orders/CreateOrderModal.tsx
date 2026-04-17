@@ -17,6 +17,7 @@ import { SelectedMedicationItems } from "./createOrderModal/SelectedMedicationIt
 import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
 import type { CreateOrderLineItem, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
+import { useI18n } from "@/lib/i18n";
 
 /** Préréglages — ordre type CARE, ligne catalogItemType CARE + manualLabel. */
 const CARE_PROCEDURE_PRESETS_FR = [
@@ -170,6 +171,7 @@ export function CreateOrderModal({
   onSuccess: () => void;
   onRefetchEncounter?: () => Promise<void>;
 }) {
+  const { language } = useI18n();
   const firstTab: OrderModalTab =
     !canPrescribe && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE") ? "LAB" : initialOrderTab;
 
@@ -535,6 +537,7 @@ export function CreateOrderModal({
                       })),
                     },
                     patient,
+                    language,
                   });
                 }}
                 style={{

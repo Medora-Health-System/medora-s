@@ -18,6 +18,7 @@ import {
   MAX_RAW_BYTES_PER_FILE,
   RESULT_UPLOAD_HINT_FR,
 } from "@/lib/resultUploadLimits";
+import { useI18n } from "@/lib/i18n";
 
 export type WorklistDeptKind = "lab" | "radiology" | "pharmacy";
 
@@ -77,6 +78,7 @@ export default function DepartmentOrderDetail({
   listHref: string;
   facilityId: string | null;
 }) {
+  const { language } = useI18n();
   const searchParams = useSearchParams();
   const highlightLineId = searchParams.get("ligne") || "";
 
@@ -366,6 +368,7 @@ export default function DepartmentOrderDetail({
                   items: order.items || [],
                 },
                 patient: patient ?? {},
+                language,
               })
             }
             style={{ padding: "8px 14px", cursor: "pointer" }}

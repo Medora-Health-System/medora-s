@@ -1,13 +1,16 @@
 "use client";
 
 /**
- * Shared printable Rx layout in French for provider and pharmacy.
- * Uses stable catalog fields (displayNameFr, strength, etc.) — no live label dependency.
+ * Shared printable Rx layout for provider and pharmacy.
+ * Uses stable catalog fields (displayNameFr, strength, etc.).
  */
+
+import type { SupportedLanguage } from "@/i18n/config";
+import { printDateLocale, printT } from "@/lib/printI18n";
 
 export type RxOrderItem = {
   catalogItemId?: string;
-  /** Saisie manuelle (hors catalogue). */
+  /** Manual entry (off-catalog). */
   manualLabel?: string | null;
   strength?: string | null;
   notes?: string | null;
@@ -36,7 +39,15 @@ export type RxPatient = {
   mrn?: string | null;
 };
 
-function medicationLabel(item: RxOrderItem): string {
+function esc(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function medicationLabel(item: RxOrderItem, language: SupportedLanguage): string {
   const manual = item.manualLabel?.trim();
   if (manual) {
     const strength = item.strength?.trim();
@@ -48,37 +59,54 @@ function medicationLabel(item: RxOrderItem): string {
     const strength = item.strength ?? cat.strength;
     return strength ? `${name} ${strength}`.trim() : name;
   }
-  return "Médicament (libellé non renseigné)";
+  return printT(language, "printOutput.rx.medicationFallback");
 }
 
 export function getRxPrintHtml(params: {
   order: RxOrder;
   patient: RxPatient;
   facilityName?: string;
+  language: SupportedLanguage;
 }): string {
-  const { order, patient, facilityName } = params;
+  const { order, patient, facilityName, language } = params;
+  const loc = printDateLocale(language);
   const patientName = [patient.firstName, patient.lastName].filter(Boolean).join(" ") || "—";
-  const dateStr = new Date(order.createdAt).toLocaleString("fr-FR");
-  const printDateStr = new Date().toLocaleString("fr-FR");
+  const dateStr = new Date(order.createdAt).toLocaleString(loc);
+  const printDateStr = new Date().toLocaleString(loc);
+  const htmlLang = language === "en" ? "en" : "fr";
 
   const rows = order.items
     .map(
       (it) =>
         `<tr>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${medicationLabel(it)}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${it.strength ?? it.catalogMedication?.strength ?? "—"}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${it.notes ?? "—"}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${it.quantity ?? "—"}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${it.refillCount ?? 0}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(medicationLabel(it, language))}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.strength ?? it.catalogMedication?.strength ?? "—"))}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.notes ?? "—"))}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.quantity ?? "—"))}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.refillCount ?? 0))}</td>
         </tr>`
     )
     .join("");
 
+  const pt = printT(language, "printOutput.rx.patient");
+  const nir = printT(language, "printOutput.rx.nirPrefix");
+  const prescDate = printT(language, "printOutput.rx.prescribedDate");
+  const prescriber = printT(language, "printOutput.rx.prescriber");
+  const license = printT(language, "printOutput.rx.license");
+  const contact = printT(language, "printOutput.rx.contact");
+  const facility = printT(language, "printOutput.rx.facility");
+  const colMed = printT(language, "printOutput.rx.colMedication");
+  const colStr = printT(language, "printOutput.rx.colStrength");
+  const colDir = printT(language, "printOutput.rx.colDirections");
+  const colQty = printT(language, "printOutput.rx.colQuantity");
+  const colRef = printT(language, "printOutput.rx.colRefills");
+  const footer = esc(printT(language, "printOutput.rx.footerPrinted").replace("{date}", printDateStr));
+
   return `<!DOCTYPE html>
-<html lang="fr">
+<html lang="${htmlLang}">
 <head>
   <meta charset="utf-8">
-  <title>Ordonnance</title>
+  <title>${esc(printT(language, "printOutput.rx.htmlTitle"))}</title>
   <style>
     body { font-family: system-ui, sans-serif; padding: 24px; max-width: 600px; margin: 0 auto; font-size: 14px; }
     h2 { margin: 0 0 16px 0; font-size: 18px; }
@@ -90,38 +118,41 @@ export function getRxPrintHtml(params: {
   </style>
 </head>
 <body>
-  <h2>Ordonnance</h2>
+  <h2>${esc(printT(language, "printOutput.rx.documentH2"))}</h2>
   <div class="meta">
-    <p><strong>Patient :</strong> ${patientName}${patient.mrn ? ` — NIR : ${patient.mrn}` : ""}</p>
-    <p><strong>Date de prescription :</strong> ${dateStr}</p>
-    ${order.prescriberName ? `<p><strong>Prescripteur :</strong> ${order.prescriberName}</p>` : ""}
-    ${order.prescriberLicense ? `<p><strong>N° licence / RPPS :</strong> ${order.prescriberLicense}</p>` : ""}
-    ${order.prescriberContact ? `<p><strong>Contact :</strong> ${order.prescriberContact}</p>` : ""}
-    ${facilityName ? `<p><strong>Établissement :</strong> ${facilityName}</p>` : ""}
+    <p><strong>${esc(pt)} :</strong> ${esc(patientName)}${patient.mrn ? ` — ${esc(nir)} : ${esc(patient.mrn)}` : ""}</p>
+    <p><strong>${esc(prescDate)} :</strong> ${esc(dateStr)}</p>
+    ${order.prescriberName ? `<p><strong>${esc(prescriber)} :</strong> ${esc(order.prescriberName)}</p>` : ""}
+    ${order.prescriberLicense ? `<p><strong>${esc(license)} :</strong> ${esc(order.prescriberLicense)}</p>` : ""}
+    ${order.prescriberContact ? `<p><strong>${esc(contact)} :</strong> ${esc(order.prescriberContact)}</p>` : ""}
+    ${facilityName ? `<p><strong>${esc(facility)} :</strong> ${esc(facilityName)}</p>` : ""}
   </div>
   <table>
     <thead>
       <tr>
-        <th>Médicament</th>
-        <th>Dosage</th>
-        <th>Posologie</th>
-        <th>Quantité</th>
-        <th>Renouvellements</th>
+        <th>${esc(colMed)}</th>
+        <th>${esc(colStr)}</th>
+        <th>${esc(colDir)}</th>
+        <th>${esc(colQty)}</th>
+        <th>${esc(colRef)}</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>
-  <p class="footer">Medora-S — Ordonnance imprimée le ${printDateStr}</p>
+  <p class="footer">${footer}</p>
 </body>
 </html>`;
 }
 
-export function printRx(params: { order: RxOrder; patient: RxPatient; facilityName?: string }): void {
+export function printRx(params: {
+  order: RxOrder;
+  patient: RxPatient;
+  facilityName?: string;
+  language: SupportedLanguage;
+}): void {
   const win = window.open("", "_blank");
   if (!win) {
-    alert(
-      "Impossible d'ouvrir la fenêtre d'impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups pour ce site et réessayez."
-    );
+    alert(printT(params.language, "printOutput.common.popupBlocked"));
     return;
   }
   win.document.write(getRxPrintHtml(params));

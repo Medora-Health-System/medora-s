@@ -3,6 +3,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { useI18n } from "@/lib/i18n";
 import { NURSING_ASSESSMENT_SECTION_LABELS_FR } from "@/components/patient-chart/patientChartHelpers";
 import {
   IV_SITE_OPTIONS_FR,
@@ -13,84 +14,51 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
 type SectionDef = { id: string; label: string; chips: string[] };
 
-/** Gabarit clinique — sections + `nursingEvalV1` pour résumé / dossier. */
-const SECTIONS: SectionDef[] = [
-  {
-    id: "etatGeneral",
-    label: "État général",
-    chips: ["Stable", "Fièvre", "Fatigue", "Déshydratation suspectée", "Détresse apparente"],
-  },
-  {
-    id: "neurologique",
-    label: "Neurologique",
-    chips: [
-      "Alerte et orienté",
-      "Confus",
-      "Somnolent",
-      "Céphalée",
-      "Convulsions absentes",
-      "Convulsions observées",
-    ],
-  },
-  {
-    id: "respiratoire",
-    label: "Respiratoire",
-    chips: ["Respiration régulière", "Dyspnée", "Toux", "Sibilants", "Détresse respiratoire"],
-  },
-  {
-    id: "cardiaque",
-    label: "Cardiaque",
-    chips: ["Rythme régulier", "Tachycardie", "Douleur thoracique", "Palpitations"],
-  },
-  {
-    id: "digestif",
-    label: "Digestif",
-    chips: ["Nausée", "Vomissements", "Diarrhée", "Douleur abdominale", "Tolérance orale réduite"],
-  },
-  {
-    id: "genito",
-    label: "Génito-urinaire",
-    chips: ["Diurèse conservée", "Brûlure mictionnelle", "Oligurie"],
-  },
-  {
-    id: "musculo",
-    label: "Musculo-squelettique",
-    chips: ["Motricité conservée", "Douleur articulaire", "Faiblesse", "Traumatisme noté"],
-  },
-  {
-    id: "peau",
-    label: "Peau / plaies",
-    chips: ["Intégrité cutanée", "Plaie propre", "Rougeur", "Escarre à surveiller"],
-  },
-  {
-    id: "douleur",
-    label: "Douleur",
-    chips: ["Absente", "Légère", "Modérée", "Intense", "Intensité 0–10", "Localisation"],
-  },
-  {
-    id: "securite",
-    label: "Risques / sécurité",
-    chips: ["Risque faible", "Risque modéré", "Risque élevé", "Aide à la marche", "Barrières lit"],
-  },
-  {
-    id: "interventionsInfirmieres",
-    label: "Interventions infirmières",
-    chips: [
-      "Surveillance des signes vitaux",
-      "Installation en salle",
-      "Pose de voie veineuse",
-      "Prélèvement effectué",
-      "Médicament administré selon ordonnance",
-      "Éducation du patient",
-      "Préparation à la sortie",
-    ],
-  },
-  {
-    id: "notesInfirmieresLibres",
-    label: "Note infirmière, autres",
-    chips: [],
-  },
-];
+/** Section order matches persisted `nursingEvalV1.sections` keys. */
+const SECTION_IDS = [
+  "etatGeneral",
+  "neurologique",
+  "respiratoire",
+  "cardiaque",
+  "digestif",
+  "genito",
+  "musculo",
+  "peau",
+  "douleur",
+  "securite",
+  "interventionsInfirmieres",
+  "notesInfirmieresLibres",
+] as const;
+
+/** Maps persisted IV site values (French canonical) to i18n sub-keys under `nursingAssessmentTab.ivSites`. */
+const IV_SITE_OPTION_TO_I18N_KEY: Record<string, string> = {
+  RAC: "RAC",
+  RAS: "RAS",
+  LAC: "LAC",
+  LAS: "LAS",
+  "Main droite": "handRight",
+  "Main gauche": "handLeft",
+  "Pied droit": "footRight",
+  "Pied gauche": "footLeft",
+  Autre: "other",
+};
+
+function parseChipLines(raw: string): string[] {
+  return raw.split("\n").map((s) => s.trim()).filter(Boolean);
+}
+
+function buildSectionDefs(t: (k: string) => string): SectionDef[] {
+  return SECTION_IDS.map((id) => ({
+    id,
+    label: t(`nursingAssessmentTab.labels.${id}`),
+    chips: parseChipLines(t(`nursingAssessmentTab.chips.${id}`)),
+  }));
+}
+
+function ivSiteOptionLabel(opt: string, t: (k: string) => string): string {
+  const sub = IV_SITE_OPTION_TO_I18N_KEY[opt];
+  return sub ? t(`nursingAssessmentTab.ivSites.${sub}`) : opt;
+}
 
 type AssessmentState = Record<string, { text: string }>;
 
@@ -128,35 +96,44 @@ function parseAssessment(raw: unknown): AssessmentState {
   return out;
 }
 
-function buildSummaryLinesFr(state: AssessmentState): string[] {
+function buildSummaryLines(
+  state: AssessmentState,
+  sectionDefs: SectionDef[],
+  t: (k: string) => string
+): string[] {
   const lines: string[] = [];
   const used = new Set<string>();
-  for (const sec of SECTIONS) {
-    const t = state[sec.id]?.text?.trim();
-    if (!t) continue;
-    const short = t.length > 140 ? `${t.slice(0, 140)}…` : t;
+  for (const sec of sectionDefs) {
+    const text = state[sec.id]?.text?.trim();
+    if (!text) continue;
+    const short = text.length > 140 ? `${text.slice(0, 140)}…` : text;
     lines.push(`${sec.label} : ${short}`);
     used.add(sec.id);
   }
   for (const [k, v] of Object.entries(state)) {
     if (used.has(k)) continue;
-    const t = v?.text?.trim();
-    if (!t) continue;
-    const label = NURSING_ASSESSMENT_SECTION_LABELS_FR[k] ?? "Note";
-    const short = t.length > 140 ? `${t.slice(0, 140)}…` : t;
+    const text = v?.text?.trim();
+    if (!text) continue;
+    const label =
+      NURSING_ASSESSMENT_SECTION_LABELS_FR[k] ?? t("nursingAssessmentTab.fallbackLegacySection");
+    const short = text.length > 140 ? `${text.slice(0, 140)}…` : text;
     lines.push(`${label} : ${short}`);
   }
   return lines.slice(0, 24);
 }
 
-function buildPayload(state: AssessmentState, savedByDisplayName: string, iv: IvInsertionProcedureV1) {
+function buildPayload(
+  state: AssessmentState,
+  savedByDisplayName: string,
+  iv: IvInsertionProcedureV1,
+  summaryLinesFr: string[]
+) {
   const sections: AssessmentState = {};
   for (const [k, v] of Object.entries(state)) {
-    const t = v?.text?.trim();
-    if (t) sections[k] = { text: t };
+    const tx = v?.text?.trim();
+    if (tx) sections[k] = { text: tx };
   }
-  const summaryLinesFr = buildSummaryLinesFr(state);
-  const name = savedByDisplayName.trim() || "Professionnel";
+  const name = savedByDisplayName.trim();
   const nursingEvalV1: Record<string, unknown> = {
     sections,
     summaryLinesFr,
@@ -199,6 +176,8 @@ export function NursingAssessmentTab({
   /** Dossier médical signé — saisie verrouillée. */
   isLocked?: boolean;
 }) {
+  const { t } = useI18n();
+  const sectionDefs = useMemo(() => buildSectionDefs(t), [t]);
   const formLocked = isLocked;
   const initial = useMemo(() => parseAssessment(encounter?.nursingAssessment), [encounter?.nursingAssessment]);
   const [state, setState] = useState<AssessmentState>(initial);
@@ -234,7 +213,7 @@ export function NursingAssessmentTab({
     setOk(false);
     setQueuedLocalSave(false);
     try {
-      let savedByDisplayName = "Professionnel";
+      let savedByDisplayName = t("nursingAssessmentTab.signerFallback");
       try {
         const meRes = await fetch("/api/auth/me");
         const me = await parseApiResponse(meRes);
@@ -245,7 +224,9 @@ export function NursingAssessmentTab({
       } catch {
         /* repli */
       }
-      const body = buildPayload(state, savedByDisplayName, ivState);
+      const displayName = savedByDisplayName.trim() || t("nursingAssessmentTab.signerFallback");
+      const summaryLines = buildSummaryLines(state, sectionDefs, t);
+      const body = buildPayload(state, displayName, ivState, summaryLines);
       const prevNav = encounter?.nursingAssessment;
       const prevObj =
         prevNav && typeof prevNav === "object" && !Array.isArray(prevNav)
@@ -273,11 +254,13 @@ export function NursingAssessmentTab({
       }
       onUpdate();
     } catch (e) {
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'enregistrer.");
+      setError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("nursingAssessmentTab.errSave")
+      );
     } finally {
       setSaving(false);
     }
-  }, [encounterId, facilityId, encounter?.nursingAssessment, onUpdate, state, ivState]);
+  }, [encounterId, facilityId, encounter?.nursingAssessment, onUpdate, state, ivState, sectionDefs, t]);
 
   const shell: React.CSSProperties = {
     backgroundColor: MEDORA_CARD_SHELL.background,
@@ -300,8 +283,8 @@ export function NursingAssessmentTab({
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ ...shell, padding: "16px 18px" }}>
         <p style={{ margin: 0, fontSize: 14, color: "#334155", lineHeight: 1.55 }}>
-          <strong style={{ color: "#0f172a" }}>Évaluation infirmière</strong> par systèmes — options rapides (puces) et complément libre. Enregistrement dans le
-          dossier de la consultation ; synthèse visible au résumé et dans le dossier patient.
+          <strong style={{ color: "#0f172a" }}>{t("nursingAssessmentTab.introBold")}</strong>
+          {t("nursingAssessmentTab.introRest")}
         </p>
       </div>
 
@@ -314,12 +297,14 @@ export function NursingAssessmentTab({
           backgroundColor: "#f0fdf4",
         }}
       >
-        <legend style={{ fontWeight: 700, padding: "0 10px", fontSize: 14, color: "#0f172a" }}>Procédures infirmières</legend>
+        <legend style={{ fontWeight: 700, padding: "0 10px", fontSize: 14, color: "#0f172a" }}>
+          {t("nursingAssessmentTab.proceduresLegend")}
+        </legend>
         <p style={{ fontSize: 13, color: "#475569", marginTop: 0, lineHeight: 1.45 }}>
-          Saisie rapide au lit — pose de voie IV pour l&apos;instant ; d&apos;autres procédures pourront s&apos;ajouter.
+          {t("nursingAssessmentTab.proceduresHelp1")}
         </p>
         <p style={{ fontSize: 12, color: "#64748b", margin: "8px 0 0 0", lineHeight: 1.45 }}>
-          Si une voie IV a été prescrite, terminez aussi l&apos;ordre dans l&apos;onglet Ordres.
+          {t("nursingAssessmentTab.proceduresHelp2")}
         </p>
         <label
           style={{
@@ -344,29 +329,29 @@ export function NursingAssessmentTab({
               }));
             }}
           />
-          <span style={{ fontWeight: 600 }}>Voie IV posée</span>
+          <span style={{ fontWeight: 600 }}>{t("nursingAssessmentTab.ivPerformed")}</span>
         </label>
         {ivState.performed ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-              <span style={{ fontWeight: 600 }}>Site</span>
+              <span style={{ fontWeight: 600 }}>{t("nursingAssessmentTab.ivSite")}</span>
               <select
                 disabled={formLocked}
                 value={ivState.site ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, site: e.target.value || undefined }))}
                 style={{ ...controlBase, maxWidth: 360 }}
               >
-                <option value="">— Sélectionner —</option>
+                <option value="">{t("nursingAssessmentTab.selectPlaceholder")}</option>
                 {IV_SITE_OPTIONS_FR.map((opt) => (
                   <option key={opt} value={opt}>
-                    {opt}
+                    {ivSiteOptionLabel(opt, t)}
                   </option>
                 ))}
               </select>
             </label>
             {ivState.site === "Autre" ? (
               <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-                <span style={{ fontWeight: 600 }}>Préciser le site</span>
+                <span style={{ fontWeight: 600 }}>{t("nursingAssessmentTab.ivSpecifySite")}</span>
                 <input
                   type="text"
                   disabled={formLocked}
@@ -377,18 +362,18 @@ export function NursingAssessmentTab({
               </label>
             ) : null}
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-              <span style={{ fontWeight: 600 }}>Calibre (optionnel)</span>
+              <span style={{ fontWeight: 600 }}>{t("nursingAssessmentTab.ivGauge")}</span>
               <input
                 type="text"
                 disabled={formLocked}
-                placeholder="ex. 20G"
+                placeholder={t("nursingAssessmentTab.ivGaugePlaceholder")}
                 value={ivState.gauge ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, gauge: e.target.value }))}
                 style={{ ...controlBase, maxWidth: 200 }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-              <span style={{ fontWeight: 600 }}>Date et heure</span>
+              <span style={{ fontWeight: 600 }}>{t("nursingAssessmentTab.ivDatetime")}</span>
               <input
                 type="datetime-local"
                 disabled={formLocked}
@@ -404,13 +389,13 @@ export function NursingAssessmentTab({
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-              <span style={{ fontWeight: 600 }}>Note courte</span>
+              <span style={{ fontWeight: 600 }}>{t("nursingAssessmentTab.ivShortNote")}</span>
               <textarea
                 value={ivState.note ?? ""}
                 onChange={(e) => setIvState((s) => ({ ...s, note: e.target.value }))}
                 rows={2}
                 readOnly={formLocked}
-                placeholder="Contexte, difficulté, matériel…"
+                placeholder={t("nursingAssessmentTab.ivNotePlaceholder")}
                 style={{
                   width: "100%",
                   boxSizing: "border-box",
@@ -425,7 +410,7 @@ export function NursingAssessmentTab({
       </fieldset>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {SECTIONS.map((sec) => (
+        {sectionDefs.map((sec) => (
           <section
             key={sec.id}
             style={{
@@ -466,8 +451,8 @@ export function NursingAssessmentTab({
               readOnly={formLocked}
               placeholder={
                 sec.id === "notesInfirmieresLibres"
-                  ? "Transmission, contexte, points de vigilance, suivi…"
-                  : "Complément libre pour cette section…"
+                  ? t("nursingAssessmentTab.placeholderTransmission")
+                  : t("nursingAssessmentTab.placeholderComplement")
               }
               rows={sec.id === "notesInfirmieresLibres" ? 5 : 3}
               style={{
@@ -509,9 +494,11 @@ export function NursingAssessmentTab({
             boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
           }}
         >
-          {saving ? "Enregistrement…" : "Enregistrer l'évaluation infirmière"}
+          {saving ? t("nursingAssessmentTab.saving") : t("nursingAssessmentTab.save")}
         </button>
-        {ok && !error && <span style={{ color: "#15803d", fontSize: 14 }}>Enregistré.</span>}
+        {ok && !error && (
+          <span style={{ color: "#15803d", fontSize: 14 }}>{t("nursingAssessmentTab.savedOk")}</span>
+        )}
       </div>
       {queuedLocalSave && !error ? (
         <div
@@ -528,8 +515,7 @@ export function NursingAssessmentTab({
             maxWidth: 560,
           }}
         >
-          L&apos;évaluation infirmière a été enregistrée sur cet appareil et est en attente de synchronisation avec le
-          serveur. Elle n&apos;est pas encore confirmée côté serveur.
+          {t("nursingAssessmentTab.queuedBanner")}
         </div>
       ) : null}
       {error && (

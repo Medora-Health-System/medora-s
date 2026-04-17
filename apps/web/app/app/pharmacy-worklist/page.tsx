@@ -14,6 +14,7 @@ import {
   type PendingFacilityQueueRow,
 } from "@/lib/offline/pendingEncounterOrders";
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
+import { useI18n } from "@/lib/i18n";
 
 function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
   return !!item.pharmacyDispenseRecord;
@@ -43,6 +44,7 @@ function PendingEncounterPatientCells({
 }
 
 export default function PharmacyWorklistPage() {
+  const { language } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -169,6 +171,7 @@ export default function PharmacyWorklistPage() {
         items: order.items || [],
       },
       patient: order.encounter?.patient ?? {},
+      language,
     });
   };
 

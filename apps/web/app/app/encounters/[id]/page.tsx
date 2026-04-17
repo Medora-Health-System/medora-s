@@ -11,7 +11,6 @@ import { PathwayMilestoneRow } from "@/features/pathways/components/PathwayMiles
 import { PathwaySessionSummaryBar } from "@/features/pathways/components/PathwaySessionSummary";
 import {
   COMMON_VISIT_REASONS,
-  COMMON_NOTE_SNIPPETS,
   PROVIDER_IMPRESSION_SNIPPETS,
   PROVIDER_PLAN_SNIPPETS,
 } from "@/constants/clinicalTemplates";
@@ -538,8 +537,9 @@ export default function EncounterDetailPage() {
       },
       facilityName: facilityName ?? null,
       primaryDiagnosis: quickPrimaryDiagnosis,
+      language,
     });
-  }, [encounter, facilityId, facilities, quickPrimaryDiagnosis, pendingDischarge]);
+  }, [encounter, facilityId, facilities, quickPrimaryDiagnosis, pendingDischarge, language]);
 
   useEffect(() => {
     if (!encounter?.id || !encounter?.patient?.id) return;
@@ -2461,6 +2461,8 @@ function ClinicVisitTab({
   onUpdate: () => void;
   canSignProviderDocumentation: boolean;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [visitReason, setVisitReason] = useState(encounter.visitReason || encounter.chiefComplaint || "");
   const [impression, setImpression] = useState(encounter.clinicianImpression || encounter.providerNote || "");
   const [plan, setPlan] = useState(encounter.treatmentPlan || "");
@@ -2507,8 +2509,8 @@ function ClinicVisitTab({
   ]);
 
   const handleAddAddendum = async () => {
-    const t = addendumText.trim();
-    if (!t) return;
+    const trimmed = addendumText.trim();
+    if (!trimmed) return;
     setMessage(null);
     setAddendumSaving(true);
     try {
@@ -2516,15 +2518,16 @@ function ClinicVisitTab({
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: t }),
+        body: JSON.stringify({ text: trimmed }),
       });
       setAddendumText("");
-      setMessage({ type: "ok", text: "Addendum enregistré." });
+      setMessage({ type: "ok", text: t("encounterClinicTab.toastAddendumSaved") });
       onUpdate();
     } catch (e: unknown) {
       setMessage({
         type: "err",
-        text: normalizeUserFacingError(e instanceof Error ? e.message : null) || "Enregistrement impossible.",
+        text:
+          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterClinicTab.errSave"),
       });
     } finally {
       setAddendumSaving(false);
@@ -2539,12 +2542,13 @@ function ClinicVisitTab({
         method: "POST",
         facilityId,
       });
-      setMessage({ type: "ok", text: "Évaluation médicale signée." });
+      setMessage({ type: "ok", text: t("encounterClinicTab.toastSigned") });
       onUpdate();
     } catch (e: unknown) {
       setMessage({
         type: "err",
-        text: normalizeUserFacingError(e instanceof Error ? e.message : null) || "Signature impossible.",
+        text:
+          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterClinicTab.errSign"),
       });
     } finally {
       setSigningDoc(false);
@@ -2590,15 +2594,13 @@ function ClinicVisitTab({
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       setMessage({
         type: queued ? "queued" : "ok",
-        text: queued
-          ? "Évaluation médicale enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : "Évaluation médicale enregistrée.",
+        text: queued ? t("encounterClinicTab.toastSavedQueued") : t("encounterClinicTab.toastSaved"),
       });
       onUpdate();
     } catch (e: any) {
       setMessage({
         type: "err",
-        text: normalizeUserFacingError(e?.message) || "Enregistrement impossible.",
+        text: normalizeUserFacingError(e?.message) || t("encounterClinicTab.errSave"),
       });
     } finally {
       setSaving(false);
@@ -2656,7 +2658,9 @@ function ClinicVisitTab({
   return (
     <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ ...clinicShell, padding: "16px 18px" }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Évaluation médicale</h3>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+          {t("encounterClinicTab.title")}
+        </h3>
       </div>
       {docSigned &&
       encounter.providerDocumentationSignedByDisplayFr &&
@@ -2673,8 +2677,25 @@ function ClinicVisitTab({
             lineHeight: 1.45,
           }}
         >
-          Évaluation signée par <strong>{encounter.providerDocumentationSignedByDisplayFr}</strong> le{" "}
-          {new Date(encounter.providerDocumentationSignedAt).toLocaleString("fr-FR")}
+          {(() => {
+            const dt = new Date(encounter.providerDocumentationSignedAt).toLocaleString(dateLocale);
+            const tmpl = t("encounterClinicTab.signedBanner").replace("{datetime}", dt);
+            const parts = tmpl.split("{name}");
+            if (parts.length === 2) {
+              return (
+                <>
+                  {parts[0]}
+                  <strong>{encounter.providerDocumentationSignedByDisplayFr}</strong>
+                  {parts[1]}
+                </>
+              );
+            }
+            return (
+              <>
+                {tmpl.replace("{name}", encounter.providerDocumentationSignedByDisplayFr)}
+              </>
+            );
+          })()}
         </div>
       ) : null}
       {(encounter.providerAddenda ?? []).length > 0 ? (
@@ -2692,8 +2713,21 @@ function ClinicVisitTab({
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                Addendum par {ad.createdByDisplayFr ?? "—"} le{" "}
-                {new Date(ad.createdAt).toLocaleString("fr-FR")}
+                {(() => {
+                  const dt = new Date(ad.createdAt).toLocaleString(dateLocale);
+                  const tmpl = t("encounterClinicTab.addendumByLine").replace("{datetime}", dt);
+                  const parts = tmpl.split("{name}");
+                  if (parts.length === 2) {
+                    return (
+                      <>
+                        {parts[0]}
+                        <strong>{ad.createdByDisplayFr ?? "—"}</strong>
+                        {parts[1]}
+                      </>
+                    );
+                  }
+                  return <>{tmpl.replace("{name}", ad.createdByDisplayFr ?? "—")}</>;
+                })()}
               </div>
               <div style={{ whiteSpace: "pre-wrap" }}>{ad.text}</div>
             </div>
@@ -2702,14 +2736,16 @@ function ClinicVisitTab({
       ) : null}
       {docSigned && canSignProviderDocumentation ? (
         <div style={{ ...clinicShell, padding: "16px 18px" }}>
-          <h4 style={{ marginTop: 0, marginBottom: 10, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Ajouter un addendum</h4>
+          <h4 style={{ marginTop: 0, marginBottom: 10, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
+            {t("encounterClinicTab.addendumSectionTitle")}
+          </h4>
           <textarea
             value={addendumText}
             onChange={(e) => setAddendumText(e.target.value)}
             rows={4}
             maxLength={5000}
             style={{ ...clinicField, marginBottom: 10 }}
-            placeholder="Texte de l'addendum (append-only, sans modifier l'évaluation signée)."
+            placeholder={t("encounterClinicTab.addendumPlaceholder")}
           />
           <button
             type="button"
@@ -2728,20 +2764,20 @@ function ClinicVisitTab({
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
             }}
           >
-            {addendumSaving ? "Enregistrement…" : "Enregistrer l'addendum"}
+            {addendumSaving ? t("encounterClinicTab.addendumSaving") : t("encounterClinicTab.addendumSave")}
           </button>
         </div>
       ) : null}
       <div style={{ ...clinicShell, padding: "12px 16px" }}>
         <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
-          {readOnly
-            ? "Consultation clôturée — lecture seule."
-            : "HPI, ROS, examen, aide à la décision, impression, plan et suivi — enregistrement partagé avec le dossier patient."}
+          {readOnly ? t("encounterClinicTab.helperClosed") : t("encounterClinicTab.helperOpen")}
         </p>
       </div>
       <div style={{ ...clinicShell, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Motif de visite</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelVisitReason")}
+        </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
           <select
             disabled={fieldsLocked}
@@ -2751,9 +2787,9 @@ function ClinicVisitTab({
               if (v) setVisitReason(v);
             }}
             style={clinicSelect}
-            aria-label="Choisir un motif courant"
+            aria-label={t("encounterClinicTab.visitReasonAria")}
           >
-            <option value="">— Motifs courants —</option>
+            <option value="">{t("encounterClinicTab.commonReasonsPlaceholder")}</option>
             {COMMON_VISIT_REASONS.map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
@@ -2764,58 +2800,70 @@ function ClinicVisitTab({
           value={visitReason}
           onChange={(e) => setVisitReason(e.target.value)}
           style={clinicField}
-          placeholder="Pourquoi le patient est-il là aujourd'hui ?"
+          placeholder={t("encounterClinicTab.visitReasonPlaceholder")}
         />
       </div>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Histoire de la maladie actuelle (HPI)</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelHpi")}
+        </label>
         <textarea
           disabled={fieldsLocked}
           value={hpi}
           onChange={(e) => setHpi(e.target.value)}
           rows={4}
           style={clinicField}
-          placeholder="Histoire de la plainte actuelle"
+          placeholder={t("encounterClinicTab.placeholderHpi")}
         />
       </div>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Revue des systèmes (ROS)</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelRos")}
+        </label>
         <textarea
           disabled={fieldsLocked}
           value={ros}
           onChange={(e) => setRos(e.target.value)}
           rows={4}
           style={clinicField}
-          placeholder="Revue par systèmes"
+          placeholder={t("encounterClinicTab.placeholderRos")}
         />
       </div>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Examen physique</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelPhysicalExam")}
+        </label>
         <textarea
           disabled={fieldsLocked}
           value={physicalExam}
           onChange={(e) => setPhysicalExam(e.target.value)}
           rows={4}
           style={clinicField}
-          placeholder="Constatations à l’examen"
+          placeholder={t("encounterClinicTab.placeholderPhysicalExam")}
         />
       </div>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Aide à la décision médicale (MDM)</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelMdm")}
+        </label>
         <textarea
           disabled={fieldsLocked}
           value={mdm}
           onChange={(e) => setMdm(e.target.value)}
           rows={4}
           style={clinicField}
-          placeholder="Complexité, données, risque, synthèse décisionnelle"
+          placeholder={t("encounterClinicTab.placeholderMdm")}
         />
       </div>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Impression clinique</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelImpression")}
+        </label>
         {!fieldsLocked && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>Insérer :</span>
+            <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>
+              {t("encounterClinicTab.insertLabel")}
+            </span>
             {PROVIDER_IMPRESSION_SNIPPETS.slice(0, 5).map((snippet) => (
               <button
                 key={snippet.slice(0, 24)}
@@ -2835,14 +2883,18 @@ function ClinicVisitTab({
           onChange={(e) => setImpression(e.target.value)}
           rows={4}
           style={clinicField}
-          placeholder="Bilan / impression clinique"
+          placeholder={t("encounterClinicTab.placeholderImpression")}
         />
       </div>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Plan de traitement</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelPlan")}
+        </label>
         {!fieldsLocked && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>Insérer :</span>
+            <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>
+              {t("encounterClinicTab.insertLabel")}
+            </span>
             {PROVIDER_PLAN_SNIPPETS.slice(0, 5).map((snippet) => (
               <button
                 key={snippet.slice(0, 24)}
@@ -2862,11 +2914,13 @@ function ClinicVisitTab({
           onChange={(e) => setPlan(e.target.value)}
           rows={5}
           style={clinicField}
-          placeholder="Médicaments, éducation, examens demandés, précautions de retour…"
+          placeholder={t("encounterClinicTab.placeholderPlan")}
         />
       </div>
       <div style={{ marginBottom: 0 }}>
-        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>Date de suivi</label>
+        <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
+          {t("encounterClinicTab.labelFollowUpDate")}
+        </label>
         <input
           type="date"
           disabled={fieldsLocked}
@@ -2910,7 +2964,7 @@ function ClinicVisitTab({
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
             }}
           >
-            {saving ? "Enregistrement…" : "Enregistrer la visite"}
+            {saving ? t("encounterClinicTab.saving") : t("encounterClinicTab.saveVisit")}
           </button>
         )}
         {canSignProviderDocumentation && !readOnly && !docSigned && (
@@ -2936,7 +2990,7 @@ function ClinicVisitTab({
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.1)",
             }}
           >
-            {signingDoc ? "…" : "Signer l'évaluation"}
+            {signingDoc ? t("encounterClinicTab.signing") : t("encounterClinicTab.signDocumentation")}
           </button>
         )}
       </div>
@@ -2956,6 +3010,8 @@ function TriageVitalsTab({
   onUpdate: () => void;
   isLocked: boolean;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [triage, setTriage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const vitals = (triage?.vitalsJson as any) || {};
@@ -2977,7 +3033,7 @@ function TriageVitalsTab({
     triageCompleteAt: "",
   });
   const [saving, setSaving] = useState(false);
-  const [saveInfo, setSaveInfo] = useState<string>("");
+  const [saveFeedback, setSaveFeedback] = useState<{ text: string; isError: boolean } | null>(null);
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
 
@@ -3020,7 +3076,7 @@ function TriageVitalsTab({
 
   const handleSave = async () => {
     setSaving(true);
-    setSaveInfo("");
+    setSaveFeedback(null);
 
     const screenWarnings: string[] = [];
 
@@ -3030,7 +3086,7 @@ function TriageVitalsTab({
         strokeScreenParsed = JSON.parse(formData.strokeScreen);
       } catch {
         strokeScreenParsed = null;
-        screenWarnings.push("strokeScreen : JSON invalide, champ ignoré.");
+        screenWarnings.push(t("encounterTriageTab.warnStrokeJson"));
       }
     }
 
@@ -3040,7 +3096,7 @@ function TriageVitalsTab({
         sepsisScreenParsed = JSON.parse(formData.sepsisScreen);
       } catch {
         sepsisScreenParsed = null;
-        screenWarnings.push("sepsisScreen : JSON invalide, champ ignoré.");
+        screenWarnings.push(t("encounterTriageTab.warnSepsisJson"));
       }
     }
 
@@ -3110,39 +3166,42 @@ function TriageVitalsTab({
 
       loadTriage();
       onUpdate();
-      const baseMsg = (res as any)?.queued ? "En attente de synchronisation" : "Signes vitaux enregistrés";
-      setSaveInfo(
-        screenWarnings.length ? `${baseMsg} ${screenWarnings.join(" ")}` : baseMsg
-      );
+      const baseMsg = (res as any)?.queued
+        ? t("encounterTriageTab.savedQueued")
+        : t("encounterTriageTab.saved");
+      setSaveFeedback({
+        text: screenWarnings.length ? `${baseMsg} ${screenWarnings.join(" ")}` : baseMsg,
+        isError: false,
+      });
     } catch (error) {
       console.error("Save error:", error);
-      setSaveInfo("Impossible d'enregistrer les signes vitaux");
+      setSaveFeedback({ text: t("encounterTriageTab.saveFailed"), isError: true });
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div>Chargement des signes vitaux…</div>;
+    return <div>{t("encounterTriageTab.loading")}</div>;
   }
 
   const triageUpdatedLine =
     triage?.updatedByDisplayFr?.trim() && triage.updatedAt
-      ? `Dernière mise à jour par ${triage.updatedByDisplayFr.trim()} — ${new Date(triage.updatedAt).toLocaleString("fr-FR")}`
+      ? t("encounterTriageTab.lastUpdatedBy")
+          .replace("{name}", triage.updatedByDisplayFr.trim())
+          .replace("{datetime}", new Date(triage.updatedAt).toLocaleString(dateLocale))
       : null;
 
   return (
     <div>
-      <h3 style={{ marginBottom: triageUpdatedLine ? 8 : undefined }}>
-        Signes vitaux
-      </h3>
+      <h3 style={{ marginBottom: triageUpdatedLine ? 8 : undefined }}>{t("encounterTriageTab.title")}</h3>
       {triageUpdatedLine ? (
         <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#424242" }}>{triageUpdatedLine}</p>
       ) : null}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            Motif principal
+            {t("encounterTriageTab.chiefComplaint")}
           </label>
           <input
             type="text"
@@ -3154,7 +3213,7 @@ function TriageVitalsTab({
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            Date / heure de début
+            {t("encounterTriageTab.onsetAt")}
           </label>
           <input
             type="datetime-local"
@@ -3166,7 +3225,7 @@ function TriageVitalsTab({
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            ESI (indice de gravité) 1-5
+            {t("encounterTriageTab.esiLabel")}
           </label>
           <select
             value={formData.esi}
@@ -3174,17 +3233,17 @@ function TriageVitalsTab({
             disabled={formDisabled}
             style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
           >
-            <option value="">Choisir…</option>
-            <option value="1">1 - Réanimation</option>
-            <option value="2">2 - Émergent</option>
-            <option value="3">3 - Urgent</option>
-            <option value="4">4 - Moins urgent</option>
-            <option value="5">5 - Non urgent</option>
+            <option value="">{t("encounterTriageTab.esiChoose")}</option>
+            <option value="1">{t("encounterTriageTab.esi1")}</option>
+            <option value="2">{t("encounterTriageTab.esi2")}</option>
+            <option value="3">{t("encounterTriageTab.esi3")}</option>
+            <option value="4">{t("encounterTriageTab.esi4")}</option>
+            <option value="5">{t("encounterTriageTab.esi5")}</option>
           </select>
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-            Complété à
+            {t("encounterTriageTab.triageCompleteAt")}
           </label>
           <input
             type="datetime-local"
@@ -3196,10 +3255,10 @@ function TriageVitalsTab({
         </div>
       </div>
 
-      <h4 style={{ marginTop: 24, marginBottom: 16 }}>Valeurs</h4>
+      <h4 style={{ marginTop: 24, marginBottom: 16 }}>{t("encounterTriageTab.valuesHeading")}</h4>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Temp. (°C)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.tempC")}</label>
           <input
             type="number"
             step="0.1"
@@ -3210,7 +3269,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Fréquence cardiaque (bpm)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.heartRate")}</label>
           <input
             type="number"
             value={formData.hr}
@@ -3220,7 +3279,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Fréquence respiratoire</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.respiratoryRate")}</label>
           <input
             type="number"
             value={formData.rr}
@@ -3230,7 +3289,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>TA systolique</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.bpSys")}</label>
           <input
             type="number"
             value={formData.bpSys}
@@ -3240,7 +3299,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>TA diastolique</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.bpDia")}</label>
           <input
             type="number"
             value={formData.bpDia}
@@ -3250,7 +3309,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>SpO2 (%)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.spo2")}</label>
           <input
             type="number"
             min="0"
@@ -3262,7 +3321,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Poids (kg)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.weightKg")}</label>
           <input
             type="number"
             step="0.1"
@@ -3273,7 +3332,7 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Taille (cm)</label>
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.heightCm")}</label>
           <input
             type="number"
             step="0.1"
@@ -3286,7 +3345,7 @@ function TriageVitalsTab({
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Allergie</label>
+        <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.allergyNote")}</label>
         <textarea
           value={formData.allergyNote}
           onChange={(e) => setFormData({ ...formData, allergyNote: e.target.value })}
@@ -3299,9 +3358,15 @@ function TriageVitalsTab({
 
       {!formDisabled && (
         <div style={{ marginTop: 24 }}>
-          {saveInfo && (
-            <div style={{ marginBottom: 10, color: saveInfo.includes("Impossible") ? "#c62828" : "#2e7d32", fontSize: 13 }}>
-              {saveInfo}
+          {saveFeedback && (
+            <div
+              style={{
+                marginBottom: 10,
+                color: saveFeedback.isError ? "#c62828" : "#2e7d32",
+                fontSize: 13,
+              }}
+            >
+              {saveFeedback.text}
             </div>
           )}
           <button
@@ -3317,15 +3382,13 @@ function TriageVitalsTab({
               opacity: saving ? 0.6 : 1,
             }}
           >
-            {saving ? "Enregistrement…" : "Enregistrer les signes vitaux"}
+            {saving ? t("encounterTriageTab.saving") : t("encounterTriageTab.save")}
           </button>
         </div>
       )}
       {formDisabled && (
         <div style={{ marginTop: 16, padding: 12, backgroundColor: "#fff3cd", borderRadius: 4, color: "#856404" }}>
-          {isReadOnly
-            ? "La consultation est fermée. Les signes vitaux sont en lecture seule."
-            : "Dossier signé — les signes vitaux sont en lecture seule."}
+          {isReadOnly ? t("encounterTriageTab.readOnlyClosed") : t("encounterTriageTab.readOnlySigned")}
         </div>
       )}
     </div>
@@ -3344,6 +3407,14 @@ function NotesTab({
   isLocked: boolean;
 }) {
   const { t } = useI18n();
+  const noteSnippets = useMemo(
+    () =>
+      t("encounterChrome.notesTab.snippets")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [t]
+  );
   const [notes, setNotes] = useState(encounter.notes || "");
   const [saving, setSaving] = useState(false);
   const notesReadOnly = encounter.status !== "OPEN" || isLocked;
@@ -3384,8 +3455,27 @@ function NotesTab({
         </p>
       </div>
       <div style={{ ...notesShell, padding: "16px 18px" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          {COMMON_NOTE_SNIPPETS.slice(0, 6).map((snippet) => (
+        {notesReadOnly ? (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: "10px 12px",
+              backgroundColor: "#fffbeb",
+              borderRadius: 10,
+              border: "1px solid #fde68a",
+              fontSize: 13,
+              color: "#92400e",
+              lineHeight: 1.45,
+            }}
+          >
+            {t("encounterChrome.notesTab.readOnlyHint")}
+          </div>
+        ) : null}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, alignItems: "center" }}>
+          {!notesReadOnly && noteSnippets.length > 0 ? (
+            <span style={{ fontSize: 13, color: "#64748b" }}>{t("encounterChrome.notesTab.insertLabel")}</span>
+          ) : null}
+          {noteSnippets.slice(0, 6).map((snippet) => (
             <button
               key={snippet.slice(0, 20)}
               type="button"
@@ -3808,6 +3898,7 @@ function OrdersTab({
         items: order.items || [],
       },
       patient: encounter?.patient ?? {},
+      language,
     });
   };
 

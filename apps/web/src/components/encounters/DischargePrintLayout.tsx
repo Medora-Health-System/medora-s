@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * Document de sortie imprimable (patient) — données issues de encounter + dischargeSummaryJson.
- * Pas de requête réseau : le parent fournit les objets déjà chargés.
+ * Printable patient discharge document — data from encounter + dischargeSummaryJson.
+ * No network: parent passes loaded objects.
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
-import { getPatientSexLabelFr } from "@/lib/uiLabels";
 import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
 import { nirMrnDisplay, parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
+import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
+import type { DischargeSummaryFieldsFr } from "@/components/patient-chart/patientChartHelpers";
 
 export type DischargePrintPatient = {
   firstName?: string | null;
@@ -41,23 +43,36 @@ function line(label: string, value: string | null | undefined): string {
   return `<p style="margin: 6px 0; line-height: 1.45;"><strong>${esc(label)}</strong> ${esc(v)}</p>`;
 }
 
+const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
+  disposition: "encounterChrome.modals.dischargeField.disposition",
+  exitCondition: "encounterChrome.modals.dischargeField.exitCondition",
+  dischargeInstructions: "encounterChrome.modals.dischargeField.dischargeInstructions",
+  medicationsGiven: "encounterChrome.modals.dischargeField.medicationsGiven",
+  followUp: "encounterChrome.modals.dischargeField.followUp",
+  returnIfWorse: "encounterChrome.modals.dischargeField.returnIfWorse",
+  patientDestination: "encounterChrome.modals.dischargeField.patientDestination",
+  dischargeMode: "encounterChrome.modals.dischargeField.dischargeMode",
+};
+
 /**
- * HTML complet pour une fenêtre d’impression (document patient — sortie de consultation).
+ * Full HTML for a print window (patient-facing discharge document).
  */
 export function getDischargePrintHtml(params: {
   patient: DischargePrintPatient;
   encounter: DischargePrintEncounter;
   facilityName?: string | null;
-  /** Premier diagnostic de la consultation si déjà connu côté client */
+  /** Primary diagnosis for this encounter if known client-side */
   primaryDiagnosis?: string | null;
+  language: SupportedLanguage;
 }): string {
-  const { patient, encounter, facilityName, primaryDiagnosis } = params;
+  const { patient, encounter, facilityName, primaryDiagnosis, language } = params;
+  const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
+  const ageYears =
+    patient.dob && !Number.isNaN(new Date(patient.dob).getTime()) ? calculateAge(patient.dob) : null;
   const age =
-    patient.dob && !Number.isNaN(new Date(patient.dob).getTime())
-      ? `${calculateAge(patient.dob)} ans`
-      : "—";
-  const sex = getPatientSexLabelFr(patient.sex ?? null, patient.sexAtBirth ?? null);
+    ageYears != null ? `${ageYears} ${printT(language, "printOutput.common.yearsSuffix")}` : "—";
+  const sex = printPatientSexLabel(language, patient.sex ?? null, patient.sexAtBirth ?? null);
   const ids = nirMrnDisplay({
     nationalId: patient.nationalId,
     mrn: patient.mrn,
@@ -65,12 +80,12 @@ export function getDischargePrintHtml(params: {
   });
   const consultDate = (() => {
     try {
-      return new Date(encounter.createdAt).toLocaleString("fr-FR");
+      return new Date(encounter.createdAt).toLocaleString(loc);
     } catch {
       return "—";
     }
   })();
-  const printDate = new Date().toLocaleString("fr-FR");
+  const printDate = new Date().toLocaleString(loc);
 
   const d = parseDischargeSummaryForChart(encounter.dischargeSummaryJson);
   const physicianLine = formatEncounterPhysicianAssignedFr({
@@ -83,39 +98,50 @@ export function getDischargePrintHtml(params: {
 
   const bodySections: string[] = [];
 
-  bodySections.push(`<h1 style="font-size: 18px; margin: 0 0 16px 0; font-weight: 700;">Document de sortie</h1>`);
+  bodySections.push(
+    `<h1 style="font-size: 18px; margin: 0 0 16px 0; font-weight: 700;">${esc(
+      printT(language, "printOutput.discharge.documentH1")
+    )}</h1>`
+  );
 
   bodySections.push(
     `<div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #000;">`
   );
-  bodySections.push(line("Nom du patient", name));
-  bodySections.push(line("Âge", age));
-  bodySections.push(line("Sexe", sex));
-  bodySections.push(line("NIR / MRN", ids));
-  bodySections.push(line("Date de consultation", consultDate));
+  bodySections.push(line(printT(language, "printOutput.discharge.patientName"), name));
+  bodySections.push(line(printT(language, "encounterChrome.labelAge"), age));
+  bodySections.push(line(printT(language, "encounterChrome.labelSex"), sex));
+  bodySections.push(line(printT(language, "encounterChrome.labelNirMrn"), ids));
+  bodySections.push(line(printT(language, "printOutput.discharge.encounterDate"), consultDate));
   if (facilityName?.trim()) {
-    bodySections.push(line("Établissement", facilityName.trim()));
+    bodySections.push(line(printT(language, "printOutput.patientChart.establishment"), facilityName.trim()));
   }
-  bodySections.push(line("Médecin / clinicien attribué", physicianLine !== "—" ? physicianLine : null));
+  bodySections.push(
+    line(
+      printT(language, "encounterChrome.labelAssignedPhysician"),
+      physicianLine !== "—" ? physicianLine : null
+    )
+  );
   if (primaryDiagnosis?.trim()) {
-    bodySections.push(line("Diagnostic principal", primaryDiagnosis.trim()));
+    bodySections.push(line(printT(language, "printOutput.discharge.primaryDiagnosis"), primaryDiagnosis.trim()));
   }
   bodySections.push(`</div>`);
 
   bodySections.push(`<div style="margin-bottom: 16px;">`);
-  if (d?.disposition) bodySections.push(line("Disposition", d.disposition));
-  if (d?.exitCondition) bodySections.push(line("État à la sortie", d.exitCondition));
-  if (d?.dischargeInstructions) bodySections.push(line("Instructions de sortie", d.dischargeInstructions));
-  if (d?.medicationsGiven) bodySections.push(line("Médicaments remis / prescrits", d.medicationsGiven));
-  if (d?.followUp) bodySections.push(line("Suivi recommandé", d.followUp));
-  if (d?.returnIfWorse) bodySections.push(line("Retour si aggravation", d.returnIfWorse));
-  if (d?.patientDestination) bodySections.push(line("Destination du patient", d.patientDestination));
-  if (d?.dischargeMode) bodySections.push(line("Mode de sortie", d.dischargeMode));
+  if (d) {
+    (Object.keys(DISCHARGE_FIELD_KEYS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
+      const v = d[k];
+      if (typeof v === "string" && v.trim()) {
+        bodySections.push(line(printT(language, DISCHARGE_FIELD_KEYS[k]), v));
+      }
+    });
+  }
   bodySections.push(`</div>`);
 
   if (!d) {
     bodySections.push(
-      `<p style="margin: 12px 0; font-size: 13px;">Aucun résumé de sortie structuré n’est encore enregistré pour cette consultation.</p>`
+      `<p style="margin: 12px 0; font-size: 13px;">${esc(
+        printT(language, "printOutput.discharge.noStructuredSummary")
+      )}</p>`
     );
   }
 
@@ -123,22 +149,23 @@ export function getDischargePrintHtml(params: {
     `<div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #000;">`
   );
   bodySections.push(
-    `<p style="margin: 8px 0 0 0;"><strong>Signature / nom du professionnel</strong></p>`
+    `<p style="margin: 8px 0 0 0;"><strong>${esc(printT(language, "printOutput.discharge.signatureHeading"))}</strong></p>`
   );
   bodySections.push(
     `<p style="margin: 24px 0 8px 0; min-height: 40px; border-bottom: 1px solid #000; width: 100%; max-width: 320px;">${signer ? esc(signer) : ""}</p>`
   );
   bodySections.push(`</div>`);
 
-  bodySections.push(
-    `<p style="margin-top: 20px; font-size: 11px;">Document généré le ${esc(printDate)} — Medora-S</p>`
-  );
+  const footer = esc(printT(language, "printOutput.common.documentFooter").replace("{date}", printDate));
+  bodySections.push(`<p style="margin-top: 20px; font-size: 11px;">${footer}</p>`);
+
+  const htmlLang = language === "en" ? "en" : "fr";
 
   return `<!DOCTYPE html>
-<html lang="fr">
+<html lang="${htmlLang}">
 <head>
   <meta charset="utf-8">
-  <title>Document de sortie</title>
+  <title>${esc(printT(language, "printOutput.discharge.htmlTitle"))}</title>
   <style>
     body { font-family: Georgia, "Times New Roman", serif; color: #000; background: #fff; margin: 0; padding: 24px; font-size: 14px; }
     @media print { body { padding: 16px; } }
@@ -155,12 +182,11 @@ export function printDischarge(params: {
   encounter: DischargePrintEncounter;
   facilityName?: string | null;
   primaryDiagnosis?: string | null;
+  language: SupportedLanguage;
 }): void {
   const win = window.open("", "_blank");
   if (!win) {
-    alert(
-      "Impossible d'ouvrir la fenêtre d'impression : les pop-ups sont peut-être bloqués. Autorisez les pop-ups pour ce site et réessayez."
-    );
+    alert(printT(params.language, "printOutput.common.popupBlocked"));
     return;
   }
   win.document.write(getDischargePrintHtml(params));

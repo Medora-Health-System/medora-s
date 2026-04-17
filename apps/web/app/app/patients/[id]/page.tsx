@@ -40,6 +40,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { getPatientChartPrintHtml, printPatientChart } from "@/components/patient-chart/PatientChartPrintLayout";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
+import { useI18n } from "@/lib/i18n";
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -63,6 +64,7 @@ export default function PatientDetailPage() {
   const [vitalsLoading, setVitalsLoading] = useState(false);
   const [supersededVitals, setSupersededVitals] = useState<PatientTriageVitalsSnapshot[]>([]);
   const { facilityId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
+  const { language } = useI18n();
   const triageLoadFailedRef = useRef(false);
 
   useEffect(() => {
@@ -469,12 +471,15 @@ export default function PatientDetailPage() {
               onPrintMedicalRecord={
                 chartSummary
                   ? () =>
-                      printPatientChart(() =>
-                        getPatientChartPrintHtml({
-                          chartSummary,
-                          followUps: followUps ?? [],
-                          facilityName: facilities.find((f) => f.id === facilityId)?.name,
-                        })
+                      printPatientChart(
+                        () =>
+                          getPatientChartPrintHtml({
+                            chartSummary,
+                            followUps: followUps ?? [],
+                            facilityName: facilities.find((f) => f.id === facilityId)?.name,
+                            language,
+                          }),
+                        language
                       )
                   : undefined
               }
