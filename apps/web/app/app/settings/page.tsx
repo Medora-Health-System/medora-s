@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 export default function SettingsPage() {
+  const { t, language } = useI18n();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -14,12 +17,12 @@ export default function SettingsPage() {
     setMessage(null);
 
     if (newPassword !== confirm) {
-      setMessage("Les mots de passe ne correspondent pas.");
+      setMessage(t("auth.settings.mismatch"));
       return;
     }
 
     if (newPassword.length < 8) {
-      setMessage("Le mot de passe doit contenir au moins 8 caractères.");
+      setMessage(t("auth.settings.minLength"));
       return;
     }
 
@@ -40,15 +43,23 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.error || "Erreur.");
+        const raw =
+          typeof data?.error === "string"
+            ? data.error
+            : typeof data?.message === "string"
+              ? data.message
+              : "";
+        setMessage(
+          normalizeUserFacingError(raw, language) || t("auth.settings.errorGeneric")
+        );
       } else {
-        setMessage("Mot de passe mis à jour.");
+        setMessage(t("auth.settings.success"));
         setCurrentPassword("");
         setNewPassword("");
         setConfirm("");
       }
     } catch {
-      setMessage("Erreur serveur.");
+      setMessage(t("auth.settings.serverError"));
     } finally {
       setLoading(false);
     }
@@ -56,14 +67,15 @@ export default function SettingsPage() {
 
   return (
     <div style={{ maxWidth: 500 }}>
-      <h1>Paramètres</h1>
+      <h1>{t("auth.settings.title")}</h1>
 
-      <h3>Changer mon mot de passe</h3>
+      <h3>{t("auth.settings.changePasswordHeading")}</h3>
 
       <form onSubmit={submit}>
         <div style={{ marginBottom: 12 }}>
-          <label>Mot de passe actuel</label>
+          <label htmlFor="settings-current-password">{t("auth.settings.currentPasswordLabel")}</label>
           <input
+            id="settings-current-password"
             type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
@@ -72,8 +84,9 @@ export default function SettingsPage() {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <label>Nouveau mot de passe</label>
+          <label htmlFor="settings-new-password">{t("auth.settings.newPasswordLabel")}</label>
           <input
+            id="settings-new-password"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -82,8 +95,9 @@ export default function SettingsPage() {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <label>Confirmer</label>
+          <label htmlFor="settings-confirm-password">{t("auth.settings.confirmPasswordLabel")}</label>
           <input
+            id="settings-confirm-password"
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
@@ -92,7 +106,7 @@ export default function SettingsPage() {
         </div>
 
         <button type="submit" disabled={loading}>
-          {loading ? "Chargement..." : "Mettre à jour"}
+          {loading ? t("auth.settings.submitting") : t("auth.settings.submit")}
         </button>
       </form>
 

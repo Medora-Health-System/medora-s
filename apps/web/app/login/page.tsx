@@ -6,11 +6,20 @@ import Link from "next/link";
 import { getPostLoginDestinationForAuthUser } from "@/lib/landingRoute";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
+import { useI18n } from "@/lib/i18n";
 import styles from "./page.module.css";
+
+function LoginSuspenseFallback() {
+  const { t } = useI18n();
+  return (
+    <div style={{ padding: 48, textAlign: "center" }}>{t("auth.login.suspenseLoading")}</div>
+  );
+}
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t, language } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +49,10 @@ function LoginForm() {
             ? data.error
             : typeof data?.message === "string"
               ? data.message
-              : "Échec de la connexion. Réessayez.";
-        setError(normalizeUserFacingError(errorMessage) || "Échec de la connexion. Réessayez.");
+              : "";
+        setError(
+          normalizeUserFacingError(errorMessage, language) || t("auth.login.errorFallback")
+        );
         setLoading(false);
         return;
       }
@@ -59,7 +70,7 @@ function LoginForm() {
       router.push(dest);
       router.refresh();
     } catch (err) {
-      setError("Échec de la connexion. Vérifiez votre connexion et réessayez.");
+      setError(t("auth.login.errorNetwork"));
       setLoading(false);
     }
   };
@@ -88,7 +99,7 @@ function LoginForm() {
               lineHeight: 1.5,
             }}
           >
-            Plateforme intégrée de dossier patient électronique et de surveillance de santé publique.
+            {t("auth.login.brandTagline")}
           </p>
         </div>
       </div>
@@ -113,7 +124,7 @@ function LoginForm() {
               letterSpacing: "-0.01em",
             }}
           >
-            Connexion
+            {t("auth.login.title")}
           </h2>
           <p
             style={{
@@ -122,7 +133,7 @@ function LoginForm() {
               color: "#64748b",
             }}
           >
-            Saisissez vos identifiants pour accéder au dossier.
+            {t("auth.login.subtitle")}
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -137,7 +148,7 @@ function LoginForm() {
                   color: "#334155",
                 }}
               >
-                Identifiant
+                {t("auth.login.usernameLabel")}
               </label>
               <input
                 id="username"
@@ -146,7 +157,7 @@ function LoginForm() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={loading}
-                placeholder="Courriel ou identifiant"
+                placeholder={t("auth.login.usernamePlaceholder")}
                 autoComplete="username"
                 style={{
                   width: "100%",
@@ -172,7 +183,7 @@ function LoginForm() {
                   color: "#334155",
                 }}
               >
-                Mot de passe
+                {t("auth.login.passwordLabel")}
               </label>
               <input
                 id="password"
@@ -205,7 +216,7 @@ function LoginForm() {
                   textDecoration: "none",
                 }}
               >
-                Mot de passe oublié ?
+                {t("auth.login.forgotPasswordLink")}
               </Link>
             </div>
 
@@ -241,7 +252,7 @@ function LoginForm() {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? "Connexion…" : "Se connecter"}
+              {loading ? t("auth.login.submitting") : t("auth.login.submit")}
             </button>
           </form>
         </div>
@@ -252,7 +263,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 48, textAlign: "center" }}>Chargement…</div>}>
+    <Suspense fallback={<LoginSuspenseFallback />}>
       <LoginForm />
     </Suspense>
   );

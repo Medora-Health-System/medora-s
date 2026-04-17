@@ -6,8 +6,19 @@ import Link from "next/link";
 import styles from "./page.module.css";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
+import { useI18n } from "@/lib/i18n";
+
+function ResetPasswordSuspenseFallback() {
+  const { t } = useI18n();
+  return (
+    <div className={styles.root} style={{ padding: 24 }}>
+      {t("auth.login.suspenseLoading")}
+    </div>
+  );
+}
 
 function ReinitialiserMotDePasseContent() {
+  const { t, language } = useI18n();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") ?? "";
   const token = searchParams.get("token") ?? "";
@@ -28,11 +39,11 @@ function ReinitialiserMotDePasseContent() {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("Les deux mots de passe ne correspondent pas.");
+      setError(t("auth.resetPassword.mismatch"));
       return;
     }
     if (newPassword.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères.");
+      setError(t("auth.resetPassword.minLength"));
       return;
     }
 
@@ -52,9 +63,9 @@ function ReinitialiserMotDePasseContent() {
             ? data.error
             : typeof data?.message === "string"
               ? data.message
-              : "Lien invalide ou expiré. Demandez un nouveau lien.";
+              : "";
         setError(
-          normalizeUserFacingError(errorMessage) || "Lien invalide ou expiré. Demandez un nouveau lien."
+          normalizeUserFacingError(errorMessage, language) || t("auth.resetPassword.invalidLinkFallback")
         );
         setLoading(false);
         return;
@@ -63,7 +74,7 @@ function ReinitialiserMotDePasseContent() {
       setSuccess(true);
       setLoading(false);
     } catch (err) {
-      setError("Service indisponible. Réessayez plus tard.");
+      setError(t("auth.resetPassword.serviceUnavailable"));
       setLoading(false);
     }
   };
@@ -89,10 +100,10 @@ function ReinitialiserMotDePasseContent() {
             }}
           >
             <h2 style={{ margin: "0 0 8px 0", fontSize: "1.25rem", color: "#1e293b" }}>
-              Lien invalide
+              {t("auth.resetPassword.invalidParamsTitle")}
             </h2>
             <p style={{ margin: "0 0 20px 0", fontSize: 14, color: "#64748b" }}>
-              Ce lien de réinitialisation est invalide ou incomplet. Demandez un nouveau lien depuis la page « Mot de passe oublié ».
+              {t("auth.resetPassword.invalidParamsBody")}
             </p>
             <Link
               href="/mot-de-passe-oublie"
@@ -104,7 +115,7 @@ function ReinitialiserMotDePasseContent() {
                 textDecoration: "none",
               }}
             >
-              Demander un nouveau lien
+              {t("auth.resetPassword.requestNewLink")}
             </Link>
             <span style={{ margin: "0 8px", color: "#94a3b8" }}>|</span>
             <Link
@@ -115,7 +126,7 @@ function ReinitialiserMotDePasseContent() {
                 textDecoration: "none",
               }}
             >
-              Retour à la connexion
+              {t("auth.resetPassword.returnToSignIn")}
             </Link>
           </div>
         </div>
@@ -147,7 +158,7 @@ function ReinitialiserMotDePasseContent() {
               lineHeight: 1.5,
             }}
           >
-            Choisissez un nouveau mot de passe pour votre compte.
+            {t("auth.resetPassword.brandTagline")}
           </p>
         </div>
       </div>
@@ -172,7 +183,7 @@ function ReinitialiserMotDePasseContent() {
               letterSpacing: "-0.01em",
             }}
           >
-            Nouveau mot de passe
+            {t("auth.resetPassword.title")}
           </h2>
           <p
             style={{
@@ -181,7 +192,7 @@ function ReinitialiserMotDePasseContent() {
               color: "#64748b",
             }}
           >
-            Saisissez et confirmez votre nouveau mot de passe (au moins 8 caractères).
+            {t("auth.resetPassword.subtitle")}
           </p>
 
           {success ? (
@@ -197,7 +208,7 @@ function ReinitialiserMotDePasseContent() {
                   fontSize: 14,
                 }}
               >
-                Mot de passe réinitialisé. Vous pouvez vous connecter.
+                {t("auth.resetPassword.successBody")}
               </div>
               <Link
                 href="/login"
@@ -212,7 +223,7 @@ function ReinitialiserMotDePasseContent() {
                   textDecoration: "none",
                 }}
               >
-                Aller à la connexion
+                {t("auth.resetPassword.goToSignIn")}
               </Link>
             </div>
           ) : (
@@ -228,7 +239,7 @@ function ReinitialiserMotDePasseContent() {
                     color: "#334155",
                   }}
                 >
-                  Nouveau mot de passe
+                  {t("auth.resetPassword.newPasswordLabel")}
                 </label>
                 <input
                   id="newPassword"
@@ -264,7 +275,7 @@ function ReinitialiserMotDePasseContent() {
                     color: "#334155",
                   }}
                 >
-                  Confirmer le mot de passe
+                  {t("auth.resetPassword.confirmPasswordLabel")}
                 </label>
                 <input
                   id="confirmPassword"
@@ -321,7 +332,7 @@ function ReinitialiserMotDePasseContent() {
                   opacity: loading ? 0.7 : 1,
                 }}
               >
-                {loading ? "Enregistrement…" : "Réinitialiser le mot de passe"}
+                {loading ? t("auth.resetPassword.submitting") : t("auth.resetPassword.submit")}
               </button>
 
               <p style={{ marginTop: 20, marginBottom: 0, textAlign: "center" }}>
@@ -333,7 +344,7 @@ function ReinitialiserMotDePasseContent() {
                     textDecoration: "none",
                   }}
                 >
-                  ← Retour à la connexion
+                  {t("auth.resetPassword.backToSignIn")}
                 </Link>
               </p>
             </form>
@@ -346,7 +357,7 @@ function ReinitialiserMotDePasseContent() {
 
 export default function ReinitialiserMotDePassePage() {
   return (
-    <Suspense fallback={<div className={styles.root} style={{ padding: 24 }}>Chargement…</div>}>
+    <Suspense fallback={<ResetPasswordSuspenseFallback />}>
       <ReinitialiserMotDePasseContent />
     </Suspense>
   );

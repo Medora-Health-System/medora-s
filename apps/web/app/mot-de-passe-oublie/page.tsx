@@ -5,8 +5,10 @@ import Link from "next/link";
 import styles from "./page.module.css";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
+import { useI18n } from "@/lib/i18n";
 
 export default function MotDePasseOubliePage() {
+  const { t, language } = useI18n();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -33,9 +35,9 @@ export default function MotDePasseOubliePage() {
             ? data.error
             : typeof data?.message === "string"
               ? data.message
-              : "Une erreur s'est produite. Réessayez.";
+              : "";
         setError(
-          normalizeUserFacingError(errorMessage) || "Une erreur s'est produite. Réessayez."
+          normalizeUserFacingError(errorMessage, language) || t("auth.forgotPassword.errorGeneric")
         );
         setLoading(false);
         return;
@@ -44,7 +46,7 @@ export default function MotDePasseOubliePage() {
       setSuccess(true);
       setLoading(false);
     } catch (err) {
-      setError("Service indisponible. Réessayez plus tard.");
+      setError(t("auth.forgotPassword.serviceUnavailable"));
       setLoading(false);
     }
   };
@@ -73,7 +75,7 @@ export default function MotDePasseOubliePage() {
               lineHeight: 1.5,
             }}
           >
-            Dossier patient et suivi des soins pour structures de santé en milieu à ressources limitées.
+            {t("auth.forgotPassword.brandTagline")}
           </p>
         </div>
       </div>
@@ -98,7 +100,7 @@ export default function MotDePasseOubliePage() {
               letterSpacing: "-0.01em",
             }}
           >
-            Mot de passe oublié
+            {t("auth.forgotPassword.title")}
           </h2>
           <p
             style={{
@@ -107,7 +109,7 @@ export default function MotDePasseOubliePage() {
               color: "#64748b",
             }}
           >
-            Saisissez votre adresse courriel. Si un compte existe, un lien de réinitialisation vous sera envoyé.
+            {t("auth.forgotPassword.subtitle")}
           </p>
 
           {success ? (
@@ -123,7 +125,7 @@ export default function MotDePasseOubliePage() {
                   fontSize: 14,
                 }}
               >
-                Si ce compte existe, un lien de réinitialisation a été envoyé. Vérifiez votre messagerie (et les courriels indésirables).
+                {t("auth.forgotPassword.successBody")}
               </div>
               <Link
                 href="/login"
@@ -135,7 +137,7 @@ export default function MotDePasseOubliePage() {
                   textDecoration: "none",
                 }}
               >
-                ← Retour à la connexion
+                {t("auth.forgotPassword.backToSignIn")}
               </Link>
             </div>
           ) : (
@@ -151,7 +153,7 @@ export default function MotDePasseOubliePage() {
                     color: "#334155",
                   }}
                 >
-                  Adresse courriel
+                  {t("auth.forgotPassword.emailLabel")}
                 </label>
                 <input
                   id="email"
@@ -160,7 +162,7 @@ export default function MotDePasseOubliePage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={loading}
-                  placeholder="vous@exemple.org"
+                  placeholder={t("auth.forgotPassword.emailPlaceholder")}
                   autoComplete="email"
                   style={{
                     width: "100%",
@@ -207,7 +209,7 @@ export default function MotDePasseOubliePage() {
                   opacity: loading ? 0.7 : 1,
                 }}
               >
-                {loading ? "Envoi…" : "Envoyer le lien"}
+                {loading ? t("auth.forgotPassword.submitting") : t("auth.forgotPassword.submit")}
               </button>
 
               <p style={{ marginTop: 20, marginBottom: 0, textAlign: "center" }}>
@@ -219,7 +221,7 @@ export default function MotDePasseOubliePage() {
                     textDecoration: "none",
                   }}
                 >
-                  ← Retour à la connexion
+                  {t("auth.forgotPassword.backToSignIn")}
                 </Link>
               </p>
             </form>
