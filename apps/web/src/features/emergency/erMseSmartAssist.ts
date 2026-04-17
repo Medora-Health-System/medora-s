@@ -1,9 +1,12 @@
 /**
  * Deterministic ER MSE prefill suggestions from data already documented in the workflow.
  * No network, no AI, no inference beyond explicit structured facts.
- * Wording kept concise and clinician-style (French).
+ * Display wording resolved via `erMseSmartAssist` messages (FR/EN).
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
+import frMessages from "@/i18n/messages/fr";
+import enMessages from "@/i18n/messages/en";
 import { formatVitalsHeaderLine } from "@/lib/patientVitals";
 import type { ErProviderMseForm } from "./emergencyProviderMseV1";
 import {
@@ -23,12 +26,44 @@ export type ErMseSmartAssistContext = {
   cdsRecommendationIds?: readonly string[];
 };
 
-function traumaLevelLabelFr(level: string): string {
-  if (level === "LEVEL_1") return "Niveau 1";
-  if (level === "LEVEL_2") return "Niveau 2";
-  if (level === "LEVEL_3") return "Niveau 3";
-  if (level === "LEVEL_4") return "Niveau 4";
-  return "non précisé";
+function mseRoot(locale: SupportedLanguage): Record<string, unknown> | undefined {
+  const root = (locale === "en" ? enMessages : frMessages) as Record<string, unknown>;
+  const block = root.erMseSmartAssist;
+  return block !== null && typeof block === "object" ? (block as Record<string, unknown>) : undefined;
+}
+
+/** Resolve a dot path under `erMseSmartAssist` (e.g. `traumaLevels.LEVEL_1`, `cdsPlan.cds_er_hypotension`). */
+function mseT(locale: SupportedLanguage, path: string): string {
+  const base = mseRoot(locale);
+  if (!base) return "";
+  const parts = path.split(".").filter(Boolean);
+  let cur: unknown = base;
+  for (const p of parts) {
+    if (cur !== null && typeof cur === "object" && p in (cur as object)) {
+      cur = (cur as Record<string, unknown>)[p];
+    } else {
+      return "";
+    }
+  }
+  return typeof cur === "string" ? cur : "";
+}
+
+function interpolate(template: string, vars: Record<string, string>): string {
+  let s = template;
+  for (const [k, v] of Object.entries(vars)) {
+    s = s.split(`{${k}}`).join(v);
+  }
+  return s;
+}
+
+function mseI(locale: SupportedLanguage, path: string, vars: Record<string, string>): string {
+  return interpolate(mseT(locale, path), vars);
+}
+
+function traumaLevelLabel(locale: SupportedLanguage, level: string): string {
+  const key = level === "LEVEL_1" || level === "LEVEL_2" || level === "LEVEL_3" || level === "LEVEL_4" ? level : "";
+  if (key) return mseT(locale, `traumaLevels.${key}`);
+  return mseT(locale, "traumaLevels.unspecified");
 }
 
 function pickChiefFromEncounter(enc: ErMseSmartAssistContext["encounterLine"]): string {
@@ -49,34 +84,18 @@ function chiefSuggestsChestPain(chief: string): boolean {
   );
 }
 
-/** Physician-style checklist lines from active CDS ids (no product-style “rappel aide à la décision”). */
-function planLinesFromCdsIds(ids: readonly string[] | undefined): string {
+function planLinesFromCdsIds(ids: readonly string[] | undefined, locale: SupportedLanguage): string {
   if (!ids?.length) return "";
   const lines: string[] = [];
   const seen = new Set<string>();
   for (const id of ids) {
     if (seen.has(id)) continue;
     seen.add(id);
-    const line = CDS_PLAN_LINE_FR[id];
+    const line = mseT(locale, `cdsPlan.${id}`);
     if (line) lines.push(line);
   }
   return lines.join("\n");
 }
-
-const CDS_PLAN_LINE_FR: Record<string, string> = {
-  cds_er_trauma_protocol: "Protocole trauma à confirmer selon l’évaluation clinique.",
-  cds_er_vitals_escalation: "Signes vitaux à risque — réévaluation clinique urgente.",
-  cds_er_hypotension: "Hypotension — vigilance hémodynamique et réévaluation.",
-  cds_er_tachycardia: "Tachycardie — réévaluation du contexte et des causes.",
-  cds_er_hypoxemia: "Hypoxémie — réévaluation respiratoire et support si indiqué.",
-  cds_er_tachypnea: "Polypnée — réévaluation ventilatoire.",
-  cds_er_temperature_concern: "Température extrême — réévaluation et cause à préciser.",
-  cds_er_hemodynamic_trend: "Tendance hémodynamique défavorable sur relevés récents — réévaluation.",
-  cds_er_respiratory_trend: "Tendance respiratoire défavorable sur relevés récents — réévaluation.",
-  cds_er_esi_urgent: "ESI prioritaire (1–2) — coordination et réévaluation rapide.",
-  cds_er_stroke_pathway: "Orientation filière AVC selon protocole local.",
-  cds_er_sepsis_bundle: "Réévaluer la prise en charge sepsis selon protocole local.",
-};
 
 function vitalsRecordFromSlice(slice: {
   tempC: string;
@@ -100,10 +119,36 @@ function vitalsRecordFromSlice(slice: {
   };
 }
 
+/** Same structure as `formatVitalsHeaderLine` but English labels when `locale === "en"` (avoids mixed-language MSE lines). */
+function formatVitalsHeaderLineForAssist(
+  vitals: Record<string, number | string | null | undefined>,
+  locale: SupportedLanguage
+): string {
+  if (locale !== "en") {
+    return formatVitalsHeaderLine(vitals);
+  }
+  const parts: string[] = [];
+  const sys = vitals.bpSys;
+  const dia = vitals.bpDia;
+  if (sys != null && sys !== "" && dia != null && dia !== "") {
+    parts.push(`BP ${sys}/${dia}`);
+  }
+  if (vitals.hr != null && vitals.hr !== "") parts.push(`HR ${vitals.hr}/min`);
+  if (vitals.tempC != null && vitals.tempC !== "") parts.push(`Temp ${vitals.tempC} °C`);
+  if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO₂ ${vitals.spo2}%`);
+  if (vitals.rr != null && vitals.rr !== "") parts.push(`RR ${vitals.rr}/min`);
+  if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Wt ${vitals.weightKg} kg`);
+  if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Ht ${vitals.heightCm} cm`);
+  return parts.length ? parts.join(" · ") : "";
+}
+
 /**
  * Returns non-empty string fields only. Caller applies to empty MSE fields only.
  */
-export function buildErMseSmartAssistSuggestions(ctx: ErMseSmartAssistContext): Partial<ErProviderMseForm> {
+export function buildErMseSmartAssistSuggestions(
+  ctx: ErMseSmartAssistContext,
+  locale: SupportedLanguage
+): Partial<ErProviderMseForm> {
   if (ctx.encounterType !== "EMERGENCY") return {};
 
   const out: Partial<ErProviderMseForm> = {};
@@ -117,9 +162,7 @@ export function buildErMseSmartAssistSuggestions(ctx: ErMseSmartAssistContext): 
     (sepsis.rrGte22 === "yes" || sepsis.sbpLte100 === "yes" || sepsis.alteredMentalStatus === "yes");
 
   const strokePositive =
-    stroke.faceDroop === "yes" ||
-    stroke.armWeakness === "yes" ||
-    stroke.speechDifficulty === "yes";
+    stroke.faceDroop === "yes" || stroke.armWeakness === "yes" || stroke.speechDifficulty === "yes";
   const strokeAlert = stroke.strokeAlertActivated === "yes";
 
   const chiefTriage = (parsed?.slice.chiefComplaint ?? "").trim();
@@ -133,89 +176,89 @@ export function buildErMseSmartAssistSuggestions(ctx: ErMseSmartAssistContext): 
     const { slice, er } = parsed;
     const onset = (slice.onsetAt ?? "").trim();
     if (onset) {
-      out.onsetTimingContext = `Début / évolution : ${onset}.`;
+      out.onsetTimingContext = mseI(locale, "onsetEvolution", { onset });
     }
 
     const esi = (slice.esi ?? "").trim();
 
     const hpiSentences: string[] = [];
     if (esi) {
-      hpiSentences.push(`Priorisation ESI ${esi}.`);
+      hpiSentences.push(mseI(locale, "hpiEsiPriority", { esi }));
     }
     if (strokePositive || strokeAlert) {
       const pos: string[] = [];
-      if (stroke.faceDroop === "yes") pos.push("asymétrie faciale");
-      if (stroke.armWeakness === "yes") pos.push("faiblesse de membre");
-      if (stroke.speechDifficulty === "yes") pos.push("trouble de la parole");
-      if (strokeAlert) pos.push("alerte AVC activée");
+      if (stroke.faceDroop === "yes") pos.push(mseT(locale, "strokeHpiFace"));
+      if (stroke.armWeakness === "yes") pos.push(mseT(locale, "strokeHpiArm"));
+      if (stroke.speechDifficulty === "yes") pos.push(mseT(locale, "strokeHpiSpeech"));
+      if (strokeAlert) pos.push(mseT(locale, "strokeHpiAlert"));
       if (pos.length) {
-        hpiSentences.push(`Dépistage initial : ${pos.join(", ")}.`);
+        hpiSentences.push(mseI(locale, "strokeScreenIntro", { items: pos.join(", ") }));
       }
     }
     if (sepsisConcern) {
-      hpiSentences.push("Infection suspectée avec critères associés compatibles sepsis (criblage initial).");
+      hpiSentences.push(mseT(locale, "hpiSepsisSuspected"));
     }
     if (hpiSentences.length) {
       out.hpiNarrative = hpiSentences.join(" ");
     }
 
     const assoc: string[] = [];
-    if (stroke.faceDroop === "yes") assoc.push("asymétrie faciale");
-    if (stroke.armWeakness === "yes") assoc.push("faiblesse motrice");
-    if (stroke.speechDifficulty === "yes") assoc.push("trouble de la parole");
+    if (stroke.faceDroop === "yes") assoc.push(mseT(locale, "strokeAssocFace"));
+    if (stroke.armWeakness === "yes") assoc.push(mseT(locale, "strokeAssocArm"));
+    if (stroke.speechDifficulty === "yes") assoc.push(mseT(locale, "strokeAssocSpeech"));
     if (assoc.length) {
-      out.associatedSymptoms = assoc.join(" · ");
+      out.associatedSymptoms = assoc.join(mseT(locale, "assocSep"));
     }
 
     if (er.traumaActivation.activated) {
-      out.severityKeyConcern = `Trauma ${traumaLevelLabelFr(er.traumaActivation.level)} activé.`;
+      const levelLabel = traumaLevelLabel(locale, er.traumaActivation.level);
+      out.severityKeyConcern = mseI(locale, "severityTraumaActivated", { level: levelLabel });
     } else if (strokePositive || strokeAlert) {
-      out.severityKeyConcern = "Alerte AVC au triage.";
+      out.severityKeyConcern = mseT(locale, "severityStrokeAlertTriage");
     } else if (sepsisConcern) {
-      out.severityKeyConcern = "Suspicion infectieuse avec critères de sepsis documentés.";
+      out.severityKeyConcern = mseT(locale, "severitySepsisConcern");
     } else if (chief && chiefSuggestsChestPain(chief)) {
-      out.severityKeyConcern = "Douleur thoracique à préciser.";
+      out.severityKeyConcern = mseT(locale, "severityChestPainSpecify");
     }
 
     if (strokePositive || strokeAlert) {
-      out.focusedImpression = "Suspicion neurologique aiguë (criblage initial positif).";
+      out.focusedImpression = mseT(locale, "focusedNeuroAcute");
     } else if (sepsisConcern) {
-      out.focusedImpression = "Sepsis possible — corréler clinique et bilan.";
+      out.focusedImpression = mseT(locale, "focusedSepsisPossible");
     }
 
-    const vitalsLine = formatVitalsHeaderLine(vitalsRecordFromSlice(slice));
+    const vitalsLine = formatVitalsHeaderLineForAssist(vitalsRecordFromSlice(slice), locale);
     if (vitalsLine) {
-      out.examReassessmentExtra = `SV relevés : ${vitalsLine}.`;
+      out.examReassessmentExtra = mseI(locale, "vitalsRecordedLine", { line: vitalsLine });
     }
 
     if (esi) {
-      out.mdmWorkingAssessment = `ESI ${esi} — intégrer à la synthèse et au plan.`;
+      out.mdmWorkingAssessment = mseI(locale, "mdmWorkingEsi", { esi });
     } else if ((slice.chiefComplaint ?? "").trim() || chiefEnc) {
-      out.mdmWorkingAssessment = "Motif à intégrer à la synthèse clinique et au plan.";
+      out.mdmWorkingAssessment = mseT(locale, "mdmWorkingMotif");
     }
   }
 
   if (!parsed && chiefEnc) {
-    out.mdmWorkingAssessment = "Motif à intégrer à la synthèse clinique et au plan.";
+    out.mdmWorkingAssessment = mseT(locale, "mdmWorkingMotif");
   }
 
   const immediateParts: string[] = [];
   if (parsed?.er.traumaActivation.activated) {
-    immediateParts.push(
-      `Protocole trauma (${traumaLevelLabelFr(parsed.er.traumaActivation.level)}) à ajuster selon l’évaluation et les ordres.`
-    );
+    const levelLabel = traumaLevelLabel(locale, parsed.er.traumaActivation.level);
+    immediateParts.push(mseI(locale, "immediateTraumaProtocol", { level: levelLabel }));
   }
   if (sepsisConcern) {
-    immediateParts.push("Réévaluer la prise en charge sepsis selon protocole local.");
+    immediateParts.push(mseT(locale, "immediateSepsisReassess"));
   }
   if (strokePositive || strokeAlert) {
-    immediateParts.push("Orientation filière AVC selon protocole local.");
+    immediateParts.push(mseT(locale, "immediateStrokePathway"));
   }
   if (immediateParts.length) {
     out.mdmImmediateActionsRationale = immediateParts.join("\n\n");
   }
 
-  const plan = planLinesFromCdsIds(ctx.cdsRecommendationIds);
+  const plan = planLinesFromCdsIds(ctx.cdsRecommendationIds, locale);
   if (plan) {
     out.mdmPlanSummary = plan;
   }
