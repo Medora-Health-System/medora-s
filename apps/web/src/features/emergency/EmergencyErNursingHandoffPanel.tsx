@@ -6,7 +6,7 @@ import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { parseAdmissionSummaryForChart, parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { ui } from "@/lib/uiLabels";
+import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import {
   MedoraCard,
   MedoraCardActions,
@@ -17,6 +17,7 @@ import {
   MedoraCardTitle,
 } from "@/components/medora-card";
 import { erDispositionBadgeFromEncounterJson } from "@/features/emergency/erTrackboardDispositionBadge";
+import { erDispositionBadgeDisplayLabel } from "@/features/emergency/erDispositionBadgeI18n";
 import { useI18n } from "@/lib/i18n";
 import {
   mergeDischargeSortieExecutionIntoNursingAssessment,
@@ -116,7 +117,7 @@ export function EmergencyErNursingHandoffPanel({
   resultsTabHref: string;
   facilityName?: string | null;
 }) {
-  const { language } = useI18n();
+  const { t, language } = useI18n();
   const badge = useMemo(
     () =>
       erDispositionBadgeFromEncounterJson({
@@ -177,7 +178,7 @@ export function EmergencyErNursingHandoffPanel({
     setSavingExec(true);
     setExecSaveInfo(null);
     try {
-      let name = "Infirmier";
+      let name = t("emergencyErNursingHandoff.signerFallbackNurse");
       try {
         const meRes = await fetch("/api/auth/me");
         const me = await parseApiResponse(meRes);
@@ -201,11 +202,11 @@ export function EmergencyErNursingHandoffPanel({
       });
       setExecutionNoteDraft("");
       await onSaved();
-      setExecSaveInfo("Exécution de sortie enregistrée.");
+      setExecSaveInfo(t("emergencyErNursingHandoff.execSavedOk"));
     } catch (e) {
       console.error(e);
       setExecSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || "Impossible d'enregistrer."
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyErNursingHandoff.execSaveFailed")
       );
     } finally {
       setSavingExec(false);
@@ -217,14 +218,15 @@ export function EmergencyErNursingHandoffPanel({
     executionNoteDraft,
     facilityId,
     onSaved,
+    t,
   ]);
 
   const formatDt = (iso: string | null | undefined) => {
-    if (!iso) return ui.common.dash;
+    if (!iso) return t("common.dash");
     try {
-      return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+      return formatEncounterChromeDateTime(iso, language);
     } catch {
-      return ui.common.dash;
+      return t("common.dash");
     }
   };
 
@@ -249,11 +251,10 @@ export function EmergencyErNursingHandoffPanel({
       <MedoraCardInner>
         <MedoraCardIdentity initials="E">
           <MedoraCardTitle
-            title="Exécution équipe (après décision)"
+            title={t("emergencyErNursingHandoff.panelTitle")}
             subline={
               <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                Exécution infirmière — distincte de la décision médicale ci-dessus. Données issues du dossier partagé ;
-                MAR, ordres et clôture médicale : onglets du dossier Medora.
+                {t("emergencyErNursingHandoff.panelSubline")}
               </p>
             }
           />
@@ -263,11 +264,11 @@ export function EmergencyErNursingHandoffPanel({
           {badge ? (
             <MedoraCardBadgeRow marginTop={0}>
               <MedoraCardBadge soft={{ bg: "#f1f5f9", text: "#0f172a", border: "#cbd5e1" }}>
-                Décision dossier : {badge.shortLabel}
+                {t("emergencyErNursingHandoff.dispositionDecisionPrefix")} : {erDispositionBadgeDisplayLabel(badge, t)}
               </MedoraCardBadge>
             </MedoraCardBadgeRow>
           ) : (
-            <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Aucun mode de sortie structuré détecté.</p>
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyErNursingHandoff.noDispositionBadge")}</p>
           )}
         </div>
 
@@ -282,14 +283,15 @@ export function EmergencyErNursingHandoffPanel({
             }}
           >
             <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#047857", lineHeight: 1.4 }}>
-              Sortie infirmière effectuée
+              {t("emergencyErNursingHandoff.sortieCompletedTitle")}
             </p>
             <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#065f46", lineHeight: 1.4 }}>
               {sortieExec?.dischargeSortieCompletedByDisplayName} — {formatDt(sortieExec?.dischargeSortieCompletedAt)}
             </p>
             {sortieExec?.dischargeSortieExecutionNote ? (
               <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#334155", lineHeight: 1.45 }}>
-                <span style={{ fontWeight: 600 }}>Note :</span> {sortieExec.dischargeSortieExecutionNote}
+                <span style={{ fontWeight: 600 }}>{t("emergencyErNursingHandoff.notePrefix")}</span>{" "}
+                {sortieExec.dischargeSortieExecutionNote}
               </p>
             ) : null}
           </div>
@@ -306,7 +308,7 @@ export function EmergencyErNursingHandoffPanel({
             }}
           >
             <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#065f46", lineHeight: 1.4 }}>
-              Sortie en attente — action infirmière requise
+              {t("emergencyErNursingHandoff.sortiePendingTitle")}
             </p>
             <ul
               style={{
@@ -317,19 +319,19 @@ export function EmergencyErNursingHandoffPanel({
                 lineHeight: 1.45,
               }}
             >
-              <li>Vérifier les ordres actifs et le MAR.</li>
-              <li>Imprimer le document de sortie si nécessaire (bouton ci-dessous).</li>
-              <li>La clôture du dossier médical reste après signature du médecin (résumé consultation).</li>
+              <li>{t("emergencyErNursingHandoff.sortiePendingLi1")}</li>
+              <li>{t("emergencyErNursingHandoff.sortiePendingLi2")}</li>
+              <li>{t("emergencyErNursingHandoff.sortiePendingLi3")}</li>
             </ul>
             {canSaveSortieExecution ? (
               <>
                 <label style={{ display: "block", marginTop: 8, fontSize: 11, fontWeight: 600, color: "#475569" }}>
-                  Note d&apos;exécution (facultatif)
+                  {t("emergencyErNursingHandoff.executionNoteLabel")}
                 </label>
                 <textarea
                   value={executionNoteDraft}
                   onChange={(e) => setExecutionNoteDraft(e.target.value)}
-                  placeholder="Ex. matériel retiré, instructions données au patient…"
+                  placeholder={t("emergencyErNursingHandoff.executionNotePlaceholder")}
                   style={{ ...inputNote, marginTop: 4 }}
                   rows={2}
                   disabled={savingExec}
@@ -350,14 +352,14 @@ export function EmergencyErNursingHandoffPanel({
                     cursor: savingExec ? "wait" : "pointer",
                   }}
                 >
-                  {savingExec ? "Enregistrement…" : "Confirmer l'exécution de sortie"}
+                  {savingExec ? t("emergencyErNursingHandoff.savingExecution") : t("emergencyErNursingHandoff.confirmExecution")}
                 </button>
                 {execSaveInfo ? (
                   <p
                     style={{
                       margin: "6px 0 0 0",
                       fontSize: 11,
-                      color: execSaveInfo.includes("Impossible") ? "#b91c1c" : "#047857",
+                      color: execSaveInfo === t("emergencyErNursingHandoff.execSavedOk") ? "#047857" : "#b91c1c",
                     }}
                   >
                     {execSaveInfo}
@@ -366,7 +368,7 @@ export function EmergencyErNursingHandoffPanel({
               </>
             ) : (
               <p style={{ margin: "8px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.4 }}>
-                Seuls les rôles autorisés peuvent confirmer l&apos;exécution sur cette page.
+                {t("emergencyErNursingHandoff.roleDeniedHint")}
               </p>
             )}
           </div>
@@ -376,55 +378,58 @@ export function EmergencyErNursingHandoffPanel({
         encounter.providerDocumentationSignedAt &&
         encounter.providerDocumentationSignedByDisplayFr ? (
           <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#1e40af", lineHeight: 1.45 }}>
-            <span style={{ fontWeight: 600 }}>Évaluation signée :</span>{" "}
+            <span style={{ fontWeight: 600 }}>{t("emergencyErNursingHandoff.signedEvalLabel")}</span>{" "}
             {encounter.providerDocumentationSignedByDisplayFr} — {formatDt(encounter.providerDocumentationSignedAt)}
           </p>
         ) : null}
 
         {modeLine ? (
           <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 600, color: "#64748b" }}>Mode de sortie (dossier) :</span> {modeLine}
+            <span style={{ fontWeight: 600, color: "#64748b" }}>{t("emergencyErNursingHandoff.modeSortieLabel")}</span>{" "}
+            {modeLine}
           </p>
         ) : null}
 
         {sig ? (
           <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.35 }}>
-            <span style={{ fontWeight: 600 }}>Décision d&apos;orientation enregistrée :</span> {sig.savedByDisplayName} —{" "}
+            <span style={{ fontWeight: 600 }}>{t("emergencyErNursingHandoff.dispositionRecordedLabel")}</span>{" "}
+            {sig.savedByDisplayName} —{" "}
             {formatDt(sig.savedAt)}
           </p>
         ) : null}
 
         {!hasDispositionText && !admissionLikely ? (
           <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#b45309", lineHeight: 1.45 }}>
-            En attente de la décision d&apos;orientation enregistrée par le médecin (disposition).
+            {t("emergencyErNursingHandoff.waitingPhysicianDisposition")}
           </p>
         ) : null}
 
         {admissionLikely ? (
           <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#5b21b6", lineHeight: 1.45 }}>
-            Dossier d&apos;admission : {admission?.careLevel?.trim() || ui.common.dash}
+            {t("emergencyErNursingHandoff.admissionPacketPrefix")}{" "}
+            {admission?.careLevel?.trim() || t("common.dash")}
             {admission?.serviceUnit?.trim() ? ` · ${admission.serviceUnit.trim()}` : null}
           </p>
         ) : null}
 
         <MedoraCardActions railBorderTopColor="#e2e8f0" gap={6} minWidth={0} alignItems="flex-start">
           <Link href={ordersTabHref} style={linkPill}>
-            Ordres & exécution (dossier)
+            {t("emergencyErNursingHandoff.linkOrders")}
           </Link>
           <Link href={marTabHref} style={linkPill}>
-            MAR (dossier)
+            {t("emergencyErNursingHandoff.linkMar")}
           </Link>
           <Link href={resultsTabHref} style={linkPill}>
-            Résultats (dossier)
+            {t("emergencyErNursingHandoff.linkResults")}
           </Link>
           <Link href={summaryTabHref} style={linkMuted}>
-            Résumé & clôture (dossier)
+            {t("emergencyErNursingHandoff.linkSummaryClosure")}
           </Link>
           <Link href={hospitalisationBoardHref} style={{ ...linkMuted, borderColor: "#e9d5ff", backgroundColor: "#faf5ff", color: "#6b21a8" }}>
-            Tableau hospitalisation
+            {t("emergencyErNursingHandoff.linkHospBoard")}
           </Link>
           <Link href={genericEncounterHref} style={{ ...linkMuted, fontSize: 11 }}>
-            Dossier Medora (référence)
+            {t("emergencyErNursingHandoff.linkMedoraDossier")}
           </Link>
           <button
             type="button"
@@ -441,13 +446,11 @@ export function EmergencyErNursingHandoffPanel({
               cursor: encounter.patient && encounter.createdAt ? "pointer" : "not-allowed",
             }}
           >
-            Imprimer document de sortie
+            {t("emergencyErNursingHandoff.printDischargeDoc")}
           </button>
         </MedoraCardActions>
         <p style={{ margin: "8px 0 0 0", fontSize: 11, color: "#94a3b8", lineHeight: 1.35 }}>
-          Oxygène, voie IV et soins : suivre les ordres de type « Soins / procédures » et la saisie infirmière dans le
-          dossier. La confirmation d&apos;exécution de sortie (sortie à domicile) est enregistrée dans le dossier
-          (horodatage) ; elle ne remplace pas la signature médicale.
+          {t("emergencyErNursingHandoff.footerHint")}
         </p>
       </MedoraCardInner>
     </MedoraCard>

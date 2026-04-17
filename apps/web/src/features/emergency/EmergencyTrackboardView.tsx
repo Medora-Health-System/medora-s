@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
-import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
+import { useI18n } from "@/lib/i18n";
 import {
-  getEncounterStatusBoardLabelFr,
-  getEncounterTypeLabelFr,
-  ui,
-} from "@/lib/uiLabels";
+  formatEncounterChromeDateTime,
+  formatPatientAgeSexLine,
+  tEncounterStatus,
+  tEncounterType,
+} from "@/lib/encounterChromeI18n";
+import { erDispositionBadgeDisplayLabel } from "@/features/emergency/erDispositionBadgeI18n";
 import {
   esiDisplayChar,
   esiLevelFromUnknown,
@@ -45,12 +47,6 @@ const ACUITY_SOFT: Record<AcuityTier, PriorityBadgeSoft> = {
   stable: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
 };
 
-const ACUITY_LABEL_FR: Record<AcuityTier, string> = {
-  critical: "Critique",
-  monitoring: "Surveillance",
-  stable: "Stable",
-};
-
 const STATUS_BADGE_SOFT: Record<string, PriorityBadgeSoft> = {
   OPEN: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
   CLOSED: { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
@@ -72,8 +68,11 @@ function patientInitials(p: { firstName?: string | null; lastName?: string | nul
   return (a + b).toUpperCase() || "?";
 }
 
-function fullPatientName(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
-  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
+function fullPatientName(
+  p: { firstName?: string | null; lastName?: string | null } | null | undefined,
+  dash: string
+): string {
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || dash;
 }
 
 function physicianLabel(enc: {
@@ -84,18 +83,12 @@ function physicianLabel(enc: {
   return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
 }
 
-function patientNirDisplay(patient: { mrn?: string | null; nationalId?: string | null } | null | undefined): string {
+function patientNirDisplay(
+  patient: { mrn?: string | null; nationalId?: string | null } | null | undefined,
+  dash: string
+): string {
   const raw = (patient?.mrn ?? patient?.nationalId ?? "").trim();
-  return raw || ui.common.dash;
-}
-
-function formatArrivalDateTime(iso: string | null | undefined): string {
-  if (!iso) return ui.common.dash;
-  try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-  } catch {
-    return ui.common.dash;
-  }
+  return raw || dash;
 }
 
 type OpenEncounterRow = {
@@ -144,7 +137,14 @@ function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadge
   }
 }
 
+function acuityLabelKey(tier: AcuityTier): "emergencyTrackboard.acuityCritical" | "emergencyTrackboard.acuityMonitoring" | "emergencyTrackboard.acuityStable" {
+  if (tier === "critical") return "emergencyTrackboard.acuityCritical";
+  if (tier === "monitoring") return "emergencyTrackboard.acuityMonitoring";
+  return "emergencyTrackboard.acuityStable";
+}
+
 export function EmergencyTrackboardView() {
+  const { t, language } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [rows, setRows] = useState<OpenEncounterRow[]>([]);
@@ -160,7 +160,7 @@ export function EmergencyTrackboardView() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
-  const loadEncounters = async () => {
+  const loadEncounters = useCallback(async () => {
     if (!facilityId) return;
     setLoading(true);
     setFetchError(null);
@@ -170,11 +170,11 @@ export function EmergencyTrackboardView() {
       setRows(arr as OpenEncounterRow[]);
     } catch (e) {
       console.error("Failed to load emergency trackboard:", e);
-      setFetchError("Impossible de charger le tableau des urgences.");
+      setFetchError(t("emergencyTrackboard.loadError"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [facilityId, t]);
 
   useEffect(() => {
     if (!ready || !facilityId) return;
@@ -183,7 +183,7 @@ export function EmergencyTrackboardView() {
       void loadEncounters();
     }, 10000);
     return () => clearInterval(interval);
-  }, [ready, facilityId]);
+  }, [ready, facilityId, loadEncounters]);
 
   const emergencyOnly = useMemo(
     () => rows.filter((e) => (e.type ?? "").trim() === EMERGENCY_TYPE),
@@ -194,7 +194,7 @@ export function EmergencyTrackboardView() {
     const q = search.trim().toLowerCase();
     if (!q) return emergencyOnly;
     return emergencyOnly.filter((encounter) => {
-      const name = fullPatientName(encounter.patient).toLowerCase();
+      const name = fullPatientName(encounter.patient, t("common.dash")).toLowerCase();
       const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
         .trim()
         .toLowerCase();
@@ -204,7 +204,7 @@ export function EmergencyTrackboardView() {
       const blob = `${name} ${nir} ${cc} ${room} ${phys}`;
       return blob.includes(q);
     });
-  }, [emergencyOnly, search]);
+  }, [emergencyOnly, search, t]);
 
   const inputBase: React.CSSProperties = {
     height: 40,
@@ -243,14 +243,14 @@ export function EmergencyTrackboardView() {
               color: "#0f172a",
             }}
           >
-            Urgences
+            {t("emergencyTrackboard.title")}
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
-            Consultations d&apos;urgence ouvertes
+            {t("emergencyTrackboard.subtitle")}
           </p>
           <p style={{ margin: "10px 0 0 0", fontSize: 13 }}>
             <Link href="/app/emergency/triage" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-              Accueil urgences — nouvelle consultation
+              {t("emergencyTrackboard.triageLink")}
             </Link>
           </p>
         </header>
@@ -266,13 +266,13 @@ export function EmergencyTrackboardView() {
           }}
         >
           <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-            <span style={{ ...filterLabel, marginBottom: 3 }}>Recherche</span>
+            <span style={{ ...filterLabel, marginBottom: 3 }}>{t("emergencyTrackboard.searchLabel")}</span>
             <input
               type="search"
-              aria-label="Recherche"
+              aria-label={t("emergencyTrackboard.searchAria")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Patient, motif, salle…"
+              placeholder={t("emergencyTrackboard.searchPlaceholder")}
               style={{ ...inputBase, height: 40, fontSize: 14 }}
             />
           </div>
@@ -295,7 +295,7 @@ export function EmergencyTrackboardView() {
                 whiteSpace: "nowrap",
               }}
             >
-              {loading ? ui.common.loading : ui.common.refresh}
+              {loading ? t("common.loading") : t("common.refresh")}
             </button>
           </div>
         </div>
@@ -312,7 +312,7 @@ export function EmergencyTrackboardView() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{fetchError}</p>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vérifiez la connexion et réessayez.</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("emergencyTrackboard.loadErrorHint")}</p>
             <button
               type="button"
               onClick={() => void loadEncounters()}
@@ -328,7 +328,7 @@ export function EmergencyTrackboardView() {
                 cursor: "pointer",
               }}
             >
-              Réessayer
+              {t("emergencyTrackboard.retry")}
             </button>
           </div>
         ) : loading && rows.length === 0 ? (
@@ -368,13 +368,13 @@ export function EmergencyTrackboardView() {
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
               {emergencyOnly.length === 0
-                ? "Aucune consultation d'urgence ouverte."
-                : "Aucun résultat pour cette recherche."}
+                ? t("emergencyTrackboard.emptyNoEncounters")
+                : t("emergencyTrackboard.emptyNoSearch")}
             </p>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
               {emergencyOnly.length === 0
-                ? "Les dossiers d'urgence ouverts apparaîtront ici."
-                : "Ajustez la recherche."}
+                ? t("emergencyTrackboard.emptyHintNoEncounters")
+                : t("emergencyTrackboard.emptyHintSearch")}
             </p>
           </div>
         ) : (
@@ -383,13 +383,15 @@ export function EmergencyTrackboardView() {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const patient = encounter.patient;
-              const cc =
-                encounter.triage?.chiefComplaint || encounter.chiefComplaint || ui.common.dash;
+              const dash = t("common.dash");
+              const cc = encounter.triage?.chiefComplaint || encounter.chiefComplaint || dash;
               const esiLevel = esiLevelFromUnknown(encounter.triage?.esi ?? null);
-              const room = encounter.roomLabel?.trim() || ui.common.dash;
+              const room = encounter.roomLabel?.trim() || dash;
               const phys = physicianLabel(encounter);
-              const nirLine = patientNirDisplay(patient);
-              const arrivalDisplay = formatArrivalDateTime(encounter.createdAt ?? null);
+              const nirLine = patientNirDisplay(patient, dash);
+              const arrivalDisplay = encounter.createdAt
+                ? formatEncounterChromeDateTime(encounter.createdAt, language)
+                : dash;
               const statusKey = (encounter.status ?? "").trim() || "OPEN";
               const dispositionBadge = erDispositionBadgeFromEncounterJson(encounter);
               const sortieInfirmierOk =
@@ -405,7 +407,7 @@ export function EmergencyTrackboardView() {
                         avatarFooter={
                           <span style={esiUnderAvatarNumberStyle(esiLevel)}>{esiDisplayChar(esiLevel)}</span>
                         }
-                        roomLabel={ui.common.room}
+                        roomLabel={t("encounterChrome.labelRoom")}
                         roomValue={room}
                         identity={
                           <>
@@ -418,27 +420,29 @@ export function EmergencyTrackboardView() {
                                 lineHeight: 1.2,
                               }}
                             >
-                              {fullPatientName(patient)}
+                              {fullPatientName(patient, dash)}
                             </h2>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nirLine}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.labelNirMrn")}</span>{" "}
+                              {nirLine}
                               {" · "}
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.ageSex}</span>{" "}
-                              {formatAgeYearsSexFr(
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyTrackboard.ageSexLabel")}</span>{" "}
+                              {formatPatientAgeSexLine(
                                 patient?.dob ?? null,
                                 patient?.sexAtBirth ?? null,
-                                patient?.sex ?? null
+                                patient?.sex ?? null,
+                                t
                               )}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
                               <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
-                                {ui.common.chiefComplaintShort}
+                                {t("emergencyTrackboard.chiefComplaintShort")}
                               </span>
                               {" — "}
                               {cc}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyTrackboard.arrivalLabel")}</span>{" "}
                               {arrivalDisplay}
                             </p>
                           </>
@@ -461,7 +465,7 @@ export function EmergencyTrackboardView() {
                                 }}
                                 title={phys}
                               >
-                                <span style={{ color: "#94a3b8" }}>{ui.common.physician}</span> {phys}
+                                <span style={{ color: "#94a3b8" }}>{t("emergencyTrackboard.physicianShort")}</span> {phys}
                               </p>
                             ) : null}
                             <div
@@ -474,22 +478,22 @@ export function EmergencyTrackboardView() {
                               }}
                             >
                               <MedoraCardBadge soft={statusSoft(statusKey)}>
-                                {getEncounterStatusBoardLabelFr(statusKey)}
+                                {tEncounterStatus(t, statusKey)}
                               </MedoraCardBadge>
                               <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
-                                {getEncounterTypeLabelFr(EMERGENCY_TYPE)}
+                                {tEncounterType(t, EMERGENCY_TYPE)}
                               </MedoraCardBadge>
                               {dispositionBadge ? (
-                                <span title="Décision dossier (mode de sortie / admission persisté)">
+                                <span title={t("emergencyTrackboard.dispositionTooltip")}>
                                   <MedoraCardBadge soft={dispositionBadgeSoft(dispositionBadge.variant)}>
-                                    {dispositionBadge.shortLabel}
+                                    {erDispositionBadgeDisplayLabel(dispositionBadge, t)}
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}
                               {sortieInfirmierOk ? (
-                                <span title="Exécution sortie infirmière enregistrée (données persistées)">
+                                <span title={t("emergencyTrackboard.sortieExecTooltip")}>
                                   <MedoraCardBadge soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
-                                    Exécuté
+                                    {t("emergencyTrackboard.executedBadge")}
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}
@@ -504,7 +508,7 @@ export function EmergencyTrackboardView() {
                                 justifyContent: "flex-end",
                               }}
                             >
-                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
+                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
                               <Link
                                 href={emergencyChartPath(encounter.id)}
                                 style={{
@@ -521,7 +525,7 @@ export function EmergencyTrackboardView() {
                                   textDecoration: "none",
                                 }}
                               >
-                                Charte
+                                {t("emergencyTrackboard.chartLink")}
                               </Link>
                               <Link
                                 href={emergencyActiveWorkspacePath(encounter.id)}
@@ -539,7 +543,7 @@ export function EmergencyTrackboardView() {
                                   textDecoration: "none",
                                 }}
                               >
-                                {ui.common.view}
+                                {t("common.view")}
                               </Link>
                             </div>
                           </>

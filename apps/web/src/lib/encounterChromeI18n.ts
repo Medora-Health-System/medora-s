@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "@/i18n/config";
+import { calculateAge } from "@/lib/patientDisplay";
 
 export function encounterBcp47(language: SupportedLanguage): string {
   return language === "en" ? "en-US" : "fr-FR";
@@ -15,6 +16,24 @@ export function tEnumKey(t: (key: string) => string, prefix: string, code: strin
  * Mirrors `getPatientSexLabelFr` using `encounterChrome.patientSex` / `encounterChrome.sexAtBirth`
  * and `common.dash` for unknown empty.
  */
+/** Age + sex line for lists (e.g. trackboard), locale-aware via `t` and `encounterChrome.ageYearsSuffix`. */
+export function formatPatientAgeSexLine(
+  dob: string | null | undefined,
+  sexAtBirth: string | null | undefined,
+  sex: string | null | undefined,
+  t: (key: string) => string
+): string {
+  const dash = t("common.dash");
+  if (!dob) return dash;
+  const ts = new Date(dob).getTime();
+  if (Number.isNaN(ts)) return dash;
+  const age = calculateAge(dob);
+  if (!Number.isFinite(age) || age < 0) return dash;
+  const ageStr = `${age} ${t("encounterChrome.ageYearsSuffix")}`;
+  const sexStr = tPatientSex(sex, sexAtBirth, t);
+  return `${ageStr} • ${sexStr}`;
+}
+
 export function tPatientSex(
   sex: string | null | undefined,
   sexAtBirth: string | null | undefined,
