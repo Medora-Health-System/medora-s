@@ -218,6 +218,8 @@ export default function EncounterDetailPage() {
 
   const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
   const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const showNursingTab =
+    roles.includes("RN") || roles.includes("ADMIN") || roles.includes("PROVIDER");
 
   useEffect(() => {
     setTabBootstrapped(false);
@@ -727,6 +729,24 @@ export default function EncounterDetailPage() {
     boxSizing: "border-box",
   };
 
+  /** Must run before any early return — same hook order on loading / error / ready paths (React #310). */
+  const tabs = useMemo(
+    () => [
+      { id: "summary", label: t("encounterChrome.tabs.summary") },
+      { id: "triage", label: t("encounterChrome.tabs.triage") },
+      ...(showNursingTab ? [{ id: "nursing", label: t("encounterChrome.tabs.nursing") }] : []),
+      { id: "clinic", label: t("encounterChrome.tabs.clinic") },
+      { id: "diagnostics", label: t("encounterChrome.tabs.diagnostics") },
+      { id: "orders", label: t("encounterChrome.tabs.orders") },
+      ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
+      { id: "results", label: t("encounterChrome.tabs.results") },
+      { id: "notes", label: t("encounterChrome.tabs.notes") },
+      { id: "pathways", label: t("encounterChrome.tabs.pathways") },
+      { id: "history", label: t("encounterChrome.tabs.history") },
+    ],
+    [t, showNursingTab, canFetchMarTab]
+  );
+
   if (!facilityId || !encounterId) {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -812,7 +832,6 @@ export default function EncounterDetailPage() {
   /** Dossier médical signé : saisie verrouillée (addendum et navigation restent possibles). */
   const isLocked = encounter.providerDocumentationStatus === "SIGNED";
   const isRNOnly = roles.includes("RN") && !isProviderLike;
-  const showNursingTab = roles.includes("RN") || roles.includes("ADMIN") || roles.includes("PROVIDER");
   const canEditOperational = roles.includes("RN") || roles.includes("ADMIN");
   /** Admission depuis la consultation — réservé médecin / admin (aligné sur `canPrescribe`). */
   const canAdmitPatient = canPrescribe && encounter.status === "OPEN";
@@ -853,23 +872,6 @@ export default function EncounterDetailPage() {
     color: "#334155",
     boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
   };
-
-  const tabs = useMemo(
-    () => [
-      { id: "summary", label: t("encounterChrome.tabs.summary") },
-      { id: "triage", label: t("encounterChrome.tabs.triage") },
-      ...(showNursingTab ? [{ id: "nursing", label: t("encounterChrome.tabs.nursing") }] : []),
-      { id: "clinic", label: t("encounterChrome.tabs.clinic") },
-      { id: "diagnostics", label: t("encounterChrome.tabs.diagnostics") },
-      { id: "orders", label: t("encounterChrome.tabs.orders") },
-      ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
-      { id: "results", label: t("encounterChrome.tabs.results") },
-      { id: "notes", label: t("encounterChrome.tabs.notes") },
-      { id: "pathways", label: t("encounterChrome.tabs.pathways") },
-      { id: "history", label: t("encounterChrome.tabs.history") },
-    ],
-    [t, showNursingTab, canFetchMarTab]
-  );
 
   return (
     <div style={encounterPageShell}>
