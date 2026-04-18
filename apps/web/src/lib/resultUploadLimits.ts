@@ -84,43 +84,36 @@ export function collectResultUploadFiles(
 /**
  * Validation avant lecture base64 / envoi : types, taille par fichier, volume total estimé.
  */
+export type ResultUploadPreflightFailure =
+  | { code: "invalidPdf"; fileLabel: string }
+  | { code: "invalidImage"; fileLabel: string }
+  | { code: "fileTooLarge"; fileLabel: string }
+  | { code: "totalTooLarge" };
+
 export function validateResultUploadPreflight(params: {
   resultText: string;
   existingResultData: unknown;
   newFiles: { file: File; slot: ResultUploadFileSlot }[];
-}): { ok: true } | { ok: false; messageFr: string } {
+}): { ok: true } | { ok: false; err: ResultUploadPreflightFailure } {
   const { resultText, existingResultData, newFiles } = params;
   const filesOnly = newFiles.map((x) => x.file);
 
   for (const { file, slot } of newFiles) {
-    const label = file.name?.trim() || "fichier";
+    const label = file.name?.trim() || "file";
     if (slot === "pdf" && !isPdfAllowed(file)) {
-      return {
-        ok: false,
-        messageFr: `Le fichier « ${label} » n’est pas un PDF valide pour ce champ. Formats acceptés : PDF.`,
-      };
+      return { ok: false, err: { code: "invalidPdf", fileLabel: label } };
     }
     if (slot === "image" && !isImageAllowed(file)) {
-      return {
-        ok: false,
-        messageFr: `Le fichier « ${label} » n’est pas une image acceptée pour ce champ. Formats acceptés : PNG, JPEG, WebP.`,
-      };
+      return { ok: false, err: { code: "invalidImage", fileLabel: label } };
     }
     if (file.size > MAX_RAW_BYTES_PER_FILE) {
-      return {
-        ok: false,
-        messageFr: `Le fichier « ${label} » est trop volumineux (maximum environ 1,5 Mo par fichier après encodage, comme sur le serveur). Réduisez la taille ou compressez le fichier avant l’envoi.`,
-      };
+      return { ok: false, err: { code: "fileTooLarge", fileLabel: label } };
     }
   }
 
   const totalChars = estimateTotalPayloadCharsForApi(resultText, existingResultData, filesOnly);
   if (totalChars > MAX_TOTAL_RESULT_CHARS) {
-    return {
-      ok: false,
-      messageFr:
-        "Le volume total (texte du résultat + pièces jointes encodées en JSON) dépasse la limite serveur (2,5 millions de caractères). Réduisez le texte, le nombre de fichiers ou leur taille, ou retirez d’anciennes pièces volumineuses déjà présentes.",
-    };
+    return { ok: false, err: { code: "totalTooLarge" } };
   }
 
   return { ok: true };

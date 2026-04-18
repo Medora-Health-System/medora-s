@@ -3,6 +3,8 @@
  * Données brutes inchangées côté stockage ; uniquement mapping UI.
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
+
 export type ResultAttachmentRow = {
   fileName?: string | null;
   mimeType?: string | null;
@@ -275,9 +277,13 @@ export function splitLabFallbackParagraphs(raw: string): string[] {
 
 export type RadiologySection = { heading: string; body: string };
 
-/**
- * Libellés d’examen FR pour l’affichage (données catalogue parfois en anglais).
- */
+/** Locale-aware exam title for display (FR applies catalog-friendly medical synonyms). */
+export function normalizeExamTitleFromLocale(title: string, language: SupportedLanguage): string {
+  if (language === "en") return (title ?? "").trim();
+  return normalizeExamTitleFr(title);
+}
+
+/** Libellés d’examen FR pour l’affichage (données catalogue parfois en anglais). */
 export function normalizeExamTitleFr(title: string): string {
   const t = (title ?? "").trim();
   if (!t) return t;

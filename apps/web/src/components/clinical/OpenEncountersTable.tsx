@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { getEncounterStatusLabelFr, getEncounterTypeLabelFr, ui } from "@/lib/uiLabels";
+import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 
 const th: React.CSSProperties = { padding: 12, textAlign: "left" as const };
 const td: React.CSSProperties = { padding: 12 };
@@ -30,8 +31,11 @@ export function OpenEncountersTable({
   emptyMessage: string;
   showMarLink?: boolean;
 }) {
+  const { t, language } = useI18n();
+  const dateLoc = encounterBcp47(language);
+
   if (loading) {
-    return <p>{ui.common.loading}</p>;
+    return <p>{t("common.loading")}</p>;
   }
   if (encounters.length === 0) {
     return (
@@ -46,15 +50,15 @@ export function OpenEncountersTable({
       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
         <thead>
           <tr style={{ borderBottom: "2px solid #ddd" }}>
-            <th style={th}>{ui.common.patient}</th>
-            <th style={th}>{ui.common.nir}</th>
-            <th style={th}>{ui.common.type}</th>
-            <th style={th}>{ui.common.status}</th>
-            <th style={th}>{ui.common.room}</th>
-            <th style={th}>Médecin attribué</th>
-            <th style={th}>{ui.common.arrival}</th>
-            <th style={th}>Médicaments (à faire)</th>
-            <th style={th}>{ui.common.actions}</th>
+            <th style={th}>{t("common.patient")}</th>
+            <th style={th}>{t("common.nir")}</th>
+            <th style={th}>{t("common.type")}</th>
+            <th style={th}>{t("common.status")}</th>
+            <th style={th}>{t("common.room")}</th>
+            <th style={th}>{t("encounters.assignedProvider")}</th>
+            <th style={th}>{t("common.arrival")}</th>
+            <th style={th}>{t("encounters.pendingMedications")}</th>
+            <th style={th}>{t("common.actions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -65,17 +69,20 @@ export function OpenEncountersTable({
                 <td style={td}>
                   {encounter.patient?.firstName} {encounter.patient?.lastName}
                 </td>
-                <td style={td}>{encounter.patient?.mrn ?? "—"}</td>
-                <td style={td}>{encounter.type ? getEncounterTypeLabelFr(encounter.type) : ui.common.dash}</td>
-                <td style={td}>{encounter.status ? getEncounterStatusLabelFr(encounter.status) : ui.common.dash}</td>
-                <td style={td}>{encounter.roomLabel?.trim() || "—"}</td>
+                <td style={td}>{encounter.patient?.mrn ?? t("common.dash")}</td>
+                <td style={td}>
+                  {encounter.type ? tEncounterType(t, encounter.type) : t("common.dash")}
+                </td>
+                <td style={td}>{encounter.status ? tEncounterStatus(t, encounter.status) : t("common.dash")}</td>
+                <td style={td}>{encounter.roomLabel?.trim() || t("common.dash")}</td>
                 <td style={td}>
                   {encounter.physicianAssigned
-                    ? `${encounter.physicianAssigned.firstName ?? ""} ${encounter.physicianAssigned.lastName ?? ""}`.trim() || "—"
-                    : "—"}
+                    ? `${encounter.physicianAssigned.firstName ?? ""} ${encounter.physicianAssigned.lastName ?? ""}`.trim() ||
+                      t("common.dash")
+                    : t("common.dash")}
                 </td>
                 <td style={td}>
-                  {encounter.createdAt ? new Date(encounter.createdAt).toLocaleString("fr-FR") : "—"}
+                  {encounter.createdAt ? new Date(encounter.createdAt).toLocaleString(dateLoc) : t("common.dash")}
                 </td>
                 <td style={td}>
                   {typeof encounter.pendingMedicationCount === "number" ? (
@@ -87,7 +94,7 @@ export function OpenEncountersTable({
                       <span style={{ fontSize: 14, color: "#666" }}>0</span>
                     )
                   ) : (
-                    "—"
+                    t("common.dash")
                   )}
                 </td>
                 <td style={td}>
@@ -97,21 +104,21 @@ export function OpenEncountersTable({
                         href={`/app/patients/${pid}`}
                         style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 500 }}
                       >
-                        Ouvrir le dossier
+                        {t("openEncountersTable.openPatientChart")}
                       </Link>
                     ) : null}
                     <Link
                       href={`/app/encounters/${encounter.id}`}
                       style={{ fontSize: 14, color: "#1565c0", fontWeight: 500 }}
                     >
-                      Ouvrir la consultation
+                      {t("openEncountersTable.openEncounter")}
                     </Link>
                     {showMarLink ? (
                       <Link
                         href={`/app/encounters/${encounter.id}?tab=mar`}
                         style={{ fontSize: 14, color: "#2e7d32", fontWeight: 500 }}
                       >
-                        Administration médicamenteuse
+                        {t("openEncountersTable.medAdmin")}
                       </Link>
                     ) : null}
                   </div>

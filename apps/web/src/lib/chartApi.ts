@@ -108,7 +108,8 @@ export type ChartAuditTimelineItem = {
   action: string;
   createdAt: string;
   userDisplayFr: string | null;
-  shortLabelFr: string;
+  /** Display line — mapped from JSON `shortLabelFr` until bilingual API titles exist. */
+  shortLabel: string;
   detailFr: string | null;
   encounterId: string | null;
   entityType: string;
@@ -167,13 +168,30 @@ export type ChartSummary = {
   auditTimeline?: ChartAuditTimelineItem[];
 };
 
+function normalizeAuditTimelineEntries(
+  list: ChartAuditTimelineItem[] | undefined
+): ChartAuditTimelineItem[] | undefined {
+  if (!list?.length) return list;
+  return list.map((it) => {
+    const fromApi = it as ChartAuditTimelineItem & { shortLabelFr?: string };
+    return {
+      ...it,
+      shortLabel: (it.shortLabel?.trim() || fromApi.shortLabelFr || "").trim(),
+    };
+  });
+}
+
 export async function fetchChartSummary(
   facilityId: string,
   patientId: string
 ): Promise<ChartSummary> {
-  return apiFetch(`/patients/${patientId}/chart-summary`, {
+  const data = (await apiFetch(`/patients/${patientId}/chart-summary`, {
     facilityId,
-  }) as Promise<ChartSummary>;
+  })) as ChartSummary;
+  if (data.auditTimeline?.length) {
+    data.auditTimeline = normalizeAuditTimelineEntries(data.auditTimeline) ?? [];
+  }
+  return data;
 }
 
 /** Timeline d’audit pour une consultation (GET /encounters/:id/audit-timeline) — ordre chronologique côté serveur. */
@@ -181,9 +199,17 @@ export async function fetchEncounterAuditTimeline(
   facilityId: string,
   encounterId: string
 ): Promise<ChartAuditTimelineItem[]> {
-  return apiFetch(`/encounters/${encounterId}/audit-timeline`, {
+  const data = await apiFetch(`/encounters/${encounterId}/audit-timeline`, {
     facilityId,
-  }) as Promise<ChartAuditTimelineItem[]>;
+  });
+  if (!Array.isArray(data)) return [];
+  return data.map((raw: Record<string, unknown>) => {
+    const shortFromApi = raw.shortLabelFr ?? raw.shortLabel;
+    return {
+      ...(raw as object),
+      shortLabel: typeof shortFromApi === "string" ? shortFromApi : "",
+    } as ChartAuditTimelineItem;
+  });
 }
 
 export async function createDiagnosis(

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
 const ROOM_VALUES = ["Salle d'attente", ...Array.from({ length: 30 }, (_, i) => String(i + 1))];
@@ -27,6 +28,7 @@ export function EncounterOperationalPanel({
   /** Fusion immédiate des champs renvoyés par l’API (évite affichage vide le temps du GET). */
   onSaved?: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useI18n();
   const [room, setRoom] = useState(roomLabel ?? "");
   const [physicianId, setPhysicianId] = useState(physicianAssigned?.id ?? "");
   const [providers, setProviders] = useState<ProviderRow[]>([]);
@@ -76,10 +78,13 @@ export function EncounterOperationalPanel({
     return [{ id: effectiveId, firstName: "", lastName: "" }, ...list];
   }, [providers, physicianId, physicianAssigned]);
 
-  const providerOptionLabel = useCallback((p: ProviderRow) => {
-    const s = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
-    return s || "Médecin attribué";
-  }, []);
+  const providerOptionLabel = useCallback(
+    (p: ProviderRow) => {
+      const s = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+      return s || t("encounterOperational.providerNameFallback");
+    },
+    [t]
+  );
 
   const save = useCallback(async () => {
     if (!canEdit) return;
@@ -100,11 +105,11 @@ export function EncounterOperationalPanel({
       }
       await Promise.resolve(onUpdated());
     } catch (e) {
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || "Enregistrement impossible.");
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterOperational.saveFailed"));
     } finally {
       setSaving(false);
     }
-  }, [canEdit, encounterId, facilityId, onUpdated, onSaved, physicianId, room]);
+  }, [canEdit, encounterId, facilityId, onUpdated, onSaved, physicianId, room, t]);
 
   const panelShell: React.CSSProperties = {
     backgroundColor: MEDORA_CARD_SHELL.background,
@@ -140,15 +145,15 @@ export function EncounterOperationalPanel({
       <div style={panelShell}>
         <div style={{ fontSize: 13, color: "#334155", display: "flex", flexWrap: "wrap", gap: 20, rowGap: 10 }}>
           <div>
-            <span style={{ color: "#64748b" }}>Salle : </span>
-            <strong style={{ color: "#0f172a" }}>{roomLabel?.trim() || "—"}</strong>
+            <span style={{ color: "#64748b" }}>{t("encounterOperational.roomColon")} </span>
+            <strong style={{ color: "#0f172a" }}>{roomLabel?.trim() || t("common.dash")}</strong>
           </div>
           <div>
-            <span style={{ color: "#64748b" }}>Médecin attribué : </span>
+            <span style={{ color: "#64748b" }}>{t("encounterOperational.assignedProviderColon")} </span>
             <strong style={{ color: "#0f172a" }}>
               {physicianAssigned
                 ? `${physicianAssigned.firstName} ${physicianAssigned.lastName}`.trim()
-                : "—"}
+                : t("common.dash")}
             </strong>
           </div>
         </div>
@@ -159,17 +164,17 @@ export function EncounterOperationalPanel({
   return (
     <div style={panelShell}>
       <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", marginBottom: 14, letterSpacing: "0.01em" }}>
-        Paramètres opérationnels
+        {t("encounterOperational.panelTitle")}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
         <div>
-          <label style={fieldLabel}>Salle</label>
+          <label style={fieldLabel}>{t("encounterOperational.room")}</label>
           <select
             value={room || ""}
             onChange={(e) => setRoom(e.target.value)}
             style={{ ...selectStyle, minWidth: 168 }}
           >
-            <option value="">—</option>
+            <option value="">{t("common.dash")}</option>
             {ROOM_VALUES.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -178,13 +183,13 @@ export function EncounterOperationalPanel({
           </select>
         </div>
         <div>
-          <label style={fieldLabel}>Médecin attribué</label>
+          <label style={fieldLabel}>{t("encounterOperational.assignedProvider")}</label>
           <select
             value={physicianId}
             onChange={(e) => setPhysicianId(e.target.value)}
             style={{ ...selectStyle, minWidth: 228 }}
           >
-            <option value="">—</option>
+            <option value="">{t("common.dash")}</option>
             {providersForSelect.map((p) => (
               <option key={p.id} value={p.id}>
                 {providerOptionLabel(p)}
@@ -208,7 +213,7 @@ export function EncounterOperationalPanel({
             boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
           }}
         >
-          {saving ? "Enregistrement…" : "Enregistrer"}
+          {saving ? t("common.saving") : t("common.save")}
         </button>
       </div>
       {error && (

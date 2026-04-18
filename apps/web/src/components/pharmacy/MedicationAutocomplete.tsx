@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
+import { useI18n } from "@/lib/i18n";
 import { useMedicationSearch } from "@/hooks/useMedicationSearch";
 import { MedicationSuggestionList } from "./MedicationSuggestionList";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
@@ -36,7 +37,7 @@ const listContainerStyle: React.CSSProperties = {
  */
 export function MedicationAutocomplete({
   facilityId,
-  placeholder = "Rechercher un médicament",
+  placeholder,
   onSelect,
   mode = "inventory",
   favoritesFirst = true,
@@ -57,6 +58,8 @@ export function MedicationAutocomplete({
   onChange?: (value: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
+  const ph = placeholder ?? t("common.searchMedicationPlaceholder");
   void mode;
   const controlled = value !== undefined && onChange !== undefined;
 
@@ -65,7 +68,7 @@ export function MedicationAutocomplete({
       <SharedCatalogAutocomplete
         catalogType="MEDICATION"
         label=""
-        placeholder={placeholder}
+        placeholder={ph}
         facilityId={facilityId}
         onSelect={onSelect}
         disabled={disabled}
@@ -78,7 +81,7 @@ export function MedicationAutocomplete({
   return (
     <MedicationAutocompleteControlled
       facilityId={facilityId}
-      placeholder={placeholder}
+      placeholder={ph}
       onSelect={onSelect}
       favoritesFirst={favoritesFirst}
       autoFocus={autoFocus}
@@ -111,6 +114,7 @@ function MedicationAutocompleteControlled({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const search = useMedicationSearch(facilityId, { favoritesFirst, limit: 20 });
@@ -189,15 +193,15 @@ function MedicationAutocompleteControlled({
         aria-expanded={showList}
       />
       {value.trim().length > 0 && value.trim().length < 2 && (
-        <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>Tapez au moins 2 caractères</div>
+        <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{t("common.minCharsSearch")}</div>
       )}
       {showList && (
         <div style={listContainerStyle}>
           {search.loading && (
-            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>Recherche…</div>
+            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>{t("common.searching")}</div>
           )}
           {!search.loading && search.noResults && (
-            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>Aucun résultat</div>
+            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>{t("common.noResults")}</div>
           )}
           {!search.loading && search.results.length > 0 && (
             <MedicationSuggestionList

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import { Modal, Field, inputStyle } from "./Modal";
 import { adjustStock, type InventoryItemRow } from "@/lib/pharmacyApi";
 
@@ -33,6 +34,7 @@ export function AdjustStockModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useI18n();
   const [quantity, setQuantity] = useState("-1");
   const [motif, setMotif] = useState<string>(MOTIFS[0].value);
   const [notes, setNotes] = useState("");
@@ -74,7 +76,7 @@ export function AdjustStockModal({
   return (
     <Modal title="Ajustement de stock" onClose={onClose}>
       <div style={{ padding: "12px 0", marginBottom: 16, border: "1px solid #eee", borderRadius: 4, backgroundColor: "#fafafa" }}>
-        <div style={{ fontWeight: 600 }}>Médicament</div>
+        <div style={{ fontWeight: 600 }}>{t("common.medication")}</div>
         <div>{medName}</div>
         <div style={{ marginTop: 4, fontSize: 13 }}>Stock actuel : {item.quantityOnHand}</div>
       </div>
@@ -113,10 +115,10 @@ export function AdjustStockModal({
 
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 20 }}>
         <button type="button" onClick={onClose} style={{ padding: "10px 18px", border: "1px solid #ccc", borderRadius: 4, background: "white", cursor: "pointer", fontSize: 14 }}>
-          Annuler
+          {t("common.cancel")}
         </button>
         <button type="button" disabled={submitting} onClick={handleSubmit} style={btnPrimary}>
-          {submitting ? "Enregistrement…" : "Enregistrer l'ajustement"}
+          {submitting ? t("common.saving") : t("pharmacyAdjustStock.saveAdjustment")}
         </button>
       </div>
     </Modal>

@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { getEncounterStatusLabelFr, getEncounterTypeLabelFr } from "@/lib/uiLabels";
+import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
 
 function CreateEncounterModal({
@@ -18,6 +19,7 @@ function CreateEncounterModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     type: "OUTPATIENT",
     visitReason: "",
@@ -65,7 +67,7 @@ function CreateEncounterModal({
     } catch (err) {
       setError(
         normalizeUserFacingError(err instanceof Error ? err.message : null) ||
-          "Impossible de créer la consultation."
+          t("patientConsultationsTab.create.createFailed")
       );
     } finally {
       setLoading(false);
@@ -95,27 +97,26 @@ function CreateEncounterModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ marginTop: 0 }}>Démarrer une consultation</h2>
-        <p style={{ fontSize: 14, color: "#666", marginTop: 0 }}>
-          Choisissez le type de visite ; les libellés correspondent aux circuits habituels.
-        </p>
+        <h2 style={{ marginTop: 0 }}>{t("patientConsultationsTab.create.title")}</h2>
+        <p style={{ fontSize: 14, color: "#666", marginTop: 0 }}>{t("patientConsultationsTab.create.hint")}</p>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Type *</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.typeLabel")}</label>
             <select
               required
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
               style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
             >
-              <option value="OUTPATIENT">Clinique</option>
-              <option value="EMERGENCY">Urgences</option>
-              <option value="INPATIENT">Hospitalisation</option>
-              <option value="URGENT_CARE">Soins urgents / intensifs</option>
+              {(["OUTPATIENT", "EMERGENCY", "INPATIENT", "URGENT_CARE"] as const).map((code) => (
+                <option key={code} value={code}>
+                  {tEncounterType(t, code)}
+                </option>
+              ))}
             </select>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Salle</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.roomLabel")}</label>
             <select
               value={formData.roomLabel}
               onChange={(e) => setFormData({ ...formData, roomLabel: e.target.value })}
@@ -129,7 +130,7 @@ function CreateEncounterModal({
             </select>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Médecin attribué (optionnel)</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.physicianOptional")}</label>
             <select
               value={formData.physicianAssignedUserId}
               onChange={(e) => setFormData({ ...formData, physicianAssignedUserId: e.target.value })}
@@ -144,17 +145,17 @@ function CreateEncounterModal({
             </select>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Motif de visite (optionnel)</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.visitReason")}</label>
             <input
               type="text"
               value={formData.visitReason}
               onChange={(e) => setFormData({ ...formData, visitReason: e.target.value })}
-              placeholder="ex. suivi hypertension"
+              placeholder={t("patientConsultationsTab.create.visitReasonPlaceholder")}
               style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
             />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Notes</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.notesLabel")}</label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -167,7 +168,7 @@ function CreateEncounterModal({
           )}
           <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
             <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "1px solid #ddd", borderRadius: 4, cursor: "pointer" }}>
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -182,7 +183,7 @@ function CreateEncounterModal({
                 opacity: loading ? 0.6 : 1,
               }}
             >
-              {loading ? "Création…" : "Démarrer la consultation"}
+              {loading ? t("patientConsultationsTab.create.creating") : t("patientConsultationsTab.create.submit")}
             </button>
           </div>
         </form>
@@ -209,6 +210,8 @@ export function PatientConsultationsTab({
   /** Accueil : liste des visites sans appels inutiles ni bruit console. */
   administrativeOnly?: boolean;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = encounterBcp47(language);
   const [encounters, setEncounters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -227,8 +230,7 @@ export function PatientConsultationsTab({
     } catch (e) {
       setEncounters([]);
       const msg =
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-        "Impossible de charger la liste des consultations.";
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("patientConsultationsTab.loadError");
       setLoadError(msg);
     } finally {
       setLoading(false);
@@ -252,12 +254,12 @@ export function PatientConsultationsTab({
     }
   }, [pendingOpenCreateEncounter, onConsumedPendingOpenCreate]);
 
-  if (loading) return <div style={{ padding: 12, color: "#666" }}>Chargement des consultations…</div>;
+  if (loading) return <div style={{ padding: 12, color: "#666" }}>{t("patientConsultationsTab.loading")}</div>;
 
   if (!facilityId?.trim()) {
     return (
       <div style={{ padding: 12, color: "#666", fontSize: 14 }}>
-        Établissement non disponible. Rechargez la page ou sélectionnez un établissement dans l&apos;en-tête.
+        {t("patientConsultationsTab.facilityUnavailable")}
       </div>
     );
   }
@@ -280,7 +282,7 @@ export function PatientConsultationsTab({
             fontSize: 13,
           }}
         >
-          Réessayer
+          {t("patientConsultationsTab.retry")}
         </button>
       </div>
     );
@@ -289,11 +291,11 @@ export function PatientConsultationsTab({
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 18 }}>Consultations</h3>
+        <h3 style={{ margin: 0, fontSize: 18 }}>{t("encounters.title")}</h3>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
             <input type="checkbox" checked={outpatientOnly} onChange={(e) => setOutpatientOnly(e.target.checked)} />
-            Consultations externes uniquement
+            {t("patientConsultationsTab.outpatientOnly")}
           </label>
           <button
             type="button"
@@ -308,45 +310,45 @@ export function PatientConsultationsTab({
               fontSize: 14,
             }}
           >
-            Démarrer une consultation
+            {t("patientConsultationsTab.startEncounter")}
           </button>
         </div>
       </div>
 
       {encounters.length === 0 ? (
-        <div style={{ padding: 20, textAlign: "center", color: "#666" }}>Aucune consultation trouvée.</div>
+        <div style={{ padding: 20, textAlign: "center", color: "#666" }}>{t("encounters.empty")}</div>
       ) : (
         <div>
           {!canOpenEncounterDetail && (
             <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>
               {administrativeOnly
-                ? "L’ouverture du dossier de consultation clinique est réservée à l’équipe soignante et aux modules autorisés."
-                : "L’ouverture du détail nécessite un rôle clinique ou facturation. La liste reste visible pour l’accueil."}
+                ? t("patientConsultationsTab.hintClinicalOnly")
+                : t("patientConsultationsTab.hintRoleRequired")}
             </p>
           )}
           <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
                 <tr style={{ backgroundColor: "#f5f5f5" }}>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Date</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Type</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Statut</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Salle</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Médecin attribué</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Motif</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Action</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colDate")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colType")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colStatus")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colRoom")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("encounters.assignedProvider")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colReason")}</th>
+                  <th style={{ padding: "10px 12px", textAlign: "left" }}>{t("patientConsultationsTab.colAction")}</th>
                 </tr>
               </thead>
               <tbody>
                 {encounters.map((encounter) => (
                   <tr key={encounter.id} style={{ borderTop: "1px solid #eee" }}>
                     <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                      {new Date(encounter.createdAt).toLocaleString("fr-FR", {
+                      {new Date(encounter.createdAt).toLocaleString(dateLocale, {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}
                     </td>
-                    <td style={{ padding: "10px 12px" }}>{getEncounterTypeLabelFr(encounter.type)}</td>
+                    <td style={{ padding: "10px 12px" }}>{tEncounterType(t, encounter.type)}</td>
                     <td style={{ padding: "10px 12px" }}>
                       <span
                         style={{
@@ -357,18 +359,18 @@ export function PatientConsultationsTab({
                           color: encounter.status === "OPEN" ? "#1976d2" : "#666",
                         }}
                       >
-                        {getEncounterStatusLabelFr(encounter.status)}
+                        {tEncounterStatus(t, encounter.status)}
                       </span>
                     </td>
-                    <td style={{ padding: "10px 12px" }}>{encounter.roomLabel?.trim() || "—"}</td>
+                    <td style={{ padding: "10px 12px" }}>{encounter.roomLabel?.trim() || t("common.dash")}</td>
                     <td style={{ padding: "10px 12px" }}>
                       {encounter.physicianAssigned
                         ? `${encounter.physicianAssigned.firstName ?? ""} ${encounter.physicianAssigned.lastName ?? ""}`.trim() ||
-                          "—"
-                        : "—"}
+                          t("common.dash")
+                        : t("common.dash")}
                     </td>
                     <td style={{ padding: "10px 12px", maxWidth: 280 }}>
-                      {encounter.visitReason || encounter.chiefComplaint || "—"}
+                      {encounter.visitReason || encounter.chiefComplaint || t("common.dash")}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {canOpenEncounterDetail ? (
@@ -385,10 +387,10 @@ export function PatientConsultationsTab({
                             fontWeight: 600,
                           }}
                         >
-                          Ouvrir la consultation
+                          {t("patientConsultationsTab.openEncounter")}
                         </Link>
                       ) : (
-                        <span style={{ fontSize: 12, color: "#9e9e9e" }}>—</span>
+                        <span style={{ fontSize: 12, color: "#9e9e9e" }}>{t("common.dash")}</span>
                       )}
                     </td>
                   </tr>

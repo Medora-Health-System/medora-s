@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
 
 const btn: React.CSSProperties = {
   padding: "8px 12px",
@@ -56,6 +57,7 @@ export function PatientQuickActions({
   onEditPatient: () => void;
   onPendingCreateEncounter: () => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const show =
     clinicalChartAccess || isFrontDeskQuick || isBillingOnlyQuick;
@@ -65,7 +67,7 @@ export function PatientQuickActions({
   return (
     <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #eee" }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#616161", marginBottom: 10, textTransform: "uppercase" }}>
-        Actions rapides
+        {t("patientQuickActions.sectionTitle")}
       </div>
       <div
         style={{
@@ -82,9 +84,9 @@ export function PatientQuickActions({
               disabled={!openEncounter || !canOpenEncounterDetail}
               title={
                 !openEncounter
-                  ? "Aucune consultation ouverte"
+                  ? t("patientQuickActions.noOpenEncounter")
                   : !canOpenEncounterDetail
-                    ? "Accès non autorisé"
+                    ? t("patientQuickActions.accessDenied")
                     : undefined
               }
               onClick={() => {
@@ -93,26 +95,26 @@ export function PatientQuickActions({
                 }
               }}
             >
-              Saisir les signes vitaux
+              {t("patientQuickActions.enterVitals")}
             </button>
             <button type="button" style={btn} onClick={onTabEncounters}>
-              Voir les consultations
+              {t("patientQuickActions.viewEncounters")}
             </button>
             <button
               type="button"
               style={openEncounter && canOpenEncounterDetail ? btn : btnDisabled}
               disabled={!openEncounter || !canOpenEncounterDetail}
-              title={!openEncounter ? "Aucune consultation ouverte" : undefined}
+              title={!openEncounter ? t("patientQuickActions.noOpenEncounter") : undefined}
               onClick={() => {
                 if (openEncounter && canOpenEncounterDetail) {
                   router.push(`/app/encounters/${openEncounter.id}?tab=notes`);
                 }
               }}
             >
-              Ajouter une note
+              {t("patientQuickActions.addNote")}
             </button>
             <button type="button" style={btn} onClick={onAddFollowUp}>
-              Ajouter un suivi
+              {t("patientQuickActions.addFollowUp")}
             </button>
           </>
         )}
@@ -131,16 +133,16 @@ export function PatientQuickActions({
                 }
               }}
             >
-              {openEncounter ? "Ouvrir la consultation" : "Démarrer une consultation"}
+              {openEncounter ? t("patientQuickActions.openEncounterOrStart") : t("patientQuickActions.startEncounter")}
             </button>
             <button
               type="button"
               style={chartSummaryReady ? btn : { ...btnDisabled, opacity: 0.55 }}
               disabled={!chartSummaryReady}
-              title={!chartSummaryReady ? "Chargement du dossier…" : undefined}
+              title={!chartSummaryReady ? t("patientQuickActions.chartLoading") : undefined}
               onClick={() => chartSummaryReady && onAddDiagnosis()}
             >
-              Ajouter un diagnostic
+              {t("patientQuickActions.addDiagnosis")}
             </button>
             <button
               type="button"
@@ -150,9 +152,9 @@ export function PatientQuickActions({
               disabled={!openEncounter || !canOpenEncounterDetail || !canPrescribe}
               title={
                 !canPrescribe
-                  ? "Droit de prescription requis"
+                  ? t("patientQuickActions.prescRightRequired")
                   : !openEncounter
-                    ? "Ouvrez ou créez une consultation"
+                    ? t("patientQuickActions.openOrCreateEncounter")
                     : undefined
               }
               onClick={() => {
@@ -161,13 +163,13 @@ export function PatientQuickActions({
                 }
               }}
             >
-              Créer une ordonnance
+              {t("patientQuickActions.createOrder")}
             </button>
             <button type="button" style={btn} onClick={onTabResults}>
-              Voir les résultats
+              {t("patientQuickActions.viewResults")}
             </button>
             <button type="button" style={btn} onClick={onAddFollowUp}>
-              Ajouter un suivi
+              {t("patientQuickActions.addFollowUp")}
             </button>
           </>
         )}
@@ -182,20 +184,20 @@ export function PatientQuickActions({
                 onPendingCreateEncounter();
               }}
             >
-              Nouvelle consultation
+              {t("patientQuickActions.newEncounter")}
             </button>
             <button type="button" style={btn} onClick={onAddFollowUp}>
-              Ajouter un suivi
+              {t("patientQuickActions.addFollowUp")}
             </button>
             <button type="button" style={btn} onClick={onEditPatient}>
-              Modifier les informations du patient
+              {t("patientQuickActions.editPatientInfo")}
             </button>
           </>
         )}
 
         {isBillingOnlyQuick && (
           <button type="button" style={btn} onClick={onTabSummary}>
-            Résumé du patient
+            {t("patientQuickActions.patientSummary")}
           </button>
         )}
       </div>

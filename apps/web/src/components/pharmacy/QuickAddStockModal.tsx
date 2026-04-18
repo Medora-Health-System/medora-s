@@ -8,6 +8,7 @@ import {
   type MedicationSearchItem,
 } from "@/lib/pharmacyApi";
 import { MedicationAutocomplete } from "./MedicationAutocomplete";
+import { useI18n } from "@/lib/i18n";
 
 export function QuickAddStockModal({
   facilityId,
@@ -20,6 +21,7 @@ export function QuickAddStockModal({
   onSuccess: () => void;
   initialMedication?: MedicationSearchItem | null;
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState(
     initialMedication ? medicationSearchLabel(initialMedication) : ""
   );
@@ -49,12 +51,12 @@ export function QuickAddStockModal({
   const handleSubmit = async () => {
     setError(null);
     if (!selected) {
-      setError("Sélectionnez un médicament");
+      setError(t("pharmacyQuickAdd.selectMedication"));
       return;
     }
     const qty = parseInt(quantityOnHand, 10);
     if (Number.isNaN(qty) || qty < 1) {
-      setError("La quantité doit être supérieure à 0");
+      setError(t("pharmacyQuickAdd.qtyInvalid"));
       return;
     }
     setSubmitting(true);
@@ -74,23 +76,23 @@ export function QuickAddStockModal({
       onSuccess();
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Impossible d'enregistrer");
+      setError(e instanceof Error ? e.message : t("pharmacyQuickAdd.saveFailed"));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal title="Ajout rapide au stock" onClose={onClose}>
+    <Modal title={t("pharmacyQuickAdd.title")} onClose={onClose}>
       {error && (
         <p style={{ color: "#b00020", marginBottom: 12, fontSize: 14 }}>{error}</p>
       )}
 
-      <Field label="Médicament">
+      <Field label={t("common.medication")}>
         <MedicationAutocomplete
           facilityId={facilityId}
           mode="inventory"
-          placeholder="Rechercher un médicament"
+          placeholder={t("common.searchMedicationPlaceholder")}
           onSelect={handleSelect}
           favoritesFirst
           autoFocus={!initialMedication}
@@ -191,7 +193,7 @@ export function QuickAddStockModal({
             fontSize: 14,
           }}
         >
-          Annuler
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -208,7 +210,7 @@ export function QuickAddStockModal({
             opacity: !selected || !quantityOnHand || parseInt(quantityOnHand, 10) < 1 ? 0.6 : 1,
           }}
         >
-          {submitting ? "Enregistrement…" : "Enregistrer"}
+          {submitting ? t("common.saving") : t("common.save")}
         </button>
       </div>
     </Modal>

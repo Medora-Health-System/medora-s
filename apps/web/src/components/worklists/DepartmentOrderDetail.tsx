@@ -4,21 +4,31 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { getOrderPriorityLabelFr, getPathwayTypeLabelFr, ui } from "@/lib/uiLabels";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { attachmentsFromResultDataAll, clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
 import {
   collectResultUploadFiles,
   validateResultUploadPreflight,
-  MAX_RAW_BYTES_PER_FILE,
-  RESULT_UPLOAD_HINT_FR,
 } from "@/lib/resultUploadLimits";
+import {
+  encounterBcp47,
+  tOrderItemStatusForWorklist,
+  tOrderPriority,
+  tPathwayType,
+} from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+
+function fillTemplate(s: string, vars: Record<string, string | number>): string {
+  let out = s;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.split(`{${k}}`).join(String(v));
+  }
+  return out;
+}
 
 export type WorklistDeptKind = "lab" | "radiology" | "pharmacy";
 
@@ -35,34 +45,34 @@ function statusAllowsSubstantiveResultEntry(itemStatus: string): boolean {
 }
 
 /** Message affiché tant que la ligne n’est pas prête pour un résultat (texte / pièces). */
-function getWorkflowBlockMessageFr(itemStatus: string): string | null {
+function getWorkflowBlockMessage(t: (key: string) => string, itemStatus: string): string | null {
   if (statusAllowsSubstantiveResultEntry(itemStatus)) return null;
   if (itemStatus === "ACKNOWLEDGED") {
-    return "Démarrez l’examen avant d’ajouter un résultat (texte ou fichiers). Ensuite vous pouvez enregistrer pendant « En cours » ou après « Terminer ».";
+    return t("orderDetail.workflowAfterAck");
   }
   if (itemStatus === "PLACED" || itemStatus === "PENDING" || itemStatus === "SIGNED") {
-    return "Accusez réception, démarrez l’examen avant d’ajouter un résultat (texte ou fichiers). Ensuite vous pouvez enregistrer pendant « En cours » ou après « Terminer ».";
+    return t("orderDetail.workflowAfterPlace");
   }
   if (itemStatus === "CANCELLED" || itemStatus === "DRAFT") {
-    return "Cette ligne ne permet pas la saisie de résultat avec ce statut.";
+    return t("orderDetail.workflowCancelledDraft");
   }
-  return "Complétez le flux (accusé réception, démarrage) avant d’ajouter un résultat (texte ou fichiers).";
+  return t("orderDetail.workflowDefault");
 }
 
 function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
   return !!item.pharmacyDispenseRecord;
 }
 
-function readFileAsAttachment(file: File): Promise<AttachmentMeta> {
+function readFileAsAttachment(file: File, readErr: string): Promise<AttachmentMeta> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => {
       const s = String(r.result || "");
       const m = s.match(/^data:([^;]+);base64,(.+)$/);
       if (m) resolve({ fileName: file.name, mimeType: m[1], dataBase64: m[2] });
-      else reject(new Error("Lecture du fichier impossible."));
+      else reject(new Error(readErr));
     };
-    r.onerror = () => reject(r.error ?? new Error("Lecture du fichier impossible."));
+    r.onerror = () => reject(r.error ?? new Error(readErr));
     r.readAsDataURL(file);
   });
 }
@@ -78,7 +88,8 @@ export default function DepartmentOrderDetail({
   listHref: string;
   facilityId: string | null;
 }) {
-  const { language } = useI18n();
+  const { t, language } = useI18n();
+  const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const highlightLineId = searchParams.get("ligne") || "";
 
@@ -95,30 +106,30 @@ export default function DepartmentOrderDetail({
   const labels = useMemo(() => {
     if (kind === "lab") {
       return {
-        title: "Détail commande laboratoire",
-        resultLabel: "Résultat / interprétation",
-        resultPlaceholder: "Saisir le résultat ou l’interprétation…",
-        submitResult: "Ajouter un résultat",
+        title: t("orderDetail.labTitle"),
+        resultLabel: t("orderDetail.resultLabelLab"),
+        resultPlaceholder: t("orderDetail.resultPlaceholderLab"),
+        submitResult: t("orderDetail.submitAddResultLab"),
         showCritical: true,
       };
     }
     if (kind === "radiology") {
       return {
-        title: "Détail examen d’imagerie",
-        resultLabel: "Compte rendu / interprétation",
-        resultPlaceholder: "Saisir le compte rendu…",
-        submitResult: "Ajouter un compte rendu",
+        title: t("orderDetail.radTitle"),
+        resultLabel: t("orderDetail.resultLabelRad"),
+        resultPlaceholder: t("orderDetail.resultPlaceholderRad"),
+        submitResult: t("orderDetail.submitAddResultRad"),
         showCritical: false,
       };
     }
     return {
-      title: "Détail ordonnance pharmacie",
+      title: t("orderDetail.pharmacyTitle"),
       resultLabel: "",
       resultPlaceholder: "",
       submitResult: "",
       showCritical: false,
     };
-  }, [kind]);
+  }, [kind, t]);
 
   const load = useCallback(async () => {
     if (!facilityId || !orderId) return;
@@ -129,11 +140,11 @@ export default function DepartmentOrderDetail({
       setOrder(asApiObject(data));
     } catch (e: unknown) {
       setOrder(null);
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || "Chargement impossible.");
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("orderDetail.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [facilityId, orderId]);
+  }, [facilityId, orderId, t]);
 
   useEffect(() => {
     void load();
@@ -192,7 +203,7 @@ export default function DepartmentOrderDetail({
     if (isAlreadyDispensed(item)) return;
     const q = parseInt(dispenseQty, 10);
     if (!Number.isFinite(q) || q < 1) {
-      alert("Quantité invalide");
+      alert(t("orderDetail.invalidQty"));
       return;
     }
     setDispenseBusy(true);
@@ -211,26 +222,26 @@ export default function DepartmentOrderDetail({
       setDispenseItem(null);
       await load();
     } catch {
-      alert("Impossible d’enregistrer la dispensation");
+      alert(t("orderDetail.saveDispenseFailed"));
     } finally {
       setDispenseBusy(false);
     }
   };
 
   if (!facilityId) {
-    return <p style={{ padding: 24 }}>Établissement requis.</p>;
+    return <p style={{ padding: 24 }}>{t("orderDetail.facilityRequired")}</p>;
   }
 
   if (loading && !order) {
-    return <p style={{ padding: 24 }}>{ui.common.loading}</p>;
+    return <p style={{ padding: 24 }}>{t("common.loading")}</p>;
   }
 
   if (error || !order) {
     return (
       <div style={{ padding: 24 }}>
-        <p style={{ color: "#c62828" }}>{error || "Commande introuvable."}</p>
+        <p style={{ color: "#c62828" }}>{error || t("orderDetail.orderNotFound")}</p>
         <Link href={listHref} style={{ color: "#1565c0" }}>
-          {ui.common.back} vers la liste
+          {t("orderDetail.backToList")}
         </Link>
       </div>
     );
@@ -249,7 +260,7 @@ export default function DepartmentOrderDetail({
     <div style={{ maxWidth: 920, margin: "0 auto" }}>
       <div style={{ marginBottom: 16 }}>
         <Link href={listHref} style={{ fontSize: 14, color: "#1565c0" }}>
-          ← Retour à la liste
+          ← {t("orderDetail.backToList")}
         </Link>
       </div>
       <h1 style={{ marginTop: 0 }}>{labels.title}</h1>
@@ -269,14 +280,12 @@ export default function DepartmentOrderDetail({
             lineHeight: 1.45,
           }}
         >
-          Commande annulée — aucune action possible.
+          {t("orderDetail.orderCancelledBanner")}
         </div>
       ) : null}
 
       {typeMismatch ? (
-        <p style={{ color: "#c62828" }}>
-          Cette commande ne correspond pas à ce module. Utilisez la bonne file ou vérifiez le lien.
-        </p>
+        <p style={{ color: "#c62828" }}>{t("orderDetail.typeMismatch")}</p>
       ) : null}
 
       <section
@@ -288,52 +297,52 @@ export default function DepartmentOrderDetail({
           marginBottom: 20,
         }}
       >
-        <h2 style={{ marginTop: 0, fontSize: 16 }}>Patient et prescription</h2>
+        <h2 style={{ marginTop: 0, fontSize: 16 }}>{t("orderDetail.sectionPatientRx")}</h2>
         <div style={{ fontSize: 14, lineHeight: 1.6 }}>
           <div>
-            <strong>Patient :</strong> {patient ? `${patient.firstName} ${patient.lastName}` : "—"}
+            <strong>{t("orderDetail.patientLabel")}</strong> {patient ? `${patient.firstName} ${patient.lastName}` : t("common.dash")}
           </div>
           <div>
-            <strong>NIR :</strong> {patient?.mrn ?? "—"}
+            <strong>{t("orderDetail.nirLabel")}</strong> {patient?.mrn ?? t("common.dash")}
           </div>
           <div>
-            <strong>Consultation :</strong>{" "}
+            <strong>{t("orderDetail.encounterLabel")}</strong>{" "}
             {order.encounterId ? (
               <Link href={`/app/encounters/${order.encounterId}`} style={{ color: "#1565c0" }}>
-                Ouvrir la consultation
+                {t("orderDetail.openEncounter")}
               </Link>
             ) : (
-              "—"
+              t("common.dash")
             )}
           </div>
           <div>
-            <strong>Priorité :</strong> {getOrderPriorityLabelFr(order.priority)}
+            <strong>{t("orderDetail.priorityLabel")}</strong> {tOrderPriority(t, order.priority)}
             {order.pathwaySession ? (
               <span style={{ marginLeft: 8, fontSize: 12, color: "#1976d2" }}>
-                {getPathwayTypeLabelFr(order.pathwaySession.type)}
+                {tPathwayType(t, order.pathwaySession.type)}
               </span>
             ) : null}
           </div>
           <div>
-            <strong>Prescripteur :</strong> {(order.prescriberName as string) || "—"}
+            <strong>{t("orderDetail.prescriberLabel")}</strong> {(order.prescriberName as string) || t("common.dash")}
           </div>
           <div>
-            <strong>Contact prescripteur :</strong> {(order.prescriberContact as string) || "—"}
+            <strong>{t("orderDetail.prescriberContactLabel")}</strong> {(order.prescriberContact as string) || t("common.dash")}
           </div>
           <div>
-            <strong>Date de la commande :</strong>{" "}
-            {order.createdAt ? new Date(order.createdAt).toLocaleString("fr-FR") : "—"}
+            <strong>{t("orderDetail.orderDateLabel")}</strong>{" "}
+            {order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : t("common.dash")}
           </div>
           {order.notes ? (
             <div style={{ marginTop: 8 }}>
-              <strong>Notes :</strong> {order.notes}
+              <strong>{t("orderDetail.notesLabel")}</strong> {order.notes}
             </div>
           ) : null}
         </div>
       </section>
 
       {items.length === 0 ? (
-        <p>Aucune ligne à afficher pour cette commande.</p>
+        <p>{t("orderDetail.emptyLines")}</p>
       ) : (
         items.map((item: any) => (
           <LineCard
@@ -373,7 +382,7 @@ export default function DepartmentOrderDetail({
             }
             style={{ padding: "8px 14px", cursor: "pointer" }}
           >
-            Imprimer l’ordonnance
+            {t("orderDetail.printRx")}
           </button>
         </div>
       )}
@@ -398,12 +407,15 @@ export default function DepartmentOrderDetail({
             onClick={(e) => e.stopPropagation()}
             role="dialog"
           >
-            <h2 style={{ marginTop: 0, fontSize: 18 }}>Enregistrer la dispensation</h2>
+            <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("orderDetail.saveDispenseTitle")}</h2>
             <p style={{ fontSize: 14 }}>
-              <strong>{getOrderItemDisplayLabelFr(dispenseItem)}</strong> — Qté prescrite : {dispenseItem.quantity ?? "—"}
+              <strong>{getOrderItemDisplayLabelFromLocale(dispenseItem, language)}</strong> —{" "}
+              {fillTemplate(t("orderDetail.qtyPrescribedLine"), {
+                qty: String(dispenseItem.quantity ?? t("common.dash")),
+              })}
             </p>
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
-              Quantité délivrée
+              {t("orderDetail.qtyDelivered")}
               <input
                 type="number"
                 min={1}
@@ -413,7 +425,7 @@ export default function DepartmentOrderDetail({
               />
             </label>
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
-              Posologie (rappel)
+              {t("orderDetail.posologyReminder")}
               <textarea
                 value={dispenseInstr}
                 onChange={(e) => setDispenseInstr(e.target.value)}
@@ -422,7 +434,7 @@ export default function DepartmentOrderDetail({
               />
             </label>
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
-              Notes pharmacie
+              {t("orderDetail.pharmacyNotes")}
               <textarea
                 value={dispenseNotes}
                 onChange={(e) => setDispenseNotes(e.target.value)}
@@ -432,10 +444,10 @@ export default function DepartmentOrderDetail({
             </label>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
               <button type="button" disabled={dispenseBusy} onClick={() => setDispenseItem(null)}>
-                Annuler
+                {t("orderDetail.cancel")}
               </button>
               <button type="button" disabled={dispenseBusy} onClick={() => void submitDispense()}>
-                {dispenseBusy ? "…" : "Valider"}
+                {dispenseBusy ? "…" : t("orderDetail.submit")}
               </button>
             </div>
           </div>
@@ -478,6 +490,7 @@ function LineCard({
   onComplete: (id: string) => Promise<void>;
   onOpenDispense?: (item: any) => void;
 }) {
+  const { t, language } = useI18n();
   const [resultText, setResultText] = useState(item.result?.resultText ?? "");
   const [critical, setCritical] = useState(!!item.result?.criticalValue);
   const [saving, setSaving] = useState(false);
@@ -496,7 +509,7 @@ function LineCard({
   );
 
   const statusAllowsSubstantiveResult = statusAllowsSubstantiveResultEntry(item.status);
-  const workflowBlockMessage = canResult ? getWorkflowBlockMessageFr(item.status) : null;
+  const workflowBlockMessage = canResult ? getWorkflowBlockMessage(t, item.status) : null;
 
   const criticalChanged = critical !== !!item.result?.criticalValue;
   const hasNewFiles = (pdfFiles?.length ?? 0) > 0 || (imgFiles?.length ?? 0) > 0;
@@ -512,24 +525,24 @@ function LineCard({
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
       {(item.status === "PLACED" || item.status === "PENDING" || item.status === "SIGNED") && (
         <button type="button" onClick={() => onAck(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
-          Accuser réception
+          {t("orderDetail.ackReceive")}
         </button>
       )}
       {item.status === "ACKNOWLEDGED" && (
         <button type="button" onClick={() => onStart(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
-          Démarrer
+          {t("orderDetail.startExam")}
         </button>
       )}
       {item.status === "IN_PROGRESS" && (
         <button type="button" onClick={() => onComplete(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
-          Terminer
+          {t("orderDetail.completeExam")}
         </button>
       )}
       {kind === "pharmacy" && onOpenDispense && (
         <>
           {!isAlreadyDispensed(item) ? (
             <button type="button" onClick={() => onOpenDispense(item)} style={{ padding: "6px 10px", cursor: "pointer" }}>
-              Enregistrer dispensation
+              {t("orderDetail.recordDispenseShort")}
             </button>
           ) : null}
           {order.encounter?.patient?.id ? (
@@ -537,7 +550,7 @@ function LineCard({
               href={`/app/pharmacy/dispense?patientId=${order.encounter.patient.id}&encounterId=${order.encounterId}`}
               style={{ fontSize: 14, alignSelf: "center" }}
             >
-              Ouvrir l’écran de dispensation
+              {t("orderDetail.openDispenseScreen")}
             </Link>
           ) : null}
         </>
@@ -552,10 +565,7 @@ function LineCard({
     if (!hasPayloadForSubmit) {
       setFeedback({
         type: "err",
-        text:
-          kind === "lab"
-            ? "Saisissez un texte de résultat, joignez un fichier ou modifiez la valeur critique pour enregistrer."
-            : "Saisissez un compte rendu ou joignez au moins un fichier (PDF ou image).",
+        text: kind === "lab" ? t("orderDetail.errPayloadLab") : t("orderDetail.errPayloadRad"),
       });
       return;
     }
@@ -563,9 +573,7 @@ function LineCard({
     if (substantiveBlocked) {
       setFeedback({
         type: "err",
-        text:
-          getWorkflowBlockMessageFr(item.status) ||
-          "Pour enregistrer un texte ou des fichiers, complétez d’abord le flux (accusé réception, démarrage).",
+        text: getWorkflowBlockMessage(t, item.status) || t("orderDetail.errWorkflowBlocked"),
       });
       return;
     }
@@ -577,18 +585,29 @@ function LineCard({
       newFiles,
     });
     if (!preflight.ok) {
-      setFeedback({ type: "err", text: preflight.messageFr });
+      const e = preflight.err;
+      let errText: string;
+      if (e.code === "totalTooLarge") {
+        errText = t("orderDetail.uploadErrTotal");
+      } else {
+        const file = e.fileLabel;
+        if (e.code === "invalidPdf") errText = fillTemplate(t("orderDetail.uploadErrPdf"), { file });
+        else if (e.code === "invalidImage") errText = fillTemplate(t("orderDetail.uploadErrImage"), { file });
+        else errText = fillTemplate(t("orderDetail.uploadErrSize"), { file });
+      }
+      setFeedback({ type: "err", text: errText });
       return;
     }
 
     setSaving(true);
     try {
       const newAttachments: AttachmentMeta[] = [];
+      const readErr = t("orderDetail.fileReadFailed");
       const collect = async (list: FileList | null) => {
         if (!list?.length) return;
         for (let i = 0; i < list.length; i++) {
           const f = list[i];
-          newAttachments.push(await readFileAsAttachment(f));
+          newAttachments.push(await readFileAsAttachment(f, readErr));
         }
       };
       await collect(pdfFiles);
@@ -617,8 +636,7 @@ function LineCard({
         }
         setFeedback({
           type: "ok",
-          text:
-            "Résultat enregistré localement. En attente de synchronisation — visible sur cet appareil (dossier patient, onglet Résultats) jusqu’à l’envoi au serveur.",
+          text: t("orderDetail.feedbackLocalSync"),
         });
         return;
       }
@@ -635,13 +653,13 @@ function LineCard({
       }
       setFeedback({
         type: "ok",
-        text: "Résultat enregistré. La commande et le dossier patient (onglet Résultats, timeline) sont à jour.",
+        text: t("orderDetail.feedbackSaved"),
       });
     } catch (e: unknown) {
       const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
       setFeedback({
         type: "err",
-        text: msg || "Enregistrement impossible. Vérifiez le statut de la ligne, la taille des fichiers et réessayez.",
+        text: msg || t("orderDetail.feedbackSaveFailed"),
       });
     } finally {
       setSaving(false);
@@ -665,28 +683,33 @@ function LineCard({
       }}
     >
       <h3 style={{ marginTop: 0, fontSize: 15 }}>
-        {getOrderItemDisplayLabelFr(item)}{" "}
-        <span style={{ fontWeight: 400, color: "#666", fontSize: 13 }}>({getOrderItemStatusLabel(item.status)})</span>
+        {getOrderItemDisplayLabelFromLocale(item, language)}{" "}
+        <span style={{ fontWeight: 400, color: "#666", fontSize: 13 }}>
+          ({tOrderItemStatusForWorklist(t, item.status)})
+        </span>
       </h3>
       {kind === "radiology" && modalityLine ? (
-        <div style={{ fontSize: 13, color: "#546e7a", marginBottom: 8 }}>Modalité / région : {modalityLine}</div>
+        <div style={{ fontSize: 13, color: "#546e7a", marginBottom: 8 }}>
+          {t("orderDetail.modalityRegion")} {modalityLine}
+        </div>
       ) : null}
       {kind === "pharmacy" ? (
         <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
           <div>
-            <strong>Dosage :</strong> {item.strength ?? item.catalogMedication?.strength ?? "—"}
+            <strong>{t("orderDetail.dosageLabel")}</strong> {item.strength ?? item.catalogMedication?.strength ?? t("common.dash")}
           </div>
           <div>
-            <strong>Posologie (ligne) :</strong> {(item.notes as string) || "—"}
+            <strong>{t("orderDetail.linePosology")}</strong> {(item.notes as string) || t("common.dash")}
           </div>
           <div>
-            <strong>Quantité :</strong> {item.quantity ?? "—"} · <strong>Renouvellements :</strong> {item.refillCount ?? 0}
+            <strong>{t("orderDetail.quantityLabel")}</strong> {item.quantity ?? t("common.dash")} ·{" "}
+            <strong>{t("orderDetail.refillsLabel")}</strong> {item.refillCount ?? 0}
           </div>
         </div>
       ) : null}
       {item.notes && kind !== "pharmacy" ? (
         <div style={{ fontSize: 13, marginBottom: 8 }}>
-          <strong>Note ligne :</strong> {item.notes}
+          <strong>{t("orderDetail.lineNoteLabel")}</strong> {item.notes}
         </div>
       ) : null}
 
@@ -699,7 +722,7 @@ function LineCard({
         <div style={{ marginTop: 14 }}>
           {(() => {
             const v = clinicalResultFromOrderItemLike({
-              displayLabelFr: getOrderItemDisplayLabelFr(item),
+              displayLabel: getOrderItemDisplayLabelFromLocale(item, language),
               status: item.status,
               catalogItemType: item.catalogItemType,
               result: item.result,
@@ -738,7 +761,7 @@ function LineCard({
                 lineHeight: 1.45,
               }}
             >
-              <strong>Étape requise :</strong> {workflowBlockMessage}
+              <strong>{t("orderDetail.stepRequired")}</strong> {workflowBlockMessage}
             </div>
           ) : null}
           {feedback ? (
@@ -771,11 +794,11 @@ function LineCard({
           {labels.showCritical ? (
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13 }}>
               <input type="checkbox" checked={critical} onChange={(e) => setCritical(e.target.checked)} />
-              Valeur critique signalée
+              {t("orderDetail.criticalValueFlag")}
             </label>
           ) : null}
           <div style={{ marginTop: 10, fontSize: 13 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Téléverser un PDF</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("orderDetail.uploadPdf")}</div>
             <input
               type="file"
               accept="application/pdf,.pdf"
@@ -784,7 +807,7 @@ function LineCard({
             />
           </div>
           <div style={{ marginTop: 10, fontSize: 13 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Téléverser une image</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("orderDetail.uploadImage")}</div>
             <input type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg" multiple onChange={(e) => setImgFiles(e.target.files)} />
           </div>
           <button
@@ -799,11 +822,10 @@ function LineCard({
               fontWeight: 600,
             }}
           >
-            {saving ? "Enregistrement…" : labels.submitResult}
+            {saving ? t("orderDetail.saving") : labels.submitResult}
           </button>
           <p style={{ fontSize: 12, color: "#757575", marginTop: 8 }}>
-            {RESULT_UPLOAD_HINT_FR} Les fichiers sont ajoutés aux pièces existantes. La date et l’auteur de saisie sont
-            enregistrées automatiquement.
+            {t("orderDetail.uploadFormatsHint")} {t("orderDetail.uploadFooterHint")}
           </p>
         </div>
       ) : null}
