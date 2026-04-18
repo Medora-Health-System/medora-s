@@ -31,18 +31,19 @@ export default function PharmacyLowStockPage() {
   if (!canViewPharmacy) {
     return (
       <div>
-        <h1>Stock faible</h1>
-        <p>Vous n&apos;avez pas accès.</p>
+        <h1>{t("pharmacyLowStockPage.title")}</h1>
+        <p>{t("pharmacyLowStockPage.accessDenied")}</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Stock faible</h1>
+      <h1 style={{ marginTop: 0 }}>{t("pharmacyLowStockPage.title")}</h1>
       <p style={{ color: "#555", fontSize: 14 }}>
-        Articles dont la quantité en stock ≤ seuil de réappro.{" "}
-        <Link href="/app/pharmacy/inventory">Stock</Link>
+        {t("pharmacyLowStockPage.introBefore")}
+        <Link href="/app/pharmacy/inventory">{t("pharmacyHomePage.linkInventory")}</Link>
+        {t("pharmacyLowStockPage.introAfter")}
       </p>
       {error && <p style={{ color: "#b00020" }}>{error}</p>}
       {loading ? (
@@ -61,8 +62,9 @@ export default function PharmacyLowStockPage() {
       )}
       {canManagePharmacy && (
         <p style={{ fontSize: 13, color: "#666", marginTop: 16 }}>
-          Utilisez Réceptionner / Ajuster depuis la page{" "}
-          <Link href="/app/pharmacy/inventory">Stock</Link> pour les modales complètes, ou ouvrez le stock et utilisez les actions sur les lignes.
+          {t("pharmacyLowStockPage.footnoteBefore")}
+          <Link href="/app/pharmacy/inventory">{t("pharmacyHomePage.linkInventory")}</Link>
+          {t("pharmacyLowStockPage.footnoteAfter")}
         </p>
       )}
     </div>

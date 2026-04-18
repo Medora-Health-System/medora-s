@@ -4,8 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { tOrderPriority, tPathwayType } from "@/lib/encounterChromeI18n";
+import { tOrderItemStatusForWorklist, tOrderPriority, tPathwayType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
@@ -212,7 +211,9 @@ export default function LabWorklistPage() {
           (patient?.mrn ?? "").trim(),
           getOrderItemDisplayLabelFromLocale(item, language),
           tOrderPriority(t, pc),
-          orderIsCancelled(order) ? "Annulée" : getOrderItemStatusLabel(item.status),
+          orderIsCancelled(order)
+            ? t("worklistDepartments.shared.orderCancelledBadge")
+            : tOrderItemStatusForWorklist(t, String(item.status)),
           order.pathwaySession ? tPathwayType(t, order.pathwaySession.type) : "",
         ].join(" ");
         if (rowMatchesSearch(searchQuery, blob)) out.push({ order, item });
@@ -227,7 +228,7 @@ export default function LabWorklistPage() {
         ...row.itemLabels,
         tOrderPriority(t, String(row.priority ?? "ROUTINE")),
         row.encounterId,
-        "En attente de synchronisation",
+        t("worklistDepartments.shared.syncPendingStatus"),
       ].join(" ");
       return rowMatchesSearch(searchQuery, blob);
     });
@@ -250,14 +251,10 @@ export default function LabWorklistPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(
-        queued
-          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : null
-      );
+      setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
       loadQueue();
     } catch (error) {
-      alert("Impossible d'acquitter");
+      alert(t("worklistDepartments.shared.worklistActionAckFailed"));
     }
   };
 
@@ -270,14 +267,10 @@ export default function LabWorklistPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(
-        queued
-          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : null
-      );
+      setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
       loadQueue();
     } catch (error) {
-      alert("Impossible de démarrer");
+      alert(t("worklistDepartments.shared.worklistActionStartFailed"));
     }
   };
 
@@ -290,14 +283,10 @@ export default function LabWorklistPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(
-        queued
-          ? "Action enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur."
-          : null
-      );
+      setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
       loadQueue();
     } catch (error) {
-      alert("Impossible de terminer");
+      alert(t("worklistDepartments.shared.worklistActionCompleteFailed"));
     }
   };
 
@@ -367,9 +356,9 @@ export default function LabWorklistPage() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher par patient, NIR ou analyse..."
+              placeholder={t("worklistDepartments.shared.searchPlaceholderLab")}
               autoComplete="off"
-              aria-label="Rechercher dans la liste"
+              aria-label={t("worklistDepartments.shared.searchAria")}
               style={searchInputStyle}
             />
           </div>
@@ -450,9 +439,11 @@ export default function LabWorklistPage() {
                 }}
               >
                 <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
-                  Aucun résultat pour cette recherche.
+                  {t("worklistDepartments.shared.emptySearch")}
                 </p>
-                <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Modifiez les termes ou effacez la recherche.</p>
+                <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
+                  {t("worklistDepartments.shared.searchHintAdjust")}
+                </p>
               </div>
             ) : (
               <>
@@ -486,9 +477,13 @@ export default function LabWorklistPage() {
                                   {t("common.labTest")} · {getOrderItemDisplayLabelFromLocale(item, language)}
                                 </MedoraCardBadge>
                                 {orderIsCancelled(order) ? (
-                                  <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
+                                  <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>
+                                    {t("worklistDepartments.shared.orderCancelledBadge")}
+                                  </span>
                                 ) : (
-                                  <MedoraCardBadge preset="neutral">{getOrderItemStatusLabel(item.status)}</MedoraCardBadge>
+                                  <MedoraCardBadge preset="neutral">
+                                    {tOrderItemStatusForWorklist(t, String(item.status))}
+                                  </MedoraCardBadge>
                                 )}
                                 {order.pathwaySession ? (
                                   <MedoraCardBadge preset="pathway">
@@ -513,10 +508,10 @@ export default function LabWorklistPage() {
             {pendingLocal.length > 0 ? (
               <div style={{ marginTop: filteredQueuePairs.length > 0 ? 32 : 0 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "#0f172a" }}>
-                  En attente de synchronisation
+                  {t("worklistDepartments.shared.syncPendingTitle")}
                 </h2>
                 <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>
-                  Ordres créés sur cet appareil, non encore synchronisés avec le serveur.
+                  {t("worklistDepartments.shared.syncPendingDescription")}
                 </p>
                 {filteredPendingLocal.length > 0 ? (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -538,14 +533,16 @@ export default function LabWorklistPage() {
                                   <MedoraCardBadge preset="neutral">
                                     {t("common.labTest")} · {row.itemLabels.filter(Boolean).join(", ") || t("common.dash")}
                                   </MedoraCardBadge>
-                                  <MedoraCardBadge preset="syncPending">En attente de synchronisation</MedoraCardBadge>
+                                  <MedoraCardBadge preset="syncPending">
+                                    {t("worklistDepartments.shared.syncPendingStatus")}
+                                  </MedoraCardBadge>
                                 </MedoraCardBadgeRow>
                               </PendingEncounterPatientBlock>
                             </div>
                             <MedoraCardActions railBorderTopColor="#fde68a">
                               <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
                               <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={btnVoir}>
-                                Consultation
+                                {t("worklistDepartments.shared.visitLink")}
                               </Link>
                             </MedoraCardActions>
                           </MedoraCardInner>
@@ -555,7 +552,9 @@ export default function LabWorklistPage() {
                   })}
                 </ul>
                 ) : searchQuery.trim() ? (
-                  <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>Aucun résultat dans la file locale pour cette recherche.</p>
+                  <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
+                    {t("worklistDepartments.shared.emptyLocalSearch")}
+                  </p>
                 ) : null}
               </div>
             ) : null}

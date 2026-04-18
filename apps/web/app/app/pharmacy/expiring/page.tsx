@@ -38,18 +38,19 @@ export default function PharmacyExpiringPage() {
   if (!canViewPharmacy) {
     return (
       <div>
-        <h1>Stock à péremption</h1>
-        <p>Vous n&apos;avez pas accès.</p>
+        <h1>{t("pharmacyExpiringPage.title")}</h1>
+        <p>{t("pharmacyExpiringPage.accessDenied")}</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Stock à péremption</h1>
+      <h1 style={{ marginTop: 0 }}>{t("pharmacyExpiringPage.title")}</h1>
       <p style={{ color: "#555", fontSize: 14 }}>
-        Articles dont la date de péremption est dans la période choisie.{" "}
-        <Link href="/app/pharmacy/inventory">Stock</Link>
+        {t("pharmacyExpiringPage.introBefore")}
+        <Link href="/app/pharmacy/inventory">{t("pharmacyHomePage.linkInventory")}</Link>
+        {t("pharmacyExpiringPage.introAfter")}
       </p>
       <div
         style={{
@@ -63,7 +64,7 @@ export default function PharmacyExpiringPage() {
         }}
       >
         <label style={{ fontSize: 14 }}>
-          Péremption sous{" "}
+          {t("pharmacyExpiringPage.expirationWithin")}{" "}
           <input
             type="number"
             min={1}
@@ -80,7 +81,7 @@ export default function PharmacyExpiringPage() {
               border: "1px solid #ccc",
             }}
           />{" "}
-          jours
+          {t("pharmacyExpiringPage.days")}
         </label>
         <button
           type="button"
@@ -94,7 +95,7 @@ export default function PharmacyExpiringPage() {
             cursor: "pointer",
           }}
         >
-          Actualiser
+          {t("common.refresh")}
         </button>
       </div>
       {error && <p style={{ color: "#b00020" }}>{error}</p>}

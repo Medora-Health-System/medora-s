@@ -19,7 +19,12 @@ import { Field, inputStyle } from "@/components/pharmacy/Modal";
 import { MedicationAutocomplete } from "@/components/pharmacy/MedicationAutocomplete";
 import { PharmacyFavorites } from "@/components/pharmacy/PharmacyFavorites";
 import { MedicationPrintButton } from "@/components/pharmacy/MedicationPrintButton";
-import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
+import {
+  formatEncounterChromeDate,
+  formatEncounterChromeDateTime,
+  tEncounterStatus,
+  tEncounterType,
+} from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
@@ -48,7 +53,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 function PharmacyDispensePageContent() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const searchParams = useSearchParams();
   const { facilityId, ready, canManagePharmacy } = useFacilityAndRoles();
   const [patientQuery, setPatientQuery] = useState("");
@@ -184,14 +189,14 @@ function PharmacyDispensePageContent() {
     if (Number.isNaN(qty) || qty < 1) {
       setStatus({
         type: "err",
-        text: "Entrez une quantité valide (supérieure à 0).",
+        text: t("pharmacyDispense.errQty"),
       });
       return;
     }
     if (!patientId || !encounterId || !inventoryItemId) {
       setStatus({
         type: "err",
-        text: "Sélectionnez un patient, une consultation et un médicament en stock.",
+        text: t("pharmacyDispense.errSelection"),
       });
       return;
     }
@@ -199,7 +204,7 @@ function PharmacyDispensePageContent() {
     if (item && qty > item.quantityOnHand) {
       setStatus({
         type: "err",
-        text: "Stock insuffisant. Quantité en stock : " + item.quantityOnHand,
+        text: `${t("pharmacyDispense.errInsufficient")} ${item.quantityOnHand}`,
       });
       return;
     }
@@ -216,8 +221,8 @@ function PharmacyDispensePageContent() {
       setStatus({
         type: "ok",
         text: (res as any)?.queued
-          ? "Dispensation enregistrée localement. En attente de synchronisation."
-          : "Médicament délivré avec succès.",
+          ? t("pharmacyDispense.okOfflineQueue")
+          : t("pharmacyDispense.okOnline"),
       });
       setNotes("");
       setDosageInstructions("");
@@ -226,8 +231,7 @@ function PharmacyDispensePageContent() {
       setStatus({
         type: "err",
         text:
-          (e instanceof Error ? e.message : "") ||
-          "Dispensation impossible. Vérifiez la consultation, le patient et le stock.",
+          (e instanceof Error ? e.message : "") || t("pharmacyDispense.errGeneric"),
       });
     } finally {
       setSubmitting(false);
@@ -238,18 +242,18 @@ function PharmacyDispensePageContent() {
   if (!canManagePharmacy) {
     return (
       <div>
-        <h1>Dispensation</h1>
-        <p>Seuls les rôles Pharmacie et Administration peuvent dispenser.</p>
-        <Link href="/app/pharmacy/inventory">Voir le stock</Link>
+        <h1>{t("pharmacyDispense.accessDeniedTitle")}</h1>
+        <p>{t("pharmacyDispense.accessDeniedBody")}</p>
+        <Link href="/app/pharmacy/inventory">{t("pharmacyDispense.backToInventory")}</Link>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 640 }}>
-      <h1 style={{ marginTop: 0 }}>Dispensation</h1>
+      <h1 style={{ marginTop: 0 }}>{t("pharmacyDispense.accessDeniedTitle")}</h1>
       <p style={{ color: "#555", fontSize: 14 }}>
-        <Link href="/app/pharmacy/inventory">← Inventaire</Link>
+        <Link href="/app/pharmacy/inventory">{t("pharmacyDispense.backLink")}</Link>
       </p>
 
       <div
@@ -282,11 +286,11 @@ function PharmacyDispensePageContent() {
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
-            <option value="">Choisir un patient</option>
+            <option value="">{t("pharmacyDispense.choosePatient")}</option>
             {patients.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.lastName}, {p.firstName}
-                {p.mrn ? ` — NIR ${p.mrn}` : ""}
+                {p.mrn ? ` — ${t("common.nir")} ${p.mrn}` : ""}
               </option>
             ))}
           </select>
@@ -302,16 +306,13 @@ function PharmacyDispensePageContent() {
           border: "1px solid #eee",
         }}
       >
-        <h3 style={{ marginTop: 0 }}>2. Consultation</h3>
+        <h3 style={{ marginTop: 0 }}>{t("pharmacyDispense.step2Title")}</h3>
         {!patientId ? (
-          <p style={{ color: "#888" }}>Sélectionnez d&apos;abord un patient.</p>
+          <p style={{ color: "#888" }}>{t("pharmacyDispense.selectPatientFirst")}</p>
         ) : loadingEnc ? (
           <p>{t("pharmacyDispense.loadingEncounters")}</p>
         ) : encounters.length === 0 ? (
-          <p style={{ color: "#b00020" }}>
-            Aucune consultation pour ce patient. Créez une consultation avant de
-            dispenser.
-          </p>
+          <p style={{ color: "#b00020" }}>{t("pharmacyDispense.noEncounters")}</p>
         ) : (
           <select
             style={{ ...inputStyle, marginBottom: 0 }}
@@ -321,7 +322,7 @@ function PharmacyDispensePageContent() {
             {encounters.map((enc) => (
               <option key={enc.id} value={enc.id}>
                 {tEncounterType(t, enc.type)} — {tEncounterStatus(t, enc.status)} —{" "}
-                {new Date(enc.createdAt).toLocaleString()}
+                {formatEncounterChromeDateTime(enc.createdAt, language)}
               </option>
             ))}
           </select>
@@ -338,36 +339,43 @@ function PharmacyDispensePageContent() {
             border: "1px solid #eee",
           }}
         >
-          <h3 style={{ marginTop: 0, fontSize: 16 }}>Résumé pharmacie</h3>
+          <h3 style={{ marginTop: 0, fontSize: 16 }}>{t("pharmacyDispense.summaryTitle")}</h3>
           <div style={{ fontSize: 14 }}>
             <p style={{ margin: "0 0 8px 0" }}>
-              <strong>Patient</strong> — {pharmacySummary.patient.lastName} {pharmacySummary.patient.firstName}
-              {pharmacySummary.patient.mrn ? ` · NIR ${pharmacySummary.patient.mrn}` : ""}
-              {pharmacySummary.patient.dob ? ` · Né(e) ${pharmacySummary.patient.dob}` : ""}
+              <strong>{t("pharmacyDispense.labelPatient")}</strong> — {pharmacySummary.patient.lastName}{" "}
+              {pharmacySummary.patient.firstName}
+              {pharmacySummary.patient.mrn ? ` · ${t("common.nir")} ${pharmacySummary.patient.mrn}` : ""}
+              {pharmacySummary.patient.dob
+                ? ` · ${t("pharmacyDispense.bornOn")} ${formatEncounterChromeDate(pharmacySummary.patient.dob, language)}`
+                : ""}
             </p>
             {dispenseContext && (
               <>
                 <p style={{ margin: "0 0 8px 0" }}>
-                  <strong>Consultation</strong> — {tEncounterType(t, dispenseContext.encounter.type)} ·{" "}
+                  <strong>{t("pharmacyDispense.labelEncounter")}</strong> — {tEncounterType(t, dispenseContext.encounter.type)} ·{" "}
                   {tEncounterStatus(t, dispenseContext.encounter.status)} ·{" "}
-                  {new Date(dispenseContext.encounter.createdAt).toLocaleString("fr-FR")}
+                  {formatEncounterChromeDateTime(dispenseContext.encounter.createdAt, language)}
                 </p>
                 {dispenseContext.medicationOrders.length > 0 && (
                   <p style={{ margin: "0 0 4px 0" }}>
-                    <strong>Détails de l&apos;ordonnance</strong> — {dispenseContext.medicationOrders.length} ordonnance(s) médicamenteuse(s)
+                    <strong>{t("pharmacyDispense.orderDetails")}</strong> — {dispenseContext.medicationOrders.length}{" "}
+                    {t("pharmacyDispense.activeMedicationOrderCount")}
                   </p>
                 )}
                 {(dispenseContext.medicationOrders.some((o) => o.prescriberName || o.prescriberLicense) || dispenseContext.medicationOrders.some((o) => o.prescriberContact)) && (
                   <p style={{ margin: "0 0 8px 0" }}>
-                    <strong>Prescripteur</strong> —{" "}
-                    {dispenseContext.medicationOrders.map((o) => o.prescriberName || o.prescriberLicense || o.prescriberContact).filter(Boolean)[0] ?? "—"}
+                    <strong>{t("pharmacyDispense.prescriber")}</strong> —{" "}
+                    {dispenseContext.medicationOrders
+                      .map((o) => o.prescriberName || o.prescriberLicense || o.prescriberContact)
+                      .filter(Boolean)[0] ?? t("common.dash")}
                   </p>
                 )}
               </>
             )}
             {pharmacySummary.recentDispenses.length > 0 && (
               <p style={{ margin: 0 }}>
-                <strong>Historique de dispensation</strong> — {pharmacySummary.recentDispenses.length} délivrance(s) récente(s)
+                <strong>{t("pharmacyDispense.historyTitle")}</strong> — {pharmacySummary.recentDispenses.length}{" "}
+                {t("pharmacyDispense.recentDispenseCount")}
               </p>
             )}
           </div>
@@ -393,38 +401,35 @@ function PharmacyDispensePageContent() {
           border: "1px solid #eee",
         }}
       >
-        <h3 style={{ marginTop: 0 }}>3. Rechercher dans le stock</h3>
+        <h3 style={{ marginTop: 0 }}>{t("pharmacyDispense.step3Title")}</h3>
         {inventoryItems.length === 0 ? (
-          <p>
-            Aucun article en stock. Ajoutez ou réceptionnez du stock
-            d&apos;abord.
-          </p>
+          <p>{t("pharmacyDispense.noStock")}</p>
         ) : (
           <>
             <div style={{ marginBottom: 12 }}>
               <MedicationAutocomplete
                 facilityId={facilityId}
                 mode="dispense"
-                placeholder="Rechercher dans le stock"
+                placeholder={t("pharmacyDispense.searchStockPlaceholder")}
                 onSelect={onMedicationSelect}
                 favoritesFirst
               />
             </div>
             <div style={{ marginTop: 8 }}>
               <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
-                Article sélectionné
+                {t("pharmacyDispense.fieldSelectedItem")}
               </label>
               <select
                 style={{ ...inputStyle, marginBottom: 0 }}
                 value={inventoryItemId}
                 onChange={(e) => setInventoryItemId(e.target.value)}
               >
-                <option value="">— Choisir un article —</option>
+                <option value="">{t("pharmacyDispense.chooseItemOption")}</option>
                 {inventoryItems.map((i) => (
                   <option key={i.id} value={i.id}>
                     {(i.catalogMedication as { displayNameFr?: string })?.displayNameFr ??
                       i.catalogMedication?.name}{" "}
-                    — SKU {i.sku} — en stock {i.quantityOnHand}
+                    — SKU {i.sku} — {t("pharmacyDispense.onHand")} {i.quantityOnHand}
                   </option>
                 ))}
               </select>
@@ -438,7 +443,9 @@ function PharmacyDispensePageContent() {
                   fontWeight: 500,
                 }}
               >
-                Stock faible (seuil : {selectedInventoryItem.reorderLevel})
+                {t("pharmacyDispense.lowStockPrefix")}
+                {selectedInventoryItem.reorderLevel}
+                {t("pharmacyDispense.lowStockSuffix")}
               </p>
             )}
           </>
@@ -454,8 +461,8 @@ function PharmacyDispensePageContent() {
           border: "1px solid #eee",
         }}
       >
-        <h3 style={{ marginTop: 0 }}>4. Détails</h3>
-        <Field label="Quantité à délivrer">
+        <h3 style={{ marginTop: 0 }}>{t("pharmacyDispense.step4Title")}</h3>
+        <Field label={t("pharmacyDispense.fieldQty")}>
           <input
             type="number"
             min={1}
@@ -464,15 +471,15 @@ function PharmacyDispensePageContent() {
             onChange={(e) => setQuantityDispensed(e.target.value)}
           />
         </Field>
-        <Field label="Posologie">
+        <Field label={t("pharmacyDispense.fieldDosage")}>
           <textarea
             style={{ ...inputStyle, minHeight: 64 }}
             value={dosageInstructions}
             onChange={(e) => setDosageInstructions(e.target.value)}
-            placeholder="Ex. 1 comprimé par jour"
+            placeholder={t("pharmacyDispense.dosagePlaceholder")}
           />
         </Field>
-        <Field label="Notes (optionnel)">
+        <Field label={t("pharmacyDispense.fieldNotes")}>
           <textarea
             style={{ ...inputStyle, minHeight: 64 }}
             value={notes}
@@ -492,9 +499,9 @@ function PharmacyDispensePageContent() {
             onClick={submit}
             style={btnPrimary}
           >
-            {submitting ? "Envoi…" : "Délivrer"}
+            {submitting ? t("pharmacyDispense.submitSending") : t("pharmacyDispense.submit")}
           </button>
-          <MedicationPrintButton label="Imprimer" />
+          <MedicationPrintButton label={t("pharmacyDispense.print")} />
         </div>
       </div>
 

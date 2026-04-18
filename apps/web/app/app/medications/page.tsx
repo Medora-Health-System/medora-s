@@ -1,8 +1,13 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n";
+
 export default function MedicationsPage() {
+  const { t } = useI18n();
   return (
     <>
-      <h1>Médicaments</h1>
-      <p>La gestion des médicaments sera disponible ici.</p>
+      <h1>{t("medicationsPage.title")}</h1>
+      <p>{t("medicationsPage.subtitle")}</p>
     </>
   );
 }

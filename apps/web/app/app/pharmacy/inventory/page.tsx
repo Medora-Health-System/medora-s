@@ -135,7 +135,7 @@ function PharmacyInventoryPageContent() {
       setModal(null);
       load();
     } catch (e: unknown) {
-      setFormMsg(e instanceof Error ? e.message : "Création impossible");
+      setFormMsg(e instanceof Error ? e.message : t("pharmacyInventoryPage.createFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -178,14 +178,15 @@ function PharmacyInventoryPageContent() {
   if (!canViewPharmacy) {
     return (
       <div>
-        <h1>Inventaire pharmacie</h1>
-        <p>Vous n&apos;avez pas accès à cette page.</p>
+        <h1>{t("pharmacyInventoryPage.title")}</h1>
+        <p>{t("pharmacyInventoryPage.accessDenied")}</p>
       </div>
     );
   }
 
   return (
     <div>
+      <h1 style={{ marginTop: 0 }}>{t("pharmacyInventoryPage.title")}</h1>
       {facilityId && (
         <PharmacyAlertsCard facilityId={facilityId} onRefreshInventory={load} />
       )}
@@ -225,7 +226,7 @@ function PharmacyInventoryPageContent() {
       ) : (
         <>
           <p style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-            {total} article{total !== 1 ? "s" : ""}
+            {total === 1 ? t("pharmacyInventoryPage.countOne") : `${total} ${t("pharmacyInventoryPage.countManyItems")}`}
           </p>
           <InventoryTable
             items={items}
@@ -246,11 +247,11 @@ function PharmacyInventoryPageContent() {
       )}
 
       {modal === "create" && (
-        <Modal title="Créer un article en stock" onClose={() => setModal(null)}>
+        <Modal title={t("pharmacyInventoryPage.createItemTitle")} onClose={() => setModal(null)}>
           {formMsg && (
             <p style={{ color: "#b00020", marginBottom: 12 }}>{formMsg}</p>
           )}
-          <Field label="Médicament (catalogue)">
+          <Field label={t("pharmacyInventoryPage.fieldCatalogMedication")}>
             <select
               style={inputStyle}
               value={createForm.catalogMedicationId}
@@ -262,7 +263,7 @@ function PharmacyInventoryPageContent() {
               }
             >
               {catalogs.length === 0 ? (
-                <option value="">— Aucun catalogue chargé —</option>
+                <option value="">{t("pharmacyInventoryPage.noCatalogOption")}</option>
               ) : (
                 catalogs.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -272,7 +273,7 @@ function PharmacyInventoryPageContent() {
               )}
             </select>
           </Field>
-          <Field label="Référence article">
+          <Field label={t("pharmacyInventoryPage.fieldSku")}>
             <input
               style={inputStyle}
               value={createForm.sku}
@@ -281,7 +282,7 @@ function PharmacyInventoryPageContent() {
               }
             />
           </Field>
-          <Field label="Numéro de lot (optionnel)">
+          <Field label={t("pharmacyInventoryPage.fieldLot")}>
             <input
               style={inputStyle}
               value={createForm.lotNumber}
@@ -290,7 +291,7 @@ function PharmacyInventoryPageContent() {
               }
             />
           </Field>
-          <Field label="Date d'expiration (optionnel)">
+          <Field label={t("pharmacyInventoryPage.fieldExpiration")}>
             <input
               type="date"
               style={inputStyle}
@@ -300,7 +301,7 @@ function PharmacyInventoryPageContent() {
               }
             />
           </Field>
-          <Field label="Quantité initiale">
+          <Field label={t("pharmacyInventoryPage.fieldInitialQty")}>
             <input
               type="number"
               min={0}
@@ -314,7 +315,7 @@ function PharmacyInventoryPageContent() {
               }
             />
           </Field>
-          <Field label="Seuil d'alerte">
+          <Field label={t("pharmacyInventoryPage.fieldReorder")}>
             <input
               type="number"
               min={0}
@@ -328,10 +329,10 @@ function PharmacyInventoryPageContent() {
               }
             />
           </Field>
-          <Field label="Unité (optionnel)">
+          <Field label={t("pharmacyInventoryPage.fieldUnit")}>
             <input
               style={inputStyle}
-              placeholder="Ex. comprimé, flacon"
+              placeholder={t("pharmacyInventoryPage.unitPlaceholder")}
               value={createForm.unit}
               onChange={(e) =>
                 setCreateForm((f) => ({ ...f, unit: e.target.value }))
@@ -345,7 +346,7 @@ function PharmacyInventoryPageContent() {
               onClick={submitCreate}
               style={btnPrimary}
             >
-              {submitting ? "Enregistrement…" : "Créer"}
+              {submitting ? t("pharmacyInventoryPage.submitCreating") : t("pharmacyInventoryPage.submitCreate")}
             </button>
           </div>
         </Modal>

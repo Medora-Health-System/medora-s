@@ -6,8 +6,7 @@ import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { PharmacyFavorites } from "@/components/pharmacy/PharmacyFavorites";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { tOrderPriority } from "@/lib/encounterChromeI18n";
+import { tOrderItemStatusForWorklist, tOrderPriority } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import {
@@ -107,7 +106,7 @@ export default function PharmacyPage() {
       });
       loadQueue();
     } catch {
-      alert("Impossible de mettre à jour le statut");
+      alert(t("worklistDepartments.pharmacy.updateStatusFailed"));
     }
   };
 
@@ -117,30 +116,28 @@ export default function PharmacyPage() {
         <PharmacyAlertsCard facilityId={effectiveFacilityId} />
       )}
 
-      <h1 style={{ marginTop: 0 }}>File pharmacie</h1>
-      <p style={{ marginBottom: 16, color: "#555", fontSize: 14 }}>
-        Raccourcis :
-      </p>
+      <h1 style={{ marginTop: 0 }}>{t("pharmacyHomePage.title")}</h1>
+      <p style={{ marginBottom: 16, color: "#555", fontSize: 14 }}>{t("pharmacyHomePage.shortcuts")}</p>
       {isOffline && (
         <p style={{ marginTop: -8, marginBottom: 14, fontSize: 12, color: "#8a4b08" }}>
-          Hors ligne : liste pharmacie affichée depuis le cache.
+          {t("pharmacyHomePage.offlineListNote")}
         </p>
       )}
       <div style={{ marginBottom: 24 }}>
         <Link href="/app/pharmacy/inventory" style={linkStyle}>
-          Inventaire
+          {t("pharmacyHomePage.linkInventory")}
         </Link>
         <Link href="/app/pharmacy/dispense" style={linkStyle}>
-          Dispensation
+          {t("pharmacyHomePage.linkDispense")}
         </Link>
         <Link href="/app/pharmacy/low-stock" style={linkStyle}>
-          Stock faible
+          {t("pharmacyHomePage.linkLowStock")}
         </Link>
         <Link href="/app/pharmacy/expiring" style={linkStyle}>
-          Expire bientôt
+          {t("pharmacyHomePage.linkExpiring")}
         </Link>
         <Link href="/app/pharmacy-worklist" style={linkStyle}>
-          Liste pharmacie (détails)
+          {t("pharmacyHomePage.linkWorklist")}
         </Link>
       </div>
 
@@ -154,7 +151,7 @@ export default function PharmacyPage() {
         </div>
       )}
 
-      <p>Ordres de médicaments à vérifier et dispenser.</p>
+      <p>{t("pharmacyHomePage.intro")}</p>
       {loading && (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
         <p>{t("common.loading")}</p>
       ) : (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
@@ -167,7 +164,7 @@ export default function PharmacyPage() {
             border: "1px solid #eee",
           }}
         >
-          <p>Aucun ordre de médicament en file.</p>
+          <p>{t("pharmacyHomePage.empty")}</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
@@ -209,12 +206,12 @@ export default function PharmacyPage() {
                             {order.encounter?.patient?.lastName}
                           </td>
                           <td style={{ padding: 12 }}>
-                            {order.encounter?.patient?.mrn ?? "—"}
+                            {order.encounter?.patient?.mrn ?? t("common.dash")}
                           </td>
                           <td style={{ padding: 12 }}>{item.catalogItemId}</td>
                           <td style={{ padding: 12 }}>{tOrderPriority(t, String((order as { priority?: string }).priority ?? "ROUTINE"))}</td>
                           <td style={{ padding: 12 }}>
-                            {getOrderItemStatusLabel(item.status)}
+                            {tOrderItemStatusForWorklist(t, String(item.status))}
                           </td>
                           <td style={{ padding: 12 }}>
                             {item.status === "PENDING" && (
@@ -228,7 +225,7 @@ export default function PharmacyPage() {
                                   cursor: "pointer",
                                 }}
                               >
-                                Vérifier
+                                {t("pharmacyHomePage.verify")}
                               </button>
                             )}
                             {item.status === "IN_PROGRESS" && (
@@ -242,7 +239,7 @@ export default function PharmacyPage() {
                                   cursor: "pointer",
                                 }}
                               >
-                                Dispenser
+                                {t("pharmacyHomePage.dispense")}
                               </button>
                             )}
                             <Link
@@ -253,7 +250,7 @@ export default function PharmacyPage() {
                               }
                               style={{ fontSize: 13 }}
                             >
-                              Contexte de dispensation
+                              {t("pharmacyHomePage.dispenseContext")}
                             </Link>
                           </td>
                         </tr>
@@ -265,9 +262,9 @@ export default function PharmacyPage() {
           ) : null}
           {pendingLocal.length > 0 ? (
             <div style={{ marginTop: (queue as unknown[]).length > 0 ? 28 : 0 }}>
-              <h2 style={{ fontSize: 16, marginBottom: 8 }}>En attente de synchronisation</h2>
+              <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("worklistDepartments.shared.syncPendingTitle")}</h2>
               <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>
-                Ordres créés sur cet appareil, non encore synchronisés avec le serveur.
+                {t("worklistDepartments.shared.syncPendingDescription")}
               </p>
               <table
                 style={{
@@ -293,13 +290,13 @@ export default function PharmacyPage() {
                     <tr key={row.queueItemId} style={{ borderBottom: "1px solid #eee" }}>
                       <PendingEncounterPatientCells facilityId={row.facilityId} encounterId={row.encounterId} />
                       <td style={{ padding: 12 }}>
-                        {row.itemLabels.filter(Boolean).join(", ") || "—"}
+                        {row.itemLabels.filter(Boolean).join(", ") || t("common.dash")}
                       </td>
                       <td style={{ padding: 12 }}>{tOrderPriority(t, String(row.priority ?? "ROUTINE"))}</td>
-                      <td style={{ padding: 12 }}>En attente de synchronisation</td>
+                      <td style={{ padding: 12 }}>{t("worklistDepartments.shared.syncPendingStatus")}</td>
                       <td style={{ padding: 12 }}>
                         <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>
-                          Consultation
+                          {t("worklistDepartments.shared.visitLink")}
                         </Link>
                       </td>
                     </tr>

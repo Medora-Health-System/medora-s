@@ -4,11 +4,11 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { tEncounterType } from "@/lib/encounterChromeI18n";
+import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 
 export default function BillingPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -46,18 +46,18 @@ export default function BillingPage() {
     if (!effectiveFacilityId) return;
     try {
       // Placeholder - would call billing finalize endpoint
-      alert("Facturation enregistrée (fonctionnalité à finaliser).");
+      alert(t("billingPage.alertSavedPlaceholder"));
       loadQueue();
     } catch (error) {
-      alert("Impossible de finaliser la facturation");
+      alert(t("billingPage.alertFinalizeError"));
     }
   };
 
   if (!ready) {
     return (
       <div>
-        <h1>File facturation</h1>
-        <p>Consultations clôturées en attente de facturation et codification.</p>
+        <h1>{t("billingPage.title")}</h1>
+        <p>{t("billingPage.subtitle")}</p>
         <p>{t("common.loading")}</p>
       </div>
     );
@@ -65,13 +65,13 @@ export default function BillingPage() {
 
   return (
     <div>
-      <h1>File facturation</h1>
-      <p>Consultations clôturées en attente de facturation et codification.</p>
+      <h1>{t("billingPage.title")}</h1>
+      <p>{t("billingPage.subtitle")}</p>
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : queue.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>Aucune consultation dans la file facturation.</p>
+          <p>{t("billingPage.empty")}</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
@@ -80,9 +80,9 @@ export default function BillingPage() {
               <tr style={{ borderBottom: "2px solid #ddd" }}>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("common.patient")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("common.nir")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Type de consultation</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Sortie</th>
-                <th style={{ padding: 12, textAlign: "left" }}>Ordres</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colEncounterType")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colDischarge")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colOrders")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -96,8 +96,10 @@ export default function BillingPage() {
                   <td style={{ padding: 12 }}>{tEncounterType(t, encounter.type)}</td>
                   <td style={{ padding: 12 }}>
                     {encounter.dischargedAt
-                      ? new Date(encounter.dischargedAt).toLocaleDateString()
-                      : "—"}
+                      ? new Date(encounter.dischargedAt).toLocaleDateString(
+                          encounterBcp47(language)
+                        )
+                      : t("common.dash")}
                   </td>
                   <td style={{ padding: 12 }}>{encounter.orders?.length || 0}</td>
                   <td style={{ padding: 12 }}>
@@ -105,9 +107,9 @@ export default function BillingPage() {
                       onClick={() => handleFinalize(encounter.id)}
                       style={{ marginRight: 8, padding: "4px 8px" }}
                     >
-                      Finaliser
+                      {t("billingPage.finalize")}
                     </button>
-                    <Link href={`/app/encounters/${encounter.id}`}>Voir</Link>
+                    <Link href={`/app/encounters/${encounter.id}`}>{t("billingPage.view")}</Link>
                   </td>
                 </tr>
               ))}

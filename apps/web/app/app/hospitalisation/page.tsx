@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { HospitalizationBoardView } from "@/features/hospitalization/HospitalizationBoardView";
+import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
 export default function HospitalisationBoardPage() {
   return (
@@ -17,7 +18,7 @@ export default function HospitalisationBoardPage() {
             color: "#64748b",
           }}
         >
-          Chargement…
+          <CommonSuspenseFallback />
         </div>
       }
     >

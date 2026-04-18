@@ -4,8 +4,7 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { tOrderPriority } from "@/lib/encounterChromeI18n";
+import { tOrderItemStatusForWorklist, tOrderPriority } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 
 export default function RadiologyPage() {
@@ -89,7 +88,7 @@ export default function RadiologyPage() {
                     <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? t("common.dash")}</td>
                     <td style={{ padding: 12 }}>{item.catalogItemId}</td>
                     <td style={{ padding: 12 }}>{tOrderPriority(t, String(order.priority ?? "ROUTINE"))}</td>
-                    <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
+                    <td style={{ padding: 12 }}>{tOrderItemStatusForWorklist(t, String(item.status))}</td>
                     <td style={{ padding: 12 }}>
                       {item.status === "PENDING" && (
                         <button
