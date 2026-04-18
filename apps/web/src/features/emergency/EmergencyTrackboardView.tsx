@@ -29,11 +29,6 @@ import {
   type ErDispositionBadgeVariant,
 } from "@/features/emergency/erTrackboardDispositionBadge";
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
-import {
-  deriveEmtalaReadonlySummary,
-  deriveEmtalaStateFromEncounter,
-  type EmtalaReadonlySummary,
-} from "@/features/emergency/erEmtalaV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
@@ -146,17 +141,6 @@ function acuityLabelKey(tier: AcuityTier): "emergencyTrackboard.acuityCritical" 
   if (tier === "critical") return "emergencyTrackboard.acuityCritical";
   if (tier === "monitoring") return "emergencyTrackboard.acuityMonitoring";
   return "emergencyTrackboard.acuityStable";
-}
-
-function emtalaTrackboardLine(summary: EmtalaReadonlySummary, t: (k: string) => string): string | null {
-  if (summary.kind === "none") return null;
-  if (summary.kind === "status") {
-    return `${t("emergencyTrackboard.emtalaPrefix")} ${t(`erEmtalaPanel.status_${summary.status}`)}`.trim();
-  }
-  if (summary.kind === "transferPending") return t("emergencyTrackboard.emtalaTransferPending");
-  if (summary.kind === "lwbs") return t("emergencyTrackboard.emtalaLwbs");
-  if (summary.kind === "amaDocumented") return t("emergencyTrackboard.emtalaAma");
-  return null;
 }
 
 export function EmergencyTrackboardView() {
@@ -413,17 +397,6 @@ export function EmergencyTrackboardView() {
               const sortieInfirmierOk =
                 dispositionBadge?.variant === "discharge" &&
                 readDischargeSortieExecutionFromEncounter(encounter.nursingAssessment) != null;
-              const emtalaView = deriveEmtalaStateFromEncounter({
-                createdAt: encounter.createdAt,
-                nursingAssessment: encounter.nursingAssessment,
-                dischargeSummaryJson: encounter.dischargeSummaryJson,
-                admissionSummaryJson: encounter.admissionSummaryJson,
-                physicianAssigned: encounter.physicianAssigned,
-                triage: null,
-              });
-              const emtalaLine = emtalaView
-                ? emtalaTrackboardLine(deriveEmtalaReadonlySummary(emtalaView), t)
-                : null;
 
               return (
                 <li key={encounter.id}>
@@ -521,13 +494,6 @@ export function EmergencyTrackboardView() {
                                 <span title={t("emergencyTrackboard.sortieExecTooltip")}>
                                   <MedoraCardBadge soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
                                     {t("emergencyTrackboard.executedBadge")}
-                                  </MedoraCardBadge>
-                                </span>
-                              ) : null}
-                              {emtalaLine ? (
-                                <span title={t("emergencyTrackboard.emtalaBadgeTooltip")}>
-                                  <MedoraCardBadge soft={{ bg: "#e0f2fe", text: "#0c4a6e", border: "#7dd3fc" }}>
-                                    {emtalaLine}
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}

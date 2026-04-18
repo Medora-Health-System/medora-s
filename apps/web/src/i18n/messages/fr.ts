@@ -1709,7 +1709,7 @@ export default {
     emtalaAma: "EMTALA : LAMA — entretien sur les risques documenté",
     emtalaBadgeTooltip: "Conformité EMTALA (dérivé du dossier + champs EMTALA enregistrés le cas échéant).",
     disposition: {
-      discharged: "SORTIE",
+      discharged: "Sortie à domicile",
       dischargePending: "Sortie en attente",
       admit: "Admission",
       observe: "Observation",

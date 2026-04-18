@@ -1759,7 +1759,7 @@ export default {
     emtalaAma: "EMTALA: AMA — risk discussion documented",
     emtalaBadgeTooltip: "EMTALA compliance (derived from chart; stored EMTALA fields as applicable).",
     disposition: {
-      discharged: "Discharged",
+      discharged: "Discharge",
       dischargePending: "Discharge pending",
       admit: "Admission",
       observe: "Observation",
