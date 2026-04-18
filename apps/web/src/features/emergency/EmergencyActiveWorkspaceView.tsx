@@ -48,6 +48,7 @@ import { MedicationAdministrationTab } from "@/components/encounters/MedicationA
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
+import { EmergencyEmtalaPanel } from "@/features/emergency/EmergencyEmtalaPanel";
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
@@ -178,7 +179,8 @@ export type ErWorkspaceSection =
   | "notes"
   | "nursing"
   | "providerMse"
-  | "disposition";
+  | "disposition"
+  | "emtala";
 
 type ErDashboardTile = {
   kind: "section";
@@ -503,6 +505,7 @@ export function EmergencyActiveWorkspaceView() {
       nursing: t("emergencyWorkspace.sectionTitle.nursing"),
       providerMse: t("emergencyWorkspace.sectionTitle.providerMse"),
       disposition: t("emergencyWorkspace.sectionTitle.disposition"),
+      emtala: t("emergencyWorkspace.sectionTitle.emtala"),
     }),
     [t]
   );
@@ -579,6 +582,14 @@ export function EmergencyActiveWorkspaceView() {
         accent: "#94a3b8",
         initials: "D",
         ariaLabel: t("emergencyWorkspace.tileAria.disposition"),
+        disabled: false,
+      },
+      {
+        kind: "section",
+        id: "emtala",
+        accent: "#0e7490",
+        initials: "E",
+        ariaLabel: t("emergencyWorkspace.tileAria.emtala"),
         disabled: false,
       },
       {
@@ -1290,6 +1301,16 @@ export function EmergencyActiveWorkspaceView() {
                 />
               </div>
             </>
+          ) : null}
+
+          {activeSection === "emtala" ? (
+            <EmergencyEmtalaPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              encounter={encounter}
+              isLocked={isLocked}
+              onSaved={onEmbeddedEncounterUpdate}
+            />
           ) : null}
         </section>
 

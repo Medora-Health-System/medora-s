@@ -25,6 +25,7 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
+import { readErEmtalaV1FromNursing } from "./erEmtalaV1";
 
 export type VisitSummaryTextBlock = {
   title: string;
@@ -49,6 +50,7 @@ export type EmergencyVisitSummaryModel = {
   evaluationMedicale: VisitSummaryTextBlock | null;
   resultats: VisitSummaryResultsBlock | null;
   disposition: VisitSummaryTextBlock | null;
+  emtala: VisitSummaryTextBlock | null;
   timeline: VisitSummaryTimelineEntry[];
 };
 
@@ -393,6 +395,65 @@ export function buildEmergencyVisitSummaryModel(
     timeline.push({ label: vs(locale, "timelineRoom"), value: encounter.roomLabel.trim() });
   }
 
+  const emtalaStored = readErEmtalaV1FromNursing(encounter.nursingAssessment);
+  let emtala: VisitSummaryTextBlock | null = null;
+  if (emtalaStored) {
+    const elines: string[] = [];
+    if (emtalaStored.emtalaStatus) {
+      const stKey = `emtalaStatus_${emtalaStored.emtalaStatus}` as
+        | "emtalaStatus_ARRIVED"
+        | "emtalaStatus_TRIAGED"
+        | "emtalaStatus_MSE_IN_PROGRESS"
+        | "emtalaStatus_MSE_COMPLETE"
+        | "emtalaStatus_DISPOSITIONED"
+        | "emtalaStatus_DEPARTED";
+      const label = vs(locale, stKey);
+      if (label) {
+        elines.push(interpolate(vs(locale, "emtalaLineStatus"), { label }));
+      }
+    }
+    if (emtalaStored.emtalaDispositionCategory) {
+      const dKey = `emtalaDisp_${emtalaStored.emtalaDispositionCategory}` as
+        | "emtalaDisp_HOME"
+        | "emtalaDisp_ADMISSION"
+        | "emtalaDisp_TRANSFER"
+        | "emtalaDisp_AMA"
+        | "emtalaDisp_LWBS"
+        | "emtalaDisp_DECEASED"
+        | "emtalaDisp_OTHER";
+      const dlabel = vs(locale, dKey);
+      if (dlabel) {
+        elines.push(interpolate(vs(locale, "emtalaLineDisposition"), { label: dlabel }));
+      }
+    }
+    if (emtalaStored.emtalaDispositionCategory === "TRANSFER" && emtalaStored.transferRequestedAt && !emtalaStored.transferAcceptedAt) {
+      elines.push(vs(locale, "emtalaLineTransferPending"));
+    }
+    if (emtalaStored.lwbsDocumentedAt) {
+      elines.push(
+        interpolate(vs(locale, "emtalaLineLwbsWithTime"), {
+          time: formatIsoForLocale(emtalaStored.lwbsDocumentedAt, locale),
+        })
+      );
+    }
+    if (emtalaStored.amaRiskDiscussionDocumented === true) {
+      elines.push(vs(locale, "emtalaLineAmaYes"));
+    }
+    if (emtalaStored.msePerformed === true) {
+      elines.push(vs(locale, "emtalaLineMsePerformedYes"));
+    }
+    if (elines.length) {
+      emtala = { title: vs(locale, "emtalaBlockTitle"), lines: elines };
+    }
+  }
+  const sigE = readSignatureFromNursingBlob("erEmtalaV1", nav, locale);
+  if (sigE) {
+    timeline.push({
+      label: vs(locale, "timelineEmtalaSaved"),
+      value: interpolate(vs(locale, "signatureTimeJoin"), { name: sigE.label, time: sigE.at }),
+    });
+  }
+
   return {
     motifPresentation,
     triageResume,
@@ -400,6 +461,7 @@ export function buildEmergencyVisitSummaryModel(
     evaluationMedicale,
     resultats,
     disposition,
+    emtala,
     timeline,
   };
 }
