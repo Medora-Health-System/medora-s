@@ -181,6 +181,27 @@ function formToStored(form: ErProviderMseForm, signature: ErProviderMseSignature
   };
 }
 
+/**
+ * MSE "completed" timestamp for ambient compliance: MSE is signed and contains clinical text.
+ * No inference; returns null if the blob is empty, unsigned, or not clinically populated.
+ */
+export function mseDocumentedAtFromNursing(nursingAssessment: unknown): string | null {
+  if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) return null;
+  const raw = (nursingAssessment as Record<string, unknown>)[ER_PROVIDER_MSE_V1_KEY];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const sigO = (raw as Record<string, unknown>).signature;
+  if (!sigO || typeof sigO !== "object" || Array.isArray(sigO)) return null;
+  const at = (sigO as { savedAt?: unknown }).savedAt;
+  const by = (sigO as { savedByDisplayName?: unknown }).savedByDisplayName;
+  if (typeof at !== "string" || typeof by !== "string" || !at.trim() || !by.trim()) return null;
+  const form = erProviderMseFormFromEncounter(nursingAssessment);
+  const stored = formToStored(form, { savedAt: at.trim().slice(0, 40), savedByDisplayName: by.trim().slice(0, 200) });
+  if (!storedErProviderMseHasClinicalContent(stored)) return null;
+  const d = new Date(stored.signature?.savedAt ?? "");
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 function fieldHasContent(s: string): boolean {
   return Boolean(s.trim());
 }

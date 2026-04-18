@@ -38,6 +38,12 @@ import {
   type ErDispositionPreviewLabels,
   type ErDispositionSupplementForm,
 } from "./emergencyDispositionV1";
+import {
+  applyEmtalaV1ComplementToNursingAssessment,
+  emptyEmtalaDispositionComplementForm,
+  emtalaDispositionComplementFromNursing,
+  type EmtalaDispositionComplementForm,
+} from "./erEmtalaV1";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
 
@@ -173,6 +179,9 @@ export function EmergencyDispositionPanel({
   const [supplementForm, setSupplementForm] = useState<ErDispositionSupplementForm>(() =>
     emptyErDispositionSupplementForm()
   );
+  const [emtalaComplement, setEmtalaComplement] = useState<EmtalaDispositionComplementForm>(() =>
+    emptyEmtalaDispositionComplementForm()
+  );
   const [outcomeUi, setOutcomeUi] = useState<ErDispositionOutcomeUi>("HOME");
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
@@ -189,6 +198,7 @@ export function EmergencyDispositionPanel({
     setAdmissionForm(a);
     setSupplementForm(sup);
     setOutcomeUi(inferOutcomeUiFromForms(d.dischargeMode, sup));
+    setEmtalaComplement(emtalaDispositionComplementFromNursing(encounter.nursingAssessment));
   }, [
     encounter.dischargeSummaryJson,
     encounter.admissionSummaryJson,
@@ -278,6 +288,10 @@ export function EmergencyDispositionPanel({
     setSupplementForm((f) => ({ ...f, ...patch }));
   }, []);
 
+  const patchEmtalaComplement = useCallback((patch: Partial<EmtalaDispositionComplementForm>) => {
+    setEmtalaComplement((f) => ({ ...f, ...patch }));
+  }, []);
+
   const handleSave = async () => {
     if (formDisabled) return;
     setSaving(true);
@@ -317,11 +331,16 @@ export function EmergencyDispositionPanel({
       ) {
         body.admissionSummaryJson = admissionPayload;
       }
-      body.nursingAssessment = mergeErDispositionV1IntoNursingAssessment(
+      const naWithDisp = mergeErDispositionV1IntoNursingAssessment(
         encounter.nursingAssessment,
         supplementForm,
         signature
       );
+      body.nursingAssessment = applyEmtalaV1ComplementToNursingAssessment(naWithDisp, {
+        outcome: outcomeUi,
+        complement: emtalaComplement,
+        dispositionDecidedAtIso: signature.savedAt,
+      });
 
       const res = await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
@@ -693,6 +712,167 @@ export function EmergencyDispositionPanel({
                 </div>
               </div>
             )}
+
+            <div
+              style={{
+                marginTop: 8,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #bae6fd",
+                backgroundColor: "#f0f9ff",
+              }}
+            >
+              <p style={sectionHeading}>{t("emergencyDisposition.emtalaBlock")}</p>
+              <p style={{ margin: "4px 0 10px 0", fontSize: 12, color: "#0c4a6e", lineHeight: 1.45 }}>
+                {t("emergencyDisposition.emtalaBlockSubline")}
+              </p>
+              {showTransferExtra ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+                  <div>
+                    <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelTransferRequestedAt")}</label>
+                    <input
+                      type="datetime-local"
+                      value={emtalaComplement.transferRequestedAt}
+                      onChange={(e) => patchEmtalaComplement({ transferRequestedAt: e.target.value })}
+                      disabled={formDisabled}
+                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelTransferAcceptedAt")}</label>
+                    <input
+                      type="datetime-local"
+                      value={emtalaComplement.transferAcceptedAt}
+                      onChange={(e) => patchEmtalaComplement({ transferAcceptedAt: e.target.value })}
+                      disabled={formDisabled}
+                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelAcceptingFacility")}</label>
+                    <input
+                      type="text"
+                      value={emtalaComplement.acceptingFacilityName}
+                      onChange={(e) => patchEmtalaComplement({ acceptingFacilityName: e.target.value })}
+                      disabled={formDisabled}
+                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelAcceptingClinician")}</label>
+                    <input
+                      type="text"
+                      value={emtalaComplement.acceptingClinicianName}
+                      onChange={(e) => patchEmtalaComplement({ acceptingClinicianName: e.target.value })}
+                      disabled={formDisabled}
+                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelTransferMode")}</label>
+                    <input
+                      type="text"
+                      value={emtalaComplement.transferMode}
+                      onChange={(e) => patchEmtalaComplement({ transferMode: e.target.value })}
+                      disabled={formDisabled}
+                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelTransferReason")}</label>
+                    {ta(
+                      2,
+                      emtalaComplement.transferReason,
+                      (v) => patchEmtalaComplement({ transferReason: v }),
+                      formDisabled
+                    )}
+                  </div>
+                </div>
+              ) : null}
+              {showAmaExtra ? (
+                <div style={{ marginTop: showTransferExtra ? 8 : 6 }}>
+                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelAmaRiskDoc")}</label>
+                  <select
+                    value={emtalaComplement.amaRiskDiscussionDocumented}
+                    onChange={(e) =>
+                      patchEmtalaComplement({
+                        amaRiskDiscussionDocumented: e.target.value as EmtalaDispositionComplementForm["amaRiskDiscussionDocumented"],
+                      })
+                    }
+                    disabled={formDisabled}
+                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                  >
+                    <option value="">{t("emergencyDisposition.emtalaTriUnset")}</option>
+                    <option value="true">{t("emergencyDisposition.emtalaTriYes")}</option>
+                    <option value="false">{t("emergencyDisposition.emtalaTriNo")}</option>
+                  </select>
+                </div>
+              ) : null}
+              {showLwbsExtra ? (
+                <div style={{ marginTop: 8 }}>
+                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelLwbsDocumentedAt")}</label>
+                  <input
+                    type="datetime-local"
+                    value={emtalaComplement.lwbsDocumentedAt}
+                    onChange={(e) => patchEmtalaComplement({ lwbsDocumentedAt: e.target.value })}
+                    disabled={formDisabled}
+                    style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                  />
+                </div>
+              ) : null}
+              <p style={{ ...sectionHeading, marginTop: 10 }}>{t("emergencyDisposition.emtalaAttestSection")}</p>
+              <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelMsePerformed")}</label>
+                  <select
+                    value={emtalaComplement.msePerformed}
+                    onChange={(e) =>
+                      patchEmtalaComplement({ msePerformed: e.target.value as EmtalaDispositionComplementForm["msePerformed"] })
+                    }
+                    disabled={formDisabled}
+                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                  >
+                    <option value="">{t("emergencyDisposition.emtalaTriUnset")}</option>
+                    <option value="true">{t("emergencyDisposition.emtalaTriYes")}</option>
+                    <option value="false">{t("emergencyDisposition.emtalaTriNo")}</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelEmcConsidered")}</label>
+                  <select
+                    value={emtalaComplement.emergencyConditionConsidered}
+                    onChange={(e) =>
+                      patchEmtalaComplement({
+                        emergencyConditionConsidered: e.target.value as EmtalaDispositionComplementForm["emergencyConditionConsidered"],
+                      })
+                    }
+                    disabled={formDisabled}
+                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                  >
+                    <option value="">{t("emergencyDisposition.emtalaTriUnset")}</option>
+                    <option value="true">{t("emergencyDisposition.emtalaTriYes")}</option>
+                    <option value="false">{t("emergencyDisposition.emtalaTriNo")}</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>{t("emergencyDisposition.emtalaLabelStabilizing")}</label>
+                  <select
+                    value={emtalaComplement.stabilizingTreatmentProvidedOrNotApplicable}
+                    onChange={(e) =>
+                      patchEmtalaComplement({
+                        stabilizingTreatmentProvidedOrNotApplicable: e.target.value as EmtalaDispositionComplementForm["stabilizingTreatmentProvidedOrNotApplicable"],
+                      })
+                    }
+                    disabled={formDisabled}
+                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                  >
+                    <option value="">{t("emergencyDisposition.emtalaTriUnset")}</option>
+                    <option value="true">{t("emergencyDisposition.emtalaTriYes")}</option>
+                    <option value="false">{t("emergencyDisposition.emtalaTriNo")}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               <button

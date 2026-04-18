@@ -25,7 +25,7 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
-import { readErEmtalaV1FromNursing } from "./erEmtalaV1";
+import { deriveEmtalaStateFromEncounter } from "./erEmtalaV1";
 
 export type VisitSummaryTextBlock = {
   title: string;
@@ -176,6 +176,7 @@ type EncounterLike = {
   type?: string | null;
   nursingAssessment?: unknown;
   dischargeSummaryJson?: unknown;
+  /** Used with discharge JSON for EMTALA disposition context (e.g. admission + supplement alignment). */
   admissionSummaryJson?: unknown;
   physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
 };
@@ -395,12 +396,24 @@ export function buildEmergencyVisitSummaryModel(
     timeline.push({ label: vs(locale, "timelineRoom"), value: encounter.roomLabel.trim() });
   }
 
-  const emtalaStored = readErEmtalaV1FromNursing(encounter.nursingAssessment);
+  const emtalaResolved = deriveEmtalaStateFromEncounter({
+    createdAt: encounter.createdAt,
+    nursingAssessment: encounter.nursingAssessment,
+    dischargeSummaryJson: encounter.dischargeSummaryJson,
+    admissionSummaryJson: encounter.admissionSummaryJson,
+    physicianAssigned: encounter.physicianAssigned,
+    triage: triage
+      ? {
+          vitalsJson: triage.vitalsJson,
+          triageCompleteAt: typeof triage.triageCompleteAt === "string" ? triage.triageCompleteAt : null,
+        }
+      : null,
+  });
   let emtala: VisitSummaryTextBlock | null = null;
-  if (emtalaStored) {
+  if (emtalaResolved) {
     const elines: string[] = [];
-    if (emtalaStored.emtalaStatus) {
-      const stKey = `emtalaStatus_${emtalaStored.emtalaStatus}` as
+    if (emtalaResolved.emtalaStatus && emtalaResolved.emtalaStatus !== "ARRIVED") {
+      const stKey = `emtalaStatus_${emtalaResolved.emtalaStatus}` as
         | "emtalaStatus_ARRIVED"
         | "emtalaStatus_TRIAGED"
         | "emtalaStatus_MSE_IN_PROGRESS"
@@ -412,8 +425,8 @@ export function buildEmergencyVisitSummaryModel(
         elines.push(interpolate(vs(locale, "emtalaLineStatus"), { label }));
       }
     }
-    if (emtalaStored.emtalaDispositionCategory) {
-      const dKey = `emtalaDisp_${emtalaStored.emtalaDispositionCategory}` as
+    if (emtalaResolved.emtalaDispositionCategory) {
+      const dKey = `emtalaDisp_${emtalaResolved.emtalaDispositionCategory}` as
         | "emtalaDisp_HOME"
         | "emtalaDisp_ADMISSION"
         | "emtalaDisp_TRANSFER"
@@ -426,32 +439,25 @@ export function buildEmergencyVisitSummaryModel(
         elines.push(interpolate(vs(locale, "emtalaLineDisposition"), { label: dlabel }));
       }
     }
-    if (emtalaStored.emtalaDispositionCategory === "TRANSFER" && emtalaStored.transferRequestedAt && !emtalaStored.transferAcceptedAt) {
+    if (emtalaResolved.emtalaDispositionCategory === "TRANSFER" && emtalaResolved.transferRequestedAt && !emtalaResolved.transferAcceptedAt) {
       elines.push(vs(locale, "emtalaLineTransferPending"));
     }
-    if (emtalaStored.lwbsDocumentedAt) {
+    if (emtalaResolved.lwbsDocumentedAt) {
       elines.push(
         interpolate(vs(locale, "emtalaLineLwbsWithTime"), {
-          time: formatIsoForLocale(emtalaStored.lwbsDocumentedAt, locale),
+          time: formatIsoForLocale(emtalaResolved.lwbsDocumentedAt, locale),
         })
       );
     }
-    if (emtalaStored.amaRiskDiscussionDocumented === true) {
+    if (emtalaResolved.amaRiskDiscussionDocumented === true) {
       elines.push(vs(locale, "emtalaLineAmaYes"));
     }
-    if (emtalaStored.msePerformed === true) {
+    if (emtalaResolved.msePerformed === true) {
       elines.push(vs(locale, "emtalaLineMsePerformedYes"));
     }
     if (elines.length) {
       emtala = { title: vs(locale, "emtalaBlockTitle"), lines: elines };
     }
-  }
-  const sigE = readSignatureFromNursingBlob("erEmtalaV1", nav, locale);
-  if (sigE) {
-    timeline.push({
-      label: vs(locale, "timelineEmtalaSaved"),
-      value: interpolate(vs(locale, "signatureTimeJoin"), { name: sigE.label, time: sigE.at }),
-    });
   }
 
   return {

@@ -31,7 +31,7 @@ import {
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import {
   deriveEmtalaReadonlySummary,
-  readErEmtalaV1FromNursing,
+  deriveEmtalaStateFromEncounter,
   type EmtalaReadonlySummary,
 } from "@/features/emergency/erEmtalaV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
@@ -413,9 +413,16 @@ export function EmergencyTrackboardView() {
               const sortieInfirmierOk =
                 dispositionBadge?.variant === "discharge" &&
                 readDischargeSortieExecutionFromEncounter(encounter.nursingAssessment) != null;
-              const emtalaStored = readErEmtalaV1FromNursing(encounter.nursingAssessment);
-              const emtalaLine = emtalaStored
-                ? emtalaTrackboardLine(deriveEmtalaReadonlySummary(emtalaStored), t)
+              const emtalaView = deriveEmtalaStateFromEncounter({
+                createdAt: encounter.createdAt,
+                nursingAssessment: encounter.nursingAssessment,
+                dischargeSummaryJson: encounter.dischargeSummaryJson,
+                admissionSummaryJson: encounter.admissionSummaryJson,
+                physicianAssigned: encounter.physicianAssigned,
+                triage: null,
+              });
+              const emtalaLine = emtalaView
+                ? emtalaTrackboardLine(deriveEmtalaReadonlySummary(emtalaView), t)
                 : null;
 
               return (
