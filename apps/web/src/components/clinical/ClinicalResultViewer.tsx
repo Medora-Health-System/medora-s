@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
+import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import {
   attachmentsFromResultDataAll,
   normalizeExamTitleFr,
@@ -12,8 +12,27 @@ import {
   type LabParsedRow,
   type ResultAttachmentRow,
 } from "@/lib/clinicalResultNormalize";
+import { useI18n } from "@/lib/i18n";
 
 export type { ResultAttachmentRow };
+
+function fillTemplate(s: string, vars: Record<string, string | number>): string {
+  let out = s;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.split(`{${k}}`).join(String(v));
+  }
+  return out;
+}
+
+function chartOrderItemLabel(status: string, t: (k: string) => string): string {
+  const u = (status || "").toUpperCase();
+  if (u === "COMPLETED" || u === "RESULTED" || u === "VERIFIED") {
+    return t("printOutput.orderItemChart.terminalDone");
+  }
+  const key = `printOutput.orderItemChart.${u}`;
+  const r = t(key);
+  return r !== key ? r : status || t("common.dash");
+}
 
 function dataUrlForAttachment(a: ResultAttachmentRow): string | null {
   const b64 = a.dataBase64?.trim();
@@ -22,20 +41,23 @@ function dataUrlForAttachment(a: ResultAttachmentRow): string | null {
   return `data:${mime};base64,${b64}`;
 }
 
-function typeLabelFr(mime: string | null | undefined, fileName: string | null | undefined): string {
+function typeLabelForLocale(mime: string | null | undefined, fileName: string | null | undefined, t: (k: string) => string): string {
   const m = (mime || "").toLowerCase();
-  if (m.includes("pdf")) return "PDF";
-  if (m.startsWith("image/")) return "Image";
-  if (m.includes("jpeg") || /\.jpe?g$/i.test(fileName || "")) return "Image";
-  if (m.includes("png")) return "Image";
-  return "Fichier";
+  if (m.includes("pdf")) return t("clinicalResultViewer.typePdf");
+  if (m.startsWith("image/")) return t("clinicalResultViewer.typeImage");
+  if (m.includes("jpeg") || /\.jpe?g$/i.test(fileName || "")) return t("clinicalResultViewer.typeImage");
+  if (m.includes("png")) return t("clinicalResultViewer.typeImage");
+  return t("clinicalResultViewer.typeFile");
 }
 
 /** Texte clinique : paragraphes (double saut) + retours ligne simples, donnée brute inchangée. */
 export function ClinicalInterpretationBlock({ text }: { text: string | null | undefined }) {
+  const { t } = useI18n();
   const raw = (text ?? "").trim();
   if (!raw) {
-    return <span style={{ color: "#757575", fontStyle: "italic" }}>Aucun texte saisi.</span>;
+    return (
+      <span style={{ color: "#757575", fontStyle: "italic" }}>{t("clinicalResultViewer.emptyInterpretation")}</span>
+    );
   }
   const blocks = raw.split(/\n{2,}/).filter((p) => p.trim().length > 0);
   return (
@@ -50,25 +72,24 @@ export function ClinicalInterpretationBlock({ text }: { text: string | null | un
 }
 
 export function ResultAttachmentsList({ attachments }: { attachments: ResultAttachmentRow[] }) {
+  const { t } = useI18n();
   if (!attachments.length) return null;
 
   return (
     <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #e0e0e0" }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: "#37474f", marginBottom: 8 }}>
-        Pièces jointes ({attachments.length})
+        {fillTemplate(t("clinicalResultViewer.attachmentsTitle"), { count: attachments.length })}
       </div>
       <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
         {attachments.map((a, idx) => {
           const url = dataUrlForAttachment(a);
-          const name = a.fileName?.trim() || `Fichier ${idx + 1}`;
-          const typ = typeLabelFr(a.mimeType, a.fileName);
+          const name = a.fileName?.trim() || fillTemplate(t("clinicalResultViewer.fileNumber"), { n: idx + 1 });
+          const typ = typeLabelForLocale(a.mimeType, a.fileName, t);
           if (!url) {
             return (
               <li key={idx} style={{ fontSize: 13, marginBottom: 8, padding: 8, background: "#fff3e0", borderRadius: 4 }}>
                 <strong>{name}</strong> — {typ}
-                <div style={{ fontSize: 12, color: "#e65100", marginTop: 4 }}>
-                  Fichier joint indisponible pour ouverture
-                </div>
+                <div style={{ fontSize: 12, color: "#e65100", marginTop: 4 }}>{t("clinicalResultViewer.attachmentUnavailable")}</div>
               </li>
             );
           }
@@ -92,10 +113,10 @@ export function ResultAttachmentsList({ attachments }: { attachments: ResultAtta
               <span style={{ color: "#757575", fontSize: 12 }}>{typ}</span>
               <span style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
                 <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "#1565c0", fontWeight: 600 }}>
-                  Ouvrir le document
+                  {t("clinicalResultViewer.openDocument")}
                 </a>
                 <a href={url} download={name} style={{ color: "#1565c0", fontWeight: 600 }}>
-                  Télécharger le fichier
+                  {t("clinicalResultViewer.downloadFile")}
                 </a>
               </span>
             </li>
@@ -128,22 +149,23 @@ function StatusChips({
   criticalValue?: boolean | null;
   itemStatus?: string | null;
 }) {
+  const { t } = useI18n();
   const chips: { label: string; bg: string; color: string }[] = [];
   if (criticalValue) {
-    chips.push({ label: "Critique", bg: "#ffebee", color: "#b71c1c" });
+    chips.push({ label: t("clinicalResultViewer.chipCritical"), bg: "#ffebee", color: "#b71c1c" });
   } else if (itemStatus && isOrderItemDoneForChart(itemStatus)) {
-    chips.push({ label: "Terminée", bg: "#e8f5e9", color: "#2e7d32" });
+    chips.push({ label: t("clinicalResultViewer.chipCompleted"), bg: "#e8f5e9", color: "#2e7d32" });
   } else if (itemStatus === "PENDING" || itemStatus === "PLACED") {
-    chips.push({ label: "En attente", bg: "#fff8e1", color: "#f57f17" });
+    chips.push({ label: t("clinicalResultViewer.chipPending"), bg: "#fff8e1", color: "#f57f17" });
   }
   if (!chips.length && itemStatus) {
-    chips.push({ label: getOrderItemChartLabel(itemStatus), bg: "#eceff1", color: "#37474f" });
+    chips.push({ label: chartOrderItemLabel(itemStatus, t), bg: "#eceff1", color: "#37474f" });
   }
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-      {chips.map((c) => (
+      {chips.map((c, i) => (
         <span
-          key={c.label}
+          key={`${c.label}-${i}`}
           style={{
             fontSize: 11,
             fontWeight: 700,
@@ -169,9 +191,9 @@ function labRowBackground(flag: LabParsedRow["flag"]): string {
   return "transparent";
 }
 
-function labFlagBadge(flag: LabParsedRow["flag"]): string | null {
+function labFlagBadge(flag: LabParsedRow["flag"], t: (k: string) => string): string | null {
   if (!flag) return null;
-  if (flag === "C") return "Critique";
+  if (flag === "C") return t("clinicalResultViewer.labFlagCritical");
   if (flag === "H" || flag === "HH") return "H";
   if (flag === "L" || flag === "LL") return "L";
   return null;
@@ -199,9 +221,13 @@ function StructuredResultBody({
   verifiedAt?: string | null;
   criticalValue?: boolean | null;
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const raw = (resultText ?? "").trim();
   if (!raw) {
-    return <span style={{ color: "#757575", fontStyle: "italic" }}>Aucun texte saisi.</span>;
+    return (
+      <span style={{ color: "#757575", fontStyle: "italic" }}>{t("clinicalResultViewer.emptyInterpretation")}</span>
+    );
   }
 
   if (catalogItemType === "LAB_TEST") {
@@ -228,18 +254,16 @@ function StructuredResultBody({
       >
         <div style={{ display: "grid", gap: 6 }}>
           <div>
-            <span style={{ fontWeight: 700, color: "#546e7a" }}>Titre du test</span>
+            <span style={{ fontWeight: 700, color: "#546e7a" }}>{t("clinicalResultViewer.labDocTestName")}</span>
             <span style={{ marginLeft: 8 }}>{examTitle}</span>
           </div>
           {verifiedAt ? (
             <div>
-              <span style={{ fontWeight: 700, color: "#546e7a" }}>Date / heure</span>
-              <span style={{ marginLeft: 8 }}>{new Date(verifiedAt).toLocaleString("fr-FR")}</span>
+              <span style={{ fontWeight: 700, color: "#546e7a" }}>{t("clinicalResultViewer.labDocDateTime")}</span>
+              <span style={{ marginLeft: 8 }}>{new Date(verifiedAt).toLocaleString(dateLocale)}</span>
             </div>
           ) : null}
-          {criticalValue ? (
-            <div style={{ fontWeight: 700, color: "#b71c1c" }}>Valeur critique signalée — à traiter en priorité</div>
-          ) : null}
+          {criticalValue ? <div style={{ fontWeight: 700, color: "#b71c1c" }}>{t("clinicalResultViewer.labCriticalBanner")}</div> : null}
         </div>
       </div>
     );
@@ -250,18 +274,26 @@ function StructuredResultBody({
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "#eceff1" }}>
-                <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>Paramètre</th>
-                <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>Résultat</th>
+                <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
+                  {t("clinicalResultViewer.labTableParam")}
+                </th>
+                <th style={{ textAlign: "left", padding: "10px 12px", color: "#37474f", fontWeight: 700 }}>
+                  {t("clinicalResultViewer.labTableResult")}
+                </th>
                 {anyFlag ? (
-                  <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 72 }}>Ind.</th>
+                  <th style={{ textAlign: "center", padding: "10px 8px", color: "#546e7a", fontWeight: 600, width: 72 }}>
+                    {t("clinicalResultViewer.labTableFlag")}
+                  </th>
                 ) : null}
-                <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>Valeurs de référence</th>
+                <th style={{ textAlign: "left", padding: "10px 12px", color: "#546e7a", fontWeight: 600 }}>
+                  {t("clinicalResultViewer.labTableRefRange")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r, i) => {
                 const bg = labRowBackground(r.flag);
-                const badge = labFlagBadge(r.flag);
+                const badge = labFlagBadge(r.flag, t);
                 return (
                   <tr key={i} style={{ borderTop: "1px solid #eceff1", background: bg }}>
                     <td style={{ padding: "9px 12px", fontWeight: 600, color: "#263238", verticalAlign: "top" }}>{r.label}</td>
@@ -281,11 +313,13 @@ function StructuredResultBody({
                             {badge}
                           </span>
                         ) : (
-                          "—"
+                          t("common.dash")
                         )}
                       </td>
                     ) : null}
-                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>{r.ref?.trim() ? r.ref : "—"}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#607d8b", verticalAlign: "top" }}>
+                      {r.ref?.trim() ? r.ref : t("common.dash")}
+                    </td>
                   </tr>
                 );
               })}
@@ -297,7 +331,7 @@ function StructuredResultBody({
     const fallbackBlock =
       rows.length === 0 && fallbackParas.length > 0 ? (
         <div style={{ fontSize: 13, lineHeight: 1.6, color: "#263238" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#1565c0", marginBottom: 8 }}>Résultats (texte structuré)</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#1565c0", marginBottom: 8 }}>{t("clinicalResultViewer.resultsStructured")}</div>
           {fallbackParas.map((para, i) => (
             <p key={i} style={{ margin: "0 0 10px 0", whiteSpace: "pre-wrap" }}>
               {para}
@@ -310,7 +344,7 @@ function StructuredResultBody({
 
     const conclusionBlock = conclusion ? (
       <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#6a1b9a", marginBottom: 6 }}>Conclusion / interprétation</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#6a1b9a", marginBottom: 6 }}>{t("clinicalResultViewer.conclusionHeading")}</div>
         <div style={{ whiteSpace: "pre-wrap", padding: 12, background: "#f3e5f5", borderRadius: 8, fontSize: 13, lineHeight: 1.55 }}>
           {conclusion}
         </div>
@@ -350,13 +384,13 @@ function StructuredResultBody({
       >
         <div style={{ display: "grid", gap: 6 }}>
           <div>
-            <span style={{ fontWeight: 700, color: "#006064" }}>Examen</span>
+            <span style={{ fontWeight: 700, color: "#006064" }}>{t("clinicalResultViewer.imagingExam")}</span>
             <span style={{ marginLeft: 8 }}>{examTitle}</span>
           </div>
           {verifiedAt ? (
             <div>
-              <span style={{ fontWeight: 700, color: "#006064" }}>Date / heure</span>
-              <span style={{ marginLeft: 8 }}>{new Date(verifiedAt).toLocaleString("fr-FR")}</span>
+              <span style={{ fontWeight: 700, color: "#006064" }}>{t("clinicalResultViewer.labDocDateTime")}</span>
+              <span style={{ marginLeft: 8 }}>{new Date(verifiedAt).toLocaleString(dateLocale)}</span>
             </div>
           ) : null}
         </div>
@@ -402,7 +436,7 @@ function StructuredResultBody({
           {sections.map((s, i) => sectionBlock(s.heading, s.body, i))}
           {rem ? (
             <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#37474f", marginBottom: 8 }}>Complément</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#37474f", marginBottom: 8 }}>{t("clinicalResultViewer.complement")}</div>
               {splitRadiologyNarrativeParagraphs(rem).map((p, i) => (
                 <p key={i} style={{ margin: "0 0 10px 0", whiteSpace: "pre-wrap", padding: "0 4px" }}>
                   {p}
@@ -445,11 +479,16 @@ export function ClinicalResultViewer({
   compact,
   catalogItemType,
 }: ClinicalResultViewerProps) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const pad = compact ? 12 : 16;
   const displayTitle = normalizeExamTitleFr(title);
-  const statusLabel = itemStatus ? getOrderItemChartLabel(itemStatus) : null;
+  const statusLabel = itemStatus ? chartOrderItemLabel(itemStatus, t) : null;
   const borderAccent =
     catalogItemType === "IMAGING_STUDY" ? "#00838f" : catalogItemType === "LAB_TEST" ? "#1565c0" : "#1565c0";
+
+  const whenTs = (iso: string) => fillTemplate(t("clinicalResultViewer.onDateTime"), { datetime: new Date(iso).toLocaleString(dateLocale) });
+
   return (
     <div
       style={{
@@ -468,21 +507,21 @@ export function ClinicalResultViewer({
       <StatusChips criticalValue={criticalValue} itemStatus={itemStatus ?? null} />
       {statusLabel ? (
         <div style={{ fontSize: 12, color: "#455a64", marginTop: 8 }}>
-          <strong>Statut (ligne d&apos;ordre) :</strong> {statusLabel}
+          <strong>{t("clinicalResultViewer.orderStatusLinePrefix")}</strong> {statusLabel}
         </div>
       ) : null}
       {enteredByDisplayFr?.trim() ? (
         <div style={{ fontSize: 12, color: "#37474f", marginTop: 6 }}>
-          <strong>Validé par</strong> {enteredByDisplayFr.trim()}
-          {verifiedAt ? <> le {new Date(verifiedAt).toLocaleString("fr-FR")}</> : null}
+          <strong>{t("clinicalResultViewer.validatedBy")}</strong> {enteredByDisplayFr.trim()}
+          {verifiedAt ? <> {whenTs(verifiedAt)}</> : null}
         </div>
       ) : verifiedAt ? (
         <div style={{ fontSize: 12, color: "#616161", marginTop: 6 }}>
-          Saisi / vérifié le {new Date(verifiedAt).toLocaleString("fr-FR")}
+          {fillTemplate(t("clinicalResultViewer.enteredVerifiedOn"), { datetime: new Date(verifiedAt).toLocaleString(dateLocale) })}
         </div>
       ) : null}
       {criticalValue && catalogItemType !== "LAB_TEST" ? (
-        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#c62828" }}>Valeur critique signalée</div>
+        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#c62828" }}>{t("clinicalResultViewer.imagingCriticalBanner")}</div>
       ) : null}
       <div style={{ marginTop: 12 }}>
         <div
@@ -495,7 +534,11 @@ export function ClinicalResultViewer({
             marginBottom: 8,
           }}
         >
-          {catalogItemType === "IMAGING_STUDY" ? "Compte rendu" : catalogItemType === "LAB_TEST" ? "Résultats" : "Interprétation"}
+          {catalogItemType === "IMAGING_STUDY"
+            ? t("clinicalResultViewer.mainSectionReport")
+            : catalogItemType === "LAB_TEST"
+              ? t("clinicalResultViewer.mainSectionResults")
+              : t("clinicalResultViewer.mainSectionInterpretation")}
         </div>
         <div style={{ padding: compact ? 10 : 14, background: "#f7fafc", borderRadius: 10, border: "1px solid #e8eef3" }}>
           <StructuredResultBody
