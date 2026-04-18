@@ -397,6 +397,12 @@ export function EmergencyTrackboardView() {
               const sortieInfirmierOk =
                 dispositionBadge?.variant === "discharge" &&
                 readDischargeSortieExecutionFromEncounter(encounter.nursingAssessment) != null;
+              const primaryStatusSoft = dispositionBadge
+                ? dispositionBadgeSoft(dispositionBadge.variant)
+                : statusSoft(statusKey);
+              const primaryStatusLabel = dispositionBadge
+                ? erDispositionBadgeDisplayLabel(dispositionBadge, t)
+                : tEncounterStatus(t, statusKey);
 
               return (
                 <li key={encounter.id}>
@@ -477,19 +483,14 @@ export function EmergencyTrackboardView() {
                                 justifyContent: "flex-end",
                               }}
                             >
-                              <MedoraCardBadge soft={statusSoft(statusKey)}>
-                                {tEncounterStatus(t, statusKey)}
-                              </MedoraCardBadge>
+                              <span
+                                title={dispositionBadge ? t("emergencyTrackboard.dispositionTooltip") : undefined}
+                              >
+                                <MedoraCardBadge soft={primaryStatusSoft}>{primaryStatusLabel}</MedoraCardBadge>
+                              </span>
                               <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
                                 {tEncounterType(t, EMERGENCY_TYPE)}
                               </MedoraCardBadge>
-                              {dispositionBadge ? (
-                                <span title={t("emergencyTrackboard.dispositionTooltip")}>
-                                  <MedoraCardBadge soft={dispositionBadgeSoft(dispositionBadge.variant)}>
-                                    {erDispositionBadgeDisplayLabel(dispositionBadge, t)}
-                                  </MedoraCardBadge>
-                                </span>
-                              ) : null}
                               {sortieInfirmierOk ? (
                                 <span title={t("emergencyTrackboard.sortieExecTooltip")}>
                                   <MedoraCardBadge soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
