@@ -96,18 +96,3 @@ export function summarizeErOrdersWorkspace(orders: unknown[]): ErOrdersWorkspace
   const total = DOMAINS.reduce((s, d) => s + byDomain[d].count, 0);
   return { total, byDomain, global };
 }
-
-export function formatDomainLabelFr(domain: ErOrderDomain): string {
-  switch (domain) {
-    case "LAB":
-      return "Laboratoire";
-    case "IMAGING":
-      return "Imagerie";
-    case "MEDICATION":
-      return "Médication";
-    case "CARE":
-      return "Soins / procédures";
-    default:
-      return domain;
-  }
-}

@@ -8,6 +8,15 @@ import {
 } from "@/lib/catalogSearchAdapter";
 import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSearchOfflineAdapter";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
+import { useI18n } from "@/lib/i18n";
+
+function fillTemplate(s: string, vars: Record<string, string | number>): string {
+  let out = s;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.split(`{${k}}`).join(String(v));
+  }
+  return out;
+}
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -78,6 +87,7 @@ export function SharedCatalogAutocomplete({
   stockBadge,
 }: SharedCatalogAutocompleteProps) {
   void _value;
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const adapter = useMemo(
@@ -168,16 +178,20 @@ export function SharedCatalogAutocomplete({
       />
       {search.query.trim().length > 0 && search.query.trim().length < minChars && (
         <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-          Tapez au moins {minChars} caractères
+          {fillTemplate(t("sharedCatalogAutocomplete.minCharsHint"), { minChars })}
         </div>
       )}
       {showList && (
         <div style={listContainerStyle} role="listbox">
           {search.loading && (
-            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>Recherche…</div>
+            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>
+              {t("sharedCatalogAutocomplete.searching")}
+            </div>
           )}
           {!search.loading && search.noResults && (
-            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>Aucun résultat</div>
+            <div style={{ padding: 12, fontSize: 13, color: "#666" }}>
+              {t("sharedCatalogAutocomplete.noResults")}
+            </div>
           )}
           {!search.loading &&
             search.query.trim().length >= minChars &&

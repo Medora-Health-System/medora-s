@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 import type { CreateOrderLineItem } from "./types";
 
 const rowStyle: React.CSSProperties = {
@@ -25,12 +26,14 @@ export function SelectedImagingItems({
   items: CreateOrderLineItem[];
   onRemove: (index: number) => void;
 }) {
+  const { t } = useI18n();
+
   if (items.length === 0) return null;
 
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-        Examens sélectionnés
+        {t("createOrderModal.selectedImagingHeading")}
       </div>
       <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0 }}>
         {items.map((item, idx) => {
@@ -42,7 +45,7 @@ export function SelectedImagingItems({
                   {item._label}
                   {item.isManual && (
                     <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#1565c0" }}>
-                      (saisie manuelle)
+                      {t("createOrderModal.selectedManualBadge")}
                     </span>
                   )}
                 </div>
@@ -50,7 +53,9 @@ export function SelectedImagingItems({
                   <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{meta}</div>
                 )}
                 {item.notes?.trim() ? (
-                  <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>Indication : {item.notes}</div>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                    {t("createOrderModal.selectedIndication")} {item.notes}
+                  </div>
                 ) : null}
               </div>
               <button
@@ -66,7 +71,7 @@ export function SelectedImagingItems({
                   padding: "4px 0",
                 }}
               >
-                Retirer
+                {t("createOrderModal.selectedRowRemove")}
               </button>
             </li>
           );

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 import type { CreateOrderLineItem } from "./types";
 
 const rowStyle: React.CSSProperties = {
@@ -16,19 +17,22 @@ const rowStyle: React.CSSProperties = {
 export function SelectedLabItems({
   items,
   onRemove,
-  listHeading = "Analyses sélectionnées",
+  listHeading,
 }: {
   items: CreateOrderLineItem[];
   onRemove: (index: number) => void;
-  /** Surcharge du titre (ex. onglet soins). */
+  /** Override list title (e.g. care tab). */
   listHeading?: string;
 }) {
+  const { t } = useI18n();
+  const heading = listHeading ?? t("createOrderModal.selectedLabDefaultHeading");
+
   if (items.length === 0) return null;
 
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-        {listHeading}
+        {heading}
       </div>
       <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0 }}>
         {items.map((item, idx) => (
@@ -45,7 +49,7 @@ export function SelectedLabItems({
                     verticalAlign: "middle",
                   }}
                 >
-                  (saisie manuelle)
+                  {t("createOrderModal.selectedManualBadge")}
                 </span>
               )}
               {item.notes?.trim() ? (
@@ -67,7 +71,7 @@ export function SelectedLabItems({
                 padding: "4px 0",
               }}
             >
-              Retirer
+              {t("createOrderModal.selectedRowRemove")}
             </button>
           </li>
         ))}

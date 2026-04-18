@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 import type { CreateOrderLineItem, OrderModalTab } from "./types";
 import { newOrderLineId } from "./types";
 
@@ -34,7 +35,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 /**
- * Saisie manuelle lorsque l’article n’est pas dans le catalogue (Haïti / hors liste).
+ * Manual entry when the catalog item is missing (offline / Haiti catalog gaps).
  */
 export function ManualOrderEntry({
   tab,
@@ -43,6 +44,7 @@ export function ManualOrderEntry({
   tab: OrderModalTab;
   onAdd: (line: CreateOrderLineItem) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [labLabel, setLabLabel] = useState("");
   const [labNotes, setLabNotes] = useState("");
@@ -56,15 +58,15 @@ export function ManualOrderEntry({
   const [medIntent, setMedIntent] = useState<"ADMINISTER_CHART" | "PHARMACY_DISPENSE">("PHARMACY_DISPENSE");
 
   const addLab = () => {
-    const t = labLabel.trim();
-    if (!t) return;
+    const label = labLabel.trim();
+    if (!label) return;
     onAdd({
       _lineId: newOrderLineId(),
       isManual: true,
       catalogItemType: "LAB_TEST",
-      manualLabel: t,
+      manualLabel: label,
       notes: labNotes.trim() || undefined,
-      _label: t,
+      _label: label,
     });
     setLabLabel("");
     setLabNotes("");
@@ -72,18 +74,18 @@ export function ManualOrderEntry({
   };
 
   const addImg = () => {
-    const t = imgLabel.trim();
-    if (!t) return;
+    const label = imgLabel.trim();
+    if (!label) return;
     const reg = imgRegion.trim();
     const ind = imgNotes.trim();
     onAdd({
       _lineId: newOrderLineId(),
       isManual: true,
       catalogItemType: "IMAGING_STUDY",
-      manualLabel: t,
+      manualLabel: label,
       manualSecondaryText: reg || undefined,
       notes: ind || undefined,
-      _label: t,
+      _label: label,
       _modality: undefined,
       _bodyRegion: reg || undefined,
     });
@@ -94,20 +96,20 @@ export function ManualOrderEntry({
   };
 
   const addMed = () => {
-    const t = medName.trim();
-    if (!t) return;
+    const name = medName.trim();
+    if (!name) return;
     if (!medQty || medQty < 1) return;
     onAdd({
       _lineId: newOrderLineId(),
       isManual: true,
       catalogItemType: "MEDICATION",
-      manualLabel: t,
+      manualLabel: name,
       strength: medDosage.trim() || undefined,
       notes: medPoso.trim() || undefined,
       quantity: medQty,
       refillCount: 0,
       medicationFulfillmentIntent: medIntent,
-      _label: t,
+      _label: name,
     });
     setMedName("");
     setMedDosage("");
@@ -120,7 +122,7 @@ export function ManualOrderEntry({
   return (
     <div style={{ marginTop: 10 }}>
       <button type="button" onClick={() => setOpen((o) => !o)} style={btnOutline}>
-        {open ? "▼ Masquer la saisie manuelle" : "＋ Saisir manuellement"}
+        {open ? t("createOrderModal.manualToggleHide") : t("createOrderModal.manualToggleShow")}
       </button>
       {open && (
         <div
@@ -134,25 +136,23 @@ export function ManualOrderEntry({
         >
           {tab === "LAB" && (
             <>
-              <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64" }}>
-                Utilisez ce bloc si l’analyse n’apparaît pas dans la recherche.
-              </p>
+              <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64" }}>{t("createOrderModal.manualLabHelp")}</p>
               <label style={labelStyle}>
-                Libellé de l’analyse <span style={{ color: "#c62828" }}>*</span>
+                {t("createOrderModal.manualLabLabel")} <span style={{ color: "#c62828" }}>*</span>
               </label>
               <input
                 type="text"
                 value={labLabel}
                 onChange={(e) => setLabLabel(e.target.value)}
-                placeholder="ex. NFS, bilan hépatique…"
+                placeholder={t("createOrderModal.manualLabPlaceholder")}
                 style={{ ...inputStyle, marginBottom: 10 }}
               />
-              <label style={labelStyle}>Notes / indication</label>
+              <label style={labelStyle}>{t("createOrderModal.manualLabNotesLabel")}</label>
               <textarea
                 value={labNotes}
                 onChange={(e) => setLabNotes(e.target.value)}
                 rows={2}
-                placeholder="Contexte clinique, urgence…"
+                placeholder={t("createOrderModal.manualLabNotesPlaceholder")}
                 style={{ ...inputStyle, marginBottom: 10, resize: "vertical" }}
               />
               <button
@@ -169,39 +169,37 @@ export function ManualOrderEntry({
                   fontSize: 14,
                 }}
               >
-                Ajouter l’analyse
+                {t("createOrderModal.manualLabAdd")}
               </button>
             </>
           )}
           {tab === "IMAGING" && (
             <>
-              <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64" }}>
-                Utilisez ce bloc si l’examen d’imagerie n’est pas listé.
-              </p>
+              <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64" }}>{t("createOrderModal.manualImgHelp")}</p>
               <label style={labelStyle}>
-                Libellé de l’examen <span style={{ color: "#c62828" }}>*</span>
+                {t("createOrderModal.manualImgLabel")} <span style={{ color: "#c62828" }}>*</span>
               </label>
               <input
                 type="text"
                 value={imgLabel}
                 onChange={(e) => setImgLabel(e.target.value)}
-                placeholder="ex. Radio thorax 2 incidences…"
+                placeholder={t("createOrderModal.manualImgPlaceholder")}
                 style={{ ...inputStyle, marginBottom: 10 }}
               />
-              <label style={labelStyle}>Région / précision</label>
+              <label style={labelStyle}>{t("createOrderModal.manualImgRegionLabel")}</label>
               <input
                 type="text"
                 value={imgRegion}
                 onChange={(e) => setImgRegion(e.target.value)}
-                placeholder="ex. Cheville droite, obstétrique…"
+                placeholder={t("createOrderModal.manualImgRegionPlaceholder")}
                 style={{ ...inputStyle, marginBottom: 10 }}
               />
-              <label style={labelStyle}>Notes / indication</label>
+              <label style={labelStyle}>{t("createOrderModal.manualImgNotesLabel")}</label>
               <textarea
                 value={imgNotes}
                 onChange={(e) => setImgNotes(e.target.value)}
                 rows={2}
-                placeholder="Indication clinique…"
+                placeholder={t("createOrderModal.manualImgNotesPlaceholder")}
                 style={{ ...inputStyle, marginBottom: 10, resize: "vertical" }}
               />
               <button
@@ -218,38 +216,36 @@ export function ManualOrderEntry({
                   fontSize: 14,
                 }}
               >
-                Ajouter l’examen
+                {t("createOrderModal.manualImgAdd")}
               </button>
             </>
           )}
           {tab === "MEDICATION" && (
             <>
-              <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64" }}>
-                Médicament absent du catalogue (nom générique ou spécialité locale).
-              </p>
+              <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64" }}>{t("createOrderModal.manualMedHelp")}</p>
               <label style={labelStyle}>
-                Médicament <span style={{ color: "#c62828" }}>*</span>
+                {t("createOrderModal.manualMedLabel")} <span style={{ color: "#c62828" }}>*</span>
               </label>
               <input
                 type="text"
                 value={medName}
                 onChange={(e) => setMedName(e.target.value)}
-                placeholder="Nom du médicament"
+                placeholder={t("createOrderModal.manualMedPlaceholder")}
                 style={{ ...inputStyle, marginBottom: 10 }}
               />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
                 <div>
-                  <label style={labelStyle}>Dosage</label>
+                  <label style={labelStyle}>{t("createOrderModal.manualDosageLabel")}</label>
                   <input
                     type="text"
                     value={medDosage}
                     onChange={(e) => setMedDosage(e.target.value)}
-                    placeholder="ex. 500 mg"
+                    placeholder={t("createOrderModal.selectedMedStrengthPlaceholder")}
                     style={inputStyle}
                   />
                 </div>
                 <div>
-                  <label style={labelStyle}>Quantité</label>
+                  <label style={labelStyle}>{t("createOrderModal.manualQtyLabel")}</label>
                   <input
                     type="number"
                     min={1}
@@ -259,16 +255,16 @@ export function ManualOrderEntry({
                   />
                 </div>
               </div>
-              <label style={labelStyle}>Posologie</label>
+              <label style={labelStyle}>{t("createOrderModal.manualSigLabel")}</label>
               <input
                 type="text"
                 value={medPoso}
                 onChange={(e) => setMedPoso(e.target.value)}
-                placeholder="ex. 1 cp × 3/j pendant 7 jours"
+                placeholder={t("createOrderModal.manualSigPlaceholder")}
                 style={{ ...inputStyle, marginBottom: 10 }}
               />
               <div style={{ marginBottom: 12, fontSize: 13 }}>
-                <span style={{ fontWeight: 600, marginRight: 12 }}>Destination :</span>
+                <span style={{ fontWeight: 600, marginRight: 12 }}>{t("createOrderModal.manualDestinationLabel")}</span>
                 <label style={{ marginRight: 12, cursor: "pointer" }}>
                   <input
                     type="radio"
@@ -276,7 +272,7 @@ export function ManualOrderEntry({
                     checked={medIntent === "ADMINISTER_CHART"}
                     onChange={() => setMedIntent("ADMINISTER_CHART")}
                   />{" "}
-                  À administrer au patient
+                  {t("createOrderModal.manualIntentAdminister")}
                 </label>
                 <label style={{ cursor: "pointer" }}>
                   <input
@@ -285,7 +281,7 @@ export function ManualOrderEntry({
                     checked={medIntent === "PHARMACY_DISPENSE"}
                     onChange={() => setMedIntent("PHARMACY_DISPENSE")}
                   />{" "}
-                  À envoyer à la pharmacie
+                  {t("createOrderModal.manualIntentPharmacy")}
                 </label>
               </div>
               <button
@@ -302,7 +298,7 @@ export function ManualOrderEntry({
                   fontSize: 14,
                 }}
               >
-                Ajouter le médicament
+                {t("createOrderModal.manualMedAdd")}
               </button>
             </>
           )}

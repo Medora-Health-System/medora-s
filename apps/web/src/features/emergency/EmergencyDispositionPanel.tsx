@@ -236,6 +236,11 @@ export function EmergencyDispositionPanel({
       }
     : { minWidth: 0 };
 
+  const dischargeModeDisplayLabel = useMemo(() => {
+    const opt = OUTCOME_OPTIONS.find((o) => o.id === outcomeUi);
+    return opt?.label ?? dischargeForm.dischargeMode.trim();
+  }, [OUTCOME_OPTIONS, outcomeUi, dischargeForm.dischargeMode]);
+
   const previewModel = useMemo(
     () =>
       buildErDispositionPreviewModel(
@@ -243,9 +248,17 @@ export function EmergencyDispositionPanel({
         admissionForm,
         supplementForm,
         outcomeUi,
-        dispositionPreviewLabels
+        dispositionPreviewLabels,
+        dischargeModeDisplayLabel
       ),
-    [dischargeForm, admissionForm, supplementForm, outcomeUi, dispositionPreviewLabels]
+    [
+      dischargeForm,
+      admissionForm,
+      supplementForm,
+      outcomeUi,
+      dispositionPreviewLabels,
+      dischargeModeDisplayLabel,
+    ]
   );
 
   const storedSig = useMemo(

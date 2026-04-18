@@ -156,6 +156,29 @@ export function inferOutcomeUiFromForms(
   return "HOME";
 }
 
+/** Display label for persisted discharge mode strings (stored as canonical FR values in JSON). */
+export function localizedErDischargeModeLabel(
+  dischargeMode: string,
+  supplement: ErDispositionSupplementForm,
+  locale: SupportedLanguage
+): string {
+  const trimmed = dischargeMode.trim();
+  if (!trimmed) return "";
+  const outcome = inferOutcomeUiFromForms(trimmed, supplement);
+  const outcomeKey: Record<ErDispositionOutcomeUi, string> = {
+    HOME: "outcomeHOME",
+    ADMISSION: "outcomeADMISSION",
+    TRANSFER: "outcomeTRANSFER",
+    AMA: "outcomeAMA",
+    LWBS: "outcomeLWBS",
+    DECEASED: "outcomeDECEASED",
+    OTHER: "outcomeOTHER",
+  };
+  const path = `emergencyDisposition.${outcomeKey[outcome]}`;
+  const msg = i18nMessage(locale, path);
+  return msg !== path ? msg : trimmed;
+}
+
 export function erDispositionSupplementFromEncounter(nursingAssessment: unknown): ErDispositionSupplementForm {
   const e = emptyErDispositionSupplementForm();
   if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) return e;
@@ -291,13 +314,17 @@ export function buildErDispositionPreviewModel(
   admission: AdmissionFormState,
   supplement: ErDispositionSupplementForm,
   outcome: ErDispositionOutcomeUi,
-  labels: ErDispositionPreviewLabels
+  labels: ErDispositionPreviewLabels,
+  /** Optional user-facing discharge mode label (locale-aware); defaults to stored `discharge.dischargeMode`. */
+  dischargeModeDisplay?: string
 ): ErDispositionPreviewModel {
   const sections: ErDispositionPreviewSection[] = [];
 
+  const modeShown = (dischargeModeDisplay ?? discharge.dischargeMode).trim();
+
   const modeLine: string[] = [];
-  if (discharge.dischargeMode.trim()) {
-    modeLine.push(`${labels.dischargeModeLinePrefix} ${discharge.dischargeMode.trim()}`);
+  if (modeShown) {
+    modeLine.push(`${labels.dischargeModeLinePrefix} ${modeShown}`);
   }
   if (modeLine.length) sections.push({ id: "mode", title: labels.sectionDecisionShared, lines: modeLine });
 
@@ -331,8 +358,7 @@ export function buildErDispositionPreviewModel(
   if (sup.length) sections.push({ id: "erExtra", title: labels.sectionErExtra, lines: sup });
 
   const headlineParts: string[] = [];
-  const om = discharge.dischargeMode.trim();
-  if (om) headlineParts.push(om);
+  if (modeShown) headlineParts.push(modeShown);
   const cc = discharge.disposition.trim();
   if (cc) headlineParts.push(cc.length > 80 ? `${cc.slice(0, 80)}…` : cc);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -29,12 +30,14 @@ export function SelectedMedicationItems({
   onPatch: (index: number, patch: Partial<CreateOrderLineItem>) => void;
   onRemove: (index: number) => void;
 }) {
+  const { t } = useI18n();
+
   if (items.length === 0) return null;
 
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-        Lignes de prescription
+        {t("createOrderModal.selectedRxHeading")}
       </div>
       <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
         {items.map((item, idx) => (
@@ -48,11 +51,13 @@ export function SelectedMedicationItems({
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
               {item._label}
               {item.isManual && (
-                <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#1565c0" }}>(saisie manuelle)</span>
+                <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#1565c0" }}>
+                  {t("createOrderModal.selectedManualBadge")}
+                </span>
               )}
             </div>
             <div style={{ marginBottom: 10, fontSize: 13 }}>
-              <span style={{ marginRight: 12, fontWeight: 500 }}>Destination :</span>
+              <span style={{ marginRight: 12, fontWeight: 500 }}>{t("createOrderModal.selectedMedDestination")}</span>
               <label style={{ marginRight: 12, cursor: "pointer" }}>
                 <input
                   type="radio"
@@ -60,7 +65,7 @@ export function SelectedMedicationItems({
                   checked={(item.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE") === "ADMINISTER_CHART"}
                   onChange={() => onPatch(idx, { medicationFulfillmentIntent: "ADMINISTER_CHART" })}
                 />{" "}
-                À administrer au patient
+                {t("createOrderModal.selectedMedIntentAdminister")}
               </label>
               <label style={{ cursor: "pointer" }}>
                 <input
@@ -69,7 +74,7 @@ export function SelectedMedicationItems({
                   checked={(item.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE") === "PHARMACY_DISPENSE"}
                   onChange={() => onPatch(idx, { medicationFulfillmentIntent: "PHARMACY_DISPENSE" })}
                 />{" "}
-                À envoyer à la pharmacie
+                {t("createOrderModal.selectedMedIntentPharmacy")}
               </label>
             </div>
             <div
@@ -81,10 +86,10 @@ export function SelectedMedicationItems({
               }}
             >
               <div>
-                <span style={labelSm}>Dosage</span>
+                <span style={labelSm}>{t("createOrderModal.selectedMedDosage")}</span>
                 <input
                   type="text"
-                  placeholder="ex. 500 mg"
+                  placeholder={t("createOrderModal.selectedMedStrengthPlaceholder")}
                   value={item.strength ?? ""}
                   onChange={(e) => onPatch(idx, { strength: e.target.value })}
                   style={inputSm}
@@ -93,7 +98,7 @@ export function SelectedMedicationItems({
               {!item.isManual && (
                 <>
                   <div>
-                    <span style={labelSm}>Forme</span>
+                    <span style={labelSm}>{t("createOrderModal.selectedMedDosageForm")}</span>
                     <input
                       type="text"
                       readOnly
@@ -103,7 +108,7 @@ export function SelectedMedicationItems({
                     />
                   </div>
                   <div>
-                    <span style={labelSm}>Voie</span>
+                    <span style={labelSm}>{t("createOrderModal.selectedMedRoute")}</span>
                     <input
                       type="text"
                       readOnly
@@ -115,17 +120,17 @@ export function SelectedMedicationItems({
                 </>
               )}
               <div>
-                <span style={labelSm}>Posologie</span>
+                <span style={labelSm}>{t("createOrderModal.selectedMedSig")}</span>
                 <input
                   type="text"
-                  placeholder="ex. 1 cp × 2/j"
+                  placeholder={t("createOrderModal.selectedMedSigPlaceholder")}
                   value={item.notes ?? ""}
                   onChange={(e) => onPatch(idx, { notes: e.target.value })}
                   style={inputSm}
                 />
               </div>
               <div>
-                <span style={labelSm}>Quantité</span>
+                <span style={labelSm}>{t("createOrderModal.selectedMedQty")}</span>
                 <input
                   type="number"
                   min={1}
@@ -138,7 +143,7 @@ export function SelectedMedicationItems({
                 />
               </div>
               <div>
-                <span style={labelSm}>Renouvellements</span>
+                <span style={labelSm}>{t("createOrderModal.selectedMedRefills")}</span>
                 <input
                   type="number"
                   min={0}
@@ -154,7 +159,7 @@ export function SelectedMedicationItems({
                 />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <span style={labelSm}>Administration prévue (optionnel)</span>
+                <span style={labelSm}>{t("createOrderModal.selectedMedPlannedAdmin")}</span>
                 <input
                   type="datetime-local"
                   value={item.intendedAdministrationAt ?? ""}
@@ -179,7 +184,7 @@ export function SelectedMedicationItems({
                 padding: 0,
               }}
             >
-              Retirer
+              {t("createOrderModal.selectedRowRemove")}
             </button>
           </li>
         ))}

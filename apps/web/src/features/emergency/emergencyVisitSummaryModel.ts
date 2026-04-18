@@ -14,6 +14,7 @@ import {
   dispositionPreviewLabelsFromLocale,
   erDispositionSupplementFromEncounter,
   inferOutcomeUiFromForms,
+  localizedErDischargeModeLabel,
 } from "./emergencyDispositionV1";
 import {
   buildErNursingReassessmentPreviewModel,
@@ -336,12 +337,14 @@ export function buildEmergencyVisitSummaryModel(
   );
   const supplement = erDispositionSupplementFromEncounter(nav);
   const outcome = inferOutcomeUiFromForms(discharge.dischargeMode, supplement);
+  const dischargeModeLabel = localizedErDischargeModeLabel(discharge.dischargeMode, supplement, locale);
   const dispositionPreview = buildErDispositionPreviewModel(
     discharge,
     admission,
     supplement,
     outcome,
-    dispositionPreviewLabelsFromLocale(locale)
+    dispositionPreviewLabelsFromLocale(locale),
+    dischargeModeLabel
   );
   const dispSecs = nonEmptyPreviewSections(dispositionPreview.sections.filter((s) => s.id !== "empty"));
   let disposition =
@@ -354,7 +357,11 @@ export function buildEmergencyVisitSummaryModel(
     const a = parseAdmissionSummaryForChart(encounter.admissionSummaryJson);
     const fallback: string[] = [];
     if (d?.dischargeMode) {
-      fallback.push(interpolate(vs(locale, "fallbackDischargeMode"), { text: d.dischargeMode }));
+      fallback.push(
+        interpolate(vs(locale, "fallbackDischargeMode"), {
+          text: localizedErDischargeModeLabel(d.dischargeMode, supplement, locale),
+        })
+      );
     }
     if (d?.disposition) {
       fallback.push(interpolate(vs(locale, "fallbackDisposition"), { text: trunc(d.disposition) }));
