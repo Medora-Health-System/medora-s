@@ -25,7 +25,7 @@ export function EncounterOperationalPanel({
   roomLabel?: string | null;
   physicianAssigned?: { id: string; firstName: string; lastName: string } | null;
   onUpdated: () => void | Promise<void>;
-  /** Fusion immédiate des champs renvoyés par l’API (évite affichage vide le temps du GET). */
+  /** Merge returned API fields immediately (avoids empty display before GET completes). */
   onSaved?: (patch: Record<string, unknown>) => void;
 }) {
   const { t } = useI18n();
@@ -59,7 +59,7 @@ export function EncounterOperationalPanel({
     };
   }, [facilityId, canEdit]);
 
-  /** Inclut le médecin courant si absent du roster (évite l’affichage d’UUID brut dans le `<select>`). */
+  /** Include current provider if missing from roster (avoids raw UUID in `<select>`). */
   const providersForSelect = useMemo(() => {
     const list = [...providers];
     const effectiveId = (physicianId || physicianAssigned?.id || "").trim();

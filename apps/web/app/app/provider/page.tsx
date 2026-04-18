@@ -195,8 +195,8 @@ export default function ProviderPage() {
       const r = e.roomLabel?.trim();
       if (r) s.add(r);
     }
-    return Array.from(s).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
+    return Array.from(s).sort((a, b) => a.localeCompare(b, dateLocale));
+  }, [encounters, dateLocale]);
 
   const physicianOptions = useMemo(() => {
     const s = new Set<string>();
@@ -204,8 +204,8 @@ export default function ProviderPage() {
       const pl = physicianLabel(e);
       if (pl) s.add(pl);
     }
-    return Array.from(s).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
+    return Array.from(s).sort((a, b) => a.localeCompare(b, dateLocale));
+  }, [encounters, dateLocale]);
 
   const filteredEncounters = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -222,8 +222,8 @@ export default function ProviderPage() {
         const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
           .trim()
           .toLowerCase();
-        const typeFr = (encounter.type ? tEncounterType(t, encounter.type) : "").toLowerCase();
-        const blob = `${name} ${nir} ${room.toLowerCase()} ${phys.toLowerCase()} ${typeFr}`;
+        const typeSearch = (encounter.type ? tEncounterType(t, encounter.type) : "").toLowerCase();
+        const blob = `${name} ${nir} ${room.toLowerCase()} ${phys.toLowerCase()} ${typeSearch}`;
         if (!blob.includes(q)) return false;
       }
       return true;
@@ -250,11 +250,10 @@ export default function ProviderPage() {
               color: "#0f172a",
             }}
           >
-            Médecin
+            {t("clinicalDashboard.providerTitle")}
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.55 }}>
-            Point d&apos;entrée vers le dossier partagé : évaluation médicale, diagnostics et ordonnances se font dans la
-            même consultation que pour les soins infirmiers.
+            {t("clinicalDashboard.providerSubtitle")}
           </p>
         </header>
 
@@ -269,25 +268,25 @@ export default function ProviderPage() {
           }}
         >
           <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-            <span style={{ ...filterLabel, marginBottom: 3 }}>Recherche</span>
+            <span style={{ ...filterLabel, marginBottom: 3 }}>{t("common.search")}</span>
             <input
               type="search"
-              aria-label="Recherche"
+              aria-label={t("common.search")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Patient, NIR, salle…"
+              placeholder={t("clinicalDashboard.searchPlaceholder")}
               style={{ ...inputBase, height: 40, fontSize: 14 }}
             />
           </div>
 
           <div style={{ flex: "0 0 auto", width: 120 }}>
-            <span style={filterLabel}>Statut</span>
+            <span style={filterLabel}>{t("common.status")}</span>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Tous</option>
+              <option value="">{t("clinicalDashboard.filterAll")}</option>
               {statusOptions.map((st) => (
                 <option key={st} value={st}>
                   {tEncounterStatus(t, st)}
@@ -297,13 +296,13 @@ export default function ProviderPage() {
           </div>
 
           <div style={{ flex: "0 0 auto", width: 132 }}>
-            <span style={filterLabel}>Type</span>
+            <span style={filterLabel}>{t("common.type")}</span>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Tous</option>
+              <option value="">{t("clinicalDashboard.filterAll")}</option>
               {typeOptions.map((typ) => (
                 <option key={typ} value={typ}>
                   {tEncounterType(t, typ)}
@@ -313,13 +312,13 @@ export default function ProviderPage() {
           </div>
 
           <div style={{ flex: "0 1 140px", minWidth: 120 }}>
-            <span style={filterLabel}>Salle</span>
+            <span style={filterLabel}>{t("common.room")}</span>
             <select
               value={filterRoom}
               onChange={(e) => setFilterRoom(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Toutes</option>
+              <option value="">{t("clinicalDashboard.filterAllRooms")}</option>
               {roomOptions.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -329,13 +328,13 @@ export default function ProviderPage() {
           </div>
 
           <div style={{ flex: "0 1 160px", minWidth: 140 }}>
-            <span style={filterLabel}>Médecin</span>
+            <span style={filterLabel}>{t("clinicalDashboard.filterProvider")}</span>
             <select
               value={filterPhysician}
               onChange={(e) => setFilterPhysician(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Tous</option>
+              <option value="">{t("clinicalDashboard.filterAll")}</option>
               {physicianOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -379,19 +378,18 @@ export default function ProviderPage() {
           }}
         >
           <Link href="/app/patients" style={quickLink}>
-            Patients à évaluer
+            {t("clinicalDashboard.providerQuickPatients")}
           </Link>
           <Link href="/app/encounters" style={quickLink}>
-            Liste des consultations
+            {t("clinicalDashboard.encounterList")}
           </Link>
           <Link href="/app/trackboard" style={quickLink}>
-            Tableau de bord des consultations
+            {t("clinicalDashboard.trackboard")}
           </Link>
         </div>
 
         <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#64748b", maxWidth: 720, lineHeight: 1.5 }}>
-          Consultations ouvertes — ouvrez le dossier patient pour le résumé et les suivis, ou la consultation pour
-          l&apos;évaluation médicale et l&apos;ordonnance.
+          {t("clinicalDashboard.providerListBlurb")}
         </p>
 
         {fetchError ? (
@@ -406,7 +404,7 @@ export default function ProviderPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{fetchError}</p>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vérifiez la connexion et réessayez.</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("clinicalDashboard.errorRetryHint")}</p>
             <button
               type="button"
               onClick={() => void loadEncounters()}
@@ -422,7 +420,7 @@ export default function ProviderPage() {
                 cursor: "pointer",
               }}
             >
-              Réessayer
+              {t("patientConsultationsTab.retry")}
             </button>
           </div>
         ) : loading && encounters.length === 0 ? (
@@ -462,11 +460,11 @@ export default function ProviderPage() {
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
               {encounters.length === 0
-                ? "Aucune consultation ouverte. Recherchez un patient pour ouvrir ou reprendre une consultation."
-                : "Aucun résultat pour ces filtres."}
+                ? t("clinicalDashboard.providerEmptyNone")
+                : t("clinicalDashboard.providerEmptyFiltered")}
             </p>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
-              {encounters.length === 0 ? null : "Ajustez la recherche ou les filtres."}
+              {encounters.length === 0 ? null : t("clinicalDashboard.adjustFiltersHint")}
             </p>
           </div>
         ) : (
@@ -517,7 +515,8 @@ export default function ProviderPage() {
                               </MedoraCardBadgeRow>
                             </div>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>Médecin attribué</span> {phys}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounters.assignedProvider")}</span>{" "}
+                              {phys}
                               {" · "}
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.arrival")}</span>{" "}
                               {formatArrivalDateTime(encounter.createdAt, dateLocale, dash)}
@@ -552,7 +551,7 @@ export default function ProviderPage() {
                                   textAlign: "center",
                                 }}
                               >
-                                Ouvrir le dossier
+                                {t("openEncountersTable.openPatientChart")}
                               </Link>
                             ) : null}
                             <Link
@@ -571,7 +570,7 @@ export default function ProviderPage() {
                                 textAlign: "center",
                               }}
                             >
-                              Ouvrir la consultation
+                              {t("openEncountersTable.openEncounter")}
                             </Link>
                           </div>
                         }

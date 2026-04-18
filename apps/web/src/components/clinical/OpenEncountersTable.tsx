@@ -16,7 +16,7 @@ type Row = {
   roomLabel?: string | null;
   physicianAssigned?: { firstName?: string; lastName?: string } | null;
   patient?: { id?: string; firstName?: string; lastName?: string; mrn?: string | null };
-  /** Lignes médicament à administrer au chevet (aligné sur l’onglet Ordres). */
+  /** Pending medication lines at bedside (aligned with Orders tab). */
   pendingMedicationCount?: number;
 };
 

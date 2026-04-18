@@ -61,12 +61,12 @@ function physicianLabel(enc: {
   return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
 }
 
-function formatArrivalDateTime(iso: string | null | undefined, locale: string): string {
-  if (!iso) return DISPLAY_DASH;
+function formatArrivalDateTime(iso: string | null | undefined, locale: string, emptyDash: string): string {
+  if (!iso) return emptyDash;
   try {
     return new Date(iso).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
   } catch {
-    return DISPLAY_DASH;
+    return emptyDash;
   }
 }
 
@@ -104,6 +104,7 @@ export default function EncountersPage() {
   const { t, language } = useI18n();
   const { facilityId, ready } = useFacilityAndRoles();
   const dateLocale = encounterBcp47(language);
+  const dash = t("common.dash");
   const [encounters, setEncounters] = useState<EncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -147,15 +148,14 @@ export default function EncountersPage() {
               color: "#0f172a",
             }}
           >
-            Consultations
+            {t("encounters.title")}
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.55 }}>
-            Liste partagée infirmier / médecin : chaque ligne mène au dossier patient ou à la consultation pour documenter et
-            agir.
+            {t("clinicalDashboard.encountersPageIntro")}
           </p>
           <p style={{ margin: "14px 0 0 0" }}>
             <Link href="/app/patients" style={quickLink}>
-              ← Retour aux patients
+              {t("clinicalDashboard.backToPatients")}
             </Link>
           </p>
         </header>
@@ -202,10 +202,10 @@ export default function EncountersPage() {
             color: "#334155",
           }}
         >
-          Consultations ouvertes
+          {t("clinicalDashboard.openEncountersHeading")}
         </h2>
         <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#64748b", maxWidth: 720, lineHeight: 1.5 }}>
-          Ouvrez le dossier patient ou la consultation depuis la liste ci-dessous.
+          {t("clinicalDashboard.encountersSectionHint")}
         </p>
 
         {fetchError ? (
@@ -220,6 +220,7 @@ export default function EncountersPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{fetchError}</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("clinicalDashboard.errorRetryHint")}</p>
             <button
               type="button"
               onClick={() => void load()}
@@ -235,7 +236,7 @@ export default function EncountersPage() {
                 cursor: "pointer",
               }}
             >
-              Réessayer
+              {t("patientConsultationsTab.retry")}
             </button>
           </div>
         ) : loading && encounters.length === 0 ? (
@@ -274,7 +275,7 @@ export default function EncountersPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
-              Aucune consultation ouverte. Créez une consultation depuis la fiche d&apos;un patient.
+              {t("clinicalDashboard.encountersEmptyNone")}
             </p>
           </div>
         ) : (
@@ -285,10 +286,10 @@ export default function EncountersPage() {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const nir = patientNirDisplay(patient);
-              const phys = physicianLabel(encounter) || t("common.dash");
-              const room = encounter.roomLabel?.trim() || t("common.dash");
-              const typeLabel = encounter.type ? tEncounterType(t, encounter.type) : t("common.dash");
-              const statusLabel = encounter.status ? tEncounterStatus(t, encounter.status) : t("common.dash");
+              const phys = physicianLabel(encounter) || dash;
+              const room = encounter.roomLabel?.trim() || dash;
+              const typeLabel = encounter.type ? tEncounterType(t, encounter.type) : dash;
+              const statusLabel = encounter.status ? tEncounterStatus(t, encounter.status) : dash;
               const soft = statusSoft(encounter.status ?? "");
               const medCount = encounter.pendingMedicationCount;
               const medDisplay =
@@ -299,7 +300,7 @@ export default function EncountersPage() {
                     <span style={{ color: "#64748b" }}>0</span>
                   )
                 ) : (
-                  "—"
+                  dash
                 );
 
               const linkBase: React.CSSProperties = {
@@ -350,7 +351,7 @@ export default function EncountersPage() {
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounters.assignedProvider")}</span> {phys}
                               {" · "}
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.arrival")}</span>{" "}
-                              {formatArrivalDateTime(encounter.createdAt, dateLocale)}
+                              {formatArrivalDateTime(encounter.createdAt, dateLocale, dash)}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.35 }}>
                               <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>{t("encounters.pendingMedications")}</span>{" "}
@@ -370,7 +371,7 @@ export default function EncountersPage() {
                                   color: "#334155",
                                 }}
                               >
-                                Ouvrir le dossier
+                                {t("openEncountersTable.openPatientChart")}
                               </Link>
                             ) : null}
                             <Link
@@ -382,7 +383,7 @@ export default function EncountersPage() {
                                 color: "#1d4ed8",
                               }}
                             >
-                              Ouvrir la consultation
+                              {t("openEncountersTable.openEncounter")}
                             </Link>
                           </div>
                         }

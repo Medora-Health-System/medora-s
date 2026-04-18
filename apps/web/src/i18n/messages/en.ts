@@ -3176,9 +3176,43 @@ export default {
   },
   encounters: {
     assignedProvider: "Assigned provider",
-    pendingMedications: "Medications (pending)",
+    pendingMedications: "Pending medications",
     title: "Encounters",
     empty: "No encounters found.",
+  },
+  clinicalDashboard: {
+    searchPlaceholder: "Patient, national ID, room…",
+    filterAll: "All",
+    filterAllRooms: "All",
+    filterProvider: "Provider",
+    providerTitle: "Provider",
+    providerSubtitle:
+      "Entry point to the shared record: medical evaluation, diagnoses, and orders use the same encounter as nursing care.",
+    providerQuickPatients: "Patients to assess",
+    encounterList: "Encounter list",
+    trackboard: "Clinical trackboard",
+    trackboardShort: "Clinical trackboard",
+    providerListBlurb:
+      "Open encounters — open the patient chart for summaries and follow-ups, or the encounter for evaluation and prescribing.",
+    nursingTitle: "Nursing",
+    nursingSubtitle: "Quick access to open encounters to continue care",
+    nursingQuickPatients: "Patients to review",
+    nursingListBlurb: "Open the patient chart or the encounter from the list below.",
+    backToPatients: "← Back to patients",
+    encountersPageIntro:
+      "Shared nurse / provider list: each row goes to the patient chart or the encounter to document and act.",
+    openEncountersHeading: "Open encounters",
+    encountersSectionHint:
+      "Open the patient chart or the encounter from the list below.",
+    errorRetryHint: "Check your connection and try again.",
+    providerEmptyNone:
+      "No open encounters. Search for a patient to open or resume an encounter.",
+    providerEmptyFiltered: "No results for these filters.",
+    adjustFiltersHint: "Adjust search or filters.",
+    nursingEmptyNone:
+      "No open encounters right now. Use the clinical trackboard or patient list to find an encounter.",
+    encountersEmptyNone:
+      "No open encounters. Start an encounter from a patient chart.",
   },
   openEncountersTable: {
     openPatientChart: "Open chart",

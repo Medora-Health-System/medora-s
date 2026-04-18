@@ -3131,9 +3131,43 @@ export default {
   },
   encounters: {
     assignedProvider: "Médecin attribué",
-    pendingMedications: "Médicaments (à faire)",
+    pendingMedications: "Médicaments à faire",
     title: "Consultations",
     empty: "Aucune consultation trouvée.",
+  },
+  clinicalDashboard: {
+    searchPlaceholder: "Patient, NIR, salle…",
+    filterAll: "Tous",
+    filterAllRooms: "Toutes",
+    filterProvider: "Médecin",
+    providerTitle: "Médecin",
+    providerSubtitle:
+      "Point d'entrée vers le dossier partagé : évaluation médicale, diagnostics et ordonnances se font dans la même consultation que pour les soins infirmiers.",
+    providerQuickPatients: "Patients à évaluer",
+    encounterList: "Liste des consultations",
+    trackboard: "Tableau de bord des consultations",
+    trackboardShort: "Tableau de bord",
+    providerListBlurb:
+      "Consultations ouvertes — ouvrez le dossier patient pour le résumé et les suivis, ou la consultation pour l'évaluation médicale et l'ordonnance.",
+    nursingTitle: "Soins infirmiers",
+    nursingSubtitle: "Accès rapide aux consultations ouvertes pour la suite des soins",
+    nursingQuickPatients: "Patients à voir",
+    nursingListBlurb: "Ouvrez le dossier patient ou la consultation depuis la liste ci-dessous.",
+    backToPatients: "← Retour aux patients",
+    encountersPageIntro:
+      "Liste partagée infirmier / médecin : chaque ligne mène au dossier patient ou à la consultation pour documenter et agir.",
+    openEncountersHeading: "Consultations ouvertes",
+    encountersSectionHint:
+      "Ouvrez le dossier patient ou la consultation depuis la liste ci-dessous.",
+    errorRetryHint: "Vérifiez la connexion et réessayez.",
+    providerEmptyNone:
+      "Aucune consultation ouverte. Recherchez un patient pour ouvrir ou reprendre une consultation.",
+    providerEmptyFiltered: "Aucun résultat pour ces filtres.",
+    adjustFiltersHint: "Ajustez la recherche ou les filtres.",
+    nursingEmptyNone:
+      "Aucune consultation ouverte pour le moment. Utilisez le tableau clinique ou la liste des patients pour retrouver une consultation.",
+    encountersEmptyNone:
+      "Aucune consultation ouverte. Créez une consultation depuis la fiche d'un patient.",
   },
   openEncountersTable: {
     openPatientChart: "Ouvrir le dossier",
