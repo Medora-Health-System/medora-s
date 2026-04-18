@@ -133,13 +133,13 @@ export default function FollowUpsPage() {
       const res = await completeFollowUp(facilityId, id);
       await load();
       if ((res as any)?.queued) {
-        showToast("ok", "Mise à jour enregistrée hors ligne");
+        showToast("ok", t("followUpsPage.toastOfflineSaved"));
       } else {
-        showToast("ok", "Suivi marqué comme terminé");
+        showToast("ok", t("followUpsPage.toastCompleteOk"));
       }
     } catch (e) {
       console.error(e);
-      showToast("err", "Impossible de mettre à jour le suivi");
+      showToast("err", t("followUpsPage.toastUpdateErr"));
     } finally {
       setActionId(null);
     }
@@ -152,13 +152,13 @@ export default function FollowUpsPage() {
       const res = await cancelFollowUp(facilityId, id);
       await load();
       if ((res as any)?.queued) {
-        showToast("ok", "Mise à jour enregistrée hors ligne");
+        showToast("ok", t("followUpsPage.toastOfflineSaved"));
       } else {
-        showToast("ok", "Suivi annulé");
+        showToast("ok", t("followUpsPage.toastCancelOk"));
       }
     } catch (e) {
       console.error(e);
-      showToast("err", "Impossible de mettre à jour le suivi");
+      showToast("err", t("followUpsPage.toastUpdateErr"));
     } finally {
       setActionId(null);
     }
@@ -236,19 +236,19 @@ export default function FollowUpsPage() {
 
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 8 }}>
         <div>
-          <h1 style={{ margin: "0 0 8px 0" }}>Suivis</h1>
+          <h1 style={{ margin: "0 0 8px 0" }}>{t("followUpsPage.title")}</h1>
           <p style={{ fontSize: 14, color: "#666", margin: 0 }}>
-            Filtrer par plage de dates. Créer un suivi pour un patient (recherche par nom ou NIR).
+            {t("followUpsPage.intro")}
           </p>
           {isOffline && (
             <p style={{ fontSize: 12, color: "#8a4b08", margin: "8px 0 0 0" }}>
-              Données affichées depuis le cache local.
+              {t("followUpsPage.offlineCacheNote")}
             </p>
           )}
         </div>
         {canCreate && (
           <button type="button" style={btnPrimary} onClick={() => setShowAddModal(true)}>
-            Ajouter un suivi
+            {t("followUpsPage.addFollowUp")}
           </button>
         )}
       </div>
@@ -260,25 +260,25 @@ export default function FollowUpsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Nom, NIR, motif…"
+            placeholder={t("followUpsPage.searchPlaceholder")}
             style={{ padding: "8px 10px", fontSize: 14, border: "1px solid #ccc", borderRadius: 4, minWidth: 240 }}
           />
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>Statut</span>
+          <span style={{ fontSize: 14 }}>{t("followUpsPage.statusLabel")}</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "ALL" | "OPEN" | "COMPLETED" | "CANCELLED")}
             style={{ padding: "8px 10px", fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
           >
-            <option value="ALL">Tous les statuts</option>
-            <option value="OPEN">Planifiés</option>
-            <option value="COMPLETED">Terminés</option>
-            <option value="CANCELLED">Annulés</option>
+            <option value="ALL">{t("followUpsPage.statusAll")}</option>
+            <option value="OPEN">{t("followUpsPage.statusOpen")}</option>
+            <option value="COMPLETED">{t("followUpsPage.statusCompleted")}</option>
+            <option value="CANCELLED">{t("followUpsPage.statusCancelled")}</option>
           </select>
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>Du</span>
+          <span style={{ fontSize: 14 }}>{t("followUpsPage.dateFrom")}</span>
           <input
             type="date"
             value={fromDate}
@@ -287,7 +287,7 @@ export default function FollowUpsPage() {
           />
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>Au</span>
+          <span style={{ fontSize: 14 }}>{t("followUpsPage.dateTo")}</span>
           <input
             type="date"
             value={toDate}
@@ -304,21 +304,21 @@ export default function FollowUpsPage() {
         <div style={{ padding: 40, textAlign: "center", color: "#666" }}>{t("followUpsPage.loadingList")}</div>
       ) : filteredSorted.length === 0 ? (
         <div style={{ padding: 24, backgroundColor: "#fafafa", border: "1px solid #eee", borderRadius: 8, color: "#555" }}>
-          Aucun suivi trouvé.
-          {canCreate ? " Utilisez « Ajouter un suivi » pour en créer un." : null}
+          {t("followUpsPage.emptyNone")}
+          {canCreate ? ` ${t("followUpsPage.emptyHintCreate")}` : null}
         </div>
       ) : (
         <table style={tableStyles.table}>
           <thead>
             <tr>
-              <th style={tableStyles.th}>Patient</th>
-              <th style={tableStyles.th}>NIR</th>
-              <th style={tableStyles.th}>Date de suivi</th>
-              <th style={tableStyles.th}>Heure</th>
-              <th style={tableStyles.th}>Motif</th>
-              <th style={tableStyles.th}>Statut</th>
-              <th style={tableStyles.th}>Créé par / date</th>
-              <th style={tableStyles.th}>Actions</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colPatient")}</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colNir")}</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colFollowUpDate")}</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colTime")}</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colReason")}</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colStatus")}</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colCreatedMeta")}</th>
+              <th style={tableStyles.th}>{t("followUpsPage.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -331,42 +331,42 @@ export default function FollowUpsPage() {
                       : fu.patientId}
                   </Link>
                 </td>
-                <td style={tableStyles.td}>{fu.patient?.mrn || "—"}</td>
+                <td style={tableStyles.td}>{fu.patient?.mrn || dash}</td>
                 <td style={tableStyles.td}>
                   {formatDate(fu.dueDate, dateLocale, dash)}
                   {isOverdue(fu) ? (
-                    <div style={{ fontSize: 11, color: "#b26a00", marginTop: 2 }}>En retard</div>
+                    <div style={{ fontSize: 11, color: "#b26a00", marginTop: 2 }}>{t("followUpsPage.badgeOverdue")}</div>
                   ) : isToday(fu) && fu.status === "OPEN" ? (
-                    <div style={{ fontSize: 11, color: "#1565c0", marginTop: 2 }}>Aujourd’hui</div>
+                    <div style={{ fontSize: 11, color: "#1565c0", marginTop: 2 }}>{t("followUpsPage.badgeToday")}</div>
                   ) : null}
                 </td>
                 <td style={tableStyles.td}>
-                  {new Date(fu.dueDate).toLocaleTimeString("fr-FR", {
+                  {new Date(fu.dueDate).toLocaleTimeString(dateLocale, {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </td>
-                <td style={tableStyles.td}>{fu.reason || "—"}</td>
+                <td style={tableStyles.td}>{fu.reason || dash}</td>
                 <td style={tableStyles.td}>{statusBadge(fu.status, t)}</td>
                 <td style={tableStyles.td}>
                   <div style={{ fontSize: 12, color: "#555" }}>
                     {fu.createdBy
-                      ? `Créé par ${fu.createdBy.firstName} ${fu.createdBy.lastName}`
-                      : "Créé par —"}
+                      ? `${t("followUpsPage.createdByPrefix")} ${fu.createdBy.firstName} ${fu.createdBy.lastName}`
+                      : t("followUpsPage.createdUnknown")}
                   </div>
                   <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                    Créé le {formatDate(fu.createdAt, dateLocale, dash)}
+                    {t("followUpsPage.createdOnPrefix")} {formatDate(fu.createdAt, dateLocale, dash)}
                   </div>
                   {fu.completedAt ? (
                     <div style={{ fontSize: 12, color: "#2e7d32", marginTop: 2 }}>
-                      Terminé le {formatDate(fu.completedAt, dateLocale, dash)}
+                      {t("followUpsPage.completedOnPrefix")} {formatDate(fu.completedAt, dateLocale, dash)}
                     </div>
                   ) : null}
                 </td>
                 <td style={tableStyles.td}>
                   <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <Link href={`/app/patients/${fu.patientId}`} style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}>
-                      Ouvrir le dossier
+                      {t("followUpsPage.openChart")}
                     </Link>
                   {fu.status === "OPEN" && canCompleteCancel && (
                     <>
@@ -376,7 +376,7 @@ export default function FollowUpsPage() {
                         onClick={() => handleComplete(fu.id)}
                         disabled={actionId !== null}
                       >
-                        {actionId === fu.id ? "…" : "Marquer comme terminé"}
+                        {actionId === fu.id ? "…" : t("followUpsPage.markComplete")}
                       </button>
                       <button
                         type="button"
@@ -384,7 +384,7 @@ export default function FollowUpsPage() {
                         onClick={() => handleCancel(fu.id)}
                         disabled={actionId !== null}
                       >
-                        Annuler le suivi
+                        {t("followUpsPage.cancelFollowUp")}
                       </button>
                     </>
                   )}
@@ -405,7 +405,7 @@ export default function FollowUpsPage() {
             void load();
             showToast(
               "ok",
-              isOffline ? "Suivi enregistré hors ligne" : "Suivi ajouté"
+              isOffline ? t("followUpsPage.successAddOffline") : t("followUpsPage.successAddOnline")
             );
           }}
         />

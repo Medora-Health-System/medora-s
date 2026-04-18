@@ -4,15 +4,15 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { fetchUpcomingFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
 import { CreateFollowUpModal } from "@/components/patient-chart";
+import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { useConnectivityStatus } from "@/lib/offline/useConnectivityStatus";
 
-function formatDate(d: string | null | undefined) {
-  return d ? new Date(d).toLocaleDateString("fr-FR") : "—";
-}
-
 export default function RegistrationPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const dateLocale = encounterBcp47(language);
+  const formatDate = (d: string | null | undefined) =>
+    d ? new Date(d).toLocaleDateString(dateLocale) : t("common.dash");
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
@@ -62,13 +62,11 @@ export default function RegistrationPage() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: 8 }}>Accueil</h1>
-      <p style={{ color: "#555", marginBottom: 20 }}>
-        Inscription des patients, création de consultations et gestion des suivis à venir.
-      </p>
+      <h1 style={{ marginBottom: 8 }}>{t("registrationHome.title")}</h1>
+      <p style={{ color: "#555", marginBottom: 20 }}>{t("registrationHome.tagline")}</p>
 
       <section style={{ marginBottom: 28 }}>
-        <h2 style={{ margin: "0 0 14px 0", fontSize: 17, color: "#37474f" }}>Actions rapides</h2>
+        <h2 style={{ margin: "0 0 14px 0", fontSize: 17, color: "#37474f" }}>{t("registrationHome.quickActions")}</h2>
         <div
           style={{
             display: "grid",
@@ -85,8 +83,8 @@ export default function RegistrationPage() {
               background: "linear-gradient(145deg, #e3f2fd 0%, #fff 55%)",
             }}
           >
-            <strong style={{ fontSize: 15 }}>Nouveau patient</strong>
-            <span style={{ fontSize: 13, color: "#546e7a" }}>Créer une fiche patient</span>
+            <strong style={{ fontSize: 15 }}>{t("registrationHome.cardNewPatientTitle")}</strong>
+            <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardNewPatientHint")}</span>
           </Link>
           <Link
             href="/app/encounters"
@@ -96,8 +94,8 @@ export default function RegistrationPage() {
               background: "linear-gradient(145deg, #e8f5e9 0%, #fff 55%)",
             }}
           >
-            <strong style={{ fontSize: 15 }}>Nouvelle visite</strong>
-            <span style={{ fontSize: 13, color: "#546e7a" }}>Liste des consultations ; création depuis la fiche patient</span>
+            <strong style={{ fontSize: 15 }}>{t("registrationHome.cardNewVisitTitle")}</strong>
+            <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardNewVisitHint")}</span>
           </Link>
           <Link
             href="/app/billing"
@@ -108,7 +106,7 @@ export default function RegistrationPage() {
             }}
           >
             <strong style={{ fontSize: 15 }}>{t("nav.billing")}</strong>
-            <span style={{ fontSize: 13, color: "#546e7a" }}>Facturation et dossiers financiers</span>
+            <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardBillingHint")}</span>
           </Link>
           <Link
             href="/app/fracture"
@@ -119,14 +117,14 @@ export default function RegistrationPage() {
             }}
           >
             <strong style={{ fontSize: 15 }}>{t("nav.fracture")}</strong>
-            <span style={{ fontSize: 13, color: "#546e7a" }}>Module fracture (aperçu)</span>
+            <span style={{ fontSize: 13, color: "#546e7a" }}>{t("registrationHome.cardFractureHint")}</span>
           </Link>
         </div>
       </section>
 
       <div style={{ display: "grid", gap: 24, maxWidth: 720 }}>
         <section style={{ padding: 20, backgroundColor: "white", borderRadius: 8, border: "1px solid #ddd" }}>
-          <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>Patients et consultations</h2>
+          <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>{t("registrationHome.patientsEncountersSection")}</h2>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <Link
               href="/app/patients"
@@ -146,9 +144,9 @@ export default function RegistrationPage() {
         </section>
 
         <section style={{ padding: 20, backgroundColor: "white", borderRadius: 8, border: "1px solid #ddd" }}>
-          <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>Suivis à venir</h2>
+          <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>{t("registrationHome.upcomingFollowUps")}</h2>
           <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "#333" }}>
-            Consultez et gérez les rendez-vous de suivi par date.
+            {t("registrationHome.upcomingFollowUpsIntro")}
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
             <Link
@@ -164,7 +162,7 @@ export default function RegistrationPage() {
                 display: "inline-block",
               }}
             >
-              Ouvrir les suivis
+              {t("registrationHome.openFollowUps")}
             </Link>
             {facilityId && (
               <button
@@ -181,19 +179,19 @@ export default function RegistrationPage() {
                   cursor: "pointer",
                 }}
               >
-                Ajouter un suivi
+                {t("followUpsPage.addFollowUp")}
               </button>
             )}
           </div>
           {isOffline && (
             <p style={{ margin: "-6px 0 12px 0", fontSize: 12, color: "#8a4b08" }}>
-              Données affichées depuis le cache local
+              {t("followUpsPage.offlineCacheNote").replace(/\.$/, "")}
             </p>
           )}
           {followUpsLoading ? (
             <p style={{ fontSize: 14, color: "#666" }}>{t("common.loading")}</p>
           ) : followUps.length === 0 ? (
-            <p style={{ fontSize: 14, color: "#666" }}>Aucun suivi à venir sur les 14 prochains jours.</p>
+            <p style={{ fontSize: 14, color: "#666" }}>{t("followUpsPage.noUpcoming14Days")}</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14 }}>
               {followUps.slice(0, 10).map((f) => (
@@ -205,13 +203,15 @@ export default function RegistrationPage() {
                   {formatDate(f.dueDate)}
                   {f.reason ? ` · ${f.reason}` : ""}
                   <Link href={`/app/patients/${f.patientId}`} style={{ marginLeft: 8, fontSize: 12 }}>
-                    Voir le dossier
+                    {t("registrationHome.viewChart")}
                   </Link>
                 </li>
               ))}
               {followUps.length > 10 && (
                 <li style={{ marginTop: 8 }}>
-                  <Link href="/app/follow-ups">Voir tout ({followUps.length})</Link>
+                  <Link href="/app/follow-ups">
+                    {t("registrationHome.viewAllPrefix")} ({followUps.length})
+                  </Link>
                 </li>
               )}
             </ul>

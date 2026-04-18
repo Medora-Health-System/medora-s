@@ -34,6 +34,41 @@ export function formatAgeFr(dob: string | null | undefined): string {
   return `${days} jour${days > 1 ? "s" : ""}`;
 }
 
+/**
+ * Age-only line for forms (locale via `t()`). Prefer over `formatAgeFr` in UI with i18n.
+ */
+export function formatPatientAgeOnlyLine(
+  dob: string | null | undefined,
+  t: (key: string) => string
+): string {
+  const dash = t("common.dash");
+  if (!dob) return dash;
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return dash;
+  const now = new Date();
+  if (birth.getTime() > now.getTime()) return dash;
+
+  const years = calculateAge(dob);
+  if (years >= 1) {
+    return `${years} ${t("encounterChrome.ageYearsSuffix")}`;
+  }
+
+  const months =
+    (now.getFullYear() - birth.getFullYear()) * 12 +
+    (now.getMonth() - birth.getMonth()) -
+    (now.getDate() < birth.getDate() ? 1 : 0);
+  if (months >= 1) {
+    const unit =
+      months === 1 ? t("patientsListPage.ageMonthLabel") : t("patientsListPage.ageMonthsLabel");
+    return `${months} ${unit}`;
+  }
+
+  const days = Math.max(0, Math.floor((now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24)));
+  const dayUnit =
+    days === 1 ? t("patientsListPage.ageDayLabel") : t("patientsListPage.ageDaysLabel");
+  return `${days} ${dayUnit}`;
+}
+
 export function sexLabelFr(code: string | null | undefined): string {
   return patientSexDisplayFr(undefined, code);
 }

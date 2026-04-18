@@ -4,8 +4,8 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
-import { formatAgeFr, formatAgeYearsSexForLocale } from "@/lib/patientDisplay";
-import { tEnumKey } from "@/lib/encounterChromeI18n";
+import { formatPatientAgeOnlyLine, formatAgeYearsSexForLocale } from "@/lib/patientDisplay";
+import { encounterBcp47, tEnumKey, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -145,9 +145,10 @@ function PatientsPageContent() {
     router.push(`/app/patients/${patientId}`);
   };
 
+  const dateLocale = encounterBcp47(language);
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString();
+    return new Date(dateStr).toLocaleDateString(dateLocale);
   };
 
   const thBase: React.CSSProperties = {
@@ -197,7 +198,7 @@ function PatientsPageContent() {
               {t("common.searchPatient")}
             </h1>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 560, lineHeight: 1.5 }}>
-              Recherche par nom, NIR ou téléphone dans l&apos;établissement.
+              {t("patientsListPage.subtitleSearchFacility")}
             </p>
           </div>
           <button
@@ -216,19 +217,19 @@ function PatientsPageContent() {
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
             }}
           >
-            Nouveau patient
+            {t("patientsListPage.newPatient")}
           </button>
         </header>
 
         <div style={{ marginBottom: 20 }}>
           <label htmlFor="patient-search-q" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 6, letterSpacing: "0.02em" }}>
-            Recherche
+            {t("patientsListPage.searchLabel")}
           </label>
           <input
             id="patient-search-q"
             type="search"
             autoComplete="off"
-            placeholder="Rechercher par nom, NIR ou téléphone…"
+            placeholder={t("patientsListPage.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -276,8 +277,8 @@ function PatientsPageContent() {
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: 16 }}>Aucun patient trouvé</div>
-            <div style={{ marginTop: 8, fontSize: 14, color: "#64748b" }}>Essayez un autre nom, numéro ou identifiant</div>
+            <div style={{ fontWeight: 600, fontSize: 16 }}>{t("patientsListPage.emptySearchTitle")}</div>
+            <div style={{ marginTop: 8, fontSize: 14, color: "#64748b" }}>{t("patientsListPage.emptySearchHint")}</div>
           </div>
         )}
 
@@ -295,12 +296,12 @@ function PatientsPageContent() {
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
                 <thead>
                   <tr>
-                    <th style={thBase}>NIR</th>
-                    <th style={thBase}>Nom</th>
-                    <th style={thBase}>Âge / Sexe</th>
-                    <th style={thBase}>Date de naissance</th>
-                    <th style={thBase}>Téléphone</th>
-                    <th style={{ ...thBase, textAlign: "right" }}>Actions</th>
+                    <th style={thBase}>{t("patientsListPage.colNir")}</th>
+                    <th style={thBase}>{t("patientsListPage.colName")}</th>
+                    <th style={thBase}>{t("patientsListPage.colAgeSex")}</th>
+                    <th style={thBase}>{t("patientsListPage.colDob")}</th>
+                    <th style={thBase}>{t("patientsListPage.colPhone")}</th>
+                    <th style={{ ...thBase, textAlign: "right" }}>{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -348,7 +349,7 @@ function PatientsPageContent() {
                               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
                             }}
                           >
-                            Ouvrir le dossier
+                            {t("patientsListPage.openChart")}
                           </button>
                           {canCreateConsultation && (
                             <button
@@ -369,7 +370,7 @@ function PatientsPageContent() {
                                 boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                               }}
                             >
-                              Créer une consultation
+                              {t("patientsListPage.createEncounter")}
                             </button>
                           )}
                         </div>
@@ -459,6 +460,7 @@ function NewPatientModal({
   const [similarPatients, setSimilarPatients] = useState<Patient[]>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [duplicateHint, setDuplicateHint] = useState<string>("");
+  const dupeDateLocale = encounterBcp47(language);
 
   useEffect(() => {
     const first = formData.firstName.trim();
@@ -498,7 +500,7 @@ function NewPatientModal({
           return sameName;
         });
         setSimilarPatients(local.slice(0, 5));
-        setDuplicateHint("Vérification des doublons limitée hors ligne");
+        setDuplicateHint(t("patientsListPage.duplicateCheckOffline"));
       } finally {
         setCheckingDuplicates(false);
       }
@@ -507,26 +509,26 @@ function NewPatientModal({
       void run();
     }, 350);
     return () => window.clearTimeout(timeoutId);
-  }, [facilityId, formData.firstName, formData.lastName, formData.dateOfBirth, formData.phone]);
+  }, [facilityId, formData.firstName, formData.lastName, formData.dateOfBirth, formData.phone, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!facilityId) {
-      setError("Identifiant d'établissement requis");
+      setError(t("patientsListPage.errFacilityIdRequired"));
       return;
     }
     const hasContact = formData.phone.trim().length >= 5 || formData.email.trim().length > 0;
     if (!hasContact) {
-      setError("Le téléphone ou le courriel est requis");
+      setError(t("patientsListPage.errContactRequired"));
       return;
     }
     const birth = new Date(formData.dateOfBirth);
     if (Number.isNaN(birth.getTime())) {
-      setError("Date de naissance invalide");
+      setError(t("patientsListPage.errDobInvalid"));
       return;
     }
     if (birth.getTime() > Date.now()) {
-      setError("La date de naissance ne peut pas être dans le futur");
+      setError(t("patientsListPage.errDobFuture"));
       return;
     }
 
@@ -556,13 +558,13 @@ function NewPatientModal({
         facilityId,
       });
       if (res?.queued) {
-        setInfo("Création enregistrée hors ligne. Le dossier sera synchronisé dès le retour de la connexion");
+        setInfo(t("patientsListPage.queuedCreateBody"));
         onSuccess(null);
         return;
       }
       onSuccess((res as Patient) ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible de créer le patient");
+      setError(err instanceof Error ? err.message : t("patientsListPage.errCreatePatient"));
     } finally {
       setLoading(false);
     }
@@ -596,18 +598,18 @@ function NewPatientModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ marginTop: 0 }}>Nouveau patient</h2>
+        <h2 style={{ marginTop: 0 }}>{t("patientsListPage.titleNewPatient")}</h2>
         <p style={{ fontSize: 14, color: "#444", marginTop: -8, marginBottom: 16 }}>
           {formData.dateOfBirth && formData.sex
             ? formatAgeYearsSexForLocale(formData.dateOfBirth, formData.sex, null, language)
-            : "Renseignez la date de naissance et le sexe — l’âge est calculé automatiquement."}
+            : t("patientsListPage.hintDobSex")}
         </p>
         <form onSubmit={handleSubmit}>
-          <h3 style={{ margin: "0 0 12px 0", fontSize: 16 }}>Identité</h3>
+          <h3 style={{ margin: "0 0 12px 0", fontSize: 16 }}>{t("patientsListPage.sectionIdentity")}</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-                Prénom *
+                {t("patientsListPage.labelFirstName")}
               </label>
               <input
                 type="text"
@@ -619,7 +621,7 @@ function NewPatientModal({
             </div>
             <div>
               <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
-                Nom *
+                {t("patientsListPage.labelLastName")}
               </label>
               <input
                 type="text"
@@ -633,7 +635,7 @@ function NewPatientModal({
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Date de naissance *</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelDob")}</label>
               <input
                 type="date"
                 required
@@ -643,7 +645,7 @@ function NewPatientModal({
               />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Sexe *</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelSex")}</label>
               <select
                 required
                 value={formData.sex}
@@ -664,19 +666,19 @@ function NewPatientModal({
               </select>
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Âge</label>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelAge")}</label>
               <input
                 type="text"
                 readOnly
-                value={formatAgeFr(formData.dateOfBirth)}
+                value={formatPatientAgeOnlyLine(formData.dateOfBirth, t)}
                 style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, backgroundColor: "#f7f7f7" }}
               />
             </div>
           </div>
 
-          <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>Contact</h3>
+          <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>{t("patientsListPage.sectionContact")}</h3>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Téléphone</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelPhone")}</label>
             <input
               type="tel"
               value={formData.phone}
@@ -686,7 +688,7 @@ function NewPatientModal({
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Courriel</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelEmail")}</label>
             <input
               type="email"
               value={formData.email}
@@ -696,7 +698,7 @@ function NewPatientModal({
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Adresse</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelAddress")}</label>
             <input
               type="text"
               value={formData.address}
@@ -705,9 +707,9 @@ function NewPatientModal({
             />
           </div>
 
-          <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>Identifiants</h3>
+          <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>{t("patientsListPage.sectionIdentifiers")}</h3>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>NIR / Identifiant national</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelNationalId")}</label>
             <input
               type="text"
               value={formData.nationalId}
@@ -716,9 +718,9 @@ function NewPatientModal({
             />
           </div>
 
-          <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>Informations complémentaires</h3>
+          <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>{t("patientsListPage.sectionMore")}</h3>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Contact d’urgence</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelEmergency")}</label>
             <input
               type="text"
               value={formData.emergencyContact}
@@ -727,7 +729,7 @@ function NewPatientModal({
             />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Notes administratives</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelAdminNotes")}</label>
             <textarea
               value={formData.adminNotes}
               onChange={(e) => setFormData({ ...formData, adminNotes: e.target.value })}
@@ -738,27 +740,28 @@ function NewPatientModal({
 
           {(checkingDuplicates || similarPatients.length > 0 || duplicateHint) && (
             <div style={{ marginBottom: 16, border: "1px solid #ffe082", background: "#fffde7", borderRadius: 6, padding: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Patients similaires trouvés</div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("patientsListPage.similarPatientsTitle")}</div>
               <div style={{ fontSize: 13, color: "#6d4c41", marginBottom: 8 }}>
-                Vérifiez avant de créer un nouveau dossier
+                {t("patientsListPage.similarPatientsHint")}
               </div>
-              {checkingDuplicates && <div style={{ fontSize: 13 }}>Vérification en cours…</div>}
+              {checkingDuplicates && <div style={{ fontSize: 13 }}>{t("patientsListPage.checkingDuplicates")}</div>}
               {!checkingDuplicates && duplicateHint && <div style={{ fontSize: 13, marginBottom: 6 }}>{duplicateHint}</div>}
               {!checkingDuplicates && similarPatients.length > 0 && (
                 <div style={{ display: "grid", gap: 6 }}>
                   {similarPatients.map((p) => (
                     <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 13 }}>
-                        {p.firstName} {p.lastName} · {p.dob ? new Date(p.dob).toLocaleDateString("fr-FR") : "—"}
+                        {p.firstName} {p.lastName} ·{" "}
+                        {p.dob ? new Date(p.dob).toLocaleDateString(dupeDateLocale) : t("common.dash")}
                       </span>
                       <a href={`/app/patients/${p.id}`} style={{ fontSize: 12, color: "#1a1a1a" }}>
-                        Ouvrir le dossier existant
+                        {t("patientsListPage.openExistingChart")}
                       </a>
                     </div>
                   ))}
                 </div>
               )}
-              {!checkingDuplicates && <div style={{ marginTop: 8, fontSize: 12 }}>Continuer quand même</div>}
+              {!checkingDuplicates && <div style={{ marginTop: 8, fontSize: 12 }}>{t("patientsListPage.continueAnyway")}</div>}
             </div>
           )}
 
@@ -785,7 +788,7 @@ function NewPatientModal({
                 backgroundColor: "white",
               }}
             >
-              Annuler
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -800,7 +803,11 @@ function NewPatientModal({
                 opacity: loading ? 0.6 : 1,
               }}
             >
-              {loading ? "Création…" : canCreateConsultation ? "Créer le patient" : "Enregistrer le patient"}
+              {loading
+                ? t("patientsListPage.btnSubmitCreating")
+                : canCreateConsultation
+                  ? t("patientsListPage.btnCreatePatient")
+                  : t("patientsListPage.btnSavePatient")}
             </button>
           </div>
         </form>
@@ -820,6 +827,7 @@ function CreateConsultationModal({
   canOpenEncounterDetail: boolean;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [type, setType] = useState<"OUTPATIENT" | "URGENT_CARE" | "EMERGENCY">("OUTPATIENT");
   const [visitReason, setVisitReason] = useState("");
   const [roomLabel, setRoomLabel] = useState(DEFAULT_ENCOUNTER_ROOM_LABEL);
@@ -866,7 +874,7 @@ function CreateConsultationModal({
       }
       setCreated({ id: (res as { id: string }).id });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible de créer la consultation");
+      setError(e instanceof Error ? e.message : t("patientConsultationsTab.create.createFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -875,19 +883,19 @@ function CreateConsultationModal({
   return (
     <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200 }} onClick={onClose}>
       <div style={{ width: "92%", maxWidth: 520, backgroundColor: "#fff", borderRadius: 8, padding: 20 }} onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: "0 0 8px 0" }}>Créer une consultation</h2>
+        <h2 style={{ margin: "0 0 8px 0" }}>{t("patientConsultationsTab.create.title")}</h2>
         <p style={{ margin: "0 0 14px 0", color: "#555", fontSize: 14 }}>
           {patient.firstName} {patient.lastName}
         </p>
         {!created && (
           <>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Type de consultation</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.typeLabel")}</label>
             <select value={type} onChange={(e) => setType(e.target.value as "OUTPATIENT" | "URGENT_CARE" | "EMERGENCY")} style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, marginBottom: 12 }}>
-              <option value="OUTPATIENT">Consultation externe</option>
-              <option value="URGENT_CARE">Soins urgents</option>
-              <option value="EMERGENCY">Urgence</option>
+              <option value="OUTPATIENT">{tEncounterType(t, "OUTPATIENT")}</option>
+              <option value="URGENT_CARE">{tEncounterType(t, "URGENT_CARE")}</option>
+              <option value="EMERGENCY">{tEncounterType(t, "EMERGENCY")}</option>
             </select>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Salle</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.roomLabel")}</label>
             <select
               value={roomLabel}
               onChange={(e) => setRoomLabel(e.target.value)}
@@ -899,7 +907,7 @@ function CreateConsultationModal({
                 </option>
               ))}
             </select>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Médecin attribué (optionnel)</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.physicianOptional")}</label>
             <select
               value={physicianAssignedUserId}
               onChange={(e) => setPhysicianAssignedUserId(e.target.value)}
@@ -912,15 +920,15 @@ function CreateConsultationModal({
                 </option>
               ))}
             </select>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Motif de visite</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.visitReason")}</label>
             <textarea value={visitReason} onChange={(e) => setVisitReason(e.target.value)} rows={3} style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, resize: "vertical" }} />
             {error && <div style={{ marginTop: 10, color: "#c62828", fontSize: 13 }}>{error}</div>}
             <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button type="button" onClick={onClose} style={{ padding: "9px 14px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer" }}>
-                Retour à la liste
+                {t("orderDetail.backToList")}
               </button>
               <button type="button" onClick={() => void createEncounter()} disabled={submitting} style={{ padding: "9px 14px", border: "none", borderRadius: 4, background: "#1a1a1a", color: "#fff", cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
-                {submitting ? "Création…" : "Créer la consultation"}
+                {submitting ? t("patientConsultationsTab.create.creating") : t("patientConsultationsTab.create.submit")}
               </button>
             </div>
           </>
@@ -929,12 +937,12 @@ function CreateConsultationModal({
           <div>
             <div style={{ color: "#1b5e20", marginBottom: 14, fontWeight: 600 }}>
               {created.queued
-                ? "Consultation enregistrée hors ligne"
-                : "Consultation créée"}
+                ? t("patientConsultationsTab.create.successOffline")
+                : t("patientConsultationsTab.create.successCreated")}
             </div>
             {created.queued && (
               <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#2e7d32" }}>
-                Le dossier sera synchronisé dès le retour de la connexion
+                {t("patientConsultationsTab.create.syncWhenOnline")}
               </p>
             )}
             <div style={{ display: "flex", gap: 10 }}>
@@ -944,19 +952,19 @@ function CreateConsultationModal({
                     href={`/app/encounters/${created.id}`}
                     style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
                   >
-                    Ouvrir la consultation
+                    {t("openEncountersTable.openEncounter")}
                   </Link>
                 ) : (
                   <Link
                     href={`/app/patients/${patient.id}`}
                     style={{ padding: "8px 12px", borderRadius: 4, background: "#1a1a1a", color: "#fff", textDecoration: "none", fontSize: 13, display: "inline-block" }}
                   >
-                    Ouvrir le dossier
+                    {t("openEncountersTable.openPatientChart")}
                   </Link>
                 )
               )}
               <button type="button" onClick={onClose} style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer" }}>
-                Retour à la liste
+                {t("orderDetail.backToList")}
               </button>
             </div>
           </div>

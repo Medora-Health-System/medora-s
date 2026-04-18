@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { createFollowUp } from "@/lib/followUpsApi";
-import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
+import { encounterBcp47, tEncounterType, tFollowUpStatus } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { btnPrimary, btnSecondary } from "@/components/chart/ChartSection";
@@ -126,9 +126,9 @@ export function CreateFollowUpModal({
     const errs: { patient?: string; dueDate?: string; reason?: string } = {};
 
     const pid = fixedPatientId || selectedPatient?.id;
-    if (!pid) errs.patient = "Le patient est requis";
-    if (!dueDate.trim()) errs.dueDate = "La date de suivi est requise";
-    if (!reason.trim()) errs.reason = "Le motif est requis";
+    if (!pid) errs.patient = t("createFollowUpModal.patientRequired");
+    if (!dueDate.trim()) errs.dueDate = t("createFollowUpModal.dueDateRequired");
+    if (!reason.trim()) errs.reason = t("createFollowUpModal.reasonRequired");
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
       return;
@@ -148,7 +148,8 @@ export function CreateFollowUpModal({
       setTimeout(() => onSuccess(), 600);
     } catch (err: unknown) {
       setError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) || "Impossible de créer le suivi"
+        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
+          t("createFollowUpModal.createFailed")
       );
     } finally {
       setSubmitting(false);
@@ -187,20 +188,20 @@ export function CreateFollowUpModal({
         aria-labelledby="create-followup-title"
       >
         <h2 id="create-followup-title" style={{ margin: "0 0 8px 0", fontSize: 20 }}>
-          Nouveau suivi
+          {t("createFollowUpModal.title")}
         </h2>
         <p style={{ margin: "0 0 20px 0", fontSize: 14, color: "#666" }}>
           {patientMode
-            ? "Recherchez un patient (au moins 2 caractères), puis renseignez la date et le motif."
-            : "Planifier un suivi avec date prévue et motif."}
+            ? t("createFollowUpModal.introSearchPatient")
+            : t("createFollowUpModal.introSchedule")}
         </p>
 
         {success ? (
           <div style={{ padding: "16px 0", color: "#2e7d32", fontSize: 15, fontWeight: 600 }}>
-            {queued ? "Suivi enregistré hors ligne" : "Suivi ajouté"}
+            {queued ? t("createFollowUpModal.successOffline") : t("createFollowUpModal.successOnline")}
             {queued ? (
               <div style={{ marginTop: 6, fontSize: 13, fontWeight: 500 }}>
-                Le suivi sera synchronisé dès le retour de la connexion
+                {t("createFollowUpModal.syncWhenOnline")}
               </div>
             ) : null}
           </div>
@@ -208,11 +209,11 @@ export function CreateFollowUpModal({
           <form onSubmit={handleSubmit}>
             {patientMode ? (
               <div ref={wrapRef} style={{ marginBottom: 18, position: "relative" }}>
-                <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>Patient *</label>
+                <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>{t("createFollowUpModal.patientLabel")}</label>
                 <input
                   type="text"
                   autoComplete="off"
-                  placeholder="Nom, prénom ou NIR…"
+                  placeholder={t("createFollowUpModal.searchPlaceholder")}
                   value={patientQuery}
                   onChange={(e) => {
                     setPatientQuery(e.target.value);
@@ -232,7 +233,7 @@ export function CreateFollowUpModal({
                 {fieldErrors.patient && (
                   <div style={{ fontSize: 13, color: "#c62828", marginTop: 4 }}>{fieldErrors.patient}</div>
                 )}
-                {patientLoading && <div style={{ fontSize: 13, color: "#666", marginTop: 6 }}>Recherche…</div>}
+                {patientLoading && <div style={{ fontSize: 13, color: "#666", marginTop: 6 }}>{t("common.searching")}</div>}
                 {showList && !selectedPatient && patientQuery.trim().length >= 2 && !patientLoading && patientHits.length === 0 && (
                   <div
                     style={{
@@ -250,7 +251,7 @@ export function CreateFollowUpModal({
                       zIndex: 10,
                     }}
                   >
-                    Aucun patient trouvé.
+                    {t("createFollowUpModal.noPatientFound")}
                   </div>
                 )}
                 {showList && patientHits.length > 0 && !selectedPatient && (
@@ -298,15 +299,15 @@ export function CreateFollowUpModal({
               </div>
             ) : (
               <div style={{ marginBottom: 18 }}>
-                <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>Patient</label>
+                <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>{t("createFollowUpModal.patientLockedLabel")}</label>
                 <div style={{ fontSize: 15, padding: "10px 12px", background: "#f5f5f5", borderRadius: 4 }}>
-                  {lockedPatientLabel || "—"}
+                  {lockedPatientLabel || t("common.dash")}
                 </div>
               </div>
             )}
 
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Date de suivi *</label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>{t("createFollowUpModal.dueDateLabel")}</label>
               <input
                 type="date"
                 value={dueDate}
@@ -324,7 +325,7 @@ export function CreateFollowUpModal({
               )}
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Heure</label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>{t("createFollowUpModal.timeLabel")}</label>
               <input
                 type="time"
                 value={dueTime}
@@ -339,16 +340,16 @@ export function CreateFollowUpModal({
               />
             </div>
             <div style={{ marginBottom: 14, fontSize: 13, color: "#555" }}>
-              Statut initial : Planifié
+              {t("createFollowUpModal.initialStatusPrefix")} {tFollowUpStatus(t, "OPEN")}
             </div>
 
             <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>Motif du suivi *</label>
+                <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>{t("createFollowUpModal.reasonLabel")}</label>
               <input
                 type="text"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="ex. contrôle plaie, résultats laboratoire"
+                placeholder={t("createFollowUpModal.reasonPlaceholder")}
                 style={{
                   width: "100%",
                   padding: 10,
@@ -363,31 +364,31 @@ export function CreateFollowUpModal({
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>Notes</label>
+              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("createFollowUpModal.notesLabel")}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                placeholder="Optionnel"
+                placeholder={t("createFollowUpModal.notesOptionalPlaceholder")}
                 style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
               />
             </div>
 
             {recentEncounters.length > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>Lier à une consultation</label>
+                <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("createFollowUpModal.linkEncounterLabel")}</label>
                 <select
                   value={encounterId}
                   onChange={(e) => setEncounterId(e.target.value)}
                   style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
                 >
-                  <option value="">— Aucune —</option>
+                  <option value="">{t("createFollowUpModal.optionNone")}</option>
                   {recentEncounters.map((enc) => {
                     const signed = enc.providerDocumentationStatus === "SIGNED";
                     return (
                       <option key={enc.id} value={enc.id} disabled={signed}>
                         {encounterLabel(enc)}
-                        {signed ? " — dossier signé" : ""}
+                        {signed ? t("createFollowUpModal.optionSignedSuffix") : ""}
                       </option>
                     );
                   })}
@@ -399,10 +400,10 @@ export function CreateFollowUpModal({
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button type="button" style={btnSecondary} onClick={onClose}>
-                Annuler
+                {t("common.cancel")}
               </button>
               <button type="submit" style={btnPrimary} disabled={submitting}>
-                {submitting ? "Enregistrement…" : "Enregistrer le suivi"}
+                {submitting ? t("createFollowUpModal.submitting") : t("createFollowUpModal.submit")}
               </button>
             </div>
           </form>
