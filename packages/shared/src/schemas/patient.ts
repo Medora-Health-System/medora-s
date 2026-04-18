@@ -146,6 +146,11 @@ export const encounterOperationalUpdateDtoSchema = z.object({
     emptyStrToNull,
     z.union([z.string().uuid(), z.null()]).optional()
   ),
+  /**
+   * Promotes an open EMERGENCY encounter with a saved admission packet to INPATIENT
+   * (hospitalization board). Does not run on the first admission save from disposition.
+   */
+  confirmInpatientTransfer: z.boolean().optional(),
 });
 
 export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalUpdateDtoSchema>;

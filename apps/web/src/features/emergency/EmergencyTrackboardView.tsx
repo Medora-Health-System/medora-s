@@ -393,6 +393,7 @@ export function EmergencyTrackboardView() {
                 ? formatEncounterChromeDateTime(encounter.createdAt, language)
                 : dash;
               const statusKey = (encounter.status ?? "").trim() || "OPEN";
+              const encounterTypeKey = (encounter.type ?? "").trim();
               const dispositionBadge = erDispositionBadgeFromEncounterJson(encounter);
               const sortieInfirmierOk =
                 dispositionBadge?.variant === "discharge" &&
@@ -401,7 +402,9 @@ export function EmergencyTrackboardView() {
                 ? dispositionBadgeSoft(dispositionBadge.variant)
                 : statusSoft(statusKey);
               const primaryStatusLabel = dispositionBadge
-                ? erDispositionBadgeDisplayLabel(dispositionBadge, t)
+                ? dispositionBadge.variant === "admit" && encounterTypeKey === EMERGENCY_TYPE
+                  ? t("emergencyTrackboard.disposition.admissionPending")
+                  : erDispositionBadgeDisplayLabel(dispositionBadge, t)
                 : tEncounterStatus(t, statusKey);
 
               return (

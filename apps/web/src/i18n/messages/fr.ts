@@ -1711,6 +1711,7 @@ export default {
     disposition: {
       discharged: "Sortie à domicile",
       dischargePending: "Sortie en attente",
+      admissionPending: "Admission en attente",
       admit: "Admission",
       observe: "Observation",
       transfer: "Transfert",
@@ -3325,6 +3326,9 @@ export default {
     assignedProviderColon: "Médecin attribué :",
     saveFailed: "Enregistrement impossible.",
     providerNameFallback: "Médecin attribué",
+    confirmInpatientTransferHint:
+      "Lorsque l'équipe des urgences a terminé la transmission, confirmez le transfert pour que le patient apparaisse au tableau d'hospitalisation. Sélectionnez d'abord le médecin accepteur ci-dessus.",
+    confirmInpatientTransferButton: "Confirmer le transfert vers l'hospitalisation",
   },
   encounters: {
     assignedProvider: "Médecin attribué",

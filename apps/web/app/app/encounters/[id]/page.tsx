@@ -859,6 +859,8 @@ export default function EncounterDetailPage() {
     encounter.status === "OPEN" || dischargePreviewForPrint !== null;
   const admissionBannerPreview = parseAdmissionSummaryForChart(encounter.admissionSummaryJson);
   const showEncounterHospitalizationBanner = encounter.type === "INPATIENT";
+  const showConfirmInpatientTransfer =
+    encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionBannerPreview != null;
 
   const quickBtn: React.CSSProperties = {
     padding: "8px 14px",
@@ -1449,6 +1451,7 @@ export default function EncounterDetailPage() {
             canEdit={canEditOperational && encounter.status === "OPEN"}
             roomLabel={encounter.roomLabel}
             physicianAssigned={encounter.physicianAssigned}
+            showConfirmInpatientTransfer={showConfirmInpatientTransfer}
             onSaved={mergeEncounterFromOperationalPatch}
             onUpdated={() => void loadEncounter({ silent: true })}
           />

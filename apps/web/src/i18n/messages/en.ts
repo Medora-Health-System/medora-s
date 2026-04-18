@@ -1761,6 +1761,7 @@ export default {
     disposition: {
       discharged: "Discharge",
       dischargePending: "Discharge pending",
+      admissionPending: "Admission pending",
       admit: "Admission",
       observe: "Observation",
       transfer: "Transfer",
@@ -3369,6 +3370,9 @@ export default {
     assignedProviderColon: "Assigned provider:",
     saveFailed: "Unable to save.",
     providerNameFallback: "Assigned provider",
+    confirmInpatientTransferHint:
+      "When the ER team has completed handoff, confirm transfer so the patient appears on the Hospitalization board. Select the accepting physician above first.",
+    confirmInpatientTransferButton: "Confirm transfer to hospitalization",
   },
   encounters: {
     assignedProvider: "Assigned provider",

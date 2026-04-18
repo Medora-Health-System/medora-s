@@ -54,6 +54,7 @@ import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPa
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
+import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import {
   MEDORA_CARD_SHELL,
@@ -311,6 +312,12 @@ export function EmergencyActiveWorkspaceView() {
     setResultsRefresh((r) => r + 1);
     setTriageRefresh((r) => r + 1);
   }, [load]);
+
+  const showConfirmInpatientTransfer = useMemo(() => {
+    if (!encounter || encounter.status !== "OPEN") return false;
+    if ((encounter.type ?? "").trim() !== EMERGENCY_TYPE) return false;
+    return parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null;
+  }, [encounter]);
 
   const loadTriageForStrip = useCallback(async () => {
     if (!encounterId || !fid) return;
@@ -953,6 +960,7 @@ export function EmergencyActiveWorkspaceView() {
             canEdit={canEditOperationalEncounter && encounter.status === "OPEN"}
             roomLabel={encounter.roomLabel}
             physicianAssigned={physicianAssignedForOperational}
+            showConfirmInpatientTransfer={showConfirmInpatientTransfer}
             onUpdated={async () => {
               setShowOperationalPanel(false);
               await load();

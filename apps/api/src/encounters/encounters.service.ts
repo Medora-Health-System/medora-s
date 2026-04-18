@@ -611,7 +611,7 @@ export class EncountersService {
         if (!encounter.admittedAt) {
           updateData.admittedAt = new Date();
         }
-        if (encounter.type !== EncounterType.INPATIENT) {
+        if (encounter.type !== EncounterType.INPATIENT && encounter.type !== EncounterType.EMERGENCY) {
           updateData.type = EncounterType.INPATIENT;
         }
       }
@@ -680,14 +680,45 @@ export class EncountersService {
       updateData.roomLabel =
         data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
     }
+    let resolvedPhysicianId: string | null = encounter.physicianAssignedUserId ?? null;
     if (data.physicianAssignedUserId !== undefined) {
       if (data.physicianAssignedUserId === null) {
         updateData.physicianAssignedUserId = null;
+        resolvedPhysicianId = null;
       } else {
         await this.assertProviderAtFacility(facilityId, data.physicianAssignedUserId);
         updateData.physicianAssignedUserId = data.physicianAssignedUserId;
+        resolvedPhysicianId = data.physicianAssignedUserId;
       }
     }
+
+    if (data.confirmInpatientTransfer === true) {
+      if (encounter.status !== EncounterStatus.OPEN) {
+        throw new BadRequestException(
+          "Le transfert vers l'hospitalisation n'est possible que sur une consultation ouverte."
+        );
+      }
+      if (encounter.type !== EncounterType.EMERGENCY) {
+        throw new BadRequestException(
+          "La confirmation de transfert s'applique uniquement à une consultation d'urgence avec dossier d'admission."
+        );
+      }
+      const adm = encounter.admissionSummaryJson;
+      const admObj =
+        adm && typeof adm === "object" && !Array.isArray(adm) ? (adm as Record<string, unknown>) : {};
+      if (!admissionSummaryHasContent(admObj)) {
+        throw new BadRequestException(
+          "Enregistrez d'abord le dossier d'admission (décision de disposition), puis confirmez le transfert."
+        );
+      }
+      if (!resolvedPhysicianId) {
+        throw new BadRequestException(
+          "Sélectionnez le médecin accepteur dans ce panneau avant de confirmer le transfert vers l'hospitalisation."
+        );
+      }
+      updateData.type = EncounterType.INPATIENT;
+    }
+
     if (Object.keys(updateData).length === 0) {
       const unchanged = await this.prisma.encounter.findFirst({
         where: { id, facilityId },

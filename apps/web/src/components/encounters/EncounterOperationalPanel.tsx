@@ -18,6 +18,7 @@ export function EncounterOperationalPanel({
   physicianAssigned,
   onUpdated,
   onSaved,
+  showConfirmInpatientTransfer,
 }: {
   encounterId: string;
   facilityId: string;
@@ -27,6 +28,8 @@ export function EncounterOperationalPanel({
   onUpdated: () => void | Promise<void>;
   /** Merge returned API fields immediately (avoids empty display before GET completes). */
   onSaved?: (patch: Record<string, unknown>) => void;
+  /** Open EMERGENCY encounter with saved admission packet — show transfer to hospitalization board. */
+  showConfirmInpatientTransfer?: boolean;
 }) {
   const { t } = useI18n();
   const [room, setRoom] = useState(roomLabel ?? "");
@@ -86,30 +89,34 @@ export function EncounterOperationalPanel({
     [t]
   );
 
-  const save = useCallback(async () => {
-    if (!canEdit) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/encounters/${encounterId}/operational`, {
-        method: "PATCH",
-        facilityId,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          roomLabel: room.trim() || null,
-          physicianAssignedUserId: physicianId || null,
-        }),
-      });
-      if (res && typeof res === "object" && !Array.isArray(res) && !(res as { queued?: boolean }).queued) {
-        onSaved?.(res as Record<string, unknown>);
+  const save = useCallback(
+    async (opts?: { confirmInpatientTransfer?: boolean }) => {
+      if (!canEdit) return;
+      setSaving(true);
+      setError(null);
+      try {
+        const res = await apiFetch(`/encounters/${encounterId}/operational`, {
+          method: "PATCH",
+          facilityId,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomLabel: room.trim() || null,
+            physicianAssignedUserId: physicianId || null,
+            ...(opts?.confirmInpatientTransfer ? { confirmInpatientTransfer: true } : {}),
+          }),
+        });
+        if (res && typeof res === "object" && !Array.isArray(res) && !(res as { queued?: boolean }).queued) {
+          onSaved?.(res as Record<string, unknown>);
+        }
+        await Promise.resolve(onUpdated());
+      } catch (e) {
+        setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterOperational.saveFailed"));
+      } finally {
+        setSaving(false);
       }
-      await Promise.resolve(onUpdated());
-    } catch (e) {
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterOperational.saveFailed"));
-    } finally {
-      setSaving(false);
-    }
-  }, [canEdit, encounterId, facilityId, onUpdated, onSaved, physicianId, room, t]);
+    },
+    [canEdit, encounterId, facilityId, onUpdated, onSaved, physicianId, room, t]
+  );
 
   const panelShell: React.CSSProperties = {
     backgroundColor: MEDORA_CARD_SHELL.background,
@@ -216,6 +223,31 @@ export function EncounterOperationalPanel({
           {saving ? t("common.saving") : t("common.save")}
         </button>
       </div>
+      {showConfirmInpatientTransfer ? (
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+          <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+            {t("encounterOperational.confirmInpatientTransferHint")}
+          </p>
+          <button
+            type="button"
+            disabled={saving || !physicianId.trim()}
+            onClick={() => void save({ confirmInpatientTransfer: true })}
+            style={{
+              padding: "10px 18px",
+              backgroundColor: "#0f766e",
+              color: "#fff",
+              border: "none",
+              borderRadius: 10,
+              cursor: saving || !physicianId.trim() ? "not-allowed" : "pointer",
+              fontWeight: 600,
+              fontSize: 14,
+              opacity: !physicianId.trim() ? 0.55 : 1,
+            }}
+          >
+            {saving ? t("common.saving") : t("encounterOperational.confirmInpatientTransferButton")}
+          </button>
+        </div>
+      ) : null}
       {error && (
         <p style={{ color: "#b91c1c", fontSize: 13, marginTop: 12, lineHeight: 1.45 }} role="alert">
           {error}

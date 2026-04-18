@@ -57,6 +57,7 @@ import {
   emergencyTrackboardPath,
   genericEncounterPath,
 } from "@/features/emergency/emergencyRoutes";
+import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
@@ -262,6 +263,12 @@ export function EmergencyChartView() {
     setResultsRefresh((r) => r + 1);
     setTriageRefresh((r) => r + 1);
   }, [load]);
+
+  const showConfirmInpatientTransfer = useMemo(() => {
+    if (!encounter || encounter.status !== "OPEN") return false;
+    if ((encounter.type ?? "").trim() !== EMERGENCY_TYPE) return false;
+    return parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null;
+  }, [encounter]);
 
   const loadTriageForStrip = useCallback(async () => {
     if (!encounterId || !fid) return;
@@ -646,6 +653,7 @@ export function EmergencyChartView() {
             canEdit={canEditOperationalEncounter && encounter.status === "OPEN"}
             roomLabel={encounter.roomLabel}
             physicianAssigned={physicianAssignedForOperational}
+            showConfirmInpatientTransfer={showConfirmInpatientTransfer}
             onUpdated={async () => {
               setShowOperationalPanel(false);
               await load();
