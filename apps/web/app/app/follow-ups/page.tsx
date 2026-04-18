@@ -10,22 +10,23 @@ import {
   type FollowUpRow,
 } from "@/lib/followUpsApi";
 import { CreateFollowUpModal } from "@/components/patient-chart";
-import { getFollowUpStatusLabelFr } from "@/lib/uiLabels";
+import { encounterBcp47, tFollowUpStatus } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { useConnectivityStatus } from "@/lib/offline/useConnectivityStatus";
 
-function formatDate(d: string | null | undefined) {
-  return d ? new Date(d).toLocaleDateString("fr-FR") : "—";
+function formatDate(d: string | null | undefined, locale: string, emptyDash: string) {
+  return d ? new Date(d).toLocaleDateString(locale) : emptyDash;
 }
 
-function statusBadge(status: string) {
+function statusBadge(status: string, t: (key: string) => string) {
   const style: React.CSSProperties =
     status === "OPEN"
       ? { padding: "2px 8px", borderRadius: 4, fontSize: 12, fontWeight: 600, backgroundColor: "#e3f2fd", color: "#1565c0" }
       : status === "COMPLETED"
         ? { padding: "2px 8px", borderRadius: 4, fontSize: 12, fontWeight: 600, backgroundColor: "#e8f5e9", color: "#2e7d32" }
         : { padding: "2px 8px", borderRadius: 4, fontSize: 12, fontWeight: 600, backgroundColor: "#f5f5f5", color: "#616161" };
-  return <span style={style}>{getFollowUpStatusLabelFr(status)}</span>;
+  return <span style={style}>{tFollowUpStatus(t, status)}</span>;
 }
 
 function isOverdue(item: FollowUpRow) {
@@ -72,6 +73,9 @@ function canManageFollowUpStatusRole(roles: string[]) {
 }
 
 export default function FollowUpsPage() {
+  const { t, language } = useI18n();
+  const dateLocale = encounterBcp47(language);
+  const dash = t("common.dash");
   const { facilityId, roles, ready: rolesReady } = useFacilityAndRoles();
   const { isOffline } = useConnectivityStatus();
   const [items, setItems] = useState<FollowUpRow[]>([]);
@@ -93,8 +97,8 @@ export default function FollowUpsPage() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
+    const toastHideTimer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(toastHideTimer);
   }, [toast]);
 
   const load = useCallback(async () => {
@@ -251,7 +255,7 @@ export default function FollowUpsPage() {
 
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginBottom: 20 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>Rechercher un patient ou un motif</span>
+          <span style={{ fontSize: 14 }}>{t("followUpsPage.searchPatientOrReason")}</span>
           <input
             type="text"
             value={searchQuery}
@@ -292,12 +296,12 @@ export default function FollowUpsPage() {
           />
         </label>
         <button type="button" style={{ ...btnSecondary, fontWeight: 600 }} onClick={load} disabled={loading}>
-          {loading ? "Chargement…" : "Appliquer"}
+          {loading ? t("common.loading") : t("common.apply")}
         </button>
       </div>
 
       {loading && !filteredSorted.length ? (
-        <div style={{ padding: 40, textAlign: "center", color: "#666" }}>Chargement des suivis…</div>
+        <div style={{ padding: 40, textAlign: "center", color: "#666" }}>{t("followUpsPage.loadingList")}</div>
       ) : filteredSorted.length === 0 ? (
         <div style={{ padding: 24, backgroundColor: "#fafafa", border: "1px solid #eee", borderRadius: 8, color: "#555" }}>
           Aucun suivi trouvé.
@@ -329,7 +333,7 @@ export default function FollowUpsPage() {
                 </td>
                 <td style={tableStyles.td}>{fu.patient?.mrn || "—"}</td>
                 <td style={tableStyles.td}>
-                  {formatDate(fu.dueDate)}
+                  {formatDate(fu.dueDate, dateLocale, dash)}
                   {isOverdue(fu) ? (
                     <div style={{ fontSize: 11, color: "#b26a00", marginTop: 2 }}>En retard</div>
                   ) : isToday(fu) && fu.status === "OPEN" ? (
@@ -343,7 +347,7 @@ export default function FollowUpsPage() {
                   })}
                 </td>
                 <td style={tableStyles.td}>{fu.reason || "—"}</td>
-                <td style={tableStyles.td}>{statusBadge(fu.status)}</td>
+                <td style={tableStyles.td}>{statusBadge(fu.status, t)}</td>
                 <td style={tableStyles.td}>
                   <div style={{ fontSize: 12, color: "#555" }}>
                     {fu.createdBy
@@ -351,11 +355,11 @@ export default function FollowUpsPage() {
                       : "Créé par —"}
                   </div>
                   <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                    Créé le {formatDate(fu.createdAt)}
+                    Créé le {formatDate(fu.createdAt, dateLocale, dash)}
                   </div>
                   {fu.completedAt ? (
                     <div style={{ fontSize: 12, color: "#2e7d32", marginTop: 2 }}>
-                      Terminé le {formatDate(fu.completedAt)}
+                      Terminé le {formatDate(fu.completedAt, dateLocale, dash)}
                     </div>
                   ) : null}
                 </td>

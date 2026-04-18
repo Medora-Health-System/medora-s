@@ -5,11 +5,11 @@ import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { getOrderPriorityLabelFr, ui } from "@/lib/uiLabels";
-
-const R = ui.radiology;
+import { tOrderPriority } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 
 export default function RadiologyPage() {
+  const { t } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -52,31 +52,31 @@ export default function RadiologyPage() {
       });
       loadQueue();
     } catch {
-      alert(R.updateStatusFailed);
+      alert(t("worklistDepartments.radiology.updateStatusFailed"));
     }
   };
 
   return (
     <div>
-      <h1>{R.title}</h1>
-      <p>{R.subtitle}</p>
+      <h1>{t("worklistDepartments.radiology.title")}</h1>
+      <p>{t("worklistDepartments.radiology.subtitle")}</p>
       {loading ? (
-        <p>{ui.common.loading}</p>
+        <p>{t("common.loading")}</p>
       ) : queue.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>{R.empty}</p>
+          <p>{t("worklistDepartments.radiology.empty")}</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.study}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.patient")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.nir")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.imagingStudy")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.priority")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.status")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -86,9 +86,9 @@ export default function RadiologyPage() {
                     <td style={{ padding: 12 }}>
                       {order.encounter?.patient?.firstName} {order.encounter?.patient?.lastName}
                     </td>
-                    <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? ui.common.dash}</td>
+                    <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? t("common.dash")}</td>
                     <td style={{ padding: 12 }}>{item.catalogItemId}</td>
-                    <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(order.priority)}</td>
+                    <td style={{ padding: 12 }}>{tOrderPriority(t, String(order.priority ?? "ROUTINE"))}</td>
                     <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
                     <td style={{ padding: 12 }}>
                       {item.status === "PENDING" && (
@@ -97,7 +97,7 @@ export default function RadiologyPage() {
                           onClick={() => handleUpdateStatus(item.id, "IN_PROGRESS")}
                           style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                         >
-                          {R.start}
+                          {t("worklistDepartments.shared.start")}
                         </button>
                       )}
                       {item.status === "IN_PROGRESS" && (
@@ -106,10 +106,10 @@ export default function RadiologyPage() {
                           onClick={() => handleUpdateStatus(item.id, "COMPLETED")}
                           style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                         >
-                          {R.complete}
+                          {t("worklistDepartments.shared.complete")}
                         </button>
                       )}
-                      <Link href={`/app/encounters/${order.encounterId}`}>{R.viewEncounter}</Link>
+                      <Link href={`/app/encounters/${order.encounterId}`}>{t("worklistDepartments.radiology.viewEncounter")}</Link>
                     </td>
                   </tr>
                 ))

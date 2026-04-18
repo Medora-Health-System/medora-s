@@ -20,6 +20,35 @@ export default {
     noResults: "Aucun résultat",
     searchMedicationPlaceholder: "Rechercher un médicament",
     minCharsSearch: "Tapez au moins 2 caractères",
+    date: "Date",
+    labTest: "Analyse",
+    imagingStudy: "Examen",
+    loadError: "Impossible de charger",
+    searchPatient: "Rechercher un patient",
+    apply: "Appliquer",
+  },
+  worklistDepartments: {
+    shared: {
+      acknowledge: "Accuser réception",
+      start: "Démarrer",
+      complete: "Terminer",
+    },
+    lab: {
+      title: "File laboratoire",
+      subtitle: "Analyses à traiter.",
+      empty: "Aucune analyse en attente.",
+      alertAckFailed: "Impossible d'acquitter l'analyse.",
+      alertStartFailed: "Impossible de démarrer l'analyse.",
+      alertCompleteFailed: "Impossible de terminer l'analyse.",
+      viewEncounter: "Voir la consultation",
+    },
+    radiology: {
+      title: "File imagerie",
+      subtitle: "Examens d'imagerie à traiter.",
+      empty: "Aucun examen en attente.",
+      updateStatusFailed: "Impossible de mettre à jour le statut",
+      viewEncounter: "Voir la consultation",
+    },
   },
   appShell: {
     msppMinistryTitle:
@@ -41,6 +70,17 @@ export default {
     mspp_communication: "Communication",
     mspp_exports: "Exports",
     admin: "Administration",
+  },
+  followUpsPage: {
+    searchPatientOrReason: "Rechercher un patient ou un motif",
+    loadingList: "Chargement des suivis…",
+  },
+  hospitalizationBoard: {
+    loadListError: "Impossible de charger la liste.",
+  },
+  pharmacyDispense: {
+    step1Prefix: "1.",
+    loadingEncounters: "Chargement des consultations…",
   },
   landingHome: {
     previewAdmin: "Espace administration",
@@ -2232,6 +2272,8 @@ export default {
       "Cette consultation n'existe pas, a été supprimée, ou vous n'avez pas accès à cet établissement.",
     backToEncounterList: "Retour à la liste des consultations",
     loadFailedTitle: "Impossible de charger la consultation.",
+    errLoadEncounter: "Impossible de charger la consultation.",
+    errAuditTimelineLoad: "Impossible de charger l'historique.",
     lockedSignedBanner: "Dossier signé — modifications verrouillées",
     queuedCloseBanner:
       "La demande de clôture a été enregistrée sur cet appareil et est en attente de synchronisation avec le serveur. La consultation n'est pas encore confirmée fermée : les autres postes peuvent encore afficher la visite comme ouverte jusqu'à la fin de la synchronisation.",
@@ -2376,6 +2418,7 @@ export default {
       milestoneFailed: "Impossible de valider le jalon",
       confirmUnknownError: "erreur inconnue",
       milestonesTitle: "Chronos et jalons",
+      nextMilestoneBadge: "Prochain",
     },
     ordersTab: {
       loading: "Chargement des ordres…",
@@ -2954,6 +2997,7 @@ export default {
     openPatientChart: "Ouvrir le dossier",
     openEncounter: "Ouvrir la consultation",
     medAdmin: "Administration médicamenteuse",
+    loadError: "Impossible de charger les consultations.",
   },
   patientQuickActions: {
     sectionTitle: "Actions rapides",

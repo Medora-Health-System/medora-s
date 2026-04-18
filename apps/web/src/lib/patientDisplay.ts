@@ -1,4 +1,9 @@
-import { getPatientSexLabelFr, ui } from "@/lib/uiLabels";
+import type { SupportedLanguage } from "@/i18n/config";
+import { formatPatientAgeSexLine, tPatientSex } from "@/lib/encounterChromeI18n";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
+
+/** Fallback display when age/identifier is unavailable (matches `common.dash` in i18n). */
+export const DISPLAY_DASH = "—";
 
 /**
  * Âge calculé à partir de la date de naissance — non persisté en base.
@@ -10,11 +15,11 @@ export function calculateAge(dob: string): number {
 }
 
 export function formatAgeFr(dob: string | null | undefined): string {
-  if (!dob) return ui.common.dash;
+  if (!dob) return DISPLAY_DASH;
   const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return ui.common.dash;
+  if (Number.isNaN(birth.getTime())) return DISPLAY_DASH;
   const now = new Date();
-  if (birth.getTime() > now.getTime()) return ui.common.dash;
+  if (birth.getTime() > now.getTime()) return DISPLAY_DASH;
 
   const years = calculateAge(dob);
   if (years >= 1) return `${years} an${years > 1 ? "s" : ""}`;
@@ -30,43 +35,41 @@ export function formatAgeFr(dob: string | null | undefined): string {
 }
 
 export function sexLabelFr(code: string | null | undefined): string {
-  return getPatientSexLabelFr(undefined, code);
+  return patientSexDisplayFr(undefined, code);
 }
 
-/** Affichage sexe dossier : `sex` (enum API) + repli `sexAtBirth`. */
+/** Affichage sexe dossier : `sex` (enum API) + repli `sexAtBirth` (messages FR via i18n). */
 export function patientSexDisplayFr(
   sex: string | null | undefined,
   sexAtBirth: string | null | undefined
 ): string {
-  return getPatientSexLabelFr(sex, sexAtBirth);
+  const t = (k: string) => i18nMessage("fr", k);
+  return tPatientSex(sex, sexAtBirth, t);
 }
 
-/** @deprecated Utiliser `formatAgeYearsSexFr` — alias pour compatibilité. */
+/** @deprecated Utiliser `formatAgeYearsSexForLocale` — alias pour compatibilité. */
 export function sexLabelEnglish(code: string | null | undefined): string {
   return sexLabelFr(code);
 }
 
-/** Affichage âge + sexe, ex. « 34 ans • Femme » (âge toujours calculé, jamais lu depuis la DB). */
-export function formatAgeYearsSexFr(
+/** Affichage âge + sexe selon la langue de l’établissement. */
+export function formatAgeYearsSexForLocale(
   dob: string | null | undefined,
   sexAtBirth: string | null | undefined,
-  sex?: string | null | undefined
+  sex: string | null | undefined,
+  locale: SupportedLanguage
 ): string {
-  if (!dob) return ui.common.dash;
-  const t = new Date(dob).getTime();
-  if (Number.isNaN(t)) return ui.common.dash;
-  const age = calculateAge(dob);
-  if (!Number.isFinite(age) || age < 0) return ui.common.dash;
-  return `${age} ans • ${getPatientSexLabelFr(sex, sexAtBirth)}`;
+  const t = (k: string) => i18nMessage(locale, k);
+  return formatPatientAgeSexLine(dob, sexAtBirth, sex, t);
 }
 
-/** @deprecated Utiliser `formatAgeYearsSexFr`. */
+/** @deprecated Utiliser `formatAgeYearsSexForLocale`. */
 export function formatAgeYearsSexEnglish(
   dob: string | null | undefined,
   sexAtBirth: string | null | undefined,
   sex?: string | null | undefined
 ): string {
-  return formatAgeYearsSexFr(dob, sexAtBirth, sex);
+  return formatAgeYearsSexForLocale(dob, sexAtBirth, sex ?? null, "en");
 }
 
 /** Standard UUID v4 pattern — hide as user-facing primary identifier when no better label exists. */
@@ -89,8 +92,8 @@ export function formatPrimaryIdentifierForDisplay(
   value: string | null | undefined,
   options?: FormatPrimaryIdentifierOptions
 ): string | null {
-  const t = value?.trim();
-  if (!t) return null;
-  if (!options?.allowUuidLike && UUID_V4_LIKE.test(t)) return null;
-  return t;
+  const v = value?.trim();
+  if (!v) return null;
+  if (!options?.allowUuidLike && UUID_V4_LIKE.test(v)) return null;
+  return v;
 }

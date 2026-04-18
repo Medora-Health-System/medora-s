@@ -1,9 +1,10 @@
 import { Suspense, type ReactNode } from "react";
+import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
 export default function PharmacyInventoryLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  return <Suspense fallback={<p>Chargement…</p>}>{children}</Suspense>;
+  return <Suspense fallback={<CommonSuspenseFallback />}>{children}</Suspense>;
 }

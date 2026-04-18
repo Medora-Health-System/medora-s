@@ -7,8 +7,9 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
-import { ui } from "@/lib/uiLabels";
+import { formatAgeYearsSexForLocale, DISPLAY_DASH } from "@/lib/patientDisplay";
+import { encounterBcp47 } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 import {
@@ -56,7 +57,7 @@ function patientInitials(p: HospitalisationBoardEncounterRow["patient"]): string
 }
 
 function fullPatientName(p: HospitalisationBoardEncounterRow["patient"]): string {
-  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || DISPLAY_DASH;
 }
 
 function physicianLabel(enc: HospitalisationBoardEncounterRow): string {
@@ -77,6 +78,8 @@ function unitFromRoomLabel(roomLabel: string | null | undefined): string {
  * Single implementation for `/app/hospitalisation` (and optional `?mock=error` | `?mock=empty` for demos/tests).
  */
 export function HospitalizationBoardView() {
+  const { t, language } = useI18n();
+  const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const mockMode = searchParams.get("mock");
 
@@ -103,7 +106,7 @@ export function HospitalizationBoardView() {
   useEffect(() => {
     if (mockMode === "error") {
       setLoading(false);
-      setFetchError("Impossible de charger la liste.");
+      setFetchError(t("hospitalizationBoard.loadListError"));
       setEncounters([]);
       return;
     }
@@ -124,7 +127,7 @@ export function HospitalizationBoardView() {
       setEncounters(data || []);
     } catch (error) {
       console.error("Failed to load hospitalisation board:", error);
-      setFetchError("Impossible de charger la liste.");
+      setFetchError(t("hospitalizationBoard.loadListError"));
     } finally {
       setLoading(false);
     }
@@ -238,8 +241,8 @@ export function HospitalizationBoardView() {
   }, [filteredEncounters]);
 
   const formatTime = (date: string | null) => {
-    if (!date) return ui.common.dash;
-    return new Date(date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    if (!date) return t("common.dash");
+    return new Date(date).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" });
   };
 
   const inputBase: React.CSSProperties = {
@@ -385,7 +388,7 @@ export function HospitalizationBoardView() {
                 whiteSpace: "nowrap",
               }}
             >
-              {loading ? ui.common.loading : ui.common.refresh}
+              {loading ? t("common.loading") : t("common.refresh")}
             </button>
             <button
               type="button"
@@ -544,10 +547,10 @@ export function HospitalizationBoardView() {
               const borderLeft = ACUITY_BORDER[acuity];
               const patient = encounter.patient;
               const cc =
-                encounter.triage?.chiefComplaint || encounter.chiefComplaint || ui.common.dash;
-              const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : ui.common.dash;
-              const room = encounter.roomLabel?.trim() || ui.common.dash;
-              const phys = physicianLabel(encounter) || ui.common.dash;
+                encounter.triage?.chiefComplaint || encounter.chiefComplaint || t("common.dash");
+              const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : t("common.dash");
+              const room = encounter.roomLabel?.trim() || t("common.dash");
+              const phys = physicianLabel(encounter) || t("common.dash");
 
               return (
                 <li key={encounter.id}>
@@ -555,7 +558,7 @@ export function HospitalizationBoardView() {
                     <MedoraCardInner>
                       <MedoraCompactPatientCardRow
                         avatarInitials={patientInitials(patient)}
-                        roomLabel={ui.common.room}
+                        roomLabel={t("common.room")}
                         roomValue={room}
                         rightMaxWidth={320}
                         identity={
@@ -572,17 +575,19 @@ export function HospitalizationBoardView() {
                               {fullPatientName(patient)}
                             </h2>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
-                              {formatAgeYearsSexFr(
+                              {formatAgeYearsSexForLocale(
                                 patient?.dob ?? null,
                                 patient?.sexAtBirth ?? null,
-                                patient?.sex ?? null
+                                patient?.sex ?? null,
+                                language
                               )}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>{cc}</p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.esiIndex}</span> {esiDisplay}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicalTrackboardPage.esiIndex")}</span>{" "}
+                              {esiDisplay}
                               {" · "}
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.arrival")}</span>{" "}
                               {formatTime(encounter.createdAt ?? null)}
                             </p>
                           </>
@@ -607,7 +612,7 @@ export function HospitalizationBoardView() {
                               {phys}
                             </p>
                             <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", textAlign: "right" }}>
-                              <span style={{ color: "#cbd5e1" }}>Inf.</span> {ui.common.dash}
+                              <span style={{ color: "#cbd5e1" }}>{t("clinicalTrackboardPage.nurseAbbr")}</span> {t("common.dash")}
                             </p>
                             <div
                               style={{
@@ -646,7 +651,7 @@ export function HospitalizationBoardView() {
                                   textDecoration: "none",
                                 }}
                               >
-                                {ui.common.view}
+                                {t("common.view")}
                               </Link>
                               <button
                                 type="button"

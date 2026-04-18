@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchExpiring, type InventoryItemRow } from "@/lib/pharmacyApi";
 import { InventoryTable } from "@/components/pharmacy/InventoryTable";
-import { ui } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
 
 export default function PharmacyExpiringPage() {
+  const { t } = useI18n();
   const { facilityId, ready, canViewPharmacy, canManagePharmacy } =
     useFacilityAndRoles();
   const [withinDays, setWithinDays] = useState(90);
@@ -21,7 +22,7 @@ export default function PharmacyExpiringPage() {
     setError(null);
     fetchExpiring(facilityId, withinDays)
       .then(setItems)
-      .catch((e) => setError(e?.message || "Impossible de charger"))
+      .catch((e) => setError(e?.message || t("common.loadError")))
       .finally(() => setLoading(false));
   };
 
@@ -33,7 +34,7 @@ export default function PharmacyExpiringPage() {
     load();
   }, [ready, facilityId, canViewPharmacy, withinDays]);
 
-  if (!ready) return <p>{ui.common.loading}</p>;
+  if (!ready) return <p>{t("common.loading")}</p>;
   if (!canViewPharmacy) {
     return (
       <div>
@@ -98,7 +99,7 @@ export default function PharmacyExpiringPage() {
       </div>
       {error && <p style={{ color: "#b00020" }}>{error}</p>}
       {loading ? (
-        <p>Chargement…</p>
+        <p>{t("common.loading")}</p>
       ) : (
         <InventoryTable
           items={items}

@@ -70,7 +70,7 @@ import {
   mergeDischargeForSave,
   type DischargeFormState,
 } from "@/lib/encounterDischarge";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
@@ -317,7 +317,7 @@ export default function EncounterDetailPage() {
           console.warn("[encounterDetail] échec chargement consultation", { encounterId, facilityId, error });
         }
         const msg = normalizeUserFacingError(error instanceof Error ? error.message : null);
-        if (!cancelled) setEncounterFetchError(msg || "Impossible de charger la consultation.");
+        if (!cancelled) setEncounterFetchError(msg || t("encounterChrome.errLoadEncounter"));
         const cached = await getCachedRecord<any>("encounter_summaries", cacheKey);
         if (!cancelled) {
           setEncounter(cached?.data ?? null);
@@ -330,7 +330,7 @@ export default function EncounterDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId, rolesReady, canViewEncounterDetail]);
+  }, [encounterId, facilityId, rolesReady, canViewEncounterDetail, t]);
 
   useEffect(() => {
     if (!encounter || !facilityId || !rolesReady || tabBootstrapped) return;
@@ -358,8 +358,7 @@ export default function EncounterDetailPage() {
       } catch (e) {
         if (!cancelled) {
           setAuditTimelineError(
-            normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-              "Impossible de charger l’historique."
+            normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterChrome.errAuditTimelineLoad")
           );
           setAuditTimelineItems(null);
         }
@@ -370,7 +369,7 @@ export default function EncounterDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, encounterId, facilityId]);
+  }, [activeTab, encounterId, facilityId, t]);
 
   const loadQuickContext = useCallback(async () => {
     if (!encounter?.id || !facilityId || !rolesReady) return;
@@ -808,7 +807,7 @@ export default function EncounterDetailPage() {
               <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
                 {t("encounterChrome.loadFailedTitle")}
               </p>
-              {encounterFetchError.trim() !== "Impossible de charger la consultation." &&
+              {encounterFetchError.trim() !== t("encounterChrome.errLoadEncounter").trim() &&
               encounterFetchError.trim() !== t("encounterChrome.loadFailedTitle").trim() ? (
                 <p style={{ margin: "14px 0 0 0", color: "#b91c1c", lineHeight: 1.55 }}>{encounterFetchError}</p>
               ) : null}
@@ -3829,10 +3828,6 @@ function PathwaysTab({
   );
 }
 
-function formatOrderItemLineFr(it: any): string {
-  return getOrderItemDisplayLabelFr(it);
-}
-
 /** Aligné sur `assertCanTransition(…, CANCELLED)` côté serveur — ordre parent. */
 function canAttemptWholeOrderCancel(order: { status?: string; pendingSync?: boolean }, encounterOpen: boolean): boolean {
   if (!encounterOpen) return false;
@@ -3873,6 +3868,7 @@ function OrdersTab({
   onRefetchEncounter?: () => Promise<void>;
 }) {
   const { t, language } = useI18n();
+  const orderItemLineLabel = (it: any) => getOrderItemDisplayLabelFromLocale(it, language);
   const { roles } = useFacilityAndRoles();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4121,8 +4117,10 @@ function OrdersTab({
                         <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.labSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
                           <strong>{t("encounterChrome.ordersTab.labItemsLabel")}</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
-                            t("common.dash")}
+                          {(order.items || [])
+                            .map((it: any) => getOrderItemDisplayLabelFromLocale(it, language))
+                            .filter(Boolean)
+                            .join(", ") || t("common.dash")}
                         </div>
                       </>
                     ) : order.type === "IMAGING" ? (
@@ -4130,8 +4128,10 @@ function OrdersTab({
                         <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.imagingSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
                           <strong>{t("encounterChrome.ordersTab.imagingItemsLabel")}</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
-                            t("common.dash")}
+                          {(order.items || [])
+                            .map((it: any) => getOrderItemDisplayLabelFromLocale(it, language))
+                            .filter(Boolean)
+                            .join(", ") || t("common.dash")}
                         </div>
                       </>
                     ) : order.type === "MEDICATION" ? (
@@ -4139,8 +4139,10 @@ function OrdersTab({
                         <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.medicationSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
                           <strong>{t("encounterChrome.ordersTab.medicationItemsLabel")}</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
-                            t("common.dash")}
+                          {(order.items || [])
+                            .map((it: any) => getOrderItemDisplayLabelFromLocale(it, language))
+                            .filter(Boolean)
+                            .join(", ") || t("common.dash")}
                         </div>
                       </>
                     ) : order.type === "CARE" ? (
@@ -4148,8 +4150,10 @@ function OrdersTab({
                         <div style={{ fontWeight: 600 }}>{t("encounterChrome.ordersTab.careSection")}</div>
                         <div style={{ fontSize: 12, color: "#424242", marginTop: 4, lineHeight: 1.45 }}>
                           <strong>{t("encounterChrome.ordersTab.careItemsLabel")}</strong>{" "}
-                          {(order.items || []).map((it: any) => getOrderItemDisplayLabelFr(it)).filter(Boolean).join(", ") ||
-                            t("common.dash")}
+                          {(order.items || [])
+                            .map((it: any) => getOrderItemDisplayLabelFromLocale(it, language))
+                            .filter(Boolean)
+                            .join(", ") || t("common.dash")}
                         </div>
                       </>
                     ) : (
@@ -4222,7 +4226,7 @@ function OrdersTab({
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                       {(order.items || []).map((it: any) => (
                         <li key={it.id} style={{ marginBottom: 8 }}>
-                          <strong>{formatOrderItemLineFr(it)}</strong>
+                          <strong>{orderItemLineLabel(it)}</strong>
                           {order.type === "MEDICATION" && !medicationLineClinicallyExecuted(it) ? (
                             <div style={{ fontSize: 12, color: "#555" }}>
                               {tMedicationFulfillmentIntent(t, it.medicationFulfillmentIntent)} ·{" "}

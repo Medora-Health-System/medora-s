@@ -3,7 +3,7 @@
 
 import React from "react";
 import type { PathwaySessionSummary } from "../hooks/usePathwayTimers";
-import { ui } from "@/lib/uiLabels";
+import { useI18n } from "@/lib/i18n";
 
 export function PathwaySessionSummaryBar({
   summary,
@@ -14,6 +14,7 @@ export function PathwaySessionSummaryBar({
   pathwayStatus: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
   onJumpToNextDue?: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div style={{ marginTop: 12, borderRadius: 8, border: "1px solid #e5e7eb", backgroundColor: "white", padding: 12 }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -72,7 +73,7 @@ export function PathwaySessionSummaryBar({
                 color: summary.nextDue.remainingSeconds < 0 ? "#991b1b" : "#92400e",
               }}
             >
-              {ui.pathway.nextMilestoneBadge}
+              {t("encounterOperational.pathways.nextMilestoneBadge")}
             </span>
             <span style={{ fontWeight: 500 }}>
               {summary.nextDue.name}{" "}

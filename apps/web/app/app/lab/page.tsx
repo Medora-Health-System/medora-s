@@ -5,14 +5,13 @@ import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { getOrderPriorityLabelFr, ui } from "@/lib/uiLabels";
+import { tOrderPriority } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import {
   getEncounterPatientLabelFromCache,
   getPendingLabOrderRowsForFacility,
   type PendingFacilityQueueRow,
 } from "@/lib/offline/pendingEncounterOrders";
-
-const L = ui.lab;
 
 function PendingEncounterPatientCells({
   facilityId,
@@ -38,6 +37,7 @@ function PendingEncounterPatientCells({
 }
 
 export default function LabPage() {
+  const { t, language } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -60,7 +60,7 @@ export default function LabPage() {
   const loadQueue = async () => {
     if (!facilityId) return;
     setLoading(true);
-    const pendingP = getPendingLabOrderRowsForFacility(facilityId);
+    const pendingP = getPendingLabOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/lab", { facilityId });
       setQueue(Array.isArray(data) ? data : []);
@@ -90,7 +90,7 @@ export default function LabPage() {
       });
       loadQueue();
     } catch {
-      alert(L.alertAckFailed);
+      alert(t("worklistDepartments.lab.alertAckFailed"));
     }
   };
 
@@ -103,7 +103,7 @@ export default function LabPage() {
       });
       loadQueue();
     } catch {
-      alert(L.alertStartFailed);
+      alert(t("worklistDepartments.lab.alertStartFailed"));
     }
   };
 
@@ -116,19 +116,19 @@ export default function LabPage() {
       });
       loadQueue();
     } catch {
-      alert(L.alertCompleteFailed);
+      alert(t("worklistDepartments.lab.alertCompleteFailed"));
     }
   };
 
   return (
     <div>
-      <h1>{L.title}</h1>
-      <p>{L.subtitle}</p>
+      <h1>{t("worklistDepartments.lab.title")}</h1>
+      <p>{t("worklistDepartments.lab.subtitle")}</p>
       {loading && queue.length === 0 && pendingLocal.length === 0 ? (
-        <p>{ui.common.loading}</p>
+        <p>{t("common.loading")}</p>
       ) : queue.length === 0 && pendingLocal.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>{L.empty}</p>
+          <p>{t("worklistDepartments.lab.empty")}</p>
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
@@ -136,12 +136,12 @@ export default function LabPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #ddd" }}>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.test}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.patient")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.nir")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.labTest")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.priority")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.status")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,9 +151,9 @@ export default function LabPage() {
                       <td style={{ padding: 12 }}>
                         {order.encounter?.patient?.firstName} {order.encounter?.patient?.lastName}
                       </td>
-                      <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? ui.common.dash}</td>
+                      <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? t("common.dash")}</td>
                       <td style={{ padding: 12 }}>{item.catalogItemId}</td>
-                      <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(order.priority)}</td>
+                      <td style={{ padding: 12 }}>{tOrderPriority(t, String(order.priority ?? "ROUTINE"))}</td>
                       <td style={{ padding: 12 }}>{getOrderItemStatusLabel(item.status)}</td>
                       <td style={{ padding: 12 }}>
                         {item.status === "SIGNED" && (
@@ -162,7 +162,7 @@ export default function LabPage() {
                             onClick={() => handleAcknowledge(item.id)}
                             style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                           >
-                            {L.acknowledge}
+                            {t("worklistDepartments.shared.acknowledge")}
                           </button>
                         )}
                         {item.status === "ACKNOWLEDGED" && (
@@ -171,7 +171,7 @@ export default function LabPage() {
                             onClick={() => handleStart(item.id)}
                             style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                           >
-                            {L.start}
+                            {t("worklistDepartments.shared.start")}
                           </button>
                         )}
                         {item.status === "IN_PROGRESS" && (
@@ -180,10 +180,10 @@ export default function LabPage() {
                             onClick={() => handleComplete(item.id)}
                             style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
                           >
-                            {L.complete}
+                            {t("worklistDepartments.shared.complete")}
                           </button>
                         )}
-                        <Link href={`/app/encounters/${order.encounterId}`}>{L.viewEncounter}</Link>
+                        <Link href={`/app/encounters/${order.encounterId}`}>{t("worklistDepartments.lab.viewEncounter")}</Link>
                       </td>
                     </tr>
                   ))
@@ -200,13 +200,13 @@ export default function LabPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "#fff8e1" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #ddd" }}>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.test}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.date}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.patient")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.nir")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.labTest")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.date")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.priority")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.status")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,7 +219,7 @@ export default function LabPage() {
                       <td style={{ padding: 12 }}>
                         {new Date(row.createdAt).toLocaleString("fr-FR")}
                       </td>
-                      <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(row.priority)}</td>
+                      <td style={{ padding: 12 }}>{tOrderPriority(t, String(row.priority ?? "ROUTINE"))}</td>
                       <td style={{ padding: 12 }}>En attente de synchronisation</td>
                       <td style={{ padding: 12 }}>
                         <span style={{ fontSize: 12, color: "#666" }}>{row.encounterId}</span>

@@ -7,7 +7,8 @@ import { i18nMessage } from "@/lib/i18nMessagesLookup";
  *
  * Priorité : displayLabelFr → catalogue (displayNameFr / name selon le type) → manualLabel (+ secondaire) → repli FR.
  */
-export function getOrderItemDisplayLabelFr(item: {
+/** French catalog resolution (used only inside {@link getOrderItemDisplayLabelForLanguage}). */
+function orderItemDisplayLabelFr(item: {
   displayLabelFr?: string | null;
   manualLabel?: string | null;
   manualSecondaryText?: string | null;
@@ -62,7 +63,7 @@ export function getOrderItemDisplayLabelForLanguage(
   language: SupportedLanguage,
   t: (key: string) => string
 ): string {
-  if (language === "fr") return getOrderItemDisplayLabelFr(item);
+  if (language === "fr") return orderItemDisplayLabelFr(item);
   const generic = item.displayLabel?.trim();
   if (generic) return generic;
   if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();

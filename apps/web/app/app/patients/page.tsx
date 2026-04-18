@@ -4,8 +4,9 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
-import { formatAgeFr, formatAgeYearsSexFr } from "@/lib/patientDisplay";
-import { getRegistrationSexLabel } from "@/lib/uiLabels";
+import { formatAgeFr, formatAgeYearsSexForLocale } from "@/lib/patientDisplay";
+import { tEnumKey } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
@@ -31,6 +32,7 @@ function patientSearchList(data: unknown): Patient[] {
 }
 
 function PatientsPageContent() {
+  const { t, language } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { roles, ready: rolesReady } = useFacilityAndRoles();
@@ -192,7 +194,7 @@ function PatientsPageContent() {
                 color: "#0f172a",
               }}
             >
-              Rechercher un patient
+              {t("common.searchPatient")}
             </h1>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 560, lineHeight: 1.5 }}>
               Recherche par nom, NIR ou téléphone dans l&apos;établissement.
@@ -258,7 +260,7 @@ function PatientsPageContent() {
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
           >
-            Chargement…
+            {t("common.loading")}
           </div>
         )}
 
@@ -319,7 +321,9 @@ function PatientsPageContent() {
                     >
                       <td style={{ ...tdBase, fontVariantNumeric: "tabular-nums", color: "#334155" }}>{patient.mrn || "-"}</td>
                       <td style={{ ...tdBase, fontWeight: 500 }}>{patient.firstName} {patient.lastName}</td>
-                      <td style={tdBase}>{formatAgeYearsSexFr(patient.dob, patient.sexAtBirth ?? null, patient.sex ?? null)}</td>
+                      <td style={tdBase}>
+                        {formatAgeYearsSexForLocale(patient.dob, patient.sexAtBirth ?? null, patient.sex ?? null, language)}
+                      </td>
                       <td style={{ ...tdBase, fontVariantNumeric: "tabular-nums" }}>{formatDate(patient.dob)}</td>
                       <td style={{ ...tdBase, fontVariantNumeric: "tabular-nums" }}>{patient.phone || "-"}</td>
                       <td style={{ ...tdBase, textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
@@ -405,13 +409,18 @@ function PatientsPageContent() {
   );
 }
 
+function PatientsRouteLoading() {
+  const { t } = useI18n();
+  return (
+    <div style={{ minHeight: "40vh", padding: 24, backgroundColor: "#f8fafc", color: "#64748b", fontSize: 14 }}>
+      {t("common.loading")}
+    </div>
+  );
+}
+
 export default function PatientsPage() {
   return (
-    <Suspense
-      fallback={
-        <div style={{ minHeight: "40vh", padding: 24, backgroundColor: "#f8fafc", color: "#64748b", fontSize: 14 }}>Chargement…</div>
-      }
-    >
+    <Suspense fallback={<PatientsRouteLoading />}>
       <PatientsPageContent />
     </Suspense>
   );
@@ -428,6 +437,7 @@ function NewPatientModal({
   onClose: () => void;
   onSuccess: (patient?: Patient | null) => void;
 }) {
+  const { t, language } = useI18n();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -493,10 +503,10 @@ function NewPatientModal({
         setCheckingDuplicates(false);
       }
     };
-    const t = window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       void run();
     }, 350);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timeoutId);
   }, [facilityId, formData.firstName, formData.lastName, formData.dateOfBirth, formData.phone]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -589,7 +599,7 @@ function NewPatientModal({
         <h2 style={{ marginTop: 0 }}>Nouveau patient</h2>
         <p style={{ fontSize: 14, color: "#444", marginTop: -8, marginBottom: 16 }}>
           {formData.dateOfBirth && formData.sex
-            ? formatAgeYearsSexFr(formData.dateOfBirth, formData.sex)
+            ? formatAgeYearsSexForLocale(formData.dateOfBirth, formData.sex, null, language)
             : "Renseignez la date de naissance et le sexe — l’âge est calculé automatiquement."}
         </p>
         <form onSubmit={handleSubmit}>
@@ -646,10 +656,11 @@ function NewPatientModal({
                 style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
               >
                 <option value="">—</option>
-                <option value="HOMME">{getRegistrationSexLabel("HOMME")}</option>
-                <option value="FEMME">{getRegistrationSexLabel("FEMME")}</option>
-                <option value="AUTRE">{getRegistrationSexLabel("AUTRE")}</option>
-                <option value="INCONNU">{getRegistrationSexLabel("INCONNU")}</option>
+                {(["HOMME", "FEMME", "AUTRE", "INCONNU"] as const).map((code) => (
+                  <option key={code} value={code}>
+                    {tEnumKey(t, "encounterChrome.sexAtBirth", code)}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

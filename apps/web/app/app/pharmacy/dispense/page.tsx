@@ -19,7 +19,9 @@ import { Field, inputStyle } from "@/components/pharmacy/Modal";
 import { MedicationAutocomplete } from "@/components/pharmacy/MedicationAutocomplete";
 import { PharmacyFavorites } from "@/components/pharmacy/PharmacyFavorites";
 import { MedicationPrintButton } from "@/components/pharmacy/MedicationPrintButton";
-import { getEncounterStatusLabelFr, getEncounterTypeLabelFr } from "@/lib/uiLabels";
+import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
+import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
 type Patient = {
   id: string;
@@ -46,6 +48,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 function PharmacyDispensePageContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const { facilityId, ready, canManagePharmacy } = useFacilityAndRoles();
   const [patientQuery, setPatientQuery] = useState("");
@@ -231,7 +234,7 @@ function PharmacyDispensePageContent() {
     }
   };
 
-  if (!ready) return <p>Chargement…</p>;
+  if (!ready) return <p>{t("common.loading")}</p>;
   if (!canManagePharmacy) {
     return (
       <div>
@@ -258,17 +261,19 @@ function PharmacyDispensePageContent() {
           border: "1px solid #eee",
         }}
       >
-        <h3 style={{ marginTop: 0 }}>1. Rechercher un patient</h3>
+        <h3 style={{ marginTop: 0 }}>
+          {t("pharmacyDispense.step1Prefix")} {t("common.searchPatient")}
+        </h3>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
             style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
-            placeholder="Rechercher un patient"
+            placeholder={t("common.searchPatient")}
             value={patientQuery}
             onChange={(e) => setPatientQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && searchPatients()}
           />
           <button type="button" onClick={searchPatients} style={btnPrimary}>
-            {loadingPatients ? "…" : "Rechercher"}
+            {loadingPatients ? "…" : t("common.search")}
           </button>
         </div>
         {patients.length > 0 && (
@@ -301,7 +306,7 @@ function PharmacyDispensePageContent() {
         {!patientId ? (
           <p style={{ color: "#888" }}>Sélectionnez d&apos;abord un patient.</p>
         ) : loadingEnc ? (
-          <p>Chargement des consultations…</p>
+          <p>{t("pharmacyDispense.loadingEncounters")}</p>
         ) : encounters.length === 0 ? (
           <p style={{ color: "#b00020" }}>
             Aucune consultation pour ce patient. Créez une consultation avant de
@@ -315,7 +320,7 @@ function PharmacyDispensePageContent() {
           >
             {encounters.map((enc) => (
               <option key={enc.id} value={enc.id}>
-                {getEncounterTypeLabelFr(enc.type)} — {getEncounterStatusLabelFr(enc.status)} —{" "}
+                {tEncounterType(t, enc.type)} — {tEncounterStatus(t, enc.status)} —{" "}
                 {new Date(enc.createdAt).toLocaleString()}
               </option>
             ))}
@@ -343,7 +348,8 @@ function PharmacyDispensePageContent() {
             {dispenseContext && (
               <>
                 <p style={{ margin: "0 0 8px 0" }}>
-                  <strong>Consultation</strong> — {getEncounterTypeLabelFr(dispenseContext.encounter.type)} · {getEncounterStatusLabelFr(dispenseContext.encounter.status)} ·{" "}
+                  <strong>Consultation</strong> — {tEncounterType(t, dispenseContext.encounter.type)} ·{" "}
+                  {tEncounterStatus(t, dispenseContext.encounter.status)} ·{" "}
                   {new Date(dispenseContext.encounter.createdAt).toLocaleString("fr-FR")}
                 </p>
                 {dispenseContext.medicationOrders.length > 0 && (
@@ -511,7 +517,7 @@ function PharmacyDispensePageContent() {
 
 export default function PharmacyDispensePage() {
   return (
-    <Suspense fallback={<div style={{ padding: 24 }}>Chargement…</div>}>
+    <Suspense fallback={<CommonSuspenseFallback padded />}>
       <PharmacyDispensePageContent />
     </Suspense>
   );

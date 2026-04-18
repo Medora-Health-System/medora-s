@@ -271,10 +271,6 @@ export function getEncounterTypeLabelFr(type: string): string {
   return fr.encounter.types[type] ?? type;
 }
 
-export function getEncounterStatusLabelFr(status: string): string {
-  return fr.encounter.statuses[status] ?? status;
-}
-
 export function getEncounterStatusBoardLabelFr(status: string): string {
   return fr.encounter.statusesBoard[status] ?? status;
 }

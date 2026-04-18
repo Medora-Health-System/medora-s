@@ -84,7 +84,7 @@ export default function PharmacyWorklistPage() {
   const loadQueue = async () => {
     if (!facilityId) return;
     setLoading(true);
-    const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId);
+    const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/pharmacy", { facilityId });
       setQueue(Array.isArray(data) ? data : []);

@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ui } from "@/lib/uiLabels";
 import { fetchUpcomingFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
 import { CreateFollowUpModal } from "@/components/patient-chart";
+import { useI18n } from "@/lib/i18n";
 import { useConnectivityStatus } from "@/lib/offline/useConnectivityStatus";
 
 function formatDate(d: string | null | undefined) {
@@ -12,6 +12,7 @@ function formatDate(d: string | null | undefined) {
 }
 
 export default function RegistrationPage() {
+  const { t } = useI18n();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
@@ -106,7 +107,7 @@ export default function RegistrationPage() {
               background: "linear-gradient(145deg, #fff3e0 0%, #fff 55%)",
             }}
           >
-            <strong style={{ fontSize: 15 }}>{ui.nav.billing}</strong>
+            <strong style={{ fontSize: 15 }}>{t("nav.billing")}</strong>
             <span style={{ fontSize: 13, color: "#546e7a" }}>Facturation et dossiers financiers</span>
           </Link>
           <Link
@@ -117,7 +118,7 @@ export default function RegistrationPage() {
               background: "linear-gradient(145deg, #fce4ec 0%, #fff 55%)",
             }}
           >
-            <strong style={{ fontSize: 15 }}>{ui.nav.fracture}</strong>
+            <strong style={{ fontSize: 15 }}>{t("nav.fracture")}</strong>
             <span style={{ fontSize: 13, color: "#546e7a" }}>Module fracture (aperçu)</span>
           </Link>
         </div>
@@ -139,7 +140,7 @@ export default function RegistrationPage() {
                 fontWeight: 500,
               }}
             >
-              Rechercher un patient
+              {t("common.searchPatient")}
             </Link>
           </div>
         </section>
@@ -190,7 +191,7 @@ export default function RegistrationPage() {
             </p>
           )}
           {followUpsLoading ? (
-            <p style={{ fontSize: 14, color: "#666" }}>Chargement…</p>
+            <p style={{ fontSize: 14, color: "#666" }}>{t("common.loading")}</p>
           ) : followUps.length === 0 ? (
             <p style={{ fontSize: 14, color: "#666" }}>Aucun suivi à venir sur les 14 prochains jours.</p>
           ) : (

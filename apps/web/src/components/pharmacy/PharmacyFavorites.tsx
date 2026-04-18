@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePharmacyFavorites } from "@/hooks/usePharmacyFavorites";
+import { useI18n } from "@/lib/i18n";
 import { MedicationChip } from "./MedicationChip";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
 
@@ -35,7 +36,8 @@ export function PharmacyFavorites({
   compact?: boolean;
   maxItems?: number;
 }) {
-  const { items, loading, error } = usePharmacyFavorites(facilityId);
+  const { t, language } = useI18n();
+  const { items, loading, error } = usePharmacyFavorites(facilityId, language);
   const show = items.slice(0, maxItems);
 
   if (!facilityId || (items.length === 0 && !loading)) return null;
@@ -45,7 +47,7 @@ export function PharmacyFavorites({
     <div style={sectionStyle}>
       <div style={titleStyle}>Médicaments favoris</div>
       {loading ? (
-        <div style={{ fontSize: 13, color: "#666" }}>Chargement…</div>
+        <div style={{ fontSize: 13, color: "#666" }}>{t("common.loading")}</div>
       ) : (
         <div style={chipsStyle}>
           {show.map((med) => (

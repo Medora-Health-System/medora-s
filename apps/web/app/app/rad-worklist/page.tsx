@@ -5,8 +5,10 @@ import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { getOrderPriorityLabelFr, getPathwayTypeLabelFr, ui } from "@/lib/uiLabels";
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import { tOrderPriority, tPathwayType } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
+import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
+import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { worklistItemIsTerminal, worklistItemNeedsAcknowledge } from "@/lib/worklistLabRadUi";
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 import {
@@ -36,7 +38,7 @@ function patientInitials(p: { firstName?: string | null; lastName?: string | nul
 }
 
 function fullPatientName(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
-  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || DISPLAY_DASH;
 }
 
 function rowMatchesSearch(query: string, haystack: string): boolean {
@@ -97,6 +99,7 @@ function PendingEncounterPatientBlock({
   encounterId: string;
   children?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState("…");
   const [mrn, setMrn] = useState("—");
   useEffect(() => {
@@ -147,7 +150,7 @@ function PendingEncounterPatientBlock({
           {name}
         </h2>
         <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>
-          <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {mrn}
+          <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.nir")}</span> {mrn}
         </p>
         {children}
       </div>
@@ -156,6 +159,7 @@ function PendingEncounterPatientBlock({
 }
 
 export default function RadWorklistPage() {
+  const { t, language } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -183,7 +187,7 @@ export default function RadWorklistPage() {
   const loadQueue = async () => {
     if (!facilityId) return;
     setLoading(true);
-    const pendingP = getPendingImagingOrderRowsForFacility(facilityId);
+    const pendingP = getPendingImagingOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/radiology", { facilityId });
       setQueue(Array.isArray(data) ? data : []);
@@ -206,28 +210,28 @@ export default function RadWorklistPage() {
         const blob = [
           fullPatientName(patient),
           (patient?.mrn ?? "").trim(),
-          getOrderItemDisplayLabelFr(item),
-          getOrderPriorityLabelFr(pc),
+          getOrderItemDisplayLabelFromLocale(item, language),
+          tOrderPriority(t, pc),
           orderIsCancelled(order) ? "Annulée" : getOrderItemStatusLabel(item.status),
-          order.pathwaySession ? getPathwayTypeLabelFr(order.pathwaySession.type) : "",
+          order.pathwaySession ? tPathwayType(t, order.pathwaySession.type) : "",
         ].join(" ");
         if (rowMatchesSearch(searchQuery, blob)) out.push({ order, item });
       }
     }
     return out;
-  }, [queue, searchQuery]);
+  }, [queue, searchQuery, t, language]);
 
   const filteredPendingLocal = useMemo(() => {
     return pendingLocal.filter((row) => {
       const blob = [
         ...row.itemLabels,
-        getOrderPriorityLabelFr(String(row.priority ?? "ROUTINE")),
+        tOrderPriority(t, String(row.priority ?? "ROUTINE")),
         row.encounterId,
         "En attente de synchronisation",
       ].join(" ");
       return rowMatchesSearch(searchQuery, blob);
     });
-  }, [pendingLocal, searchQuery]);
+  }, [pendingLocal, searchQuery, t]);
 
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
@@ -301,14 +305,14 @@ export default function RadWorklistPage() {
     if (orderIsCancelled(order)) {
       return (
         <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
-          {ui.common.view}
+          {t("common.view")}
         </Link>
       );
     }
     if (worklistItemIsTerminal(item.status)) {
       return (
         <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
-          {ui.common.view}
+          {t("common.view")}
         </Link>
       );
     }
@@ -317,22 +321,22 @@ export default function RadWorklistPage() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           {worklistItemNeedsAcknowledge(item.status) && (
             <button type="button" onClick={() => void handleAcknowledge(item.id)} style={btnGhost}>
-              {ui.lab.acknowledge}
+              {t("worklistDepartments.shared.acknowledge")}
             </button>
           )}
           {item.status === "ACKNOWLEDGED" && (
             <button type="button" onClick={() => void handleStart(item.id)} style={btnGhost}>
-              {ui.lab.start}
+              {t("worklistDepartments.shared.start")}
             </button>
           )}
           {item.status === "IN_PROGRESS" && (
             <button type="button" onClick={() => void handleComplete(item.id)} style={btnGhost}>
-              {ui.lab.complete}
+              {t("worklistDepartments.shared.complete")}
             </button>
           )}
         </div>
         <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
-          {ui.common.view}
+          {t("common.view")}
         </Link>
       </div>
     );
@@ -350,10 +354,10 @@ export default function RadWorklistPage() {
               color: "#0f172a",
             }}
           >
-            {ui.radiology.title}
+            {t("worklistDepartments.radiology.title")}
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.55 }}>
-            {ui.radiology.subtitle}
+            {t("worklistDepartments.radiology.subtitle")}
           </p>
         </header>
 
@@ -427,7 +431,7 @@ export default function RadWorklistPage() {
               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
           >
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>{ui.radiology.empty}</p>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>{t("worklistDepartments.radiology.empty")}</p>
           </div>
         ) : (
           <div style={{ marginTop: 24 }}>
@@ -472,14 +476,14 @@ export default function RadWorklistPage() {
                                 title={fullPatientName(patient)}
                                 subline={
                                   <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                                    <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span>{" "}
-                                    {(patient?.mrn ?? "").trim() || ui.common.dash}
+                                    <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.nir")}</span>{" "}
+                                    {(patient?.mrn ?? "").trim() || t("common.dash")}
                                   </p>
                                 }
                               />
                               <MedoraCardBadgeRow>
                                 <MedoraCardBadge preset="neutral">
-                                  {ui.common.study} · {getOrderItemDisplayLabelFr(item)}
+                                  {t("common.imagingStudy")} · {getOrderItemDisplayLabelFromLocale(item, language)}
                                 </MedoraCardBadge>
                                 {orderIsCancelled(order) ? (
                                   <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>Annulée</span>
@@ -488,14 +492,14 @@ export default function RadWorklistPage() {
                                 )}
                                 {order.pathwaySession ? (
                                   <MedoraCardBadge preset="pathway">
-                                    {getPathwayTypeLabelFr(order.pathwaySession.type)}
+                                    {tPathwayType(t, order.pathwaySession.type)}
                                   </MedoraCardBadge>
                                 ) : null}
                               </MedoraCardBadgeRow>
                             </MedoraCardIdentity>
 
                             <MedoraCardActions railBorderTopColor="#f1f5f9">
-                              <MedoraCardBadge soft={pSoft}>{getOrderPriorityLabelFr(pc)}</MedoraCardBadge>
+                              <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
                               {renderActions(order, item)}
                             </MedoraCardActions>
                           </MedoraCardInner>
@@ -532,14 +536,14 @@ export default function RadWorklistPage() {
                               <PendingEncounterPatientBlock facilityId={row.facilityId} encounterId={row.encounterId}>
                                 <MedoraCardBadgeRow>
                                   <MedoraCardBadge preset="neutral">
-                                    {ui.common.study} · {row.itemLabels.filter(Boolean).join(", ") || ui.common.dash}
+                                    {t("common.imagingStudy")} · {row.itemLabels.filter(Boolean).join(", ") || t("common.dash")}
                                   </MedoraCardBadge>
                                   <MedoraCardBadge preset="syncPending">En attente de synchronisation</MedoraCardBadge>
                                 </MedoraCardBadgeRow>
                               </PendingEncounterPatientBlock>
                             </div>
                             <MedoraCardActions railBorderTopColor="#fde68a">
-                              <MedoraCardBadge soft={pSoft}>{getOrderPriorityLabelFr(pc)}</MedoraCardBadge>
+                              <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
                               <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={btnVoir}>
                                 Consultation
                               </Link>

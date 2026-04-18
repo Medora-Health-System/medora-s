@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import type { SupportedLanguage } from "@/i18n/config";
 import { fetchLowStock, fetchExpiring, type InventoryItemRow } from "@/lib/pharmacyApi";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
 
 const EXPIRING_DAYS = 90;
 const TOP_SHOW = 5;
 
-export function usePharmacyAlerts(facilityId: string | null) {
+export function usePharmacyAlerts(facilityId: string | null, language: SupportedLanguage) {
   const [lowStock, setLowStock] = useState<InventoryItemRow[]>([]);
   const [expiring, setExpiring] = useState<InventoryItemRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,13 +31,13 @@ export function usePharmacyAlerts(facilityId: string | null) {
       setLowStock(Array.isArray(low) ? low : []);
       setExpiring(Array.isArray(exp) ? exp : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossible de charger les alertes");
+      setError(e instanceof Error ? e.message : i18nMessage(language, "common.loadError"));
       setLowStock([]);
       setExpiring([]);
     } finally {
       setLoading(false);
     }
-  }, [facilityId]);
+  }, [facilityId, language]);
 
   useEffect(() => {
     load();

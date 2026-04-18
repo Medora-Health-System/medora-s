@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { getEncounterTypeLabelFr, ui } from "@/lib/uiLabels";
+import { tEncounterType } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 
 export default function BillingPage() {
+  const { t } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
@@ -56,7 +58,7 @@ export default function BillingPage() {
       <div>
         <h1>File facturation</h1>
         <p>Consultations clôturées en attente de facturation et codification.</p>
-        <p>{ui.common.loading}</p>
+        <p>{t("common.loading")}</p>
       </div>
     );
   }
@@ -66,7 +68,7 @@ export default function BillingPage() {
       <h1>File facturation</h1>
       <p>Consultations clôturées en attente de facturation et codification.</p>
       {loading ? (
-        <p>{ui.common.loading}</p>
+        <p>{t("common.loading")}</p>
       ) : queue.length === 0 ? (
         <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
           <p>Aucune consultation dans la file facturation.</p>
@@ -76,12 +78,12 @@ export default function BillingPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.patient")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.nir")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>Type de consultation</th>
                 <th style={{ padding: 12, textAlign: "left" }}>Sortie</th>
                 <th style={{ padding: 12, textAlign: "left" }}>Ordres</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -91,7 +93,7 @@ export default function BillingPage() {
                     {encounter.patient?.firstName} {encounter.patient?.lastName}
                   </td>
                   <td style={{ padding: 12 }}>{encounter.patient?.mrn}</td>
-                  <td style={{ padding: 12 }}>{getEncounterTypeLabelFr(encounter.type)}</td>
+                  <td style={{ padding: 12 }}>{tEncounterType(t, encounter.type)}</td>
                   <td style={{ padding: 12 }}>
                     {encounter.dischargedAt
                       ? new Date(encounter.dischargedAt).toLocaleDateString()

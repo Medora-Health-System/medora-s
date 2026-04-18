@@ -19,6 +19,8 @@ import { QuickAddStockModal } from "@/components/pharmacy/QuickAddStockModal";
 import { ReceiveStockModal } from "@/components/pharmacy/ReceiveStockModal";
 import { AdjustStockModal } from "@/components/pharmacy/AdjustStockModal";
 import { Modal, Field, inputStyle } from "@/components/pharmacy/Modal";
+import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
+import { useI18n } from "@/lib/i18n";
 
 const btnPrimary: React.CSSProperties = {
   padding: "10px 18px",
@@ -31,6 +33,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 function PharmacyInventoryPageContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const openedFromQuery = React.useRef(false);
   const { facilityId, ready, canManagePharmacy, canViewPharmacy } =
@@ -82,12 +85,12 @@ function PharmacyInventoryPageContent() {
       setItems(res.items ?? []);
       setTotal(res.total ?? 0);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Impossible de charger le stock");
+      setError(e instanceof Error ? e.message : t("common.loadError"));
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [facilityId, canViewPharmacy, search, activeOnly, lowStockOnly, expiringOnly]);
+  }, [facilityId, canViewPharmacy, search, activeOnly, lowStockOnly, expiringOnly, t]);
 
   useEffect(() => {
     if (ready && facilityId && canViewPharmacy) load();
@@ -109,7 +112,7 @@ function PharmacyInventoryPageContent() {
       }));
       setModal("create");
     } catch (e: unknown) {
-      setFormMsg(e instanceof Error ? e.message : "Impossible de charger le catalogue des médicaments");
+      setFormMsg(e instanceof Error ? e.message : t("common.loadError"));
       setModal("create");
       setCatalogs([]);
     }
@@ -171,7 +174,7 @@ function PharmacyInventoryPageContent() {
     }
   }, [ready, canManagePharmacy, searchParams]);
 
-  if (!ready) return <p>Chargement…</p>;
+  if (!ready) return <p>{t("common.loading")}</p>;
   if (!canViewPharmacy) {
     return (
       <div>
@@ -218,7 +221,7 @@ function PharmacyInventoryPageContent() {
         <p style={{ color: "#b00020", marginBottom: 12 }}>{error}</p>
       )}
       {loading ? (
-        <p>Chargement…</p>
+        <p>{t("common.loading")}</p>
       ) : (
         <>
           <p style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
@@ -371,7 +374,7 @@ function PharmacyInventoryPageContent() {
 
 export default function PharmacyInventoryPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 24 }}>Chargement…</div>}>
+    <Suspense fallback={<CommonSuspenseFallback padded />}>
       <PharmacyInventoryPageContent />
     </Suspense>
   );

@@ -7,7 +7,8 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
 import { PharmacyFavorites } from "@/components/pharmacy/PharmacyFavorites";
 import { getOrderItemStatusLabel } from "@/constants/orderStatusLabels";
-import { getOrderPriorityLabelFr, ui } from "@/lib/uiLabels";
+import { tOrderPriority } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import {
   getEncounterPatientLabelFromCache,
@@ -52,6 +53,7 @@ const linkStyle: React.CSSProperties = {
 };
 
 export default function PharmacyPage() {
+  const { t, language } = useI18n();
   const { facilityId: facilityIdFromHook, ready, canViewPharmacy } =
     useFacilityAndRoles();
   const { isOffline } = useConnectivityStatus();
@@ -79,7 +81,7 @@ export default function PharmacyPage() {
     if (!facilityId) return;
     setLoading(true);
     const cacheKey = `pharmacy-queue:${facilityId}`;
-    const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId);
+    const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/pharmacy/queue", { facilityId });
       setQueue(Array.isArray(data) ? data : []);
@@ -154,7 +156,7 @@ export default function PharmacyPage() {
 
       <p>Ordres de médicaments à vérifier et dispenser.</p>
       {loading && (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
-        <p>Chargement…</p>
+        <p>{t("common.loading")}</p>
       ) : (queue as unknown[]).length === 0 && pendingLocal.length === 0 ? (
         <div
           style={{
@@ -181,12 +183,12 @@ export default function PharmacyPage() {
             >
               <thead>
                 <tr style={{ borderBottom: "2px solid #ddd" }}>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                  <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.patient")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.nir")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.medication")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.priority")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.status")}</th>
+                  <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,7 +212,7 @@ export default function PharmacyPage() {
                             {order.encounter?.patient?.mrn ?? "—"}
                           </td>
                           <td style={{ padding: 12 }}>{item.catalogItemId}</td>
-                          <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(order.priority)}</td>
+                          <td style={{ padding: 12 }}>{tOrderPriority(t, String((order as { priority?: string }).priority ?? "ROUTINE"))}</td>
                           <td style={{ padding: 12 }}>
                             {getOrderItemStatusLabel(item.status)}
                           </td>
@@ -278,12 +280,12 @@ export default function PharmacyPage() {
               >
                 <thead>
                   <tr style={{ borderBottom: "2px solid #ddd" }}>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.patient}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.nir}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.medication}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.priority}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.status}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{ui.common.actions}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.patient")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.nir")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.medication")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.priority")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.status")}</th>
+                    <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,7 +295,7 @@ export default function PharmacyPage() {
                       <td style={{ padding: 12 }}>
                         {row.itemLabels.filter(Boolean).join(", ") || "—"}
                       </td>
-                      <td style={{ padding: 12 }}>{getOrderPriorityLabelFr(row.priority)}</td>
+                      <td style={{ padding: 12 }}>{tOrderPriority(t, String(row.priority ?? "ROUTINE"))}</td>
                       <td style={{ padding: 12 }}>En attente de synchronisation</td>
                       <td style={{ padding: 12 }}>
                         <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>

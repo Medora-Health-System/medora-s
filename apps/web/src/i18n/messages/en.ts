@@ -33,9 +33,15 @@ export default {
     actions: "Actions",
     priority: "Priority",
     search: "Search",
+    date: "Date",
+    labTest: "Lab test",
+    imagingStudy: "Imaging study",
     back: "Back",
     searchMedicationPlaceholder: "Search for a medication",
     minCharsSearch: "Type at least 2 characters",
+    loadError: "Could not load.",
+    searchPatient: "Search for a patient",
+    apply: "Apply",
   },
   appShell: {
     msppMinistryTitle:
@@ -96,6 +102,40 @@ export default {
     mspp_communication: "Communications",
     mspp_exports: "Exports",
     admin: "Administration",
+  },
+  worklistDepartments: {
+    shared: {
+      acknowledge: "Acknowledge receipt",
+      start: "Start",
+      complete: "Complete",
+    },
+    lab: {
+      title: "Lab queue",
+      subtitle: "Tests to process.",
+      empty: "No pending lab orders.",
+      alertAckFailed: "Unable to acknowledge the lab order.",
+      alertStartFailed: "Unable to start the lab order.",
+      alertCompleteFailed: "Unable to complete the lab order.",
+      viewEncounter: "View encounter",
+    },
+    radiology: {
+      title: "Imaging queue",
+      subtitle: "Imaging studies to process.",
+      empty: "No pending imaging orders.",
+      updateStatusFailed: "Unable to update status",
+      viewEncounter: "View encounter",
+    },
+  },
+  followUpsPage: {
+    searchPatientOrReason: "Search by patient or reason",
+    loadingList: "Loading follow-ups…",
+  },
+  hospitalizationBoard: {
+    loadListError: "Unable to load the list.",
+  },
+  pharmacyDispense: {
+    step1Prefix: "1.",
+    loadingEncounters: "Loading encounters…",
   },
   landingHome: {
     previewAdmin: "Administration home",
@@ -2283,6 +2323,8 @@ export default {
       "This encounter does not exist, was deleted, or you do not have access to this facility.",
     backToEncounterList: "Back to encounter list",
     loadFailedTitle: "Unable to load encounter.",
+    errLoadEncounter: "Could not load the encounter.",
+    errAuditTimelineLoad: "Could not load audit history.",
     lockedSignedBanner: "Chart signed — editing locked",
     queuedCloseBanner:
       "A close request was saved on this device and is waiting to sync with the server. The encounter may still appear open on other workstations until sync completes.",
@@ -2428,6 +2470,7 @@ export default {
       milestoneFailed: "Unable to update milestone",
       confirmUnknownError: "unknown error",
       milestonesTitle: "Time goals and milestones",
+      nextMilestoneBadge: "Next",
     },
     ordersTab: {
       loading: "Loading orders…",
@@ -3000,6 +3043,7 @@ export default {
     openPatientChart: "Open chart",
     openEncounter: "Open encounter",
     medAdmin: "Medication administration",
+    loadError: "Unable to load encounters.",
   },
   patientQuickActions: {
     sectionTitle: "Quick actions",

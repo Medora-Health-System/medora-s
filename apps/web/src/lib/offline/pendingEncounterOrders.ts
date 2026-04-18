@@ -1,4 +1,5 @@
-import { getOrderItemDisplayLabelFr } from "@/lib/orderItemDisplayFr";
+import type { SupportedLanguage } from "@/i18n/config";
+import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { getCachedRecord } from "@/lib/offline/offlineCache";
 import { listQueueItems } from "./offlineQueue";
 import type { OfflineQueueItem } from "./offlineTypes";
@@ -142,7 +143,8 @@ function isPharmacyMedicationPayload(payload: Record<string, unknown>): boolean 
 
 async function pendingFacilityRowsForFilter(
   facilityId: string,
-  include: (payload: Record<string, unknown>) => boolean
+  include: (payload: Record<string, unknown>) => boolean,
+  language: SupportedLanguage
 ): Promise<PendingFacilityQueueRow[]> {
   const all = await listQueueItems();
   const out: PendingFacilityQueueRow[] = [];
@@ -155,7 +157,10 @@ async function pendingFacilityRowsForFilter(
     if (!include(payload)) continue;
     const rows = payloadItemRows(payload);
     const itemLabels = rows.map((it) =>
-      getOrderItemDisplayLabelFr(it as Parameters<typeof getOrderItemDisplayLabelFr>[0])
+      getOrderItemDisplayLabelFromLocale(
+        it as Parameters<typeof getOrderItemDisplayLabelFromLocale>[0],
+        language
+      )
     );
     const pr = payload.priority;
     out.push({
@@ -171,18 +176,25 @@ async function pendingFacilityRowsForFilter(
   return out;
 }
 
-export async function getPendingLabOrderRowsForFacility(facilityId: string): Promise<PendingFacilityQueueRow[]> {
-  return pendingFacilityRowsForFilter(facilityId, isLabPayload);
+export async function getPendingLabOrderRowsForFacility(
+  facilityId: string,
+  language: SupportedLanguage
+): Promise<PendingFacilityQueueRow[]> {
+  return pendingFacilityRowsForFilter(facilityId, isLabPayload, language);
 }
 
-export async function getPendingImagingOrderRowsForFacility(facilityId: string): Promise<PendingFacilityQueueRow[]> {
-  return pendingFacilityRowsForFilter(facilityId, isImagingPayload);
+export async function getPendingImagingOrderRowsForFacility(
+  facilityId: string,
+  language: SupportedLanguage
+): Promise<PendingFacilityQueueRow[]> {
+  return pendingFacilityRowsForFilter(facilityId, isImagingPayload, language);
 }
 
 export async function getPendingPharmacyMedicationOrderRowsForFacility(
-  facilityId: string
+  facilityId: string,
+  language: SupportedLanguage
 ): Promise<PendingFacilityQueueRow[]> {
-  return pendingFacilityRowsForFilter(facilityId, isPharmacyMedicationPayload);
+  return pendingFacilityRowsForFilter(facilityId, isPharmacyMedicationPayload, language);
 }
 
 export async function getEncounterPatientLabelFromCache(

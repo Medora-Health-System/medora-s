@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { createFollowUp } from "@/lib/followUpsApi";
-import { getEncounterTypeLabelFr } from "@/lib/uiLabels";
+import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { btnPrimary, btnSecondary } from "@/components/chart/ChartSection";
 
@@ -44,6 +45,7 @@ export function CreateFollowUpModal({
   onClose,
   onSuccess,
 }: Props) {
+  const { t, language } = useI18n();
   const [patientQuery, setPatientQuery] = useState("");
   const [patientHits, setPatientHits] = useState<PatientSearchHit[]>([]);
   const [patientLoading, setPatientLoading] = useState(false);
@@ -109,10 +111,10 @@ export function CreateFollowUpModal({
     setPatientHits([]);
   };
 
-  const formatDateFr = (d: string) => new Date(d).toLocaleDateString("fr-FR");
+  const formatEncounterDate = (d: string) => new Date(d).toLocaleDateString(encounterBcp47(language));
   const encounterLabel = (e: CreateFollowUpEncounterOption) => {
     const motif = e.visitReason || e.chiefComplaint;
-    const parts = [getEncounterTypeLabelFr(e.type), formatDateFr(e.createdAt)];
+    const parts = [tEncounterType(t, e.type), formatEncounterDate(e.createdAt)];
     if (motif) parts.push(motif.length > 40 ? motif.slice(0, 40) + "…" : motif);
     return parts.join(" · ");
   };

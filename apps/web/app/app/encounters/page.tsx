@@ -4,7 +4,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
-import { getEncounterStatusLabelFr, getEncounterTypeLabelFr, ui } from "@/lib/uiLabels";
+import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
+import { useI18n } from "@/lib/i18n";
+import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -43,12 +45,12 @@ function patientInitials(p: { firstName?: string | null; lastName?: string | nul
 }
 
 function fullPatientName(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
-  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || ui.common.dash;
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || DISPLAY_DASH;
 }
 
 function patientNirDisplay(patient: { mrn?: string | null; nationalId?: string | null } | null | undefined): string {
   const raw = (patient?.mrn ?? patient?.nationalId ?? "").trim();
-  return raw || ui.common.dash;
+  return raw || DISPLAY_DASH;
 }
 
 function physicianLabel(enc: {
@@ -59,12 +61,12 @@ function physicianLabel(enc: {
   return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
 }
 
-function formatArrivalDateTime(iso: string | null | undefined): string {
-  if (!iso) return ui.common.dash;
+function formatArrivalDateTime(iso: string | null | undefined, locale: string): string {
+  if (!iso) return DISPLAY_DASH;
   try {
-    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
   } catch {
-    return ui.common.dash;
+    return DISPLAY_DASH;
   }
 }
 
@@ -99,7 +101,9 @@ const quickLink: React.CSSProperties = {
 };
 
 export default function EncountersPage() {
+  const { t, language } = useI18n();
   const { facilityId, ready } = useFacilityAndRoles();
+  const dateLocale = encounterBcp47(language);
   const [encounters, setEncounters] = useState<EncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -112,12 +116,12 @@ export default function EncountersPage() {
       const data = await fetchOpenEncounters(facilityId);
       setEncounters(Array.isArray(data) ? (data as EncounterRow[]) : []);
     } catch {
-      setFetchError("Impossible de charger les consultations.");
+      setFetchError(t("openEncountersTable.loadError"));
       setEncounters([]);
     } finally {
       setLoading(false);
     }
-  }, [facilityId]);
+  }, [facilityId, t]);
 
   useEffect(() => {
     if (ready && facilityId) load();
@@ -126,7 +130,7 @@ export default function EncountersPage() {
   if (!ready) {
     return (
       <div style={{ padding: 24 }}>
-        <p style={{ margin: 0, color: "#64748b" }}>{ui.common.loading}</p>
+        <p style={{ margin: 0, color: "#64748b" }}>{t("common.loading")}</p>
       </div>
     );
   }
@@ -186,7 +190,7 @@ export default function EncountersPage() {
               opacity: loading ? 0.85 : 1,
             }}
           >
-            {loading ? ui.common.loading : ui.common.refresh}
+            {loading ? t("common.loading") : t("common.refresh")}
           </button>
         </div>
 
@@ -281,10 +285,10 @@ export default function EncountersPage() {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const nir = patientNirDisplay(patient);
-              const phys = physicianLabel(encounter) || ui.common.dash;
-              const room = encounter.roomLabel?.trim() || ui.common.dash;
-              const typeLabel = encounter.type ? getEncounterTypeLabelFr(encounter.type) : ui.common.dash;
-              const statusLabel = encounter.status ? getEncounterStatusLabelFr(encounter.status) : ui.common.dash;
+              const phys = physicianLabel(encounter) || t("common.dash");
+              const room = encounter.roomLabel?.trim() || t("common.dash");
+              const typeLabel = encounter.type ? tEncounterType(t, encounter.type) : t("common.dash");
+              const statusLabel = encounter.status ? tEncounterStatus(t, encounter.status) : t("common.dash");
               const soft = statusSoft(encounter.status ?? "");
               const medCount = encounter.pendingMedicationCount;
               const medDisplay =
@@ -315,7 +319,7 @@ export default function EncountersPage() {
                     <MedoraCardInner>
                       <MedoraCompactPatientCardRow
                         avatarInitials={patientInitials(patient)}
-                        roomLabel={ui.common.room}
+                        roomLabel={t("common.room")}
                         roomValue={room}
                         rightMaxWidth={280}
                         identity={
@@ -332,24 +336,24 @@ export default function EncountersPage() {
                               {fullPatientName(patient)}
                             </h2>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.nir}</span> {nir}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.nir")}</span> {nir}
                             </p>
                             <div style={{ margin: "4px 0 0 0" }}>
                               <MedoraCardBadgeRow marginTop={0}>
                                 <MedoraCardBadge preset="neutral">
-                                  {ui.common.type} · {typeLabel}
+                                  {t("common.type")} · {typeLabel}
                                 </MedoraCardBadge>
                                 <MedoraCardBadge soft={soft}>{statusLabel}</MedoraCardBadge>
                               </MedoraCardBadgeRow>
                             </div>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>
-                              <span style={{ fontWeight: 600, color: "#475569" }}>Médecin attribué</span> {phys}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounters.assignedProvider")}</span> {phys}
                               {" · "}
-                              <span style={{ fontWeight: 600, color: "#475569" }}>{ui.common.arrival}</span>{" "}
-                              {formatArrivalDateTime(encounter.createdAt)}
+                              <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.arrival")}</span>{" "}
+                              {formatArrivalDateTime(encounter.createdAt, dateLocale)}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.35 }}>
-                              <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>Médicaments (à faire)</span>{" "}
+                              <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>{t("encounters.pendingMedications")}</span>{" "}
                               {medDisplay}
                             </p>
                           </>

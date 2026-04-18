@@ -13,7 +13,7 @@ import {
   type VaccineAdministrationRow,
 } from "@/lib/publicHealthApi";
 import { Field, inputStyle } from "@/components/pharmacy/Modal";
-import { getEncounterStatusLabelFr, getEncounterTypeLabelFr } from "@/lib/uiLabels";
+import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { PublicHealthFacilityRequiredBlock } from "@/features/public-health/PublicHealthFacilityRequiredBlock";
 import { useI18n } from "@/lib/i18n";
 
@@ -38,12 +38,14 @@ const cardStyle: React.CSSProperties = {
   border: "1px solid #eee",
 };
 
-function formatDate(d: string | null | undefined) {
-  return d ? new Date(d).toLocaleDateString("fr-FR") : "—";
+function formatDate(d: string | null | undefined, locale: string, emptyDash: string) {
+  return d ? new Date(d).toLocaleDateString(locale) : emptyDash;
 }
 
 export default function PublicHealthVaccinationsPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const dateLocale = encounterBcp47(language);
+  const dash = t("common.dash");
   const { facilityId, ready, canViewPublicHealthVaccinations, isMsppOnlyUser } = useFacilityAndRoles();
   const nationalRead = Boolean(isMsppOnlyUser && canViewPublicHealthVaccinations);
 
@@ -300,7 +302,8 @@ export default function PublicHealthVaccinationsPage() {
             <option value="">— Aucune —</option>
             {encounters.map((enc) => (
               <option key={enc.id} value={enc.id}>
-                {getEncounterTypeLabelFr(enc.type)} — {getEncounterStatusLabelFr(enc.status)} — {formatDate(enc.createdAt)}
+                {tEncounterType(t, enc.type)} — {tEncounterStatus(t, enc.status)} —{" "}
+                {formatDate(enc.createdAt, dateLocale, dash)}
               </option>
             ))}
           </select>
@@ -411,7 +414,7 @@ export default function PublicHealthVaccinationsPage() {
                   </td>
                   <td style={{ padding: 8 }}>{r.vaccineCatalog?.name ?? "—"}</td>
                   <td style={{ padding: 8 }}>{r.doseNumber ?? "—"}</td>
-                  <td style={{ padding: 8 }}>{formatDate(r.administeredAt)}</td>
+                  <td style={{ padding: 8 }}>{formatDate(r.administeredAt, dateLocale, dash)}</td>
                 </tr>
               ))}
             </tbody>
@@ -443,7 +446,7 @@ export default function PublicHealthVaccinationsPage() {
                       : r.patientId}
                   </td>
                   <td style={{ padding: 8 }}>{r.vaccineCatalog?.name ?? "—"}</td>
-                  <td style={{ padding: 8 }}>{formatDate(r.nextDueAt)}</td>
+                  <td style={{ padding: 8 }}>{formatDate(r.nextDueAt, dateLocale, dash)}</td>
                 </tr>
               ))}
             </tbody>

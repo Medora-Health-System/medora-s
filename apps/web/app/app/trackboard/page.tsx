@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { PharmacyAlertsCard } from "@/components/pharmacy/PharmacyAlertsCard";
-import { calculateAge, formatAgeYearsSexFr } from "@/lib/patientDisplay";
+import { formatAgeYearsSexForLocale } from "@/lib/patientDisplay";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import {
@@ -87,28 +87,11 @@ function formatArrivalDateTime(iso: string | null | undefined, locale: string, d
 
 function formatAgeSexTrackboard(
   language: SupportedLanguage,
-  t: (k: string) => string,
   dob: string | null | undefined,
   sexAtBirth: string | null | undefined,
   sex?: string | null | undefined
 ): string {
-  if (language === "fr") return formatAgeYearsSexFr(dob, sexAtBirth, sex);
-  if (!dob) return t("common.dash");
-  const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return t("common.dash");
-  const age = calculateAge(dob);
-  if (!Number.isFinite(age) || age < 0) return t("common.dash");
-  let sexPart = t("encounterChrome.patientSex.UNKNOWN");
-  if (sex && sex !== "UNKNOWN") {
-    const k = `encounterChrome.patientSex.${sex}`;
-    const resolved = t(k);
-    sexPart = resolved !== k ? resolved : sexPart;
-  } else if (sexAtBirth?.trim()) {
-    const k = `encounterChrome.sexAtBirth.${String(sexAtBirth).trim()}`;
-    const resolved = t(k);
-    sexPart = resolved !== k ? resolved : sexPart;
-  }
-  return `${age} ${t("clinicalTrackboardPage.ageYearSuffix")} • ${sexPart}`;
+  return formatAgeYearsSexForLocale(dob, sexAtBirth, sex ?? null, language);
 }
 
 function encounterStatusBoardLabel(status: string, t: (k: string) => string): string {
@@ -470,7 +453,7 @@ export default function TrackBoardPage() {
                               {nirLine}
                               {" · "}
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicalTrackboardPage.ageSex")}</span>{" "}
-                              {formatAgeSexTrackboard(language, t, patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
+                              {formatAgeSexTrackboard(language, patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null)}
                             </p>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
                               <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
