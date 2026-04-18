@@ -11,7 +11,9 @@ module.exports = {
     "^.*packages/shared/src/(.+)\\.js$": "<rootDir>/../../packages/shared/src/$1.ts",
     /** Relative `./constants/*.js` from shared `index.ts` resolves from api cwd — map to shared `src`. */
     "^\\.\\/constants\\/(.*)\\.js$": "<rootDir>/../../packages/shared/src/constants/$1.ts",
-    "^\\.\\/schemas\\/(.*)\\.js$": "<rootDir>/../../packages/shared/src/schemas/$1.ts"
+    "^\\.\\/schemas\\/(.*)\\.js$": "<rootDir>/../../packages/shared/src/schemas/$1.ts",
+    /** Strip `.js` from relative specifiers so resolution picks the `.ts` source (shared package exports). */
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 };
 
