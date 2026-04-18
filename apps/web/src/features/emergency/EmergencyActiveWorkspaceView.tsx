@@ -152,20 +152,20 @@ const shellBox: React.CSSProperties = {
 
 /** TEMP (ER-Dx-2): pas de GET /diagnoses/search côté API — assistance code / libellé locale uniquement. */
 type ErDxSuggestion = { code: string; label: string };
-const TEMP_DX_ICD10_ASSIST: ErDxSuggestion[] = [
-  { code: "I10", label: "Hypertension essentielle (primitive)" },
-  { code: "E11.9", label: "Diabète de type 2 sans complication" },
-  { code: "J18.9", label: "Pneumopathie infectieuse, sans précision" },
-  { code: "R50.9", label: "Fièvre, sans précision" },
-  { code: "R51", label: "Céphalée" },
-  { code: "K29.7", label: "Gastrite, sans précision" },
-  { code: "N39.0", label: "Infection des voies urinaires, siège sans précision" },
-  { code: "S09.90", label: "Traumatisme de la tête, sans précision" },
-  { code: "T14.90", label: "Traumatisme, sans précision" },
-  { code: "R07.4", label: "Douleur thoracique, sans précision" },
-  { code: "R06.02", label: "Essoufflement" },
-  { code: "A09", label: "Diarrhée et gastro-entérite d'origine infectieuse présumée" },
-];
+const TEMP_DX_ICD10_CODES = [
+  "I10",
+  "E11.9",
+  "J18.9",
+  "R50.9",
+  "R51",
+  "K29.7",
+  "N39.0",
+  "S09.90",
+  "T14.90",
+  "R07.4",
+  "R06.02",
+  "A09",
+] as const;
 
 /** Zones du tableau de bord urgences (navigation locale + zone active). */
 export type ErWorkspaceSection =
@@ -456,9 +456,9 @@ export function EmergencyActiveWorkspaceView() {
 
   const tempDxAssistLocalized = useMemo(
     () =>
-      TEMP_DX_ICD10_ASSIST.map((s) => ({
-        ...s,
-        label: t(`emergencyWorkspace.dxAssist.${s.code.replace(/\./g, "_")}`),
+      TEMP_DX_ICD10_CODES.map((code) => ({
+        code,
+        label: t(`emergencyWorkspace.dxAssist.${code.replace(/\./g, "_")}`),
       })),
     [t]
   );

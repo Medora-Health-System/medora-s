@@ -216,7 +216,7 @@ export function EmergencyChartView() {
       if (rolesReady && !canViewEncounterDetail) {
         setEncounter(null);
         setLoading(false);
-        setError("Accès non autorisé à cette consultation.");
+        setError(t("emergencyWorkspace.errUnauthorizedEncounter"));
       }
       return;
     }
@@ -235,25 +235,23 @@ export function EmergencyChartView() {
         });
       } else {
         setEncounter(null);
-        setError("Consultation indisponible (hors ligne ou synchronisation en cours).");
+        setError(t("emergencyWorkspace.errEncounterUnavailable"));
       }
     } catch (e) {
       console.error(e);
       const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
-      setError(msg || "Impossible de charger la consultation.");
+      setError(msg || t("emergencyWorkspace.errLoadEncounter"));
       const cached = await getCachedRecord<EncounterShell>("encounter_summaries", cacheKey);
       if (cached?.data) {
         setEncounter(cached.data);
-        setError(
-          (msg || "Données en cache.") + " Certaines informations peuvent être obsolètes."
-        );
+        setError((msg || t("emergencyWorkspace.errCachePrefix")) + t("emergencyWorkspace.errCacheStale"));
       } else {
         setEncounter(null);
       }
     } finally {
       setLoading(false);
     }
-  }, [encounterId, fid, rolesReady, canViewEncounterDetail]);
+  }, [encounterId, fid, rolesReady, canViewEncounterDetail, t]);
 
   useEffect(() => {
     void load();
@@ -358,7 +356,7 @@ export function EmergencyChartView() {
   if (!canViewEncounterDetail) {
     return (
       <div style={{ padding: 24, maxWidth: 560 }}>
-        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? "Accès non autorisé."}</p>
+        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? t("emergencyWorkspace.errUnauthorizedShort")}</p>
       </div>
     );
   }
@@ -372,10 +370,10 @@ export function EmergencyChartView() {
   if (!encounter) {
     return (
       <div style={{ padding: 24, maxWidth: 560 }}>
-        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? "Consultation introuvable."}</p>
+        <p style={{ margin: 0, fontSize: 14, color: "#b91c1c" }}>{error ?? t("emergencyWorkspace.errEncounterNotFound")}</p>
         <p style={{ margin: "16px 0 0 0" }}>
           <Link href={emergencyTrackboardPath()} style={{ color: "#2563eb", fontWeight: 600 }}>
-            ← Tableau des urgences
+            {t("emergencyWorkspace.backTrackboardLong")}
           </Link>
         </p>
       </div>
@@ -409,11 +407,11 @@ export function EmergencyChartView() {
         <header style={{ marginBottom: 20 }}>
           <p style={{ margin: "0 0 8px 0", fontSize: 13 }}>
             <Link href={emergencyTrackboardPath()} style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-              ← Urgences
+              {t("emergencyWorkspace.backTrackboard")}
             </Link>
             {" · "}
             <Link href={erActiveHref} style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-              Espace actif
+              {t("emergencyChartView.linkActiveWorkspace")}
             </Link>
           </p>
           <h1
@@ -424,15 +422,14 @@ export function EmergencyChartView() {
               color: "#0f172a",
             }}
           >
-            Charte urgence
+            {t("emergencyChartView.pageTitle")}
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.5 }}>
-            Vue consolidée des zones urgences. Le dossier consultation Medora reste disponible en référence pour les
-            onglets détaillés.
+            {t("emergencyChartView.pageSubtitle")}
           </p>
           <p style={{ margin: "10px 0 0 0", fontSize: 13 }}>
             <Link href={genericEncounterHref} style={{ color: "#64748b", fontWeight: 600 }}>
-              Ouvrir le dossier consultation Medora (référence)
+              {t("emergencyChartView.linkMedoraEncounterRef")}
             </Link>
           </p>
         </header>
@@ -440,7 +437,7 @@ export function EmergencyChartView() {
         {!isEmergencyType && (
           <div style={{ ...shellBox, marginBottom: 16, borderColor: "#fde68a", backgroundColor: "#fffbeb" }}>
             <p style={{ margin: 0, fontSize: 13, color: "#92400e" }}>
-              Cette consultation n&apos;est pas de type urgence. Utilisez le dossier complet.
+              {t("emergencyWorkspace.notEmergencyBanner")}
             </p>
           </div>
         )}
@@ -590,7 +587,7 @@ export function EmergencyChartView() {
                       }
                     }}
                     aria-expanded={showOperationalPanel}
-                    aria-label="Paramètres opérationnels — salle"
+                    aria-label={t("emergencyWorkspace.operationalRoomAria")}
                     style={{
                       padding: "8px 12px",
                       alignSelf: "flex-end",
@@ -659,7 +656,7 @@ export function EmergencyChartView() {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <section aria-labelledby="section-triage">
             <h2 id="section-triage" style={sectionTitle}>
-              Triage
+              {t("emergencyWorkspace.triageCardTitle")}
             </h2>
             {canFetchEncounterTriage ? (
               <EmergencyTriagePanel
@@ -678,17 +675,17 @@ export function EmergencyChartView() {
                 <MedoraCardInner>
                   <MedoraCardIdentity initials="T">
                     <MedoraCardTitle
-                      title="Triage"
+                      title={t("emergencyWorkspace.triageCardTitle")}
                       subline={
                         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                          Réservé à certains rôles. Ouvrez le dossier complet.
+                          {t("emergencyChartView.triageLockedSubline")}
                         </p>
                       }
                     />
                   </MedoraCardIdentity>
                   <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                     <Link href={tabHref("triage")} style={linkPill}>
-                      Ouvrir le triage (dossier)
+                      {t("emergencyWorkspace.triageOpenLink")}
                     </Link>
                   </MedoraCardActions>
                 </MedoraCardInner>
@@ -698,7 +695,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-synth">
             <h2 id="section-synth" style={sectionTitle}>
-              Synthèse
+              {t("emergencyChartView.sectionSummary")}
             </h2>
             <EmergencyVisitSummaryPanel
               encounterId={encounterId}
@@ -713,7 +710,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-results">
             <h2 id="section-results" style={sectionTitle}>
-              Résultats
+              {t("emergencyWorkspace.sectionTitle.results")}
             </h2>
             <EmergencyResultsPanel
               encounterId={encounterId}
@@ -726,17 +723,17 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-mar">
             <h2 id="section-mar" style={sectionTitle}>
-              MAR / médication
+              {t("emergencyChartView.sectionMarHeading")}
             </h2>
             {canFetchMarTab ? (
               <MedoraCard leftAccentColor="#059669" variant="default">
                 <MedoraCardInner>
                   <MedoraCardIdentity initials="M">
                     <MedoraCardTitle
-                      title="Administration médicamenteuse (MAR)"
+                      title={t("emergencyWorkspace.marTitle")}
                       subline={
                         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                          Même outil que l&apos;onglet MAR du dossier.
+                          {t("emergencyWorkspace.marSubline")}
                         </p>
                       }
                     />
@@ -755,17 +752,17 @@ export function EmergencyChartView() {
                 <MedoraCardInner>
                   <MedoraCardIdentity initials="M">
                     <MedoraCardTitle
-                      title="MAR"
+                      title={t("emergencyWorkspace.marUnavailableTitle")}
                       subline={
                         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                          Non disponible pour ce rôle sur cette page.
+                          {t("emergencyWorkspace.marUnavailableSubline")}
                         </p>
                       }
                     />
                   </MedoraCardIdentity>
                   <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                     <Link href={tabHref("mar")} style={linkPill}>
-                      Onglet MAR (dossier)
+                      {t("emergencyWorkspace.marTabLink")}
                     </Link>
                   </MedoraCardActions>
                 </MedoraCardInner>
@@ -775,7 +772,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-orders">
             <h2 id="section-orders" style={sectionTitle}>
-              Ordres &amp; interventions
+              {t("emergencyChartView.sectionOrders")}
             </h2>
             <EmergencyErOrdersPanel
               encounterId={encounterId}
@@ -794,23 +791,23 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-notes">
             <h2 id="section-notes" style={sectionTitle}>
-              Notes
+              {t("emergencyWorkspace.sectionTitle.notes")}
             </h2>
             <MedoraCard leftAccentColor="#475569" variant="default">
               <MedoraCardInner>
                 <MedoraCardIdentity initials="N">
                   <MedoraCardTitle
-                    title="Notes"
+                    title={t("emergencyWorkspace.notesTitle")}
                     subline={
                       <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                        Notes infirmières et court texte — dossier complet.
+                        {t("emergencyWorkspace.notesSubline")}
                       </p>
                     }
                   />
                 </MedoraCardIdentity>
                 <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                   <Link href={tabHref("notes")} style={linkPill}>
-                    Onglet notes
+                    {t("emergencyWorkspace.notesTabLink")}
                   </Link>
                 </MedoraCardActions>
               </MedoraCardInner>
@@ -819,7 +816,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-nursing">
             <h2 id="section-nursing" style={sectionTitle}>
-              Soins
+              {t("emergencyChartView.sectionNursingCare")}
             </h2>
             {showNursingTab ? (
               <EmergencyNursingReassessmentPanel
@@ -835,17 +832,17 @@ export function EmergencyChartView() {
                 <MedoraCardInner>
                   <MedoraCardIdentity initials="I">
                     <MedoraCardTitle
-                      title="Soins infirmiers"
+                      title={t("emergencyWorkspace.nursingDeniedTitle")}
                       subline={
                         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                          Évaluation réservée à certains rôles. Ouvrez le dossier complet.
+                          {t("emergencyWorkspace.nursingDeniedSubline")}
                         </p>
                       }
                     />
                   </MedoraCardIdentity>
                   <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                     <Link href={tabHref("nursing")} style={linkPill}>
-                      Onglet soins infirmiers
+                      {t("emergencyWorkspace.nursingTabLink")}
                     </Link>
                   </MedoraCardActions>
                 </MedoraCardInner>
@@ -855,7 +852,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-mse">
             <h2 id="section-mse" style={sectionTitle}>
-              Évaluation médicale
+              {t("emergencyChartView.sectionProviderEval")}
             </h2>
             {showNursingTab ? (
               <EmergencyProviderMsePanel
@@ -874,17 +871,17 @@ export function EmergencyChartView() {
                 <MedoraCardInner>
                   <MedoraCardIdentity initials="M">
                     <MedoraCardTitle
-                      title="Évaluation médicale"
+                      title={t("emergencyWorkspace.mseDeniedTitle")}
                       subline={
                         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                          Zone réservée à certains rôles. Ouvrez le dossier complet.
+                          {t("emergencyWorkspace.mseDeniedSubline")}
                         </p>
                       }
                     />
                   </MedoraCardIdentity>
                   <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
                     <Link href={tabHref("clinic")} style={linkPill}>
-                      Onglet évaluation clinique
+                      {t("emergencyWorkspace.mseTabLink")}
                     </Link>
                   </MedoraCardActions>
                 </MedoraCardInner>
@@ -894,7 +891,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-disp">
             <h2 id="section-disp" style={sectionTitle}>
-              Disposition
+              {t("emergencyWorkspace.sectionTitle.disposition")}
             </h2>
             <EmergencyDispositionPanel
               encounterId={encounterId}
@@ -911,7 +908,7 @@ export function EmergencyChartView() {
 
           <section aria-labelledby="section-handoff">
             <h2 id="section-handoff" style={sectionTitle}>
-              Exécution équipe
+              {t("emergencyChartView.sectionTeamExecution")}
             </h2>
             <EmergencyErNursingHandoffPanel
               encounter={encounter}

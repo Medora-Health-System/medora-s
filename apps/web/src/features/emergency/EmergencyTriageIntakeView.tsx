@@ -4,10 +4,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
-import { formatAgeYearsSexFr } from "@/lib/patientDisplay";
+import { formatPatientAgeSexLine } from "@/lib/encounterChromeI18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { ui } from "@/lib/uiLabels";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { useI18n } from "@/lib/i18n";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import {
@@ -66,6 +66,7 @@ const inputBase: React.CSSProperties = {
 
 export function EmergencyTriageIntakeView() {
   const router = useRouter();
+  const { t } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,9 +157,7 @@ export function EmergencyTriageIntakeView() {
         facilityId: fid,
       });
       if (res && typeof res === "object" && (res as { queued?: boolean }).queued === true) {
-        setError(
-          "Consultation enregistrée hors ligne. Ouvrez la file des urgences après synchronisation."
-        );
+        setError(t("emergencyTriageIntake.errOfflineQueued"));
         return;
       }
       const id = (res as { id?: string })?.id;
@@ -166,11 +165,10 @@ export function EmergencyTriageIntakeView() {
         router.push(`/app/emergency/active/${id}`);
         return;
       }
-      setError("Réponse inattendue du serveur.");
+      setError(t("emergencyTriageIntake.errUnexpectedResponse"));
     } catch (e) {
       setError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-          "Impossible de créer la consultation d'urgence."
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyTriageIntake.errCreateFailed")
       );
     } finally {
       setSubmitting(false);
@@ -198,19 +196,18 @@ export function EmergencyTriageIntakeView() {
               color: "#0f172a",
             }}
           >
-            Accueil urgences
+            {t("emergencyTriageIntake.pageTitle")}
           </h1>
           <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 640, lineHeight: 1.5 }}>
-            Recherchez un patient, puis ouvrez une consultation de type urgence. Le dossier standard s&apos;ouvre
-            ensuite.
+            {t("emergencyTriageIntake.pageSubtitle")}
           </p>
           <p style={{ margin: "10px 0 0 0", fontSize: 13 }}>
             <Link href="/app/emergency/trackboard" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-              ← Tableau des urgences
+              {t("emergencyTriageIntake.linkTrackboard")}
             </Link>
             {" · "}
             <Link href="/app/patients" style={{ color: "#475569", fontWeight: 500, textDecoration: "none" }}>
-              Liste patients
+              {t("emergencyTriageIntake.linkPatientList")}
             </Link>
           </p>
         </header>
@@ -220,10 +217,10 @@ export function EmergencyTriageIntakeView() {
             <MedoraCardInner>
               <MedoraCardIdentity initials="?">
                 <MedoraCardTitle
-                  title="Rechercher un patient"
+                  title={t("emergencyTriageIntake.searchCardTitle")}
                   subline={
                     <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                      Nom, NIR ou téléphone — même source que la liste patients.
+                      {t("emergencyTriageIntake.searchCardSubline")}
                     </p>
                   }
                 />
@@ -232,13 +229,13 @@ export function EmergencyTriageIntakeView() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                   <input
                     type="search"
-                    aria-label="Recherche patient"
+                    aria-label={t("emergencyTriageIntake.searchAria")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") void runSearch();
                     }}
-                    placeholder="Rechercher…"
+                    placeholder={t("emergencyTriageIntake.searchPlaceholder")}
                     style={{ ...inputBase, flex: "1 1 220px", minWidth: 0 }}
                   />
                   <button
@@ -258,7 +255,7 @@ export function EmergencyTriageIntakeView() {
                       boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
                     }}
                   >
-                    {searchLoading ? ui.common.loading : ui.common.search}
+                    {searchLoading ? t("common.loading") : t("emergencyTriageIntake.searchButton")}
                   </button>
                 </div>
               </div>
@@ -268,8 +265,8 @@ export function EmergencyTriageIntakeView() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #e2e8f0", textAlign: "left", color: "#64748b", fontSize: 11 }}>
-                        <th style={{ padding: "8px 10px" }}>Patient</th>
-                        <th style={{ padding: "8px 10px" }}>NIR</th>
+                        <th style={{ padding: "8px 10px" }}>{t("emergencyTriageIntake.colPatient")}</th>
+                        <th style={{ padding: "8px 10px" }}>{t("emergencyTriageIntake.colMrn")}</th>
                         <th style={{ padding: "8px 10px" }}></th>
                       </tr>
                     </thead>
@@ -285,7 +282,7 @@ export function EmergencyTriageIntakeView() {
                           <td style={{ padding: "10px 10px", color: "#0f172a" }}>
                             {p.firstName} {p.lastName}
                           </td>
-                          <td style={{ padding: "10px 10px", color: "#64748b" }}>{p.mrn ?? ui.common.dash}</td>
+                          <td style={{ padding: "10px 10px", color: "#64748b" }}>{p.mrn ?? t("common.dash")}</td>
                           <td style={{ padding: "10px 10px", textAlign: "right" }}>
                             <button
                               type="button"
@@ -304,7 +301,7 @@ export function EmergencyTriageIntakeView() {
                                 cursor: "pointer",
                               }}
                             >
-                              Sélectionner
+                              {t("emergencyTriageIntake.selectPatient")}
                             </button>
                           </td>
                         </tr>
@@ -324,25 +321,26 @@ export function EmergencyTriageIntakeView() {
                     title={`${selected.firstName} ${selected.lastName}`}
                     subline={
                       <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                        {ui.common.ageSex}{" "}
-                        {formatAgeYearsSexFr(
+                        {t("patientChartUi.ageSex")}{" "}
+                        {formatPatientAgeSexLine(
                           selected.dob ?? null,
                           selected.sexAtBirth ?? null,
-                          selected.sex ?? null
+                          selected.sex ?? null,
+                          t
                         )}
                       </p>
                     }
                   />
                 </MedoraCardIdentity>
 
-                <MedoraCardRoomBlock label={ui.common.room} value={roomLabel} />
+                <MedoraCardRoomBlock label={t("patientChartUi.room")} value={roomLabel} />
 
                 <div style={{ marginTop: 0, flex: "1 1 280px", minWidth: 0, ...shell, padding: "14px 16px" }}>
                   <p style={{ margin: "0 0 10px 0", fontSize: 12, fontWeight: 600, color: "#64748b" }}>
-                    Consultation d&apos;urgence (EMERGENCY)
+                    {t("emergencyTriageIntake.encounterTypeLabel")}
                   </p>
                   <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "#475569" }}>
-                    Changer la salle
+                    {t("emergencyTriageIntake.labelChangeRoom")}
                   </label>
                   <select
                     value={roomLabel}
@@ -356,7 +354,7 @@ export function EmergencyTriageIntakeView() {
                     ))}
                   </select>
                   <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "#475569" }}>
-                    Médecin attribué (optionnel)
+                    {t("emergencyTriageIntake.labelAssignedProvider")}
                   </label>
                   <select
                     value={physicianAssignedUserId}
@@ -371,7 +369,7 @@ export function EmergencyTriageIntakeView() {
                     ))}
                   </select>
                   <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "#475569" }}>
-                    Motif de visite (optionnel)
+                    {t("emergencyTriageIntake.labelVisitReason")}
                   </label>
                   <textarea
                     value={visitReason}
@@ -408,7 +406,7 @@ export function EmergencyTriageIntakeView() {
                         opacity: submitting ? 0.75 : 1,
                       }}
                     >
-                      {submitting ? "Création…" : "Ouvrir la consultation"}
+                      {submitting ? t("emergencyTriageIntake.creating") : t("emergencyTriageIntake.openEncounter")}
                     </button>
                   </MedoraCardActions>
                 </div>

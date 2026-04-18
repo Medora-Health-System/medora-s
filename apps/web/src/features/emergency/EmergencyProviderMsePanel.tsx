@@ -175,7 +175,7 @@ export function EmergencyProviderMsePanel({
     return { savedAt: at, savedByDisplayName: by };
   }, [encounter.nursingAssessment]);
 
-  const previewModel = useMemo(() => buildErProviderMsePreviewModel(form), [form]);
+  const previewModel = useMemo(() => buildErProviderMsePreviewModel(form, language), [form, language]);
 
   const patchForm = useCallback((patch: Partial<ErProviderMseForm>) => {
     setForm((f) => ({ ...f, ...patch }));

@@ -3,7 +3,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { EncounterResultsTab, type EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
-import { ui } from "@/lib/uiLabels";
 import {
   MedoraCard,
   MedoraCardActions,
@@ -85,7 +84,7 @@ export function EmergencyVisitSummaryPanel({
   resultsTabHref: string;
   diagnosticsTabHref: string;
 }) {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const [resultsSnap, setResultsSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
   const onLabRadSnapshot = useCallback((s: EncounterResultsLabRadSnapshot) => {
     setResultsSnap(s);
@@ -120,21 +119,20 @@ export function EmergencyVisitSummaryPanel({
         <MedoraCardInner>
           <MedoraCardIdentity initials="S">
             <MedoraCardTitle
-              title="Synthèse de visite (urgences)"
+              title={t("emergencyVisitSummaryPanel.cardTitle")}
               subline={
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  Vue unique lecture seule — agrégation des données déjà enregistrées (triage, soins, médecin,
-                  disposition, résultats). Aucune modification ici.
+                  {t("emergencyVisitSummaryPanel.cardSubline")}
                 </p>
               }
             />
           </MedoraCardIdentity>
           <MedoraCardActions railBorderTopColor="#e2e8f0" gap={6} minWidth={0}>
             <Link href={resultsTabHref} style={linkPill}>
-              Onglet résultats
+              {t("emergencyVisitSummaryPanel.linkResultsTab")}
             </Link>
             <Link href={diagnosticsTabHref} style={linkPill}>
-              Diagnostics
+              {t("emergencyVisitSummaryPanel.linkDiagnosticsTab")}
             </Link>
           </MedoraCardActions>
         </MedoraCardInner>
@@ -160,32 +158,34 @@ export function EmergencyVisitSummaryPanel({
         {model.resultats ? (
           <MedoraCard leftAccentColor="#6366f1" variant="default">
             <MedoraCardInner>
-              <p style={sectionTitle}>Résultats & examens (aperçu)</p>
+              <p style={sectionTitle}>{t("emergencyVisitSummaryPanel.resultsPreviewTitle")}</p>
               {model.resultats.loading ? (
-                <p style={{ ...lineStyle, marginTop: 8 }}>{ui.common.loading}</p>
+                <p style={{ ...lineStyle, marginTop: 8 }}>{t("common.loading")}</p>
               ) : model.resultats.failed ? (
                 <p style={{ ...lineStyle, marginTop: 8, color: "#92400e", fontWeight: 600 }}>
-                  Commandes indisponibles (hors ligne). Ouvrez l&apos;onglet résultats du dossier.
+                  {t("emergencyVisitSummaryPanel.resultsOffline")}
                 </p>
               ) : model.resultats.empty ? (
                 <p style={{ ...lineStyle, marginTop: 8, color: "#64748b" }}>
-                  Aucun résultat laboratoire ou imagerie listé pour l&apos;instant.
+                  {t("emergencyVisitSummaryPanel.resultsEmpty")}
                 </p>
               ) : (
                 <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                   {model.resultats.labLine ? (
                     <p style={lineStyle}>
-                      <strong style={{ color: "#0f172a" }}>Labo :</strong> {model.resultats.labLine}
+                      <strong style={{ color: "#0f172a" }}>{t("emergencyVisitSummaryPanel.labPrefix")}</strong>{" "}
+                      {model.resultats.labLine}
                     </p>
                   ) : null}
                   {model.resultats.imagingLine ? (
                     <p style={lineStyle}>
-                      <strong style={{ color: "#0f172a" }}>Imagerie :</strong> {model.resultats.imagingLine}
+                      <strong style={{ color: "#0f172a" }}>{t("emergencyVisitSummaryPanel.imagingPrefix")}</strong>{" "}
+                      {model.resultats.imagingLine}
                     </p>
                   ) : null}
                   {model.resultats.priorityLines.length > 0 ? (
                     <div>
-                      <p style={{ ...sectionTitle, marginBottom: 6 }}>Prioritaires / critiques</p>
+                      <p style={{ ...sectionTitle, marginBottom: 6 }}>{t("emergencyVisitSummaryPanel.priorityTitle")}</p>
                       {model.resultats.priorityLines.map((ln, i) => (
                         <p key={i} style={{ ...lineStyle, marginBottom: 4 }}>
                           {ln}
@@ -204,11 +204,13 @@ export function EmergencyVisitSummaryPanel({
         {model.timeline.length > 0 ? (
           <MedoraCard leftAccentColor="#94a3b8" variant="default">
             <MedoraCardInner>
-              <p style={sectionTitle}>Chronologie & signatures (aperçu)</p>
+              <p style={sectionTitle}>{t("emergencyVisitSummaryPanel.timelineTitle")}</p>
               <ul style={{ margin: "8px 0 0 0", paddingLeft: 18, fontSize: 13, color: "#475569", lineHeight: 1.45 }}>
-                {model.timeline.map((t, i) => (
+                {model.timeline.map((item, i) => (
                   <li key={i} style={{ marginBottom: 4 }}>
-                    <strong style={{ color: "#334155" }}>{t.label}</strong> : {t.value}
+                    <strong style={{ color: "#334155" }}>{item.label}</strong>
+                    {t("emergencyVisitSummaryPanel.timelineSep")}
+                    {item.value}
                   </li>
                 ))}
               </ul>
@@ -223,10 +225,7 @@ export function EmergencyVisitSummaryPanel({
         model.resultats.empty ? (
           <MedoraCard leftAccentColor="#e2e8f0" variant="default">
             <MedoraCardInner>
-              <p style={{ ...lineStyle, margin: 0, color: "#64748b" }}>
-                Aucune documentation urgences structurée ou résultat à afficher pour l&apos;instant. Complétez le triage,
-                les zones Soins / Évaluation / Disposition, ou ouvrez le dossier complet.
-              </p>
+              <p style={{ ...lineStyle, margin: 0, color: "#64748b" }}>{t("emergencyVisitSummaryPanel.emptyState")}</p>
             </MedoraCardInner>
           </MedoraCard>
         ) : null}

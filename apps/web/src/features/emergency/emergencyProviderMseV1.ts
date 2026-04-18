@@ -4,6 +4,9 @@
  * Does not touch physicianEvalV1 / nursingEvalV1 blobs; only adds this namespaced key.
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
+
 export const ER_PROVIDER_MSE_V1_KEY = "erProviderMseV1" as const;
 
 export type ErProviderMseSignature = {
@@ -243,67 +246,117 @@ export type ErProviderMsePreviewModel = {
   oneLineSummary: string;
 };
 
-function pushLine(lines: string[], label: string, value: string) {
+function pushLine(lines: string[], locale: SupportedLanguage, labelKey: string, value: string) {
   const v = value.trim();
-  if (v) lines.push(`${label} : ${v.length > 600 ? `${v.slice(0, 600)}…` : v}`);
+  if (!v) return;
+  const label = i18nMessage(locale, `erMseProviderPanel.${labelKey}`);
+  const sep = i18nMessage(locale, "erMseProviderPanel.previewKvSep");
+  lines.push(`${label}${sep}${v.length > 600 ? `${v.slice(0, 600)}…` : v}`);
 }
 
 /** Rule-based preview from form only — no inference, no AI. */
-export function buildErProviderMsePreviewModel(form: ErProviderMseForm): ErProviderMsePreviewModel {
+export function buildErProviderMsePreviewModel(
+  form: ErProviderMseForm,
+  locale: SupportedLanguage
+): ErProviderMsePreviewModel {
   const sections: ErProviderMsePreviewSection[] = [];
 
   const pres: string[] = [];
-  pushLine(pres, "Motif / préoccupation principale", form.chiefConcern);
-  pushLine(pres, "HPI / récit court (urgences)", form.hpiNarrative);
-  pushLine(pres, "Début / chronologie / contexte", form.onsetTimingContext);
-  pushLine(pres, "Symptômes associés", form.associatedSymptoms);
-  pushLine(pres, "Gravité / préoccupation clé", form.severityKeyConcern);
-  if (pres.length) sections.push({ id: "presentation", title: "Présentation", lines: pres });
+  pushLine(pres, locale, "labelChiefConcern", form.chiefConcern);
+  pushLine(pres, locale, "labelHpi", form.hpiNarrative);
+  pushLine(pres, locale, "labelOnsetTiming", form.onsetTimingContext);
+  pushLine(pres, locale, "labelAssociatedSymptoms", form.associatedSymptoms);
+  pushLine(pres, locale, "labelSeverityKeyConcern", form.severityKeyConcern);
+  if (pres.length) {
+    sections.push({
+      id: "presentation",
+      title: i18nMessage(locale, "erMseProviderPanel.sectionPresentation"),
+      lines: pres,
+    });
+  }
 
   const review: string[] = [];
-  pushLine(review, "Impression ciblée", form.focusedImpression);
-  pushLine(review, "Positifs importants", form.importantPositives);
-  pushLine(review, "Négatifs importants", form.importantNegatives);
-  pushLine(review, "Signaux d’alerte", form.redFlagsText);
-  pushLine(review, "Différentiel / synthèse d’évaluation (texte libre)", form.differentialAssessmentText);
-  if (review.length) sections.push({ id: "review", title: "Revue ciblée (médecin)", lines: review });
+  pushLine(review, locale, "labelFocusedImpression", form.focusedImpression);
+  pushLine(review, locale, "labelImportantPositives", form.importantPositives);
+  pushLine(review, locale, "labelImportantNegatives", form.importantNegatives);
+  pushLine(review, locale, "labelRedFlags", form.redFlagsText);
+  pushLine(review, locale, "labelDifferential", form.differentialAssessmentText);
+  if (review.length) {
+    sections.push({
+      id: "review",
+      title: i18nMessage(locale, "erMseProviderPanel.sectionReview"),
+      lines: review,
+    });
+  }
 
   const exam: string[] = [];
-  pushLine(exam, "Apparence générale", form.examGeneralAppearance);
-  pushLine(exam, "Neuro / statut mental (aperçu)", form.examNeuroMental);
-  pushLine(exam, "Tête / cou / ORL", form.examHeent);
-  pushLine(exam, "Cardiovasculaire", form.examCardiac);
-  pushLine(exam, "Respiratoire", form.examRespiratory);
-  pushLine(exam, "Abdomen", form.examAbdomen);
-  pushLine(exam, "Musculo-squelettique", form.examMusculoskeletal);
-  pushLine(exam, "Peau", form.examSkin);
-  pushLine(exam, "Psych / comportement", form.examPsychBehavior);
-  pushLine(exam, "Réévaluation / examen complémentaire", form.examReassessmentExtra);
-  if (exam.length) sections.push({ id: "exam", title: "Examen (aperçu)", lines: exam });
+  pushLine(exam, locale, "labelExamGeneralAppearance", form.examGeneralAppearance);
+  pushLine(exam, locale, "labelExamNeuroMental", form.examNeuroMental);
+  pushLine(exam, locale, "labelExamHeent", form.examHeent);
+  pushLine(exam, locale, "labelExamCardiac", form.examCardiac);
+  pushLine(exam, locale, "labelExamRespiratory", form.examRespiratory);
+  pushLine(exam, locale, "labelExamAbdomen", form.examAbdomen);
+  pushLine(exam, locale, "labelExamMusculoskeletal", form.examMusculoskeletal);
+  pushLine(exam, locale, "labelExamSkin", form.examSkin);
+  pushLine(exam, locale, "labelExamPsychBehavior", form.examPsychBehavior);
+  pushLine(exam, locale, "labelExamReassessmentExtra", form.examReassessmentExtra);
+  if (exam.length) {
+    sections.push({
+      id: "exam",
+      title: i18nMessage(locale, "erMseProviderPanel.sectionExam"),
+      lines: exam,
+    });
+  }
 
   const mdm: string[] = [];
-  pushLine(mdm, "Évaluation de travail", form.mdmWorkingAssessment);
-  pushLine(mdm, "Plan (résumé)", form.mdmPlanSummary);
-  pushLine(mdm, "Actions immédiates / justification", form.mdmImmediateActionsRationale);
-  pushLine(mdm, "Consultations évoquées", form.mdmConsultsDiscussed);
-  pushLine(mdm, "Hospitalisation / observation / sortie (réflexion)", form.mdmAdmitObserveDischarge);
-  pushLine(mdm, "Addendum médecin", form.mdmProviderAddendum);
-  if (mdm.length) sections.push({ id: "mdm", title: "Décision médicale (résumé)", lines: mdm });
+  pushLine(mdm, locale, "labelMdmWorkingAssessment", form.mdmWorkingAssessment);
+  pushLine(mdm, locale, "labelMdmPlanSummary", form.mdmPlanSummary);
+  pushLine(mdm, locale, "labelMdmImmediateActions", form.mdmImmediateActionsRationale);
+  pushLine(mdm, locale, "labelMdmConsultsDiscussed", form.mdmConsultsDiscussed);
+  pushLine(mdm, locale, "labelMdmAdmitObserveDischarge", form.mdmAdmitObserveDischarge);
+  pushLine(mdm, locale, "labelMdmProviderAddendum", form.mdmProviderAddendum);
+  if (mdm.length) {
+    sections.push({
+      id: "mdm",
+      title: i18nMessage(locale, "erMseProviderPanel.sectionMdm"),
+      lines: mdm,
+    });
+  }
 
   const parts: string[] = [];
   const cc = form.chiefConcern.trim();
   if (cc) parts.push(cc.length > 120 ? `${cc.slice(0, 120)}…` : cc);
   const hpi = form.hpiNarrative.trim();
-  if (hpi) parts.push(`HPI : ${hpi.length > 160 ? `${hpi.slice(0, 160)}…` : hpi}`);
+  if (hpi) {
+    parts.push(
+      `${i18nMessage(locale, "erMseProviderPanel.previewInlineHpi")}${
+        hpi.length > 160 ? `${hpi.slice(0, 160)}…` : hpi
+      }`
+    );
+  }
   const wa = form.mdmWorkingAssessment.trim();
-  if (wa) parts.push(`Évaluation : ${wa.length > 140 ? `${wa.slice(0, 140)}…` : wa}`);
+  if (wa) {
+    parts.push(
+      `${i18nMessage(locale, "erMseProviderPanel.previewInlineWorkingAssessment")}${
+        wa.length > 140 ? `${wa.slice(0, 140)}…` : wa
+      }`
+    );
+  }
 
   const oneLineSummary =
-    parts.length > 0 ? `Synthèse clinique (urgences) : ${parts.join(" · ")}` : "";
+    parts.length > 0
+      ? `${i18nMessage(locale, "erMseProviderPanel.previewClinicalSummaryPrefix")}${parts.join(" · ")}`
+      : "";
 
   if (sections.length === 0 && !oneLineSummary) {
     return {
-      sections: [{ id: "empty", title: "Aperçu", lines: ["Aucune donnée saisie pour l’aperçu."] }],
+      sections: [
+        {
+          id: "empty",
+          title: i18nMessage(locale, "erMseProviderPanel.previewEmptyTitle"),
+          lines: [i18nMessage(locale, "erMseProviderPanel.previewEmptyBody")],
+        },
+      ],
       oneLineSummary: "",
     };
   }

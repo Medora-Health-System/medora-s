@@ -309,7 +309,7 @@ export function buildEmergencyVisitSummaryModel(
   }
 
   const providerForm = erProviderMseFormFromEncounter(nav);
-  const providerPreview = buildErProviderMsePreviewModel(providerForm);
+  const providerPreview = buildErProviderMsePreviewModel(providerForm, locale);
   const providerSecs = nonEmptyPreviewSections(providerPreview.sections.filter((s) => s.id !== "empty"));
   let evaluationMedicale =
     providerSecs.length > 0
