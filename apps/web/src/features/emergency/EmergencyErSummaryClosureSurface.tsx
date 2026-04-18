@@ -13,7 +13,7 @@ import {
   formatEncounterChromeDateTime,
   formatPatientAgeSexLine,
 } from "@/lib/encounterChromeI18n";
-import { printDischarge } from "@/components/encounters/DischargePrintLayout";
+import { printErPacket } from "@/features/emergency/erPrintPacket";
 import {
   dischargeModeFrToDischargeStatus,
   hydrateDischargeFormFromEncounterJson,
@@ -39,7 +39,13 @@ type ErClosureEncounter = ComponentProps<typeof EmergencyVisitSummaryPanel>["enc
     sex?: string | null;
     mrn?: string | null;
     nationalId?: string | null;
+    globalMrn?: string | null;
   } | null;
+  admissionSummaryJson?: unknown;
+  providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
+  providerAddenda?: Array<{ id: string; text: string; createdAt: string }>;
 };
 
 function dischargePayloadForClose(encounter: ErClosureEncounter, canEditNursing: boolean, canEditMedical: boolean) {
@@ -110,21 +116,35 @@ export function EmergencyErSummaryClosureSurface({
   const contextLine = t(contextKey);
   const showContext = contextLine !== contextKey;
 
+  const printActionKey =
+    outcomeUi === "ADMISSION"
+      ? "printOutput.erPacket.actionPrintAdmission"
+      : outcomeUi === "TRANSFER"
+        ? "printOutput.erPacket.actionPrintTransfer"
+        : "printOutput.erPacket.actionPrintDischarge";
+
   const handlePrint = useCallback(() => {
     const p = encounter.patient;
     if (!p || !encounter.createdAt) return;
-    printDischarge({
+    printErPacket({
       patient: p,
       encounter: {
         createdAt: encounter.createdAt,
         dischargeSummaryJson: encounter.dischargeSummaryJson,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+        nursingAssessment: encounter.nursingAssessment,
         physicianAssigned: encounter.physicianAssigned ?? null,
+        providerDocumentationStatus: encounter.providerDocumentationStatus ?? null,
+        providerDocumentationSignedAt: encounter.providerDocumentationSignedAt ?? null,
+        providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr ?? null,
+        providerAddenda: encounter.providerAddenda,
       },
       facilityName: facilityName ?? null,
       primaryDiagnosis: null,
+      triageSnapshot,
       language,
     });
-  }, [encounter, facilityName, language]);
+  }, [encounter, facilityName, language, triageSnapshot]);
 
   const executeClose = useCallback(
     async (acknowledgeDeficiencies: boolean) => {
@@ -318,7 +338,7 @@ export function EmergencyErSummaryClosureSurface({
               cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
             }}
           >
-            {t("emergencyErClosure.printSummary")}
+            {t(printActionKey)}
           </button>
           <button
             type="button"

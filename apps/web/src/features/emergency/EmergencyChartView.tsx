@@ -78,6 +78,7 @@ type PatientLite = {
   sex?: string | null;
   mrn?: string | null;
   nationalId?: string | null;
+  globalMrn?: string | null;
 };
 
 type EncounterShell = {
@@ -102,6 +103,7 @@ type EncounterShell = {
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
+  providerAddenda?: Array<{ id: string; text: string; createdAt: string }>;
 };
 
 function patientInitials(p: PatientLite | null | undefined): string {
