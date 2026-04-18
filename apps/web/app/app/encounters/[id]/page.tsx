@@ -1452,6 +1452,7 @@ export default function EncounterDetailPage() {
             roomLabel={encounter.roomLabel}
             physicianAssigned={encounter.physicianAssigned}
             showConfirmInpatientTransfer={showConfirmInpatientTransfer}
+            nursingAssessment={encounter.nursingAssessment}
             onSaved={mergeEncounterFromOperationalPatch}
             onUpdated={() => void loadEncounter({ silent: true })}
           />

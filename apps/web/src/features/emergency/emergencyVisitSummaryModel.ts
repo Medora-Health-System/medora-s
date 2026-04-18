@@ -26,6 +26,7 @@ import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet }
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
 import { deriveEmtalaStateFromEncounter } from "./erEmtalaV1";
+import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
 
 export type VisitSummaryTextBlock = {
   title: string;
@@ -50,6 +51,8 @@ export type EmergencyVisitSummaryModel = {
   evaluationMedicale: VisitSummaryTextBlock | null;
   resultats: VisitSummaryResultsBlock | null;
   disposition: VisitSummaryTextBlock | null;
+  /** ER admission handoff (erHandoffV1) — read-only operational lines. */
+  handoff: VisitSummaryTextBlock | null;
   emtala: VisitSummaryTextBlock | null;
   timeline: VisitSummaryTimelineEntry[];
 };
@@ -460,6 +463,35 @@ export function buildEmergencyVisitSummaryModel(
     }
   }
 
+  let handoff: VisitSummaryTextBlock | null = null;
+  if ((encounter.type ?? "").trim() === "EMERGENCY") {
+    const hf = readErHandoffV1FromNursingAssessment(encounter.nursingAssessment);
+    const yn = (v: boolean) => (locale === "en" ? (v ? "Yes" : "No") : v ? "Oui" : "Non");
+    const hLines: string[] = [];
+    if (hf.receivingNurseName?.trim()) {
+      hLines.push(interpolate(vs(locale, "handoffLineReceivingNurse"), { name: trunc(hf.receivingNurseName, 200) }));
+    }
+    if (hf.reportGiven === true || hf.reportGiven === false) {
+      hLines.push(interpolate(vs(locale, "handoffLineReportGiven"), { value: yn(hf.reportGiven) }));
+    }
+    if (hf.reportGivenAt?.trim()) {
+      hLines.push(
+        interpolate(vs(locale, "handoffLineReportAt"), {
+          datetime: formatIsoForLocale(hf.reportGivenAt, locale),
+        })
+      );
+    }
+    if (hf.readyForInpatientTransfer === true || hf.readyForInpatientTransfer === false) {
+      hLines.push(interpolate(vs(locale, "handoffLineReady"), { value: yn(hf.readyForInpatientTransfer) }));
+    }
+    if (hf.handoffNote?.trim()) {
+      hLines.push(interpolate(vs(locale, "handoffLineNote"), { text: trunc(hf.handoffNote, 360) }));
+    }
+    if (hLines.length) {
+      handoff = { title: vs(locale, "handoffBlockTitle"), lines: hLines };
+    }
+  }
+
   return {
     motifPresentation,
     triageResume,
@@ -467,6 +499,7 @@ export function buildEmergencyVisitSummaryModel(
     evaluationMedicale,
     resultats,
     disposition,
+    handoff,
     emtala,
     timeline,
   };

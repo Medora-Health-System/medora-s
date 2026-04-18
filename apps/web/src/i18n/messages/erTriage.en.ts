@@ -305,5 +305,11 @@ export const erTriageMessagesEn = {
     emtalaDisp_LWBS: "LWBS",
     emtalaDisp_DECEASED: "Deceased",
     emtalaDisp_OTHER: "Other",
+    handoffBlockTitle: "Handoff",
+    handoffLineReceivingNurse: "Receiving nurse: {name}",
+    handoffLineReportGiven: "Report given: {value}",
+    handoffLineReportAt: "Report time: {datetime}",
+    handoffLineReady: "Ready for transfer: {value}",
+    handoffLineNote: "Handoff note: {text}",
   },
 } as const;

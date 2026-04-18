@@ -15,6 +15,7 @@ import { assertCanTransitionEncounter } from "../common/workflow/encounter.trans
 import { SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR } from "./encounter-sign-lock.util";
 import {
   admissionSummaryFieldsSchema,
+  erHandoffV1SatisfiesInpatientTransferConfirm,
   type EncounterCloseDto,
   type EncounterCreateDto,
   type EncounterOperationalUpdateDto,
@@ -714,6 +715,15 @@ export class EncountersService {
       if (!resolvedPhysicianId) {
         throw new BadRequestException(
           "Sélectionnez le médecin accepteur dans ce panneau avant de confirmer le transfert vers l'hospitalisation."
+        );
+      }
+      /**
+       * ER handoff (nursingAssessment.erHandoffV1): require explicit readiness before promoting to inpatient.
+       * Rule: reportGiven === true OR readyForInpatientTransfer === true (see @medora/shared erHandoffV1).
+       */
+      if (!erHandoffV1SatisfiesInpatientTransferConfirm(encounter.nursingAssessment)) {
+        throw new BadRequestException(
+          "Documentation de transmission (urgences) requise : indiquez qu'un compte rendu a été donné ou cochez « prêt pour le transfert » avant la confirmation."
         );
       }
       updateData.type = EncounterType.INPATIENT;

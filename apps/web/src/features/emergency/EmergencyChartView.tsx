@@ -654,6 +654,7 @@ export function EmergencyChartView() {
             roomLabel={encounter.roomLabel}
             physicianAssigned={physicianAssignedForOperational}
             showConfirmInpatientTransfer={showConfirmInpatientTransfer}
+            nursingAssessment={encounter.nursingAssessment}
             onUpdated={async () => {
               setShowOperationalPanel(false);
               await load();

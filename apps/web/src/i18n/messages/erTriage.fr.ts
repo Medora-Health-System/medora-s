@@ -307,5 +307,11 @@ export const erTriageMessagesFr = {
     emtalaDisp_LWBS: "Départ sans soins (FPP, LWBS)",
     emtalaDisp_DECEASED: "Décès",
     emtalaDisp_OTHER: "Autre",
+    handoffBlockTitle: "Transmission (urgences)",
+    handoffLineReceivingNurse: "Infirmier(ère) réceptionnaire : {name}",
+    handoffLineReportGiven: "Compte rendu donné : {value}",
+    handoffLineReportAt: "Heure du compte rendu : {datetime}",
+    handoffLineReady: "Prêt pour le transfert : {value}",
+    handoffLineNote: "Note de transmission : {text}",
   },
 } as const;

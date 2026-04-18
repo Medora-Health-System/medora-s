@@ -30,6 +30,7 @@ import {
 } from "@/features/emergency/erTrackboardDispositionBadge";
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
+import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -406,6 +407,10 @@ export function EmergencyTrackboardView() {
                   ? t("emergencyTrackboard.disposition.admissionPending")
                   : erDispositionBadgeDisplayLabel(dispositionBadge, t)
                 : tEncounterStatus(t, statusKey);
+              const showTransferPendingChip =
+                dispositionBadge?.variant === "admit" &&
+                encounterTypeKey === EMERGENCY_TYPE &&
+                !erHandoffV1SatisfiesInpatientTransferConfirm(encounter.nursingAssessment);
 
               return (
                 <li key={encounter.id}>
@@ -498,6 +503,13 @@ export function EmergencyTrackboardView() {
                                 <span title={t("emergencyTrackboard.sortieExecTooltip")}>
                                   <MedoraCardBadge soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
                                     {t("emergencyTrackboard.executedBadge")}
+                                  </MedoraCardBadge>
+                                </span>
+                              ) : null}
+                              {showTransferPendingChip ? (
+                                <span title={t("emergencyTrackboard.transferPendingTooltip")}>
+                                  <MedoraCardBadge soft={{ bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" }}>
+                                    {t("emergencyTrackboard.disposition.transferPending")}
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}

@@ -102,6 +102,7 @@ export function EmergencyVisitSummaryPanel({
         model.resumeInfirmier ||
         model.evaluationMedicale ||
         model.disposition ||
+        model.handoff ||
         model.emtala ||
         model.timeline.length > 0
     );
@@ -201,6 +202,7 @@ export function EmergencyVisitSummaryPanel({
         ) : null}
 
         {model.disposition ? <SummaryBlockCard accent="#64748b" block={model.disposition} /> : null}
+        {model.handoff ? <SummaryBlockCard accent="#0d9488" block={model.handoff} /> : null}
         {model.emtala ? <SummaryBlockCard accent="#0e7490" block={model.emtala} /> : null}
 
         {model.timeline.length > 0 ? (
