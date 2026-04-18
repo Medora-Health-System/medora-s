@@ -36,6 +36,15 @@ export type AuditTimelineItemDto = {
   entityId: string | null;
 };
 
+/** Distinct label when metadata marks a provider-documentation unlock (vs generic encounter update). */
+export function timelineShortLabelFr(row: { action: AuditAction; metadata: unknown }): string {
+  const m = metadataRecord(row.metadata);
+  if (m?.providerDocumentationUnlock === true) {
+    return "Déverrouillage évaluation médicale";
+  }
+  return auditActionShortLabelFr(row.action);
+}
+
 export function auditActionShortLabelFr(action: AuditAction): string {
   const map: Partial<Record<AuditAction, string>> = {
     [AuditAction.ENCOUNTER_CREATE]: "Consultation créée",
@@ -100,6 +109,11 @@ export function buildAuditTimelineDetailFr(action: AuditAction, metadata: unknow
         return n > 0 ? `Clôture avec lacunes documentaires (${n})` : null;
       }
       return null;
+    case AuditAction.ENCOUNTER_UPDATE:
+      if (m?.providerDocumentationUnlock === true && typeof m.reason === "string" && m.reason.trim()) {
+        return `Motif : ${m.reason.trim()}`;
+      }
+      return null;
     case AuditAction.ORDERS_CREATED:
       if (typeof m.count === "number" && m.count > 0) return `${m.count} ligne(s) depuis un protocole`;
       return null;
@@ -130,7 +144,7 @@ export function mapAuditLogRowToTimelineItem(row: {
     action: row.action,
     createdAt,
     userDisplayFr,
-    shortLabelFr: auditActionShortLabelFr(row.action),
+    shortLabelFr: timelineShortLabelFr(row),
     detailFr: buildAuditTimelineDetailFr(row.action, row.metadata),
     encounterId,
     entityType: row.entityType,

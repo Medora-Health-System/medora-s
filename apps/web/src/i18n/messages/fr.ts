@@ -2635,7 +2635,8 @@ export default {
     loadFailedTitle: "Impossible de charger la consultation.",
     errLoadEncounter: "Impossible de charger la consultation.",
     errAuditTimelineLoad: "Impossible de charger l'historique.",
-    lockedSignedBanner: "Dossier signé — modifications verrouillées",
+    lockedSignedBanner:
+      "Dossier verrouillé — la saisie clinique n'est plus modifiable. Seuls les addendums sont autorisés après signature.",
     queuedCloseBanner:
       "La demande de clôture a été enregistrée sur cet appareil et est en attente de synchronisation avec le serveur. La consultation n'est pas encore confirmée fermée : les autres postes peuvent encore afficher la visite comme ouverte jusqu'à la fin de la synchronisation.",
     queuedDischargeBanner:
@@ -2936,10 +2937,23 @@ export default {
     labelFollowUpDate: "Date de suivi",
     saveVisit: "Enregistrer la visite",
     saving: "Enregistrement…",
-    signDocumentation: "Signer l'évaluation",
-    signing: "…",
+    signDocumentation: "Signer et verrouiller le dossier",
+    signing: "Signature…",
+    unlockChart: "Déverrouiller le dossier",
+    unlockHint:
+      "Le déverrouillage lève le verrou de signature et permet à nouveau la modification du contenu clinique. L'action est enregistrée dans la piste d'audit.",
+    unlockModalTitle: "Déverrouiller le dossier ?",
+    unlockModalBody:
+      "Le dossier ne sera plus en lecture seule. À utiliser uniquement pour des corrections légitimes.",
+    unlockReasonLabel: "Motif (facultatif)",
+    unlockReasonPlaceholder:
+      "Courte justification — conservée dans le journal d'audit si renseignée.",
+    unlockConfirm: "Déverrouiller",
+    unlocking: "Déverrouillage…",
+    toastUnlocked: "Dossier déverrouillé — la saisie clinique est à nouveau autorisée.",
+    errUnlock: "Impossible de déverrouiller le dossier.",
     toastAddendumSaved: "Addendum enregistré.",
-    toastSigned: "Évaluation médicale signée.",
+    toastSigned: "Évaluation signée et dossier verrouillé.",
     toastSaved: "Évaluation médicale enregistrée.",
     toastSavedQueued:
       "Évaluation médicale enregistrée sur cet appareil, en attente de synchronisation. Pas encore confirmée côté serveur.",

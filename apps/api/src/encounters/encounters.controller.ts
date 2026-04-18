@@ -23,6 +23,7 @@ import {
   encounterOperationalUpdateDtoSchema,
   encounterOutpatientCreateDtoSchema,
   encounterProviderAddendumCreateDtoSchema,
+  encounterProviderDocumentationUnlockDtoSchema,
   encounterUpdateDtoSchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
@@ -224,6 +225,27 @@ export class EncountersController {
     return this.encountersService.signProviderDocumentation(
       facilityId,
       id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("encounters/:id/unlock-provider-documentation")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async unlockProviderDocumentation(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterProviderDocumentationUnlockDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.unlockProviderDocumentation(
+      facilityId,
+      id,
+      parsed.data,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]

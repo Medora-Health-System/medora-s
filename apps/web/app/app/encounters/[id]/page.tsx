@@ -77,6 +77,7 @@ import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+import { isEncounterLocked } from "@/lib/encounterLock";
 
 /** Presentation-only: admission / discharge / close / documentation-deficiency modals on this page. */
 function encounterWorkflowModalOverlay(zIndex: number): React.CSSProperties {
@@ -829,7 +830,7 @@ export default function EncounterDetailPage() {
 
   const isProviderLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
   /** Dossier médical signé : saisie verrouillée (addendum et navigation restent possibles). */
-  const isLocked = encounter.providerDocumentationStatus === "SIGNED";
+  const isLocked = isEncounterLocked(encounter);
   const isRNOnly = roles.includes("RN") && !isProviderLike;
   const canEditOperational = roles.includes("RN") || roles.includes("ADMIN");
   /** Admission depuis la consultation — réservé médecin / admin (aligné sur `canPrescribe`). */
@@ -2484,11 +2485,14 @@ function ClinicVisitTab({
   const [mdm, setMdm] = useState(() => parsePhysicianEvalV1FromEncounter(encounter).mdm);
   const [saving, setSaving] = useState(false);
   const [signingDoc, setSigningDoc] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [unlockReason, setUnlockReason] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
   const [addendumText, setAddendumText] = useState("");
   const [addendumSaving, setAddendumSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "queued" | "err"; text: string } | null>(null);
   const readOnly = encounter.status !== "OPEN";
-  const docSigned = encounter.providerDocumentationStatus === "SIGNED";
+  const docSigned = isEncounterLocked(encounter);
   const fieldsLocked = readOnly || docSigned;
 
   useEffect(() => {
@@ -2561,6 +2565,32 @@ function ClinicVisitTab({
       });
     } finally {
       setSigningDoc(false);
+    }
+  };
+
+  const handleUnlockDocumentation = async () => {
+    setMessage(null);
+    setUnlocking(true);
+    try {
+      const reason = unlockReason.trim();
+      await apiFetch(`/encounters/${encounter.id}/unlock-provider-documentation`, {
+        method: "POST",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reason ? { reason } : {}),
+      });
+      setShowUnlockModal(false);
+      setUnlockReason("");
+      setMessage({ type: "ok", text: t("encounterClinicTab.toastUnlocked") });
+      onUpdate();
+    } catch (e: unknown) {
+      setMessage({
+        type: "err",
+        text:
+          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterClinicTab.errUnlock"),
+      });
+    } finally {
+      setUnlocking(false);
     }
   };
 
@@ -2705,6 +2735,45 @@ function ClinicVisitTab({
               </>
             );
           })()}
+        </div>
+      ) : null}
+      {docSigned && canSignProviderDocumentation && !readOnly ? (
+        <div
+          style={{
+            ...clinicShell,
+            padding: "12px 16px",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            border: "1px solid #fde68a",
+            backgroundColor: "#fffbeb",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 13, color: "#78350f", lineHeight: 1.45, maxWidth: 480 }}>
+            {t("encounterClinicTab.unlockHint")}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setUnlockReason("");
+              setShowUnlockModal(true);
+            }}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 10,
+              border: "1px solid #d97706",
+              backgroundColor: "#fff",
+              color: "#92400e",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {t("encounterClinicTab.unlockChart")}
+          </button>
         </div>
       ) : null}
       {(encounter.providerAddenda ?? []).length > 0 ? (
@@ -3004,6 +3073,107 @@ function ClinicVisitTab({
         )}
       </div>
       </div>
+      {showUnlockModal ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="unlock-chart-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 85,
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 440,
+              width: "100%",
+              borderRadius: 14,
+              backgroundColor: MEDORA_CARD_SHELL.background,
+              border: MEDORA_CARD_SHELL.border,
+              boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)",
+              padding: "22px 24px",
+              boxSizing: "border-box",
+            }}
+          >
+            <h2 id="unlock-chart-title" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
+              {t("encounterClinicTab.unlockModalTitle")}
+            </h2>
+            <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#475569", lineHeight: 1.5 }}>
+              {t("encounterClinicTab.unlockModalBody")}
+            </p>
+            <label
+              style={{ display: "block", marginTop: 14, fontSize: 13, fontWeight: 600, color: "#334155" }}
+              htmlFor="unlock-chart-reason"
+            >
+              {t("encounterClinicTab.unlockReasonLabel")}
+            </label>
+            <textarea
+              id="unlock-chart-reason"
+              value={unlockReason}
+              onChange={(e) => setUnlockReason(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                marginTop: 6,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                fontSize: 14,
+                color: "#0f172a",
+              }}
+              placeholder={t("encounterClinicTab.unlockReasonPlaceholder")}
+            />
+            <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                disabled={unlocking}
+                onClick={() => {
+                  setShowUnlockModal(false);
+                  setUnlockReason("");
+                }}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  background: "#fff",
+                  color: "#334155",
+                  cursor: unlocking ? "wait" : "pointer",
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={unlocking}
+                onClick={() => void handleUnlockDocumentation()}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "none",
+                  borderRadius: 10,
+                  background: "#c2410c",
+                  color: "#fff",
+                  cursor: unlocking ? "wait" : "pointer",
+                }}
+              >
+                {unlocking ? t("encounterClinicTab.unlocking") : t("encounterClinicTab.unlockConfirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

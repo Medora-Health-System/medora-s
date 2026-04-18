@@ -2684,7 +2684,8 @@ export default {
     loadFailedTitle: "Unable to load encounter.",
     errLoadEncounter: "Could not load the encounter.",
     errAuditTimelineLoad: "Could not load audit history.",
-    lockedSignedBanner: "Chart signed — editing locked",
+    lockedSignedBanner:
+      "Chart locked — clinical content cannot be edited. Only addenda are allowed after signature.",
     queuedCloseBanner:
       "A close request was saved on this device and is waiting to sync with the server. The encounter may still appear open on other workstations until sync completes.",
     queuedDischargeBanner:
@@ -2958,7 +2959,7 @@ export default {
     title: "Provider documentation",
     signedBanner: "Chart signed by {name} on {datetime}",
     addendumByLine: "Addendum by {name} on {datetime}",
-    addendumSectionTitle: "Add an addendum",
+    addendumSectionTitle: "Add addendum",
     addendumPlaceholder:
       "Addendum text (append-only; does not modify signed documentation).",
     addendumSaving: "Saving…",
@@ -2987,10 +2988,22 @@ export default {
     labelFollowUpDate: "Follow-up date",
     saveVisit: "Save visit",
     saving: "Saving…",
-    signDocumentation: "Sign documentation",
+    signDocumentation: "Sign & lock chart",
     signing: "Signing…",
+    unlockChart: "Unlock chart",
+    unlockHint:
+      "Unlocking removes the signature lock so clinical content can be edited again. This action is recorded in the audit trail.",
+    unlockModalTitle: "Unlock chart?",
+    unlockModalBody:
+      "The chart will no longer be read-only. Use only for legitimate medico-legal corrections.",
+    unlockReasonLabel: "Reason (optional)",
+    unlockReasonPlaceholder: "Short justification — stored in the audit log if provided.",
+    unlockConfirm: "Unlock chart",
+    unlocking: "Unlocking…",
+    toastUnlocked: "Chart unlocked — clinical editing is allowed again.",
+    errUnlock: "Unable to unlock the chart.",
     toastAddendumSaved: "Addendum saved.",
-    toastSigned: "Chart signed.",
+    toastSigned: "Chart signed and locked.",
     toastSaved: "Documentation saved.",
     toastSavedQueued:
       "Documentation saved on this device — pending sync. Not yet confirmed on the server.",

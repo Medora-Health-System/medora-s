@@ -56,6 +56,7 @@ import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/e
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { isEncounterLocked } from "@/lib/encounterLock";
 import {
   MEDORA_CARD_SHELL,
   MedoraCard,
@@ -683,7 +684,7 @@ export function EmergencyActiveWorkspaceView() {
   const typeKey = (encounter.type ?? "").trim() || "—";
   const roomDisplay = encounter.roomLabel?.trim() || t("common.dash");
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
-  const isLocked = encounter.providerDocumentationStatus === "SIGNED";
+  const isLocked = isEncounterLocked(encounter);
   const vitalsQuickEditEnabled =
     canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 

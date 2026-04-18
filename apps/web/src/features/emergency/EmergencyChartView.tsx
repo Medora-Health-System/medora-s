@@ -59,6 +59,7 @@ import {
 } from "@/features/emergency/emergencyRoutes";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { isEncounterLocked } from "@/lib/encounterLock";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -398,7 +399,7 @@ export function EmergencyChartView() {
   const typeKey = (encounter.type ?? "").trim() || "—";
   const roomDisplay = encounter.roomLabel?.trim() || dash;
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
-  const isLocked = encounter.providerDocumentationStatus === "SIGNED";
+  const isLocked = isEncounterLocked(encounter);
   const vitalsQuickEditEnabled =
     canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 

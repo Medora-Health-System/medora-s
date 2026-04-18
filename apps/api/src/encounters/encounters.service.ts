@@ -21,6 +21,7 @@ import {
   type EncounterOperationalUpdateDto,
   type EncounterOutpatientCreateDto,
   type EncounterProviderAddendumCreateDto,
+  type EncounterProviderDocumentationUnlockDto,
   type EncounterUpdateDto,
   type EncounterCloseDocumentationCheckResult,
 } from "@medora/shared";
@@ -491,6 +492,66 @@ export class EncountersService {
     return signedByDisplayFr
       ? { ...res, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
       : res;
+  }
+
+  async unlockProviderDocumentation(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterProviderDocumentationUnlockDto,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour déverrouiller l'évaluation médicale.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("La consultation doit être ouverte pour déverrouiller l'évaluation.");
+    }
+
+    if (encounter.providerDocumentationStatus !== "SIGNED") {
+      throw new BadRequestException("L'évaluation médicale n'est pas verrouillée par signature.");
+    }
+
+    const reasonTrim = dto.reason?.trim() || undefined;
+
+    const updated = await this.prisma.encounter.update({
+      where: { id: encounterId },
+      data: {
+        providerDocumentationStatus: "DRAFT",
+        providerDocumentationSignedAt: null,
+        providerDocumentationSignedByUserId: null,
+      },
+      include: {
+        patient: { select: encounterDetailPatientSelect },
+        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+      metadata: {
+        providerDocumentationUnlock: true,
+        ...(reasonTrim ? { reason: reasonTrim } : {}),
+      },
+    });
+
+    return toEncounterClinicResponse(updated);
   }
 
   async update(facilityId: string, id: string, data: EncounterUpdateDto, userId?: string, ip?: string, userAgent?: string) {
