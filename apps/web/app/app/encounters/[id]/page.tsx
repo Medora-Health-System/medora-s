@@ -40,7 +40,7 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError, USER_FACING_ENCOUNTER_NOT_FOUND_FR } from "@/lib/userFacingError";
 import { ORDER_CANCELLATION_REASON_VALUES } from "@medora/shared";
 import { calculateAge } from "@/lib/patientDisplay";
-import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
+import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
@@ -1154,7 +1154,7 @@ export default function EncounterDetailPage() {
                   </div>
                   <div>
                     <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAssignedPhysician")}:</span>{" "}
-                    {formatEncounterPhysicianAssignedFr(encounter)}
+                    {formatEncounterProviderAssigned(encounter)}
                   </div>
                   <div>
                     <span style={{ color: "#64748b" }}>{t("encounterChrome.labelOpenedAt")}:</span>{" "}
@@ -1647,7 +1647,7 @@ export default function EncounterDetailPage() {
                           lineHeight: 1.45,
                         }}
                       >
-                        <div style={{ fontWeight: 600, color: "#0f172a" }}>{it.shortLabelFr}</div>
+                        <div style={{ fontWeight: 600, color: "#0f172a" }}>{it.shortLabel}</div>
                         <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
                           {formatEncounterChromeDateTime(it.createdAt, language)}
                         </div>
@@ -2162,7 +2162,7 @@ function EncounterSummaryTab({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14, color: "#334155", marginTop: 16 }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <strong style={{ color: "#0f172a" }}>{t("encounterChrome.summaryTab.assignedPhysician")}:</strong>{" "}
-            {formatEncounterPhysicianAssignedFr(encounter)}
+            {formatEncounterProviderAssigned(encounter)}
           </div>
           {reason && (
             <div style={{ gridColumn: "1 / -1" }}>

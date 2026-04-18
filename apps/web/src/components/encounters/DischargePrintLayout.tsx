@@ -7,7 +7,7 @@
 
 import type { SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
-import { formatEncounterPhysicianAssignedFr } from "@/lib/encounterDisplay";
+import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import { nirMrnDisplay, parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
 import type { DischargeSummaryFieldsFr } from "@/components/patient-chart/patientChartHelpers";
@@ -88,7 +88,7 @@ export function getDischargePrintHtml(params: {
   const printDate = new Date().toLocaleString(loc);
 
   const d = parseDischargeSummaryForChart(encounter.dischargeSummaryJson);
-  const physicianLine = formatEncounterPhysicianAssignedFr({
+  const physicianLine = formatEncounterProviderAssigned({
     physicianAssigned: encounter.physicianAssigned ?? null,
   });
   const signer =

@@ -4,7 +4,7 @@ import React from "react";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import {
   attachmentsFromResultDataAll,
-  normalizeExamTitleFr,
+  normalizeExamTitleFromLocale,
   parseLabObservationLines,
   parseRadiologySections,
   splitLabFallbackParagraphs,
@@ -482,7 +482,7 @@ export function ClinicalResultViewer({
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const pad = compact ? 12 : 16;
-  const displayTitle = normalizeExamTitleFr(title);
+  const displayTitle = normalizeExamTitleFromLocale(title, language);
   const statusLabel = itemStatus ? chartOrderItemLabel(itemStatus, t) : null;
   const borderAccent =
     catalogItemType === "IMAGING_STUDY" ? "#00838f" : catalogItemType === "LAB_TEST" ? "#1565c0" : "#1565c0";

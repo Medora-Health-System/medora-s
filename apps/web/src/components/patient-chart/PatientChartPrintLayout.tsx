@@ -356,7 +356,7 @@ export function getPatientChartPrintHtml(params: {
       const who = it.userDisplayFr ? esc(`${auditBy} ${it.userDisplayFr}`) : esc(pc("emptyDash"));
       const when = esc(fmtShort(it.createdAt, lang));
       const detail = it.detailFr ? `<br/><span style="font-size:10px;color:#333;">${esc(it.detailFr)}</span>` : "";
-      return `<li style="margin:5px 0;font-size:11px;line-height:1.35;"><strong>${esc(it.shortLabelFr)}</strong><br/>${who} — ${when}${detail}</li>`;
+      return `<li style="margin:5px 0;font-size:11px;line-height:1.35;"><strong>${esc(it.shortLabel)}</strong><br/>${who} — ${when}${detail}</li>`;
     })
     .join("");
 

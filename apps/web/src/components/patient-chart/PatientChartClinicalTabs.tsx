@@ -491,7 +491,7 @@ export function PatientAuditTimelineTabContent({ chartSummary }: { chartSummary:
               lineHeight: 1.45,
             }}
           >
-            <div style={{ fontWeight: 600, color: "#37474f" }}>{it.shortLabelFr}</div>
+            <div style={{ fontWeight: 600, color: "#37474f" }}>{it.shortLabel}</div>
             <div style={{ fontSize: 13, color: "#616161", marginTop: 4 }}>
               {it.userDisplayFr ? (
                 <>
