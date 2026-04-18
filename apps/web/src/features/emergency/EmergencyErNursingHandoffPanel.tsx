@@ -96,6 +96,7 @@ export function EmergencyErNursingHandoffPanel({
   canRecordDischargeSortieExecution,
   genericEncounterHref,
   summaryTabHref,
+  onSummaryClosureClick,
   hospitalisationBoardHref,
   marTabHref,
   ordersTabHref,
@@ -110,7 +111,10 @@ export function EmergencyErNursingHandoffPanel({
   /** RN / ADMIN : bouton de confirmation d’exécution sortie. */
   canRecordDischargeSortieExecution?: boolean;
   genericEncounterHref: string;
-  summaryTabHref: string;
+  /** When set, Summary & closure stays in the ER workflow (no navigation to the generic encounter page). */
+  onSummaryClosureClick?: () => void;
+  /** Fallback when `onSummaryClosureClick` is not provided. */
+  summaryTabHref?: string;
   hospitalisationBoardHref: string;
   marTabHref: string;
   ordersTabHref: string;
@@ -422,9 +426,19 @@ export function EmergencyErNursingHandoffPanel({
           <Link href={resultsTabHref} style={linkPill}>
             {t("emergencyErNursingHandoff.linkResults")}
           </Link>
-          <Link href={summaryTabHref} style={linkMuted}>
-            {t("emergencyErNursingHandoff.linkSummaryClosure")}
-          </Link>
+          {onSummaryClosureClick ? (
+            <button
+              type="button"
+              onClick={onSummaryClosureClick}
+              style={{ ...linkMuted, cursor: "pointer", font: "inherit" }}
+            >
+              {t("emergencyErNursingHandoff.linkSummaryClosure")}
+            </button>
+          ) : summaryTabHref ? (
+            <Link href={summaryTabHref} style={linkMuted}>
+              {t("emergencyErNursingHandoff.linkSummaryClosure")}
+            </Link>
+          ) : null}
           <Link href={hospitalisationBoardHref} style={{ ...linkMuted, borderColor: "#e9d5ff", backgroundColor: "#faf5ff", color: "#6b21a8" }}>
             {t("emergencyErNursingHandoff.linkHospBoard")}
           </Link>

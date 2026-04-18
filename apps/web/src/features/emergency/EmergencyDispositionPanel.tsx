@@ -103,6 +103,7 @@ export function EmergencyDispositionPanel({
   isLocked,
   onSaved,
   summaryTabHref,
+  onSummaryClosureClick,
   canPrescribe,
   canEditNursingDischarge,
   canEditMedicalDischarge,
@@ -112,7 +113,10 @@ export function EmergencyDispositionPanel({
   encounter: EncounterLite;
   isLocked: boolean;
   onSaved: () => void | Promise<void>;
-  summaryTabHref: string;
+  /** When set, Summary & closure stays in the ER workflow (no navigation to the generic encounter page). */
+  onSummaryClosureClick?: () => void;
+  /** Fallback when `onSummaryClosureClick` is not provided (e.g. reuse outside ER). */
+  summaryTabHref?: string;
   canPrescribe: boolean;
   canEditNursingDischarge: boolean;
   canEditMedicalDischarge: boolean;
@@ -428,23 +432,44 @@ export function EmergencyDispositionPanel({
               {t("emergencyDisposition.printChart")}
             </Link>
           ) : null}
-          <Link
-            href={summaryTabHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              backgroundColor: "#f8fafc",
-              color: "#334155",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            {t("emergencyDisposition.summaryClosureLink")}
-          </Link>
+          {onSummaryClosureClick ? (
+            <button
+              type="button"
+              onClick={onSummaryClosureClick}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#f8fafc",
+                color: "#334155",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {t("emergencyDisposition.summaryClosureLink")}
+            </button>
+          ) : summaryTabHref ? (
+            <Link
+              href={summaryTabHref}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#f8fafc",
+                color: "#334155",
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              {t("emergencyDisposition.summaryClosureLink")}
+            </Link>
+          ) : null}
         </MedoraCardActions>
 
         {encounter.type === "INPATIENT" ? (

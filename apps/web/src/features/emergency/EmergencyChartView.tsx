@@ -36,7 +36,7 @@ import { MedicationAdministrationTab } from "@/components/encounters/MedicationA
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
-import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
+import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
@@ -211,6 +211,12 @@ export function EmergencyChartView() {
   const genericEncounterHref = genericEncounterPath(encounterId);
   const tabHref = (tab: string) => `${genericEncounterHref}?tab=${encodeURIComponent(tab)}`;
   const erActiveHref = emergencyActiveWorkspacePath(encounterId);
+
+  const scrollToErSummaryClosure = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      document.getElementById("er-er-summary-closure")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   const load = useCallback(async () => {
     if (!encounterId || !fid || !rolesReady || !canViewEncounterDetail) {
@@ -706,14 +712,19 @@ export function EmergencyChartView() {
             <h2 id="section-synth" style={sectionTitle}>
               {t("emergencyChartView.sectionSummary")}
             </h2>
-            <EmergencyVisitSummaryPanel
+            <EmergencyErSummaryClosureSurface
+              sectionId="er-er-summary-closure"
               encounterId={encounterId}
               facilityId={fid}
+              facilityName={facilityName}
               encounter={encounter}
               triageSnapshot={triageSnapshot}
               resultsRefresh={resultsRefresh}
               resultsTabHref={tabHref("results")}
               diagnosticsTabHref={tabHref("diagnostics")}
+              canEditNursingDischarge={canEditNursingDischarge}
+              canEditMedicalDischarge={canEditMedicalDischarge}
+              onReload={onEmbeddedEncounterUpdate}
             />
           </section>
 
@@ -908,7 +919,7 @@ export function EmergencyChartView() {
               encounter={encounter}
               isLocked={isLocked}
               onSaved={onEmbeddedEncounterUpdate}
-              summaryTabHref={tabHref("summary")}
+              onSummaryClosureClick={scrollToErSummaryClosure}
               canPrescribe={canPrescribe}
               canEditNursingDischarge={canEditNursingDischarge}
               canEditMedicalDischarge={canEditMedicalDischarge}
@@ -926,7 +937,7 @@ export function EmergencyChartView() {
               onSaved={onEmbeddedEncounterUpdate}
               canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
               genericEncounterHref={genericEncounterHref}
-              summaryTabHref={tabHref("summary")}
+              onSummaryClosureClick={scrollToErSummaryClosure}
               hospitalisationBoardHref="/app/hospitalisation"
               marTabHref={tabHref("mar")}
               ordersTabHref={tabHref("orders")}

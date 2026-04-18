@@ -48,7 +48,7 @@ import { MedicationAdministrationTab } from "@/components/encounters/MedicationA
 import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
-import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
+import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
@@ -312,6 +312,10 @@ export function EmergencyActiveWorkspaceView() {
     setResultsRefresh((r) => r + 1);
     setTriageRefresh((r) => r + 1);
   }, [load]);
+
+  const goToErSummaryClosure = useCallback(() => {
+    setActiveSection("visitSummary");
+  }, []);
 
   const showConfirmInpatientTransfer = useMemo(() => {
     if (!encounter || encounter.status !== "OPEN") return false;
@@ -1039,14 +1043,18 @@ export function EmergencyActiveWorkspaceView() {
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitle[activeSection]}</h2>
 
           {activeSection === "visitSummary" ? (
-            <EmergencyVisitSummaryPanel
+            <EmergencyErSummaryClosureSurface
               encounterId={encounterId}
               facilityId={fid}
+              facilityName={facilityName}
               encounter={encounter}
               triageSnapshot={triageSnapshot}
               resultsRefresh={resultsRefresh}
               resultsTabHref={tabHref("results")}
               diagnosticsTabHref={tabHref("diagnostics")}
+              canEditNursingDischarge={canEditNursingDischarge}
+              canEditMedicalDischarge={canEditMedicalDischarge}
+              onReload={onEmbeddedEncounterUpdate}
             />
           ) : null}
 
@@ -1197,7 +1205,7 @@ export function EmergencyActiveWorkspaceView() {
                 onSaved={onEmbeddedEncounterUpdate}
                 canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
                 genericEncounterHref={genericEncounterHref}
-                summaryTabHref={tabHref("summary")}
+                onSummaryClosureClick={goToErSummaryClosure}
                 hospitalisationBoardHref="/app/hospitalisation"
                 marTabHref={tabHref("mar")}
                 ordersTabHref={tabHref("orders")}
@@ -1277,7 +1285,7 @@ export function EmergencyActiveWorkspaceView() {
                 encounter={encounter}
                 isLocked={isLocked}
                 onSaved={onEmbeddedEncounterUpdate}
-                summaryTabHref={tabHref("summary")}
+                onSummaryClosureClick={goToErSummaryClosure}
                 canPrescribe={canPrescribe}
                 canEditNursingDischarge={canEditNursingDischarge}
                 canEditMedicalDischarge={canEditMedicalDischarge}
@@ -1290,7 +1298,7 @@ export function EmergencyActiveWorkspaceView() {
                   onSaved={onEmbeddedEncounterUpdate}
                   canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
                   genericEncounterHref={genericEncounterHref}
-                  summaryTabHref={tabHref("summary")}
+                  onSummaryClosureClick={goToErSummaryClosure}
                   hospitalisationBoardHref="/app/hospitalisation"
                   marTabHref={tabHref("mar")}
                   ordersTabHref={tabHref("orders")}
