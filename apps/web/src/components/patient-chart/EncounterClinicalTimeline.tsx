@@ -4,7 +4,9 @@ import React from "react";
 import Link from "next/link";
 import type { ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
 import type { FollowUpRow } from "@/lib/followUpsApi";
-import { formatVitalsHeaderLine } from "@/lib/patientVitals";
+import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
+import { useI18n } from "@/lib/i18n";
+import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import {
   diagnosisDisplayFr,
   parseAdmissionSummaryForChart,
@@ -13,12 +15,6 @@ import {
   parsePhysicianEvalV1ForChart,
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
-import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
-import {
-  getEncounterStatusLabelFr,
-  getEncounterTypeLabelFr,
-  getFollowUpStatusLabelFr,
-} from "@/lib/uiLabels";
 
 const subTitle: React.CSSProperties = {
   fontSize: 12,
@@ -46,9 +42,12 @@ const listStyle: React.CSSProperties = {
   lineHeight: 1.45,
 };
 
-function formatShortDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+function fillTemplate(s: string, vars: Record<string, string | number>): string {
+  let out = s;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.split(`{${k}}`).join(String(v));
+  }
+  return out;
 }
 
 function physicianName(u: { firstName: string; lastName: string } | null | undefined): string | null {
@@ -57,26 +56,42 @@ function physicianName(u: { firstName: string; lastName: string } | null | undef
   return s || null;
 }
 
-function medicationIntentLabelFr(intent: string | null): string | null {
-  if (intent === "ADMINISTER_CHART") return "Administration au dossier";
-  if (intent === "PHARMACY_DISPENSE") return "Dispensation pharmacie";
-  return null;
+function chartOrderItemLabel(status: string, t: (k: string) => string): string {
+  const u = (status || "").toUpperCase();
+  if (u === "COMPLETED" || u === "RESULTED" || u === "VERIFIED") {
+    return t("printOutput.orderItemChart.terminalDone");
+  }
+  const key = `printOutput.orderItemChart.${u}`;
+  const r = t(key);
+  return r !== key ? r : status || "—";
 }
 
-function diagnosisStatusLabelFr(status: string): string {
-  if (status === "ACTIVE") return "Actif";
-  if (status === "RESOLVED") return "Résolu";
+function diagnosisStatusLabel(status: string, t: (k: string) => string): string {
+  const u = (status || "").toUpperCase();
+  if (u === "ACTIVE") return t("encounterClinicalTimeline.diagActive");
+  if (u === "RESOLVED") return t("encounterClinicalTimeline.diagResolved");
   return status;
 }
 
-function orderTypeHeadingFr(orderType: string): string {
-  const m: Record<string, string> = {
-    LAB: "Analyses demandées",
-    IMAGING: "Imagerie demandée",
-    MEDICATION: "Médicaments prescrits",
-    CARE: "Soins / procédures demandés",
-  };
-  return m[orderType] ?? "Ordres";
+function medicationIntentLabel(intent: string | null, t: (k: string) => string): string | null {
+  if (intent === "ADMINISTER_CHART") return t("encounterChrome.medicationIntent.ADMINISTER_CHART");
+  if (intent === "PHARMACY_DISPENSE") return t("encounterChrome.medicationIntent.DISPENSE_PHARMACY");
+  return null;
+}
+
+function orderTypeHeading(orderType: string, t: (k: string) => string): string {
+  switch (orderType) {
+    case "LAB":
+      return t("encounterClinicalTimeline.ordLabs");
+    case "IMAGING":
+      return t("encounterClinicalTimeline.ordImaging");
+    case "MEDICATION":
+      return t("encounterClinicalTimeline.ordMeds");
+    case "CARE":
+      return t("encounterClinicalTimeline.ordCare");
+    default:
+      return t("encounterChrome.ordersTab.title");
+  }
 }
 
 function flattenOrderItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] {
@@ -91,9 +106,13 @@ function flattenOrderItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] 
 function OrderItemLine({
   it,
   showMode,
+  t,
+  formatShortDateTime,
 }: {
   it: ChartSummaryOrderItem;
   showMode: "request" | "result";
+  t: (k: string) => string;
+  formatShortDateTime: (iso: string | null | undefined) => string;
 }) {
   if (showMode === "result") {
     const hasResult = !!(
@@ -104,11 +123,11 @@ function OrderItemLine({
       it.status === "VERIFIED"
     );
     if (!hasResult) return null;
-    const crit = it.result?.criticalValue ? "Valeur critique — " : "";
+    const crit = it.result?.criticalValue ? t("encounterClinicalTimeline.criticalPrefix") : "";
     const txt = it.result?.resultText?.trim();
     const att = it.result?.attachmentSummaryFr;
-    const statusFr = getOrderItemChartLabel(it.status);
-    const body = txt ? `${crit}${txt}` : att ? `${crit}${att}` : `${crit}${statusFr}`;
+    const statusLbl = chartOrderItemLabel(it.status, t);
+    const body = txt ? `${crit}${txt}` : att ? `${crit}${att}` : `${crit}${statusLbl}`;
     return (
       <li>
         <strong>{it.displayLabel}</strong>
@@ -118,28 +137,33 @@ function OrderItemLine({
     );
   }
 
-  const statusFr = getOrderItemChartLabel(it.status);
-  const intentFr =
+  const statusLbl = chartOrderItemLabel(it.status, t);
+  const intentLbl =
     it.catalogItemType === "MEDICATION" && it.status !== "CANCELLED"
-      ? medicationIntentLabelFr(it.medicationFulfillmentIntent)
+      ? medicationIntentLabel(it.medicationFulfillmentIntent, t)
       : null;
   const extras: string[] = [];
-  if (intentFr) extras.push(intentFr);
-  extras.push(statusFr);
+  if (intentLbl) extras.push(intentLbl);
+  extras.push(statusLbl);
 
   const cancelMeta =
     it.status === "CANCELLED" && (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
       <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
         {it.cancelledByDisplayFr ? (
           <>
-            Annulée par <strong>{it.cancelledByDisplayFr}</strong>
-            {it.cancelledAt ? <> le {formatShortDateTime(it.cancelledAt)}</> : null}
+            {t("encounterChrome.chartTabs.orderCancelledBy")} <strong>{it.cancelledByDisplayFr}</strong>
+            {it.cancelledAt ? (
+              <>
+                {" "}
+                {t("encounterChrome.chartTabs.onDate")} {formatShortDateTime(it.cancelledAt)}
+              </>
+            ) : null}
           </>
         ) : null}
         {it.cancellationReason ? (
           <>
             {it.cancelledByDisplayFr || it.cancelledAt ? <br /> : null}
-            Raison : {it.cancellationReason}
+            {t("encounterChrome.chartTabs.reasonPrefix")}: {it.cancellationReason}
           </>
         ) : null}
       </div>
@@ -154,7 +178,15 @@ function OrderItemLine({
   );
 }
 
-function NurseAdminLine({ it }: { it: ChartSummaryOrderItem }) {
+function NurseAdminLine({
+  it,
+  t,
+  formatShortDateTime,
+}: {
+  it: ChartSummaryOrderItem;
+  t: (k: string) => string;
+  formatShortDateTime: (iso: string | null | undefined) => string;
+}) {
   if (it.catalogItemType !== "MEDICATION" || !it.completedAt) return null;
   const who = physicianName(it.completedBy);
   return (
@@ -163,16 +195,30 @@ function NurseAdminLine({ it }: { it: ChartSummaryOrderItem }) {
       {who ? (
         <>
           {" "}
-          — Administré par {who}. Le {formatShortDateTime(it.completedAt)}.
+          —{" "}
+          {fillTemplate(t("encounterClinicalTimeline.nurseAdminBy"), {
+            who,
+            datetime: formatShortDateTime(it.completedAt),
+          })}
         </>
       ) : (
         <>
           {" "}
-          — Complété le {formatShortDateTime(it.completedAt)} ({getOrderItemChartLabel(it.status)})
+          —{" "}
+          {fillTemplate(t("encounterClinicalTimeline.nurseAdminCompleted"), {
+            datetime: formatShortDateTime(it.completedAt),
+            status: chartOrderItemLabel(it.status, t),
+          })}
         </>
       )}
     </li>
   );
+}
+
+function followUpStatusLabel(status: string, t: (k: string) => string): string {
+  const k = `printOutput.chartSummary.followUpStatus.${(status || "").toUpperCase()}`;
+  const r = t(k);
+  return r !== k ? r : status;
 }
 
 export function EncounterClinicalTimeline({
@@ -182,10 +228,22 @@ export function EncounterClinicalTimeline({
   encounters: ChartSummaryEncounter[];
   followUps: FollowUpRow[];
 }) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+
+  const formatShortDateTime = (iso: string | null | undefined): string => {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString(dateLocale, { dateStyle: "short", timeStyle: "short" });
+    } catch {
+      return "—";
+    }
+  };
+
   if (!encounters.length) {
     return (
       <div style={{ padding: 16, color: "#666", fontSize: 14, background: "#fafafa", borderRadius: 6 }}>
-        Aucune consultation récente à afficher.
+        {t("encounterClinicalTimeline.empty")}
       </div>
     );
   }
@@ -220,42 +278,47 @@ export function EncounterClinicalTimeline({
         const encFollowUps = followUps.filter((fu) => fu.encounterId === enc.id);
 
         const vitals = (enc.triage?.vitalsJson || {}) as Record<string, number | string | null>;
-        const vitalsLine = formatVitalsHeaderLine(vitals);
+        const vitalsLine = formatVitalsHeaderLineForLocale(vitals, language);
         const esi = enc.triage?.esi != null ? `ESI ${enc.triage.esi}` : null;
         const hasTriageBlock = !!(vitalsLine.trim() || enc.triage?.chiefComplaint || enc.triage?.esi != null);
+
+        const typeKey = (enc.type ?? "").trim() || "OUTPATIENT";
+        let meta = fillTemplate(t("encounterClinicalTimeline.metaWhen"), { datetime: consultWhen });
+        if (enc.roomLabel?.trim()) {
+          meta += fillTemplate(t("encounterClinicalTimeline.metaRoom"), { room: enc.roomLabel.trim() });
+        }
+        const phys = physicianName(enc.physicianAssigned ?? null);
+        if (phys) {
+          meta += fillTemplate(t("encounterClinicalTimeline.metaPhysician"), { name: phys });
+        }
 
         return (
           <div key={enc.id} style={blockStyle}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#0d47a1" }}>
                 <Link href={`/app/encounters/${enc.id}`} style={{ color: "inherit", textDecoration: "none" }}>
-                  Consultation — {getEncounterTypeLabelFr(enc.type)}
+                  {t("encounterClinicalTimeline.encounterHeading")} — {tEncounterType(t, typeKey)}
                 </Link>
               </div>
-              <div style={{ fontSize: 13, color: "#455a64", marginTop: 4 }}>
-                Le {consultWhen}
-                {enc.roomLabel ? ` · Salle : ${enc.roomLabel}` : null}
-                {physicianName(enc.physicianAssigned ?? null)
-                  ? ` · Médecin attribué : ${physicianName(enc.physicianAssigned ?? null)}`
-                  : null}
-              </div>
+              <div style={{ fontSize: 13, color: "#455a64", marginTop: 4 }}>{meta}</div>
               <div style={{ fontSize: 12, color: "#757575", marginTop: 4 }}>
-                {getEncounterStatusLabelFr(enc.status)}
+                {tEncounterStatus(t, (enc.status ?? "OPEN").trim() || "OPEN")}
                 {esi ? ` · ${esi}` : null}
               </div>
               {enc.admittedAt ? (
                 <div style={{ fontSize: 12, color: "#6a1b9a", fontWeight: 600, marginTop: 6 }}>
-                  Hospitalisation — décision enregistrée le{" "}
-                  {formatShortDateTime(
-                    typeof enc.admittedAt === "string" ? enc.admittedAt : String(enc.admittedAt ?? "")
-                  )}
+                  {fillTemplate(t("encounterClinicalTimeline.hospitalizationLine"), {
+                    datetime: formatShortDateTime(
+                      typeof enc.admittedAt === "string" ? enc.admittedAt : String(enc.admittedAt ?? "")
+                    ),
+                  })}
                 </div>
               ) : null}
             </div>
 
             {hasTriageBlock && (
               <>
-                <div style={subTitle}>Signes vitaux et accueil (cette consultation)</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionVitalsIntake")}</div>
                 <div style={{ fontSize: 13, color: "#263238", fontFamily: "ui-monospace, monospace" }}>
                   {vitalsLine.trim() ? vitalsLine : "—"}
                 </div>
@@ -264,7 +327,7 @@ export function EncounterClinicalTimeline({
                 ) : null}
                 {enc.triage?.chiefComplaint ? (
                   <div style={{ fontSize: 13, marginTop: 6 }}>
-                    <span style={{ color: "#666" }}>Motif (accueil) : </span>
+                    <span style={{ color: "#666" }}>{t("encounterClinicalTimeline.chiefComplaintPrefix")} </span>
                     {enc.triage.chiefComplaint}
                   </div>
                 ) : null}
@@ -273,7 +336,7 @@ export function EncounterClinicalTimeline({
 
             {(nursingSections.length > 0 || nursingProcedureSections.length > 0) && (
               <>
-                <div style={subTitle}>Évaluation infirmière</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionNursing")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {nursingSections.map((s, i) => (
                     <div key={`nsec-${i}`}>
@@ -293,7 +356,7 @@ export function EncounterClinicalTimeline({
 
             {physicianDocSections.length > 0 && (
               <>
-                <div style={subTitle}>Documentation médicale</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionPhysicianDoc")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {physicianDocSections.map((s, i) => (
                     <div key={`pev-${i}`}>
@@ -307,16 +370,16 @@ export function EncounterClinicalTimeline({
 
             {(enc.clinicianImpressionPreview || enc.treatmentPlanPreview || encDiags.length > 0) && (
               <>
-                <div style={subTitle}>Évaluation médicale et diagnostics</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionMedEvalDx")}</div>
                 {enc.clinicianImpressionPreview ? (
                   <div style={{ fontSize: 13, marginBottom: 8 }}>
-                    <span style={{ color: "#666" }}>Impression clinique : </span>
+                    <span style={{ color: "#666" }}>{t("encounterClinicalTimeline.clinicalImpression")} </span>
                     {enc.clinicianImpressionPreview}
                   </div>
                 ) : null}
                 {enc.treatmentPlanPreview ? (
                   <div style={{ fontSize: 13, marginBottom: 8 }}>
-                    <span style={{ color: "#666" }}>Plan thérapeutique : </span>
+                    <span style={{ color: "#666" }}>{t("encounterClinicalTimeline.treatmentPlan")} </span>
                     {enc.treatmentPlanPreview}
                   </div>
                 ) : null}
@@ -324,7 +387,7 @@ export function EncounterClinicalTimeline({
                   <ul style={listStyle}>
                     {encDiags.map((d) => (
                       <li key={d.id}>
-                        {diagnosisDisplayFr(d.description, d.code)} ({diagnosisStatusLabelFr(d.status)})
+                        {diagnosisDisplayFr(d.description, d.code)} ({diagnosisStatusLabel(d.status, t)})
                       </li>
                     ))}
                   </ul>
@@ -334,47 +397,53 @@ export function EncounterClinicalTimeline({
 
             {admission && (
               <>
-                <div style={subTitle}>Décision d&apos;admission (hospitalisation)</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionAdmission")}</div>
                 <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
                   {admission.admissionReason ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Motif d&apos;admission : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>
+                        {t("encounterClinicalTimeline.lblAdmissionReason")}{" "}
+                      </span>
                       {admission.admissionReason}
                     </div>
                   ) : null}
                   {admission.serviceUnit ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Service / unité : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblServiceUnit")} </span>
                       {admission.serviceUnit}
                     </div>
                   ) : null}
                   {admission.admissionDiagnosis ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Diagnostic d&apos;admission : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblAdmissionDx")} </span>
                       {admission.admissionDiagnosis}
                     </div>
                   ) : null}
                   {admission.careLevel ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Niveau de soins : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblCareLevel")} </span>
                       {admission.careLevel}
                     </div>
                   ) : null}
                   {admission.conditionAtAdmission ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Condition à l&apos;admission : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>
+                        {t("encounterClinicalTimeline.lblConditionAdmission")}{" "}
+                      </span>
                       <span style={{ whiteSpace: "pre-wrap" }}>{admission.conditionAtAdmission}</span>
                     </div>
                   ) : null}
                   {admission.initialPlan ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Plan initial : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblInitialPlan")} </span>
                       <span style={{ whiteSpace: "pre-wrap" }}>{admission.initialPlan}</span>
                     </div>
                   ) : null}
                   {admission.responsiblePhysicianName ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Médecin responsable : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>
+                        {t("encounterClinicalTimeline.lblResponsiblePhysician")}{" "}
+                      </span>
                       {admission.responsiblePhysicianName}
                     </div>
                   ) : null}
@@ -382,48 +451,69 @@ export function EncounterClinicalTimeline({
               </>
             )}
 
-            {(labItems.length > 0 ||
-              imgItems.length > 0 ||
-              medItems.length > 0 ||
-              careItems.length > 0) && (
+            {(labItems.length > 0 || imgItems.length > 0 || medItems.length > 0 || careItems.length > 0) && (
               <>
-                <div style={subTitle}>Ordres</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionOrders")}</div>
                 {labItems.length > 0 && (
                   <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeadingFr("LAB")}</div>
+                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeading("LAB", t)}</div>
                     <ul style={listStyle}>
                       {labItems.map((it) => (
-                        <OrderItemLine key={it.id} it={it} showMode="request" />
+                        <OrderItemLine
+                          key={it.id}
+                          it={it}
+                          showMode="request"
+                          t={t}
+                          formatShortDateTime={formatShortDateTime}
+                        />
                       ))}
                     </ul>
                   </div>
                 )}
                 {imgItems.length > 0 && (
                   <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeadingFr("IMAGING")}</div>
+                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeading("IMAGING", t)}</div>
                     <ul style={listStyle}>
                       {imgItems.map((it) => (
-                        <OrderItemLine key={it.id} it={it} showMode="request" />
+                        <OrderItemLine
+                          key={it.id}
+                          it={it}
+                          showMode="request"
+                          t={t}
+                          formatShortDateTime={formatShortDateTime}
+                        />
                       ))}
                     </ul>
                   </div>
                 )}
                 {medItems.length > 0 && (
                   <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeadingFr("MEDICATION")}</div>
+                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeading("MEDICATION", t)}</div>
                     <ul style={listStyle}>
                       {medItems.map((it) => (
-                        <OrderItemLine key={it.id} it={it} showMode="request" />
+                        <OrderItemLine
+                          key={it.id}
+                          it={it}
+                          showMode="request"
+                          t={t}
+                          formatShortDateTime={formatShortDateTime}
+                        />
                       ))}
                     </ul>
                   </div>
                 )}
                 {careItems.length > 0 && (
                   <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeadingFr("CARE")}</div>
+                    <div style={{ fontSize: 12, color: "#607d8b" }}>{orderTypeHeading("CARE", t)}</div>
                     <ul style={listStyle}>
                       {careItems.map((it) => (
-                        <OrderItemLine key={it.id} it={it} showMode="request" />
+                        <OrderItemLine
+                          key={it.id}
+                          it={it}
+                          showMode="request"
+                          t={t}
+                          formatShortDateTime={formatShortDateTime}
+                        />
                       ))}
                     </ul>
                   </div>
@@ -433,10 +523,16 @@ export function EncounterClinicalTimeline({
 
             {resultItemsPreview.length > 0 && (
               <>
-                <div style={subTitle}>Résultats (aperçu)</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionResultsPreview")}</div>
                 <ul style={listStyle}>
                   {resultItemsPreview.map((it) => (
-                    <OrderItemLine key={`r-${it.id}`} it={it} showMode="result" />
+                    <OrderItemLine
+                      key={`r-${it.id}`}
+                      it={it}
+                      showMode="result"
+                      t={t}
+                      formatShortDateTime={formatShortDateTime}
+                    />
                   ))}
                 </ul>
               </>
@@ -444,30 +540,36 @@ export function EncounterClinicalTimeline({
 
             {(adminLines.length > 0 || encDisp.length > 0) && (
               <>
-                <div style={subTitle}>Dispensation et administrations</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionDispenseAdmin")}</div>
                 {adminLines.length > 0 && (
                   <>
-                    <div style={{ fontSize: 12, color: "#607d8b", marginBottom: 4 }}>Ordres exécutés (administration)</div>
+                    <div style={{ fontSize: 12, color: "#607d8b", marginBottom: 4 }}>
+                      {t("encounterClinicalTimeline.ordExecuted")}
+                    </div>
                     <ul style={listStyle}>
                       {adminLines.map((it) => (
-                        <NurseAdminLine key={it.id} it={it} />
+                        <NurseAdminLine key={it.id} it={it} t={t} formatShortDateTime={formatShortDateTime} />
                       ))}
                     </ul>
                   </>
                 )}
                 {encDisp.length > 0 && (
                   <>
-                    <div style={{ fontSize: 12, color: "#607d8b", marginBottom: 4 }}>Dispensation enregistrée</div>
+                    <div style={{ fontSize: 12, color: "#607d8b", marginBottom: 4 }}>
+                      {t("encounterClinicalTimeline.dispenseRecorded")}
+                    </div>
                     <ul style={listStyle}>
                       {encDisp.map((d) => {
-                        const label =
-                          d.catalogMedication.displayNameFr?.trim() || d.catalogMedication.name;
+                        const label = d.catalogMedication.displayNameFr?.trim() || d.catalogMedication.name;
                         const by = physicianName(d.dispensedBy);
                         return (
                           <li key={d.id}>
-                            <strong>{label}</strong> × {d.quantityDispensed}
-                            {by ? ` — par ${by}` : null}
-                            {` — le ${formatShortDateTime(d.dispensedAt)}`}
+                            <strong>{label}</strong>
+                            {fillTemplate(t("encounterClinicalTimeline.dispenseTimes"), { qty: d.quantityDispensed })}
+                            {by ? fillTemplate(t("encounterClinicalTimeline.dispenseBy"), { who: by }) : ""}
+                            {fillTemplate(t("encounterClinicalTimeline.dispenseOn"), {
+                              datetime: formatShortDateTime(d.dispensedAt),
+                            })}
                             {d.dosageInstructions ? ` — ${d.dosageInstructions}` : null}
                           </li>
                         );
@@ -480,53 +582,59 @@ export function EncounterClinicalTimeline({
 
             {discharge && (
               <>
-                <div style={subTitle}>Sortie de consultation</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionDischarge")}</div>
                 <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
                   {discharge.disposition ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Disposition : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblDisposition")} </span>
                       {discharge.disposition}
                     </div>
                   ) : null}
                   {discharge.exitCondition ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>État à la sortie : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblExitCondition")} </span>
                       {discharge.exitCondition}
                     </div>
                   ) : null}
                   {discharge.dischargeInstructions ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Instructions de sortie : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>
+                        {t("encounterClinicalTimeline.lblDischargeInstructions")}{" "}
+                      </span>
                       {discharge.dischargeInstructions}
                     </div>
                   ) : null}
                   {discharge.medicationsGiven ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Médicaments remis / prescrits : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>
+                        {t("encounterClinicalTimeline.lblMedicationsGiven")}{" "}
+                      </span>
                       {discharge.medicationsGiven}
                     </div>
                   ) : null}
                   {discharge.followUp ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Suivi recommandé : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblFollowUp")} </span>
                       {discharge.followUp}
                     </div>
                   ) : null}
                   {discharge.returnIfWorse ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Retour si aggravation : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblReturnIfWorse")} </span>
                       {discharge.returnIfWorse}
                     </div>
                   ) : null}
                   {discharge.patientDestination ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Destination du patient : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>
+                        {t("encounterClinicalTimeline.lblPatientDestination")}{" "}
+                      </span>
                       {discharge.patientDestination}
                     </div>
                   ) : null}
                   {discharge.dischargeMode ? (
                     <div>
-                      <span style={{ fontWeight: 600, color: "#546e7a" }}>Mode de sortie : </span>
+                      <span style={{ fontWeight: 600, color: "#546e7a" }}>{t("encounterClinicalTimeline.lblDischargeMode")} </span>
                       {discharge.dischargeMode}
                     </div>
                   ) : null}
@@ -536,13 +644,13 @@ export function EncounterClinicalTimeline({
 
             {encFollowUps.length > 0 && (
               <>
-                <div style={subTitle}>Suivis associés</div>
+                <div style={subTitle}>{t("encounterClinicalTimeline.sectionFollowUps")}</div>
                 <ul style={listStyle}>
                   {encFollowUps.map((fu) => (
                     <li key={fu.id}>
-                      {formatShortDateTime(fu.dueDate)} — {fu.reason || "Suivi"}
+                      {formatShortDateTime(fu.dueDate)} — {fu.reason || t("encounterClinicalTimeline.followUpNoReason")}
                       {" — "}
-                      {getFollowUpStatusLabelFr(fu.status)}
+                      {followUpStatusLabel(fu.status, t)}
                     </li>
                   ))}
                 </ul>
