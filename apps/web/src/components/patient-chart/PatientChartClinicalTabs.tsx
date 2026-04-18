@@ -8,10 +8,12 @@ import {
   formatEncounterChromeDateTime,
   tEncounterType,
   tMedicationFulfillmentIntent,
+  tOrderItemStatusForWorklist,
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
-import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
-import { nursingAssessmentDisplayLines, nursingAssessmentSignatureLineFr } from "./patientChartHelpers";
+import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
+import { nursingAssessmentDisplayLines, nursingAssessmentSignatureForLocale } from "./patientChartHelpers";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { clinicalResultFromChartOrderItem } from "@/lib/clinicalResultNormalize";
 
@@ -55,8 +57,8 @@ function EncounterBlock({
   language: SupportedLanguage;
 }) {
   const formatDt = (iso: string) => formatEncounterChromeDateTime(iso, language);
-  const nursing = nursingAssessmentDisplayLines(enc.nursingAssessment);
-  const nursingSig = nursingAssessmentSignatureLineFr(enc.nursingAssessment);
+  const nursing = nursingAssessmentDisplayLines(enc.nursingAssessment, language);
+  const nursingSig = nursingAssessmentSignatureForLocale(enc.nursingAssessment, language, t);
   return (
     <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>
@@ -155,7 +157,7 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
             <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
               {(o.items || []).map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
+                  <strong>{it.displayLabel}</strong> — {tOrderItemStatusForWorklist(t, it.status)}
                 </li>
               ))}
             </ul>
@@ -240,7 +242,7 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
         <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
           {all.map((it) => (
             <li key={it.id}>
-              <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
+              <strong>{it.displayLabel}</strong> — {tOrderItemStatusForWorklist(t, it.status)}
             </li>
           ))}
         </ul>
@@ -317,7 +319,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {medLines.map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {getOrderItemChartLabel(it.status)}
+                  <strong>{it.displayLabel}</strong> — {tOrderItemStatusForWorklist(t, it.status)}
                   {it.status === "CANCELLED" &&
                   (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
                     <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
@@ -387,7 +389,11 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             </div>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14 }}>
               {encDisp.map((d) => {
-                const label = d.catalogMedication.displayNameFr?.trim() || d.catalogMedication.name;
+                const label =
+                  catalogMedicationNameForLocale(d.catalogMedication, language) ||
+                  d.catalogMedication.name ||
+                  d.catalogMedication.displayNameFr ||
+                  "—";
                 const by = d.dispensedBy
                   ? `${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim()
                   : null;
@@ -431,7 +437,11 @@ function wrapWithGlobalDispenseChart(
         <h3 style={{ fontSize: 15, marginBottom: 8 }}>{t("encounterChrome.chartTabs.lastDispensesAll")}</h3>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14 }}>
           {globalDisp.slice(0, 25).map((d) => {
-            const label = d.catalogMedication.displayNameFr?.trim() || d.catalogMedication.name;
+            const label =
+              catalogMedicationNameForLocale(d.catalogMedication, language) ||
+              d.catalogMedication.name ||
+              d.catalogMedication.displayNameFr ||
+              "—";
             const by = d.dispensedBy
               ? `${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim()
               : null;

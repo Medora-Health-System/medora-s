@@ -6,6 +6,7 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { printDateLocale, printT } from "@/lib/printI18n";
 
 export type RxOrderItem = {
@@ -55,7 +56,7 @@ function medicationLabel(item: RxOrderItem, language: SupportedLanguage): string
   }
   const cat = item.catalogMedication;
   if (cat?.displayNameFr || cat?.name) {
-    const name = cat.displayNameFr ?? cat.name ?? "";
+    const name = catalogMedicationNameForLocale(cat, language) || cat.name || cat.displayNameFr || "";
     const strength = item.strength ?? cat.strength;
     return strength ? `${name} ${strength}`.trim() : name;
   }

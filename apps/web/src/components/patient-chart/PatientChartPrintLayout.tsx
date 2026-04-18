@@ -22,6 +22,7 @@ import {
   type DischargeSummaryFieldsFr,
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 
 function esc(s: string): string {
   return String(s)
@@ -182,13 +183,13 @@ export function getPatientChartPrintHtml(params: {
         .join(" ; ");
 
       const nursingLines = [
-        ...parseNursingAssessmentSectionsForChart(enc.nursingAssessment),
-        ...parseNursingProceduresForChart(enc.nursingAssessment),
+        ...parseNursingAssessmentSectionsForChart(enc.nursingAssessment, language),
+        ...parseNursingProceduresForChart(enc.nursingAssessment, language),
       ];
       const nursingHtml =
         nursingLines.length > 0
           ? `<ul style="margin:4px 0 0 16px;">${nursingLines
-              .map((s) => `<li><strong>${esc(s.labelFr)}</strong> — ${esc(s.text)}</li>`)
+              .map((s) => `<li><strong>${esc(s.label)}</strong> — ${esc(s.text)}</li>`)
               .join("")}</ul>`
           : `<p style="margin:4px 0; color:#000;">${esc(pc("emptyDash"))}</p>`;
 
@@ -238,7 +239,12 @@ export function getPatientChartPrintHtml(params: {
       const disp = (enc.encounterMedicationDispenses ?? [])
         .map(
           (d) =>
-            `<li>${esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name)} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt, lang)}</li>`
+            `<li>${esc(
+              catalogMedicationNameForLocale(d.catalogMedication, lang) ||
+                d.catalogMedication.name ||
+                d.catalogMedication.displayNameFr ||
+                "—"
+            )} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt, lang)}</li>`
         )
         .join("");
 

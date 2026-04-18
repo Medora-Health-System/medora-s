@@ -49,7 +49,7 @@ import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentT
 import {
   diagnosisDisplayFr,
   nursingAssessmentDisplayLines,
-  nursingAssessmentSignatureLineFr,
+  nursingAssessmentSignatureForLocale,
   parseAdmissionSummaryForChart,
   parseDischargeSummaryForChart,
   parsePhysicianEvalV1ForChart,
@@ -2068,11 +2068,15 @@ export default function EncounterDetailPage() {
                 borderRadius: 12,
               }}
             >
-              {documentationDeficiencies.map((d) => (
-                <li key={d.code} style={{ marginBottom: 6 }}>
-                  {d.labelFr}
-                </li>
-              ))}
+              {documentationDeficiencies.map((d) => {
+                const k = `encounterChrome.modals.documentationDeficiencies.${d.code}`;
+                const v = t(k);
+                return (
+                  <li key={d.code} style={{ marginBottom: 6 }}>
+                    {v !== k ? v : d.labelFr}
+                  </li>
+                );
+              })}
             </ul>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button
@@ -2124,9 +2128,9 @@ function EncounterSummaryTab({
 }) {
   const { t, language } = useI18n();
   const reason = encounter.visitReason || encounter.chiefComplaint;
-  const nursingLines = nursingAssessmentDisplayLines(encounter?.nursingAssessment);
-  const nursingSig = nursingAssessmentSignatureLineFr(encounter?.nursingAssessment);
-  const physicianDocSections = parsePhysicianEvalV1ForChart(encounter?.nursingAssessment);
+  const nursingLines = nursingAssessmentDisplayLines(encounter?.nursingAssessment, language);
+  const nursingSig = nursingAssessmentSignatureForLocale(encounter?.nursingAssessment, language, t);
+  const physicianDocSections = parsePhysicianEvalV1ForChart(encounter?.nursingAssessment, language);
   const dischargePreview = parseDischargeSummaryForChart(encounter?.dischargeSummaryJson);
   const admissionPreview = parseAdmissionSummaryForChart(encounter?.admissionSummaryJson);
   const summaryCard: React.CSSProperties = {
@@ -2197,7 +2201,7 @@ function EncounterSummaryTab({
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
             {physicianDocSections.map((s, i) => (
               <div key={i}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{s.labelFr}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{s.label}</div>
                 <div style={{ fontSize: 14, whiteSpace: "pre-wrap", color: "#334155", marginTop: 4, lineHeight: 1.5 }}>
                   {s.text}
                 </div>

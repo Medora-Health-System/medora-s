@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { fetchLowStock, fetchExpiring, type InventoryItemRow } from "@/lib/pharmacyApi";
 import { useI18n } from "@/lib/i18n";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 
 const EXPIRING_WINDOW_DAYS = 90;
 const NEAR_EXPIRY_DAYS = 30;
@@ -179,7 +180,9 @@ export function PharmacyAlertsCard({
               {topLow.map((item) => (
                 <li key={item.id} style={{ marginBottom: 4 }}>
                   <Link href={`/app/pharmacy/inventory?receive=${item.id}`} style={{ color: "#1a1a1a" }}>
-                    {item.catalogMedication?.name ?? item.catalogMedication?.code ?? item.sku}
+                    {catalogMedicationNameForLocale(item.catalogMedication, language) ||
+                      item.catalogMedication?.code ||
+                      item.sku}
                   </Link>
                   {" "}
                   <span style={{ color: "#666" }}>
@@ -230,7 +233,9 @@ export function PharmacyAlertsCard({
                     }}
                   >
                     <Link href={`/app/pharmacy/inventory?receive=${item.id}`} style={{ color: "#1a1a1a" }}>
-                      {item.catalogMedication?.name ?? item.catalogMedication?.code ?? item.sku}
+                      {catalogMedicationNameForLocale(item.catalogMedication, language) ||
+                      item.catalogMedication?.code ||
+                      item.sku}
                     </Link>
                     {" "}
                     <span style={{ color: "#666" }}>

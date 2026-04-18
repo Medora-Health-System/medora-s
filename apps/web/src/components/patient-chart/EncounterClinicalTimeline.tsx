@@ -15,6 +15,7 @@ import {
   parsePhysicianEvalV1ForChart,
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 
 const subTitle: React.CSSProperties = {
   fontSize: 12,
@@ -252,9 +253,9 @@ export function EncounterClinicalTimeline({
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {encounters.map((enc) => {
         const consultWhen = formatShortDateTime(enc.createdAt);
-        const nursingSections = parseNursingAssessmentSectionsForChart(enc.nursingAssessment);
-        const nursingProcedureSections = parseNursingProceduresForChart(enc.nursingAssessment);
-        const physicianDocSections = parsePhysicianEvalV1ForChart(enc.nursingAssessment);
+        const nursingSections = parseNursingAssessmentSectionsForChart(enc.nursingAssessment, language);
+        const nursingProcedureSections = parseNursingProceduresForChart(enc.nursingAssessment, language);
+        const physicianDocSections = parsePhysicianEvalV1ForChart(enc.nursingAssessment, language);
         const discharge = parseDischargeSummaryForChart(enc.dischargeSummaryJson);
         const admission = parseAdmissionSummaryForChart(enc.admissionSummaryJson);
         const items = flattenOrderItems(enc);
@@ -340,13 +341,13 @@ export function EncounterClinicalTimeline({
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {nursingSections.map((s, i) => (
                     <div key={`nsec-${i}`}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.label}</div>
                       <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{s.text}</div>
                     </div>
                   ))}
-                  {nursingProcedureSections.map((s) => (
-                    <div key="proc-iv">
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
+                  {nursingProcedureSections.map((s, i) => (
+                    <div key={`proc-${i}`}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.label}</div>
                       <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{s.text}</div>
                     </div>
                   ))}
@@ -360,7 +361,7 @@ export function EncounterClinicalTimeline({
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {physicianDocSections.map((s, i) => (
                     <div key={`pev-${i}`}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.labelFr}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#546e7a" }}>{s.label}</div>
                       <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{s.text}</div>
                     </div>
                   ))}
@@ -560,7 +561,11 @@ export function EncounterClinicalTimeline({
                     </div>
                     <ul style={listStyle}>
                       {encDisp.map((d) => {
-                        const label = d.catalogMedication.displayNameFr?.trim() || d.catalogMedication.name;
+                        const label =
+                          catalogMedicationNameForLocale(d.catalogMedication, language) ||
+                          d.catalogMedication.name ||
+                          d.catalogMedication.displayNameFr ||
+                          "—";
                         const by = physicianName(d.dispensedBy);
                         return (
                           <li key={d.id}>

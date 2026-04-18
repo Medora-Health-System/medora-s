@@ -205,3 +205,15 @@ function typeFallbackEn(t: string | null, tr: (key: string) => string): string {
   if (t === "CARE") return tr("patientChartUi.orderDisplayFallback.care");
   return tr("common.dash");
 }
+
+/** Base medication name: English catalog `name` first in EN, French display name first in FR. */
+export function catalogMedicationNameForLocale(
+  m: { name?: string | null; displayNameFr?: string | null } | null | undefined,
+  language: SupportedLanguage
+): string {
+  if (!m) return "";
+  if (language === "en") {
+    return (m.name?.trim() || m.displayNameFr?.trim() || "").trim();
+  }
+  return (m.displayNameFr?.trim() || m.name?.trim() || "").trim();
+}

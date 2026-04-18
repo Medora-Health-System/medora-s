@@ -2653,6 +2653,7 @@ export default {
       pharmacyDispensedBy: " — par {name}",
       pharmacyDispensedAt: " — le {datetime}",
       pharmacyQuantityTimes: "× {quantity}",
+      nursingSignature: "Saisi par {name} le {datetime}",
     },
     notesTab: {
       placeholder: "Notes infirmières ou médicales…",
@@ -2781,6 +2782,14 @@ export default {
       documentationDeficiencyLead: "Les éléments suivants sont manquants ou incomplets :",
       backToChart: "Retour au dossier",
       closeAnyway: "Terminer quand même",
+      documentationDeficiencies: {
+        CHIEF_COMPLAINT: "Motif de consultation ou raison de visite",
+        PROVIDER_DOCUMENTATION:
+          "Évaluation médicale (au moins une impression clinique, un plan de traitement ou la documentation HPI/ROS/examen/MDM)",
+        NURSING_ASSESSMENT: "Évaluation infirmière",
+        DISCHARGE_SUMMARY: "Dossier de sortie structuré",
+        ADMISSION_SUMMARY: "Dossier d'admission (hospitalisation)",
+      },
       dischargeField: {
         disposition: "Disposition",
         exitCondition: "État à la sortie",

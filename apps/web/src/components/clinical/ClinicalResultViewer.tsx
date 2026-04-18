@@ -366,7 +366,7 @@ function StructuredResultBody({
   }
 
   if (catalogItemType === "IMAGING_STUDY") {
-    const { sections, remainder } = parseRadiologySections(raw);
+    const { sections, remainder } = parseRadiologySections(raw, language);
     const rem = remainder.trim();
     const hasSections = sections.length > 0;
 

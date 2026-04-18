@@ -3,6 +3,8 @@
  * Commence par la pose de voie IV ; autres procédures pourront s’ajouter sous proceduresV1.
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
+
 export const IV_SITE_OPTIONS_FR = [
   "RAC",
   "RAS",
@@ -50,45 +52,78 @@ export function parseNursingProceduresV1(raw: unknown): NursingProceduresV1 | nu
   return readProceduresV1FromNursing(raw);
 }
 
-/** Ligne française lisible pour le dossier (une phrase). */
-export function formatIvInsertionLineFr(iv: IvInsertionProcedureV1): string | null {
+/** Ligne lisible pour le dossier (une phrase) — modèle d’affichage selon la langue d’établissement. */
+export function formatIvInsertionLineForLocale(
+  iv: IvInsertionProcedureV1,
+  language: SupportedLanguage
+): string | null {
   if (!iv.performed) return null;
   const bits: string[] = [];
   let siteDisplay = iv.site?.trim() || "";
   if (siteDisplay === "Autre" && iv.siteOther?.trim()) {
     siteDisplay = iv.siteOther.trim();
   } else if (siteDisplay === "Autre") {
-    siteDisplay = "Autre";
+    siteDisplay = language === "en" ? "Other" : "Autre";
   }
   if (siteDisplay) bits.push(siteDisplay);
-  if (iv.gauge?.trim()) bits.push(`calibre ${iv.gauge.trim()}`);
+  if (iv.gauge?.trim()) {
+    bits.push(
+      language === "en" ? `gauge ${iv.gauge.trim()}` : `calibre ${iv.gauge.trim()}`
+    );
+  }
   if (iv.performedAt) {
     try {
-      bits.push(`le ${new Date(iv.performedAt).toLocaleString("fr-FR")}`);
+      const loc = language === "en" ? "en-US" : "fr-FR";
+      const dts = new Date(iv.performedAt).toLocaleString(loc);
+      bits.push(language === "en" ? `on ${dts}` : `le ${dts}`);
     } catch {
       /* ignore */
     }
   }
   if (iv.note?.trim()) bits.push(iv.note.trim());
   const detail = bits.join(", ");
+  if (language === "en") {
+    return detail ? `IV line placed: ${detail}` : "IV line placed";
+  }
   return detail ? `Voie IV posée : ${detail}` : "Voie IV posée";
 }
 
+/** Ligne française lisible pour le dossier (une phrase). */
+export function formatIvInsertionLineFr(iv: IvInsertionProcedureV1): string | null {
+  return formatIvInsertionLineForLocale(iv, "fr");
+}
+
 /** Blocs pour timeline / impression (même forme que les sections texte). */
-export function parseNursingProceduresForChart(raw: unknown): { labelFr: string; text: string }[] {
+export function parseNursingProceduresForChart(
+  raw: unknown,
+  language: SupportedLanguage = "fr"
+): { label: string; text: string }[] {
   const proc = parseNursingProceduresV1(raw);
   if (!proc?.ivInsertion?.performed) return [];
-  const line = formatIvInsertionLineFr(proc.ivInsertion);
+  const line = formatIvInsertionLineForLocale(proc.ivInsertion, language);
   if (!line) return [];
-  return [{ labelFr: "Procédures infirmières", text: line }];
+  return [
+    {
+      label: language === "en" ? "Nursing procedures" : "Procédures infirmières",
+      text: line,
+    },
+  ];
+}
+
+/** Lignes courtes pour résumé (liste de chaînes). */
+export function nursingProcedureSummaryLinesForLocale(
+  raw: unknown,
+  language: SupportedLanguage
+): string[] {
+  const proc = parseNursingProceduresV1(raw);
+  if (!proc?.ivInsertion?.performed) return [];
+  const line = formatIvInsertionLineForLocale(proc.ivInsertion, language);
+  return line ? [line] : [];
 }
 
 /** Lignes courtes pour résumé (liste de chaînes). */
 export function nursingProcedureSummaryLinesFr(raw: unknown): string[] {
-  const proc = parseNursingProceduresV1(raw);
-  if (!proc?.ivInsertion?.performed) return [];
-  const line = formatIvInsertionLineFr(proc.ivInsertion);
-  return line ? [line] : [];
+  return nursingProcedureSummaryLinesForLocale(raw, "fr");
 }
 
 export function parseIvInsertionFromNursing(raw: unknown): IvInsertionProcedureV1 {

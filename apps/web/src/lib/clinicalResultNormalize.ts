@@ -339,7 +339,7 @@ const RAD_STANDALONE_HEADING = new RegExp(
   "i"
 );
 
-function normalizeRadHeading(key: string): string {
+function normalizeRadHeadingFr(key: string): string {
   const k = key.toLowerCase().replace(/\s+/g, " ").trim();
   if (k.startsWith("compte rendu")) return "Compte rendu";
   const compact = k.replace(/\s/g, "");
@@ -347,10 +347,71 @@ function normalizeRadHeading(key: string): string {
   return RAD_HEADING_MAP[compact] ?? RAD_HEADING_MAP[k.replace(/\s/g, "")] ?? key.trim();
 }
 
+const RAD_HEADING_MAP_EN: Record<string, string> = {
+  indication: "Indication",
+  technique: "Technique",
+  constatation: "Findings",
+  constatations: "Findings",
+  resultat: "Results",
+  resultats: "Results",
+  résultats: "Results",
+  résultat: "Results",
+  findings: "Findings",
+  observation: "Findings",
+  observations: "Findings",
+  examen: "Study",
+  impression: "Impression",
+  conclusion: "Conclusion",
+  recommandation: "Recommendation",
+  recommandations: "Recommendations",
+  compterendu: "Report",
+  discussion: "Discussion",
+  clinique: "Clinical data",
+  indicationclinique: "Clinical indication",
+  clinical: "Clinical indication",
+};
+
+function headingCompactNorm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s/g, "");
+}
+
+function normalizeRadHeadingForLocale(
+  key: string,
+  language: SupportedLanguage
+): string {
+  if (language !== "en") {
+    return normalizeRadHeadingFr(key);
+  }
+  const k = key.toLowerCase().replace(/\s+/g, " ").trim();
+  if (k.startsWith("compte rendu")) return "Report";
+  const compact = headingCompactNorm(k);
+  if (compact === "indicationclinique") return "Clinical indication";
+  if (
+    compact.startsWith("indication") &&
+    (k.includes("clinique") || k.includes("clinical"))
+  ) {
+    return "Clinical indication";
+  }
+  if (k.startsWith("indication")) return "Indication";
+  const fromMap = RAD_HEADING_MAP_EN[compact] ?? RAD_HEADING_MAP_EN[headingCompactNorm(k)];
+  if (fromMap) return fromMap;
+  if (compact.startsWith("resultat")) return "Results";
+  if (compact.startsWith("constat")) return "Findings";
+  return key.trim();
+}
+
 /**
  * Découpe un compte rendu imagerie : lignes « Titre : » ou titre seul, mots-clés FR/EN.
+ * Section *titles* are normalized for the active UI locale; clinical body text is unchanged.
  */
-export function parseRadiologySections(raw: string): { sections: RadiologySection[]; remainder: string } {
+export function parseRadiologySections(
+  raw: string,
+  language: SupportedLanguage = "fr"
+): { sections: RadiologySection[]; remainder: string } {
   const text = (raw ?? "").trim();
   if (!text) return { sections: [], remainder: "" };
 
@@ -372,7 +433,7 @@ export function parseRadiologySections(raw: string): { sections: RadiologySectio
     if (m1) {
       flush();
       current = {
-        heading: normalizeRadHeading(m1[1]),
+        heading: normalizeRadHeadingForLocale(m1[1], language),
         lines: m1[2] ? [m1[2]] : [],
       };
       continue;
@@ -380,13 +441,13 @@ export function parseRadiologySections(raw: string): { sections: RadiologySectio
     const m2 = line.match(RAD_STANDALONE_HEADING);
     if (m2) {
       flush();
-      current = { heading: normalizeRadHeading(m2[1]), lines: [] };
+      current = { heading: normalizeRadHeadingForLocale(m2[1], language), lines: [] };
       continue;
     }
     if (/^#{1,3}\s+(.+)$/.test(line)) {
       flush();
       const ht = line.replace(/^#{1,3}\s+/, "").trim();
-      current = { heading: normalizeRadHeading(ht), lines: [] };
+      current = { heading: normalizeRadHeadingForLocale(ht, language), lines: [] };
       continue;
     }
     if (current) current.lines.push(line);
@@ -399,7 +460,12 @@ export function parseRadiologySections(raw: string): { sections: RadiologySectio
     const para = remainder.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
     if (para.length >= 1) {
       return {
-        sections: [{ heading: "Compte rendu", body: para.join("\n\n") }],
+        sections: [
+          {
+            heading: language === "en" ? "Report" : "Compte rendu",
+            body: para.join("\n\n"),
+          },
+        ],
         remainder: "",
       };
     }

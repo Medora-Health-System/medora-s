@@ -2702,6 +2702,7 @@ export default {
       pharmacyDispensedBy: " — by {name}",
       pharmacyDispensedAt: " — {datetime}",
       pharmacyQuantityTimes: "× {quantity}",
+      nursingSignature: "Entered by {name} on {datetime}",
     },
     notesTab: {
       placeholder: "Nursing or medical notes…",
@@ -2831,6 +2832,14 @@ export default {
       documentationDeficiencyLead: "The following items are missing or incomplete:",
       backToChart: "Back to chart",
       closeAnyway: "End anyway",
+      documentationDeficiencies: {
+        CHIEF_COMPLAINT: "Chief complaint or reason for visit",
+        PROVIDER_DOCUMENTATION:
+          "Medical evaluation (at least one of: clinical impression, treatment plan, or HPI/ROS/physical exam/MDM documentation)",
+        NURSING_ASSESSMENT: "Nursing assessment",
+        DISCHARGE_SUMMARY: "Structured discharge packet",
+        ADMISSION_SUMMARY: "Admission packet (hospitalization)",
+      },
       dischargeField: {
         disposition: "Disposition",
         exitCondition: "Condition at discharge",
