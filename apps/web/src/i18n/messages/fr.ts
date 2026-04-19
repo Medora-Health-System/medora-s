@@ -279,6 +279,12 @@ export default {
     errDobInvalid: "Date de naissance invalide",
     errDobFuture: "La date de naissance ne peut pas être dans le futur",
     errCreatePatient: "Impossible de créer le patient",
+    postCreateBannerTitle: "Patient enregistré",
+    postCreateBannerHint: "Étape suivante ?",
+    postCreateGoChart: "Dossier patient",
+    postCreateGoFacesheet: "Feuille de face",
+    postCreateGoInsurance: "Assurance primaire",
+    postCreateDismiss: "Fermer",
     queuedCreateBody:
       "Création enregistrée hors ligne. Le dossier sera synchronisé dès le retour de la connexion",
     titleNewPatient: "Nouveau patient",
@@ -334,6 +340,20 @@ export default {
     cardFractureHint: "Module fracture (aperçu)",
     cardBillingHint: "Facturation et dossiers financiers",
     patientsEncountersSection: "Patients et consultations",
+    patientChartToolsSection: "Feuille de face et assurance",
+    patientChartToolsIntro:
+      "Recherchez un patient par nom ou téléphone, puis ouvrez la feuille de face ou modifiez l’assurance primaire sur le dossier.",
+    patientChartToolsSearchPlaceholder: "Nom, téléphone ou MRN…",
+    patientChartToolsSearch: "Rechercher",
+    patientChartToolsSearching: "Recherche…",
+    patientChartToolsNoResults: "Aucun patient correspondant.",
+    patientChartToolsSelectHint: "Sélectionnez un patient ci-dessous, puis une action.",
+    openFaceSheet: "Ouvrir la feuille de face",
+    openPrimaryInsurance: "Assurance primaire",
+    openPatientChart: "Ouvrir le dossier patient",
+    startEncounterHint: "Démarrer une visite depuis le dossier",
+    noPatientChartAccess:
+      "Votre compte ne peut pas ouvrir ce dossier patient. Contactez un administrateur si besoin.",
     upcomingFollowUps: "Suivis à venir",
     upcomingFollowUpsIntro:
       "Consultez et gérez les rendez-vous de suivi par date.",

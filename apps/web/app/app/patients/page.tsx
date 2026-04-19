@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
 
 interface Patient {
@@ -42,6 +43,7 @@ function PatientsPageContent() {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [consultationTarget, setConsultationTarget] = useState<Patient | null>(null);
+  const [postCreatePatient, setPostCreatePatient] = useState<Patient | null>(null);
   const [facilityId, setFacilityId] = useState<string>("");
 
   // Open new-patient modal when landing with ?new=1 (e.g. from registration)
@@ -136,6 +138,7 @@ function PatientsPageContent() {
     (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
+      roles.includes("FRONT_DESK") ||
       roles.includes("BILLING") ||
       roles.includes("LAB") ||
       roles.includes("RADIOLOGY") ||
@@ -222,7 +225,100 @@ function PatientsPageContent() {
           </button>
         </header>
 
-        <div style={{ marginBottom: 20 }}>
+        {postCreatePatient &&
+        rolesReady &&
+        canOpenPatientDossier &&
+        isAppPathAllowedForRoles(`/app/patients/${postCreatePatient.id}`, roles) ? (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: "14px 16px",
+              borderRadius: 12,
+              border: "1px solid #bae6fd",
+              backgroundColor: "#f0f9ff",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 12,
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "#0c4a6e" }}>
+                {t("patientsListPage.postCreateBannerTitle")}
+              </div>
+              <div style={{ fontSize: 13, color: "#0369a1", marginTop: 4 }}>
+                {t("patientsListPage.postCreateBannerHint")}{" "}
+                <strong>
+                  {postCreatePatient.firstName} {postCreatePatient.lastName}
+                </strong>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <Link
+                href={`/app/patients/${postCreatePatient.id}`}
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#0f172a",
+                  color: "#fff",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {t("patientsListPage.postCreateGoChart")}
+              </Link>
+              <Link
+                href={`/app/patients/${postCreatePatient.id}/facesheet`}
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#fff",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {t("patientsListPage.postCreateGoFacesheet")}
+              </Link>
+              <Link
+                href={`/app/patients/${postCreatePatient.id}`}
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#fff",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {t("patientsListPage.postCreateGoInsurance")}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setPostCreatePatient(null)}
+                style={{
+                  padding: "8px 12px",
+                  background: "transparent",
+                  border: "none",
+                  color: "#64748b",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
+              >
+                {t("patientsListPage.postCreateDismiss")}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+      <div style={{ marginBottom: 20 }}>
           <label htmlFor="patient-search-q" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 6, letterSpacing: "0.02em" }}>
             {t("patientsListPage.searchLabel")}
           </label>
@@ -393,6 +489,9 @@ function PatientsPageContent() {
           onSuccess={(createdPatient) => {
             setShowModal(false);
             handleSearch();
+            if (createdPatient?.id) {
+              setPostCreatePatient(createdPatient);
+            }
             if (createdPatient && canCreateConsultation) {
               setConsultationTarget(createdPatient);
             }

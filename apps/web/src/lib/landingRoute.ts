@@ -130,10 +130,10 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
-  /** Dossier patient (hors liste) — pas d’accès FRONT_DESK (liste `/app/patients` seulement). */
+  /** Dossier patient, face sheet, assurance primaire — accès accueil pour parcours inscription. */
   {
     prefix: "/app/patients/",
-    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY"],
+    roles: ["ADMIN", "PROVIDER", "RN", "BILLING", "LAB", "RADIOLOGY", "PHARMACY", "FRONT_DESK"],
   },
   { prefix: "/app/patients", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK", "BILLING"], exact: true },
   {

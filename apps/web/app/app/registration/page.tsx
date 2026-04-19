@@ -7,9 +7,30 @@ import { CreateFollowUpModal } from "@/components/patient-chart";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { useConnectivityStatus } from "@/lib/offline/useConnectivityStatus";
+import { apiFetch } from "@/lib/apiClient";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
+import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+
+type RegPatientRow = {
+  id: string;
+  mrn: string | null;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+};
+
+function registrationSearchList(data: unknown): RegPatientRow[] {
+  if (Array.isArray(data)) return data as RegPatientRow[];
+  if (data && typeof data === "object" && Array.isArray((data as { items?: unknown }).items)) {
+    return (data as { items: RegPatientRow[] }).items;
+  }
+  return [];
+}
 
 export default function RegistrationPage() {
   const { t, language } = useI18n();
+  const { facilityId: hookFacilityId, roles, ready: rolesReady } = useFacilityAndRoles();
   const dateLocale = encounterBcp47(language);
   const formatDate = (d: string | null | undefined) =>
     d ? new Date(d).toLocaleDateString(dateLocale) : t("common.dash");
@@ -18,6 +39,10 @@ export default function RegistrationPage() {
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
   const [showAddFollowUp, setShowAddFollowUp] = useState(false);
   const { isOffline } = useConnectivityStatus();
+  const [regSearchQ, setRegSearchQ] = useState("");
+  const [regSearchLoading, setRegSearchLoading] = useState(false);
+  const [regSearchResults, setRegSearchResults] = useState<RegPatientRow[]>([]);
+  const [selectedRegPatient, setSelectedRegPatient] = useState<RegPatientRow | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -26,6 +51,27 @@ export default function RegistrationPage() {
       ?.split("=")[1];
     setFacilityId(cookieValue || null);
   }, []);
+
+  const effectiveFacilityId = hookFacilityId || facilityId || "";
+
+  const runRegistrationPatientSearch = useCallback(async () => {
+    const q = regSearchQ.trim();
+    if (q.length < 2 || !effectiveFacilityId) {
+      setRegSearchResults([]);
+      return;
+    }
+    setRegSearchLoading(true);
+    try {
+      const raw = await apiFetch(`/patients/search?q=${encodeURIComponent(q)}`, {
+        facilityId: effectiveFacilityId,
+      });
+      setRegSearchResults(registrationSearchList(raw).slice(0, 12));
+    } catch {
+      setRegSearchResults([]);
+    } finally {
+      setRegSearchLoading(false);
+    }
+  }, [effectiveFacilityId, regSearchQ]);
 
   const loadFollowUps = useCallback(async () => {
     if (!facilityId) return;
@@ -121,6 +167,153 @@ export default function RegistrationPage() {
           </Link>
         </div>
       </section>
+
+      {effectiveFacilityId && rolesReady && (
+        <section style={{ marginBottom: 28 }}>
+          <h2 style={{ margin: "0 0 10px 0", fontSize: 17, color: "#37474f" }}>
+            {t("registrationHome.patientChartToolsSection")}
+          </h2>
+          <p style={{ margin: "0 0 14px 0", fontSize: 14, color: "#546e7a", maxWidth: 720 }}>
+            {t("registrationHome.patientChartToolsIntro")}
+          </p>
+          <div
+            style={{
+              padding: "16px 18px",
+              borderRadius: 12,
+              border: MEDORA_CARD_SHELL.border,
+              backgroundColor: MEDORA_CARD_SHELL.background,
+              boxShadow: MEDORA_CARD_SHELL.boxShadow,
+              maxWidth: 720,
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
+              <input
+                type="search"
+                value={regSearchQ}
+                onChange={(e) => setRegSearchQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void runRegistrationPatientSearch();
+                  }
+                }}
+                placeholder={t("registrationHome.patientChartToolsSearchPlaceholder")}
+                style={{
+                  flex: "1 1 200px",
+                  minWidth: 180,
+                  padding: "10px 12px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  fontSize: 14,
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void runRegistrationPatientSearch()}
+                disabled={regSearchLoading || regSearchQ.trim().length < 2}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: 8,
+                  border: "none",
+                  backgroundColor: "#1565c0",
+                  color: "#fff",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: regSearchLoading || regSearchQ.trim().length < 2 ? "not-allowed" : "pointer",
+                  opacity: regSearchLoading || regSearchQ.trim().length < 2 ? 0.65 : 1,
+                }}
+              >
+                {regSearchLoading ? t("registrationHome.patientChartToolsSearching") : t("registrationHome.patientChartToolsSearch")}
+              </button>
+            </div>
+            <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#64748b" }}>
+              {t("registrationHome.patientChartToolsSelectHint")}
+            </p>
+            {regSearchResults.length > 0 && (
+              <ul style={{ margin: "0 0 14px 0", paddingLeft: 18, fontSize: 14 }}>
+                {regSearchResults.map((p) => (
+                  <li key={p.id} style={{ marginBottom: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRegPatient(p)}
+                      style={{
+                        background: selectedRegPatient?.id === p.id ? "#e3f2fd" : "transparent",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        textAlign: "left",
+                      }}
+                    >
+                      <strong>
+                        {p.firstName} {p.lastName}
+                      </strong>
+                      {p.phone ? ` · ${p.phone}` : ""}
+                      {p.mrn ? ` · ${p.mrn}` : ""}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {regSearchQ.trim().length >= 2 && !regSearchLoading && regSearchResults.length === 0 ? (
+              <p style={{ fontSize: 13, color: "#64748b" }}>{t("registrationHome.patientChartToolsNoResults")}</p>
+            ) : null}
+            {selectedRegPatient &&
+            isAppPathAllowedForRoles(`/app/patients/${selectedRegPatient.id}`, roles) ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                <Link
+                  href={`/app/patients/${selectedRegPatient.id}`}
+                  style={{
+                    padding: "10px 16px",
+                    backgroundColor: "#1a1a1a",
+                    color: "#fff",
+                    borderRadius: 8,
+                    textDecoration: "none",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t("registrationHome.openPatientChart")}
+                </Link>
+                <Link
+                  href={`/app/patients/${selectedRegPatient.id}/facesheet`}
+                  style={{
+                    padding: "10px 16px",
+                    backgroundColor: "#fff",
+                    color: "#0f172a",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 8,
+                    textDecoration: "none",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t("registrationHome.openFaceSheet")}
+                </Link>
+                <Link
+                  href={`/app/patients/${selectedRegPatient.id}`}
+                  style={{
+                    padding: "10px 16px",
+                    backgroundColor: "#fff",
+                    color: "#0f172a",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 8,
+                    textDecoration: "none",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t("registrationHome.openPrimaryInsurance")}
+                </Link>
+                <span style={{ fontSize: 12, color: "#64748b" }}>{t("registrationHome.startEncounterHint")}</span>
+              </div>
+            ) : selectedRegPatient ? (
+              <p style={{ fontSize: 13, color: "#b45309" }}>{t("registrationHome.noPatientChartAccess")}</p>
+            ) : null}
+          </div>
+        </section>
+      )}
 
       <div style={{ display: "grid", gap: 24, maxWidth: 720 }}>
         <section style={{ padding: 20, backgroundColor: "white", borderRadius: 8, border: "1px solid #ddd" }}>
