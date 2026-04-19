@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
+import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { AuditService } from "../common/services/audit.service";
 import {
   AuditAction,
@@ -258,7 +259,8 @@ export class EncountersService {
     userId?: string,
     ip?: string,
     userAgent?: string,
-    query?: ListPatientEncountersQuery
+    query?: ListPatientEncountersQuery,
+    breakGlassSessionId?: string
   ) {
     // Verify patient exists and belongs to facility
     const patient = await this.prisma.patient.findFirst({
@@ -285,6 +287,16 @@ export class EncountersService {
         patient: { select: { firstName: true, lastName: true, mrn: true } },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
+    });
+
+    await logBreakGlassAccessIfApplicable(this.audit, {
+      breakGlassSessionId,
+      userId,
+      facilityId,
+      patientId,
+      ip,
+      userAgent,
+      context: "patient_encounters_list",
     });
 
     await this.audit.log(AuditAction.ENCOUNTER_VIEW, "ENCOUNTER", {

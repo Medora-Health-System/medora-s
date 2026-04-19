@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
@@ -102,7 +103,8 @@ export class DiagnosesService {
     query: ListDiagnosesQuery,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    breakGlassSessionId?: string
   ) {
     const patient = await this.prisma.patient.findFirst({
       where: { id: patientId, facilityId },
@@ -127,6 +129,16 @@ export class DiagnosesService {
       }),
       this.prisma.diagnosis.count({ where }),
     ]);
+
+    await logBreakGlassAccessIfApplicable(this.audit, {
+      breakGlassSessionId,
+      userId,
+      facilityId,
+      patientId,
+      ip,
+      userAgent,
+      context: "patient_diagnoses_list",
+    });
 
     await this.audit.log(AuditAction.VIEW, "DIAGNOSIS", {
       userId,

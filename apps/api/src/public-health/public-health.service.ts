@@ -31,6 +31,7 @@ import {
   activeDiseaseNotifiableCatalog,
   type HaitiDiseaseNotifiableEntry,
 } from "./haiti-disease-notifiable-catalog";
+import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 
 const publicHealthLog = createStructuredLogger("PublicHealth");
@@ -438,7 +439,8 @@ export class PublicHealthService {
     query: ListPatientVaccinationsQuery,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    breakGlassSessionId?: string
   ) {
     const patient = await this.prisma.patient.findFirst({
       where: { id: patientId, facilityId },
@@ -453,6 +455,16 @@ export class PublicHealthService {
       orderBy: { administeredAt: "desc" },
       take,
       include: vaccinationInclude,
+    });
+
+    await logBreakGlassAccessIfApplicable(this.audit, {
+      breakGlassSessionId,
+      userId,
+      facilityId,
+      patientId,
+      ip,
+      userAgent,
+      context: "patient_vaccinations_list",
     });
 
     await this.audit.log(AuditAction.VIEW, "VACCINE_ADMINISTRATION", {

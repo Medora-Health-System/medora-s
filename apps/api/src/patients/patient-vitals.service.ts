@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { AuditService } from "../common/services/audit.service";
+import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { PrismaService } from "../prisma/prisma.service";
 
 export type PatientTriageVitalsSnapshot = {
@@ -17,7 +19,10 @@ function hasVitalsJson(vitalsJson: unknown): boolean {
 
 @Injectable()
 export class PatientVitalsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   /**
    * Latest triage vitals across all encounters for the patient, plus older snapshots (no duplicate: history excludes latest).
@@ -25,7 +30,11 @@ export class PatientVitalsService {
    */
   async getTriageVitalsTimeline(
     patientId: string,
-    facilityId: string
+    facilityId: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string,
+    breakGlassSessionId?: string
   ): Promise<{ latest: PatientTriageVitalsSnapshot | null; history: PatientTriageVitalsSnapshot[] }> {
     const patient = await this.prisma.patient.findFirst({
       where: { id: patientId, facilityId },
@@ -34,6 +43,16 @@ export class PatientVitalsService {
     if (!patient) {
       throw new NotFoundException("Patient not found");
     }
+
+    await logBreakGlassAccessIfApplicable(this.audit, {
+      breakGlassSessionId,
+      userId,
+      facilityId,
+      patientId,
+      ip,
+      userAgent,
+      context: "patient_triage_vitals",
+    });
 
     const readings = await this.prisma.triageVitalsReading.findMany({
       where: { patientId, facilityId },

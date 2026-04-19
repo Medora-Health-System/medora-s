@@ -11,7 +11,12 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RolesGuard, RequireClinicalOrMspp, RequireRoles } from "../common/guards/roles.guard";
+import {
+  RolesGuard,
+  RequireClinicalOrMspp,
+  RequireRoles,
+  AllowBreakGlassForPatientParam,
+} from "../common/guards/roles.guard";
 import { PatientsService } from "./patients.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
@@ -89,6 +94,7 @@ export class PatientsController {
   }
 
   @Get(":id/diagnoses")
+  @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async listPatientDiagnoses(
     @Param("id") id: string,
@@ -109,11 +115,13 @@ export class PatientsController {
       parsed.data,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      req.breakGlassSessionId
     );
   }
 
   @Get(":id/vaccinations")
+  @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async listPatientVaccinations(
     @Param("id") id: string,
@@ -134,11 +142,13 @@ export class PatientsController {
       parsed.data,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      req.breakGlassSessionId
     );
   }
 
   @Get(":id/chart-summary")
+  @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async getChartSummary(@Param("id") id: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
@@ -150,12 +160,14 @@ export class PatientsController {
       facilityId,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      req.breakGlassSessionId
     );
   }
 
   /** Latest vitals + history (history excludes latest). Query latest=true required. */
   @Get(":id/triage")
+  @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async getPatientTriage(
     @Param("id") id: string,
@@ -169,10 +181,18 @@ export class PatientsController {
     if (latest !== "true") {
       throw new BadRequestException("Utilisez le paramètre latest=true");
     }
-    return this.patientVitalsService.getTriageVitalsTimeline(id, facilityId);
+    return this.patientVitalsService.getTriageVitalsTimeline(
+      id,
+      facilityId,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"],
+      req.breakGlassSessionId
+    );
   }
 
   @Get(":id")
+  @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async findOne(@Param("id") id: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
@@ -185,7 +205,8 @@ export class PatientsController {
       id,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      req.breakGlassSessionId
     );
   }
 
@@ -210,6 +231,7 @@ export class PatientsController {
   }
 
   @Get(":id/encounters")
+  @AllowBreakGlassForPatientParam("id")
   @RequireClinicalOrMspp(
     [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK],
     [MsppRoleCode.MSPP_ADMIN, MsppRoleCode.MSPP_VACCINATIONS]
@@ -231,7 +253,8 @@ export class PatientsController {
       req.user?.userId,
       req.ip,
       req.headers["user-agent"],
-      Object.keys(encQuery).length ? encQuery : undefined
+      Object.keys(encQuery).length ? encQuery : undefined,
+      req.breakGlassSessionId
     );
   }
 }

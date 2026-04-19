@@ -1,5 +1,12 @@
 import { AuditAction } from "@prisma/client";
 
+/** Break-glass (accès d'urgence dossier) — visible dans la frise patient. */
+export const BREAK_GLASS_TIMELINE_ACTIONS: AuditAction[] = [
+  AuditAction.BREAK_GLASS_START,
+  AuditAction.BREAK_GLASS_ACCESS,
+  AuditAction.BREAK_GLASS_END,
+];
+
 /** Actions présentes dans le schéma Prisma et exposées au dossier (V1 — lecture seule). */
 export const CHART_AUDIT_TIMELINE_ACTIONS: AuditAction[] = [
   AuditAction.ENCOUNTER_CREATE,
@@ -61,6 +68,9 @@ export function auditActionShortLabelFr(action: AuditAction): string {
     [AuditAction.MEDICATION_DISPENSED]: "Dispensation enregistrée",
     [AuditAction.RESULT_VERIFY]: "Résultat validé",
     [AuditAction.CRITICAL_FLAG]: "Valeur critique (résultat)",
+    [AuditAction.BREAK_GLASS_START]: "Accès d'urgence (break-glass) démarré",
+    [AuditAction.BREAK_GLASS_ACCESS]: "Accès d'urgence (break-glass) — consultation dossier",
+    [AuditAction.BREAK_GLASS_END]: "Accès d'urgence (break-glass) terminé",
   };
   return map[action] ?? String(action);
 }
@@ -116,6 +126,10 @@ export function buildAuditTimelineDetailFr(action: AuditAction, metadata: unknow
       return null;
     case AuditAction.ORDERS_CREATED:
       if (typeof m.count === "number" && m.count > 0) return `${m.count} ligne(s) depuis un protocole`;
+      return null;
+    case AuditAction.BREAK_GLASS_END:
+      if (m?.superseded === true) return "Remplacé par une nouvelle session";
+      if (m?.explicit === true) return "Clôture explicite";
       return null;
     default:
       return null;

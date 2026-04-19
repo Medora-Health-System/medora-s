@@ -9,7 +9,9 @@ import type {
   OrderWithEnrichedItems,
   OrderWithItems,
 } from "../orders/orders.types";
+import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import {
+  BREAK_GLASS_TIMELINE_ACTIONS,
   CHART_AUDIT_TIMELINE_ACTIONS,
   mapAuditLogRowToTimelineItem,
 } from "./chart-audit-timeline.util";
@@ -271,7 +273,8 @@ export class ChartSummaryService {
     facilityId: string,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    breakGlassSessionId?: string
   ) {
     const patient = await this.prisma.patient.findFirst({
       where: { id: patientId, facilityId },
@@ -299,6 +302,16 @@ export class ChartSummaryService {
     if (!patient) {
       throw new NotFoundException("Patient not found");
     }
+
+    await logBreakGlassAccessIfApplicable(this.audit, {
+      breakGlassSessionId,
+      userId,
+      facilityId,
+      patientId,
+      ip,
+      userAgent,
+      context: "chart_summary",
+    });
 
     await this.audit.log(AuditAction.CHART_ACCESS, "PATIENT", {
       userId,
@@ -364,7 +377,7 @@ export class ChartSummaryService {
           where: {
             patientId,
             facilityId,
-            action: { in: CHART_AUDIT_TIMELINE_ACTIONS },
+            action: { in: [...CHART_AUDIT_TIMELINE_ACTIONS, ...BREAK_GLASS_TIMELINE_ACTIONS] },
           },
           orderBy: { createdAt: "desc" },
           take: 50,

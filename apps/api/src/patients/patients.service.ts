@@ -9,6 +9,7 @@ import {
   sexAtBirthToPatientSex,
 } from "../utils/patient-sex-map";
 import type { PatientCreateDto, PatientUpdateDto } from "@medora/shared";
+import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 
 @Injectable()
 export class PatientsService {
@@ -123,7 +124,14 @@ export class PatientsService {
     return patient;
   }
 
-  async findOne(facilityId: string, id: string, userId?: string, ip?: string, userAgent?: string) {
+  async findOne(
+    facilityId: string,
+    id: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string,
+    breakGlassSessionId?: string
+  ) {
     const patient = await this.prisma.patient.findFirst({
       where: { id, facilityId },
     });
@@ -131,6 +139,16 @@ export class PatientsService {
     if (!patient) {
       throw new NotFoundException("Patient not found");
     }
+
+    await logBreakGlassAccessIfApplicable(this.audit, {
+      breakGlassSessionId,
+      userId,
+      facilityId,
+      patientId: patient.id,
+      ip,
+      userAgent,
+      context: "patient_get",
+    });
 
     // Audit chart open
     await this.audit.log(AuditAction.CHART_OPEN, "PATIENT", {

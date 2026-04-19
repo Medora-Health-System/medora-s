@@ -1,4 +1,11 @@
+import { SetMetadata } from "@nestjs/common";
 import type { MsppRoleCode, RoleCode } from "@prisma/client";
+
+/** Metadata: route param name holding patient UUID (e.g. `id` on `/patients/:id/...`). */
+export const BREAK_GLASS_PATIENT_PARAM_KEY = "breakGlassPatientParam";
+
+export const AllowBreakGlassForPatientParam = (paramName = "id") =>
+  SetMetadata(BREAK_GLASS_PATIENT_PARAM_KEY, paramName);
 
 /**
  * Metadata key for optional MSPP roles (used by `RolesGuard`).

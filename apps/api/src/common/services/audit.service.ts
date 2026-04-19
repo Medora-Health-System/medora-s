@@ -72,7 +72,7 @@ export class AuditService {
         critical,
         action: String(action),
         entityType,
-        entityId: options.entityId ?? null,
+        hasEntityId: !!options.entityId,
         userId: options.userId ?? null,
         facilityId: options.facilityId ?? null,
         hasPatientId: !!options.patientId,

@@ -34,11 +34,9 @@ async function bootstrap() {
       const auth = req.headers?.authorization;
       const hasAuth = !!auth;
       const hasBearer = typeof auth === "string" && auth.startsWith("Bearer ");
-      const tokenLength = hasBearer && auth ? auth.slice(7).length : 0;
       bootstrapLog.log("dev_auth_header_probe", {
         hasAuthHeader: hasAuth,
         hasBearer,
-        tokenLength,
       });
       next();
     });

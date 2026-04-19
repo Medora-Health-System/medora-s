@@ -2,9 +2,18 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException, BadReque
 import { Reflector } from "@nestjs/core";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MsppRoleCode, RoleCode } from "@prisma/client";
-import { MSPP_ROLES_KEY } from "./roles.decorators";
+import {
+  BREAK_GLASS_PATIENT_PARAM_KEY,
+  MSPP_ROLES_KEY,
+} from "./roles.decorators";
 
-export { MSPP_ROLES_KEY, RequireRoles, RequireClinicalOrMspp } from "./roles.decorators";
+export {
+  BREAK_GLASS_PATIENT_PARAM_KEY,
+  AllowBreakGlassForPatientParam,
+  MSPP_ROLES_KEY,
+  RequireRoles,
+  RequireClinicalOrMspp,
+} from "./roles.decorators";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -68,6 +77,7 @@ export class RolesGuard implements CanActivate {
       request.facilityId = facilityId;
       request.user = request.user || {};
       request.user.facilityId = facilityId;
+      request.breakGlassSessionId = undefined;
       return true;
     }
 
@@ -87,7 +97,19 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException("Access denied for this facility.");
     }
 
+    const breakGlassParam = this.reflector.get<string | undefined>(
+      BREAK_GLASS_PATIENT_PARAM_KEY,
+      handler
+    );
+
     if (msppAllowed.length === 0) {
+      if (breakGlassParam && (await this.tryBreakGlass(request, facilityId, userId, breakGlassParam))) {
+        request.userRole = membership.role.code;
+        request.facilityId = facilityId;
+        request.user = request.user || {};
+        request.user.facilityId = facilityId;
+        return true;
+      }
       throw new ForbiddenException(`Access denied. Required roles: ${requiredRoles.join(", ")}`);
     }
 
@@ -97,6 +119,13 @@ export class RolesGuard implements CanActivate {
     });
     const ok = msppRows.some((row) => msppAllowed.includes(row.role));
     if (!ok) {
+      if (breakGlassParam && (await this.tryBreakGlass(request, facilityId, userId, breakGlassParam))) {
+        request.userRole = membership.role.code;
+        request.facilityId = facilityId;
+        request.user = request.user || {};
+        request.user.facilityId = facilityId;
+        return true;
+      }
       throw new ForbiddenException(`Access denied. Required roles: ${requiredRoles.join(", ")}`);
     }
 
@@ -104,7 +133,38 @@ export class RolesGuard implements CanActivate {
     request.facilityId = facilityId;
     request.user = request.user || {};
     request.user.facilityId = facilityId;
+    request.breakGlassSessionId = undefined;
 
+    return true;
+  }
+
+  private async tryBreakGlass(
+    request: { params?: Record<string, string>; breakGlassSessionId?: string },
+    facilityId: string,
+    userId: string,
+    paramName: string
+  ): Promise<boolean> {
+    const patientId = request.params?.[paramName];
+    if (!patientId || typeof patientId !== "string") {
+      return false;
+    }
+    const now = new Date();
+    const row = await this.prisma.breakGlassSession.findFirst({
+      where: {
+        userId,
+        facilityId,
+        patientId,
+        endedAt: null,
+        startedAt: { lte: now },
+        expiresAt: { gt: now },
+      },
+      orderBy: { startedAt: "desc" },
+      select: { id: true },
+    });
+    if (!row) {
+      return false;
+    }
+    request.breakGlassSessionId = row.id;
     return true;
   }
 }
