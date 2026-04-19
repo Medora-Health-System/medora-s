@@ -569,6 +569,28 @@ export class EncountersService {
     const dataKeys = (Object.keys(data) as (keyof EncounterUpdateDto)[]).filter(
       (k) => data[k] !== undefined
     );
+    const billingCaptureOnly =
+      dataKeys.length === 1 && dataKeys[0] === "billingCaptureJson";
+
+    if (!billingCaptureOnly) {
+      if (!userId) {
+        throw new ForbiddenException("Authentication required.");
+      }
+      const clinicalRole = await this.prisma.userRole.findFirst({
+        where: {
+          userId,
+          facilityId,
+          isActive: true,
+          role: { code: { in: [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN] } },
+        },
+      });
+      if (!clinicalRole) {
+        throw new ForbiddenException(
+          "Clinical updates require RN, provider, or admin. Billing staff may send billing capture JSON only."
+        );
+      }
+    }
+
     const allowedWhenSigned: (keyof EncounterUpdateDto)[] = [
       "roomLabel",
       "physicianAssignedUserId",
@@ -625,6 +647,7 @@ export class EncountersService {
         entityId: encounter.id,
         ip,
         userAgent,
+        metadata: data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : undefined,
       });
       return toEncounterClinicResponse(updated);
     }
@@ -731,6 +754,7 @@ export class EncountersService {
       entityId: encounter.id,
       ip,
       userAgent,
+      metadata: data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : undefined,
     });
 
     return toEncounterClinicResponse(updated);

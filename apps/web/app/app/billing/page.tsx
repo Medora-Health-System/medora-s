@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -10,10 +10,16 @@ import { readBillingCaptureV1 } from "@medora/shared";
 
 export default function BillingPage() {
   const { t, language } = useI18n();
-  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, ready, roles } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const canEditBillingCapture = roles.includes("BILLING");
+  const [captureModalId, setCaptureModalId] = useState<string | null>(null);
+  const [captureText, setCaptureText] = useState("");
+  const [captureLoading, setCaptureLoading] = useState(false);
+  const [captureSaving, setCaptureSaving] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -51,6 +57,57 @@ export default function BillingPage() {
       loadQueue();
     } catch (error) {
       alert(t("billingPage.alertFinalizeError"));
+    }
+  };
+
+  const openBillingCaptureModal = useCallback(
+    async (encounterId: string) => {
+      if (!effectiveFacilityId) return;
+      setCaptureModalId(encounterId);
+      setCaptureError(null);
+      setCaptureText("");
+      setCaptureLoading(true);
+      try {
+        const enc = await apiFetch(`/encounters/${encounterId}`, { facilityId: effectiveFacilityId });
+        const raw = enc && typeof enc === "object" && !Array.isArray(enc) ? (enc as any).billingCaptureJson : null;
+        const normalized = readBillingCaptureV1(raw);
+        setCaptureText(JSON.stringify(normalized, null, 2));
+      } catch {
+        setCaptureError(t("billingPage.billingCaptureLoadErr"));
+      } finally {
+        setCaptureLoading(false);
+      }
+    },
+    [effectiveFacilityId, t]
+  );
+
+  const saveBillingCapture = async () => {
+    if (!captureModalId || !effectiveFacilityId) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(captureText);
+    } catch {
+      setCaptureError(t("billingPage.billingCaptureInvalidJson"));
+      return;
+    }
+    setCaptureSaving(true);
+    setCaptureError(null);
+    try {
+      await apiFetch(`/encounters/${captureModalId}`, {
+        facilityId: effectiveFacilityId,
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ billingCaptureJson: parsed }),
+      });
+      alert(t("billingPage.billingCaptureSaved"));
+      setCaptureModalId(null);
+      await loadQueue();
+    } catch (e) {
+      setCaptureError(
+        e instanceof Error && e.message ? e.message : t("billingPage.billingCaptureSaveErr")
+      );
+    } finally {
+      setCaptureSaving(false);
     }
   };
 
@@ -117,6 +174,15 @@ export default function BillingPage() {
                     >
                       {t("billingPage.finalize")}
                     </button>
+                    {canEditBillingCapture ? (
+                      <button
+                        type="button"
+                        onClick={() => void openBillingCaptureModal(encounter.id)}
+                        style={{ marginRight: 8, padding: "4px 8px" }}
+                      >
+                        {t("billingPage.editBillingCapture")}
+                      </button>
+                    ) : null}
                     <Link href={`/app/encounters/${encounter.id}`}>{t("billingPage.view")}</Link>
                   </td>
                 </tr>
@@ -126,6 +192,81 @@ export default function BillingPage() {
           </table>
         </div>
       )}
+      {captureModalId ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15,23,42,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 8,
+              maxWidth: 720,
+              width: "100%",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+            }}
+          >
+            <div style={{ padding: "16px 18px", borderBottom: "1px solid #e2e8f0" }}>
+              <h2 style={{ margin: 0, fontSize: 18 }}>{t("billingPage.billingCaptureModalTitle")}</h2>
+            </div>
+            <div style={{ padding: 16, overflow: "auto", flex: 1 }}>
+              {captureLoading ? (
+                <p>{t("common.loading")}</p>
+              ) : (
+                <textarea
+                  value={captureText}
+                  onChange={(e) => setCaptureText(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: 320,
+                    fontFamily: "ui-monospace, monospace",
+                    fontSize: 13,
+                    boxSizing: "border-box",
+                  }}
+                  spellCheck={false}
+                />
+              )}
+              {captureError ? (
+                <p style={{ color: "#b91c1c", marginTop: 8, fontSize: 13 }}>{captureError}</p>
+              ) : null}
+            </div>
+            <div style={{ padding: "12px 16px", borderTop: "1px solid #e2e8f0", display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                disabled={captureSaving || captureLoading}
+                onClick={() => void saveBillingCapture()}
+                style={{ padding: "8px 16px" }}
+              >
+                {captureSaving ? t("common.saving") : t("billingPage.billingCaptureSave")}
+              </button>
+              <button
+                type="button"
+                disabled={captureSaving}
+                onClick={() => {
+                  setCaptureModalId(null);
+                  setCaptureError(null);
+                }}
+                style={{ padding: "8px 16px" }}
+              >
+                {t("billingPage.billingCaptureCancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

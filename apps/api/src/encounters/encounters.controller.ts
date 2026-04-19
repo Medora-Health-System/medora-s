@@ -274,7 +274,7 @@ export class EncountersController {
   }
 
   @Patch("encounters/:id")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
   async update(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
