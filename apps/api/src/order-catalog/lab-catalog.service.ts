@@ -92,6 +92,7 @@ export class LabCatalogService {
           displayNameFr: row.displayNameFr,
           description: row.description,
           searchText: row.searchText,
+          billingCodeDefault: row.billingCodeDefault,
         },
         truncateSearchText(row.searchText)
       )

@@ -15,9 +15,11 @@ import { sexAtBirthToPatientSex } from "../src/utils/patient-sex-map";
 import * as argon2 from "argon2";
 import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-catalog";
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
+import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { HAITI_MEDICATION_CATALOG, HAITI_DEFAULT_FAVORITE_CODES } from "./data/haiti-medications";
 import { HAITI_LAB_CATALOG } from "./data/haiti-lab-tests";
 import { HAITI_IMAGING_CATALOG } from "./data/haiti-imaging-studies";
+import { US_ER_LAB_CATALOG } from "./data/er-us-lab-tests";
 import { HAITI_GEO_DEPARTMENTS } from "./data/haiti-geo-departments";
 import { HAITI_SEED_COMMUNES } from "./data/haiti-seed-communes";
 
@@ -328,6 +330,7 @@ async function main() {
 
   // Lab + imaging catalogs (French labels, searchText, aliases)
   await seedHaitiLabImagingCatalog(prisma, HAITI_LAB_CATALOG, HAITI_IMAGING_CATALOG);
+  await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
 
   // Haiti medication catalog (offline-first: full catalog + aliases + searchText)
   const medCatalogIds = await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG);

@@ -12,6 +12,7 @@ export type CatalogLabTestEnrichment = {
   code: string;
   name: string;
   displayNameFr: string | null;
+  billingCodeDefault?: string | null;
 };
 
 export type CatalogImagingStudyEnrichment = {

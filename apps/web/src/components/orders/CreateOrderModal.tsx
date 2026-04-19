@@ -18,14 +18,23 @@ import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
 import type { CreateOrderLineItem, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
 import { useI18n } from "@/lib/i18n";
+import type { SupportedLanguage } from "@/i18n/config";
 
 function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
   const msg = err instanceof Error ? err.message : "";
   return normalizeUserFacingError(msg.trim() || null) || t("createOrderModal.mapOrderCreateError");
 }
 
-function catalogLineLabel(item: CatalogSearchItem): string {
+function catalogLineLabel(item: CatalogSearchItem, language: SupportedLanguage): string {
   if (item.type === "MEDICATION") return medicationSearchLabel(item);
+  if (item.type === "LAB_TEST" || item.type === "IMAGING_STUDY") {
+    const en = item.name?.trim();
+    const fr = item.displayNameFr?.trim();
+    const primary =
+      language === "en" ? (en || fr || "") : (fr || en || "");
+    const line = [primary, item.secondaryText].filter(Boolean).join(" · ");
+    return line || item.code;
+  }
   const line = [item.displayNameFr, item.secondaryText].filter(Boolean).join(" · ");
   return line || item.code;
 }
@@ -269,7 +278,7 @@ export function CreateOrderModal({
               isManual: false,
               catalogItemId: item.id,
               catalogItemType,
-              _label: catalogLineLabel(item),
+              _label: catalogLineLabel(item, language),
               _modality: item.metadata?.modality,
               _bodyRegion: item.metadata?.bodyRegion,
             },
@@ -293,7 +302,7 @@ export function CreateOrderModal({
             quantity: 30,
             notes: "",
             strength: item.metadata?.strength ?? undefined,
-            _label: catalogLineLabel(item),
+            _label: catalogLineLabel(item, language),
             _dosageForm: item.metadata?.dosageForm ?? undefined,
             _route: item.metadata?.route ?? undefined,
             refillCount: 0,

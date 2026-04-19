@@ -113,6 +113,7 @@ const CATALOG_LAB_SELECT = {
   code: true,
   name: true,
   displayNameFr: true,
+  billingCodeDefault: true,
 } as const;
 
 const CATALOG_IMAGING_SELECT = {

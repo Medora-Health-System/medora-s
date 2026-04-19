@@ -9,6 +9,8 @@ export type CatalogSearchItemDto = {
   code: string;
   type: CatalogSearchItemType;
   displayNameFr: string;
+  /** English / primary catalog `name` (lab & imaging: EN in U.S. set; repli côté client). */
+  name?: string;
   secondaryText?: string;
   searchText?: string;
   /** MEDICATION: favoris inventaire (optionnel). */
@@ -22,6 +24,8 @@ export type CatalogSearchItemDto = {
     category?: string;
     modality?: string;
     bodyRegion?: string;
+    /** LAB_TEST: suggestion CPT/HCPCS, non appliquée automatiquement. */
+    billingCodeDefault?: string;
   };
 };
 

@@ -8,6 +8,7 @@ type LabRow = {
   displayNameFr: string | null;
   description: string | null;
   searchText: string | null;
+  billingCodeDefault: string | null;
 };
 
 type ImagingRow = {
@@ -36,6 +37,7 @@ export function mapMedicationToCatalogSearchItem(
     code: m.code,
     type: "MEDICATION",
     displayNameFr,
+    name: m.name?.trim() || undefined,
     secondaryText,
     searchText: searchTextTruncated,
     isFavorite: m.isFavorite,
@@ -52,21 +54,28 @@ export function mapLabRowToCatalogSearchItem(
   m: LabRow,
   searchTextTruncated?: string | undefined
 ): CatalogSearchItemDto {
+  const namePrimary = m.name.trim();
   const displayNameFr = (m.displayNameFr ?? m.name).trim();
   let category: string | undefined;
   if (m.description?.startsWith("Catégorie : ")) {
     category = m.description.slice("Catégorie : ".length).trim() || undefined;
   }
   const secondaryText = [m.code, category].filter(Boolean).join(" · ") || undefined;
+  const billing = m.billingCodeDefault?.trim() || undefined;
+  const meta: { category?: string; billingCodeDefault?: string } = {
+    ...(category ? { category } : {}),
+    ...(billing ? { billingCodeDefault: billing } : {}),
+  };
 
   return {
     id: m.id,
     code: m.code,
     type: "LAB_TEST",
     displayNameFr,
+    name: namePrimary,
     secondaryText,
     searchText: searchTextTruncated,
-    metadata: category ? { category } : undefined,
+    metadata: Object.keys(meta).length ? meta : undefined,
   };
 }
 
@@ -83,6 +92,7 @@ export function mapImagingRowToCatalogSearchItem(
     code: m.code,
     type: "IMAGING_STUDY",
     displayNameFr,
+    name: m.name.trim() || undefined,
     secondaryText,
     searchText: searchTextTruncated,
     metadata: {

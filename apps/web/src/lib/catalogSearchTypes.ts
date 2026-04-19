@@ -6,6 +6,8 @@ export type CatalogSearchItem = {
   code: string;
   type: CatalogSearchItemType;
   displayNameFr: string;
+  /** API `name` (English / primary); optional for older cached payloads. */
+  name?: string;
   secondaryText?: string;
   searchText?: string;
   isFavorite?: boolean;
@@ -17,6 +19,7 @@ export type CatalogSearchItem = {
     category?: string;
     modality?: string;
     bodyRegion?: string;
+    billingCodeDefault?: string;
   };
 };
 

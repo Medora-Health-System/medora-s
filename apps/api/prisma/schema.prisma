@@ -656,6 +656,8 @@ model CatalogLabTest {
   code          String   @unique
   name          String
   displayNameFr String?
+  /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
+  billingCodeDefault String?
   description   String?
   searchText    String?
   sortPriority  Int      @default(0)
