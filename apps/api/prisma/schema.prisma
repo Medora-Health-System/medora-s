@@ -96,6 +96,9 @@ enum AuditAction {
   ORDERS_CREATED
   PROVIDER_DOCUMENTATION_SIGN
   PROVIDER_DOCUMENTATION_ADDENDUM
+  BREAK_GLASS_START
+  BREAK_GLASS_ACCESS
+  BREAK_GLASS_END
 }
 
 enum EncounterType {
@@ -249,6 +252,7 @@ model Facility {
   followUps                  FollowUp[]
   triageVitalsReadings       TriageVitalsReading[]
   encounterProviderAddenda   EncounterProviderAddendum[]
+  breakGlassSessions         BreakGlassSession[]
 }
 
 model Department {
@@ -315,6 +319,7 @@ model User {
   msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
   msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackResolvedBy")
   authSessions                               AuthSession[]
+  breakGlassSessions                         BreakGlassSession[]
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -410,6 +415,7 @@ model Patient {
   diseaseCaseReports     DiseaseCaseReport[]
   followUps              FollowUp[]
   triageVitalsReadings   TriageVitalsReading[]
+  breakGlassSessions     BreakGlassSession[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -508,6 +514,7 @@ model Encounter {
   followUps              FollowUp[]
   triageVitalsReadings   TriageVitalsReading[]
   providerAddenda        EncounterProviderAddendum[]
+  breakGlassSessions     BreakGlassSession[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -515,6 +522,30 @@ model Encounter {
   @@index([workflowState])
   @@index([physicianAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
+}
+
+/// Time-limited emergency chart access (break-glass) — scoped to one patient (and optionally one encounter) per session.
+model BreakGlassSession {
+  id          String    @id @default(uuid())
+  userId      String
+  facilityId  String
+  patientId   String
+  encounterId String?
+  reason      String
+  startedAt   DateTime  @default(now())
+  expiresAt   DateTime
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facility  Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+
+  @@index([userId, facilityId, patientId])
+  @@index([facilityId, patientId])
+  @@index([expiresAt])
 }
 
 /// Append-only addendum after provider documentation is signed (V1 — no edit/delete).

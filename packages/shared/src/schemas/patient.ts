@@ -416,3 +416,11 @@ export type EncounterProviderDocumentationUnlockDto = z.infer<
   typeof encounterProviderDocumentationUnlockDtoSchema
 >;
 
+/** POST /patients/:id/break-glass/start — emergency chart access (audited, time-limited). */
+export const breakGlassStartDtoSchema = z.object({
+  reason: z.string().trim().min(10).max(4000),
+  encounterId: z.preprocess(emptyStrToUndefined, z.union([z.string().uuid(), z.null()]).optional()),
+});
+
+export type BreakGlassStartDto = z.infer<typeof breakGlassStartDtoSchema>;
+
