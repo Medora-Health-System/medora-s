@@ -164,7 +164,7 @@ export async function apiFetch(
       );
     }
     const txt = await response.text().catch(() => "");
-    let message = `La requête a échoué (${response.status}).`;
+    let message = `Request failed (${response.status}).`;
     try {
       if (txt.trim()) {
         const json = JSON.parse(txt) as {
@@ -184,9 +184,7 @@ export async function apiFetch(
         message = `${response.status} ${response.statusText}`;
       }
     }
-    throw new Error(
-      normalizeUserFacingError(message) || `La requête a échoué (${response.status}).`
-    );
+    throw new Error(message.trim() || `Request failed (${response.status}).`);
   }
 
   if (queueType && method !== "GET") {

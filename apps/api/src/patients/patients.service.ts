@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, SexAtBirth } from "@prisma/client";
+import { AuditAction, Prisma, SexAtBirth } from "@prisma/client";
 import { generateUniqueMrn } from "../utils/mrn";
 import {
   REGISTRATION_SEX_TO_PATIENT_SEX,
@@ -21,6 +21,25 @@ function deriveLegacyAddressFromStructured(
   const parts = [line1?.trim(), line2?.trim()].filter(Boolean) as string[];
   if (parts.length === 0) return undefined;
   return parts.join(", ");
+}
+
+/** Columns added in registration phase-1 migration — omit if DB not migrated yet (P2022). */
+const PATIENT_CREATE_PHASE1_OPTIONAL_KEYS = [
+  "middleName",
+  "addressLine1",
+  "addressLine2",
+  "stateProvince",
+  "postalCode",
+  "emergencyContactName",
+  "emergencyContactRelationship",
+  "emergencyContactPhone",
+  "adminNotes",
+] as const;
+
+function stripPhase1PatientCreateFields(data: Record<string, unknown>): void {
+  for (const k of PATIENT_CREATE_PHASE1_OPTIONAL_KEYS) {
+    delete data[k];
+  }
 }
 
 @Injectable()
@@ -50,12 +69,12 @@ export class PatientsService {
       where.dob = new Date(query.dob);
     }
     if (query.q) {
+      // Do not filter on addressLine1: older DBs without the phase-1 migration will error (P2022).
       where.OR = [
         { firstName: { contains: query.q, mode: "insensitive" } },
         { lastName: { contains: query.q, mode: "insensitive" } },
         { mrn: { contains: query.q, mode: "insensitive" } },
         { phone: { contains: query.q } },
-        { addressLine1: { contains: query.q, mode: "insensitive" } },
       ];
     }
 
@@ -128,9 +147,29 @@ export class PatientsService {
     // Generate global MRN
     createData.globalMrn = await generateUniqueMrn(this.prisma);
 
-    const patient = await this.prisma.patient.create({
-      data: createData,
-    });
+    let patient;
+    try {
+      patient = await this.prisma.patient.create({
+        data: createData,
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2022") {
+        stripPhase1PatientCreateFields(createData);
+        const derivedRetry = deriveLegacyAddressFromStructured(
+          createData.address,
+          createData.addressLine1 as string | undefined,
+          createData.addressLine2 as string | undefined
+        );
+        if (derivedRetry !== undefined) {
+          createData.address = derivedRetry;
+        }
+        patient = await this.prisma.patient.create({
+          data: createData,
+        });
+      } else {
+        throw e;
+      }
+    }
 
     // Audit create
     await this.audit.log(AuditAction.PATIENT_CREATE, "PATIENT", {

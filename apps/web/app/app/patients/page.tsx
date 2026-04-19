@@ -7,6 +7,7 @@ import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { formatPatientAgeOnlyLine, formatAgeYearsSexForLocale } from "@/lib/patientDisplay";
 import { encounterBcp47, tEnumKey, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
@@ -580,7 +581,10 @@ function NewPatientModal({
       }
       onSuccess((res as Patient) ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("patientsListPage.errCreatePatient"));
+      setError(
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
+          t("patientsListPage.errCreatePatient")
+      );
     } finally {
       setLoading(false);
     }

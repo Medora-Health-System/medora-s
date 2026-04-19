@@ -58,6 +58,16 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "Erreur interne du serveur.",
     en: "Internal server error.",
   },
+  {
+    test: (s) => /erreur interne du serveur/i.test(s),
+    fr: "Erreur interne du serveur.",
+    en: "Internal server error.",
+  },
+  {
+    test: (s) => /^request failed \(\d+\)\s*\.?\s*$/i.test(s.trim()),
+    fr: "La requête a échoué.",
+    en: "The request failed.",
+  },
   { test: (s) => /facility id required/i.test(s), fr: "Établissement requis.", en: "Facility is required." },
   {
     test: (s) => /no facility selected/i.test(s),
