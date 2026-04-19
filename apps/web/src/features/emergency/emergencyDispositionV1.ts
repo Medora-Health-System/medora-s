@@ -389,19 +389,23 @@ export function readDispositionSignatureFromEncounter(nursingAssessment: unknown
 
 /**
  * Merge discharge JSON for PATCH: starts from `mergeDischargeForSave` (role-based field apply),
- * then ensures `dischargeMode` is persisted when a médecin sets the ER outcome radio but does not
- * have nursing keys in the merge (dischargeMode is normally a nursing key in mergeDischargeForSave).
+ * then ensures `dischargeMode` is persisted for the ER outcome (trackboard / dossier de sortie).
+ * If the form has no trimmed `dischargeMode` (e.g. new encounter), derives it from `outcomeUi`.
  */
 export function mergeErDischargeForEncounterPatch(
   encounterDischargeJson: unknown,
   form: DischargeFormState,
   canEditNursing: boolean,
-  canEditMedical: boolean
+  canEditMedical: boolean,
+  outcomeUi: ErDispositionOutcomeUi
 ): Record<string, string> | null {
   const fromRoles = mergeDischargeForSave(encounterDischargeJson, form, canEditNursing, canEditMedical);
   const out: Record<string, string> = fromRoles != null ? { ...fromRoles } : {};
-  if (canEditMedical && form.dischargeMode.trim()) {
-    out.dischargeMode = form.dischargeMode.trim();
+  const modeFromForm = form.dischargeMode.trim();
+  const modeFromOutcome = outcomeUiToDischargeMode(outcomeUi).trim();
+  const effectiveMode = modeFromForm || modeFromOutcome;
+  if (effectiveMode && (canEditMedical || canEditNursing)) {
+    out.dischargeMode = effectiveMode;
   }
   return Object.keys(out).length ? out : null;
 }

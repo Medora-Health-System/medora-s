@@ -324,7 +324,8 @@ export function EmergencyDispositionPanel({
         encounter.dischargeSummaryJson,
         dischargeForm,
         canEditNursingDischarge,
-        canEditMedicalDischarge
+        canEditMedicalDischarge,
+        outcomeUi
       );
 
       const admissionPayload = admissionFormToPayload(admissionForm);
