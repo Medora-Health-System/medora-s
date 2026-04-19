@@ -180,11 +180,24 @@ export function EncounterOperationalPanel({
     setHandoffSaving(true);
     setError(null);
     try {
+      let handoffLastSavedByDisplayName = t("emergencyDisposition.signerFallback");
+      try {
+        const me = await apiFetch("/auth/me");
+        if (me && typeof me === "object" && !Array.isArray(me)) {
+          const fn = (me as { fullName?: string }).fullName?.trim();
+          if (fn) handoffLastSavedByDisplayName = fn;
+        }
+      } catch {
+        /* fallback label */
+      }
+      const handoffLastSavedAt = new Date().toISOString();
       const payload: ErHandoffV1Stored = {
         ...handoffForm,
         receivingNurseName: handoffForm.receivingNurseName?.trim() || undefined,
         handoffNote: handoffForm.handoffNote?.trim() || undefined,
         reportGivenAt: handoffForm.reportGivenAt?.trim() || undefined,
+        handoffLastSavedAt,
+        handoffLastSavedByDisplayName,
       };
       const merged = mergeErHandoffV1IntoNursingAssessment(nursingAssessment, payload);
       const res = await apiFetch(`/encounters/${encounterId}`, {
@@ -251,6 +264,19 @@ export function EncounterOperationalPanel({
 
   const readHandoff = useMemo(() => readErHandoffV1FromNursingAssessment(nursingAssessment), [nursingAssessment]);
 
+  const handoffLastSavedCaption = useMemo(() => {
+    if (!readHandoff.handoffLastSavedByDisplayName?.trim() || !readHandoff.handoffLastSavedAt?.trim()) return null;
+    try {
+      const d = new Date(readHandoff.handoffLastSavedAt);
+      const when = Number.isNaN(d.getTime()) ? readHandoff.handoffLastSavedAt.trim() : d.toLocaleString();
+      return t("encounterOperational.handoffLastSavedLine")
+        .replace("{name}", readHandoff.handoffLastSavedByDisplayName.trim())
+        .replace("{when}", when);
+    } catch {
+      return null;
+    }
+  }, [readHandoff.handoffLastSavedAt, readHandoff.handoffLastSavedByDisplayName, t]);
+
   const handoffReadonlyLines = useMemo(() => {
     const lines: string[] = [];
     if (readHandoff.receivingNurseName) {
@@ -274,6 +300,9 @@ export function EncounterOperationalPanel({
     if (readHandoff.handoffNote) {
       lines.push(`${t("encounterOperational.handoffNoteLabel")}: ${readHandoff.handoffNote}`);
     }
+    if (handoffLastSavedCaption) {
+      lines.push(handoffLastSavedCaption);
+    }
     if (readHandoff.readyForInpatientTransfer === true || readHandoff.readyForInpatientTransfer === false) {
       lines.push(
         `${t("encounterOperational.readyForTransferLabel")}: ${
@@ -282,7 +311,7 @@ export function EncounterOperationalPanel({
       );
     }
     return lines;
-  }, [readHandoff, t]);
+  }, [handoffLastSavedCaption, readHandoff, t]);
 
   const showReadonlyHandoff = !canEdit && (erHandoffV1HasPersistedBlob(nursingAssessment) || handoffReadonlyLines.length > 0);
 
@@ -517,6 +546,11 @@ export function EncounterOperationalPanel({
               >
                 {handoffSaving ? t("common.saving") : t("encounterOperational.saveHandoffButton")}
               </button>
+              {handoffLastSavedCaption ? (
+                <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                  {handoffLastSavedCaption}
+                </p>
+              ) : null}
             </div>
           </div>
 

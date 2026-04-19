@@ -16,10 +16,14 @@ export type ErHandoffV1Stored = {
   nurseDocumentationCompleted?: boolean;
   acceptingPhysicianSelected?: boolean;
   reportGivenToReceivingUnit?: boolean;
+  /** ISO 8601 — last explicit handoff save (additive accountability). */
+  handoffLastSavedAt?: string;
+  handoffLastSavedByDisplayName?: string;
 };
 
 const MAX_NOTE = 2000;
 const MAX_NAME = 256;
+const MAX_DISPLAY = 256;
 const MAX_ISO = 40;
 
 function trimStr(v: unknown, max: number): string | undefined {
@@ -65,6 +69,10 @@ export function readErHandoffV1FromNursingAssessment(nursingAssessment: unknown)
   if (aps !== undefined) out.acceptingPhysicianSelected = aps;
   const rgr = readBool(o.reportGivenToReceivingUnit);
   if (rgr !== undefined) out.reportGivenToReceivingUnit = rgr;
+  const hlsa = trimStr(o.handoffLastSavedAt, MAX_ISO);
+  if (hlsa) out.handoffLastSavedAt = hlsa;
+  const hlsn = trimStr(o.handoffLastSavedByDisplayName, MAX_DISPLAY);
+  if (hlsn) out.handoffLastSavedByDisplayName = hlsn;
 
   return out;
 }
@@ -93,6 +101,10 @@ function sanitizeForPersist(form: ErHandoffV1Stored): Record<string, unknown> {
   if (form.reportGivenToReceivingUnit === true || form.reportGivenToReceivingUnit === false) {
     out.reportGivenToReceivingUnit = form.reportGivenToReceivingUnit;
   }
+  const hlsa = trimStr(form.handoffLastSavedAt, MAX_ISO);
+  if (hlsa) out.handoffLastSavedAt = hlsa;
+  const hlsn = trimStr(form.handoffLastSavedByDisplayName, MAX_DISPLAY);
+  if (hlsn) out.handoffLastSavedByDisplayName = hlsn;
   return out;
 }
 

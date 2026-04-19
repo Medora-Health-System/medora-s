@@ -3153,6 +3153,10 @@ export default {
       nursingDischargeExecution: "Exécution de sortie infirmière",
       executionNote: "Note d'exécution",
       signedEmtalaLog: "Journal EMTALA — signé par",
+      handoffRecordSaved: "Transmission enregistrée (dernière saisie)",
+      handoffLastSavedBy: "Transmission enregistrée par",
+      handoffLastSavedAt: "Transmission enregistrée le",
+      addendumNumbered: "Addendum {n}",
       actionPrintDischarge: "Imprimer le dossier de sortie",
       actionPrintTransfer: "Imprimer le dossier de transfert",
       actionPrintAdmission: "Imprimer la synthèse d'admission",
@@ -3448,6 +3452,7 @@ export default {
     checklistAcceptingPhysician: "Médecin accepteur identifié",
     checklistReportToUnit: "Compte rendu à l'unité réceptrice",
     saveHandoffButton: "Enregistrer la transmission",
+    handoffLastSavedLine: "Transmission enregistrée par {name} le {when}.",
     handoffSaveFailed: "Enregistrement de la transmission impossible.",
     handoffRequiredForTransferHint:
       "Enregistrez la transmission avec « Compte rendu donné » ou « Prêt pour le transfert » avant de confirmer le transfert.",

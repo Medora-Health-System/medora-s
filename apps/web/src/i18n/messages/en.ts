@@ -3198,6 +3198,10 @@ export default {
       nursingDischargeExecution: "Nursing discharge execution",
       executionNote: "Execution note",
       signedEmtalaLog: "EMTALA log — signed by",
+      handoffRecordSaved: "Handoff record last saved",
+      handoffLastSavedBy: "Handoff last saved by",
+      handoffLastSavedAt: "Handoff last saved at",
+      addendumNumbered: "Addendum {n}",
       actionPrintDischarge: "Print discharge packet",
       actionPrintTransfer: "Print transfer packet",
       actionPrintAdmission: "Print admission summary",
@@ -3491,6 +3495,7 @@ export default {
     checklistAcceptingPhysician: "Accepting physician selected",
     checklistReportToUnit: "Report given to receiving unit",
     saveHandoffButton: "Save handoff",
+    handoffLastSavedLine: "Handoff last saved by {name} at {when}.",
     handoffSaveFailed: "Unable to save handoff.",
     handoffRequiredForTransferHint:
       'Save handoff with "Report given" or "Ready for transfer" checked before confirming transfer to hospitalization.',

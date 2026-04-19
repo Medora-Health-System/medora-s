@@ -38,7 +38,13 @@ export type ErPrintEncounter = DischargePrintEncounter & {
   providerDocumentationStatus?: string | null;
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
-  providerAddenda?: Array<{ id: string; text: string; createdAt: string }>;
+  providerAddenda?: Array<{
+    id: string;
+    text: string;
+    createdAt: string;
+    /** Populated by API when addenda are loaded with author join. */
+    createdByDisplayFr?: string | null;
+  }>;
 };
 
 const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
@@ -324,7 +330,9 @@ function appendHandoffBlock(
     handoff.handoffNote?.trim() ||
     handoff.receivingNurseName?.trim() ||
     handoff.reportGiven === true ||
-    handoff.reportGivenAt?.trim();
+    handoff.reportGivenAt?.trim() ||
+    handoff.handoffLastSavedByDisplayName?.trim() ||
+    handoff.handoffLastSavedAt?.trim();
   if (!has) {
     body.push(`<p style="margin: 8px 0; font-size: 13px; color: #444;">${esc(printT(language, "printOutput.erPacket.handoffEmpty"))}</p>`);
     return;
@@ -345,6 +353,22 @@ function appendHandoffBlock(
   }
   if (handoff.handoffNote?.trim()) {
     body.push(line(printT(language, "printOutput.erPacket.handoffNote"), handoff.handoffNote.trim()));
+  }
+  if (handoff.handoffLastSavedByDisplayName?.trim() && handoff.handoffLastSavedAt?.trim()) {
+    body.push(
+      line(
+        printT(language, "printOutput.erPacket.handoffRecordSaved"),
+        `${handoff.handoffLastSavedByDisplayName.trim()} — ${fmtIso(handoff.handoffLastSavedAt, loc)}`
+      )
+    );
+  } else if (handoff.handoffLastSavedByDisplayName?.trim()) {
+    body.push(
+      line(printT(language, "printOutput.erPacket.handoffLastSavedBy"), handoff.handoffLastSavedByDisplayName.trim())
+    );
+  } else if (handoff.handoffLastSavedAt?.trim()) {
+    body.push(
+      line(printT(language, "printOutput.erPacket.handoffLastSavedAt"), fmtIso(handoff.handoffLastSavedAt, loc))
+    );
   }
 }
 
@@ -375,6 +399,17 @@ function appendSignatureBlock(
         printT(language, "printOutput.erPacket.addendaCount").replace("{n}", String(addenda.length))
       )
     );
+    addenda.forEach((a, idx) => {
+      const who = a.createdByDisplayFr?.trim() ?? "";
+      const when = fmtIso(a.createdAt, loc);
+      if (!who && !when) return;
+      body.push(
+        line(
+          printT(language, "printOutput.erPacket.addendumNumbered").replace("{n}", String(idx + 1)),
+          who ? `${who} — ${when || "—"}` : when || "—"
+        )
+      );
+    });
   }
   if (disSig) {
     body.push(
