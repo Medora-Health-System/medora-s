@@ -9,10 +9,21 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, EncounterStatus, EncounterType, Prisma, RoleCode } from "@prisma/client";
+import {
+  AuditAction,
+  EncounterStatus,
+  EncounterType,
+  EncounterWorkflowState,
+  Prisma,
+  RoleCode,
+} from "@prisma/client";
 import { isEncounterType } from "../common/utils/prisma-query-enum-guards";
 import { assertCanTransitionEncounter } from "../common/workflow/encounter.transitions";
-import { SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR } from "./encounter-sign-lock.util";
+import { assertValidEncounterWorkflowTransition } from "../common/workflow/encounter-workflow-state.machine";
+import {
+  SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR,
+  assertOperationalUpdateAllowedWhenSigned,
+} from "./encounter-sign-lock.util";
 import {
   admissionSummaryFieldsSchema,
   erHandoffV1SatisfiesInpatientTransferConfirm,
@@ -126,6 +137,7 @@ import {
   mapAuditLogRowToTimelineItem,
   metadataEncounterId,
 } from "../patients/chart-audit-timeline.util";
+import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
 
 /** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
 const encounterDetailPatientSelect = {
@@ -401,26 +413,30 @@ export class EncountersService {
       );
     }
 
-    const created = await this.prisma.encounterProviderAddendum.create({
-      data: {
-        encounterId,
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.encounterProviderAddendum.create({
+        data: {
+          encounterId,
+          facilityId,
+          text: dto.text.trim(),
+          createdByUserId: userId,
+        },
+        include: {
+          createdBy: { select: { firstName: true, lastName: true } },
+        },
+      });
+      await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_ADDENDUM, "ENCOUNTER_PROVIDER_ADDENDUM", {
+        userId,
         facilityId,
-        text: dto.text.trim(),
-        createdByUserId: userId,
-      },
-      include: {
-        createdBy: { select: { firstName: true, lastName: true } },
-      },
-    });
-
-    await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_ADDENDUM, "ENCOUNTER_PROVIDER_ADDENDUM", {
-      userId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId: encounter.id,
-      entityId: created.id,
-      ip,
-      userAgent,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: row.id,
+        ip,
+        userAgent,
+        critical: true,
+        tx,
+      });
+      return row;
     });
 
     return {
@@ -464,28 +480,40 @@ export class EncountersService {
       );
     }
 
-    const updated = await this.prisma.encounter.update({
-      where: { id: encounterId },
-      data: {
-        providerDocumentationStatus: "SIGNED",
-        providerDocumentationSignedAt: new Date(),
-        providerDocumentationSignedByUserId: userId,
-      },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
-
-    await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_SIGN, "ENCOUNTER", {
-      userId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId: encounter.id,
-      entityId: encounter.id,
-      ip,
-      userAgent,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.encounter.updateMany({
+        where: { id: encounterId, facilityId, version: encounter.version },
+        data: {
+          providerDocumentationStatus: "SIGNED",
+          providerDocumentationSignedAt: new Date(),
+          providerDocumentationSignedByUserId: userId,
+          version: { increment: 1 },
+        },
+      });
+      if (u.count === 0) throwEncounterConcurrentModification();
+      await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_SIGN, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        critical: true,
+        tx,
+      });
+      const row = await tx.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+          providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      if (!row) {
+        throw new NotFoundException("Encounter not found");
+      }
+      return row;
     });
 
     const res = toEncounterClinicResponse(updated) as Record<string, unknown>;
@@ -527,31 +555,43 @@ export class EncountersService {
 
     const reasonTrim = dto.reason?.trim() || undefined;
 
-    const updated = await this.prisma.encounter.update({
-      where: { id: encounterId },
-      data: {
-        providerDocumentationStatus: "DRAFT",
-        providerDocumentationSignedAt: null,
-        providerDocumentationSignedByUserId: null,
-      },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
-
-    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
-      userId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId: encounter.id,
-      entityId: encounter.id,
-      ip,
-      userAgent,
-      metadata: {
-        providerDocumentationUnlock: true,
-        ...(reasonTrim ? { reason: reasonTrim } : {}),
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.encounter.updateMany({
+        where: { id: encounterId, facilityId, version: encounter.version },
+        data: {
+          providerDocumentationStatus: "DRAFT",
+          providerDocumentationSignedAt: null,
+          providerDocumentationSignedByUserId: null,
+          version: { increment: 1 },
+        },
+      });
+      if (u.count === 0) throwEncounterConcurrentModification();
+      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        metadata: {
+          providerDocumentationUnlock: true,
+          ...(reasonTrim ? { reason: reasonTrim } : {}),
+        },
+        critical: true,
+        tx,
+      });
+      const row = await tx.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      if (!row) {
+        throw new NotFoundException("Encounter not found");
+      }
+      return row;
     });
 
     return toEncounterClinicResponse(updated);
@@ -564,6 +604,10 @@ export class EncountersService {
 
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
+    }
+
+    if (encounter.workflowState === EncounterWorkflowState.CLOSED) {
+      throw new BadRequestException("Le parcours de cette consultation est terminé.");
     }
 
     const dataKeys = (Object.keys(data) as (keyof EncounterUpdateDto)[]).filter(
@@ -631,14 +675,24 @@ export class EncountersService {
         }
         return toEncounterClinicResponse(unchanged);
       }
-      const updated = await this.prisma.encounter.update({
-        where: { id },
-        data: updateData,
+      const u = await this.prisma.encounter.updateMany({
+        where: { id, facilityId, version: encounter.version },
+        data: {
+          ...(updateData as Prisma.EncounterUpdateInput),
+          version: { increment: 1 },
+        },
+      });
+      if (u.count === 0) throwEncounterConcurrentModification();
+      const updated = await this.prisma.encounter.findFirst({
+        where: { id, facilityId },
         include: {
           patient: { select: encounterDetailPatientSelect },
           physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
         },
       });
+      if (!updated) {
+        throw new NotFoundException("Encounter not found");
+      }
       await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
         userId,
         facilityId,
@@ -726,15 +780,32 @@ export class EncountersService {
     if (data.billingCaptureJson !== undefined) {
       updateData.billingCaptureJson = readBillingCaptureV1(data.billingCaptureJson);
     }
+    if (data.workflowState !== undefined) {
+      if (encounter.status !== EncounterStatus.OPEN) {
+        throw new BadRequestException("Le parcours ne peut être modifié que sur une consultation ouverte.");
+      }
+      assertValidEncounterWorkflowTransition(encounter.workflowState, data.workflowState);
+      updateData.workflowState = data.workflowState;
+    }
 
-    const updated = await this.prisma.encounter.update({
-      where: { id },
-      data: updateData,
+    const u = await this.prisma.encounter.updateMany({
+      where: { id, facilityId, version: encounter.version },
+      data: {
+        ...(updateData as Prisma.EncounterUpdateInput),
+        version: { increment: 1 },
+      },
+    });
+    if (u.count === 0) throwEncounterConcurrentModification();
+    const updated = await this.prisma.encounter.findFirst({
+      where: { id, facilityId },
       include: {
         patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+    if (!updated) {
+      throw new NotFoundException("Encounter not found");
+    }
 
     if (data.vitals !== undefined && hasNonEmptyVitalsJson(data.vitals)) {
       await this.prisma.patient.update({
@@ -754,12 +825,21 @@ export class EncountersService {
       entityId: encounter.id,
       ip,
       userAgent,
-      metadata: data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : undefined,
+      metadata: {
+        ...(data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : {}),
+        ...(data.workflowState !== undefined
+          ? { workflowTransition: { from: encounter.workflowState, to: data.workflowState } }
+          : {}),
+      },
     });
 
     return toEncounterClinicResponse(updated);
   }
 
+  /**
+   * Operational fields (`roomLabel`, `physicianAssignedUserId`, `confirmInpatientTransfer`) — see
+   * `assertOperationalUpdateAllowedWhenSigned` for post-sign policy and audit `POST_SIGN_MODIFICATION`.
+   */
   async updateOperational(
     facilityId: string,
     id: string,
@@ -774,6 +854,10 @@ export class EncountersService {
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
     }
+    if (encounter.workflowState === EncounterWorkflowState.CLOSED) {
+      throw new BadRequestException("Le parcours de cette consultation est terminé.");
+    }
+    assertOperationalUpdateAllowedWhenSigned(encounter, data);
     const updateData: Record<string, unknown> = {};
     if (data.roomLabel !== undefined) {
       updateData.roomLabel =
@@ -840,14 +924,24 @@ export class EncountersService {
       }
       return toEncounterClinicResponse(unchanged);
     }
-    const updated = await this.prisma.encounter.update({
-      where: { id },
-      data: updateData,
+    const u = await this.prisma.encounter.updateMany({
+      where: { id, facilityId, version: encounter.version },
+      data: {
+        ...(updateData as Prisma.EncounterUpdateInput),
+        version: { increment: 1 },
+      },
+    });
+    if (u.count === 0) throwEncounterConcurrentModification();
+    const updated = await this.prisma.encounter.findFirst({
+      where: { id, facilityId },
       include: {
         patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+    if (!updated) {
+      throw new NotFoundException("Encounter not found");
+    }
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
       userId,
       facilityId,
@@ -856,7 +950,12 @@ export class EncountersService {
       entityId: encounter.id,
       ip,
       userAgent,
-      metadata: { operational: true },
+      metadata: {
+        operational: true,
+        ...(encounter.providerDocumentationStatus === "SIGNED"
+          ? { event: "POST_SIGN_MODIFICATION" as const }
+          : {}),
+      },
     });
     return toEncounterClinicResponse(updated);
   }
@@ -1046,6 +1145,12 @@ export class EncountersService {
     // Validate status transition
     assertCanTransitionEncounter(encounter.status, "CLOSED");
 
+    if (encounter.workflowState !== EncounterWorkflowState.FINALIZED) {
+      throw new BadRequestException(
+        "La consultation doit être au stade « Finalisé » (parcours) avant clôture."
+      );
+    }
+
     const docCheck = this.evaluateEncounterDocumentationDeficiencies(encounter, data?.discharge);
     if (docCheck.hasDeficiencies && !data?.acknowledgeDeficiencies) {
       throw new HttpException(
@@ -1062,6 +1167,7 @@ export class EncountersService {
 
     const closePayload: Record<string, unknown> = {
       status: "CLOSED",
+      workflowState: EncounterWorkflowState.CLOSED,
       dischargedAt: new Date(),
     };
     const mergedDischarge = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, data?.discharge);
@@ -1083,30 +1189,44 @@ export class EncountersService {
     });
     closePayload.billingCaptureJson = upsertBillingCaptureItem(encounter.billingCaptureJson, dispositionCandidate);
 
-    const updated = await this.prisma.encounter.update({
-      where: { id },
-      data: closePayload as Prisma.EncounterUpdateInput,
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
-
-    await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {
-      userId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId: encounter.id,
-      entityId: encounter.id,
-      ip,
-      userAgent,
-      metadata:
-        docCheck.hasDeficiencies && data?.acknowledgeDeficiencies
-          ? {
-              deficienciesAcknowledged: true,
-              deficiencyCodes: docCheck.deficiencies.map((d) => d.code),
-            }
-          : undefined,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const um = await tx.encounter.updateMany({
+        where: { id, facilityId, version: encounter.version },
+        data: {
+          ...(closePayload as Prisma.EncounterUpdateInput),
+          version: { increment: 1 },
+        },
+      });
+      if (um.count === 0) throwEncounterConcurrentModification();
+      await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        metadata:
+          docCheck.hasDeficiencies && data?.acknowledgeDeficiencies
+            ? {
+                deficienciesAcknowledged: true,
+                deficiencyCodes: docCheck.deficiencies.map((d) => d.code),
+              }
+            : undefined,
+        critical: true,
+        tx,
+      });
+      const row = await tx.encounter.findFirst({
+        where: { id, facilityId },
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      if (!row) {
+        throw new NotFoundException("Encounter not found");
+      }
+      return row;
     });
 
     return toEncounterClinicResponse(updated);
