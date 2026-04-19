@@ -446,11 +446,16 @@ function NewPatientModal({
     sex: "" as "" | "HOMME" | "FEMME" | "AUTRE" | "INCONNU",
     phone: "",
     email: "",
-    address: "",
+    addressLine1: "",
+    addressLine2: "",
     nationalId: "",
-    emergencyContact: "",
+    emergencyContactName: "",
+    emergencyContactRelationship: "",
+    emergencyContactPhone: "",
     adminNotes: "",
     city: "",
+    stateProvince: "",
+    postalCode: "",
     country: "",
     language: "",
   });
@@ -546,10 +551,21 @@ function NewPatientModal({
       if (formData.phone.trim()) payload.phone = formData.phone.trim();
       if (formData.email.trim()) payload.email = formData.email.trim();
       if (formData.nationalId.trim()) payload.nationalId = formData.nationalId.trim();
-      if (formData.address.trim()) payload.address = formData.address.trim();
+      if (formData.addressLine1.trim()) payload.addressLine1 = formData.addressLine1.trim();
+      if (formData.addressLine2.trim()) payload.addressLine2 = formData.addressLine2.trim();
       if (formData.city.trim()) payload.city = formData.city.trim();
+      if (formData.stateProvince.trim()) payload.stateProvince = formData.stateProvince.trim();
+      if (formData.postalCode.trim()) payload.postalCode = formData.postalCode.trim();
       if (formData.country.trim()) payload.country = formData.country.trim();
       if (formData.language.trim()) payload.language = formData.language.trim();
+      if (formData.emergencyContactName.trim()) payload.emergencyContactName = formData.emergencyContactName.trim();
+      if (formData.emergencyContactRelationship.trim()) {
+        payload.emergencyContactRelationship = formData.emergencyContactRelationship.trim();
+      }
+      if (formData.emergencyContactPhone.trim().length >= 5) {
+        payload.emergencyContactPhone = formData.emergencyContactPhone.trim();
+      }
+      if (formData.adminNotes.trim()) payload.adminNotes = formData.adminNotes.trim();
 
       const res = await apiFetch("/patients", {
         method: "POST",
@@ -698,13 +714,62 @@ function NewPatientModal({
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelAddress")}</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelAddressLine1")}</label>
             <input
               type="text"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              value={formData.addressLine1}
+              onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
               style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
             />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelAddressLine2")}</label>
+            <input
+              type="text"
+              value={formData.addressLine2}
+              onChange={(e) => setFormData({ ...formData, addressLine2: e.target.value })}
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+            />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <div>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelCity")}</label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelPostalCode")}</label>
+              <input
+                type="text"
+                value={formData.postalCode}
+                onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+              />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <div>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelStateProvince")}</label>
+              <input
+                type="text"
+                value={formData.stateProvince}
+                onChange={(e) => setFormData({ ...formData, stateProvince: e.target.value })}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelCountry")}</label>
+              <input
+                type="text"
+                value={formData.country}
+                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+              />
+            </div>
           </div>
 
           <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>{t("patientsListPage.sectionIdentifiers")}</h3>
@@ -719,12 +784,32 @@ function NewPatientModal({
           </div>
 
           <h3 style={{ margin: "6px 0 12px 0", fontSize: 16 }}>{t("patientsListPage.sectionMore")}</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <div>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelEmergencyName")}</label>
+              <input
+                type="text"
+                value={formData.emergencyContactName}
+                onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelEmergencyRelationship")}</label>
+              <input
+                type="text"
+                value={formData.emergencyContactRelationship}
+                onChange={(e) => setFormData({ ...formData, emergencyContactRelationship: e.target.value })}
+                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+              />
+            </div>
+          </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelEmergency")}</label>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientsListPage.labelEmergencyPhone")}</label>
             <input
-              type="text"
-              value={formData.emergencyContact}
-              onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+              type="tel"
+              value={formData.emergencyContactPhone}
+              onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
               style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
             />
           </div>
@@ -831,6 +916,9 @@ function CreateConsultationModal({
   const [type, setType] = useState<"OUTPATIENT" | "URGENT_CARE" | "EMERGENCY">("OUTPATIENT");
   const [visitReason, setVisitReason] = useState("");
   const [roomLabel, setRoomLabel] = useState(DEFAULT_ENCOUNTER_ROOM_LABEL);
+  const [arrivalAtLocal, setArrivalAtLocal] = useState("");
+  const [modeOfArrival, setModeOfArrival] = useState("");
+  const [initialAcuity, setInitialAcuity] = useState("");
   const [physicianAssignedUserId, setPhysicianAssignedUserId] = useState("");
   const [providers, setProviders] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -872,7 +960,28 @@ function CreateConsultationModal({
         setCreated({ id: "", queued: true });
         return;
       }
-      setCreated({ id: (res as { id: string }).id });
+      const encId = (res as { id: string }).id;
+      const intakeBody: Record<string, unknown> = {
+        initialChiefComplaint: visitReason.trim() || undefined,
+        initialRoom: roomLabel.trim() || DEFAULT_ENCOUNTER_ROOM_LABEL,
+      };
+      if (arrivalAtLocal.trim()) {
+        const d = new Date(arrivalAtLocal);
+        if (!Number.isNaN(d.getTime())) intakeBody.arrivalAt = d.toISOString();
+      }
+      if (modeOfArrival.trim()) intakeBody.modeOfArrival = modeOfArrival.trim();
+      if (initialAcuity) intakeBody.initialAcuity = Number(initialAcuity);
+      try {
+        await apiFetch(`/encounters/${encId}/intake`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(intakeBody),
+          facilityId,
+        });
+      } catch {
+        /* accueil : meilleur effort, la consultation est déjà créée */
+      }
+      setCreated({ id: encId });
     } catch (e) {
       setError(e instanceof Error ? e.message : t("patientConsultationsTab.create.createFailed"));
     } finally {
@@ -922,6 +1031,34 @@ function CreateConsultationModal({
             </select>
             <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.visitReason")}</label>
             <textarea value={visitReason} onChange={(e) => setVisitReason(e.target.value)} rows={3} style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, resize: "vertical" }} />
+            <p style={{ margin: "14px 0 6px 0", fontSize: 13, fontWeight: 600, color: "#444" }}>{t("patientConsultationsTab.create.intakeSectionTitle")}</p>
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.intakeArrival")}</label>
+            <input
+              type="datetime-local"
+              value={arrivalAtLocal}
+              onChange={(e) => setArrivalAtLocal(e.target.value)}
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, marginBottom: 12 }}
+            />
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.intakeMode")}</label>
+            <input
+              type="text"
+              value={modeOfArrival}
+              onChange={(e) => setModeOfArrival(e.target.value)}
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, marginBottom: 12 }}
+            />
+            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientConsultationsTab.create.intakeAcuity")}</label>
+            <select
+              value={initialAcuity}
+              onChange={(e) => setInitialAcuity(e.target.value)}
+              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, marginBottom: 12 }}
+            >
+              <option value="">—</option>
+              {([1, 2, 3, 4, 5] as const).map((n) => (
+                <option key={n} value={String(n)}>
+                  {n}
+                </option>
+              ))}
+            </select>
             {error && <div style={{ marginTop: 10, color: "#c62828", fontSize: 13 }}>{error}</div>}
             <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button type="button" onClick={onClose} style={{ padding: "9px 14px", border: "1px solid #ddd", borderRadius: 4, background: "#fff", cursor: "pointer" }}>

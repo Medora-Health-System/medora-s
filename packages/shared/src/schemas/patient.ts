@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** Corps JSON : `""` sur champs optionnels doit être traité comme absent. */
+const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
 export const sexAtBirthSchema = z.enum(["M", "F", "X", "U"]);
 export type SexAtBirth = z.infer<typeof sexAtBirthSchema>;
 
@@ -11,6 +14,7 @@ export const patientRegistrationSexSchema = z.enum(["HOMME", "FEMME", "AUTRE", "
 export const patientCreateDtoSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis"),
   lastName: z.string().min(1, "Le nom est requis"),
+  middleName: z.preprocess(emptyStrToUndefined, z.string().max(128).optional()),
   mrn: z.string().optional(),
   /** ISO date string (e.g. YYYY-MM-DD); stored as `dob` in DB. Age is never stored. */
   dateOfBirth: z
@@ -21,10 +25,19 @@ export const patientCreateDtoSchema = z.object({
   phone: z.string().min(5).max(32).optional(),
   email: z.string().email().optional(),
   nationalId: z.string().min(3).max(64).optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  country: z.string().optional(),
-  language: z.string().optional(),
+  /** Ligne unique historique ; peut être dérivée des lignes structurées si vide. */
+  address: z.preprocess(emptyStrToUndefined, z.string().max(2000).optional()),
+  addressLine1: z.preprocess(emptyStrToUndefined, z.string().max(512).optional()),
+  addressLine2: z.preprocess(emptyStrToUndefined, z.string().max(512).optional()),
+  city: z.preprocess(emptyStrToUndefined, z.string().max(256).optional()),
+  stateProvince: z.preprocess(emptyStrToUndefined, z.string().max(128).optional()),
+  postalCode: z.preprocess(emptyStrToUndefined, z.string().max(32).optional()),
+  country: z.preprocess(emptyStrToUndefined, z.string().max(128).optional()),
+  language: z.preprocess(emptyStrToUndefined, z.string().max(64).optional()),
+  emergencyContactName: z.preprocess(emptyStrToUndefined, z.string().max(256).optional()),
+  emergencyContactRelationship: z.preprocess(emptyStrToUndefined, z.string().max(128).optional()),
+  emergencyContactPhone: z.preprocess(emptyStrToUndefined, z.string().min(5).max(32).optional()),
+  adminNotes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
 });
 
 export type PatientCreateDto = z.infer<typeof patientCreateDtoSchema>;
@@ -32,15 +45,24 @@ export type PatientCreateDto = z.infer<typeof patientCreateDtoSchema>;
 export const patientUpdateDtoSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
+  middleName: z.string().max(128).optional().nullable(),
   dob: z.coerce.date().optional(),
   phone: z.string().min(5).max(32).optional().nullable(),
   email: z.string().email().optional().nullable(),
   sexAtBirth: sexAtBirthSchema.optional().nullable(),
   nationalId: z.string().min(3).max(64).optional().nullable(),
   address: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  country: z.string().optional().nullable(),
-  language: z.string().optional().nullable(),
+  addressLine1: z.string().max(512).optional().nullable(),
+  addressLine2: z.string().max(512).optional().nullable(),
+  city: z.string().max(256).optional().nullable(),
+  stateProvince: z.string().max(128).optional().nullable(),
+  postalCode: z.string().max(32).optional().nullable(),
+  country: z.string().max(128).optional().nullable(),
+  language: z.string().max(64).optional().nullable(),
+  emergencyContactName: z.string().max(256).optional().nullable(),
+  emergencyContactRelationship: z.string().max(128).optional().nullable(),
+  emergencyContactPhone: z.string().min(5).max(32).optional().nullable(),
+  adminNotes: z.string().max(8000).optional().nullable(),
 });
 
 export type PatientUpdateDto = z.infer<typeof patientUpdateDtoSchema>;
@@ -65,9 +87,6 @@ export const vitalsSchema = z.object({
 
 export type Vitals = z.infer<typeof vitalsSchema>;
 
-/** Corps JSON : `""` sur champs optionnels doit être traité comme absent (sinon `uuid` / contraintes Zod échouent). */
-const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
-
 export const encounterCreateDtoSchema = z.object({
   type: encounterTypeSchema,
   /** @deprecated Préférer physicianAssignedUserId — conservé pour compat ; sinon copié vers médecin attribué si fourni. */
@@ -86,6 +105,24 @@ export const encounterCreateDtoSchema = z.object({
 });
 
 export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
+
+/** POST /encounters/:id/intake — métadonnées d’accueil (aperçu, hors dossier clinique complet). */
+export const encounterIntakeUpsertDtoSchema = z.object({
+  arrivalAt: z.preprocess(emptyStrToUndefined, z.coerce.date().optional()),
+  modeOfArrival: z.preprocess(emptyStrToUndefined, z.string().max(256).optional()),
+  initialChiefComplaint: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),
+  initialAcuity: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().int().min(1).max(5).optional()
+  ),
+  initialRoom: z.preprocess(emptyStrToUndefined, z.string().max(64).optional()),
+});
+
+export type EncounterIntakeUpsertDto = z.infer<typeof encounterIntakeUpsertDtoSchema>;
+
+/** Alias Phase 1 — même charge utile que l’upsert (tous les champs optionnels). */
+export const encounterIntakeCreateDtoSchema = encounterIntakeUpsertDtoSchema;
+export type EncounterIntakeCreateDto = z.infer<typeof encounterIntakeCreateDtoSchema>;
 
 export const encounterOutpatientCreateDtoSchema = z.object({
   visitReason: z.preprocess(emptyStrToUndefined, z.string().max(4000).optional()),

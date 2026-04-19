@@ -20,6 +20,7 @@ import {
   encounterCloseDtoSchema,
   encounterCloseCheckDtoSchema,
   encounterCreateDtoSchema,
+  encounterIntakeUpsertDtoSchema,
   encounterOperationalUpdateDtoSchema,
   encounterOutpatientCreateDtoSchema,
   encounterProviderAddendumCreateDtoSchema,
@@ -77,6 +78,32 @@ export class EncountersController {
 
     return this.encountersService.create(
       patientId,
+      facilityId,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** Métadonnées d’accueil (aperçu inscription) — une ligne par encounter. */
+  @Post("encounters/:encounterId/intake")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async upsertEncounterIntake(
+    @Param("encounterId") encounterId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterIntakeUpsertDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.upsertEncounterIntake(
+      encounterId,
       facilityId,
       parsed.data,
       req.user?.userId,

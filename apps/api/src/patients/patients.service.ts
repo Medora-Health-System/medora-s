@@ -11,6 +11,18 @@ import {
 import type { PatientCreateDto, PatientUpdateDto } from "@medora/shared";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 
+function deriveLegacyAddressFromStructured(
+  explicit: string | undefined | null,
+  line1?: string | null,
+  line2?: string | null
+): string | undefined {
+  const trimmed = explicit?.trim();
+  if (trimmed) return trimmed;
+  const parts = [line1?.trim(), line2?.trim()].filter(Boolean) as string[];
+  if (parts.length === 0) return undefined;
+  return parts.join(", ");
+}
+
 @Injectable()
 export class PatientsService {
   constructor(
@@ -43,6 +55,7 @@ export class PatientsService {
         { lastName: { contains: query.q, mode: "insensitive" } },
         { mrn: { contains: query.q, mode: "insensitive" } },
         { phone: { contains: query.q } },
+        { addressLine1: { contains: query.q, mode: "insensitive" } },
       ];
     }
 
@@ -97,6 +110,15 @@ export class PatientsService {
       facilityId,
       registeredAtFacilityId: facilityId,
     };
+
+    const derivedAddress = deriveLegacyAddressFromStructured(
+      createData.address,
+      createData.addressLine1,
+      createData.addressLine2
+    );
+    if (derivedAddress !== undefined) {
+      createData.address = derivedAddress;
+    }
 
     // Generate MRN if missing
     if (!createData.mrn) {
@@ -181,6 +203,26 @@ export class PatientsService {
 
     if (Object.prototype.hasOwnProperty.call(updateData, "sexAtBirth")) {
       updateData.sex = sexAtBirthToPatientSex(updateData.sexAtBirth as SexAtBirth | null);
+    }
+
+    const nextAddressLine1 = Object.prototype.hasOwnProperty.call(updateData, "addressLine1")
+      ? (updateData.addressLine1 as string | null)
+      : patient.addressLine1;
+    const nextAddressLine2 = Object.prototype.hasOwnProperty.call(updateData, "addressLine2")
+      ? (updateData.addressLine2 as string | null)
+      : patient.addressLine2;
+    const nextExplicitAddress = Object.prototype.hasOwnProperty.call(updateData, "address")
+      ? (updateData.address as string | null)
+      : patient.address;
+    if (
+      Object.prototype.hasOwnProperty.call(updateData, "addressLine1") ||
+      Object.prototype.hasOwnProperty.call(updateData, "addressLine2") ||
+      Object.prototype.hasOwnProperty.call(updateData, "address")
+    ) {
+      const derived = deriveLegacyAddressFromStructured(nextExplicitAddress, nextAddressLine1, nextAddressLine2);
+      if (derived !== undefined) {
+        updateData.address = derived;
+      }
     }
 
     const updateResult = await this.prisma.patient.updateMany({

@@ -253,6 +253,7 @@ model Facility {
   triageVitalsReadings       TriageVitalsReading[]
   encounterProviderAddenda   EncounterProviderAddendum[]
   breakGlassSessions         BreakGlassSession[]
+  encounterIntakes           EncounterIntake[]
 }
 
 model Department {
@@ -386,6 +387,7 @@ model Patient {
   globalMrn              String      @unique
   firstName              String
   lastName               String
+  middleName             String?
   dob                    DateTime?
   phone                  String?
   email                  String?
@@ -393,8 +395,16 @@ model Patient {
   sex                    PatientSex  @default(UNKNOWN)
   nationalId             String?
   address                String?
+  addressLine1           String?
+  addressLine2           String?
   city                   String?
+  stateProvince          String?
+  postalCode             String?
   country                String?
+  emergencyContactName           String?
+  emergencyContactRelationship   String?
+  emergencyContactPhone          String?
+  adminNotes                     String?
   language               String?
   registeredAtFacilityId String
   /// Denormalized latest vitals JSON for chart header / offline read models; updated when triage or encounter vitals are saved.
@@ -515,6 +525,7 @@ model Encounter {
   triageVitalsReadings   TriageVitalsReading[]
   providerAddenda        EncounterProviderAddendum[]
   breakGlassSessions     BreakGlassSession[]
+  intake                 EncounterIntake?
 
   @@index([facilityId])
   @@index([patientId])
@@ -522,6 +533,26 @@ model Encounter {
   @@index([workflowState])
   @@index([physicianAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
+}
+
+/// Métadonnées d’accueil / arrivée liées à une visite — ne remplace pas le motif clinique sur Encounter.
+model EncounterIntake {
+  id                    String    @id @default(uuid())
+  encounterId           String    @unique
+  facilityId            String
+  arrivalAt             DateTime?
+  modeOfArrival         String?
+  initialChiefComplaint String?
+  initialAcuity         Int?
+  initialRoom           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([encounterId])
+  @@index([facilityId])
 }
 
 /// Time-limited emergency chart access (break-glass) — scoped to one patient (and optionally one encounter) per session.

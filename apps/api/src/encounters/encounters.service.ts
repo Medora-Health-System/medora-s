@@ -36,6 +36,7 @@ import {
   type EncounterProviderDocumentationUnlockDto,
   type EncounterUpdateDto,
   type EncounterCloseDocumentationCheckResult,
+  type EncounterIntakeUpsertDto,
   buildEncounterDispositionCandidate,
   readBillingCaptureV1,
   upsertBillingCaptureItem,
@@ -1242,6 +1243,59 @@ export class EncountersService {
     });
 
     return toEncounterClinicResponse(updated);
+  }
+
+  async upsertEncounterIntake(
+    encounterId: string,
+    facilityId: string,
+    data: EncounterIntakeUpsertDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const payload = {
+      facilityId,
+      arrivalAt: data.arrivalAt ?? null,
+      modeOfArrival: data.modeOfArrival?.trim() ? data.modeOfArrival.trim() : null,
+      initialChiefComplaint: data.initialChiefComplaint?.trim() ? data.initialChiefComplaint.trim() : null,
+      initialAcuity: data.initialAcuity ?? null,
+      initialRoom: data.initialRoom?.trim() ? data.initialRoom.trim() : null,
+    };
+
+    const row = await this.prisma.encounterIntake.upsert({
+      where: { encounterId },
+      create: {
+        encounterId,
+        ...payload,
+      },
+      update: {
+        arrivalAt: payload.arrivalAt,
+        modeOfArrival: payload.modeOfArrival,
+        initialChiefComplaint: payload.initialChiefComplaint,
+        initialAcuity: payload.initialAcuity,
+        initialRoom: payload.initialRoom,
+      },
+    });
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+      metadata: { encounterIntake: true },
+    });
+
+    return row;
   }
 }
 
