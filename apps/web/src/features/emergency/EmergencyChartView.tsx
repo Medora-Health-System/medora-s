@@ -40,6 +40,7 @@ import { EmergencyErSummaryClosureSurface } from "@/features/emergency/Emergency
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
+import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import {
   MEDORA_CARD_SHELL,
   MedoraCard,
@@ -104,6 +105,7 @@ type EncounterShell = {
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
   providerAddenda?: Array<{ id: string; text: string; createdAt: string }>;
+  notes?: string | null;
 };
 
 function patientInitials(p: PatientLite | null | undefined): string {
@@ -735,13 +737,7 @@ export function EmergencyChartView() {
             <h2 id="section-results" style={sectionTitle}>
               {t("emergencyWorkspace.sectionTitle.results")}
             </h2>
-            <EmergencyResultsPanel
-              encounterId={encounterId}
-              facilityId={fid}
-              refreshToken={resultsRefresh}
-              resultsTabHref={tabHref("results")}
-              diagnosticsTabHref={tabHref("diagnostics")}
-            />
+            <EmergencyResultsPanel encounterId={encounterId} facilityId={fid} refreshToken={resultsRefresh} />
           </section>
 
           <section aria-labelledby="section-mar">
@@ -816,25 +812,15 @@ export function EmergencyChartView() {
             <h2 id="section-notes" style={sectionTitle}>
               {t("emergencyWorkspace.sectionTitle.notes")}
             </h2>
-            <MedoraCard leftAccentColor="#475569" variant="default">
-              <MedoraCardInner>
-                <MedoraCardIdentity initials="N">
-                  <MedoraCardTitle
-                    title={t("emergencyWorkspace.notesTitle")}
-                    subline={
-                      <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                        {t("emergencyWorkspace.notesSubline")}
-                      </p>
-                    }
-                  />
-                </MedoraCardIdentity>
-                <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0}>
-                  <Link href={tabHref("notes")} style={linkPill}>
-                    {t("emergencyWorkspace.notesTabLink")}
-                  </Link>
-                </MedoraCardActions>
-              </MedoraCardInner>
-            </MedoraCard>
+            <EmergencyErNotesPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              nursingAssessment={encounter.nursingAssessment}
+              encounterNotes={encounter.notes}
+              status={encounter.status}
+              isLocked={isLocked}
+              onSaved={onEmbeddedEncounterUpdate}
+            />
           </section>
 
           <section aria-labelledby="section-nursing">
