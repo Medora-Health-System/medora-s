@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const email = process.env.ADMIN_EMAIL || "admin@medora.local";
-  const password = process.env.ADMIN_PASSWORD || "Admin123!";
+  const password = process.env.ADMIN_PASSWORD || "MedoraAdmin123!";
   const firstName = process.env.ADMIN_FIRST_NAME || "Admin";
   const lastName = process.env.ADMIN_LAST_NAME || "User";
 

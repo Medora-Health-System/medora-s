@@ -58,7 +58,7 @@ Web runs on: `http://localhost:3002`
 ### Default Credentials
 
 - Email: `admin@medora.local`
-- Password: `Admin123!`
+- Password: `MedoraAdmin123!`
 
 ### Forgot password (local testing)
 
@@ -74,7 +74,7 @@ Web runs on: `http://localhost:3002`
 To create or update the admin user:
 
 ```bash
-ADMIN_EMAIL=admin@medora.local ADMIN_PASSWORD=Admin123! pnpm --filter @medora/api create-admin
+ADMIN_EMAIL=admin@medora.local ADMIN_PASSWORD=MedoraAdmin123! pnpm --filter @medora/api create-admin
 ```
 
 ## Workflow: Track Board / Triage / Worklists
@@ -179,7 +179,7 @@ This clears the Next.js build cache and regenerates the build artifacts.
 ### Testing
 
 #### Test as ADMIN
-1. Login as `admin@medora.local` / `Admin123!`
+1. Login as `admin@medora.local` / `MedoraAdmin123!`
 2. Navigate to `/app` - should see Track Board
 3. Create an encounter from patient detail page
 4. View encounter → Triage tab → Fill triage data → Save

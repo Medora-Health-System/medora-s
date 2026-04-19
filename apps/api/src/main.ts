@@ -1,5 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { json, urlencoded } from "body-parser";
+import cookieParser = require("cookie-parser");
 import { randomUUID } from "crypto";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
@@ -7,6 +8,11 @@ import { buildCorsOriginList } from "./config/cors-origins";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  const http = app.getHttpAdapter().getInstance() as { set?: (key: string, value: unknown) => void };
+  if (typeof http?.set === "function") {
+    /** Correct client IP behind reverse proxies (rate limits, audit). */
+    http.set("trust proxy", true);
+  }
   /** Résultats labo/imagerie avec pièces jointes base64 — évite PayloadTooLargeError (limite express par défaut ~100 ko). */
   app.use(json({ limit: "50mb" }));
   app.use(urlencoded({ limit: "50mb", extended: true }));
@@ -40,7 +46,7 @@ async function bootstrap() {
     origin: corsOrigins.length > 0 ? corsOrigins : false,
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-facility-id"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-facility-id", "Cookie"],
   });
   
   // Register global exception filter

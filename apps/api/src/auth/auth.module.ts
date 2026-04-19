@@ -5,6 +5,7 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
+import { FailedLoginTracker } from "./failed-login-tracker";
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { JwtStrategy } from "./jwt.strategy";
     JwtModule.register({}) // secrets set in AuthService at sign time
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, FailedLoginTracker],
   exports: [AuthService]
 })
 export class AuthModule {}

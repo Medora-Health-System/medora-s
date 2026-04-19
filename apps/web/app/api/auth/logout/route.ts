@@ -24,10 +24,9 @@ export async function POST(request: NextRequest) {
       await fetch(`${apiUrl}/auth/logout`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          Cookie: `refreshToken=${encodeURIComponent(refreshToken)}`,
           ...(requestId ? { "x-request-id": requestId } : {}),
         },
-        body: JSON.stringify({ refreshToken }),
       });
     } catch (e) {
       console.error("[logout] Nest revoke failed:", e);

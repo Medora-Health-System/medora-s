@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
 import * as request from "supertest";
 import * as argon2 from "argon2";
+import cookieParser = require("cookie-parser");
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -19,7 +20,7 @@ describe("Auth (e2e)", () => {
     const adminEmail = "admin@medora.local";
     const roleAdminId = "r_admin";
     const facilityId = "f_dr";
-    const passwordHash = await argon2.hash("Admin123!");
+    const passwordHash = await argon2.hash("MedoraAdmin123!");
 
     const sessions = new Map<
       string,
@@ -139,6 +140,7 @@ describe("Auth (e2e)", () => {
       .compile();
 
     app = moduleRef.createNestApplication();
+    app.use(cookieParser());
     await app.init();
   });
 
@@ -149,11 +151,15 @@ describe("Auth (e2e)", () => {
   it("login returns tokens", async () => {
     const res = await request(app.getHttpServer())
       .post("/auth/login")
-      .send({ username: "admin@medora.local", password: "Admin123!" })
+      .send({ username: "admin@medora.local", password: "MedoraAdmin123!" })
       .expect(201);
 
     expect(res.body.accessToken).toBeTruthy();
-    expect(res.body.refreshToken).toBeTruthy();
+    expect(res.body.refreshToken).toBeUndefined();
+    const sc = res.headers["set-cookie"];
+    expect(sc).toBeDefined();
+    const cookieStr = Array.isArray(sc) ? sc.join(";") : String(sc);
+    expect(cookieStr).toContain("refreshToken=");
     expect(res.body.user?.facilityRoles?.length).toBeGreaterThan(0);
   });
 
@@ -164,17 +170,24 @@ describe("Auth (e2e)", () => {
   it("refresh rotates refresh token", async () => {
     const login = await request(app.getHttpServer())
       .post("/auth/login")
-      .send({ username: "admin@medora.local", password: "Admin123!" })
+      .send({ username: "admin@medora.local", password: "MedoraAdmin123!" })
       .expect(201);
+
+    const loginCookies = login.headers["set-cookie"];
+    expect(loginCookies).toBeDefined();
+    const cookieHeader = Array.isArray(loginCookies) ? loginCookies.map((c) => c.split(";")[0]).join("; ") : loginCookies;
 
     const res = await request(app.getHttpServer())
       .post("/auth/refresh")
-      .send({ refreshToken: login.body.refreshToken })
+      .set("Cookie", cookieHeader ?? "")
       .expect(201);
 
     expect(res.body.accessToken).toBeTruthy();
-    expect(res.body.refreshToken).toBeTruthy();
-    expect(res.body.refreshToken).not.toBe(login.body.refreshToken);
+    expect(res.body.refreshToken).toBeUndefined();
+    const outCookies = res.headers["set-cookie"];
+    expect(outCookies).toBeDefined();
+    const outStr = Array.isArray(outCookies) ? outCookies.join(";") : String(outCookies);
+    expect(outStr).toContain("refreshToken=");
   });
 });
 

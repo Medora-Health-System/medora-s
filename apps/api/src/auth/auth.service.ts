@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException } from "@nestjs/common";
+import { PASSWORD_POLICY_HINT_FR, passwordMeetsPolicy } from "@medora/shared";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
@@ -6,13 +7,15 @@ import { randomUUID, randomBytes } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUserDto, JwtPayload } from "./types";
 import { isPlatformPrincipalAdminEmail } from "./platform-principal";
+import { FailedLoginTracker } from "./failed-login-tracker";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly failedLogin: FailedLoginTracker
   ) {}
 
   private accessSecret() {
@@ -68,8 +71,6 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      // For database or other errors, log and throw generic unauthorized
-      console.error("validateUser error:", error);
       throw new UnauthorizedException("Invalid credentials");
     }
   }
@@ -104,8 +105,7 @@ export class AuthService {
       msppRoles = [...msppRows]
         .map((a) => a.role)
         .sort((a, b) => a.localeCompare(b, "en"));
-    } catch (err) {
-      console.error("buildAuthUserDto: msppUserRoleAssignment query failed (MSPP optional)", err);
+    } catch {
       msppRoles = [];
     }
 
@@ -153,7 +153,10 @@ export class AuthService {
     });
   }
 
-  async login(username: string, password: string) {
+  async login(username: string, password: string, client?: { ip: string }) {
+    const ip = client?.ip ?? "0.0.0.0";
+    this.failedLogin.assertIpNotLocked(ip);
+
     // Normalize identifier
     const id = username.toLowerCase().trim();
 
@@ -170,37 +173,28 @@ export class AuthService {
       }
     });
 
-    // Debug logging (dev only)
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[LOGIN DEBUG] Identifier: ${id}`);
-      console.log(`[LOGIN DEBUG] User found: ${user ? "yes" : "no"}`);
-      if (user) {
-        console.log(`[LOGIN DEBUG] User ID: ${user.id}, Email: ${user.email}, Active: ${user.isActive}`);
-      }
-    }
-
     // Check if user exists and has passwordHash
     if (!user || !user.passwordHash) {
+      this.failedLogin.recordUnknownUser(ip);
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    this.failedLogin.assertAccountNotLocked(user.email);
+
     // Check if user is active
     if (!user.isActive) {
+      this.failedLogin.recordBadPassword(ip, user.email);
       throw new UnauthorizedException("Invalid credentials");
     }
 
     // Verify password
     const ok = await argon2.verify(user.passwordHash, password);
     if (!ok) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`[LOGIN DEBUG] Password verification failed`);
-      }
+      this.failedLogin.recordBadPassword(ip, user.email);
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[LOGIN DEBUG] Password verification succeeded`);
-    }
+    this.failedLogin.reset(ip, user.email);
 
     const sessionId = randomUUID();
 
@@ -353,7 +347,7 @@ export class AuthService {
    * Révoque uniquement la session correspondant au jeton refresh présenté (déconnexion de l’appareil courant).
    * Jeton legacy sans `sid` : efface `User.refreshTokenHash` si la vérification réussit.
    */
-  async logoutWithRefreshToken(refreshToken: string) {
+  async logoutWithRefreshToken(refreshToken: string): Promise<{ ok: true; userId: string }> {
     let payload: JwtPayload;
     try {
       payload = this.jwt.verify<JwtPayload>(refreshToken, {
@@ -387,7 +381,7 @@ export class AuthService {
         where: { id: session.id },
         data: { revokedAt: new Date(), revokedReason: "logout" },
       });
-      return { ok: true };
+      return { ok: true, userId: user.id };
     }
 
     if (!user.refreshTokenHash) {
@@ -400,7 +394,7 @@ export class AuthService {
       where: { id: user.id },
       data: { refreshTokenHash: null },
     });
-    return { ok: true };
+    return { ok: true, userId: user.id };
   }
 
   async me(userId: string) {
@@ -408,6 +402,10 @@ export class AuthService {
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    if (!passwordMeetsPolicy(newPassword)) {
+      throw new BadRequestException(PASSWORD_POLICY_HINT_FR);
+    }
+
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
     if (!user || !user.isActive) {
@@ -479,6 +477,10 @@ export class AuthService {
   }
 
   async resetPassword(id: string, token: string, newPassword: string): Promise<{ message: string }> {
+    if (!passwordMeetsPolicy(newPassword)) {
+      throw new BadRequestException(PASSWORD_POLICY_HINT_FR);
+    }
+
     const row = await this.prisma.passwordResetToken.findUnique({
       where: { id },
       include: { user: { select: { id: true, isActive: true } } },

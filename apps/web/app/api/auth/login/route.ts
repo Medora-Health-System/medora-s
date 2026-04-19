@@ -8,6 +8,7 @@ import {
 } from "@/lib/server/authCookieOptions";
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
+import { extractRefreshTokenFromApiSetCookie } from "@/lib/server/extractRefreshTokenFromApiSetCookie";
 
 function isNetworkError(err: unknown): boolean {
   if (err instanceof TypeError && err.message?.includes("fetch")) return true;
@@ -56,9 +57,12 @@ export async function POST(request: NextRequest) {
 
     if (!r.ok) {
       const errorData = await r.json().catch(() => ({ error: "Échec de la connexion" }));
-      const message = r.status === 401
-        ? "Identifiants incorrects."
-        : (errorData.message ?? errorData.error ?? "Échec de la connexion");
+      const message =
+        r.status === 401
+          ? "Identifiants incorrects."
+          : r.status === 429
+            ? "Trop de tentatives. Réessayez plus tard."
+            : (errorData.message ?? errorData.error ?? "Échec de la connexion");
       return withRequestId(NextResponse.json(
         { error: typeof message === "string" ? message : "Échec de la connexion" },
         { status: r.status }
@@ -75,7 +79,8 @@ export async function POST(request: NextRequest) {
       ));
     }
 
-    if (!json.accessToken || !json.refreshToken) {
+    const refreshFromCookie = extractRefreshTokenFromApiSetCookie(r) ?? json.refreshToken;
+    if (!json.accessToken || !refreshFromCookie) {
       return withRequestId(NextResponse.json(
         { error: "Réponse du serveur invalide. Réessayez plus tard." },
         { status: 502 }
@@ -90,7 +95,7 @@ export async function POST(request: NextRequest) {
     res.cookies.set("medora_session", json.accessToken, sessionCookieOpts);
     res.cookies.set("accessToken", json.accessToken, sessionCookieOpts);
 
-    res.cookies.set("refreshToken", json.refreshToken, refreshTokenCookieOptions());
+    res.cookies.set("refreshToken", refreshFromCookie, refreshTokenCookieOptions());
 
     const sortedRoles = [...(json.user?.facilityRoles ?? [])].sort((a, b) =>
       String(a.facilityId).localeCompare(String(b.facilityId), "en")

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
@@ -23,9 +24,19 @@ import { FollowUpsModule } from "./follow-ups/follow-ups.module";
 import { AdminModule } from "./admin/admin.module";
 import { MedicationAdministrationModule } from "./medication-administration/medication-administration.module";
 import { MsppModule } from "./mspp/mspp.module";
+import { FhirModule } from "./fhir/fhir.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
+  ThrottlerModule.forRoot({
+    throttlers: [
+      {
+        name: "default",
+        ttl: 60_000,
+        limit: 10_000,
+      },
+    ],
+  }),
   PrismaModule,
   AuthModule,
   PatientsModule,
@@ -48,6 +59,7 @@ const imports = [
   AdminModule,
   MedicationAdministrationModule,
   MsppModule,
+  FhirModule,
 ];
 
 @Module({

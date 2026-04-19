@@ -6,6 +6,7 @@ import {
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
+import { extractRefreshTokenFromApiSetCookie } from "@/lib/server/extractRefreshTokenFromApiSetCookie";
 
 export type RefreshedTokens = {
   accessToken: string;
@@ -30,12 +31,13 @@ export async function refreshAccessTokenFromCookies(requestId?: string): Promise
 
   let r: Response;
   try {
-    const refreshHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    const refreshHeaders: Record<string, string> = {
+      Cookie: `refreshToken=${encodeURIComponent(refreshToken)}`,
+    };
     if (requestId) refreshHeaders["x-request-id"] = requestId;
     r = await fetch(`${apiUrl}/auth/refresh`, {
       method: "POST",
       headers: refreshHeaders,
-      body: JSON.stringify({ refreshToken }),
     });
   } catch (e) {
     console.error("[auth] refresh fetch error:", e);
@@ -49,7 +51,8 @@ export async function refreshAccessTokenFromCookies(requestId?: string): Promise
     return null;
   }
 
-  if (!r.ok || !json.accessToken || !json.refreshToken) {
+  const rotated = extractRefreshTokenFromApiSetCookie(r) ?? json.refreshToken;
+  if (!r.ok || !json.accessToken || !rotated) {
     if (process.env.NODE_ENV !== "production") {
       console.warn("[auth] refresh Nest refusé:", r.status);
     }
@@ -60,7 +63,7 @@ export async function refreshAccessTokenFromCookies(requestId?: string): Promise
     console.log("[auth] refresh Nest OK");
   }
 
-  return { accessToken: json.accessToken, refreshToken: json.refreshToken };
+  return { accessToken: json.accessToken, refreshToken: rotated };
 }
 
 export function applyAuthCookiesToResponse(

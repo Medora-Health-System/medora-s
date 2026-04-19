@@ -10,3 +10,8 @@ export function assertZodBody<T>(parsed: SafeParseReturnType<unknown, T>): T {
   const msg = parsed.error.issues[0]?.message ?? "Données invalides";
   throw new BadRequestException(msg, { cause: parsed.error });
 }
+
+/** Query / param validation (same behavior as {@link assertZodBody}). */
+export function assertZod<T>(parsed: SafeParseReturnType<unknown, T>): T {
+  return assertZodBody(parsed);
+}

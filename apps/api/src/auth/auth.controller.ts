@@ -1,17 +1,53 @@
-import { Body, Controller, Get, Post, Req, UseGuards, BadRequestException, UnauthorizedException } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+  BadRequestException,
+  UnauthorizedException,
+  HttpException,
+  HttpStatus,
+} from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { AuthGuard } from "@nestjs/passport";
+import type { Request, Response } from "express";
 import { loginDtoSchema } from "@medora/shared";
 import { AuthService } from "./auth.service";
 import { forgotPasswordDtoSchema } from "./dto/forgot-password.dto";
 import { resetPasswordDtoSchema } from "./dto/reset-password.dto";
+import { createStructuredLogger } from "../common/logging/structured-logger";
+import {
+  REFRESH_TOKEN_COOKIE_NAME,
+  refreshTokenCookieOptions,
+  clearRefreshTokenCookieOptions,
+} from "./auth-cookie-options";
+import {
+  AUTH_THROTTLE_FORGOT_PASSWORD,
+  AUTH_THROTTLE_LOGIN,
+  AUTH_THROTTLE_REFRESH,
+} from "./auth-throttle.config";
+
+const authLog = createStructuredLogger("AuthController");
 
 @Controller("auth")
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  private clientIp(req: Request): string {
+    const xf = req.headers["x-forwarded-for"];
+    if (typeof xf === "string" && xf.trim()) {
+      return xf.split(",")[0].trim();
+    }
+    return req.ip || req.socket?.remoteAddress || "0.0.0.0";
+  }
+
   @Post("login")
-  async login(@Body() body: unknown, @Req() req: any): Promise<any> {
-    let attemptedEmail: string | undefined;
+  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE_LOGIN)
+  async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<any> {
     try {
       const parsed = loginDtoSchema.safeParse(body);
       if (!parsed.success) {
@@ -19,59 +55,58 @@ export class AuthController {
       }
 
       const { username, password } = parsed.data;
-      attemptedEmail = username.toLowerCase().trim();
 
-      const result = await this.auth.login(username, password);
-      console.log("[AUTH] LOGIN_SUCCESS", {
+      const result = await this.auth.login(username, password, { ip: this.clientIp(req) });
+      res.cookie(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken, refreshTokenCookieOptions());
+      authLog.log("auth_login_success", {
         userId: result.user.id,
-        email: result.user.username,
-        requestId: req.requestId,
-        timestamp: new Date().toISOString(),
+        requestId: (req as { requestId?: string }).requestId,
       });
-      return result;
+      return { accessToken: result.accessToken, user: result.user };
     } catch (error) {
-      console.warn("[AUTH] LOGIN_FAILED", {
-        email: attemptedEmail,
-        requestId: req.requestId,
-        timestamp: new Date().toISOString(),
+      authLog.warn("auth_login_failed", {
+        requestId: (req as { requestId?: string }).requestId,
       });
-      // Re-throw HttpExceptions (BadRequestException, UnauthorizedException) as-is
       if (error instanceof BadRequestException || error instanceof UnauthorizedException) {
         throw error;
       }
-      // For unexpected errors, log and throw generic unauthorized
-      console.error("Login controller error:", error);
+      if (error instanceof HttpException && error.getStatus() === HttpStatus.TOO_MANY_REQUESTS) {
+        throw error;
+      }
+      authLog.error("auth_login_unexpected_error", {
+        requestId: (req as { requestId?: string }).requestId,
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
       throw new UnauthorizedException("Invalid credentials");
     }
   }
 
   @Post("refresh")
-  async refresh(@Body() body: { refreshToken?: string }) {
-    if (!body?.refreshToken) return { error: "refreshToken required" };
-    return this.auth.refresh(body.refreshToken);
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const raw = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME];
+    const token = typeof raw === "string" ? raw.trim() : "";
+    if (!token) {
+      throw new UnauthorizedException("Refresh token required");
+    }
+    const result = await this.auth.refresh(token);
+    res.cookie(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken, refreshTokenCookieOptions());
+    return { accessToken: result.accessToken, user: result.user };
   }
 
-  /** Révoque la session refresh correspondant au cookie (un appareil à la fois). */
   @Post("logout")
-  async logout(@Body() body: { refreshToken?: string }, @Req() req: any) {
-    const rt = typeof body?.refreshToken === "string" ? body.refreshToken.trim() : "";
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const raw = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME];
+    const rt = typeof raw === "string" ? raw.trim() : "";
     if (!rt) {
-      throw new BadRequestException("refreshToken required");
+      throw new BadRequestException("Session required");
     }
     const result = await this.auth.logoutWithRefreshToken(rt);
-    let userId: string | undefined;
-    try {
-      const payload = JSON.parse(Buffer.from(rt.split(".")[1], "base64url").toString("utf8")) as { sub?: string };
-      userId = typeof payload.sub === "string" ? payload.sub : undefined;
-    } catch {
-      userId = undefined;
-    }
-    console.log("[AUTH] LOGOUT", {
-      userId,
-      requestId: req.requestId,
-      timestamp: new Date().toISOString(),
+    res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, clearRefreshTokenCookieOptions());
+    authLog.log("auth_logout", {
+      userId: result.userId,
+      requestId: (req as { requestId?: string }).requestId,
     });
-    return result;
+    return { ok: result.ok };
   }
 
   @Get("me")
@@ -85,7 +120,7 @@ export class AuthController {
   async changePassword(@Req() req: any, @Body() body: any) {
     const { currentPassword, newPassword } = body;
 
-    if (!currentPassword || !newPassword || newPassword.length < 8) {
+    if (!currentPassword || !newPassword) {
       throw new BadRequestException("Données invalides");
     }
 
@@ -93,6 +128,8 @@ export class AuthController {
   }
 
   @Post("forgot-password")
+  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE_FORGOT_PASSWORD)
   async forgotPassword(@Body() body: unknown) {
     const parsed = forgotPasswordDtoSchema.safeParse(body);
     if (!parsed.success) {
@@ -112,4 +149,3 @@ export class AuthController {
     return this.auth.resetPassword(id, token, newPassword);
   }
 }
-

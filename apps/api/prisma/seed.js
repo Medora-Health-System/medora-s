@@ -11,7 +11,7 @@ const haiti_imaging_studies_1 = require("./data/haiti-imaging-studies");
 const haiti_geo_departments_1 = require("./data/haiti-geo-departments");
 const haiti_seed_communes_1 = require("./data/haiti-seed-communes");
 const prisma = new client_1.PrismaClient();
-const DEMO_PASSWORD = "Admin123!";
+const DEMO_PASSWORD = "MedoraAdmin123!";
 const SEED_MARKER = "SEED_DEMO_HAITI";
 async function main() {
     const roles = await Promise.all([
@@ -71,7 +71,7 @@ async function main() {
             });
         }
     }
-    const passwordHash = await argon2.hash("Admin123!");
+    const passwordHash = await argon2.hash("MedoraAdmin123!");
     const adminUser = await prisma.user.upsert({
         where: { email: "admin@medora.local" },
         update: { firstName: "Admin", lastName: "User", isActive: true, canCreateFacilities: true },

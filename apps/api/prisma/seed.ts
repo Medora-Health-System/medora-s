@@ -25,7 +25,7 @@ import { HAITI_SEED_COMMUNES } from "./data/haiti-seed-communes";
 
 const prisma = new PrismaClient();
 
-const DEMO_PASSWORD = "Admin123!";
+const DEMO_PASSWORD = "MedoraAdmin123!";
 const SEED_MARKER = "SEED_DEMO_HAITI";
 
 async function main() {
@@ -113,8 +113,8 @@ async function main() {
 
   // Admin user (deterministic credentials for local dev) — facility ADMIN only (not platform principal)
   // Username/email: admin@medora.local
-  // Password: Admin123!
-  const passwordHash = await argon2.hash("Admin123!");
+  // Password: MedoraAdmin123!
+  const passwordHash = await argon2.hash(DEMO_PASSWORD);
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@medora.local" },
     update: { firstName: "Admin", lastName: "User", isActive: true, canCreateFacilities: false },
