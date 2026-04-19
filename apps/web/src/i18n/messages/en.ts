@@ -1880,7 +1880,7 @@ export default {
     loadError: "Unable to load insurance.",
     saveError: "Unable to save.",
     payerSearch: "Payer search",
-    payerPlaceholder: "Type at least 2 characters…",
+    payerPlaceholder: "e.g. Aetna, Cigna, Blue Cross Blue Shield — type 2+ letters",
     freeTextPayer: "Free text (not in catalog)",
     freeTextPlaceholder: "Payer or plan administrator name",
     payerLabel: "Payer",

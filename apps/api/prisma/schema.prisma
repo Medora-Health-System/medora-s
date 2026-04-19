@@ -267,7 +267,8 @@ model InsurancePayer {
   id             String   @id @default(uuid())
   name           String
   normalizedName String
-  code           String?
+  /// Stable catalog key for idempotent seed (e.g. US_CAT_AETNA). Optional for legacy / manual rows.
+  code           String?  @unique
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

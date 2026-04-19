@@ -1831,7 +1831,7 @@ export default {
     loadError: "Impossible de charger l’assurance.",
     saveError: "Enregistrement impossible.",
     payerSearch: "Payeur (recherche)",
-    payerPlaceholder: "Tapez 2 caractères ou plus…",
+    payerPlaceholder: "ex. Aetna, Cigna, Blue Cross Blue Shield — 2 caractères ou plus",
     freeTextPayer: "Saisie libre (hors catalogue)",
     freeTextPlaceholder: "Nom du payeur ou organisme",
     payerLabel: "Payeur",
