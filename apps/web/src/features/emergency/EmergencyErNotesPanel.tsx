@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import { apiFetch } from "@/lib/apiClient";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch, parseApiResponse } from "@/lib/apiClient";
+import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -14,6 +15,7 @@ import {
   type ErNoteCategory,
   buildErNotesPartsForUi,
   mergeErNotesV1IntoNursingAssessment,
+  readErNotesCategoryMetaFromNursingAssessment,
 } from "@/features/emergency/erNotesV1";
 
 const CATEGORIES: ErNoteCategory[] = ["provider", "nursing", "technician", "other"];
@@ -35,7 +37,7 @@ export function EmergencyErNotesPanel({
   isLocked: boolean;
   onSaved: () => void | Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [active, setActive] = useState<ErNoteCategory>("provider");
   const [parts, setParts] = useState<Record<ErNoteCategory, string>>(() =>
     buildErNotesPartsForUi(nursingAssessment, encounterNotes)
@@ -46,6 +48,12 @@ export function EmergencyErNotesPanel({
   useEffect(() => {
     setParts(buildErNotesPartsForUi(nursingAssessment, encounterNotes));
   }, [nursingAssessment, encounterNotes]);
+
+  const categoryMeta = useMemo(
+    () => readErNotesCategoryMetaFromNursingAssessment(nursingAssessment),
+    [nursingAssessment]
+  );
+  const activeAttribution = categoryMeta[active];
 
   const categoryLabel = useCallback(
     (c: ErNoteCategory) => t(`emergencyWorkspace.erNotesCategory.${c}`),
@@ -63,7 +71,19 @@ export function EmergencyErNotesPanel({
     if (readOnly) return;
     setSaving(true);
     try {
-      const mergedNav = mergeErNotesV1IntoNursingAssessment(nursingAssessment, parts);
+      let savedByDisplayName = t("emergencyDisposition.signerFallback");
+      try {
+        const meRes = await fetch("/api/auth/me");
+        const me = await parseApiResponse(meRes);
+        if (me && typeof me === "object" && !Array.isArray(me)) {
+          const fn = (me as { fullName?: string }).fullName?.trim();
+          if (fn) savedByDisplayName = fn;
+        }
+      } catch {
+        /* repli */
+      }
+      const saveMeta = { savedAt: new Date().toISOString(), savedByDisplayName };
+      const mergedNav = mergeErNotesV1IntoNursingAssessment(nursingAssessment, parts, saveMeta);
       const res = await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -172,6 +192,17 @@ export function EmergencyErNotesPanel({
             }}
             placeholder={t("encounterChrome.notesTab.placeholder")}
           />
+
+          {activeAttribution ? (
+            <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+              {t("emergencyWorkspace.erNotesAttribution")
+                .replace("{name}", activeAttribution.savedByDisplayName)
+                .replace(
+                  "{datetime}",
+                  formatEncounterChromeDateTime(activeAttribution.savedAt, language)
+                )}
+            </p>
+          ) : null}
 
           <button
             type="button"

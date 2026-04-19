@@ -11,11 +11,19 @@ const MAX_FIELD = 12000;
 
 export type ErNoteCategory = "provider" | "nursing" | "technician" | "other";
 
+/** Per-category last save (same pattern as erDispositionV1.signature). */
+export type ErNoteCategoryMeta = {
+  savedAt: string;
+  savedByDisplayName: string;
+};
+
 export type ErNotesV1Stored = {
   provider?: string;
   nursing?: string;
   technician?: string;
   other?: string;
+  /** Set for each non-empty category on save — who last edited that category’s text. */
+  categoryLastSaved?: Partial<Record<ErNoteCategory, ErNoteCategoryMeta>>;
 };
 
 const CATEGORIES: ErNoteCategory[] = ["provider", "nursing", "technician", "other"];
@@ -33,6 +41,12 @@ function strField(v: unknown, max: number): string {
   return v.trim().slice(0, max);
 }
 
+function isCategoryMeta(v: unknown): v is ErNoteCategoryMeta {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.savedAt === "string" && typeof o.savedByDisplayName === "string";
+}
+
 /** Read structured blob from nursingAssessment (no legacy migration). */
 export function readErNotesV1FromNursingAssessment(nursingAssessment: unknown): Record<ErNoteCategory, string> {
   const out = emptyParts();
@@ -44,6 +58,32 @@ export function readErNotesV1FromNursingAssessment(nursingAssessment: unknown): 
   const o = raw as Record<string, unknown>;
   for (const k of CATEGORIES) {
     out[k] = strField(o[k], MAX_FIELD);
+  }
+  return out;
+}
+
+/** Last-save attribution per category (for UI). */
+export function readErNotesCategoryMetaFromNursingAssessment(
+  nursingAssessment: unknown
+): Partial<Record<ErNoteCategory, ErNoteCategoryMeta>> {
+  const out: Partial<Record<ErNoteCategory, ErNoteCategoryMeta>> = {};
+  if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) {
+    return out;
+  }
+  const raw = (nursingAssessment as Record<string, unknown>)[ER_NOTES_V1_KEY];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  const o = raw as Record<string, unknown>;
+  const m = o.categoryLastSaved;
+  if (!m || typeof m !== "object" || Array.isArray(m)) return out;
+  const box = m as Record<string, unknown>;
+  for (const k of CATEGORIES) {
+    const v = box[k];
+    if (isCategoryMeta(v)) {
+      out[k] = {
+        savedAt: v.savedAt.trim(),
+        savedByDisplayName: v.savedByDisplayName.trim().slice(0, 200),
+      };
+    }
   }
   return out;
 }
@@ -84,26 +124,50 @@ export function buildErNotesPartsForUi(
   return { ...emptyParts(), provider: n.trim().slice(0, MAX_FIELD) };
 }
 
+export type ErNotesSaveMeta = {
+  savedAt: string;
+  savedByDisplayName: string;
+};
+
 /**
  * Merge ER notes into nursingAssessment; preserves all other keys (erDispositionV1, etc.).
+ * Records `categoryLastSaved` for each non-empty category using the current save meta.
  */
 export function mergeErNotesV1IntoNursingAssessment(
   previousNursingAssessment: unknown,
-  parts: Record<ErNoteCategory, string>
+  parts: Record<ErNoteCategory, string>,
+  saveMeta: ErNotesSaveMeta
 ): Record<string, unknown> {
   const base =
     previousNursingAssessment && typeof previousNursingAssessment === "object" && !Array.isArray(previousNursingAssessment)
       ? { ...(previousNursingAssessment as Record<string, unknown>) }
       : {};
-  const stored: ErNotesV1Stored = {};
+  const textPayload: Partial<Record<ErNoteCategory, string>> = {};
   for (const k of CATEGORIES) {
     const v = parts[k].trim().slice(0, MAX_FIELD);
-    if (v) (stored as Record<string, string>)[k] = v;
+    if (v) textPayload[k] = v;
   }
-  if (Object.keys(stored).length === 0) {
+
+  const categoryLastSaved: Partial<Record<ErNoteCategory, ErNoteCategoryMeta>> = {};
+  for (const k of CATEGORIES) {
+    if (textPayload[k]) {
+      categoryLastSaved[k] = {
+        savedAt: saveMeta.savedAt,
+        savedByDisplayName: saveMeta.savedByDisplayName,
+      };
+    }
+  }
+
+  const hasText = Object.keys(textPayload).length > 0;
+  if (!hasText) {
     delete base[ER_NOTES_V1_KEY];
-  } else {
-    base[ER_NOTES_V1_KEY] = stored;
+    return base;
   }
+
+  const blob: ErNotesV1Stored = {
+    ...textPayload,
+    ...(Object.keys(categoryLastSaved).length > 0 ? { categoryLastSaved } : {}),
+  };
+  base[ER_NOTES_V1_KEY] = blob;
   return base;
 }

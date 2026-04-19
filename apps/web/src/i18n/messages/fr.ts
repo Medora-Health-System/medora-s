@@ -2027,6 +2027,7 @@ export default {
     notesSubline: "Notes infirmières et court texte — dossier complet.",
     erNotesSubline: "Notes libres par rôle — enregistrées dans l’évaluation infirmière (urgences).",
     erNotesCategoryAria: "Catégories de notes",
+    erNotesAttribution: "Dernier enregistrement par {name} — {datetime}",
     erNotesCategory: {
       provider: "Note médecin",
       nursing: "Note infirmière",

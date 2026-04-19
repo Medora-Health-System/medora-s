@@ -2077,6 +2077,7 @@ export default {
     notesSubline: "Nursing notes and short text — full chart.",
     erNotesSubline: "Free-text notes by role — stored in the encounter nursing assessment (ER).",
     erNotesCategoryAria: "Note categories",
+    erNotesAttribution: "Last saved by {name} — {datetime}",
     erNotesCategory: {
       provider: "Provider note",
       nursing: "Nursing note",
