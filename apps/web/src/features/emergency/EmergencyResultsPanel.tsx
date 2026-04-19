@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   EncounterResultsTab,
   type EncounterLabRadRow,
@@ -14,7 +13,6 @@ import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import {
   MedoraCard,
-  MedoraCardActions,
   MedoraCardBadge,
   MedoraCardBadgeRow,
   MedoraCardIdentity,
@@ -22,26 +20,6 @@ import {
   MedoraCardTitle,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
-
-const linkPill: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "5px 10px",
-  borderRadius: 8,
-  border: "1px solid #bfdbfe",
-  backgroundColor: "#eff6ff",
-  color: "#1d4ed8",
-  fontSize: 12,
-  fontWeight: 600,
-  textDecoration: "none",
-};
-
-const linkPillIndigo: React.CSSProperties = {
-  ...linkPill,
-  borderColor: "#c7d2fe",
-  backgroundColor: "#eef2ff",
-};
 
 const sectionLabel: React.CSSProperties = {
   margin: 0,
@@ -167,14 +145,10 @@ export function EmergencyResultsPanel({
   encounterId,
   facilityId,
   refreshToken,
-  resultsTabHref,
-  diagnosticsTabHref,
 }: {
   encounterId: string;
   facilityId: string;
   refreshToken: number;
-  resultsTabHref: string;
-  diagnosticsTabHref: string;
 }) {
   const { t, language } = useI18n();
   const [snap, setSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
@@ -198,23 +172,6 @@ export function EmergencyResultsPanel({
               }
             />
           </MedoraCardIdentity>
-
-          <MedoraCardActions railBorderTopColor="#e2e8f0" gap={6} minWidth={0} alignItems="stretch" inline>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-              <Link href={resultsTabHref} style={linkPill}>
-                {t("emergencyResultsPanel.linkResultsTab")}
-              </Link>
-              <Link href={diagnosticsTabHref} style={linkPillIndigo}>
-                {t("emergencyResultsPanel.linkDiagnosticsTab")}
-              </Link>
-              <Link href="/app/lab" style={linkPill}>
-                {t("emergencyResultsPanel.linkLabQueue")}
-              </Link>
-              <Link href="/app/radiology" style={linkPill}>
-                {t("emergencyResultsPanel.linkRadiologyQueue")}
-              </Link>
-            </div>
-          </MedoraCardActions>
 
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
             {!model.ready ? (
