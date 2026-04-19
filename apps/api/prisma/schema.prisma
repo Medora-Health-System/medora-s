@@ -111,6 +111,18 @@ enum EncounterStatus {
   CANCELLED
 }
 
+/// Explicit clinical / operational pathway (distinct from `EncounterStatus` lifecycle).
+enum EncounterWorkflowState {
+  ARRIVED
+  TRIAGE
+  IN_TREATMENT
+  RESULTS_PENDING
+  DISPOSITION
+  DISCHARGE_READY
+  FINALIZED
+  CLOSED
+}
+
 enum DischargeStatus {
   DISCHARGED
   AMA
@@ -129,6 +141,16 @@ enum OrderStatus {
   CANCELLED
   PENDING
   SIGNED
+}
+
+/// Closed-loop line-item lifecycle (distinct from legacy `OrderStatus` values like RESULTED / VERIFIED).
+enum OrderItemLifecycleState {
+  ORDERED
+  ACKNOWLEDGED
+  IN_PROGRESS
+  COMPLETED
+  REVIEWED
+  CANCELLED
 }
 
 enum OrderPriority {
@@ -430,6 +452,7 @@ model Encounter {
   providerId String?
   type       EncounterType
   status     EncounterStatus @default(OPEN)
+  workflowState EncounterWorkflowState @default(ARRIVED)
 
   chiefComplaint    String?
   triageAcuity      Int?
@@ -468,6 +491,8 @@ model Encounter {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  /// Optimistic locking — increment on every successful mutating write.
+  version   Int      @default(1)
 
   patient                Patient                 @relation(fields: [patientId], references: [id], onDelete: Restrict)
   facility               Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
@@ -487,6 +512,7 @@ model Encounter {
   @@index([facilityId])
   @@index([patientId])
   @@index([status])
+  @@index([workflowState])
   @@index([physicianAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
 }
@@ -567,6 +593,8 @@ model OrderItem {
   completedByUserId String?
   completedByNurse User?     @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
   status          OrderStatus @default(PENDING)
+  /// Explicit visit lifecycle — kept in sync with `status` in application code; `REVIEWED` = chart/review closure.
+  lifecycleState  OrderItemLifecycleState @default(ORDERED)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -577,6 +605,7 @@ model OrderItem {
 
   @@index([orderId])
   @@index([status])
+  @@index([lifecycleState])
   @@index([catalogItemType])
   @@index([catalogItemId])
   @@index([completedByUserId])

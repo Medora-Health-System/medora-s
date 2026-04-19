@@ -116,7 +116,34 @@ export const admissionSummaryFieldsSchema = z.object({
 
 export type AdmissionSummaryFields = z.infer<typeof admissionSummaryFieldsSchema>;
 
+/** Full Prisma `EncounterWorkflowState` (read model / responses). */
+export const encounterWorkflowStateSchema = z.enum([
+  "ARRIVED",
+  "TRIAGE",
+  "IN_TREATMENT",
+  "RESULTS_PENDING",
+  "DISPOSITION",
+  "DISCHARGE_READY",
+  "FINALIZED",
+  "CLOSED",
+]);
+
+export type EncounterWorkflowStateDto = z.infer<typeof encounterWorkflowStateSchema>;
+
+/** PATCH: `CLOSED` is set only by encounter close — not via generic update. */
+export const encounterWorkflowTransitionSchema = z.enum([
+  "ARRIVED",
+  "TRIAGE",
+  "IN_TREATMENT",
+  "RESULTS_PENDING",
+  "DISPOSITION",
+  "DISCHARGE_READY",
+  "FINALIZED",
+]);
+
 export const encounterUpdateDtoSchema = z.object({
+  /** Explicit workflow transition; validated server-side against the state machine. */
+  workflowState: encounterWorkflowTransitionSchema.optional(),
   visitReason: z.string().max(4000).optional().nullable(),
   chiefComplaint: z.string().max(4000).optional().nullable(),
   triageAcuity: z.number().int().min(1).max(5).optional().nullable(),

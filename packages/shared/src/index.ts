@@ -1,6 +1,7 @@
 export * from "./constants/roles.js";
 export * from "./constants/languages.js";
 
+export * from "./password-policy.js";
 export * from "./schemas/auth.js";
 export * from "./schemas/patient.js";
 export * from "./schemas/adminUsers.js";
