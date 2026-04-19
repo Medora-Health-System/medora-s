@@ -460,12 +460,19 @@ export function EmergencyErSummaryClosureSurface({
             <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#92400e" }}>
               {t("emergencyErClosure.deficiencyTitle")}
             </h2>
+            <p style={{ margin: "10px 0 0 0", fontSize: 14, color: "#475569", lineHeight: 1.5 }}>
+              {t("encounterChrome.modals.documentationDeficiencyLead")}
+            </p>
             <ul style={{ margin: "12px 0 0 0", paddingLeft: 18, fontSize: 13, color: "#451a03", lineHeight: 1.45 }}>
-              {deficiencies.map((d) => (
-                <li key={d.code} style={{ marginBottom: 4 }}>
-                  {d.labelFr}
-                </li>
-              ))}
+              {deficiencies.map((d) => {
+                const k = `encounterChrome.modals.documentationDeficiencies.${d.code}`;
+                const label = t(k);
+                return (
+                  <li key={d.code} style={{ marginBottom: 4 }}>
+                    {label !== k ? label : d.labelFr}
+                  </li>
+                );
+              })}
             </ul>
             <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
               <button

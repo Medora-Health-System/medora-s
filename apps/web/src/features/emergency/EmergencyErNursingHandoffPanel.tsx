@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import Link from "next/link";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
 import { parseAdmissionSummaryForChart, parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
@@ -24,27 +23,6 @@ import {
   readDischargeSortieExecutionFromEncounter,
   readDispositionSignatureFromEncounter,
 } from "@/features/emergency/emergencyDispositionV1";
-
-const linkPill: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "7px 12px",
-  borderRadius: 10,
-  border: "1px solid #bae6fd",
-  backgroundColor: "#f0f9ff",
-  color: "#0369a1",
-  fontSize: 12,
-  fontWeight: 600,
-  textDecoration: "none",
-};
-
-const linkMuted: React.CSSProperties = {
-  ...linkPill,
-  borderColor: "#e2e8f0",
-  backgroundColor: "#f8fafc",
-  color: "#475569",
-};
 
 type PatientLite = {
   firstName?: string | null;
@@ -85,7 +63,7 @@ const inputNote: React.CSSProperties = {
 };
 
 /**
- * Suite opérationnelle après décision médicale : lecture dossier partagé + liens d’exécution (MAR, impression sortie, hospitalisation).
+ * Suite opérationnelle après décision médicale : lecture dossier partagé + actions synthèse / impression sortie.
  * Exécution sortie infirmière (sortie à domicile) : persistée sous `nursingAssessment.erDispositionExecutionV1` (PATCH consultation).
  */
 export function EmergencyErNursingHandoffPanel({
@@ -94,13 +72,7 @@ export function EmergencyErNursingHandoffPanel({
   facilityId,
   onSaved,
   canRecordDischargeSortieExecution,
-  genericEncounterHref,
-  summaryTabHref,
   onSummaryClosureClick,
-  hospitalisationBoardHref,
-  marTabHref,
-  ordersTabHref,
-  resultsTabHref,
   facilityName,
 }: {
   encounter: EncounterLite;
@@ -110,15 +82,8 @@ export function EmergencyErNursingHandoffPanel({
   onSaved?: () => void | Promise<void>;
   /** RN / ADMIN : bouton de confirmation d’exécution sortie. */
   canRecordDischargeSortieExecution?: boolean;
-  genericEncounterHref: string;
   /** When set, Summary & closure stays in the ER workflow (no navigation to the generic encounter page). */
   onSummaryClosureClick?: () => void;
-  /** Fallback when `onSummaryClosureClick` is not provided. */
-  summaryTabHref?: string;
-  hospitalisationBoardHref: string;
-  marTabHref: string;
-  ordersTabHref: string;
-  resultsTabHref: string;
   facilityName?: string | null;
 }) {
   const { t, language } = useI18n();
@@ -416,52 +381,46 @@ export function EmergencyErNursingHandoffPanel({
           </p>
         ) : null}
 
-        <MedoraCardActions railBorderTopColor="#e2e8f0" gap={6} minWidth={0} alignItems="flex-start">
-          <Link href={ordersTabHref} style={linkPill}>
-            {t("emergencyErNursingHandoff.linkOrders")}
-          </Link>
-          <Link href={marTabHref} style={linkPill}>
-            {t("emergencyErNursingHandoff.linkMar")}
-          </Link>
-          <Link href={resultsTabHref} style={linkPill}>
-            {t("emergencyErNursingHandoff.linkResults")}
-          </Link>
-          {onSummaryClosureClick ? (
-            <button
-              type="button"
-              onClick={onSummaryClosureClick}
-              style={{ ...linkMuted, cursor: "pointer", font: "inherit" }}
-            >
-              {t("emergencyErNursingHandoff.linkSummaryClosure")}
-            </button>
-          ) : summaryTabHref ? (
-            <Link href={summaryTabHref} style={linkMuted}>
-              {t("emergencyErNursingHandoff.linkSummaryClosure")}
-            </Link>
-          ) : null}
-          <Link href={hospitalisationBoardHref} style={{ ...linkMuted, borderColor: "#e9d5ff", backgroundColor: "#faf5ff", color: "#6b21a8" }}>
-            {t("emergencyErNursingHandoff.linkHospBoard")}
-          </Link>
-          <Link href={genericEncounterHref} style={{ ...linkMuted, fontSize: 11 }}>
-            {t("emergencyErNursingHandoff.linkMedoraDossier")}
-          </Link>
+        <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0} alignItems="flex-start">
           <button
             type="button"
             onClick={handlePrint}
             disabled={!encounter.patient || !encounter.createdAt}
             style={{
-              padding: "7px 12px",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "8px 14px",
               borderRadius: 10,
               border: "1px solid #cbd5e1",
-              backgroundColor: encounter.patient && encounter.createdAt ? "#fff" : "#f1f5f9",
+              backgroundColor: encounter.patient && encounter.createdAt ? "#f8fafc" : "#f1f5f9",
               color: encounter.patient && encounter.createdAt ? "#334155" : "#94a3b8",
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 600,
               cursor: encounter.patient && encounter.createdAt ? "pointer" : "not-allowed",
             }}
           >
             {t("emergencyErNursingHandoff.printDischargeDoc")}
           </button>
+          {onSummaryClosureClick ? (
+            <button
+              type="button"
+              onClick={onSummaryClosureClick}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#f8fafc",
+                color: "#334155",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {t("emergencyErNursingHandoff.linkSummaryClosure")}
+            </button>
+          ) : null}
         </MedoraCardActions>
         <p style={{ margin: "8px 0 0 0", fontSize: 11, color: "#94a3b8", lineHeight: 1.35 }}>
           {t("emergencyErNursingHandoff.footerHint")}

@@ -939,12 +939,7 @@ export function EmergencyChartView() {
               facilityId={fid}
               onSaved={onEmbeddedEncounterUpdate}
               canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
-              genericEncounterHref={genericEncounterHref}
               onSummaryClosureClick={scrollToErSummaryClosure}
-              hospitalisationBoardHref="/app/hospitalisation"
-              marTabHref={tabHref("mar")}
-              ordersTabHref={tabHref("orders")}
-              resultsTabHref={tabHref("results")}
               facilityName={facilityName}
             />
           </section>

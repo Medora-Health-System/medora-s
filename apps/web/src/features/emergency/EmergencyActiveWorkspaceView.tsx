@@ -1207,12 +1207,7 @@ export function EmergencyActiveWorkspaceView() {
                 facilityId={fid}
                 onSaved={onEmbeddedEncounterUpdate}
                 canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
-                genericEncounterHref={genericEncounterHref}
                 onSummaryClosureClick={goToErSummaryClosure}
-                hospitalisationBoardHref="/app/hospitalisation"
-                marTabHref={tabHref("mar")}
-                ordersTabHref={tabHref("orders")}
-                resultsTabHref={tabHref("results")}
                 facilityName={facilityName}
               />
               <EmergencyNursingReassessmentPanel
@@ -1300,12 +1295,7 @@ export function EmergencyActiveWorkspaceView() {
                   facilityId={fid}
                   onSaved={onEmbeddedEncounterUpdate}
                   canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
-                  genericEncounterHref={genericEncounterHref}
                   onSummaryClosureClick={goToErSummaryClosure}
-                  hospitalisationBoardHref="/app/hospitalisation"
-                  marTabHref={tabHref("mar")}
-                  ordersTabHref={tabHref("orders")}
-                  resultsTabHref={tabHref("results")}
                   facilityName={facilityName}
                 />
               </div>
