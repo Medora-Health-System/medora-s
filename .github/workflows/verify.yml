@@ -87,4 +87,4 @@ jobs:
 
       - name: Run facility isolation and RBAC e2e
         working-directory: apps/api
-        run: pnpm exec jest --config jest.config.cjs facility-isolation.e2e.spec.ts rbac.e2e.spec.ts --runInBand
+        run: pnpm exec jest --config jest.config.cjs facility-isolation.e2e.spec.ts rbac.e2e.spec.ts orders-create-atomic.e2e.spec.ts --runInBand

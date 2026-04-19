@@ -320,24 +320,27 @@ export class PharmacyInventoryService {
         },
       });
 
+      await this.audit.log(AuditAction.MEDICATION_DISPENSED, "MEDICATION_DISPENSE", {
+        userId,
+        facilityId,
+        patientId: dto.patientId,
+        encounterId: dto.encounterId,
+        entityId: dispense.id,
+        ip,
+        userAgent,
+        metadata: {
+          inventoryItemId: dto.inventoryItemId,
+          quantityDispensed: dto.quantityDispensed,
+          medicationCode: item.catalogMedication.code,
+        },
+        critical: true,
+        tx,
+      });
+
       return { updated, dispense };
     });
 
     await this.catalogUsage.recordDispense(facilityId, item.catalogMedicationId);
-    await this.audit.log(AuditAction.MEDICATION_DISPENSED, "MEDICATION_DISPENSE", {
-      userId,
-      facilityId,
-      patientId: dto.patientId,
-      encounterId: dto.encounterId,
-      entityId: result.dispense.id,
-      ip,
-      userAgent,
-      metadata: {
-        inventoryItemId: dto.inventoryItemId,
-        quantityDispensed: dto.quantityDispensed,
-        medicationCode: item.catalogMedication.code,
-      },
-    });
 
     const medName =
       result.dispense.catalogMedication?.name?.trim() ||
@@ -410,41 +413,45 @@ export class PharmacyInventoryService {
       throw new BadRequestException("Ligne sans référence catalogue ni libellé manuel.");
     }
 
-    const dispense = await this.prisma.medicationDispense.create({
-      data: {
+    const dispense = await this.prisma.$transaction(async (tx) => {
+      const d = await tx.medicationDispense.create({
+        data: {
+          patientId: orderItem.order.patientId,
+          encounterId: orderItem.order.encounterId,
+          facilityId,
+          catalogMedicationId: orderItem.catalogItemId,
+          manualMedicationLabel: !orderItem.catalogItemId ? manualSnap : null,
+          inventoryItemId: null,
+          orderItemId: orderItem.id,
+          quantityDispensed: dto.quantityDispensed,
+          dosageInstructions: dto.dosageInstructions ?? undefined,
+          notes: dto.notes ?? undefined,
+          dispensedByUserId: userId,
+        },
+        include: {
+          patient: { select: { id: true, firstName: true, lastName: true } },
+          encounter: { select: { id: true } },
+          catalogMedication: { select: { id: true, code: true, name: true, displayNameFr: true } },
+        },
+      });
+      await this.audit.log(AuditAction.MEDICATION_DISPENSED, "MEDICATION_DISPENSE", {
+        userId,
+        facilityId,
         patientId: orderItem.order.patientId,
         encounterId: orderItem.order.encounterId,
-        facilityId,
-        catalogMedicationId: orderItem.catalogItemId,
-        manualMedicationLabel: !orderItem.catalogItemId ? manualSnap : null,
-        inventoryItemId: null,
-        orderItemId: orderItem.id,
-        quantityDispensed: dto.quantityDispensed,
-        dosageInstructions: dto.dosageInstructions ?? undefined,
-        notes: dto.notes ?? undefined,
-        dispensedByUserId: userId,
-      },
-      include: {
-        patient: { select: { id: true, firstName: true, lastName: true } },
-        encounter: { select: { id: true } },
-        catalogMedication: { select: { id: true, code: true, name: true, displayNameFr: true } },
-      },
+        entityId: d.id,
+        ip,
+        userAgent,
+        metadata: { orderItemId: orderItem.id, documentedOnly: true },
+        critical: true,
+        tx,
+      });
+      return d;
     });
 
     if (orderItem.catalogItemId) {
       await this.catalogUsage.recordDispense(facilityId, orderItem.catalogItemId);
     }
-
-    await this.audit.log(AuditAction.MEDICATION_DISPENSED, "MEDICATION_DISPENSE", {
-      userId,
-      facilityId,
-      patientId: orderItem.order.patientId,
-      encounterId: orderItem.order.encounterId,
-      entityId: dispense.id,
-      ip,
-      userAgent,
-      metadata: { orderItemId: orderItem.id, documentedOnly: true },
-    });
 
     const medName =
       dispense.catalogMedication?.displayNameFr?.trim() ||

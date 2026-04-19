@@ -6,8 +6,17 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, OrderItem, OrderPriority, OrderStatus, RoleCode, type Prisma } from "@prisma/client";
+import {
+  AuditAction,
+  OrderItem,
+  OrderItemLifecycleState,
+  OrderPriority,
+  OrderStatus,
+  RoleCode,
+  type Prisma,
+} from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
+import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import {
@@ -26,33 +35,9 @@ import {
   type OrderWithEnrichedItems,
   type OrderWithItems,
 } from "./orders.types";
+import { createStructuredLogger } from "../common/logging/structured-logger";
 
-/** Logs diagnostic (BigInt → string) — uniquement pour inspection Prisma. */
-function jsonSafeForOrderCreateLog(value: unknown): unknown {
-  try {
-    return JSON.parse(JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
-  } catch {
-    return String(value);
-  }
-}
-
-function splitOrderCreateForLog(data: Prisma.OrderCreateInput): {
-  parentPayload: Record<string, unknown>;
-  nestedItemsPayload: unknown[];
-} {
-  const { items, ...rest } = data as Record<string, unknown>;
-  let nestedItemsPayload: unknown[] = [];
-  if (
-    items &&
-    typeof items === "object" &&
-    items !== null &&
-    "create" in items &&
-    Array.isArray((items as { create: unknown[] }).create)
-  ) {
-    nestedItemsPayload = (items as { create: unknown[] }).create;
-  }
-  return { parentPayload: rest, nestedItemsPayload };
-}
+const ordersLog = createStructuredLogger("OrdersService");
 
 /**
  * TEMPORARY — retirer ce repli une fois la migration appliquée en base
@@ -174,51 +159,43 @@ export class OrdersService {
     orderCreateData = applyTemporaryOrderItemManualColumnFallback(orderCreateData);
     orderCreateData = stripUndefinedDeep(orderCreateData) as Prisma.OrderCreateInput;
 
-    const { parentPayload, nestedItemsPayload } = splitOrderCreateForLog(orderCreateData);
-    console.error("[order.create] Prisma payload (before create)", {
-      encounterId,
-      facilityId,
-      orderType: data.type,
-      parentPayload: jsonSafeForOrderCreateLog(parentPayload),
-      nestedItemsPayload: jsonSafeForOrderCreateLog(nestedItemsPayload),
-    });
-
+    /** Single transaction: `order` row + `auditLog` row commit together; audit failure rolls back order (see `AuditService.log` when `tx` is set). */
     let order;
     try {
-      order = await this.prisma.order.create({
-        data: orderCreateData,
-        include: {
-          items: true,
-          patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
-        },
+      order = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.order.create({
+          data: orderCreateData,
+          include: {
+            items: true,
+            patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+          },
+        });
+        await this.audit.log(AuditAction.ORDER_CREATE, "ORDER", {
+          userId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId,
+          orderId: created.id,
+          entityId: created.id,
+          ip,
+          userAgent,
+          metadata: { type: data.type, itemCount: data.items.length },
+          critical: true,
+          tx,
+        });
+        return created;
       });
     } catch (err: unknown) {
       const code = err && typeof err === "object" && "code" in err ? (err as { code?: unknown }).code : undefined;
-      const meta = err && typeof err === "object" && "meta" in err ? (err as { meta?: unknown }).meta : undefined;
-      console.error("[order.create] Prisma order.create failed", {
-        encounterId,
+      ordersLog.error("order_create_failed", {
         facilityId,
         orderType: data.type,
-        name: err instanceof Error ? err.name : typeof err,
-        message: err instanceof Error ? err.message : String(err),
-        ...(typeof code === "string" ? { code } : {}),
-        ...(meta !== undefined ? { meta } : {}),
-        stack: err instanceof Error ? err.stack : undefined,
+        itemCount: data.items.length,
+        errorName: err instanceof Error ? err.name : typeof err,
+        errorCode: typeof code === "string" ? code : undefined,
       });
       throw err;
     }
-
-    await this.audit.log(AuditAction.ORDER_CREATE, "ORDER", {
-      userId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId,
-      orderId: order.id,
-      entityId: order.id,
-      ip,
-      userAgent,
-      metadata: { type: data.type, itemCount: data.items.length },
-    });
 
     return order;
   }
@@ -613,18 +590,51 @@ export class OrdersService {
 
     const now = new Date();
 
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: {
-        status: "CANCELLED",
-        cancelledAt: now,
-        cancelledByUserId: userId,
-        cancellationReason: reason,
-      },
-      include: {
-        items: true,
-        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: now,
+          cancelledByUserId: userId,
+          cancellationReason: reason,
+        },
+      });
+      const items = await tx.orderItem.findMany({ where: { orderId: id } });
+      for (const item of items) {
+        if (item.lifecycleState === OrderItemLifecycleState.REVIEWED) {
+          continue;
+        }
+        let statusPatch: OrderStatus | undefined;
+        try {
+          assertCanTransition(item.status, OrderStatus.CANCELLED);
+          statusPatch = OrderStatus.CANCELLED;
+        } catch {
+          statusPatch = undefined;
+        }
+        const lifecycleState = applyLifecycleWithStatus(
+          item.lifecycleState,
+          OrderStatus.CANCELLED
+        );
+        await tx.orderItem.update({
+          where: { id: item.id },
+          data: {
+            lifecycleState,
+            ...(statusPatch ? { status: statusPatch } : {}),
+          },
+        });
+      }
+      const row = await tx.order.findFirst({
+        where: { id },
+        include: {
+          items: true,
+          patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+        },
+      });
+      if (!row) {
+        throw new NotFoundException("Order not found");
+      }
+      return row;
     });
 
     await this.audit.log(AuditAction.ORDER_CANCEL, "ORDER", {
@@ -676,9 +686,14 @@ export class OrdersService {
     assertAckOrStartActor(orderItem, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.ACKNOWLEDGED);
 
+    const lifecycleState = applyLifecycleWithStatus(
+      orderItem.lifecycleState,
+      OrderStatus.ACKNOWLEDGED
+    );
+
     const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
-      data: { status: OrderStatus.ACKNOWLEDGED },
+      data: { status: OrderStatus.ACKNOWLEDGED, lifecycleState },
     });
 
     await this.audit.log(AuditAction.ORDER_ACK, "ORDER_ITEM", {
@@ -726,9 +741,14 @@ export class OrdersService {
     assertAckOrStartActor(orderItem, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.IN_PROGRESS);
 
+    const lifecycleState = applyLifecycleWithStatus(
+      orderItem.lifecycleState,
+      OrderStatus.IN_PROGRESS
+    );
+
     const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
-      data: { status: OrderStatus.IN_PROGRESS },
+      data: { status: OrderStatus.IN_PROGRESS, lifecycleState },
     });
 
     await this.audit.log(AuditAction.ORDER_START, "ORDER_ITEM", {
@@ -781,9 +801,14 @@ export class OrdersService {
     assertDepartmentRoleForItem(orderItem.catalogItemType, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.COMPLETED);
 
+    const lifecycleState = applyLifecycleWithStatus(
+      orderItem.lifecycleState,
+      OrderStatus.COMPLETED
+    );
+
     const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
-      data: { status: OrderStatus.COMPLETED },
+      data: { status: OrderStatus.COMPLETED, lifecycleState },
     });
 
     await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {
@@ -851,10 +876,16 @@ export class OrdersService {
       throw new BadRequestException("Statut de ligne incompatible avec l'administration infirmière.");
     }
 
+    const lifecycleState = applyLifecycleWithStatus(
+      orderItem.lifecycleState,
+      OrderStatus.COMPLETED
+    );
+
     const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
       data: {
         status: OrderStatus.COMPLETED,
+        lifecycleState,
         completedAt: new Date(),
         completedByUserId: userId,
       },

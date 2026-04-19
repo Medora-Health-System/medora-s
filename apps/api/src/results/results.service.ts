@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction, OrderStatus } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
+import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
@@ -178,11 +179,13 @@ export class ResultsService {
 
       if (shouldStampVerification) {
         let st = orderItem.status;
+        let life = orderItem.lifecycleState;
         if (st !== OrderStatus.RESULTED && st !== OrderStatus.VERIFIED) {
           if (st === OrderStatus.IN_PROGRESS) {
+            life = applyLifecycleWithStatus(life, OrderStatus.COMPLETED);
             await tx.orderItem.update({
               where: { id: orderItemId },
-              data: { status: OrderStatus.COMPLETED },
+              data: { status: OrderStatus.COMPLETED, lifecycleState: life },
             });
             st = OrderStatus.COMPLETED;
           }
@@ -193,9 +196,10 @@ export class ResultsService {
               "Impossible d’enregistrer le résultat : la ligne doit être au statut « Terminé » (bouton « Terminer » après accusé réception et démarrage), ou en cours si vous enregistrez depuis une ligne déjà démarrée."
             );
           }
+          life = applyLifecycleWithStatus(life, OrderStatus.RESULTED);
           await tx.orderItem.update({
             where: { id: orderItemId },
-            data: { status: OrderStatus.RESULTED },
+            data: { status: OrderStatus.RESULTED, lifecycleState: life },
           });
         }
       }

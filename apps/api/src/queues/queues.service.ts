@@ -4,6 +4,7 @@ import { AuditAction, OrderStatus, RoleCode } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertCanTransition } from "../common/workflow/status.transitions";
+import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import {
   assertAckOrStartActor,
   assertDepartmentRoleForItem,
@@ -266,9 +267,11 @@ export class QueuesService {
 
     const fromStatus = orderItem.status;
 
+    const lifecycleState = applyLifecycleWithStatus(orderItem.lifecycleState, status);
+
     const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
-      data: { status },
+      data: { status, lifecycleState },
       include: {
         order: {
           include: {

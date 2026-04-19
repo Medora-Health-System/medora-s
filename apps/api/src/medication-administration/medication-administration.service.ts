@@ -107,29 +107,33 @@ export class MedicationAdministrationService {
       orderIdForAudit = item.order.id;
     }
 
-    const created = await this.prisma.medicationAdministration.create({
-      data: {
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId,
+          orderItemId,
+          medicationLabelSnapshot,
+          administeredAt: data.administeredAt ?? new Date(),
+          administeredByUserId,
+          notes: data.notes?.trim() ? data.notes.trim() : null,
+        },
+        include: {
+          administeredBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      await this.audit.log(AuditAction.CREATE, "MEDICATION_ADMINISTRATION", {
+        userId: administeredByUserId,
         facilityId,
         patientId: encounter.patientId,
         encounterId,
-        orderItemId,
-        medicationLabelSnapshot,
-        administeredAt: data.administeredAt ?? new Date(),
-        administeredByUserId,
-        notes: data.notes?.trim() ? data.notes.trim() : null,
-      },
-      include: {
-        administeredBy: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
-
-    await this.audit.log(AuditAction.CREATE, "MEDICATION_ADMINISTRATION", {
-      userId: administeredByUserId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId,
-      entityId: created.id,
-      ...(orderIdForAudit ? { orderId: orderIdForAudit } : {}),
+        entityId: row.id,
+        ...(orderIdForAudit ? { orderId: orderIdForAudit } : {}),
+        critical: true,
+        tx,
+      });
+      return row;
     });
 
     const atIso =
