@@ -17,6 +17,8 @@ import type {
   ListInventoryFiltersDto,
   RecordOrderDispenseDto,
 } from "./dto";
+import { buildMedicationDispenseCandidate } from "@medora/shared";
+import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 
 const inventoryItemInclude = {
   catalogMedication: {
@@ -337,6 +339,30 @@ export class PharmacyInventoryService {
       },
     });
 
+    const medName =
+      result.dispense.catalogMedication?.name?.trim() ||
+      item.catalogMedication.displayNameFr?.trim() ||
+      item.catalogMedication.code;
+    const dispAt =
+      result.dispense.createdAt instanceof Date
+        ? result.dispense.createdAt.toISOString()
+        : new Date().toISOString();
+    await appendBillingCaptureCandidate(
+      this.prisma,
+      dto.encounterId,
+      facilityId,
+      buildMedicationDispenseCandidate({
+        dispenseId: result.dispense.id,
+        encounterId: dto.encounterId,
+        patientId: dto.patientId,
+        facilityId,
+        quantity: dto.quantityDispensed,
+        medicationLabel: medName,
+        atIso: dispAt,
+        createdByUserId: userId ?? null,
+      })
+    );
+
     return result.dispense;
   }
 
@@ -419,6 +445,29 @@ export class PharmacyInventoryService {
       userAgent,
       metadata: { orderItemId: orderItem.id, documentedOnly: true },
     });
+
+    const medName =
+      dispense.catalogMedication?.displayNameFr?.trim() ||
+      dispense.catalogMedication?.name?.trim() ||
+      dispense.manualMedicationLabel?.trim() ||
+      "Medication";
+    const dispAt =
+      dispense.createdAt instanceof Date ? dispense.createdAt.toISOString() : new Date().toISOString();
+    await appendBillingCaptureCandidate(
+      this.prisma,
+      orderItem.order.encounterId,
+      facilityId,
+      buildMedicationDispenseCandidate({
+        dispenseId: dispense.id,
+        encounterId: orderItem.order.encounterId,
+        patientId: orderItem.order.patientId,
+        facilityId,
+        quantity: dto.quantityDispensed,
+        medicationLabel: medName,
+        atIso: dispAt,
+        createdByUserId: userId,
+      })
+    );
 
     return dispense;
   }

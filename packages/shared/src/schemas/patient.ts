@@ -132,6 +132,8 @@ export const encounterUpdateDtoSchema = z.object({
   dischargeSummaryJson: z.any().optional().nullable(),
   /** Décision d'admission structurée (JSON) — `admittedAt` défini côté API à la 1re sauvegarde */
   admissionSummaryJson: z.any().optional().nullable(),
+  /** U.S. billing — charge capture candidates (V1 JSON); no auto-final coding */
+  billingCaptureJson: z.any().optional().nullable(),
   roomLabel: z.string().max(64).optional().nullable(),
   physicianAssignedUserId: z.string().uuid().optional().nullable(),
 });

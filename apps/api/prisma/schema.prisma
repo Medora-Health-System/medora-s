@@ -453,6 +453,8 @@ model Encounter {
 
   /// Synthèse structurée d'admission (hospitalisation depuis la consultation) — MVP, une décision par visite
   admissionSummaryJson Json?
+  /// U.S. billing foundation — charge capture / billing event candidates (V1 shared schema)
+  billingCaptureJson   Json?
   /// Horodatage de la décision d'admission (rempli côté serveur à la 1re sauvegarde du dossier d'admission)
   admittedAt           DateTime?
 

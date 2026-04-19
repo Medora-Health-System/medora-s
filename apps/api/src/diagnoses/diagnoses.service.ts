@@ -7,6 +7,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { buildDiagnosisCandidate } from "@medora/shared";
+import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import type {
   CreateDiagnosisDto,
   UpdateDiagnosisDto,
@@ -72,6 +74,24 @@ export class DiagnosesService {
       userAgent,
       metadata: { code: dto.code },
     });
+
+    const createdAtIso =
+      row.createdAt instanceof Date ? row.createdAt.toISOString() : new Date().toISOString();
+    await appendBillingCaptureCandidate(
+      this.prisma,
+      encounterId,
+      facilityId,
+      buildDiagnosisCandidate({
+        diagnosisId: row.id,
+        encounterId,
+        patientId: encounter.patientId,
+        facilityId,
+        code: dto.code,
+        description: dto.description ?? null,
+        createdAtIso,
+        createdByUserId: userId ?? null,
+      })
+    );
 
     return row;
   }

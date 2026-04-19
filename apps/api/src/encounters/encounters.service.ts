@@ -24,6 +24,9 @@ import {
   type EncounterProviderDocumentationUnlockDto,
   type EncounterUpdateDto,
   type EncounterCloseDocumentationCheckResult,
+  buildEncounterDispositionCandidate,
+  readBillingCaptureV1,
+  upsertBillingCaptureItem,
 } from "@medora/shared";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
@@ -566,7 +569,11 @@ export class EncountersService {
     const dataKeys = (Object.keys(data) as (keyof EncounterUpdateDto)[]).filter(
       (k) => data[k] !== undefined
     );
-    const allowedWhenSigned: (keyof EncounterUpdateDto)[] = ["roomLabel", "physicianAssignedUserId"];
+    const allowedWhenSigned: (keyof EncounterUpdateDto)[] = [
+      "roomLabel",
+      "physicianAssignedUserId",
+      "billingCaptureJson",
+    ];
 
     if (encounter.providerDocumentationStatus === "SIGNED") {
       const disallowed = dataKeys.filter((k) => !allowedWhenSigned.includes(k));
@@ -585,6 +592,9 @@ export class EncountersService {
           await this.assertProviderAtFacility(facilityId, data.physicianAssignedUserId);
           updateData.physicianAssignedUserId = data.physicianAssignedUserId;
         }
+      }
+      if (data.billingCaptureJson !== undefined) {
+        updateData.billingCaptureJson = readBillingCaptureV1(data.billingCaptureJson);
       }
       if (Object.keys(updateData).length === 0) {
         const unchanged = await this.prisma.encounter.findFirst({
@@ -689,6 +699,9 @@ export class EncountersService {
         await this.assertProviderAtFacility(facilityId, data.physicianAssignedUserId);
         updateData.physicianAssignedUserId = data.physicianAssignedUserId;
       }
+    }
+    if (data.billingCaptureJson !== undefined) {
+      updateData.billingCaptureJson = readBillingCaptureV1(data.billingCaptureJson);
     }
 
     const updated = await this.prisma.encounter.update({
@@ -1034,6 +1047,17 @@ export class EncountersService {
     if (data?.dischargeStatus !== undefined) {
       closePayload.dischargeStatus = data.dischargeStatus;
     }
+
+    const closedAtIso = new Date().toISOString();
+    const dispositionCandidate = buildEncounterDispositionCandidate({
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      facilityId,
+      dischargeStatus: data?.dischargeStatus ?? encounter.dischargeStatus,
+      atIso: closedAtIso,
+      createdByUserId: userId,
+    });
+    closePayload.billingCaptureJson = upsertBillingCaptureItem(encounter.billingCaptureJson, dispositionCandidate);
 
     const updated = await this.prisma.encounter.update({
       where: { id },

@@ -3,6 +3,8 @@ import { AuditAction, type OrderItem } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import type { MedicationAdministrationCreateDto } from "@medora/shared";
+import { buildMedicationAdministrationCandidate } from "@medora/shared";
+import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
@@ -129,6 +131,26 @@ export class MedicationAdministrationService {
       entityId: created.id,
       ...(orderIdForAudit ? { orderId: orderIdForAudit } : {}),
     });
+
+    const atIso =
+      created.administeredAt instanceof Date
+        ? created.administeredAt.toISOString()
+        : new Date().toISOString();
+    const medLabel = created.medicationLabelSnapshot?.trim() || "Medication";
+    await appendBillingCaptureCandidate(
+      this.prisma,
+      encounterId,
+      facilityId,
+      buildMedicationAdministrationCandidate({
+        administrationId: created.id,
+        encounterId,
+        patientId: encounter.patientId,
+        facilityId,
+        medicationLabel: medLabel,
+        atIso,
+        createdByUserId: administeredByUserId,
+      })
+    );
 
     return created;
   }

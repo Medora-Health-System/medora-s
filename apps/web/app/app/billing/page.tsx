@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { readBillingCaptureV1 } from "@medora/shared";
 
 export default function BillingPage() {
   const { t, language } = useI18n();
@@ -83,11 +84,16 @@ export default function BillingPage() {
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colEncounterType")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colDischarge")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colOrders")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colBillingEvents")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colNeedsReview")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {queue.map((encounter) => (
+              {queue.map((encounter) => {
+                const bc = readBillingCaptureV1(encounter.billingCaptureJson);
+                const needsReview = bc.items.filter((i) => i.status === "needs_review").length;
+                return (
                 <tr key={encounter.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: 12 }}>
                     {encounter.patient?.firstName} {encounter.patient?.lastName}
@@ -102,6 +108,8 @@ export default function BillingPage() {
                       : t("common.dash")}
                   </td>
                   <td style={{ padding: 12 }}>{encounter.orders?.length || 0}</td>
+                  <td style={{ padding: 12 }}>{bc.items.length}</td>
+                  <td style={{ padding: 12 }}>{needsReview}</td>
                   <td style={{ padding: 12 }}>
                     <button
                       onClick={() => handleFinalize(encounter.id)}
@@ -112,7 +120,8 @@ export default function BillingPage() {
                     <Link href={`/app/encounters/${encounter.id}`}>{t("billingPage.view")}</Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -77,6 +77,8 @@ export default {
     colEncounterType: "Type de consultation",
     colDischarge: "Sortie",
     colOrders: "Ordres",
+    colBillingEvents: "Événements de facturation",
+    colNeedsReview: "À revoir",
     finalize: "Finaliser",
     view: "Voir",
     alertSavedPlaceholder: "Facturation enregistrée (fonctionnalité à finaliser).",

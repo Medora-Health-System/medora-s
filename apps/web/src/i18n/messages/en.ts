@@ -153,6 +153,8 @@ export default {
     colEncounterType: "Encounter type",
     colDischarge: "Discharge",
     colOrders: "Orders",
+    colBillingEvents: "Billing events",
+    colNeedsReview: "Needs review",
     finalize: "Finalize",
     view: "View",
     alertSavedPlaceholder: "Billing saved (feature to be finalized).",

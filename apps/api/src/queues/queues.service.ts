@@ -10,6 +10,8 @@ import {
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
 import { AuditService } from "../common/services/audit.service";
+import { buildOrderItemCandidate } from "@medora/shared";
+import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 
 @Injectable()
 export class QueuesService {
@@ -310,6 +312,31 @@ export class QueuesService {
         toStatus: status,
       },
     });
+
+    if (status === OrderStatus.COMPLETED) {
+      const completedAt =
+        updated.completedAt instanceof Date && !Number.isNaN(updated.completedAt.getTime())
+          ? updated.completedAt.toISOString()
+          : new Date().toISOString();
+      await appendBillingCaptureCandidate(
+        this.prisma,
+        orderItem.order.encounterId,
+        facilityId,
+        buildOrderItemCandidate({
+          orderItemId: orderItem.id,
+          orderId: orderItem.orderId,
+          encounterId: orderItem.order.encounterId,
+          patientId: orderItem.order.patientId,
+          facilityId,
+          orderType: orderItem.order.type,
+          catalogItemType: orderItem.catalogItemType,
+          manualLabel: orderItem.manualLabel,
+          quantity: orderItem.quantity,
+          completedAtIso: completedAt,
+          createdByUserId: userId ?? null,
+        })
+      );
+    }
 
     return updated;
   }
