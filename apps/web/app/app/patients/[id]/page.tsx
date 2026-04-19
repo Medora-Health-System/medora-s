@@ -16,6 +16,7 @@ import {
   PatientConsultationsTab,
   PatientVaccinationsTab,
   CreateFollowUpModal,
+  PatientPrimaryInsurancePanel,
   computeHeaderVitalsLine,
 } from "@/components/patient-chart";
 import {
@@ -45,6 +46,7 @@ import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { getPatientChartPrintHtml, printPatientChart } from "@/components/patient-chart/PatientChartPrintLayout";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { useI18n } from "@/lib/i18n";
+import Link from "next/link";
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -355,6 +357,13 @@ export default function PatientDetailPage() {
     rolesReady &&
     (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
 
+  const canEditInsurance =
+    rolesReady &&
+    (roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN") ||
+      roles.includes("BILLING"));
+
   const tabs = useMemo(
     () => [
       { id: "summary", label: t("patientChartUi.tabsSummary") },
@@ -415,6 +424,25 @@ export default function PatientDetailPage() {
           onEditPatient={() => setShowEditModal(true)}
           onPendingCreateEncounter={() => setPendingOpenCreateEncounter(true)}
         />
+
+        {facilityId && (
+          <>
+            <div className="no-print" style={{ marginTop: 12, marginBottom: 8 }}>
+              <Link
+                href={`/app/patients/${patientId}/facesheet`}
+                style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}
+              >
+                {t("facesheet.linkFromChart")}
+              </Link>
+            </div>
+            <PatientPrimaryInsurancePanel
+              patientId={patientId}
+              facilityId={facilityId}
+              canEdit={canEditInsurance}
+              onSaved={() => void loadPatient()}
+            />
+          </>
+        )}
       </div>
 
       <div

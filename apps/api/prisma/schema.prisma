@@ -42,6 +42,11 @@ enum PatientSex {
   UNKNOWN
 }
 
+enum InsuranceCoverageRank {
+  PRIMARY
+  SECONDARY
+}
+
 enum PathwayType {
   STROKE
   SEPSIS
@@ -254,6 +259,49 @@ model Facility {
   encounterProviderAddenda   EncounterProviderAddendum[]
   breakGlassSessions         BreakGlassSession[]
   encounterIntakes           EncounterIntake[]
+  patientInsuranceCoverages  PatientInsuranceCoverage[]
+}
+
+/// Catalogue payeur (installation) — recherche par nom normalisé.
+model InsurancePayer {
+  id             String   @id @default(uuid())
+  name           String
+  normalizedName String
+  code           String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  coverages PatientInsuranceCoverage[]
+
+  @@index([normalizedName])
+}
+
+/// Couverture par patient et établissement — V2+ peut étendre sans casser Phase 2.
+model PatientInsuranceCoverage {
+  id                   String                @id @default(uuid())
+  patientId            String
+  facilityId           String
+  rank                 InsuranceCoverageRank
+  payerId              String?
+  payerNameFreeText    String?
+  planName             String?
+  memberId             String?
+  groupNumber          String?
+  subscriberName       String?
+  relationToSubscriber String?
+  phone                String?
+  notes                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  patient Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility  Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  payer     InsurancePayer? @relation(fields: [payerId], references: [id], onDelete: SetNull)
+
+  @@unique([patientId, facilityId, rank])
+  @@index([patientId])
+  @@index([facilityId])
 }
 
 model Department {
@@ -426,6 +474,7 @@ model Patient {
   followUps              FollowUp[]
   triageVitalsReadings   TriageVitalsReading[]
   breakGlassSessions     BreakGlassSession[]
+  insuranceCoverages     PatientInsuranceCoverage[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])

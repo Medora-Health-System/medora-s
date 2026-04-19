@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { PatientsController } from "./patients.controller";
 import { BreakGlassController } from "./break-glass.controller";
 import { PatientsService } from "./patients.service";
+import { PatientInsuranceService } from "./patient-insurance.service";
 import { BreakGlassService } from "./break-glass.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
@@ -18,6 +19,7 @@ import { OrdersModule } from "../orders/orders.module";
   controllers: [PatientsController, BreakGlassController],
   providers: [
     PatientsService,
+    PatientInsuranceService,
     BreakGlassService,
     ChartSummaryService,
     PatientVitalsService,

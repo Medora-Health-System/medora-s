@@ -67,6 +67,41 @@ export const patientUpdateDtoSchema = z.object({
 
 export type PatientUpdateDto = z.infer<typeof patientUpdateDtoSchema>;
 
+export const insurancePayerSearchQuerySchema = z.object({
+  q: z.string().min(1),
+});
+
+export const patientInsuranceCoverageUpsertDtoSchema = z
+  .object({
+    payerId: z.string().optional().nullable(),
+    payerNameFreeText: z.string().optional().nullable(),
+    planName: z.string().optional(),
+    memberId: z.string().optional(),
+    groupNumber: z.string().optional(),
+    subscriberName: z.string().optional(),
+  })
+  .and(
+    z.object({
+      relationToSubscriber: z.string().optional(),
+      phone: z.string().optional(),
+      notes: z.string().optional(),
+      clear: z.boolean().optional(),
+    })
+  )
+  .superRefine((data, ctx) => {
+    if (data.payerId && data.payerNameFreeText?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Ne pas combiner payeur catalogue et nom libre : choisissez l’un ou l’autre.",
+        path: ["payerNameFreeText"],
+      });
+    }
+  });
+
+export type PatientInsuranceCoverageUpsertDto = z.infer<
+  typeof patientInsuranceCoverageUpsertDtoSchema
+>;
+
 export const encounterTypeSchema = z.enum(["OUTPATIENT", "INPATIENT", "EMERGENCY", "URGENT_CARE"]);
 export type EncounterType = z.infer<typeof encounterTypeSchema>;
 

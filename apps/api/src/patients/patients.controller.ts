@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Param,
   Body,
   Query,
@@ -18,6 +19,7 @@ import {
   AllowBreakGlassForPatientParam,
 } from "../common/guards/roles.guard";
 import { PatientsService } from "./patients.service";
+import { PatientInsuranceService } from "./patient-insurance.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
 import { EncountersService } from "../encounters/encounters.service";
@@ -28,6 +30,7 @@ import { listDiagnosesQuerySchema } from "../diagnoses/dto";
 import {
   patientCreateDtoSchema,
   patientUpdateDtoSchema,
+  patientInsuranceCoverageUpsertDtoSchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "../encounters/dto";
 import { MsppRoleCode, RoleCode } from "@prisma/client";
@@ -38,6 +41,7 @@ import { assertZodBody } from "../common/http/zod-parse";
 export class PatientsController {
   constructor(
     private readonly patientsService: PatientsService,
+    private readonly patientInsuranceService: PatientInsuranceService,
     private readonly chartSummaryService: ChartSummaryService,
     private readonly patientVitalsService: PatientVitalsService,
     private readonly encountersService: EncountersService,
@@ -184,6 +188,80 @@ export class PatientsController {
     return this.patientVitalsService.getTriageVitalsTimeline(
       id,
       facilityId,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"],
+      req.breakGlassSessionId
+    );
+  }
+
+  @Get(":id/insurance")
+  @AllowBreakGlassForPatientParam("id")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async listInsurance(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    return this.patientInsuranceService.listCoverage(
+      facilityId,
+      id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"],
+      req.breakGlassSessionId
+    );
+  }
+
+  @Put(":id/insurance/primary")
+  @AllowBreakGlassForPatientParam("id")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async upsertPrimaryInsurance(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    const dto = assertZodBody(patientInsuranceCoverageUpsertDtoSchema.safeParse(body));
+    return this.patientInsuranceService.upsertPrimaryCoverage(
+      facilityId,
+      id,
+      dto,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"],
+      req.breakGlassSessionId
+    );
+  }
+
+  @Get(":id/facesheet")
+  @AllowBreakGlassForPatientParam("id")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async getFacesheet(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    return this.patientInsuranceService.getFacesheet(
+      facilityId,
+      id,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"],
