@@ -198,10 +198,16 @@ export function EmergencyDispositionPanel({
     const sup = erDispositionSupplementFromEncounter(encounter.nursingAssessment);
     const defPhys = formatPhysicianName(encounter.physicianAssigned ?? undefined);
     const a = hydrateAdmissionFormFromEncounterJson(encounter.admissionSummaryJson, defPhys);
-    setDischargeForm(d);
+    const inferred = inferOutcomeUiFromForms(d.dischargeMode, sup);
+    // Align dischargeMode with inferred outcome when JSON has no mode yet (e.g. new encounter).
+    // Otherwise the radio shows HOME but form.dischargeMode stays "", and PATCH omits dischargeSummaryJson.dischargeMode
+    // — the ER board badge reads dischargeMode from dischargeSummaryJson only.
+    const dischargeModeSynced =
+      d.dischargeMode.trim().length > 0 ? d.dischargeMode : outcomeUiToDischargeMode(inferred);
+    setDischargeForm({ ...d, dischargeMode: dischargeModeSynced });
     setAdmissionForm(a);
     setSupplementForm(sup);
-    setOutcomeUi(inferOutcomeUiFromForms(d.dischargeMode, sup));
+    setOutcomeUi(inferred);
     setEmtalaComplement(emtalaDispositionComplementFromNursing(encounter.nursingAssessment));
   }, [
     encounter.dischargeSummaryJson,
