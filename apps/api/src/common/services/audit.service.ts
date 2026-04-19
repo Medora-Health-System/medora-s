@@ -2,22 +2,13 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Prisma } from "@prisma/client";
 import { AuditAction } from "@prisma/client";
+import { createStructuredLogger } from "../logging/structured-logger";
 import { PrismaService } from "../../prisma/prisma.service";
 
 const DEFAULT_AUDIT_FAILURE_MODE = "best_effort";
 
 /** Returned in response body when audit persistence fails in fail-closed mode (critical actions only). */
 export const AUDIT_WRITE_FAILED_BLOCKED_ACTION = "AUDIT_WRITE_FAILED_BLOCKED_ACTION" as const;
-
-function serializeErrorForAudit(error: unknown): { message: string; stack?: string } {
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      ...(error.stack ? { stack: error.stack } : {}),
-    };
-  }
-  return { message: String(error) };
-}
 
 export type AuditLogInput = {
   userId?: string;
@@ -41,6 +32,7 @@ export type AuditLogInput = {
 @Injectable()
 export class AuditService {
   private readonly failClosed: boolean;
+  private readonly structuredLog = createStructuredLogger("AuditService");
 
   constructor(
     private readonly prisma: PrismaService,
@@ -75,26 +67,19 @@ export class AuditService {
         },
       });
     } catch (error) {
-      const err = serializeErrorForAudit(error);
-      const payload = {
-        event: "AUDIT_LOG_WRITE_FAILED",
-        severity: "critical",
+      this.structuredLog.error("audit_log_write_failed", {
         auditFailureMode: this.failClosed ? "fail_closed" : "best_effort",
         critical,
-        action,
+        action: String(action),
         entityType,
         entityId: options.entityId ?? null,
         userId: options.userId ?? null,
         facilityId: options.facilityId ?? null,
-        patientId: options.patientId ?? null,
-        encounterId: options.encounterId ?? null,
-        orderId: options.orderId ?? null,
-        ip: options.ip ?? null,
-        userAgent: options.userAgent ?? null,
-        errorMessage: err.message,
-        ...(err.stack ? { errorStack: err.stack } : {}),
-      };
-      console.error("AUDIT_LOG_WRITE_FAILED", JSON.stringify(payload));
+        hasPatientId: !!options.patientId,
+        hasEncounterId: !!options.encounterId,
+        hasOrderId: !!options.orderId,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
 
       /** Same DB transaction as clinical write: must abort so Prisma rolls back the mutation. */
       if (tx) {

@@ -4,10 +4,13 @@ import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
 import { randomUUID, randomBytes } from "crypto";
+import { createStructuredLogger } from "../common/logging/structured-logger";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUserDto, JwtPayload } from "./types";
 import { isPlatformPrincipalAdminEmail } from "./platform-principal";
 import { FailedLoginTracker } from "./failed-login-tracker";
+
+const authLog = createStructuredLogger("AuthService");
 
 @Injectable()
 export class AuthService {
@@ -432,7 +435,7 @@ export class AuthService {
   private resetPasswordBaseUrl(): string {
     const url = this.config.get<string>("RESET_PASSWORD_BASE_URL") ?? "http://localhost:3000";
     if (process.env.NODE_ENV === "production" && url.includes("localhost")) {
-      console.error("RESET_PASSWORD_BASE_URL is not configured correctly for production");
+      authLog.warn("reset_password_base_url_localhost_in_production", {});
     }
     return url;
   }
@@ -469,7 +472,7 @@ export class AuthService {
     const resetLink = `${baseUrl}/reinitialiser-mot-de-passe?id=${row.id}&token=${plainToken}`;
 
     if (process.env.NODE_ENV !== "production") {
-      console.log("[FORGOT-PASSWORD] Reset link (dev only):", resetLink);
+      authLog.log("forgot_password_reset_prepared", { userId: user.id });
     }
     // TODO: when email is configured, send email with resetLink instead of/in addition to logging
 

@@ -2,8 +2,11 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { ConfigService } from "@nestjs/config";
+import { createStructuredLogger } from "../common/logging/structured-logger";
 import { PrismaService } from "../prisma/prisma.service";
 import type { JwtPayload } from "./types";
+
+const log = createStructuredLogger("JwtStrategy");
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -42,9 +45,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException("User not found");
     }
 
-    // [DEV] Log successful JWT validation for auth debugging (local dev only)
     if (process.env.NODE_ENV !== "production") {
-      console.log("[nest auth] JWT validation succeeded", { userId: payload.sub, username: payload.username });
+      log.log("jwt_validate_called", {
+        userId: payload?.sub ?? null,
+        hasEmail: !!(payload as { email?: unknown }).email,
+      });
     }
 
     // What gets attached to req.user:

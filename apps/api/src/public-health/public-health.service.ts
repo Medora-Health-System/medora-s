@@ -31,6 +31,9 @@ import {
   activeDiseaseNotifiableCatalog,
   type HaitiDiseaseNotifiableEntry,
 } from "./haiti-disease-notifiable-catalog";
+import { createStructuredLogger } from "../common/logging/structured-logger";
+
+const publicHealthLog = createStructuredLogger("PublicHealth");
 
 const DUE_SOON_DAYS = 30;
 
@@ -161,7 +164,13 @@ export class PublicHealthService {
         });
         if (race) return { ...race, createdNew: false };
       }
-      console.error("[public-health] DiseaseCaseReview enqueue failed", e);
+      publicHealthLog.error("disease_case_review_enqueue_failed", {
+        isPrismaError:
+          typeof e === "object" &&
+          e !== null &&
+          "code" in e &&
+          typeof (e as { code?: unknown }).code === "string",
+      });
       return null;
     }
   }
@@ -259,7 +268,7 @@ export class PublicHealthService {
       };
     }
 
-    console.log("[public-health] MSPP backfill complete", {
+    publicHealthLog.log("mspp_backfill_complete", {
       candidatesWithoutReview,
       skippedUnresolvedGeo,
       skippedRaceExistingReview,

@@ -5,6 +5,9 @@ import {
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
+import { createStructuredLogger } from "../logging/structured-logger";
+
+const log = createStructuredLogger("AllExceptionsFilter");
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -19,37 +22,38 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (isHttpException) {
       const statusCode = exception.getStatus();
       if (statusCode >= 400 && statusCode < 500) {
-        console.warn("HTTP exception:", {
+        log.warn("http_exception_client", {
           statusCode,
           name: exception.name,
-          message: exception.message,
           requestId: request.requestId,
-          url: request.url,
           method: request.method,
         });
       } else if (exception instanceof Error) {
-        console.error("Exception caught:", {
+        log.error("http_exception_server", {
+          statusCode,
           name: exception.name,
-          message: exception.message,
-          stack: exception.stack,
           requestId: request.requestId,
-          url: request.url,
           method: request.method,
         });
       } else {
-        console.error("Unknown exception:", { exception, requestId: request.requestId });
+        log.error("http_exception_unknown_shape", {
+          statusCode,
+          requestId: request.requestId,
+          method: request.method,
+        });
       }
     } else if (exception instanceof Error) {
-      console.error("Exception caught:", {
+      log.error("non_http_exception", {
         name: exception.name,
-        message: exception.message,
-        stack: exception.stack,
         requestId: request.requestId,
-        url: request.url,
         method: request.method,
       });
     } else {
-      console.error("Unknown exception:", { exception, requestId: request.requestId });
+      log.error("non_http_exception_unknown_shape", {
+        requestId: request.requestId,
+        valueType: typeof exception,
+        method: request.method,
+      });
     }
 
     let status: number;

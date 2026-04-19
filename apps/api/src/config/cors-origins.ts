@@ -1,3 +1,7 @@
+import { createStructuredLogger } from "../common/logging/structured-logger";
+
+const corsLog = createStructuredLogger("CorsOrigins");
+
 /**
  * Browser CORS allowlist for the Nest API.
  * The Medora web app calls the API from Next.js Route Handlers (server-side) — no browser CORS for that path.
@@ -27,9 +31,7 @@ export function buildCorsOriginList(): string[] {
   }
 
   if (isProd && out.length === 0) {
-    console.warn(
-      "⚠️ CORS_ORIGINS is empty in production. API will reject all browser-origin requests. This is expected only if using BFF proxy. Verify configuration."
-    );
+    corsLog.warn("cors_origins_empty_production", {});
   }
 
   return out;
