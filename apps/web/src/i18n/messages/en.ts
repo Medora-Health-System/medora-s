@@ -2995,6 +2995,11 @@ export default {
       documentationDeficiencyLead: "The following items are missing or incomplete:",
       backToChart: "Back to chart",
       closeAnyway: "End anyway",
+      closeDischargeSaveFailed: "Unable to save the discharge summary.",
+      closeEncounterFailed: "Unable to end the encounter.",
+      closeDocumentCheckFailed: "Unable to verify documentation before closing.",
+      closeSuccessDespiteDeficiencies:
+        "Encounter ended. Closure was recorded with acknowledged documentation gaps.",
       documentationDeficiencies: {
         CHIEF_COMPLAINT: "Chief complaint or reason for visit",
         PROVIDER_DOCUMENTATION:

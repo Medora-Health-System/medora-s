@@ -180,7 +180,10 @@ export function EmergencyErSummaryClosureSurface({
         }
         await Promise.resolve(onReload());
       } catch (e) {
-        alert(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyErClosure.closeFailed"));
+        alert(
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+            t("emergencyErClosure.closeFailed")
+        );
       } finally {
         setClosing(false);
       }
@@ -191,6 +194,7 @@ export function EmergencyErSummaryClosureSurface({
       encounter,
       encounterId,
       facilityId,
+      language,
       onReload,
       t,
     ]
@@ -231,7 +235,8 @@ export function EmergencyErSummaryClosureSurface({
       await executeClose(false);
     } catch (e) {
       alert(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyErClosure.closeCheckFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("emergencyErClosure.closeCheckFailed")
       );
     } finally {
       setClosing(false);
@@ -243,6 +248,7 @@ export function EmergencyErSummaryClosureSurface({
     encounterId,
     executeClose,
     facilityId,
+    language,
     t,
   ]);
 
@@ -467,9 +473,11 @@ export function EmergencyErSummaryClosureSurface({
               {deficiencies.map((d) => {
                 const k = `encounterChrome.modals.documentationDeficiencies.${d.code}`;
                 const label = t(k);
+                const fallback =
+                  label !== k ? label : language === "en" ? d.code.replace(/_/g, " ") : d.labelFr;
                 return (
                   <li key={d.code} style={{ marginBottom: 4 }}>
-                    {label !== k ? label : d.labelFr}
+                    {fallback}
                   </li>
                 );
               })}

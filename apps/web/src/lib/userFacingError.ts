@@ -89,6 +89,17 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "Impossible de créer un ordre : la consultation doit être ouverte.",
     en: "Orders can only be created for an open encounter.",
   },
+  {
+    test: (s) =>
+      /La consultation doit être au stade .*Finalisé.*parcours.*avant clôture/i.test(s),
+    fr: "La consultation doit être au stade « Finalisé » (parcours) avant clôture.",
+    en: "The encounter must be in Finalized workflow state before closing.",
+  },
+  {
+    test: (s) => /La documentation est incomplète/i.test(s),
+    fr: "La documentation est incomplète. Indiquez acknowledgeDeficiencies: true pour clôturer malgré les lacunes, ou complétez la documentation.",
+    en: "Documentation is incomplete. Confirm to close despite gaps, or complete the documentation.",
+  },
 ];
 
 /**
@@ -104,13 +115,16 @@ export function normalizeUserFacingError(
   const s = String(message).trim();
   if (!s) return "";
 
-  // Déjà du français probable : accents ou mots courts typiques
-  if (/[àâäéèêëïîôùûçœæ]/i.test(s)) return s;
-  if (/^(impossible|veuillez|la |le |les |une |un |des |erreur|accès|établissement|données)/i.test(s))
-    return s;
-
+  // Known API messages first so English UI does not show raw French from the server.
   for (const { test, fr, en } of RULES) {
     if (test(s)) return locale === "en" ? en : fr;
+  }
+
+  // Déjà du français probable : accents ou mots courts typiques (FR locale only — EN falls through)
+  if (locale === "fr") {
+    if (/[àâäéèêëïîôùûçœæ]/i.test(s)) return s;
+    if (/^(impossible|veuillez|la |le |les |une |un |des |erreur|accès|établissement|données)/i.test(s))
+      return s;
   }
 
   // Phrases anglaises courantes (Nest / HTTP)

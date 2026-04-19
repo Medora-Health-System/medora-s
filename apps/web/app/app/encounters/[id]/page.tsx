@@ -625,7 +625,7 @@ export default function EncounterDetailPage() {
       setShowDischargeModal(false);
       setShowCloseConfirmModal(true);
     } catch {
-      alert("Impossible d'enregistrer le dossier de sortie.");
+      alert(t("encounterChrome.modals.closeDischargeSaveFailed"));
     }
   };
 
@@ -674,13 +674,14 @@ export default function EncounterDetailPage() {
       setPendingDischarge(null);
       setQueuedDischargeSaveNotice(false);
       if (acknowledgeDeficiencies) {
-        alert(
-          "Consultation terminée. La clôture a été enregistrée malgré des lacunes documentaires prises en compte."
-        );
+        alert(t("encounterChrome.modals.closeSuccessDespiteDeficiencies"));
       }
       await loadEncounter();
-    } catch {
-      alert("Impossible de fermer la consultation");
+    } catch (e) {
+      alert(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("encounterChrome.modals.closeEncounterFailed")
+      );
     } finally {
       setClosingEncounter(false);
     }
@@ -714,8 +715,8 @@ export default function EncounterDetailPage() {
       await executeCloseEncounter(false);
     } catch (e) {
       alert(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-          "Impossible de vérifier la documentation avant la clôture."
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("encounterChrome.modals.closeDocumentCheckFailed")
       );
     } finally {
       setClosingEncounter(false);
@@ -2076,9 +2077,11 @@ export default function EncounterDetailPage() {
               {documentationDeficiencies.map((d) => {
                 const k = `encounterChrome.modals.documentationDeficiencies.${d.code}`;
                 const v = t(k);
+                const fallback =
+                  v !== k ? v : language === "en" ? d.code.replace(/_/g, " ") : d.labelFr;
                 return (
                   <li key={d.code} style={{ marginBottom: 6 }}>
-                    {v !== k ? v : d.labelFr}
+                    {fallback}
                   </li>
                 );
               })}

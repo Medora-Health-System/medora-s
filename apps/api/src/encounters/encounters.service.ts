@@ -1158,12 +1158,6 @@ export class EncountersService {
     // Validate status transition
     assertCanTransitionEncounter(encounter.status, "CLOSED");
 
-    if (encounter.workflowState !== EncounterWorkflowState.FINALIZED) {
-      throw new BadRequestException(
-        "La consultation doit être au stade « Finalisé » (parcours) avant clôture."
-      );
-    }
-
     const docCheck = this.evaluateEncounterDocumentationDeficiencies(encounter, data?.discharge);
     if (docCheck.hasDeficiencies && !data?.acknowledgeDeficiencies) {
       throw new HttpException(
@@ -1211,6 +1205,16 @@ export class EncountersService {
         },
       });
       if (um.count === 0) throwEncounterConcurrentModification();
+      const closeMetadata: Record<string, unknown> = {
+        workflowStateBeforeClose: encounter.workflowState,
+      };
+      if (docCheck.hasDeficiencies && data?.acknowledgeDeficiencies) {
+        closeMetadata.documentationGapOverride = true;
+        closeMetadata.deficienciesAcknowledged = true;
+        closeMetadata.deficiencyCodes = docCheck.deficiencies.map((d) => d.code);
+        closeMetadata.missingItems = docCheck.deficiencies.map((d) => d.code);
+      }
+
       await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {
         userId,
         facilityId,
@@ -1219,13 +1223,7 @@ export class EncountersService {
         entityId: encounter.id,
         ip,
         userAgent,
-        metadata:
-          docCheck.hasDeficiencies && data?.acknowledgeDeficiencies
-            ? {
-                deficienciesAcknowledged: true,
-                deficiencyCodes: docCheck.deficiencies.map((d) => d.code),
-              }
-            : undefined,
+        metadata: closeMetadata,
         critical: true,
         tx,
       });

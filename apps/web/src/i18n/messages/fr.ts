@@ -2945,6 +2945,11 @@ export default {
       documentationDeficiencyLead: "Les éléments suivants sont manquants ou incomplets :",
       backToChart: "Retour au dossier",
       closeAnyway: "Terminer quand même",
+      closeDischargeSaveFailed: "Impossible d'enregistrer le dossier de sortie.",
+      closeEncounterFailed: "Impossible de fermer la consultation.",
+      closeDocumentCheckFailed: "Impossible de vérifier la documentation avant la clôture.",
+      closeSuccessDespiteDeficiencies:
+        "Consultation terminée. La clôture a été enregistrée malgré des lacunes documentaires prises en compte.",
       documentationDeficiencies: {
         CHIEF_COMPLAINT: "Motif de consultation ou raison de visite",
         PROVIDER_DOCUMENTATION:
