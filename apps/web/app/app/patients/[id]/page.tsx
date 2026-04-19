@@ -362,6 +362,7 @@ export default function PatientDetailPage() {
     (roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN") ||
+      roles.includes("FRONT_DESK") ||
       roles.includes("BILLING"));
 
   const tabs = useMemo(
