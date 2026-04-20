@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { AuditAction, OrderStatus, RoleCode } from "@prisma/client";
+import { AuditAction, BillingReviewStatus, BillingSourceModule, OrderStatus, RoleCode } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertCanTransition } from "../common/workflow/status.transitions";
@@ -180,12 +180,42 @@ export class QueuesService {
     });
   }
 
+  private async billingLedgerRollup(
+    facilityId: string,
+    encounterIds: string[]
+  ): Promise<Map<string, { total: number; needsReview: number; missingCode: number }>> {
+    const map = new Map<string, { total: number; needsReview: number; missingCode: number }>();
+    for (const id of encounterIds) {
+      map.set(id, { total: 0, needsReview: 0, missingCode: 0 });
+    }
+    if (encounterIds.length === 0) return map;
+    const rows = await this.prisma.billingEvent.findMany({
+      where: { facilityId, encounterId: { in: encounterIds } },
+      select: {
+        encounterId: true,
+        reviewStatus: true,
+        procedureCode: true,
+        hcpcsCode: true,
+        code: true,
+      },
+    });
+    for (const r of rows) {
+      const cur = map.get(r.encounterId);
+      if (!cur) continue;
+      cur.total++;
+      if (r.reviewStatus === BillingReviewStatus.CAPTURED) cur.needsReview++;
+      const hasCode = Boolean(r.procedureCode?.trim() || r.hcpcsCode?.trim() || r.code?.trim());
+      if (!hasCode) cur.missingCode++;
+    }
+    return map;
+  }
+
   async getBillingQueue(facilityId: string) {
-    return this.prisma.encounter.findMany({
+    const list = await this.prisma.encounter.findMany({
       where: {
         facilityId,
         status: "CLOSED",
-        dischargeStatus: { not: null }
+        dischargeStatus: { not: null },
       },
       include: {
         patient: {
@@ -195,22 +225,98 @@ export class QueuesService {
             lastName: true,
             mrn: true,
             dob: true,
-            sexAtBirth: true
-          }
+            sexAtBirth: true,
+          },
         },
         orders: {
           where: {
-            status: { in: [OrderStatus.COMPLETED, OrderStatus.IN_PROGRESS] }
+            status: { in: [OrderStatus.COMPLETED, OrderStatus.IN_PROGRESS] },
           },
           include: {
-            items: true
-          }
-        }
+            items: true,
+          },
+        },
       },
       orderBy: {
-        dischargedAt: "desc"
-      }
+        dischargedAt: "desc",
+      },
     });
+    const ids = list.map((e) => e.id);
+    const rollup = await this.billingLedgerRollup(facilityId, ids);
+    return list.map((e) => ({
+      ...e,
+      billingLedger: rollup.get(e.id) ?? { total: 0, needsReview: 0, missingCode: 0 },
+    }));
+  }
+
+  async getBillingEncounterSummary(facilityId: string, encounterId: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        id: true,
+        type: true,
+        dischargedAt: true,
+        dischargeStatus: true,
+        patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
+      },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    const events = await this.prisma.billingEvent.findMany({
+      where: { facilityId, encounterId },
+      orderBy: [{ serviceDate: "desc" }, { createdAt: "desc" }],
+    });
+    const byReviewStatus: Record<string, number> = {};
+    const bySourceModule: Partial<Record<BillingSourceModule, number>> = {};
+    let needsReview = 0;
+    let missingCode = 0;
+    for (const e of events) {
+      const rs = e.reviewStatus;
+      byReviewStatus[rs] = (byReviewStatus[rs] ?? 0) + 1;
+      if (e.reviewStatus === BillingReviewStatus.CAPTURED) needsReview++;
+      const hasCode = Boolean(e.procedureCode?.trim() || e.hcpcsCode?.trim() || e.code?.trim());
+      if (!hasCode) missingCode++;
+      bySourceModule[e.sourceModule] = (bySourceModule[e.sourceModule] ?? 0) + 1;
+    }
+    return {
+      encounter: enc,
+      events,
+      summary: {
+        totalEvents: events.length,
+        needsReview,
+        missingCode,
+        byReviewStatus,
+        bySourceModule,
+      },
+    };
+  }
+
+  async patchBillingEventReview(
+    facilityId: string,
+    billingEventId: string,
+    reviewStatus: BillingReviewStatus,
+    userId?: string
+  ) {
+    const row = await this.prisma.billingEvent.findFirst({
+      where: { id: billingEventId, facilityId },
+    });
+    if (!row) {
+      throw new NotFoundException("Billing event not found");
+    }
+    const updated = await this.prisma.billingEvent.update({
+      where: { id: billingEventId },
+      data: { reviewStatus },
+    });
+    await this.audit.log(AuditAction.UPDATE, "BILLING_EVENT", {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      entityId: row.id,
+      metadata: { reviewStatus, previousStatus: row.reviewStatus },
+    });
+    return updated;
   }
 
   async updateOrderItemStatus(

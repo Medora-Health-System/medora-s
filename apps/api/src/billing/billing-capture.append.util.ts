@@ -2,6 +2,7 @@ import type { PrismaService } from "../prisma/prisma.service";
 import type { BillingCaptureItem } from "@medora/shared";
 import { upsertBillingCaptureItem } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "../encounters/encounter-concurrency.util";
+import { upsertBillingEventFromCaptureItem } from "./billing-ledger.sync";
 
 /**
  * Persists one billing capture candidate on the encounter (idempotent when sourceType+sourceId match).
@@ -27,4 +28,6 @@ export async function appendBillingCaptureCandidate(
     },
   });
   if (u.count === 0) throwEncounterConcurrentModification();
+
+  await upsertBillingEventFromCaptureItem(prisma, item);
 }

@@ -106,6 +106,39 @@ enum AuditAction {
   BREAK_GLASS_END
 }
 
+/// Charge-capture ledger (Phase 1) — complements Encounter.billingCaptureJson; idempotent per source.
+enum BillingSourceModule {
+  DIAGNOSIS
+  ORDER_ITEM
+  MEDICATION_DISPENSE
+  MEDICATION_ADMINISTRATION
+  ENCOUNTER_DISPOSITION
+  MANUAL
+  VACCINE_ADMINISTRATION
+}
+
+enum BillingReviewStatus {
+  CAPTURED
+  REVIEWED
+  VOIDED
+  SKIPPED
+}
+
+enum BillingCodeType {
+  UNKNOWN
+  INTERNAL
+  CPT
+  HCPCS
+  ICD10_CM
+}
+
+enum BillingSide {
+  UNKNOWN
+  PROFESSIONAL
+  FACILITY
+  BOTH
+}
+
 enum EncounterType {
   OUTPATIENT
   INPATIENT
@@ -260,6 +293,7 @@ model Facility {
   breakGlassSessions         BreakGlassSession[]
   encounterIntakes           EncounterIntake[]
   patientInsuranceCoverages  PatientInsuranceCoverage[]
+  billingEvents              BillingEvent[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -476,6 +510,7 @@ model Patient {
   triageVitalsReadings   TriageVitalsReading[]
   breakGlassSessions     BreakGlassSession[]
   insuranceCoverages     PatientInsuranceCoverage[]
+  billingEvents          BillingEvent[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -576,6 +611,7 @@ model Encounter {
   providerAddenda        EncounterProviderAddendum[]
   breakGlassSessions     BreakGlassSession[]
   intake                 EncounterIntake?
+  billingEvents          BillingEvent[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -583,6 +619,46 @@ model Encounter {
   @@index([workflowState])
   @@index([physicianAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
+}
+
+/// Relational billing event ledger — automatic capture from clinical actions (Phase 1).
+model BillingEvent {
+  id                  String              @id @default(uuid())
+  facilityId          String
+  patientId           String
+  encounterId         String
+  /// Latest BillingCaptureItem.id when synced from JSON pipeline.
+  captureItemId       String?
+  sourceModule        BillingSourceModule
+  /// Business key for idempotency (order item id, diagnosis id, administration id, etc.).
+  sourceRecordId      String
+  eventType           String              @default("CHARGE_CAPTURE")
+  serviceDate         DateTime?
+  units               Int?
+  codeType            BillingCodeType?
+  code                String?
+  procedureCode       String?
+  hcpcsCode           String?
+  diagnosisCodes      String?
+  descriptionSnapshot String?             @db.Text
+  priceSnapshot       Decimal?            @db.Decimal(14, 2)
+  modifier1           String?
+  modifier2           String?
+  revenueCode         String?
+  billingSide         BillingSide         @default(UNKNOWN)
+  reviewStatus        BillingReviewStatus @default(CAPTURED)
+  metadata            Json?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+
+  @@unique([facilityId, sourceModule, sourceRecordId])
+  @@index([encounterId])
+  @@index([facilityId, reviewStatus])
+  @@index([patientId])
 }
 
 /// Métadonnées d’accueil / arrivée liées à une visite — ne remplace pas le motif clinique sur Encounter.

@@ -1,8 +1,8 @@
-import { Controller, Get, Patch, Param, Body, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { QueuesService } from "./queues.service";
-import { RoleCode, OrderStatus } from "@prisma/client";
+import { BillingReviewStatus, RoleCode, OrderStatus } from "@prisma/client";
 
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -35,6 +35,34 @@ export class QueuesController {
   async getBillingQueue(@Req() req: any) {
     const facilityId = req.facilityId;
     return this.queuesService.getBillingQueue(facilityId);
+  }
+
+  @Get("billing/encounters/:encounterId/summary")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getBillingEncounterSummary(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.queuesService.getBillingEncounterSummary(facilityId, encounterId);
+  }
+
+  @Patch("billing/events/:id")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async patchBillingEvent(
+    @Param("id") id: string,
+    @Body() body: { reviewStatus?: string },
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    const rs = body?.reviewStatus;
+    const allowed = new Set<string>(Object.values(BillingReviewStatus));
+    if (!rs || !allowed.has(rs)) {
+      throw new BadRequestException("Invalid reviewStatus");
+    }
+    return this.queuesService.patchBillingEventReview(
+      facilityId,
+      id,
+      rs as BillingReviewStatus,
+      req.user?.userId
+    );
   }
 
   @Patch("orders/items/:id/status")

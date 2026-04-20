@@ -17,6 +17,8 @@ import {
 import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
 import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import { buildVaccineAdministrationCandidate } from "@medora/shared";
 import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
 import type {
   CreateVaccineCatalogDto,
@@ -429,6 +431,27 @@ export class PublicHealthService {
         doseNumber: dto.doseNumber,
       },
     });
+
+    if (dto.encounterId) {
+      const atIso =
+        administeredAt instanceof Date && !Number.isNaN(administeredAt.getTime())
+          ? administeredAt.toISOString()
+          : new Date().toISOString();
+      await appendBillingCaptureCandidate(
+        this.prisma,
+        dto.encounterId,
+        facilityId,
+        buildVaccineAdministrationCandidate({
+          vaccineAdministrationId: row.id,
+          encounterId: dto.encounterId,
+          patientId: dto.patientId,
+          facilityId,
+          vaccineLabel: vaccine.name,
+          atIso,
+          createdByUserId: userId,
+        })
+      );
+    }
 
     return row;
   }

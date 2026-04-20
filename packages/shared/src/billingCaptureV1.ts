@@ -13,6 +13,7 @@ export type BillingCaptureSourceType =
   | "MEDICATION_DISPENSE"
   | "MEDICATION_ADMINISTRATION"
   | "ENCOUNTER_DISPOSITION"
+  | "VACCINE_ADMINISTRATION"
   | "MANUAL";
 
 /** Review lifecycle — never auto “final”. */
@@ -318,6 +319,32 @@ export function buildMedicationAdministrationCandidate(params: {
     billClass: "facility",
     status: "needs_review",
     note: `Administration candidate — ${params.medicationLabel}`.slice(0, MAX_NOTE),
+    serviceDate: params.atIso,
+    createdAt: params.atIso,
+    createdByUserId: params.createdByUserId ?? undefined,
+  };
+}
+
+export function buildVaccineAdministrationCandidate(params: {
+  vaccineAdministrationId: string;
+  encounterId: string;
+  patientId: string;
+  facilityId: string;
+  vaccineLabel: string;
+  atIso: string;
+  createdByUserId?: string | null;
+}): BillingCaptureItem {
+  return {
+    id: newBillingCaptureItemId(),
+    encounterId: params.encounterId,
+    patientId: params.patientId,
+    facilityId: params.facilityId,
+    sourceType: "VACCINE_ADMINISTRATION",
+    sourceId: params.vaccineAdministrationId,
+    units: 1,
+    billClass: "professional",
+    status: "needs_review",
+    note: `Vaccine administration — ${params.vaccineLabel}`.slice(0, MAX_NOTE),
     serviceDate: params.atIso,
     createdAt: params.atIso,
     createdByUserId: params.createdByUserId ?? undefined,

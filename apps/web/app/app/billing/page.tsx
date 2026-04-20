@@ -143,13 +143,21 @@ export default function BillingPage() {
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colOrders")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colBillingEvents")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colNeedsReview")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colMissingCode")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {queue.map((encounter) => {
                 const bc = readBillingCaptureV1(encounter.billingCaptureJson);
-                const needsReview = bc.items.filter((i) => i.status === "needs_review").length;
+                const needsReviewJson = bc.items.filter((i) => i.status === "needs_review").length;
+                const bl = encounter.billingLedger as
+                  | { total: number; needsReview: number; missingCode: number }
+                  | undefined;
+                const eventCount = typeof bl?.total === "number" ? bl.total : bc.items.length;
+                const needsReview = typeof bl?.needsReview === "number" ? bl.needsReview : needsReviewJson;
+                const missingCode =
+                  typeof bl?.missingCode === "number" ? bl.missingCode : t("common.dash");
                 return (
                 <tr key={encounter.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: 12 }}>
@@ -165,8 +173,9 @@ export default function BillingPage() {
                       : t("common.dash")}
                   </td>
                   <td style={{ padding: 12 }}>{encounter.orders?.length || 0}</td>
-                  <td style={{ padding: 12 }}>{bc.items.length}</td>
+                  <td style={{ padding: 12 }}>{eventCount}</td>
                   <td style={{ padding: 12 }}>{needsReview}</td>
+                  <td style={{ padding: 12 }}>{missingCode}</td>
                   <td style={{ padding: 12 }}>
                     <button
                       onClick={() => handleFinalize(encounter.id)}
@@ -183,6 +192,9 @@ export default function BillingPage() {
                         {t("billingPage.editBillingCapture")}
                       </button>
                     ) : null}
+                    <Link href={`/app/billing/encounters/${encounter.id}`} style={{ marginRight: 8 }}>
+                      {t("billingPage.linkLedgerDetail")}
+                    </Link>
                     <Link href={`/app/encounters/${encounter.id}`}>{t("billingPage.view")}</Link>
                   </td>
                 </tr>

@@ -41,6 +41,7 @@ import {
   readBillingCaptureV1,
   upsertBillingCaptureItem,
 } from "@medora/shared";
+import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
 const DISCHARGE_SUMMARY_KEYS = [
@@ -1205,6 +1206,7 @@ export class EncountersService {
         },
       });
       if (um.count === 0) throwEncounterConcurrentModification();
+      await upsertBillingEventFromCaptureItem(tx, dispositionCandidate);
       const closeMetadata: Record<string, unknown> = {
         workflowStateBeforeClose: encounter.workflowState,
       };
