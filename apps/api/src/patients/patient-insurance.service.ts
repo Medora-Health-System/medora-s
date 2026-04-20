@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, EncounterStatus } from "@prisma/client";
+import { AuditAction, EncounterStatus, InsuranceCoverageRank } from "@prisma/client";
 import type { PatientInsuranceCoverageUpsertDto } from "@medora/shared";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 
@@ -20,6 +20,29 @@ export class PatientInsuranceService {
       throw new NotFoundException("Patient not found");
     }
     return p;
+  }
+
+  private async assertPayerNotDuplicatedAcrossRanks(
+    facilityId: string,
+    patientId: string,
+    rank: InsuranceCoverageRank,
+    payerId: string | null,
+    payerNameFreeText: string | null
+  ) {
+    const otherRank = rank === "PRIMARY" ? "SECONDARY" : "PRIMARY";
+    const other = await this.prisma.patientInsuranceCoverage.findFirst({
+      where: { patientId, facilityId, rank: otherRank },
+    });
+    if (!other) return;
+
+    if (payerId && other.payerId && payerId === other.payerId) {
+      throw new BadRequestException("Ce payeur est déjà utilisé sur l’autre rang (primaire / secondaire).");
+    }
+    const a = payerNameFreeText?.trim().toLowerCase() ?? "";
+    const b = other.payerNameFreeText?.trim().toLowerCase() ?? "";
+    if (a.length > 0 && a === b) {
+      throw new BadRequestException("Ce nom de payeur libre est déjà utilisé sur l’autre rang.");
+    }
   }
 
   async listCoverage(
@@ -51,9 +74,10 @@ export class PatientInsuranceService {
     });
   }
 
-  async upsertPrimaryCoverage(
+  private async upsertCoverageRank(
     facilityId: string,
     patientId: string,
+    rank: InsuranceCoverageRank,
     data: PatientInsuranceCoverageUpsertDto,
     userId?: string,
     ip?: string,
@@ -62,6 +86,9 @@ export class PatientInsuranceService {
   ) {
     await this.assertPatientInFacility(facilityId, patientId);
 
+    const bgContext =
+      rank === "PRIMARY" ? "patient_insurance_primary_write" : "patient_insurance_secondary_write";
+
     await logBreakGlassAccessIfApplicable(this.audit, {
       breakGlassSessionId,
       userId,
@@ -69,7 +96,7 @@ export class PatientInsuranceService {
       patientId,
       ip,
       userAgent,
-      context: "patient_insurance_primary_write",
+      context: bgContext,
     });
 
     if (data.payerId) {
@@ -81,20 +108,49 @@ export class PatientInsuranceService {
       }
     }
 
-    const hasDetail =
-      Boolean(data.payerId) ||
-      Boolean(data.payerNameFreeText?.trim()) ||
-      Boolean(data.planName?.trim()) ||
-      Boolean(data.memberId?.trim()) ||
-      Boolean(data.groupNumber?.trim()) ||
-      Boolean(data.subscriberName?.trim()) ||
-      Boolean(data.relationToSubscriber?.trim()) ||
-      Boolean(data.phone?.trim()) ||
-      Boolean(data.notes?.trim());
+    const payerFree = data.payerNameFreeText ?? null;
+    const hasPayer = Boolean(data.payerId) || Boolean(payerFree);
+    const hasAncillary = Boolean(
+      data.planName ||
+        data.memberId ||
+        data.groupNumber ||
+        data.subscriberName ||
+        data.relationToSubscriber ||
+        data.phone ||
+        data.notes
+    );
+
+    const hasDetail = hasPayer || hasAncillary;
 
     if (data.clear === true || !hasDetail) {
+      if (rank === "PRIMARY") {
+        const hadSecondary = await this.prisma.patientInsuranceCoverage.findFirst({
+          where: { patientId, facilityId, rank: "SECONDARY" },
+        });
+        await this.prisma.patientInsuranceCoverage.deleteMany({
+          where: { patientId, facilityId, rank: { in: ["PRIMARY", "SECONDARY"] } },
+        });
+        await this.audit.log(AuditAction.PATIENT_UPDATE, "PATIENT", {
+          userId,
+          facilityId,
+          patientId,
+          entityId: patientId,
+          ip,
+          userAgent,
+          metadata: {
+            insuranceRank: "PRIMARY",
+            insurancePrimaryCleared: true,
+            insuranceSecondaryCleared: Boolean(hadSecondary),
+            payerPresent: false,
+            freeTextPresent: false,
+            ...(breakGlassSessionId ? { breakGlassSessionId } : {}),
+          },
+        });
+        return null;
+      }
+
       await this.prisma.patientInsuranceCoverage.deleteMany({
-        where: { patientId, facilityId, rank: "PRIMARY" },
+        where: { patientId, facilityId, rank: "SECONDARY" },
       });
       await this.audit.log(AuditAction.PATIENT_UPDATE, "PATIENT", {
         userId,
@@ -104,45 +160,69 @@ export class PatientInsuranceService {
         ip,
         userAgent,
         metadata: {
-          insurancePrimaryCleared: true,
+          insuranceRank: "SECONDARY",
+          insuranceSecondaryCleared: true,
+          payerPresent: false,
+          freeTextPresent: false,
           ...(breakGlassSessionId ? { breakGlassSessionId } : {}),
         },
       });
-      return { primary: null };
+      return null;
     }
+
+    if (!hasPayer) {
+      throw new BadRequestException("Payeur requis (catalogue ou nom libre).");
+    }
+
+    if (rank === "SECONDARY") {
+      const primaryRow = await this.prisma.patientInsuranceCoverage.findFirst({
+        where: { patientId, facilityId, rank: "PRIMARY" },
+      });
+      if (!primaryRow) {
+        throw new BadRequestException("Ajoutez d’abord une assurance primaire.");
+      }
+    }
+
+    await this.assertPayerNotDuplicatedAcrossRanks(
+      facilityId,
+      patientId,
+      rank,
+      data.payerId ?? null,
+      payerFree
+    );
 
     const row = await this.prisma.patientInsuranceCoverage.upsert({
       where: {
         patientId_facilityId_rank: {
           patientId,
           facilityId,
-          rank: "PRIMARY",
+          rank,
         },
       },
       create: {
         patientId,
         facilityId,
-        rank: "PRIMARY",
+        rank,
         payerId: data.payerId ?? null,
-        payerNameFreeText: data.payerNameFreeText?.trim() || null,
-        planName: data.planName?.trim() || null,
-        memberId: data.memberId?.trim() || null,
-        groupNumber: data.groupNumber?.trim() || null,
-        subscriberName: data.subscriberName?.trim() || null,
-        relationToSubscriber: data.relationToSubscriber?.trim() || null,
-        phone: data.phone?.trim() || null,
-        notes: data.notes?.trim() || null,
+        payerNameFreeText: payerFree,
+        planName: data.planName ?? null,
+        memberId: data.memberId ?? null,
+        groupNumber: data.groupNumber ?? null,
+        subscriberName: data.subscriberName ?? null,
+        relationToSubscriber: data.relationToSubscriber ?? null,
+        phone: data.phone ?? null,
+        notes: data.notes ?? null,
       },
       update: {
         payerId: data.payerId ?? null,
-        payerNameFreeText: data.payerNameFreeText?.trim() || null,
-        planName: data.planName?.trim() || null,
-        memberId: data.memberId?.trim() || null,
-        groupNumber: data.groupNumber?.trim() || null,
-        subscriberName: data.subscriberName?.trim() || null,
-        relationToSubscriber: data.relationToSubscriber?.trim() || null,
-        phone: data.phone?.trim() || null,
-        notes: data.notes?.trim() || null,
+        payerNameFreeText: payerFree,
+        planName: data.planName ?? null,
+        memberId: data.memberId ?? null,
+        groupNumber: data.groupNumber ?? null,
+        subscriberName: data.subscriberName ?? null,
+        relationToSubscriber: data.relationToSubscriber ?? null,
+        phone: data.phone ?? null,
+        notes: data.notes ?? null,
       },
       include: {
         payer: { select: { id: true, name: true, code: true } },
@@ -157,12 +237,59 @@ export class PatientInsuranceService {
       ip,
       userAgent,
       metadata: {
-        insurancePrimaryUpsert: true,
+        insuranceRank: rank,
+        insuranceUpsert: true,
+        payerPresent: Boolean(data.payerId),
+        freeTextPresent: Boolean(payerFree),
         ...(breakGlassSessionId ? { breakGlassSessionId } : {}),
       },
     });
 
+    return row;
+  }
+
+  async upsertPrimaryCoverage(
+    facilityId: string,
+    patientId: string,
+    data: PatientInsuranceCoverageUpsertDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string,
+    breakGlassSessionId?: string
+  ) {
+    const row = await this.upsertCoverageRank(
+      facilityId,
+      patientId,
+      "PRIMARY",
+      data,
+      userId,
+      ip,
+      userAgent,
+      breakGlassSessionId
+    );
     return { primary: row };
+  }
+
+  async upsertSecondaryCoverage(
+    facilityId: string,
+    patientId: string,
+    data: PatientInsuranceCoverageUpsertDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string,
+    breakGlassSessionId?: string
+  ) {
+    const row = await this.upsertCoverageRank(
+      facilityId,
+      patientId,
+      "SECONDARY",
+      data,
+      userId,
+      ip,
+      userAgent,
+      breakGlassSessionId
+    );
+    return { secondary: row };
   }
 
   async getFacesheet(
@@ -200,12 +327,20 @@ export class PatientInsuranceService {
       metadata: { facesheet: true },
     });
 
-    const primaryCoverage = await this.prisma.patientInsuranceCoverage.findFirst({
-      where: { patientId, facilityId, rank: "PRIMARY" },
-      include: {
-        payer: { select: { id: true, name: true, code: true } },
-      },
-    });
+    const [primaryCoverage, secondaryCoverage] = await Promise.all([
+      this.prisma.patientInsuranceCoverage.findFirst({
+        where: { patientId, facilityId, rank: "PRIMARY" },
+        include: {
+          payer: { select: { id: true, name: true, code: true } },
+        },
+      }),
+      this.prisma.patientInsuranceCoverage.findFirst({
+        where: { patientId, facilityId, rank: "SECONDARY" },
+        include: {
+          payer: { select: { id: true, name: true, code: true } },
+        },
+      }),
+    ]);
 
     const activeEncounter = await this.prisma.encounter.findFirst({
       where: { patientId, facilityId, status: EncounterStatus.OPEN },
@@ -225,6 +360,7 @@ export class PatientInsuranceService {
     return {
       patient,
       primaryCoverage,
+      secondaryCoverage,
       activeEncounter,
     };
   }

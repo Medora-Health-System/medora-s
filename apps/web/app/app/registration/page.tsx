@@ -43,6 +43,7 @@ export default function RegistrationPage() {
   const [regSearchLoading, setRegSearchLoading] = useState(false);
   const [regSearchResults, setRegSearchResults] = useState<RegPatientRow[]>([]);
   const [selectedRegPatient, setSelectedRegPatient] = useState<RegPatientRow | null>(null);
+  const [regSearchError, setRegSearchError] = useState<string | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -61,17 +62,21 @@ export default function RegistrationPage() {
       return;
     }
     setRegSearchLoading(true);
+    setRegSearchError(null);
     try {
       const raw = await apiFetch(`/patients/search?q=${encodeURIComponent(q)}`, {
         facilityId: effectiveFacilityId,
       });
       setRegSearchResults(registrationSearchList(raw).slice(0, 12));
-    } catch {
+    } catch (e) {
       setRegSearchResults([]);
+      setRegSearchError(
+        t("registrationHome.registrationSearchError")
+      );
     } finally {
       setRegSearchLoading(false);
     }
-  }, [effectiveFacilityId, regSearchQ]);
+  }, [effectiveFacilityId, regSearchQ, t]);
 
   const loadFollowUps = useCallback(async () => {
     if (!facilityId) return;
@@ -229,6 +234,11 @@ export default function RegistrationPage() {
             <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#64748b" }}>
               {t("registrationHome.patientChartToolsSelectHint")}
             </p>
+            {regSearchError && (
+              <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#b91c1c" }} role="alert">
+                {regSearchError}
+              </p>
+            )}
             {regSearchResults.length > 0 && (
               <ul style={{ margin: "0 0 14px 0", paddingLeft: 18, fontSize: 14 }}>
                 {regSearchResults.map((p) => (
@@ -261,52 +271,82 @@ export default function RegistrationPage() {
             ) : null}
             {selectedRegPatient &&
             isAppPathAllowedForRoles(`/app/patients/${selectedRegPatient.id}`, roles) ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                <Link
-                  href={`/app/patients/${selectedRegPatient.id}`}
-                  style={{
-                    padding: "10px 16px",
-                    backgroundColor: "#1a1a1a",
-                    color: "#fff",
-                    borderRadius: 8,
-                    textDecoration: "none",
-                    fontSize: 14,
-                    fontWeight: 600,
-                  }}
-                >
-                  {t("registrationHome.openPatientChart")}
-                </Link>
-                <Link
-                  href={`/app/patients/${selectedRegPatient.id}/facesheet`}
-                  style={{
-                    padding: "10px 16px",
-                    backgroundColor: "#fff",
-                    color: "#0f172a",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    textDecoration: "none",
-                    fontSize: 14,
-                    fontWeight: 600,
-                  }}
-                >
-                  {t("registrationHome.openFaceSheet")}
-                </Link>
-                <Link
-                  href={`/app/patients/${selectedRegPatient.id}`}
-                  style={{
-                    padding: "10px 16px",
-                    backgroundColor: "#fff",
-                    color: "#0f172a",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    textDecoration: "none",
-                    fontSize: 14,
-                    fontWeight: 600,
-                  }}
-                >
-                  {t("registrationHome.openPrimaryInsurance")}
-                </Link>
-                <span style={{ fontSize: 12, color: "#64748b" }}>{t("registrationHome.startEncounterHint")}</span>
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #bfdbfe",
+                  backgroundColor: "#f8fafc",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", marginBottom: 6 }}>
+                  {t("registrationHome.continueRegistrationTitle")}
+                </div>
+                <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#475569", lineHeight: 1.45, maxWidth: 640 }}>
+                  {t("registrationHome.continueRegistrationIntro")}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                  <Link
+                    href={`/app/patients/${selectedRegPatient.id}`}
+                    style={{
+                      padding: "10px 16px",
+                      backgroundColor: "#1a1a1a",
+                      color: "#fff",
+                      borderRadius: 8,
+                      textDecoration: "none",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t("registrationHome.openPatientChart")}
+                  </Link>
+                  <Link
+                    href={`/app/patients/${selectedRegPatient.id}#patient-registration-insurance`}
+                    style={{
+                      padding: "10px 16px",
+                      backgroundColor: "#1565c0",
+                      color: "#fff",
+                      borderRadius: 8,
+                      textDecoration: "none",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t("registrationHome.openInsuranceOnChart")}
+                  </Link>
+                  <Link
+                    href={`/app/patients/${selectedRegPatient.id}/facesheet`}
+                    style={{
+                      padding: "10px 16px",
+                      backgroundColor: "#fff",
+                      color: "#0f172a",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 8,
+                      textDecoration: "none",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t("registrationHome.openFaceSheet")}
+                  </Link>
+                  <Link
+                    href="/app/encounters"
+                    style={{
+                      padding: "10px 16px",
+                      backgroundColor: "#fff",
+                      color: "#0f172a",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 8,
+                      textDecoration: "none",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t("patientsListPage.postCreateEncountersList")}
+                  </Link>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>{t("registrationHome.startEncounterHint")}</span>
+                </div>
               </div>
             ) : selectedRegPatient ? (
               <p style={{ fontSize: 13, color: "#b45309" }}>{t("registrationHome.noPatientChartAccess")}</p>

@@ -17,6 +17,7 @@ import {
   PatientVaccinationsTab,
   CreateFollowUpModal,
   PatientPrimaryInsurancePanel,
+  PatientSecondaryInsurancePanel,
   computeHeaderVitalsLine,
 } from "@/components/patient-chart";
 import {
@@ -309,6 +310,17 @@ export default function PatientDetailPage() {
   }, [rolesReady, clinicalChartAccess, activeTab]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#patient-registration-insurance") return;
+    const el = document.getElementById("patient-registration-insurance");
+    if (!el) return;
+    const raf = window.requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [patientId]);
+
+  useEffect(() => {
     if (!clinicalChartAccess) return;
     const onChartResult = (ev: Event) => {
       const e = ev as CustomEvent<{ patientId?: string }>;
@@ -364,6 +376,11 @@ export default function PatientDetailPage() {
       roles.includes("ADMIN") ||
       roles.includes("FRONT_DESK") ||
       roles.includes("BILLING"));
+
+  const [insuranceSyncVersion, setInsuranceSyncVersion] = useState(0);
+  const bumpInsurancePanels = useCallback(() => {
+    setInsuranceSyncVersion((v) => v + 1);
+  }, []);
 
   const tabs = useMemo(
     () => [
@@ -436,12 +453,28 @@ export default function PatientDetailPage() {
                 {t("facesheet.linkFromChart")}
               </Link>
             </div>
+            <div id="patient-registration-insurance" className="no-print" style={{ scrollMarginTop: 16 }}>
             <PatientPrimaryInsurancePanel
               patientId={patientId}
               facilityId={facilityId}
               canEdit={canEditInsurance}
-              onSaved={() => void loadPatient()}
+              syncVersion={insuranceSyncVersion}
+              onSaved={() => {
+                bumpInsurancePanels();
+                void loadPatient();
+              }}
             />
+            <PatientSecondaryInsurancePanel
+              patientId={patientId}
+              facilityId={facilityId}
+              canEdit={canEditInsurance}
+              syncVersion={insuranceSyncVersion}
+              onSaved={() => {
+                bumpInsurancePanels();
+                void loadPatient();
+              }}
+            />
+            </div>
           </>
         )}
       </div>

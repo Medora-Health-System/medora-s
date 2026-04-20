@@ -101,6 +101,44 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
   },
   {
     test: (s) =>
+      /ajoutez d'abord une assurance primaire|ajoutez d’abord une assurance primaire/i.test(s),
+    fr: "Ajoutez d’abord une assurance primaire, puis l’assurance secondaire.",
+    en: "Add primary insurance first, then secondary insurance.",
+  },
+  {
+    test: (s) => /ce payeur est déjà utilisé sur l'autre rang|ce payeur est déjà utilisé sur l’autre rang/i.test(s),
+    fr: "Ce payeur est déjà utilisé pour l’autre couverture (primaire ou secondaire).",
+    en: "This payer is already used for the other coverage (primary or secondary).",
+  },
+  {
+    test: (s) =>
+      /ce nom de payeur libre est déjà utilisé sur l'autre rang|ce nom de payeur libre est déjà utilisé sur l’autre rang/i.test(s),
+    fr: "Ce nom de payeur libre est déjà utilisé pour l’autre couverture.",
+    en: "This free-text payer name is already used for the other coverage.",
+  },
+  {
+    test: (s) => /payeur requis \(catalogue ou nom libre\)/i.test(s),
+    fr: "Sélectionnez un payeur du catalogue ou saisissez un nom libre.",
+    en: "Select a catalog payer or enter a free-text payer name.",
+  },
+  {
+    test: (s) => /payeur invalide ou inactif/i.test(s),
+    fr: "Payeur invalide ou inactif. Choisissez un autre payeur.",
+    en: "Invalid or inactive payer. Choose another payer.",
+  },
+  {
+    test: (s) => /ne pas combiner payeur catalogue et nom libre/i.test(s),
+    fr: "Ne pas combiner payeur catalogue et nom libre : choisissez l’un ou l’autre.",
+    en: "Do not combine catalog payer and free text — choose one or the other.",
+  },
+  {
+    test: (s) =>
+      /sélectionnez un payeur catalogue ou saisissez un nom libre avant les autres champs/i.test(s),
+    fr: "Indiquez d’abord le payeur (catalogue ou nom libre) avant les autres champs.",
+    en: "Enter the payer (catalog or free text) before the other fields.",
+  },
+  {
+    test: (s) =>
       /La consultation doit être au stade .*Finalisé.*parcours.*avant clôture/i.test(s),
     fr: "La consultation doit être au stade « Finalisé » (parcours) avant clôture.",
     en: "The encounter must be in Finalized workflow state before closing.",

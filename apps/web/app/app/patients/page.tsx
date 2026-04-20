@@ -232,18 +232,13 @@ function PatientsPageContent() {
           <div
             style={{
               marginBottom: 20,
-              padding: "14px 16px",
+              padding: "16px 18px",
               borderRadius: 12,
               border: "1px solid #bae6fd",
               backgroundColor: "#f0f9ff",
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 12,
-              justifyContent: "space-between",
             }}
           >
-            <div>
+            <div style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: "#0c4a6e" }}>
                 {t("patientsListPage.postCreateBannerTitle")}
               </div>
@@ -252,6 +247,9 @@ function PatientsPageContent() {
                 <strong>
                   {postCreatePatient.firstName} {postCreatePatient.lastName}
                 </strong>
+              </div>
+              <div style={{ fontSize: 12, color: "#0e7490", marginTop: 8, maxWidth: 720, lineHeight: 1.45 }}>
+                {t("patientsListPage.postCreateBannerSubhint")}
               </div>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -270,6 +268,35 @@ function PatientsPageContent() {
                 {t("patientsListPage.postCreateGoChart")}
               </Link>
               <Link
+                href={`/app/patients/${postCreatePatient.id}#patient-registration-insurance`}
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#1565c0",
+                  color: "#fff",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {t("patientsListPage.postCreateGoPrimaryInsurance")}
+              </Link>
+              <Link
+                href={`/app/patients/${postCreatePatient.id}#patient-registration-insurance`}
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#fff",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {t("patientsListPage.postCreateGoSecondaryInsurance")}
+              </Link>
+              <Link
                 href={`/app/patients/${postCreatePatient.id}/facesheet`}
                 style={{
                   padding: "8px 14px",
@@ -285,7 +312,7 @@ function PatientsPageContent() {
                 {t("patientsListPage.postCreateGoFacesheet")}
               </Link>
               <Link
-                href={`/app/patients/${postCreatePatient.id}`}
+                href="/app/encounters"
                 style={{
                   padding: "8px 14px",
                   backgroundColor: "#fff",
@@ -297,7 +324,7 @@ function PatientsPageContent() {
                   fontWeight: 600,
                 }}
               >
-                {t("patientsListPage.postCreateGoInsurance")}
+                {t("patientsListPage.postCreateEncountersList")}
               </Link>
               <button
                 type="button"

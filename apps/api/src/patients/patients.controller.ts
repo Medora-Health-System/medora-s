@@ -245,6 +245,32 @@ export class PatientsController {
     );
   }
 
+  @Put(":id/insurance/secondary")
+  @AllowBreakGlassForPatientParam("id")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async upsertSecondaryInsurance(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    const dto = assertZodBody(patientInsuranceCoverageUpsertDtoSchema.safeParse(body));
+    return this.patientInsuranceService.upsertSecondaryCoverage(
+      facilityId,
+      id,
+      dto,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"],
+      req.breakGlassSessionId
+    );
+  }
+
   @Get(":id/facesheet")
   @AllowBreakGlassForPatientParam("id")
   @RequireRoles(

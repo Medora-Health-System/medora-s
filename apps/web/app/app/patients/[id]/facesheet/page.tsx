@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { calculateAge } from "@/lib/patientDisplay";
 import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -13,12 +14,56 @@ import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landing
 type FacesheetPayload = {
   patient: Record<string, unknown> | null;
   primaryCoverage: Record<string, unknown> | null;
+  secondaryCoverage: Record<string, unknown> | null;
   activeEncounter: Record<string, unknown> | null;
 };
 
 function dash(v: unknown): string {
   if (v == null || v === "") return "—";
   return String(v);
+}
+
+function CoverageBlock({
+  cov,
+  payer,
+  t,
+  noneStoredLabel,
+}: {
+  cov: Record<string, unknown> | null | undefined;
+  payer: { name?: string } | null | undefined;
+  t: (k: string) => string;
+  noneStoredLabel: string;
+}) {
+  if (!cov) {
+    return <div style={{ color: "#666" }}>{noneStoredLabel}</div>;
+  }
+  return (
+    <>
+      <div>
+        {t("insurancePrimary.payerLabel")}{" "}
+        {payer?.name ? payer.name : dash(cov.payerNameFreeText)}
+      </div>
+      <div>
+        {t("insurancePrimary.planName")} {dash(cov.planName)}
+      </div>
+      <div>
+        {t("insurancePrimary.memberId")} {dash(cov.memberId)}
+      </div>
+      <div>
+        {t("insurancePrimary.groupNumber")} {dash(cov.groupNumber)}
+      </div>
+      <div>
+        {t("insurancePrimary.subscriberName")} {dash(cov.subscriberName)}
+      </div>
+      <div>
+        {t("insurancePrimary.relationToSubscriber")} {dash(cov.relationToSubscriber)}
+      </div>
+      <div>
+        {t("insurancePrimary.phone")} {dash(cov.phone)}
+      </div>
+      {cov.notes ? <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{String(cov.notes)}</div> : null}
+    </>
+  );
 }
 
 export default function PatientFacesheetPage() {
@@ -41,8 +86,10 @@ export default function PatientFacesheetPage() {
     try {
       const res = (await apiFetch(`/patients/${patientId}/facesheet`, { facilityId })) as FacesheetPayload;
       setData(res);
-    } catch {
-      setError(t("facesheet.loadError"));
+    } catch (e) {
+      setError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("facesheet.loadError")
+      );
       setData(null);
     } finally {
       setLoading(false);
@@ -64,11 +111,15 @@ export default function PatientFacesheetPage() {
   }
 
   const p = data?.patient;
-  const cov = data?.primaryCoverage as Record<string, unknown> | null | undefined;
+  const covPrimary = data?.primaryCoverage as Record<string, unknown> | null | undefined;
+  const covSecondary = data?.secondaryCoverage as Record<string, unknown> | null | undefined;
   const enc = data?.activeEncounter as Record<string, unknown> | null | undefined;
-  const payer = cov?.payer as { name?: string } | null | undefined;
+  const payerPrimary = covPrimary?.payer as { name?: string } | null | undefined;
+  const payerSecondary = covSecondary?.payer as { name?: string } | null | undefined;
 
   const generated = new Date().toLocaleString(locale);
+
+  const hasAnyInsurance = Boolean(covPrimary || covSecondary);
 
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: "16px 12px 32px" }}>
@@ -176,26 +227,29 @@ export default function PatientFacesheetPage() {
             <h2 style={{ fontSize: 14, margin: "0 0 8px 0", borderBottom: "1px solid #ccc", paddingBottom: 4 }}>
               {t("facesheet.insurance")}
             </h2>
-            {cov ? (
-              <>
-                <div>
-                  {t("insurancePrimary.payerLabel")}{" "}
-                  {payer?.name
-                    ? payer.name
-                    : dash(cov.payerNameFreeText)}
-                </div>
-                <div>{t("insurancePrimary.planName")} {dash(cov.planName)}</div>
-                <div>{t("insurancePrimary.memberId")} {dash(cov.memberId)}</div>
-                <div>{t("insurancePrimary.groupNumber")} {dash(cov.groupNumber)}</div>
-                <div>{t("insurancePrimary.subscriberName")} {dash(cov.subscriberName)}</div>
-                <div>{t("insurancePrimary.relationToSubscriber")} {dash(cov.relationToSubscriber)}</div>
-                <div>{t("insurancePrimary.phone")} {dash(cov.phone)}</div>
-                {cov.notes ? (
-                  <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{String(cov.notes)}</div>
-                ) : null}
-              </>
+            {!hasAnyInsurance ? (
+              <div style={{ color: "#666" }}>{t("facesheet.noInsuranceStored")}</div>
             ) : (
-              <div style={{ color: "#666" }}>{t("insurancePrimary.noneStored")}</div>
+              <>
+                <h3 style={{ fontSize: 13, margin: "0 0 6px 0", fontWeight: 600 }}>{t("facesheet.insurancePrimaryHeading")}</h3>
+                <div style={{ marginBottom: covSecondary ? 14 : 0 }}>
+                  <CoverageBlock
+                    cov={covPrimary ?? null}
+                    payer={payerPrimary}
+                    t={t}
+                    noneStoredLabel={t("insurancePrimary.noneStored")}
+                  />
+                </div>
+                <h3 style={{ fontSize: 13, margin: "0 0 6px 0", fontWeight: 600 }}>{t("facesheet.insuranceSecondaryHeading")}</h3>
+                <div>
+                  <CoverageBlock
+                    cov={covSecondary ?? null}
+                    payer={payerSecondary}
+                    t={t}
+                    noneStoredLabel={t("insuranceSecondary.noneStored")}
+                  />
+                </div>
+              </>
             )}
           </section>
 

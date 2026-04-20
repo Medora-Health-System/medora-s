@@ -71,29 +71,60 @@ export const insurancePayerSearchQuerySchema = z.object({
   q: z.string().min(1),
 });
 
+const optionalTrimmed = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .optional()
+    .transform((s) => (s === undefined ? undefined : s.trim() === "" ? undefined : s.trim()));
+
 export const patientInsuranceCoverageUpsertDtoSchema = z
   .object({
-    payerId: z.string().optional().nullable(),
-    payerNameFreeText: z.string().optional().nullable(),
-    planName: z.string().optional(),
-    memberId: z.string().optional(),
-    groupNumber: z.string().optional(),
-    subscriberName: z.string().optional(),
+    payerId: z
+      .string()
+      .optional()
+      .nullable()
+      .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
+    payerNameFreeText: z
+      .string()
+      .optional()
+      .nullable()
+      .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
+    planName: optionalTrimmed(512),
+    memberId: optionalTrimmed(256),
+    groupNumber: optionalTrimmed(256),
+    subscriberName: optionalTrimmed(512),
+    relationToSubscriber: optionalTrimmed(128),
+    phone: optionalTrimmed(64),
+    notes: optionalTrimmed(8000),
+    clear: z.boolean().optional(),
   })
-  .and(
-    z.object({
-      relationToSubscriber: z.string().optional(),
-      phone: z.string().optional(),
-      notes: z.string().optional(),
-      clear: z.boolean().optional(),
-    })
-  )
   .superRefine((data, ctx) => {
-    if (data.payerId && data.payerNameFreeText?.trim()) {
+    if (data.payerId && data.payerNameFreeText) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Ne pas combiner payeur catalogue et nom libre : choisissez l’un ou l’autre.",
         path: ["payerNameFreeText"],
+      });
+    }
+  })
+  .superRefine((data, ctx) => {
+    if (data.clear === true) return;
+    const hasPayer = Boolean(data.payerId) || Boolean(data.payerNameFreeText);
+    const hasAncillary = Boolean(
+      data.planName ||
+        data.memberId ||
+        data.groupNumber ||
+        data.subscriberName ||
+        data.relationToSubscriber ||
+        data.phone ||
+        data.notes
+    );
+    if (!hasPayer && hasAncillary) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sélectionnez un payeur catalogue ou saisissez un nom libre avant les autres champs.",
+        path: ["payerId"],
       });
     }
   });

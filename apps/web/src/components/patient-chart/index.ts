@@ -5,4 +5,8 @@ export { PatientVitalsHistory } from "./PatientVitalsHistory";
 export { PatientConsultationsTab } from "./PatientConsultationsTab";
 export { PatientVaccinationsTab } from "./PatientVaccinationsTab";
 export { CreateFollowUpModal } from "./CreateFollowUpModal";
-export { PatientPrimaryInsurancePanel } from "./PatientPrimaryInsurancePanel";
+export {
+  PatientInsuranceCoveragePanel,
+  PatientPrimaryInsurancePanel,
+  PatientSecondaryInsurancePanel,
+} from "./PatientInsuranceCoveragePanel";
