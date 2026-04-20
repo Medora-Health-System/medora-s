@@ -175,6 +175,9 @@ export default {
     billingSummaryTableHcpcs: "HCPCS",
     billingSummaryTableDiagnosis: "Diagnoses (ledger)",
     billingSummaryUncodedBadge: "Billable code (CPT/HCPCS/ICD) still needed",
+    billingSummaryNonBillableLine: "Not a billable line",
+    billingSummaryMedAdminRecordedNoProcedure:
+      "Administration recorded — no procedure code assigned (insufficient route context)",
     billingSummaryUnmappedBadge:
       "UNMAPPED — no BillingCatalog match; add a catalog row or edit the line. Older rows may clear after a safe server backfill when the catalog catches up.",
     queueFilterAll: "All encounters",

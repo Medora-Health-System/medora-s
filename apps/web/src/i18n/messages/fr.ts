@@ -99,6 +99,9 @@ export default {
     billingSummaryTableHcpcs: "HCPCS",
     billingSummaryTableDiagnosis: "Diagnostics (registre)",
     billingSummaryUncodedBadge: "Code facturable (CPT/HCPCS/CIM) à compléter",
+    billingSummaryNonBillableLine: "Ligne non facturable",
+    billingSummaryMedAdminRecordedNoProcedure:
+      "Administration enregistrée — pas de code d’acte (contexte de voie insuffisant)",
     billingSummaryUnmappedBadge:
       "Non mappé (UNMAPPED) — aucune entrée BillingCatalog ; ajoutez une ligne catalogue ou modifiez la ligne. D’anciennes lignes peuvent se mettre à jour après un backfill serveur lorsque le catalogue est à jour.",
     queueFilterAll: "Toutes les consultations",

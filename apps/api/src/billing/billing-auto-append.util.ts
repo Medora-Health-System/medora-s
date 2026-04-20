@@ -14,6 +14,7 @@ import {
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
 import { collectMedicationMarLookupOrder } from "./medication-code-derive.util";
+import { inferMedicationAdministrationCpt } from "./medication-admin-cpt.util";
 
 export type AppendAutoBillingParams = {
   facilityId: string;
@@ -26,6 +27,8 @@ export type AppendAutoBillingParams = {
   system: "CPT" | "HCPCS" | "INTERNAL";
   billClass: "professional" | "facility" | "both";
   description: string;
+  /** When `system` is HCPCS (drug), optional therapeutic/admin CPT on the same capture line (e.g. 96372 + J-code). */
+  companionProcedureCpt?: string | null;
 };
 
 /**
@@ -49,6 +52,12 @@ export async function appendBillingEventIfNotExists(
 
   const now = new Date().toISOString();
   const isInternal = params.system === "INTERNAL";
+  const companion = params.companionProcedureCpt?.trim();
+  const procedureForItem = isInternal
+    ? params.billingCode
+    : params.system === "CPT"
+      ? params.billingCode
+      : companion ?? null;
   const item: BillingCaptureItem = {
     id: randomUUID(),
     encounterId: params.encounterId,
@@ -56,11 +65,7 @@ export async function appendBillingEventIfNotExists(
     facilityId: params.facilityId,
     sourceType: params.captureSourceType,
     sourceId: params.sourceRecordId,
-    procedureCode: isInternal
-      ? params.billingCode
-      : params.system === "CPT"
-        ? params.billingCode
-        : null,
+    procedureCode: procedureForItem,
     hcpcsCode: params.system === "HCPCS" ? params.billingCode : null,
     billClass: params.billClass,
     status: "needs_review",
@@ -97,9 +102,16 @@ async function appendFromMapping(
     captureSourceType: BillingCaptureItem["sourceType"];
     mapping: CatalogBillingMapping;
     descriptionFallback: string;
+    companionProcedureCpt?: string | null;
+    companionDescriptionNote?: string | null;
   }
 ): Promise<void> {
-  const desc = params.mapping.description || params.descriptionFallback;
+  const mapping = params.mapping;
+  let desc = mapping.description || params.descriptionFallback;
+  if (mapping.system === "HCPCS" && params.companionProcedureCpt?.trim()) {
+    const note = params.companionDescriptionNote?.trim() ?? "Administration CPT";
+    desc = `${desc}; ${note}`.slice(0, 4000);
+  }
   await appendBillingEventIfNotExists(prisma, {
     facilityId: params.facilityId,
     encounterId: params.encounterId,
@@ -107,10 +119,11 @@ async function appendFromMapping(
     sourceModule: params.sourceModule,
     sourceRecordId: params.sourceRecordId,
     captureSourceType: params.captureSourceType,
-    billingCode: params.mapping.code,
-    system: params.mapping.system,
-    billClass: params.mapping.billClass,
+    billingCode: mapping.code,
+    system: mapping.system,
+    billClass: mapping.billClass,
     description: desc,
+    companionProcedureCpt: mapping.system === "HCPCS" ? params.companionProcedureCpt?.trim() ?? null : null,
   });
 }
 
@@ -411,6 +424,8 @@ export async function tryAutoMedicationAdministrationBilling(
       return;
     }
 
+    const adminCptInf = inferMedicationAdministrationCpt({ route: cat?.route ?? null });
+
     await appendFromMapping(prisma, {
       facilityId: input.facilityId,
       encounterId: adm.encounterId,
@@ -420,6 +435,8 @@ export async function tryAutoMedicationAdministrationBilling(
       captureSourceType: "MED_ADMIN",
       mapping,
       descriptionFallback: labelFallback,
+      companionProcedureCpt: mapping.system === "HCPCS" ? adminCptInf?.cpt ?? null : null,
+      companionDescriptionNote: adminCptInf?.description ?? null,
     });
   } catch (e) {
     console.warn(

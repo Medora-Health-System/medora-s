@@ -1219,6 +1219,7 @@ export class EncountersService {
           where: { facilityId, encounterId: id },
           select: {
             reviewStatus: true,
+            sourceModule: true,
             procedureCode: true,
             hcpcsCode: true,
             code: true,

@@ -18,6 +18,7 @@ import {
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
 import { collectMedicationMarLookupOrder } from "./medication-code-derive.util";
+import { inferMedicationAdministrationCpt } from "./medication-admin-cpt.util";
 import { inferEmergencyEMCode } from "./billing-em.util";
 import { syncBillingCaptureItemFromLedgerRow } from "./billing-capture-sync-from-ledger.util";
 
@@ -98,6 +99,7 @@ export async function recodeBillingEventIfPossible(
 
     let mapping: CatalogBillingMapping | null = null;
     let labelFallback = row.descriptionSnapshot?.trim() || "Billing line";
+    let medAdminCatalogRoute: string | null = null;
 
     switch (row.sourceModule) {
       case BillingSourceModule.DIAGNOSIS:
@@ -216,6 +218,7 @@ export async function recodeBillingEventIfPossible(
           if (cat?.code?.trim()) {
             labelFallback = cat.displayNameFr?.trim() || cat.name?.trim() || labelFallback;
           }
+          medAdminCatalogRoute = cat?.route?.trim() ?? null;
         }
 
         const hasMedicationLookup =
@@ -375,7 +378,24 @@ export async function recodeBillingEventIfPossible(
 
     if (!mapping) return "skipped";
 
-    const ledgerFields = buildLedgerFieldsFromMapping(mapping, labelFallback);
+    let ledgerFields = buildLedgerFieldsFromMapping(mapping, labelFallback);
+    if (
+      medAdminCatalogRoute &&
+      (row.sourceModule === BillingSourceModule.MED_ADMIN ||
+        row.sourceModule === BillingSourceModule.MEDICATION_ADMINISTRATION) &&
+      mapping.system === "HCPCS"
+    ) {
+      const admCpt = inferMedicationAdministrationCpt({ route: medAdminCatalogRoute });
+      if (admCpt) {
+        ledgerFields = {
+          ...ledgerFields,
+          procedureCode: admCpt.cpt.slice(0, 32),
+          code: admCpt.cpt.slice(0, 32),
+          codeType: BillingCodeType.CPT,
+          descriptionSnapshot: `${ledgerFields.descriptionSnapshot ?? ""}; ${admCpt.description}`.slice(0, 8000),
+        };
+      }
+    }
     const prevMeta =
       row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
         ? (row.metadata as Record<string, unknown>)

@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
-import { BillingReviewStatus, EncounterStatus } from "@prisma/client";
-import { billingLedgerRowHasUsableCode } from "@medora/shared";
+import { BillingReviewStatus, BillingSourceModule, EncounterStatus } from "@prisma/client";
+import { billingLedgerRowMissingBillableCodeBlocksReadiness } from "@medora/shared";
 
 export type BillingReadinessBlocker = { code: string; detail?: string };
 export type BillingReadinessWarning = { code: string; detail?: string };
@@ -21,6 +21,7 @@ export type BillingReadinessDb = Pick<PrismaClient, "encounter" | "billingEvent"
 
 export type BillingEventReadinessRow = {
   reviewStatus: BillingReviewStatus;
+  sourceModule: BillingSourceModule;
   procedureCode: string | null;
   hcpcsCode: string | null;
   code: string | null;
@@ -58,7 +59,7 @@ export function evaluateEncounterBillingReadinessFromData(
   let uncodedLines = 0;
   let ledgerLinesNeedingReview = 0;
   for (const ev of events) {
-    if (!billingLedgerRowHasUsableCode(ev)) uncodedLines++;
+    if (billingLedgerRowMissingBillableCodeBlocksReadiness(ev)) uncodedLines++;
     if (ev.reviewStatus === BillingReviewStatus.CAPTURED) ledgerLinesNeedingReview++;
   }
 
@@ -125,6 +126,7 @@ export async function computeEncounterBillingReadiness(
       where: { facilityId, encounterId },
       select: {
         reviewStatus: true,
+        sourceModule: true,
         procedureCode: true,
         hcpcsCode: true,
         code: true,

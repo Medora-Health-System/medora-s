@@ -3,7 +3,7 @@
  * No payer submission; readiness for later claim assembly only.
  */
 
-import { billingLedgerRowHasUsableCode } from "./billingLedgerCoding.js";
+import { billingLedgerRowMissingBillableCodeBlocksReadiness } from "./billingLedgerCoding.js";
 
 /** BillingSide values as stored on BillingEvent (mirrors Prisma enum). */
 export type BillingSideValue = "UNKNOWN" | "PROFESSIONAL" | "FACILITY" | "BOTH";
@@ -14,6 +14,7 @@ export type BillingReviewStatusValue = "CAPTURED" | "REVIEWED" | "VOIDED" | "SKI
 export type ClaimPackageLedgerRow = {
   billingSide: BillingSideValue;
   reviewStatus: BillingReviewStatusValue;
+  sourceModule?: string | null;
   procedureCode: string | null;
   hcpcsCode: string | null;
   code: string | null;
@@ -73,7 +74,7 @@ function accumulate(
   for (const r of rows) {
     if (!scope(r.billingSide)) continue;
     totalLines++;
-    if (!billingLedgerRowHasUsableCode(r)) uncodedLines++;
+    if (billingLedgerRowMissingBillableCodeBlocksReadiness(r)) uncodedLines++;
     if (r.reviewStatus === "CAPTURED") linesNeedingReview++;
     if (r.billingSide === "UNKNOWN") unknownSideLines++;
   }

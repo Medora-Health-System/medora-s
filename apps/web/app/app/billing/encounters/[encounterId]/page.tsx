@@ -7,7 +7,13 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import { billingLedgerRowHasUsableCode, billingLedgerRowIsUnmapped, readBillingCaptureV1 } from "@medora/shared";
+import {
+  billingLedgerRowHasUsableCode,
+  billingLedgerRowIsInformationalNonBillable,
+  billingLedgerRowIsMedAdminDrugOnlyWithoutProcedureCpt,
+  billingLedgerRowIsUnmapped,
+  readBillingCaptureV1,
+} from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 type LedgerEventRow = {
@@ -578,7 +584,16 @@ export default function BillingEncounterLedgerPage() {
                   {data.events.map((ev) => {
                     const coded = billingLedgerRowHasUsableCode(ev);
                     const isUnmapped = billingLedgerRowIsUnmapped(ev);
-                    const rowBg = isUnmapped ? "#fef2f2" : coded ? undefined : "#fffbeb";
+                    const informationalNonBillable = billingLedgerRowIsInformationalNonBillable(ev);
+                    const medDrugOnlyNoProcedure = billingLedgerRowIsMedAdminDrugOnlyWithoutProcedureCpt(ev);
+                    const showUncodedWarning = !isUnmapped && !informationalNonBillable && !coded;
+                    const rowBg = isUnmapped
+                      ? "#fef2f2"
+                      : informationalNonBillable
+                        ? "#f8fafc"
+                        : showUncodedWarning
+                          ? "#fffbeb"
+                          : undefined;
                     const rowBorderLeft = isUnmapped ? "4px solid #dc2626" : undefined;
                     const isEditing = editingId === ev.id;
                     return (
@@ -612,7 +627,31 @@ export default function BillingEncounterLedgerPage() {
                                 >
                                   {t("billingPage.billingSummaryUnmappedBadge")}
                                 </span>
-                              ) : !coded ? (
+                              ) : informationalNonBillable ? (
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    color: "#64748b",
+                                    fontFamily: "inherit",
+                                  }}
+                                >
+                                  {t("billingPage.billingSummaryNonBillableLine")}
+                                </span>
+                              ) : medDrugOnlyNoProcedure ? (
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    color: "#475569",
+                                    fontFamily: "inherit",
+                                  }}
+                                >
+                                  {t("billingPage.billingSummaryMedAdminRecordedNoProcedure")}
+                                </span>
+                              ) : showUncodedWarning ? (
                                 <span
                                   style={{
                                     marginLeft: 8,
@@ -684,7 +723,7 @@ export default function BillingEncounterLedgerPage() {
                                 {isEditing ? t("billingPage.billingRowCancel") : t("billingPage.billingRowEdit")}
                               </button>
                             ) : null}
-                            {ev.reviewStatus === "CAPTURED" && coded && wf !== "FINALIZED" ? (
+                            {ev.reviewStatus === "CAPTURED" && (coded || informationalNonBillable) && wf !== "FINALIZED" ? (
                               <button
                                 type="button"
                                 disabled={markingId === ev.id}

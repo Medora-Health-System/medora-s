@@ -21,7 +21,11 @@ import {
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
 import { AuditService } from "../common/services/audit.service";
-import { billingLedgerRowHasUsableCode, buildOrderItemCandidate, computeClaimPackageSummaries } from "@medora/shared";
+import {
+  billingLedgerRowMissingBillableCodeBlocksReadiness,
+  buildOrderItemCandidate,
+  computeClaimPackageSummaries,
+} from "@medora/shared";
 import {
   computeEncounterBillingReadiness,
   evaluateEncounterBillingReadinessFromData,
@@ -220,6 +224,7 @@ export class QueuesService {
       select: {
         encounterId: true,
         reviewStatus: true,
+        sourceModule: true,
         procedureCode: true,
         hcpcsCode: true,
         code: true,
@@ -231,7 +236,7 @@ export class QueuesService {
       if (!cur) continue;
       cur.total++;
       if (r.reviewStatus === BillingReviewStatus.CAPTURED) cur.needsReview++;
-      if (!billingLedgerRowHasUsableCode(r)) cur.missingCode++;
+      if (billingLedgerRowMissingBillableCodeBlocksReadiness(r)) cur.missingCode++;
       if (r.procedureCode?.trim() === "UNMAPPED" || r.code?.trim() === "UNMAPPED") {
         cur.unmappedLinesCount++;
       }
@@ -286,6 +291,7 @@ export class QueuesService {
             select: {
               encounterId: true,
               reviewStatus: true,
+              sourceModule: true,
               billingSide: true,
               procedureCode: true,
               hcpcsCode: true,
@@ -300,6 +306,7 @@ export class QueuesService {
       string,
       Array<{
         reviewStatus: BillingReviewStatus;
+        sourceModule: BillingSourceModule;
         billingSide: BillingSide;
         procedureCode: string | null;
         hcpcsCode: string | null;
@@ -334,6 +341,7 @@ export class QueuesService {
         evRows.map((r) => ({
           billingSide: r.billingSide,
           reviewStatus: r.reviewStatus,
+          sourceModule: r.sourceModule,
           procedureCode: r.procedureCode,
           hcpcsCode: r.hcpcsCode,
           code: r.code,
@@ -383,7 +391,7 @@ export class QueuesService {
       const rs = e.reviewStatus;
       byReviewStatus[rs] = (byReviewStatus[rs] ?? 0) + 1;
       if (e.reviewStatus === BillingReviewStatus.CAPTURED) needsReview++;
-      if (!billingLedgerRowHasUsableCode(e)) missingCode++;
+      if (billingLedgerRowMissingBillableCodeBlocksReadiness(e)) missingCode++;
       bySourceModule[e.sourceModule] = (bySourceModule[e.sourceModule] ?? 0) + 1;
     }
     const readiness = await computeEncounterBillingReadiness(this.prisma, facilityId, encounterId);
@@ -391,6 +399,7 @@ export class QueuesService {
       events.map((ev) => ({
         billingSide: ev.billingSide,
         reviewStatus: ev.reviewStatus,
+        sourceModule: ev.sourceModule,
         procedureCode: ev.procedureCode,
         hcpcsCode: ev.hcpcsCode,
         code: ev.code,
