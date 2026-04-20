@@ -45,7 +45,7 @@ import {
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { getPatientChartPrintHtml, printPatientChart } from "@/components/patient-chart/PatientChartPrintLayout";
-import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
+import { MEDORA_CHART_RESULT_UPDATED, MEDORA_PATIENT_PROFILE_UPDATED } from "@/lib/chartEvents";
 import { useI18n } from "@/lib/i18n";
 import Link from "next/link";
 
@@ -59,7 +59,6 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showAddDiagnosisModal, setShowAddDiagnosisModal] = useState(false);
   const [showAddFollowUpModal, setShowAddFollowUpModal] = useState(false);
   const [chartLastFetchedAt, setChartLastFetchedAt] = useState<Date | null>(null);
@@ -124,6 +123,15 @@ export default function PatientDetailPage() {
       setLoading(false);
     }
   }, [facilityId, patientId]);
+
+  useEffect(() => {
+    const onProfileUpdated = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ patientId?: string }>).detail;
+      if (detail?.patientId === patientId) void loadPatient();
+    };
+    window.addEventListener(MEDORA_PATIENT_PROFILE_UPDATED, onProfileUpdated);
+    return () => window.removeEventListener(MEDORA_PATIENT_PROFILE_UPDATED, onProfileUpdated);
+  }, [patientId, loadPatient]);
 
   const loadChartSummary = useCallback(async () => {
     if (!facilityId) return;
@@ -365,9 +373,13 @@ export default function PatientDetailPage() {
       )
     : [];
 
-  const canEditPatient =
+  /** Aligné sur PATCH /patients/:id — inscription / démographie (accueil inclus). */
+  const canEditPatientProfile =
     rolesReady &&
-    (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
+    (roles.includes("FRONT_DESK") ||
+      roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN"));
 
   const canEditInsurance =
     rolesReady &&
@@ -420,8 +432,8 @@ export default function PatientDetailPage() {
           openEncounter={openEncounter ?? null}
           canOpenEncounterDetail={canOpenClinicalEncounterDetail}
           administrativeShell={false}
-          showEditButton={canEditPatient}
-          onEditClick={() => setShowEditModal(true)}
+          showEditButton={canEditPatientProfile}
+          onEditClick={() => router.push(`/app/patients/${patientId}/profile`)}
         />
 
         <PatientQuickActions
@@ -439,7 +451,7 @@ export default function PatientDetailPage() {
           onTabSummary={() => setActiveTab("summary")}
           onAddDiagnosis={() => setShowAddDiagnosisModal(true)}
           onAddFollowUp={() => setShowAddFollowUpModal(true)}
-          onEditPatient={() => setShowEditModal(true)}
+          onEditPatient={() => router.push(`/app/patients/${patientId}/profile`)}
           onPendingCreateEncounter={() => setPendingOpenCreateEncounter(true)}
         />
 
@@ -645,17 +657,6 @@ export default function PatientDetailPage() {
         />
       )}
 
-      {showEditModal && (
-        <EditPatientModal
-          patient={patient}
-          facilityId={facilityId}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={() => {
-            setShowEditModal(false);
-            loadPatient();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -901,191 +902,3 @@ function AddDiagnosisModal({
     </div>
   );
 }
-
-function initialSexAtBirthForEdit(p: { sexAtBirth?: string | null; sex?: string | null }): string {
-  if (p.sexAtBirth) return p.sexAtBirth;
-  if (p.sex === "MALE") return "M";
-  if (p.sex === "FEMALE") return "F";
-  if (p.sex === "OTHER") return "X";
-  if (p.sex === "UNKNOWN") return "U";
-  return "";
-}
-
-function EditPatientModal({
-  patient,
-  facilityId,
-  onClose,
-  onSuccess,
-}: {
-  patient: any;
-  facilityId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const { t } = useI18n();
-  const [formData, setFormData] = useState({
-    firstName: patient.firstName || "",
-    lastName: patient.lastName || "",
-    dob: patient.dob ? new Date(patient.dob).toISOString().split("T")[0] : "",
-    phone: patient.phone || "",
-    email: patient.email || "",
-    sexAtBirth: initialSexAtBirthForEdit(patient),
-    address: patient.address || "",
-    city: patient.city || "",
-    country: patient.country || "",
-    language: patient.language || "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const payload: any = { ...formData };
-      if (payload.dob) {
-        payload.dob = new Date(payload.dob).toISOString();
-      }
-      if (!payload.sexAtBirth) payload.sexAtBirth = null;
-      if (!payload.phone) payload.phone = null;
-      if (!payload.email) payload.email = null;
-
-      await apiFetch(`/patients/${patient.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        facilityId,
-      });
-      onSuccess();
-    } catch (err) {
-      setError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) || t("patientChartUi.editPatientError")
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: 24,
-          borderRadius: 8,
-          maxWidth: 600,
-          width: "90%",
-          maxHeight: "90vh",
-          overflow: "auto",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 style={{ marginTop: 0 }}>{t("patientChartUi.editPatientTitle")}</h2>
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientFirstName")}</label>
-              <input
-                type="text"
-                required
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientLastName")}</label>
-              <input
-                type="text"
-                required
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientDob")}</label>
-              <input
-                type="date"
-                value={formData.dob}
-                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientSex")}</label>
-              <select
-                value={formData.sexAtBirth}
-                onChange={(e) => setFormData({ ...formData, sexAtBirth: e.target.value })}
-                style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-              >
-                <option value="">{t("patientChartUi.editPatientSexPh")}</option>
-                <option value="M">{t("patientChartUi.editPatientSexM")}</option>
-                <option value="F">{t("patientChartUi.editPatientSexF")}</option>
-                <option value="X">{t("patientChartUi.editPatientSexX")}</option>
-                <option value="U">{t("patientChartUi.editPatientSexU")}</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("patientChartUi.editPatientPhone")}</label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-            />
-          </div>
-
-          {error && (
-            <div style={{ padding: 12, backgroundColor: "#fee", color: "#c33", borderRadius: 4, marginBottom: 16 }}>
-              {error}
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-            <button type="button" onClick={onClose} style={{ padding: "10px 20px", border: "1px solid #ddd", borderRadius: 4, cursor: "pointer" }}>
-              {t("patientChartUi.editPatientCancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#1a1a1a",
-                color: "white",
-                border: "none",
-                borderRadius: 4,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              {loading ? t("patientChartUi.editPatientSaving") : t("patientChartUi.editPatientSave")}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-

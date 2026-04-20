@@ -333,6 +333,27 @@ export default {
     ageDayLabel: "jour",
     ageDaysLabel: "jours",
   },
+  patientProfile: {
+    pageTitle: "Profil patient",
+    pageSubtitle: "Données d’inscription et démographiques pour ce patient.",
+    backToChart: "Retour au dossier",
+    loadError: "Impossible de charger ce patient.",
+    saveError: "L’enregistrement a échoué.",
+    saveSuccess: "Profil enregistré.",
+    saving: "Enregistrement…",
+    saveButton: "Enregistrer le profil",
+    cancelButton: "Annuler",
+    validationError: "Vérifiez les champs et réessayez.",
+    accessDenied: "Vous n’avez pas accès à cette page.",
+    mrnReadOnly: "NDP / DMI (lecture seule)",
+    labelMiddleName: "Deuxième prénom",
+    labelPreferredLanguage: "Langue préférée",
+    sectionAddress: "Adresse",
+    sectionEmergency: "Contact d’urgence",
+    sectionAdmin: "Administratif",
+    linkViewProfile: "Profil patient",
+    linkEditProfile: "Modifier le profil",
+  },
   registrationHome: {
     title: "Inscription",
     tagline:
@@ -2878,7 +2899,7 @@ export default {
       noVitals: "Aucun signe vital enregistré",
       frontDeskNoVitals:
         "Accueil — les signes vitaux et le détail clinique ne sont pas affichés ici.",
-      editPatient: "Modifier les informations du patient",
+      editPatient: "Modifier le profil",
     },
     chartTabs: {
       orderTypeLAB: "Laboratoire",
@@ -3690,7 +3711,7 @@ export default {
     openOrCreateEncounter: "Ouvrez ou créez une consultation",
     viewResults: "Voir les résultats",
     newEncounter: "Nouvelle consultation",
-    editPatientInfo: "Modifier les informations du patient",
+    editPatientInfo: "Modifier le profil",
   },
   patientConsultationsTab: {
     loadError: "Impossible de charger la liste des consultations.",

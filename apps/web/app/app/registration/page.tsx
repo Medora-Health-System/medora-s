@@ -17,6 +17,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { MEDORA_PATIENT_PROFILE_UPDATED } from "@/lib/chartEvents";
 
 type RegPatientRow = {
   id: string;
@@ -203,6 +204,15 @@ function RegistrationPageInner() {
     void loadWorkspaceDetails(selectedRegPatient.id);
   }, [selectedRegPatient?.id, effectiveFacilityId, loadWorkspaceDetails]);
 
+  useEffect(() => {
+    const onProfileUpdated = (ev: Event) => {
+      const pid = (ev as CustomEvent<{ patientId?: string }>).detail?.patientId;
+      if (pid && selectedRegPatient?.id === pid) void loadWorkspaceDetails(pid);
+    };
+    window.addEventListener(MEDORA_PATIENT_PROFILE_UPDATED, onProfileUpdated);
+    return () => window.removeEventListener(MEDORA_PATIENT_PROFILE_UPDATED, onProfileUpdated);
+  }, [selectedRegPatient?.id, loadWorkspaceDetails]);
+
   const loadFollowUps = useCallback(async () => {
     if (!facilityId) return;
     setFollowUpsLoading(true);
@@ -240,6 +250,16 @@ function RegistrationPageInner() {
     selectedRegPatient &&
     rolesReady &&
     isAppPathAllowedForRoles(`/app/patients/${selectedRegPatient.id}`, roles);
+
+  /** GET/PATCH patient — aligné API (pas seulement le préfixe route `/app/patients/`). */
+  const canOpenPatientProfile =
+    selectedRegPatient &&
+    rolesReady &&
+    (roles.includes("FRONT_DESK") ||
+      roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN")) &&
+    isAppPathAllowedForRoles(`/app/patients/${selectedRegPatient.id}/profile`, roles);
 
   const canEditInsurance =
     rolesReady &&
@@ -544,6 +564,23 @@ function RegistrationPageInner() {
                 {!workspaceLoading && (
                   <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                      {canOpenPatientProfile && (
+                        <Link
+                          href={`/app/patients/${selectedRegPatient.id}/profile`}
+                          style={{
+                            padding: "10px 16px",
+                            backgroundColor: "#fff",
+                            color: "#0f172a",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 8,
+                            textDecoration: "none",
+                            fontSize: 14,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {t("patientProfile.linkViewProfile")}
+                        </Link>
+                      )}
                       <Link
                         href={`/app/patients/${selectedRegPatient.id}#patient-registration-insurance`}
                         style={{

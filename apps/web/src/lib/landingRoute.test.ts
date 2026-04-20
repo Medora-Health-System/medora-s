@@ -13,4 +13,8 @@ describe("isAppPathAllowedForRoles — detail paths under trailing-slash prefixe
   it("matches /app/patients/<id> for RN (prefix /app/patients/)", () => {
     expect(isAppPathAllowedForRoles("/app/patients/xyz-789", ["RN"])).toBe(true);
   });
+
+  it("matches /app/patients/<id>/profile for FRONT_DESK (prefix /app/patients/)", () => {
+    expect(isAppPathAllowedForRoles("/app/patients/xyz-789/profile", ["FRONT_DESK"])).toBe(true);
+  });
 });

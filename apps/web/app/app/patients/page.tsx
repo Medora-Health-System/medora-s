@@ -144,6 +144,14 @@ function PatientsPageContent() {
       roles.includes("RADIOLOGY") ||
       roles.includes("PHARMACY"));
 
+  /** GET/PATCH patient — même périmètre que la page profil. */
+  const canOpenPatientProfile =
+    rolesReady &&
+    (roles.includes("FRONT_DESK") ||
+      roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN"));
+
   const handleRowClick = (patientId: string) => {
     if (!canOpenPatientDossier) return;
     router.push(`/app/patients/${patientId}`);
@@ -267,6 +275,24 @@ function PatientsPageContent() {
               >
                 {t("patientsListPage.postCreateGoChart")}
               </Link>
+              {canOpenPatientProfile &&
+                isAppPathAllowedForRoles(`/app/patients/${postCreatePatient.id}/profile`, roles) && (
+                  <Link
+                    href={`/app/patients/${postCreatePatient.id}/profile`}
+                    style={{
+                      padding: "8px 14px",
+                      backgroundColor: "#fff",
+                      color: "#0f172a",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 8,
+                      textDecoration: "none",
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t("patientProfile.linkViewProfile")}
+                  </Link>
+                )}
               <Link
                 href={`/app/registration?patient=${postCreatePatient.id}`}
                 style={{
@@ -467,6 +493,27 @@ function PatientsPageContent() {
                       <td style={{ ...tdBase, fontVariantNumeric: "tabular-nums" }}>{patient.phone || "-"}</td>
                       <td style={{ ...tdBase, textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          {canOpenPatientProfile &&
+                            isAppPathAllowedForRoles(`/app/patients/${patient.id}/profile`, roles) && (
+                              <Link
+                                href={`/app/patients/${patient.id}/profile`}
+                                onClick={(ev) => ev.stopPropagation()}
+                                style={{
+                                  padding: "8px 14px",
+                                  border: "1px solid #e2e8f0",
+                                  borderRadius: 10,
+                                  background: "#f8fafc",
+                                  color: "#0f172a",
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  textDecoration: "none",
+                                  display: "inline-block",
+                                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+                                }}
+                              >
+                                {t("patientProfile.linkEditProfile")}
+                              </Link>
+                            )}
                           <button
                             type="button"
                             onClick={(ev) => {
