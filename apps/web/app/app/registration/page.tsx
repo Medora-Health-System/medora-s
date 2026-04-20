@@ -4,7 +4,11 @@ import React, { Suspense, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchUpcomingFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
-import { CreateFollowUpModal } from "@/components/patient-chart";
+import {
+  CreateFollowUpModal,
+  PatientPrimaryInsurancePanel,
+  PatientSecondaryInsurancePanel,
+} from "@/components/patient-chart";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { useConnectivityStatus } from "@/lib/offline/useConnectivityStatus";
@@ -95,6 +99,10 @@ function RegistrationPageInner() {
   const [workspaceInsurance, setWorkspaceInsurance] = useState<InsuranceRow[]>([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [insuranceSyncVersion, setInsuranceSyncVersion] = useState(0);
+  const bumpInsurancePanels = useCallback(() => {
+    setInsuranceSyncVersion((v) => v + 1);
+  }, []);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -232,6 +240,14 @@ function RegistrationPageInner() {
     selectedRegPatient &&
     rolesReady &&
     isAppPathAllowedForRoles(`/app/patients/${selectedRegPatient.id}`, roles);
+
+  const canEditInsurance =
+    rolesReady &&
+    (roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN") ||
+      roles.includes("FRONT_DESK") ||
+      roles.includes("BILLING"));
 
   const cardBase: React.CSSProperties = {
     padding: "18px 18px 18px 16px",
@@ -488,6 +504,43 @@ function RegistrationPageInner() {
                   </div>
                 )}
 
+                {!workspaceLoading && workspacePatient && effectiveFacilityId && canOpenChart && (
+                  <div
+                    style={{
+                      marginTop: 20,
+                      paddingTop: 18,
+                      borderTop: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <h3 style={{ margin: "0 0 6px 0", fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+                      {t("registrationWorkspace.inlineInsuranceHeading")}
+                    </h3>
+                    <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#475569", lineHeight: 1.45, maxWidth: 720 }}>
+                      {t("registrationWorkspace.inlineInsuranceIntro")}
+                    </p>
+                    <PatientPrimaryInsurancePanel
+                      patientId={selectedRegPatient.id}
+                      facilityId={effectiveFacilityId}
+                      canEdit={canEditInsurance}
+                      syncVersion={insuranceSyncVersion}
+                      onSaved={() => {
+                        bumpInsurancePanels();
+                        void loadWorkspaceDetails(selectedRegPatient.id);
+                      }}
+                    />
+                    <PatientSecondaryInsurancePanel
+                      patientId={selectedRegPatient.id}
+                      facilityId={effectiveFacilityId}
+                      canEdit={canEditInsurance}
+                      syncVersion={insuranceSyncVersion}
+                      onSaved={() => {
+                        bumpInsurancePanels();
+                        void loadWorkspaceDetails(selectedRegPatient.id);
+                      }}
+                    />
+                  </div>
+                )}
+
                 {!workspaceLoading && (
                   <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
@@ -495,15 +548,16 @@ function RegistrationPageInner() {
                         href={`/app/patients/${selectedRegPatient.id}#patient-registration-insurance`}
                         style={{
                           padding: "10px 16px",
-                          backgroundColor: "#1565c0",
-                          color: "#fff",
+                          backgroundColor: "#fff",
+                          color: "#1565c0",
+                          border: "1px solid #1565c0",
                           borderRadius: 8,
                           textDecoration: "none",
                           fontSize: 14,
-                          fontWeight: 700,
+                          fontWeight: 600,
                         }}
                       >
-                        {t("registrationWorkspace.actionEditInsurance")}
+                        {t("registrationWorkspace.actionChartInsuranceAnchor")}
                       </Link>
                       <Link
                         href={`/app/patients/${selectedRegPatient.id}/facesheet`}

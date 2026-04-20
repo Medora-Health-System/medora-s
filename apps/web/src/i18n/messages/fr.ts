@@ -384,7 +384,7 @@ export default {
     loadError: "Impossible de charger le patient.",
     loadInsuranceError: "Impossible de charger le résumé des assurances. Vous pouvez ouvrir le dossier.",
     stepSelect: "1 · Sélectionner ou créer le patient",
-    stepInsurance: "2 · Assurances primaire et secondaire (dossier patient)",
+    stepInsurance: "2 · Assurances primaire et secondaire (ci-dessous ou sur le dossier)",
     stepFacesheet: "3 · Vérifier la feuille de face",
     stepVisit: "4 · Démarrer ou ouvrir la visite",
     identityHeading: "Identité",
@@ -395,8 +395,12 @@ export default {
     statusOnFile: "Enregistré",
     statusMissing: "Non renseigné",
     insuranceSummaryHint:
-      "Les assurances se modifient sur le dossier patient. Ce résumé se met à jour en rechargeant ou en resélectionnant le patient.",
+      "Le statut se met à jour après enregistrement ci-dessous ou au retour sur cette page.",
+    inlineInsuranceHeading: "Assurances (saisie ici)",
+    inlineInsuranceIntro:
+      "Saisissez d’abord la couverture primaire, puis la secondaire si besoin. Le même éditeur est disponible sur le dossier patient.",
     actionEditInsurance: "Modifier les assurances sur le dossier",
+    actionChartInsuranceAnchor: "Ouvrir la section assurances sur le dossier",
     actionOpenFacesheet: "Ouvrir la feuille de face (vérifier)",
     actionOpenChart: "Ouvrir le dossier patient",
     actionEncounters: "Consultations et visites",

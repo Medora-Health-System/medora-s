@@ -435,7 +435,7 @@ export default {
     loadError: "Unable to load patient.",
     loadInsuranceError: "Unable to load insurance summary. You can still open the chart.",
     stepSelect: "1 · Select or create the patient",
-    stepInsurance: "2 · Primary & secondary insurance (patient chart)",
+    stepInsurance: "2 · Primary & secondary insurance (below or on chart)",
     stepFacesheet: "3 · Verify face sheet",
     stepVisit: "4 · Start or open visit",
     identityHeading: "Identity",
@@ -446,8 +446,12 @@ export default {
     statusOnFile: "On file",
     statusMissing: "Not recorded",
     insuranceSummaryHint:
-      "Insurance is edited on the patient chart. This summary updates when you reload or re-select the patient.",
+      "Status updates after you save below or return to this page.",
+    inlineInsuranceHeading: "Insurance (edit here)",
+    inlineInsuranceIntro:
+      "Enter primary coverage first, then secondary if needed. The same editor is available on the patient chart.",
     actionEditInsurance: "Edit insurance on chart",
+    actionChartInsuranceAnchor: "Open insurance section on chart",
     actionOpenFacesheet: "Open face sheet (verify)",
     actionOpenChart: "Open patient chart",
     actionEncounters: "Encounters & visits",
