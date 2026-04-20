@@ -7,6 +7,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { readBillingCaptureV1 } from "@medora/shared";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 export default function BillingPage() {
   const { t, language } = useI18n();
@@ -14,12 +15,14 @@ export default function BillingPage() {
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const canEditBillingCapture = roles.includes("BILLING");
+  const canUseAdvancedCaptureEditor = roles.includes("BILLING") || roles.includes("ADMIN");
   const [captureModalId, setCaptureModalId] = useState<string | null>(null);
   const [captureText, setCaptureText] = useState("");
   const [captureLoading, setCaptureLoading] = useState(false);
   const [captureSaving, setCaptureSaving] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [showJsonEditor, setShowJsonEditor] = useState(false);
+  const [savedNotice, setSavedNotice] = useState(false);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -55,6 +58,7 @@ export default function BillingPage() {
       setCaptureModalId(encounterId);
       setCaptureError(null);
       setCaptureText("");
+      setShowJsonEditor(false);
       setCaptureLoading(true);
       try {
         const enc = await apiFetch(`/encounters/${encounterId}`, { facilityId: effectiveFacilityId });
@@ -88,12 +92,14 @@ export default function BillingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ billingCaptureJson: parsed }),
       });
-      alert(t("billingPage.billingCaptureSaved"));
       setCaptureModalId(null);
+      setSavedNotice(true);
+      window.setTimeout(() => setSavedNotice(false), 5000);
       await loadQueue();
     } catch (e) {
+      const raw = e instanceof Error && e.message ? e.message : "";
       setCaptureError(
-        e instanceof Error && e.message ? e.message : t("billingPage.billingCaptureSaveErr")
+        normalizeUserFacingError(raw, language) || t("billingPage.billingCaptureSaveErr")
       );
     } finally {
       setCaptureSaving(false);
@@ -114,6 +120,20 @@ export default function BillingPage() {
     <div>
       <h1>{t("billingPage.title")}</h1>
       <p>{t("billingPage.subtitle")}</p>
+      {savedNotice ? (
+        <div
+          style={{
+            marginTop: 12,
+            padding: 10,
+            background: "#ecfdf5",
+            color: "#047857",
+            borderRadius: 8,
+            fontSize: 14,
+          }}
+        >
+          {t("billingPage.billingCaptureSaved")}
+        </div>
+      ) : null}
       {loading ? (
         <p>{t("common.loading")}</p>
       ) : queue.length === 0 ? (
@@ -160,51 +180,48 @@ export default function BillingPage() {
                       : t("billingPage.readinessQueueHintBlocked");
                 const wfDisplay = wfLabel !== wfLabelKey ? wfLabel : wf;
                 return (
-                <tr key={encounter.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: 12 }}>
-                    {encounter.patient?.firstName} {encounter.patient?.lastName}
-                  </td>
-                  <td style={{ padding: 12 }}>{encounter.patient?.mrn}</td>
-                  <td style={{ padding: 12 }}>{tEncounterType(t, encounter.type)}</td>
-                  <td style={{ padding: 12 }}>
-                    {encounter.dischargedAt
-                      ? new Date(encounter.dischargedAt).toLocaleDateString(
-                          encounterBcp47(language)
-                        )
-                      : t("common.dash")}
-                  </td>
-                  <td style={{ padding: 12 }}>{encounter.orders?.length || 0}</td>
-                  <td style={{ padding: 12 }}>{eventCount}</td>
-                  <td style={{ padding: 12 }}>{needsReview}</td>
-                  <td style={{ padding: 12 }}>{missingCode}</td>
-                  <td style={{ padding: 12, fontSize: 13 }}>
-                    <div style={{ fontWeight: 600 }}>{wfDisplay}</div>
-                    {queueHint ? (
-                      <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>{queueHint}</div>
-                    ) : null}
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    <Link
-                      href={`/app/billing/encounters/${encounter.id}`}
-                      style={{ marginRight: 8, padding: "4px 8px", display: "inline-block" }}
-                    >
-                      {t("billingPage.queueOpenLedgerFinalize")}
-                    </Link>
-                    {canEditBillingCapture ? (
-                      <button
-                        type="button"
-                        onClick={() => void openBillingCaptureModal(encounter.id)}
-                        style={{ marginRight: 8, padding: "4px 8px" }}
+                  <tr key={encounter.id} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={{ padding: 12 }}>
+                      {encounter.patient?.firstName} {encounter.patient?.lastName}
+                    </td>
+                    <td style={{ padding: 12 }}>{encounter.patient?.mrn}</td>
+                    <td style={{ padding: 12 }}>{tEncounterType(t, encounter.type)}</td>
+                    <td style={{ padding: 12 }}>
+                      {encounter.dischargedAt
+                        ? new Date(encounter.dischargedAt).toLocaleDateString(encounterBcp47(language))
+                        : t("common.dash")}
+                    </td>
+                    <td style={{ padding: 12 }}>{encounter.orders?.length || 0}</td>
+                    <td style={{ padding: 12 }}>{eventCount}</td>
+                    <td style={{ padding: 12 }}>{needsReview}</td>
+                    <td style={{ padding: 12 }}>{missingCode}</td>
+                    <td style={{ padding: 12, fontSize: 13 }}>
+                      <div style={{ fontWeight: 600 }}>{wfDisplay}</div>
+                      {queueHint ? (
+                        <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>{queueHint}</div>
+                      ) : null}
+                    </td>
+                    <td style={{ padding: 12 }}>
+                      <Link
+                        href={`/app/billing/encounters/${encounter.id}`}
+                        style={{ marginRight: 8, padding: "4px 8px", display: "inline-block" }}
                       >
-                        {t("billingPage.editBillingCapture")}
-                      </button>
-                    ) : null}
-                    <Link href={`/app/billing/encounters/${encounter.id}`} style={{ marginRight: 8 }}>
-                      {t("billingPage.linkLedgerDetail")}
-                    </Link>
-                    <Link href={`/app/encounters/${encounter.id}`}>{t("billingPage.view")}</Link>
-                  </td>
-                </tr>
+                        {t("billingPage.openLedger")}
+                      </Link>
+                      {canUseAdvancedCaptureEditor ? (
+                        <button
+                          type="button"
+                          onClick={() => void openBillingCaptureModal(encounter.id)}
+                          style={{ marginRight: 8, padding: "4px 8px" }}
+                        >
+                          {t("billingPage.editBillingCapture")}
+                        </button>
+                      ) : null}
+                      <Link href={`/app/encounters/${encounter.id}`} style={{ marginRight: 0 }}>
+                        {t("billingPage.openClinicalEncounter")}
+                      </Link>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -242,9 +259,41 @@ export default function BillingPage() {
               <h2 style={{ margin: 0, fontSize: 18 }}>{t("billingPage.billingCaptureModalTitle")}</h2>
             </div>
             <div style={{ padding: 16, overflow: "auto", flex: 1 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 14, color: "#334155", lineHeight: 1.5 }}>
+                {t("billingPage.billingCaptureGuidance")}
+              </p>
+              <p style={{ margin: "0 0 16px" }}>
+                <Link
+                  href={`/app/billing/encounters/${captureModalId}`}
+                  style={{ fontWeight: 600, color: "#0f766e" }}
+                  onClick={() => setCaptureModalId(null)}
+                >
+                  {t("billingPage.openLedger")} →
+                </Link>
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowJsonEditor((v) => !v)}
+                style={{
+                  marginBottom: 12,
+                  padding: "6px 12px",
+                  fontSize: 13,
+                  borderRadius: 6,
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  cursor: "pointer",
+                }}
+              >
+                {showJsonEditor ? t("billingPage.billingCaptureHideAdvancedJson") : t("billingPage.billingCaptureShowAdvancedJson")}
+              </button>
+              {showJsonEditor ? (
+                <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+                  {t("billingPage.billingCaptureAdvancedJsonHint")}
+                </p>
+              ) : null}
               {captureLoading ? (
                 <p>{t("common.loading")}</p>
-              ) : (
+              ) : showJsonEditor ? (
                 <textarea
                   value={captureText}
                   onChange={(e) => setCaptureText(e.target.value)}
@@ -257,26 +306,29 @@ export default function BillingPage() {
                   }}
                   spellCheck={false}
                 />
-              )}
+              ) : null}
               {captureError ? (
                 <p style={{ color: "#b91c1c", marginTop: 8, fontSize: 13 }}>{captureError}</p>
               ) : null}
             </div>
             <div style={{ padding: "12px 16px", borderTop: "1px solid #e2e8f0", display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                disabled={captureSaving || captureLoading}
-                onClick={() => void saveBillingCapture()}
-                style={{ padding: "8px 16px" }}
-              >
-                {captureSaving ? t("common.saving") : t("billingPage.billingCaptureSave")}
-              </button>
+              {showJsonEditor ? (
+                <button
+                  type="button"
+                  disabled={captureSaving || captureLoading}
+                  onClick={() => void saveBillingCapture()}
+                  style={{ padding: "8px 16px" }}
+                >
+                  {captureSaving ? t("common.saving") : t("billingPage.billingCaptureSave")}
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={captureSaving}
                 onClick={() => {
                   setCaptureModalId(null);
                   setCaptureError(null);
+                  setShowJsonEditor(false);
                 }}
                 style={{ padding: "8px 16px" }}
               >
@@ -289,4 +341,3 @@ export default function BillingPage() {
     </div>
   );
 }
-

@@ -623,15 +623,21 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
-    if (encounter.workflowState === EncounterWorkflowState.CLOSED) {
-      throw new BadRequestException("Le parcours de cette consultation est terminé.");
-    }
-
     const dataKeys = (Object.keys(data) as (keyof EncounterUpdateDto)[]).filter(
       (k) => data[k] !== undefined
     );
     const billingCaptureOnly =
       dataKeys.length === 1 && dataKeys[0] === "billingCaptureJson";
+
+    if (billingCaptureOnly && encounter.billingFinalizationStatus === EncounterBillingFinalizationStatus.FINALIZED) {
+      throw new BadRequestException(
+        "Billing capture cannot be edited while the encounter is finalized for billing. Reopen billing to make changes."
+      );
+    }
+
+    if (encounter.workflowState === EncounterWorkflowState.CLOSED && !billingCaptureOnly) {
+      throw new BadRequestException("Le parcours de cette consultation est terminé.");
+    }
 
     if (!billingCaptureOnly) {
       if (!userId) {

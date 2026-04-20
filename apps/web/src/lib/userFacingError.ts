@@ -148,6 +148,22 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "La documentation est incomplète. Indiquez acknowledgeDeficiencies: true pour clôturer malgré les lacunes, ou complétez la documentation.",
     en: "Documentation is incomplete. Confirm to close despite gaps, or complete the documentation.",
   },
+  {
+    test: (s) =>
+      /billing capture cannot be edited while the encounter is finalized for billing/i.test(s),
+    fr: "La saisie facturation ne peut pas être modifiée tant que la consultation est finalisée pour la facturation. Rouvrez la facturation pour modifier.",
+    en: "Billing capture cannot be edited while the encounter is finalized for billing. Reopen billing to make changes.",
+  },
+  {
+    test: (s) => /le parcours de cette consultation est terminé/i.test(s),
+    fr: "Le parcours de cette consultation est terminé.",
+    en: "This encounter's workflow is closed.",
+  },
+  {
+    test: (s) => /encounter is not ready for billing finalization/i.test(s),
+    fr: "La consultation n’est pas prête pour la finalisation facturation.",
+    en: "This encounter is not ready for billing finalization.",
+  },
 ];
 
 /**

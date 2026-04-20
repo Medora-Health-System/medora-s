@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { billingLedgerRowHasUsableCode } from "@medora/shared";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 type LedgerEventRow = {
   id: string;
@@ -123,8 +124,12 @@ export default function BillingEncounterLedgerPage() {
       });
       setToast(t("billingPage.billingSummaryReviewedOk"));
       await load();
-    } catch {
+    } catch (e: unknown) {
       setToast(null);
+      const raw = e instanceof Error && e.message ? e.message : "";
+      setActionError(
+        normalizeUserFacingError(raw, language) || t("billingPage.billingSummaryMarkReviewedError")
+      );
     } finally {
       setMarkingId(null);
     }
@@ -143,11 +148,13 @@ export default function BillingEncounterLedgerPage() {
       setToast(t("billingPage.readinessFinalizedOk"));
       await load();
     } catch (e: unknown) {
-      const msg =
+      const raw =
         e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
           ? (e as { message: string }).message
-          : t("billingPage.readinessActionError");
-      setActionError(msg);
+          : "";
+      setActionError(
+        normalizeUserFacingError(raw, language) || t("billingPage.readinessActionError")
+      );
     } finally {
       setActionBusy(false);
     }
@@ -166,11 +173,13 @@ export default function BillingEncounterLedgerPage() {
       setToast(t("billingPage.readinessReopenedOk"));
       await load();
     } catch (e: unknown) {
-      const msg =
+      const raw =
         e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
           ? (e as { message: string }).message
-          : t("billingPage.readinessActionError");
-      setActionError(msg);
+          : "";
+      setActionError(
+        normalizeUserFacingError(raw, language) || t("billingPage.readinessActionError")
+      );
     } finally {
       setActionBusy(false);
     }
@@ -187,9 +196,15 @@ export default function BillingEncounterLedgerPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 12px 40px" }}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
         <Link href="/app/billing" style={{ color: "#0f172a", fontWeight: 600 }}>
           ← {t("billingPage.billingSummaryBack")}
+        </Link>
+        <span style={{ color: "#cbd5e1" }} aria-hidden>
+          |
+        </span>
+        <Link href={`/app/encounters/${encounterId}`} style={{ color: "#475569", fontSize: 14 }}>
+          {t("billingPage.billingSummaryOpenClinicalEncounter")}
         </Link>
       </div>
       <h1 style={{ margin: "0 0 8px", fontSize: 22 }}>{t("billingPage.billingSummaryTitle")}</h1>
