@@ -1,11 +1,13 @@
 import type { PrismaService } from "../prisma/prisma.service";
+import { expandBillingCatalogLookupCandidates } from "./billing-code-normalize.util";
 
-/** Default professional vs facility split when catalog row is missing a valid billClass (Phase 4.6). */
+/** Default professional vs facility split when catalog row is missing a valid billClass (Phase 4.6 / 4.9). */
 export function defaultBillClassForTrigger(
   triggerSource: string
 ): "professional" | "facility" | "both" {
   const t = triggerSource.trim().toUpperCase();
   if (t === "LAB" || t === "IMAGING" || t === "SUPPLY") return "facility";
+  if (t === "ENCOUNTER_EM") return "professional";
   if (t === "MEDICATION" || t === "PROCEDURE") return "both";
   return "both";
 }
@@ -25,38 +27,42 @@ async function findMapping(
   const c = externalCode?.trim();
   if (!c) return null;
 
-  let row = await prisma.billingCatalog.findFirst({
-    where: {
-      triggerSource,
-      externalCode: c,
-    },
-  });
+  const candidates = expandBillingCatalogLookupCandidates(triggerSource, c);
 
-  if (!row) {
-    row = await prisma.billingCatalog.findFirst({
+  for (const candidate of candidates) {
+    let row = await prisma.billingCatalog.findFirst({
       where: {
         triggerSource,
-        externalCode: { equals: c, mode: "insensitive" },
+        externalCode: candidate,
       },
     });
+
+    if (!row) {
+      row = await prisma.billingCatalog.findFirst({
+        where: {
+          triggerSource,
+          externalCode: { equals: candidate, mode: "insensitive" },
+        },
+      });
+    }
+
+    if (!row) continue;
+
+    const sys = row.system.trim().toUpperCase();
+    if (sys !== "CPT" && sys !== "HCPCS") continue;
+    const rawBc = row.billClass?.trim().toLowerCase() ?? "";
+    const bc: CatalogBillingMapping["billClass"] =
+      rawBc === "professional" || rawBc === "facility" || rawBc === "both" ? rawBc : defaultBillClassForTrigger(triggerSource);
+
+    return {
+      code: row.code.trim(),
+      system: sys as "CPT" | "HCPCS",
+      billClass: bc,
+      description: row.description.trim(),
+    };
   }
 
-  if (!row) {
-    return null;
-  }
-
-  const sys = row.system.trim().toUpperCase();
-  if (sys !== "CPT" && sys !== "HCPCS") return null;
-  const rawBc = row.billClass?.trim().toLowerCase() ?? "";
-  const bc: CatalogBillingMapping["billClass"] =
-    rawBc === "professional" || rawBc === "facility" || rawBc === "both" ? rawBc : defaultBillClassForTrigger(triggerSource);
-
-  return {
-    code: row.code.trim(),
-    system: sys as "CPT" | "HCPCS",
-    billClass: bc,
-    description: row.description.trim(),
-  };
+  return null;
 }
 
 export async function mapLabToBillingCode(

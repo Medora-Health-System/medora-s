@@ -17,7 +17,7 @@ import {
   mapSupplyToBillingCode,
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
-import { deriveMedicationCodeForBilling } from "./medication-code-derive.util";
+import { collectMedicationMarLookupOrder } from "./medication-code-derive.util";
 import { inferEmergencyEMCode } from "./billing-em.util";
 import { syncBillingCaptureItemFromLedgerRow } from "./billing-capture-sync-from-ledger.util";
 
@@ -121,19 +121,26 @@ export async function recodeBillingEventIfPossible(
         const oi = result.orderItem;
         let labCode: string | null = null;
         labelFallback = oi.manualLabel?.trim() || labelFallback;
+        let labCat: { code: string | null; name: string } | null = null;
         if (oi.catalogItemId) {
-          const cat = await prisma.catalogLabTest.findUnique({
+          labCat = await prisma.catalogLabTest.findUnique({
             where: { id: oi.catalogItemId },
             select: { code: true, name: true },
           });
-          if (cat?.code?.trim()) {
-            labCode = cat.code.trim();
-            labelFallback = cat.name?.trim() || labelFallback;
+          if (labCat?.code?.trim()) {
+            labCode = labCat.code.trim();
+            labelFallback = labCat.name?.trim() || labelFallback;
           }
         }
         if (!labCode && oi.manualLabel?.trim()) labCode = oi.manualLabel.trim();
         if (!labCode) return "skipped";
         mapping = await mapLabToBillingCode(prisma, labCode);
+        if (!mapping && labCat?.name?.trim() && labCat.name.trim() !== labCode) {
+          mapping = await mapLabToBillingCode(prisma, labCat.name.trim());
+        }
+        if (!mapping && oi.manualLabel?.trim() && oi.manualLabel.trim() !== labCode) {
+          mapping = await mapLabToBillingCode(prisma, oi.manualLabel.trim());
+        }
         if (!mapping) return "skipped";
         break;
       }
@@ -148,19 +155,26 @@ export async function recodeBillingEventIfPossible(
 
         let studyCode: string | null = null;
         labelFallback = orderItem.manualLabel?.trim() || "Imaging";
+        let imgCat: { code: string | null; name: string } | null = null;
         if (orderItem.catalogItemId) {
-          const cat = await prisma.catalogImagingStudy.findUnique({
+          imgCat = await prisma.catalogImagingStudy.findUnique({
             where: { id: orderItem.catalogItemId },
             select: { code: true, name: true },
           });
-          if (cat?.code?.trim()) {
-            studyCode = cat.code.trim();
-            labelFallback = cat.name?.trim() || labelFallback;
+          if (imgCat?.code?.trim()) {
+            studyCode = imgCat.code.trim();
+            labelFallback = imgCat.name?.trim() || labelFallback;
           }
         }
         if (!studyCode && orderItem.manualLabel?.trim()) studyCode = orderItem.manualLabel.trim();
         if (!studyCode) return "skipped";
         mapping = await mapImagingToBillingCode(prisma, studyCode);
+        if (!mapping && imgCat?.name?.trim() && imgCat.name.trim() !== studyCode) {
+          mapping = await mapImagingToBillingCode(prisma, imgCat.name.trim());
+        }
+        if (!mapping && orderItem.manualLabel?.trim() && orderItem.manualLabel.trim() !== studyCode) {
+          mapping = await mapImagingToBillingCode(prisma, orderItem.manualLabel.trim());
+        }
         if (!mapping) return "skipped";
         break;
       }
@@ -174,8 +188,8 @@ export async function recodeBillingEventIfPossible(
         if (!adm?.orderItem || adm.orderItem.catalogItemType !== "MEDICATION") return "skipped";
 
         const oi = adm.orderItem;
-        let medCode: string | null = null;
-        labelFallback = adm.medicationLabelSnapshot?.trim() || labelFallback;
+        labelFallback =
+          adm.medicationLabelSnapshot?.trim() || oi.manualLabel?.trim() || labelFallback;
         let cat: {
           code: string | null;
           genericName: string | null;
@@ -200,24 +214,37 @@ export async function recodeBillingEventIfPossible(
             },
           });
           if (cat?.code?.trim()) {
-            medCode = cat.code.trim();
             labelFallback = cat.displayNameFr?.trim() || cat.name?.trim() || labelFallback;
           }
         }
-        if (!medCode && oi.manualLabel?.trim()) medCode = oi.manualLabel.trim();
-        if (!medCode) return "skipped";
 
-        mapping = await mapMedicationToBillingCode(prisma, medCode);
-        if (!mapping && cat?.genericName) {
-          const derived = deriveMedicationCodeForBilling({
-            genericName: cat.genericName,
-            strength: cat.strength ?? "",
-            dosageForm: cat.dosageForm ?? "comprimé",
-            route: cat.route ?? "orale",
-          });
-          if (derived && derived !== medCode) {
-            mapping = await mapMedicationToBillingCode(prisma, derived);
-          }
+        const hasMedicationLookup =
+          !!cat?.code?.trim() ||
+          !!oi.manualLabel?.trim() ||
+          !!adm.medicationLabelSnapshot?.trim() ||
+          !!(cat?.genericName?.trim() != null && cat.genericName.trim().length > 0);
+        if (!hasMedicationLookup) return "skipped";
+
+        const deriveInput =
+          cat?.genericName?.trim() != null && cat.genericName.trim().length > 0
+            ? {
+                genericName: cat.genericName,
+                strength: cat.strength ?? "",
+                dosageForm: cat.dosageForm ?? "comprimé",
+                route: cat.route ?? "orale",
+              }
+            : null;
+
+        mapping = null;
+        for (const key of collectMedicationMarLookupOrder({
+          catalogMedicationCode: cat?.code?.trim() ? cat.code.trim() : null,
+          orderManualLabel: oi.manualLabel?.trim() ?? null,
+          medicationLabelSnapshot: adm.medicationLabelSnapshot?.trim() ?? null,
+          deriveInput,
+        })) {
+          if (!key) continue;
+          mapping = await mapMedicationToBillingCode(prisma, key);
+          if (mapping) break;
         }
         if (!mapping) return "skipped";
         break;
@@ -292,35 +319,49 @@ export async function recodeBillingEventIfPossible(
         if (orderItem.catalogItemType === "LAB_TEST") {
           let labCode: string | null = null;
           labelFallback = orderItem.manualLabel?.trim() || labelFallback;
+          let labCat2: { code: string | null; name: string } | null = null;
           if (orderItem.catalogItemId) {
-            const cat = await prisma.catalogLabTest.findUnique({
+            labCat2 = await prisma.catalogLabTest.findUnique({
               where: { id: orderItem.catalogItemId },
               select: { code: true, name: true },
             });
-            if (cat?.code?.trim()) {
-              labCode = cat.code.trim();
-              labelFallback = cat.name?.trim() || labelFallback;
+            if (labCat2?.code?.trim()) {
+              labCode = labCat2.code.trim();
+              labelFallback = labCat2.name?.trim() || labelFallback;
             }
           }
           if (!labCode && orderItem.manualLabel?.trim()) labCode = orderItem.manualLabel.trim();
           if (!labCode) return "skipped";
           mapping = await mapLabToBillingCode(prisma, labCode);
+          if (!mapping && labCat2?.name?.trim() && labCat2.name.trim() !== labCode) {
+            mapping = await mapLabToBillingCode(prisma, labCat2.name.trim());
+          }
+          if (!mapping && orderItem.manualLabel?.trim() && orderItem.manualLabel.trim() !== labCode) {
+            mapping = await mapLabToBillingCode(prisma, orderItem.manualLabel.trim());
+          }
         } else if (orderItem.catalogItemType === "IMAGING_STUDY") {
           let studyCode: string | null = null;
           labelFallback = orderItem.manualLabel?.trim() || "Imaging";
+          let imgCat2: { code: string | null; name: string } | null = null;
           if (orderItem.catalogItemId) {
-            const cat = await prisma.catalogImagingStudy.findUnique({
+            imgCat2 = await prisma.catalogImagingStudy.findUnique({
               where: { id: orderItem.catalogItemId },
               select: { code: true, name: true },
             });
-            if (cat?.code?.trim()) {
-              studyCode = cat.code.trim();
-              labelFallback = cat.name?.trim() || labelFallback;
+            if (imgCat2?.code?.trim()) {
+              studyCode = imgCat2.code.trim();
+              labelFallback = imgCat2.name?.trim() || labelFallback;
             }
           }
           if (!studyCode && orderItem.manualLabel?.trim()) studyCode = orderItem.manualLabel.trim();
           if (!studyCode) return "skipped";
           mapping = await mapImagingToBillingCode(prisma, studyCode);
+          if (!mapping && imgCat2?.name?.trim() && imgCat2.name.trim() !== studyCode) {
+            mapping = await mapImagingToBillingCode(prisma, imgCat2.name.trim());
+          }
+          if (!mapping && orderItem.manualLabel?.trim() && orderItem.manualLabel.trim() !== studyCode) {
+            mapping = await mapImagingToBillingCode(prisma, orderItem.manualLabel.trim());
+          }
         } else {
           return "skipped";
         }

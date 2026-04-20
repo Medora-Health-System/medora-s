@@ -98,6 +98,12 @@ function billingPageKey(t: (k: string) => string, suffix: string): string {
   return v === k ? suffix : v;
 }
 
+function billingUnmappedHintText(t: (k: string) => string, sourceModule: string): string {
+  const k = `billingPage.billingUnmappedHint_${sourceModule}`;
+  const v = t(k);
+  return v === k ? t("billingPage.billingUnmappedHint_FALLBACK") : v;
+}
+
 function readinessLineLabel(
   t: (k: string) => string,
   prefix: "readinessBlocker" | "readinessWarning" | "packageBlocker" | "packageWarning",
@@ -592,31 +598,47 @@ export default function BillingEncounterLedgerPage() {
                             {billingPageKey(t, ev.codeType ? `billingCodeType_${ev.codeType}` : "billingCodeType_UNKNOWN")}
                           </td>
                           <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                            {ev.code?.trim() ? ev.code : t("common.dash")}
+                            <div>
+                              {ev.code?.trim() ? ev.code : t("common.dash")}
+                              {isUnmapped ? (
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: "#b91c1c",
+                                    fontFamily: "inherit",
+                                  }}
+                                >
+                                  {t("billingPage.billingSummaryUnmappedBadge")}
+                                </span>
+                              ) : !coded ? (
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: "#b45309",
+                                    fontFamily: "inherit",
+                                  }}
+                                >
+                                  {t("billingPage.billingSummaryUncodedBadge")}
+                                </span>
+                              ) : null}
+                            </div>
                             {isUnmapped ? (
-                              <span
+                              <div
                                 style={{
-                                  marginLeft: 8,
+                                  marginTop: 6,
                                   fontSize: 11,
-                                  fontWeight: 600,
-                                  color: "#b91c1c",
+                                  color: "#64748b",
+                                  maxWidth: 320,
+                                  lineHeight: 1.35,
                                   fontFamily: "inherit",
                                 }}
                               >
-                                {t("billingPage.billingSummaryUnmappedBadge")}
-                              </span>
-                            ) : !coded ? (
-                              <span
-                                style={{
-                                  marginLeft: 8,
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  color: "#b45309",
-                                  fontFamily: "inherit",
-                                }}
-                              >
-                                {t("billingPage.billingSummaryUncodedBadge")}
-                              </span>
+                                {billingUnmappedHintText(t, ev.sourceModule)}
+                              </div>
                             ) : null}
                           </td>
                           <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>

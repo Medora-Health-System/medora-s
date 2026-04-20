@@ -191,10 +191,38 @@ export default {
     billingSourceModule_DIAGNOSIS: "Diagnosis",
     billingSourceModule_ORDER_ITEM: "Order line",
     billingSourceModule_MEDICATION_DISPENSE: "Dispense",
-    billingSourceModule_MEDICATION_ADMINISTRATION: "Administration",
+    billingSourceModule_MEDICATION_ADMINISTRATION: "Medication administration",
     billingSourceModule_ENCOUNTER_DISPOSITION: "Disposition / close",
     billingSourceModule_MANUAL: "Manual",
     billingSourceModule_VACCINE_ADMINISTRATION: "Vaccine",
+    billingSourceModule_LAB_RESULT: "Lab result",
+    billingSourceModule_IMAGING_RESULT: "Imaging result",
+    billingSourceModule_MED_ADMIN: "Medication administration",
+    billingSourceModule_PROCEDURE: "Procedure / care",
+    billingSourceModule_SUPPLY: "Supply",
+    billingSourceModule_ENCOUNTER_EM: "Emergency E/M",
+    billingUnmappedHint_FALLBACK:
+      "No BillingCatalog mapping found for the current source code (after safe normalization). Add a catalog row or edit the line.",
+    billingUnmappedHint_MED_ADMIN:
+      "No BillingCatalog MEDICATION mapping for the codes tried (catalog code, derived generic, labels). Substance or catalog alignment may be missing.",
+    billingUnmappedHint_MEDICATION_ADMINISTRATION:
+      "No BillingCatalog MEDICATION mapping for the codes tried (catalog code, derived generic, labels). Substance or catalog alignment may be missing.",
+    billingUnmappedHint_LAB_RESULT:
+      "No BillingCatalog LAB mapping for this test’s source code or normalized labels. Prefer keys that match CatalogLabTest and BillingCatalog LAB.",
+    billingUnmappedHint_IMAGING_RESULT:
+      "No BillingCatalog IMAGING mapping for this study’s source code or normalized labels. Prefer keys that match CatalogImagingStudy and BillingCatalog IMAGING.",
+    billingUnmappedHint_ORDER_ITEM:
+      "Order line — same as catalog lookup for the ordered item; add a BillingCatalog row for the external code used in orders.",
+    billingUnmappedHint_PROCEDURE:
+      "Procedure — no PROCEDURE trigger match for this care label. Add BillingCatalog PROCEDURE or rephrase to match seed keys.",
+    billingUnmappedHint_SUPPLY:
+      "Supply — no SUPPLY trigger match. Add BillingCatalog SUPPLY for this item code.",
+    billingUnmappedHint_ENCOUNTER_DISPOSITION:
+      "Disposition — automatic coding is not applied here; adjust manually if a billable code applies.",
+    billingUnmappedHint_DIAGNOSIS:
+      "Diagnosis — ICD coding is handled in the diagnosis workflow, not as a placeholder CPT/HCPCS on this row.",
+    billingUnmappedHint_ENCOUNTER_EM:
+      "E/M — if still unmapped, verify encounter type and triage data used for level selection.",
     billingReviewStatus_CAPTURED: "Needs review",
     billingReviewStatus_REVIEWED: "Reviewed",
     billingReviewStatus_VOIDED: "Voided",

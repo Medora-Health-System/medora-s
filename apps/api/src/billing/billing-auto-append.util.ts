@@ -13,7 +13,7 @@ import {
   mapSupplyToBillingCode,
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
-import { deriveMedicationCodeForBilling } from "./medication-code-derive.util";
+import { collectMedicationMarLookupOrder } from "./medication-code-derive.util";
 
 export type AppendAutoBillingParams = {
   facilityId: string;
@@ -128,8 +128,9 @@ export async function tryAutoLabResultBillingAfterVerify(
 
     let labCode: string | null = null;
     let labelFallback = orderItem.manualLabel?.trim() || "Lab";
+    let cat: { code: string | null; name: string } | null = null;
     if (orderItem.catalogItemId) {
-      const cat = await prisma.catalogLabTest.findUnique({
+      cat = await prisma.catalogLabTest.findUnique({
         where: { id: orderItem.catalogItemId },
         select: { code: true, name: true },
       });
@@ -155,7 +156,13 @@ export async function tryAutoLabResultBillingAfterVerify(
       return;
     }
 
-    const mapping = await mapLabToBillingCode(prisma, labCode);
+    let mapping = await mapLabToBillingCode(prisma, labCode);
+    if (!mapping && cat?.name?.trim() && cat.name.trim() !== labCode) {
+      mapping = await mapLabToBillingCode(prisma, cat.name.trim());
+    }
+    if (!mapping && orderItem.manualLabel?.trim() && orderItem.manualLabel.trim() !== labCode) {
+      mapping = await mapLabToBillingCode(prisma, orderItem.manualLabel.trim());
+    }
     if (!mapping) {
       await createFallbackBillingLine(prisma, {
         facilityId: input.facilityId,
@@ -195,8 +202,9 @@ async function applyImagingCatalogFromOrderItem(
 ): Promise<void> {
   let studyCode: string | null = null;
   let labelFallback = orderItem.manualLabel?.trim() || "Imaging";
+  let cat: { code: string | null; name: string } | null = null;
   if (orderItem.catalogItemId) {
-    const cat = await prisma.catalogImagingStudy.findUnique({
+    cat = await prisma.catalogImagingStudy.findUnique({
       where: { id: orderItem.catalogItemId },
       select: { code: true, name: true },
     });
@@ -220,7 +228,13 @@ async function applyImagingCatalogFromOrderItem(
     return;
   }
 
-  const mapping = await mapImagingToBillingCode(prisma, studyCode);
+  let mapping = await mapImagingToBillingCode(prisma, studyCode);
+  if (!mapping && cat?.name?.trim() && cat.name.trim() !== studyCode) {
+    mapping = await mapImagingToBillingCode(prisma, cat.name.trim());
+  }
+  if (!mapping && orderItem.manualLabel?.trim() && orderItem.manualLabel.trim() !== studyCode) {
+    mapping = await mapImagingToBillingCode(prisma, orderItem.manualLabel.trim());
+  }
   if (!mapping) {
     await createFallbackBillingLine(prisma, {
       facilityId,
@@ -312,8 +326,8 @@ export async function tryAutoMedicationAdministrationBilling(
     if (!adm?.orderItem || adm.orderItem.catalogItemType !== "MEDICATION") return;
 
     const oi = adm.orderItem;
-    let medCode: string | null = null;
-    let labelFallback = adm.medicationLabelSnapshot?.trim() || "Medication";
+    let labelFallback =
+      adm.medicationLabelSnapshot?.trim() || oi.manualLabel?.trim() || "Medication";
     let cat: {
       code: string | null;
       name: string;
@@ -337,12 +351,17 @@ export async function tryAutoMedicationAdministrationBilling(
         },
       });
       if (cat?.code?.trim()) {
-        medCode = cat.code.trim();
         labelFallback = cat.displayNameFr?.trim() || cat.name?.trim() || labelFallback;
       }
     }
-    if (!medCode && oi.manualLabel?.trim()) medCode = oi.manualLabel.trim();
-    if (!medCode) {
+
+    const hasMedicationLookup =
+      !!cat?.code?.trim() ||
+      !!oi.manualLabel?.trim() ||
+      !!adm.medicationLabelSnapshot?.trim() ||
+      !!(cat?.genericName?.trim() != null && cat.genericName.trim().length > 0);
+
+    if (!hasMedicationLookup) {
       await createFallbackBillingLine(prisma, {
         facilityId: input.facilityId,
         encounterId: adm.encounterId,
@@ -356,18 +375,28 @@ export async function tryAutoMedicationAdministrationBilling(
       return;
     }
 
-    let mapping = await mapMedicationToBillingCode(prisma, medCode);
-    if (!mapping && cat?.genericName) {
-      const derived = deriveMedicationCodeForBilling({
-        genericName: cat.genericName,
-        strength: cat.strength ?? "",
-        dosageForm: cat.dosageForm ?? "comprimé",
-        route: cat.route ?? "orale",
-      });
-      if (derived && derived !== medCode) {
-        mapping = await mapMedicationToBillingCode(prisma, derived);
-      }
+    const deriveInput =
+      cat?.genericName?.trim() != null && cat.genericName.trim().length > 0
+        ? {
+            genericName: cat.genericName,
+            strength: cat.strength ?? "",
+            dosageForm: cat.dosageForm ?? "comprimé",
+            route: cat.route ?? "orale",
+          }
+        : null;
+
+    let mapping: CatalogBillingMapping | null = null;
+    for (const key of collectMedicationMarLookupOrder({
+      catalogMedicationCode: cat?.code?.trim() ? cat.code.trim() : null,
+      orderManualLabel: oi.manualLabel?.trim() ?? null,
+      medicationLabelSnapshot: adm.medicationLabelSnapshot?.trim() ?? null,
+      deriveInput,
+    })) {
+      if (!key) continue;
+      mapping = await mapMedicationToBillingCode(prisma, key);
+      if (mapping) break;
     }
+
     if (!mapping) {
       await createFallbackBillingLine(prisma, {
         facilityId: input.facilityId,

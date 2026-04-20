@@ -115,10 +115,38 @@ export default {
     billingSourceModule_DIAGNOSIS: "Diagnostic",
     billingSourceModule_ORDER_ITEM: "Ligne d’ordonnance",
     billingSourceModule_MEDICATION_DISPENSE: "Dispensation",
-    billingSourceModule_MEDICATION_ADMINISTRATION: "Administration",
+    billingSourceModule_MEDICATION_ADMINISTRATION: "Administration médicamenteuse",
     billingSourceModule_ENCOUNTER_DISPOSITION: "Clôture / sortie",
     billingSourceModule_MANUAL: "Manuel",
     billingSourceModule_VACCINE_ADMINISTRATION: "Vaccination",
+    billingSourceModule_LAB_RESULT: "Résultat de laboratoire",
+    billingSourceModule_IMAGING_RESULT: "Résultat d’imagerie",
+    billingSourceModule_MED_ADMIN: "Administration médicamenteuse",
+    billingSourceModule_PROCEDURE: "Soin / acte",
+    billingSourceModule_SUPPLY: "Consommable",
+    billingSourceModule_ENCOUNTER_EM: "E/M urgences",
+    billingUnmappedHint_FALLBACK:
+      "Aucune entrée BillingCatalog ne correspond au code source actuel (normalisation prudente appliquée). Ajoutez une ligne catalogue ou modifiez la ligne.",
+    billingUnmappedHint_MED_ADMIN:
+      "Aucune entrée BillingCatalog MEDICATION pour les codes essayés (code catalogue, générique dérivé, libellés). Substance ou alignement catalogue peut manquer.",
+    billingUnmappedHint_MEDICATION_ADMINISTRATION:
+      "Aucune entrée BillingCatalog MEDICATION pour les codes essayés (code catalogue, générique dérivé, libellés). Substance ou alignement catalogue peut manquer.",
+    billingUnmappedHint_LAB_RESULT:
+      "Aucune entrée BillingCatalog LAB pour le code source ou les libellés normalisés. Privilégiez des clés alignées sur CatalogLabTest et BillingCatalog LAB.",
+    billingUnmappedHint_IMAGING_RESULT:
+      "Aucune entrée BillingCatalog IMAGING pour le code source ou les libellés normalisés. Privilégiez des clés alignées sur CatalogImagingStudy et BillingCatalog IMAGING.",
+    billingUnmappedHint_ORDER_ITEM:
+      "Ligne d’ordonnance — même logique que le catalogue pour l’article ; ajoutez BillingCatalog pour le code externe utilisé.",
+    billingUnmappedHint_PROCEDURE:
+      "Acte — aucune entrée PROCEDURE pour ce libellé. Ajoutez BillingCatalog PROCEDURE ou harmonisez le libellé avec les clés en base.",
+    billingUnmappedHint_SUPPLY:
+      "Consommable — aucune entrée SUPPLY. Ajoutez BillingCatalog SUPPLY pour ce code article.",
+    billingUnmappedHint_ENCOUNTER_DISPOSITION:
+      "Sortie — pas de codage automatique ici ; complétez manuellement si un code facturable s’applique.",
+    billingUnmappedHint_DIAGNOSIS:
+      "Diagnostic — la codification CIM est gérée dans le parcours diagnostics, pas comme CPT/HCPCS sur cette ligne.",
+    billingUnmappedHint_ENCOUNTER_EM:
+      "E/M — si la ligne reste non mappée, vérifiez le type de consultation et les données de triage utilisées pour le niveau.",
     billingReviewStatus_CAPTURED: "À revoir",
     billingReviewStatus_REVIEWED: "Revu",
     billingReviewStatus_VOIDED: "Annulé",
