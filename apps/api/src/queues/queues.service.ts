@@ -11,7 +11,7 @@ import {
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
 import { AuditService } from "../common/services/audit.service";
-import { buildOrderItemCandidate } from "@medora/shared";
+import { billingLedgerRowHasUsableCode, buildOrderItemCandidate } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 
 @Injectable()
@@ -197,6 +197,7 @@ export class QueuesService {
         procedureCode: true,
         hcpcsCode: true,
         code: true,
+        diagnosisCodes: true,
       },
     });
     for (const r of rows) {
@@ -204,8 +205,7 @@ export class QueuesService {
       if (!cur) continue;
       cur.total++;
       if (r.reviewStatus === BillingReviewStatus.CAPTURED) cur.needsReview++;
-      const hasCode = Boolean(r.procedureCode?.trim() || r.hcpcsCode?.trim() || r.code?.trim());
-      if (!hasCode) cur.missingCode++;
+      if (!billingLedgerRowHasUsableCode(r)) cur.missingCode++;
     }
     return map;
   }
@@ -265,7 +265,7 @@ export class QueuesService {
     }
     const events = await this.prisma.billingEvent.findMany({
       where: { facilityId, encounterId },
-      orderBy: [{ serviceDate: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ sourceModule: "asc" }, { serviceDate: "desc" }, { createdAt: "desc" }],
     });
     const byReviewStatus: Record<string, number> = {};
     const bySourceModule: Partial<Record<BillingSourceModule, number>> = {};
@@ -275,8 +275,7 @@ export class QueuesService {
       const rs = e.reviewStatus;
       byReviewStatus[rs] = (byReviewStatus[rs] ?? 0) + 1;
       if (e.reviewStatus === BillingReviewStatus.CAPTURED) needsReview++;
-      const hasCode = Boolean(e.procedureCode?.trim() || e.hcpcsCode?.trim() || e.code?.trim());
-      if (!hasCode) missingCode++;
+      if (!billingLedgerRowHasUsableCode(e)) missingCode++;
       bySourceModule[e.sourceModule] = (bySourceModule[e.sourceModule] ?? 0) + 1;
     }
     return {

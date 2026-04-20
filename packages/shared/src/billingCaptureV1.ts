@@ -50,6 +50,10 @@ export type BillingCaptureItem = {
   /** Service date (ISO 8601). */
   serviceDate?: string | null;
   renderingProviderId?: string | null;
+  /** Optional catalog display label from Phase 2 enrichment (persisted in capture JSON). */
+  catalogLabel?: string | null;
+  /** True when a default billing code was applied from a Medora catalog (Phase 2). */
+  catalogEnriched?: boolean;
   createdAt: string;
   createdByUserId?: string | null;
 };
@@ -177,6 +181,9 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
     if (rpid) item.renderingProviderId = rpid;
     const cb = trimStr(r.createdByUserId, 64);
     if (cb) item.createdByUserId = cb;
+    const catLabel = trimStr(r.catalogLabel, 512);
+    if (catLabel) item.catalogLabel = catLabel;
+    if (r.catalogEnriched === true) item.catalogEnriched = true;
     items.push(item);
   }
   return { version: BILLING_CAPTURE_VERSION, items: items.slice(0, MAX_ITEMS) };

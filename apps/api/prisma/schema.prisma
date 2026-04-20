@@ -906,6 +906,8 @@ model CatalogImagingStudy {
   code          String   @unique
   name          String
   displayNameFr String?
+  /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
+  billingCodeDefault String?
   description   String?
   modality      String?
   bodyRegion    String?
@@ -938,6 +940,8 @@ model CatalogMedication {
   id                String   @id @default(uuid())
   code              String   @unique
   name              String
+  /// Optional HCPCS/J-code-style suggestion for billing; not validated or auto-applied.
+  billingCodeDefault String?
   description       String?
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
@@ -1216,6 +1220,8 @@ model VaccineCatalog {
   id           String   @id @default(uuid())
   code         String   @unique
   name         String
+  /// Optional CPT/HCPCS-style suggestion for billing; not validated or auto-applied.
+  billingCodeDefault String?
   description  String?
   manufacturer String?
   isActive     Boolean  @default(true)

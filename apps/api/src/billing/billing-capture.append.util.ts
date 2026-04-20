@@ -2,6 +2,7 @@ import type { PrismaService } from "../prisma/prisma.service";
 import type { BillingCaptureItem } from "@medora/shared";
 import { upsertBillingCaptureItem } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "../encounters/encounter-concurrency.util";
+import { enrichBillingCaptureItem } from "./billing-capture.enrichment";
 import { upsertBillingEventFromCaptureItem } from "./billing-ledger.sync";
 
 /**
@@ -19,7 +20,8 @@ export async function appendBillingCaptureCandidate(
   });
   if (!enc) return;
 
-  const merged = upsertBillingCaptureItem(enc.billingCaptureJson, item);
+  const enriched = await enrichBillingCaptureItem(prisma, item);
+  const merged = upsertBillingCaptureItem(enc.billingCaptureJson, enriched);
   const u = await prisma.encounter.updateMany({
     where: { id: encounterId, facilityId, version: enc.version },
     data: {
@@ -29,5 +31,5 @@ export async function appendBillingCaptureCandidate(
   });
   if (u.count === 0) throwEncounterConcurrentModification();
 
-  await upsertBillingEventFromCaptureItem(prisma, item);
+  await upsertBillingEventFromCaptureItem(prisma, enriched);
 }

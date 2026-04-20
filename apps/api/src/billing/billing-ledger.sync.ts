@@ -8,6 +8,27 @@ import {
 } from "@prisma/client";
 import type { BillingBillClass, BillingCaptureItem, BillingEventStatus } from "@medora/shared";
 
+function primaryBillingCodeForLedger(item: BillingCaptureItem): string | null {
+  const p = item.procedureCode?.trim();
+  if (p) return p.slice(0, 32);
+  const h = item.hcpcsCode?.trim();
+  if (h) return h.slice(0, 32);
+  const d0 = item.diagnosisCodes?.[0]?.trim();
+  if (d0) return d0.slice(0, 32);
+  return null;
+}
+
+function buildLedgerDescriptionSnapshot(item: BillingCaptureItem): string | null {
+  const note = item.note?.trim() ?? "";
+  const cat = item.catalogLabel?.trim() ?? "";
+  if (note && cat && !note.includes(cat)) {
+    return `${note} (${cat})`.slice(0, 8000);
+  }
+  if (note) return note.slice(0, 8000);
+  if (cat) return cat.slice(0, 8000);
+  return null;
+}
+
 const log = new Logger("BillingLedger");
 
 type BillingDb = Pick<PrismaClient, "billingEvent">;
@@ -72,6 +93,8 @@ export async function upsertBillingEventFromCaptureItem(db: BillingDb, item: Bil
     linkedDiagnosisIds: item.linkedDiagnosisIds ?? [],
     renderingProviderId: item.renderingProviderId ?? null,
     department: item.department ?? null,
+    catalogEnriched: item.catalogEnriched === true,
+    catalogLabel: item.catalogLabel?.trim() ?? null,
   };
 
   try {
@@ -94,11 +117,11 @@ export async function upsertBillingEventFromCaptureItem(db: BillingDb, item: Bil
         serviceDate,
         units: item.units != null ? Math.min(Math.floor(item.units), 999999) : null,
         codeType: inferCodeType(item),
-        code: null,
+        code: primaryBillingCodeForLedger(item),
         procedureCode: item.procedureCode?.trim() || null,
         hcpcsCode: item.hcpcsCode?.trim() || null,
         diagnosisCodes: diagnosisCodesStr,
-        descriptionSnapshot: item.note?.trim() ? item.note.trim().slice(0, 8000) : null,
+        descriptionSnapshot: buildLedgerDescriptionSnapshot(item),
         priceSnapshot: null,
         modifier1: mods[0]?.slice(0, 8) || null,
         modifier2: mods[1]?.slice(0, 8) || null,
@@ -114,10 +137,11 @@ export async function upsertBillingEventFromCaptureItem(db: BillingDb, item: Bil
         serviceDate,
         units: item.units != null ? Math.min(Math.floor(item.units), 999999) : null,
         codeType: inferCodeType(item),
+        code: primaryBillingCodeForLedger(item),
         procedureCode: item.procedureCode?.trim() || null,
         hcpcsCode: item.hcpcsCode?.trim() || null,
         diagnosisCodes: diagnosisCodesStr,
-        descriptionSnapshot: item.note?.trim() ? item.note.trim().slice(0, 8000) : null,
+        descriptionSnapshot: buildLedgerDescriptionSnapshot(item),
         modifier1: mods[0]?.slice(0, 8) || null,
         modifier2: mods[1]?.slice(0, 8) || null,
         revenueCode: item.revenueCode?.trim() || null,

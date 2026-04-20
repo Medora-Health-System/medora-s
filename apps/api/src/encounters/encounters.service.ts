@@ -41,6 +41,7 @@ import {
   readBillingCaptureV1,
   upsertBillingCaptureItem,
 } from "@medora/shared";
+import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment";
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
@@ -1195,9 +1196,10 @@ export class EncountersService {
       atIso: closedAtIso,
       createdByUserId: userId,
     });
-    closePayload.billingCaptureJson = upsertBillingCaptureItem(encounter.billingCaptureJson, dispositionCandidate);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const dispositionEnriched = await enrichBillingCaptureItem(tx, dispositionCandidate);
+      closePayload.billingCaptureJson = upsertBillingCaptureItem(encounter.billingCaptureJson, dispositionEnriched);
       const um = await tx.encounter.updateMany({
         where: { id, facilityId, version: encounter.version },
         data: {
@@ -1206,7 +1208,7 @@ export class EncountersService {
         },
       });
       if (um.count === 0) throwEncounterConcurrentModification();
-      await upsertBillingEventFromCaptureItem(tx, dispositionCandidate);
+      await upsertBillingEventFromCaptureItem(tx, dispositionEnriched);
       const closeMetadata: Record<string, unknown> = {
         workflowStateBeforeClose: encounter.workflowState,
       };
