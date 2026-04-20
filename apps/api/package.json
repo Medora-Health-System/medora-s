@@ -19,7 +19,8 @@
     "prisma:seed-pathways": "ts-node --transpile-only prisma/seed-pathways.ts",
     "create-admin": "ts-node --transpile-only scripts/create-admin.ts",
     "db:clear:patients": "ts-node --transpile-only scripts/clearPatientData.ts",
-    "backfill:mspp-disease-reviews": "ts-node --transpile-only scripts/backfill-mspp-disease-reviews.ts"
+    "backfill:mspp-disease-reviews": "ts-node --transpile-only scripts/backfill-mspp-disease-reviews.ts",
+    "backfill:billing-events-from-capture": "ts-node --transpile-only scripts/backfill-billing-events-from-capture.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"
