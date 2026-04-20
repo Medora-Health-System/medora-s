@@ -116,6 +116,11 @@ enum BillingSourceModule {
   ENCOUNTER_DISPOSITION
   MANUAL
   VACCINE_ADMINISTRATION
+  /// Catalog-driven auto billing (Phase 4.5) — distinct from ORDER_ITEM ledger lines.
+  LAB_RESULT
+  IMAGING_RESULT
+  MED_ADMIN
+  PROCEDURE
 }
 
 enum BillingReviewStatus {
@@ -641,6 +646,26 @@ model Encounter {
   @@index([physicianAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
   @@index([billingFinalizationStatus])
+}
+
+/// Optional mapping from clinical catalog / external codes to billable CPT/HCPCS (Phase 4.5 auto engine).
+model BillingCatalog {
+  id            String   @id @default(uuid())
+  /// Billable code (CPT or HCPCS) to apply when matched.
+  code          String
+  /// "CPT" | "HCPCS"
+  system        String
+  description   String
+  /// LAB | IMAGING | MEDICATION | PROCEDURE
+  triggerSource String
+  /// LOINC, internal lab code, imaging study code, medication code, etc.
+  externalCode  String?
+  /// "professional" | "facility" | "both"
+  billClass     String
+  createdAt     DateTime @default(now())
+
+  @@index([triggerSource])
+  @@index([externalCode])
 }
 
 /// Relational billing event ledger — automatic capture from clinical actions (Phase 1).

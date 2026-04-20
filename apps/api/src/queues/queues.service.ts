@@ -27,6 +27,7 @@ import {
   evaluateEncounterBillingReadinessFromData,
 } from "../billing/billing-encounter-readiness.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import { tryAutoImagingOrderItemCompleted } from "../billing/billing-auto-append.util";
 import { syncBillingCaptureItemFromLedgerRow } from "../billing/billing-capture-sync-from-ledger.util";
 import { mergeBillingEventPatch } from "../billing/billing-event-patch.helper";
 
@@ -676,6 +677,12 @@ export class QueuesService {
           createdByUserId: userId ?? null,
         })
       );
+      if (orderItem.catalogItemType === "IMAGING_STUDY") {
+        void tryAutoImagingOrderItemCompleted(this.prisma, {
+          facilityId,
+          orderItemId: orderItem.id,
+        });
+      }
     }
 
     return updated;

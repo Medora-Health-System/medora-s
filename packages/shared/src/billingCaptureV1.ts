@@ -14,7 +14,11 @@ export type BillingCaptureSourceType =
   | "MEDICATION_ADMINISTRATION"
   | "ENCOUNTER_DISPOSITION"
   | "VACCINE_ADMINISTRATION"
-  | "MANUAL";
+  | "MANUAL"
+  | "LAB_RESULT"
+  | "IMAGING_RESULT"
+  | "MED_ADMIN"
+  | "PROCEDURE";
 
 /** Review lifecycle — never auto “final”. */
 export type BillingEventStatus = "draft" | "needs_review" | "ready";

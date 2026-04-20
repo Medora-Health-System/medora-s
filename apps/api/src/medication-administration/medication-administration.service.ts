@@ -5,6 +5,7 @@ import { AuditService } from "../common/services/audit.service";
 import type { MedicationAdministrationCreateDto } from "@medora/shared";
 import { buildMedicationAdministrationCandidate } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
@@ -155,6 +156,11 @@ export class MedicationAdministrationService {
         createdByUserId: administeredByUserId,
       })
     );
+
+    void tryAutoMedicationAdministrationBilling(this.prisma, {
+      facilityId,
+      medicationAdministrationId: created.id,
+    });
 
     return created;
   }

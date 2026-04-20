@@ -42,6 +42,10 @@ function mapSourceType(st: string): BillingSourceModule {
     ENCOUNTER_DISPOSITION: BillingSourceModule.ENCOUNTER_DISPOSITION,
     MANUAL: BillingSourceModule.MANUAL,
     VACCINE_ADMINISTRATION: BillingSourceModule.VACCINE_ADMINISTRATION,
+    LAB_RESULT: BillingSourceModule.LAB_RESULT,
+    IMAGING_RESULT: BillingSourceModule.IMAGING_RESULT,
+    MED_ADMIN: BillingSourceModule.MED_ADMIN,
+    PROCEDURE: BillingSourceModule.PROCEDURE,
   };
   return m[st] ?? BillingSourceModule.MANUAL;
 }

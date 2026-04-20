@@ -7,6 +7,7 @@ import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { tryAutoLabResultBillingAfterVerify } from "../billing/billing-auto-append.util";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
@@ -218,6 +219,14 @@ export class ResultsService {
       userAgent,
       metadata: { criticalValue: data.criticalValue, orderItemId },
     });
+
+    if (shouldStampVerification && orderItem.catalogItemType === "LAB_TEST") {
+      void tryAutoLabResultBillingAfterVerify(this.prisma, {
+        facilityId,
+        resultId: result.id,
+        orderItemId,
+      });
+    }
 
     return result;
   }
