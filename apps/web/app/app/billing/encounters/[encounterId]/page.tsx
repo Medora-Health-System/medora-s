@@ -7,7 +7,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import { billingLedgerRowHasUsableCode } from "@medora/shared";
+import { billingLedgerRowHasUsableCode, readBillingCaptureV1 } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 type LedgerEventRow = {
@@ -21,6 +21,29 @@ type LedgerEventRow = {
   diagnosisCodes: string | null;
   serviceDate: string | null;
   descriptionSnapshot: string | null;
+  billingSide: string;
+  revenueCode: string | null;
+  modifier1: string | null;
+  modifier2: string | null;
+};
+
+type ClaimPackageSummaryT = {
+  totalLines: number;
+  uncodedLines: number;
+  linesNeedingReview: number;
+  unknownSideLines: number;
+  blockers: { code: string; detail?: string }[];
+  warnings: { code: string; detail?: string }[];
+  ready: boolean;
+};
+
+type ClaimPackagesPayload = {
+  professional: ClaimPackageSummaryT;
+  facility: ClaimPackageSummaryT;
+  overall: {
+    readyForProfessionalClaim: boolean;
+    readyForFacilityClaim: boolean;
+  };
 };
 
 type ReadinessPayload = {
@@ -47,12 +70,26 @@ type SummaryPayload = {
     patient: { firstName?: string; lastName?: string; mrn?: string | null };
   };
   readiness: ReadinessPayload;
+  claimPackages: ClaimPackagesPayload;
   events: LedgerEventRow[];
   summary: {
     totalEvents: number;
     needsReview: number;
     missingCode: number;
   };
+};
+
+type LineDraft = {
+  procedureCode: string;
+  hcpcsCode: string;
+  diagnosisCodes: string;
+  descriptionSnapshot: string;
+  billingSide: string;
+  reviewStatus: string;
+  revenueCode: string;
+  modifier1: string;
+  modifier2: string;
+  serviceDateIso: string;
 };
 
 function billingPageKey(t: (k: string) => string, suffix: string): string {
@@ -63,7 +100,7 @@ function billingPageKey(t: (k: string) => string, suffix: string): string {
 
 function readinessLineLabel(
   t: (k: string) => string,
-  prefix: "readinessBlocker" | "readinessWarning",
+  prefix: "readinessBlocker" | "readinessWarning" | "packageBlocker" | "packageWarning",
   code: string,
   detail?: string
 ): string {
@@ -71,6 +108,21 @@ function readinessLineLabel(
   const v = t(k);
   const base = v === k ? code : v;
   return detail ? `${base} (${detail})` : base;
+}
+
+function toDraft(ev: LedgerEventRow): LineDraft {
+  return {
+    procedureCode: ev.procedureCode ?? "",
+    hcpcsCode: ev.hcpcsCode ?? "",
+    diagnosisCodes: ev.diagnosisCodes ?? "",
+    descriptionSnapshot: ev.descriptionSnapshot ?? "",
+    billingSide: ev.billingSide,
+    reviewStatus: ev.reviewStatus,
+    revenueCode: ev.revenueCode ?? "",
+    modifier1: ev.modifier1 ?? "",
+    modifier2: ev.modifier2 ?? "",
+    serviceDateIso: ev.serviceDate ? new Date(ev.serviceDate).toISOString() : "",
+  };
 }
 
 export default function BillingEncounterLedgerPage() {
@@ -85,8 +137,17 @@ export default function BillingEncounterLedgerPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<LineDraft | null>(null);
+  const [savingLineId, setSavingLineId] = useState<string | null>(null);
+  const [showAdvancedJson, setShowAdvancedJson] = useState(false);
+  const [advancedText, setAdvancedText] = useState("");
+  const [advancedLoading, setAdvancedLoading] = useState(false);
+  const [advancedSaving, setAdvancedSaving] = useState(false);
+  const [advancedErr, setAdvancedErr] = useState<string | null>(null);
+
   const locale = encounterBcp47(language);
-  const canMarkReviewed = roles.includes("BILLING") || roles.includes("ADMIN");
+  const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
   const canFinalizeBilling = roles.includes("BILLING") || roles.includes("ADMIN");
 
   const load = useCallback(async () => {
@@ -98,7 +159,7 @@ export default function BillingEncounterLedgerPage() {
         facilityId,
       })) as SummaryPayload;
       setData(res);
-    } catch (e) {
+    } catch {
       setData(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
@@ -132,6 +193,91 @@ export default function BillingEncounterLedgerPage() {
       );
     } finally {
       setMarkingId(null);
+    }
+  };
+
+  const saveLine = async (eventId: string) => {
+    if (!facilityId || !draft) return;
+    setSavingLineId(eventId);
+    setActionError(null);
+    setToast(null);
+    try {
+      const body: Record<string, unknown> = {
+        procedureCode: draft.procedureCode.trim() || null,
+        hcpcsCode: draft.hcpcsCode.trim() || null,
+        diagnosisCodes: draft.diagnosisCodes.trim() || null,
+        descriptionSnapshot: draft.descriptionSnapshot.trim() || null,
+        billingSide: draft.billingSide,
+        reviewStatus: draft.reviewStatus,
+        revenueCode: draft.revenueCode.trim() || null,
+        modifier1: draft.modifier1.trim() || null,
+        modifier2: draft.modifier2.trim() || null,
+      };
+      if (draft.serviceDateIso.trim()) {
+        body.serviceDate = draft.serviceDateIso.trim();
+      } else {
+        body.serviceDate = null;
+      }
+      await apiFetch(`/billing/events/${eventId}`, {
+        facilityId,
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      setToast(t("billingPage.billingSaveLineOk"));
+      setEditingId(null);
+      setDraft(null);
+      await load();
+    } catch (e: unknown) {
+      const raw = e instanceof Error && e.message ? e.message : "";
+      setActionError(normalizeUserFacingError(raw, language) || t("billingPage.billingSaveLineErr"));
+    } finally {
+      setSavingLineId(null);
+    }
+  };
+
+  const loadAdvancedJson = async () => {
+    if (!facilityId) return;
+    setAdvancedLoading(true);
+    setAdvancedErr(null);
+    try {
+      const enc = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+      const raw =
+        enc && typeof enc === "object" && !Array.isArray(enc) ? (enc as { billingCaptureJson?: unknown }).billingCaptureJson : null;
+      const normalized = readBillingCaptureV1(raw);
+      setAdvancedText(JSON.stringify(normalized, null, 2));
+    } catch {
+      setAdvancedErr(t("billingPage.billingCaptureLoadErr"));
+    } finally {
+      setAdvancedLoading(false);
+    }
+  };
+
+  const saveAdvancedJson = async () => {
+    if (!facilityId) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(advancedText);
+    } catch {
+      setAdvancedErr(t("billingPage.billingCaptureInvalidJson"));
+      return;
+    }
+    setAdvancedSaving(true);
+    setAdvancedErr(null);
+    try {
+      await apiFetch(`/encounters/${encounterId}`, {
+        facilityId,
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ billingCaptureJson: parsed }),
+      });
+      setToast(t("billingPage.billingCaptureSaved"));
+      await load();
+    } catch (e: unknown) {
+      const raw = e instanceof Error && e.message ? e.message : "";
+      setAdvancedErr(normalizeUserFacingError(raw, language) || t("billingPage.billingCaptureSaveErr"));
+    } finally {
+      setAdvancedSaving(false);
     }
   };
 
@@ -187,6 +333,7 @@ export default function BillingEncounterLedgerPage() {
 
   const wf = data?.encounter?.billingFinalizationStatus ?? "NOT_READY";
   const readiness = data?.readiness;
+  const claimPackages = data?.claimPackages;
   const showFinalize =
     canFinalizeBilling &&
     wf !== "FINALIZED" &&
@@ -194,8 +341,11 @@ export default function BillingEncounterLedgerPage() {
     (wf === "NOT_READY" || wf === "READY_FOR_REVIEW" || wf === "REOPENED");
   const showReopen = canFinalizeBilling && wf === "FINALIZED";
 
+  const billingSides = ["UNKNOWN", "PROFESSIONAL", "FACILITY", "BOTH"] as const;
+  const reviewStatuses = ["CAPTURED", "REVIEWED", "VOIDED", "SKIPPED"] as const;
+
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 12px 40px" }}>
+    <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 12px 40px" }}>
       <div style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
         <Link href="/app/billing" style={{ color: "#0f172a", fontWeight: 600 }}>
           ← {t("billingPage.billingSummaryBack")}
@@ -229,8 +379,96 @@ export default function BillingEncounterLedgerPage() {
         </div>
       )}
 
-      {!loading && !error && data && readiness && (
+      {!loading && !error && data && readiness && claimPackages && (
         <>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+            <div
+              style={{
+                flex: "1 1 240px",
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: claimPackages.professional.ready ? "#f0fdf4" : "#fffbeb",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{t("billingPage.billingPackageProfessionalTitle")}</div>
+              <div style={{ fontSize: 13, marginTop: 6, color: "#334155" }}>
+                {claimPackages.professional.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 8, color: "#64748b" }}>
+                {t("billingPage.billingPackageLines")}: {claimPackages.professional.totalLines} · {t("billingPage.billingPackageUncoded")}:{" "}
+                {claimPackages.professional.uncodedLines} · {t("billingPage.billingPackagePendingReview")}:{" "}
+                {claimPackages.professional.linesNeedingReview}
+              </div>
+              {claimPackages.professional.blockers.length > 0 ? (
+                <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#92400e" }}>
+                  {claimPackages.professional.blockers.map((b) => (
+                    <li key={b.code}>{readinessLineLabel(t, "packageBlocker", b.code, b.detail)}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {claimPackages.professional.warnings.length > 0 ? (
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "#475569" }}>
+                  {claimPackages.professional.warnings.map((w) => (
+                    <li key={w.code}>{readinessLineLabel(t, "packageWarning", w.code, w.detail)}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div
+              style={{
+                flex: "1 1 240px",
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: claimPackages.facility.ready ? "#f0fdf4" : "#fffbeb",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{t("billingPage.billingPackageFacilityTitle")}</div>
+              <div style={{ fontSize: 13, marginTop: 6, color: "#334155" }}>
+                {claimPackages.facility.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 8, color: "#64748b" }}>
+                {t("billingPage.billingPackageLines")}: {claimPackages.facility.totalLines} · {t("billingPage.billingPackageUncoded")}:{" "}
+                {claimPackages.facility.uncodedLines} · {t("billingPage.billingPackagePendingReview")}:{" "}
+                {claimPackages.facility.linesNeedingReview}
+              </div>
+              {claimPackages.facility.blockers.length > 0 ? (
+                <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#92400e" }}>
+                  {claimPackages.facility.blockers.map((b) => (
+                    <li key={b.code}>{readinessLineLabel(t, "packageBlocker", b.code, b.detail)}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {claimPackages.facility.warnings.length > 0 ? (
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "#475569" }}>
+                  {claimPackages.facility.warnings.map((w) => (
+                    <li key={w.code}>{readinessLineLabel(t, "packageWarning", w.code, w.detail)}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div
+              style={{
+                flex: "1 1 200px",
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{t("billingPage.billingPackageOverall")}</div>
+              <div style={{ fontSize: 13, marginTop: 8 }}>
+                {t("billingPage.billingPackageProfReady")}:{" "}
+                {claimPackages.overall.readyForProfessionalClaim ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")}
+              </div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>
+                {t("billingPage.billingPackageFacReady")}:{" "}
+                {claimPackages.overall.readyForFacilityClaim ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")}
+              </div>
+            </div>
+          </div>
+
           <div
             style={{
               marginBottom: 20,
@@ -318,6 +556,7 @@ export default function BillingEncounterLedgerPage() {
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableModule")}</th>
+                    <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableSide")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableCodeType")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableCode")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableProcedure")}</th>
@@ -326,60 +565,84 @@ export default function BillingEncounterLedgerPage() {
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableStatus")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableServiceDate")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableDescription")}</th>
-                    {canMarkReviewed ? (
-                      <th style={{ padding: 10, textAlign: "left" }} aria-label={t("billingPage.billingSummaryMarkReviewed")} />
-                    ) : null}
+                    <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableActions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.events.map((ev) => {
                     const coded = billingLedgerRowHasUsableCode(ev);
                     const rowBg = coded ? undefined : "#fffbeb";
+                    const isEditing = editingId === ev.id;
                     return (
-                      <tr key={ev.id} style={{ borderBottom: "1px solid #f1f5f9", background: rowBg }}>
-                        <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                          {billingPageKey(t, `billingSourceModule_${ev.sourceModule}`)}
-                        </td>
-                        <td style={{ padding: 10, fontSize: 13 }}>
-                          {billingPageKey(t, ev.codeType ? `billingCodeType_${ev.codeType}` : "billingCodeType_UNKNOWN")}
-                        </td>
-                        <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                          {ev.code?.trim() ? ev.code : t("common.dash")}
-                          {!coded ? (
-                            <span
-                              style={{
-                                marginLeft: 8,
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: "#b45309",
-                                fontFamily: "inherit",
-                              }}
-                            >
-                              {t("billingPage.billingSummaryUncodedBadge")}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                          {ev.procedureCode?.trim() ? ev.procedureCode : t("common.dash")}
-                        </td>
-                        <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
-                          {ev.hcpcsCode?.trim() ? ev.hcpcsCode : t("common.dash")}
-                        </td>
-                        <td style={{ padding: 10, fontSize: 12, maxWidth: 160, wordBreak: "break-word" }}>
-                          {ev.diagnosisCodes?.trim() ? ev.diagnosisCodes : t("common.dash")}
-                        </td>
-                        <td style={{ padding: 10 }}>
-                          {billingPageKey(t, `billingReviewStatus_${ev.reviewStatus}`)}
-                        </td>
-                        <td style={{ padding: 10 }}>
-                          {ev.serviceDate ? new Date(ev.serviceDate).toLocaleString(locale) : t("common.dash")}
-                        </td>
-                        <td style={{ padding: 10, color: "#334155", maxWidth: 280 }}>
-                          {ev.descriptionSnapshot?.trim() ? ev.descriptionSnapshot : t("common.dash")}
-                        </td>
-                        {canMarkReviewed ? (
+                      <React.Fragment key={ev.id}>
+                        <tr style={{ borderBottom: "1px solid #f1f5f9", background: rowBg }}>
+                          <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                            {billingPageKey(t, `billingSourceModule_${ev.sourceModule}`)}
+                          </td>
+                          <td style={{ padding: 10, fontSize: 13 }}>{billingPageKey(t, `billingSide_${ev.billingSide}`)}</td>
+                          <td style={{ padding: 10, fontSize: 13 }}>
+                            {billingPageKey(t, ev.codeType ? `billingCodeType_${ev.codeType}` : "billingCodeType_UNKNOWN")}
+                          </td>
+                          <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                            {ev.code?.trim() ? ev.code : t("common.dash")}
+                            {!coded ? (
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "#b45309",
+                                  fontFamily: "inherit",
+                                }}
+                              >
+                                {t("billingPage.billingSummaryUncodedBadge")}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                            {ev.procedureCode?.trim() ? ev.procedureCode : t("common.dash")}
+                          </td>
+                          <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                            {ev.hcpcsCode?.trim() ? ev.hcpcsCode : t("common.dash")}
+                          </td>
+                          <td style={{ padding: 10, fontSize: 12, maxWidth: 140, wordBreak: "break-word" }}>
+                            {ev.diagnosisCodes?.trim() ? ev.diagnosisCodes : t("common.dash")}
+                          </td>
                           <td style={{ padding: 10 }}>
-                            {ev.reviewStatus === "CAPTURED" && coded ? (
+                            {billingPageKey(t, `billingReviewStatus_${ev.reviewStatus}`)}
+                          </td>
+                          <td style={{ padding: 10 }}>
+                            {ev.serviceDate ? new Date(ev.serviceDate).toLocaleString(locale) : t("common.dash")}
+                          </td>
+                          <td style={{ padding: 10, color: "#334155", maxWidth: 200 }}>
+                            {ev.descriptionSnapshot?.trim() ? ev.descriptionSnapshot : t("common.dash")}
+                          </td>
+                          <td style={{ padding: 10, whiteSpace: "nowrap" }}>
+                            {canEditLines && wf !== "FINALIZED" ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isEditing) {
+                                    setEditingId(null);
+                                    setDraft(null);
+                                  } else {
+                                    setEditingId(ev.id);
+                                    setDraft(toDraft(ev));
+                                  }
+                                }}
+                                style={{
+                                  fontSize: 12,
+                                  padding: "6px 10px",
+                                  borderRadius: 6,
+                                  border: "1px solid #cbd5e1",
+                                  background: "#fff",
+                                  marginRight: 6,
+                                }}
+                              >
+                                {isEditing ? t("billingPage.billingRowCancel") : t("billingPage.billingRowEdit")}
+                              </button>
+                            ) : null}
+                            {ev.reviewStatus === "CAPTURED" && coded && wf !== "FINALIZED" ? (
                               <button
                                 type="button"
                                 disabled={markingId === ev.id}
@@ -397,14 +660,203 @@ export default function BillingEncounterLedgerPage() {
                               </button>
                             ) : null}
                           </td>
+                        </tr>
+                        {isEditing && draft ? (
+                          <tr style={{ background: "#f8fafc" }}>
+                            <td colSpan={11} style={{ padding: 14, borderBottom: "1px solid #e2e8f0" }}>
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                                  gap: 10,
+                                  alignItems: "end",
+                                }}
+                              >
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4 }}>
+                                  {t("billingPage.billingEditBillingSide")}
+                                  <select
+                                    value={draft.billingSide}
+                                    onChange={(e) => setDraft({ ...draft, billingSide: e.target.value })}
+                                    style={{ padding: 6 }}
+                                  >
+                                    {billingSides.map((s) => (
+                                      <option key={s} value={s}>
+                                        {billingPageKey(t, `billingSide_${s}`)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4 }}>
+                                  {t("billingPage.billingEditReviewStatus")}
+                                  <select
+                                    value={draft.reviewStatus}
+                                    onChange={(e) => setDraft({ ...draft, reviewStatus: e.target.value })}
+                                    style={{ padding: 6 }}
+                                  >
+                                    {reviewStatuses.map((s) => (
+                                      <option key={s} value={s}>
+                                        {billingPageKey(t, `billingReviewStatus_${s}`)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4 }}>
+                                  {t("billingPage.billingSummaryTableProcedure")}
+                                  <input
+                                    value={draft.procedureCode}
+                                    onChange={(e) => setDraft({ ...draft, procedureCode: e.target.value })}
+                                    style={{ padding: 6, fontFamily: "ui-monospace, monospace" }}
+                                  />
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4 }}>
+                                  {t("billingPage.billingSummaryTableHcpcs")}
+                                  <input
+                                    value={draft.hcpcsCode}
+                                    onChange={(e) => setDraft({ ...draft, hcpcsCode: e.target.value })}
+                                    style={{ padding: 6, fontFamily: "ui-monospace, monospace" }}
+                                  />
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4, gridColumn: "span 2" }}>
+                                  {t("billingPage.billingSummaryTableDiagnosis")}
+                                  <input
+                                    value={draft.diagnosisCodes}
+                                    onChange={(e) => setDraft({ ...draft, diagnosisCodes: e.target.value })}
+                                    placeholder="ICD-10; separated"
+                                    style={{ padding: 6 }}
+                                  />
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4 }}>
+                                  {t("billingPage.billingEditRevenueCode")}
+                                  <input
+                                    value={draft.revenueCode}
+                                    onChange={(e) => setDraft({ ...draft, revenueCode: e.target.value })}
+                                    style={{ padding: 6 }}
+                                  />
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4 }}>
+                                  {t("billingPage.billingEditModifiers")}
+                                  <div style={{ display: "flex", gap: 6 }}>
+                                    <input
+                                      value={draft.modifier1}
+                                      onChange={(e) => setDraft({ ...draft, modifier1: e.target.value })}
+                                      style={{ padding: 6, width: "100%" }}
+                                    />
+                                    <input
+                                      value={draft.modifier2}
+                                      onChange={(e) => setDraft({ ...draft, modifier2: e.target.value })}
+                                      style={{ padding: 6, width: "100%" }}
+                                    />
+                                  </div>
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4, gridColumn: "span 2" }}>
+                                  {t("billingPage.billingSummaryTableServiceDate")} (ISO 8601)
+                                  <input
+                                    value={draft.serviceDateIso}
+                                    onChange={(e) => setDraft({ ...draft, serviceDateIso: e.target.value })}
+                                    placeholder="2026-01-15T14:30:00.000Z"
+                                    style={{ padding: 6 }}
+                                  />
+                                </label>
+                                <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 4, gridColumn: "1 / -1" }}>
+                                  {t("billingPage.billingEditDescription")}
+                                  <textarea
+                                    value={draft.descriptionSnapshot}
+                                    onChange={(e) => setDraft({ ...draft, descriptionSnapshot: e.target.value })}
+                                    rows={2}
+                                    style={{ padding: 8, width: "100%", boxSizing: "border-box" }}
+                                  />
+                                </label>
+                              </div>
+                              <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                                <button
+                                  type="button"
+                                  disabled={savingLineId === ev.id}
+                                  onClick={() => void saveLine(ev.id)}
+                                  style={{
+                                    padding: "8px 14px",
+                                    borderRadius: 6,
+                                    border: "none",
+                                    background: "#0f766e",
+                                    color: "#fff",
+                                    fontWeight: 600,
+                                    cursor: savingLineId === ev.id ? "wait" : "pointer",
+                                  }}
+                                >
+                                  {savingLineId === ev.id ? t("common.saving") : t("billingPage.billingRowSave")}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={savingLineId === ev.id}
+                                  onClick={() => {
+                                    setEditingId(null);
+                                    setDraft(null);
+                                  }}
+                                  style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff" }}
+                                >
+                                  {t("billingPage.billingRowCancel")}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
                         ) : null}
-                      </tr>
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
               </table>
             </div>
           )}
+
+          {canEditLines ? (
+            <div style={{ marginTop: 24, padding: 16, border: "1px dashed #cbd5e1", borderRadius: 8, background: "#fafafa" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                <h2 style={{ margin: 0, fontSize: 15 }}>{t("billingPage.billingAdvancedJsonTitle")}</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAdvancedJson((v) => !v);
+                    if (!showAdvancedJson) void loadAdvancedJson();
+                  }}
+                  style={{ fontSize: 13, padding: "6px 12px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff" }}
+                >
+                  {showAdvancedJson ? t("billingPage.billingAdvancedJsonHide") : t("billingPage.billingAdvancedJsonShow")}
+                </button>
+              </div>
+              {showAdvancedJson ? (
+                <>
+                  {advancedLoading ? (
+                    <p>{t("common.loading")}</p>
+                  ) : (
+                    <>
+                      <textarea
+                        value={advancedText}
+                        onChange={(e) => setAdvancedText(e.target.value)}
+                        style={{
+                          width: "100%",
+                          minHeight: 220,
+                          fontFamily: "ui-monospace, monospace",
+                          fontSize: 12,
+                          boxSizing: "border-box",
+                        }}
+                        spellCheck={false}
+                      />
+                      {advancedErr ? <p style={{ color: "#b91c1c", fontSize: 13 }}>{advancedErr}</p> : null}
+                      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          disabled={advancedSaving || wf === "FINALIZED"}
+                          onClick={() => void saveAdvancedJson()}
+                          style={{ padding: "8px 14px", borderRadius: 6, border: "none", background: "#64748b", color: "#fff" }}
+                        >
+                          {advancedSaving ? t("common.saving") : t("billingPage.billingCaptureSave")}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : null}
+            </div>
+          ) : null}
         </>
       )}
     </div>

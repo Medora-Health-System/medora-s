@@ -2,7 +2,9 @@ import { Injectable, BadRequestException, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import {
   AuditAction,
+  BillingCodeType,
   BillingReviewStatus,
+  BillingSide,
   BillingSourceModule,
   EncounterBillingFinalizationStatus,
   OrderStatus,
@@ -19,12 +21,14 @@ import {
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
 import { AuditService } from "../common/services/audit.service";
-import { billingLedgerRowHasUsableCode, buildOrderItemCandidate } from "@medora/shared";
+import { billingLedgerRowHasUsableCode, buildOrderItemCandidate, computeClaimPackageSummaries } from "@medora/shared";
 import {
   computeEncounterBillingReadiness,
   evaluateEncounterBillingReadinessFromData,
 } from "../billing/billing-encounter-readiness.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import { syncBillingCaptureItemFromLedgerRow } from "../billing/billing-capture-sync-from-ledger.util";
+import { mergeBillingEventPatch } from "../billing/billing-event-patch.helper";
 
 @Injectable()
 export class QueuesService {
@@ -269,6 +273,7 @@ export class QueuesService {
             select: {
               encounterId: true,
               reviewStatus: true,
+              billingSide: true,
               procedureCode: true,
               hcpcsCode: true,
               code: true,
@@ -282,6 +287,7 @@ export class QueuesService {
       string,
       Array<{
         reviewStatus: BillingReviewStatus;
+        billingSide: BillingSide;
         procedureCode: string | null;
         hcpcsCode: string | null;
         code: string | null;
@@ -306,10 +312,21 @@ export class QueuesService {
         evRows,
         diagMap.get(e.id) ?? 0
       );
+      const claimPackages = computeClaimPackageSummaries(
+        evRows.map((r) => ({
+          billingSide: r.billingSide,
+          reviewStatus: r.reviewStatus,
+          procedureCode: r.procedureCode,
+          hcpcsCode: r.hcpcsCode,
+          code: r.code,
+          diagnosisCodes: r.diagnosisCodes,
+        }))
+      );
       return {
         ...e,
         billingLedger: bl,
         billingReadiness: readiness,
+        claimPackages,
       };
     });
   }
@@ -352,10 +369,21 @@ export class QueuesService {
       bySourceModule[e.sourceModule] = (bySourceModule[e.sourceModule] ?? 0) + 1;
     }
     const readiness = await computeEncounterBillingReadiness(this.prisma, facilityId, encounterId);
+    const claimPackages = computeClaimPackageSummaries(
+      events.map((ev) => ({
+        billingSide: ev.billingSide,
+        reviewStatus: ev.reviewStatus,
+        procedureCode: ev.procedureCode,
+        hcpcsCode: ev.hcpcsCode,
+        code: ev.code,
+        diagnosisCodes: ev.diagnosisCodes,
+      }))
+    );
     return {
       encounter: enc,
       events,
       readiness,
+      claimPackages,
       summary: {
         totalEvents: events.length,
         needsReview,
@@ -475,10 +503,10 @@ export class QueuesService {
     return { encounter: updated, readiness, reopened: true as const };
   }
 
-  async patchBillingEventReview(
+  async patchBillingEvent(
     facilityId: string,
     billingEventId: string,
-    reviewStatus: BillingReviewStatus,
+    body: Record<string, unknown>,
     userId?: string
   ) {
     const row = await this.prisma.billingEvent.findFirst({
@@ -487,9 +515,26 @@ export class QueuesService {
     if (!row) {
       throw new NotFoundException("Billing event not found");
     }
-    const updated = await this.prisma.billingEvent.update({
-      where: { id: billingEventId },
-      data: { reviewStatus },
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: row.encounterId, facilityId },
+      select: { billingFinalizationStatus: true },
+    });
+    if (enc?.billingFinalizationStatus === EncounterBillingFinalizationStatus.FINALIZED) {
+      throw new BadRequestException(
+        "Billing events cannot be edited while the encounter is finalized for billing. Reopen billing first."
+      );
+    }
+    const { data, auditDelta } = mergeBillingEventPatch(row, body);
+    if (Object.keys(auditDelta).length === 0) {
+      return row;
+    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.billingEvent.update({
+        where: { id: billingEventId },
+        data,
+      });
+      await syncBillingCaptureItemFromLedgerRow(tx, u);
+      return u;
     });
     await this.audit.log(AuditAction.UPDATE, "BILLING_EVENT", {
       userId,
@@ -497,7 +542,10 @@ export class QueuesService {
       patientId: row.patientId,
       encounterId: row.encounterId,
       entityId: row.id,
-      metadata: { reviewStatus, previousStatus: row.reviewStatus },
+      metadata: {
+        structuredLineEdit: true,
+        delta: auditDelta,
+      },
     });
     return updated;
   }

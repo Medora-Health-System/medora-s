@@ -154,6 +154,12 @@ export default function BillingPage() {
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colNeedsReview")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colMissingCode")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colBillingWorkflow")}</th>
+                <th style={{ padding: 12, textAlign: "center" }} title={t("billingPage.billingPackageProfReady")}>
+                  {t("billingPage.colClaimProf")}
+                </th>
+                <th style={{ padding: 12, textAlign: "center" }} title={t("billingPage.billingPackageFacReady")}>
+                  {t("billingPage.colClaimFac")}
+                </th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -179,6 +185,11 @@ export default function BillingPage() {
                       ? t("billingPage.readinessQueueHintReady")
                       : t("billingPage.readinessQueueHintBlocked");
                 const wfDisplay = wfLabel !== wfLabelKey ? wfLabel : wf;
+                const cp = encounter.claimPackages as
+                  | { overall?: { readyForProfessionalClaim?: boolean; readyForFacilityClaim?: boolean } }
+                  | undefined;
+                const profClaimOk = cp?.overall?.readyForProfessionalClaim === true;
+                const facClaimOk = cp?.overall?.readyForFacilityClaim === true;
                 return (
                   <tr key={encounter.id} style={{ borderBottom: "1px solid #eee" }}>
                     <td style={{ padding: 12 }}>
@@ -201,6 +212,8 @@ export default function BillingPage() {
                         <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>{queueHint}</div>
                       ) : null}
                     </td>
+                    <td style={{ padding: 12, textAlign: "center", fontSize: 16 }}>{profClaimOk ? "✓" : "—"}</td>
+                    <td style={{ padding: 12, textAlign: "center", fontSize: 16 }}>{facClaimOk ? "✓" : "—"}</td>
                     <td style={{ padding: 12 }}>
                       <Link
                         href={`/app/billing/encounters/${encounter.id}`}

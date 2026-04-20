@@ -164,6 +164,12 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "La consultation n’est pas prête pour la finalisation facturation.",
     en: "This encounter is not ready for billing finalization.",
   },
+  {
+    test: (s) =>
+      /billing events cannot be edited while the encounter is finalized for billing/i.test(s),
+    fr: "Les lignes de facturation ne peuvent pas être modifiées tant que la consultation est finalisée pour la facturation. Rouvrez la facturation d’abord.",
+    en: "Billing lines cannot be edited while the encounter is finalized for billing. Reopen billing first.",
+  },
 ];
 
 /**
