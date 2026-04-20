@@ -99,7 +99,8 @@ export default {
     billingSummaryTableHcpcs: "HCPCS",
     billingSummaryTableDiagnosis: "Diagnostics (registre)",
     billingSummaryUncodedBadge: "Code facturable (CPT/HCPCS/CIM) à compléter",
-    billingSummaryUnmappedBadge: "Cartographie catalogue manquante — ajouter la ligne BillingCatalog",
+    billingSummaryUnmappedBadge:
+      "Non mappé (UNMAPPED) — aucune entrée BillingCatalog ; ajoutez une ligne catalogue ou modifiez la ligne. D’anciennes lignes peuvent se mettre à jour après un backfill serveur lorsque le catalogue est à jour.",
     queueFilterAll: "Toutes les consultations",
     queueFilterUnmappedOnly: "Avec lignes non mappées (UNMAPPED)",
     queueFilteredEmpty: "Aucune consultation ne correspond à ce filtre.",
