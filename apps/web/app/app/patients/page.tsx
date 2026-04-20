@@ -268,6 +268,20 @@ function PatientsPageContent() {
                 {t("patientsListPage.postCreateGoChart")}
               </Link>
               <Link
+                href={`/app/registration?patient=${postCreatePatient.id}`}
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor: "#0d47a1",
+                  color: "#fff",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {t("patientsListPage.postCreateContinueRegistration")}
+              </Link>
+              <Link
                 href={`/app/patients/${postCreatePatient.id}#patient-registration-insurance`}
                 style={{
                   padding: "8px 14px",
