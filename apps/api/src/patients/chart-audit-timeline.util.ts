@@ -23,6 +23,8 @@ export const CHART_AUDIT_TIMELINE_ACTIONS: AuditAction[] = [
   AuditAction.MEDICATION_DISPENSED,
   AuditAction.RESULT_VERIFY,
   AuditAction.CRITICAL_FLAG,
+  AuditAction.BILLING_FINALIZED,
+  AuditAction.BILLING_REOPENED,
 ];
 
 /**
@@ -68,6 +70,8 @@ export function auditActionShortLabelFr(action: AuditAction): string {
     [AuditAction.MEDICATION_DISPENSED]: "Dispensation enregistrée",
     [AuditAction.RESULT_VERIFY]: "Résultat validé",
     [AuditAction.CRITICAL_FLAG]: "Valeur critique (résultat)",
+    [AuditAction.BILLING_FINALIZED]: "Facturation consultation finalisée",
+    [AuditAction.BILLING_REOPENED]: "Facturation consultation rouverte",
     [AuditAction.BREAK_GLASS_START]: "Accès d'urgence (break-glass) démarré",
     [AuditAction.BREAK_GLASS_ACCESS]: "Accès d'urgence (break-glass) — consultation dossier",
     [AuditAction.BREAK_GLASS_END]: "Accès d'urgence (break-glass) terminé",

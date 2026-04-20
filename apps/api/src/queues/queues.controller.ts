@@ -1,4 +1,14 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { QueuesService } from "./queues.service";
@@ -42,6 +52,27 @@ export class QueuesController {
   async getBillingEncounterSummary(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.queuesService.getBillingEncounterSummary(facilityId, encounterId);
+  }
+
+  @Get("billing/encounters/:encounterId/readiness")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getEncounterBillingReadiness(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.queuesService.getEncounterBillingReadiness(facilityId, encounterId);
+  }
+
+  @Post("billing/encounters/:encounterId/finalize")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async finalizeEncounterBilling(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.queuesService.finalizeEncounterBilling(facilityId, encounterId, req.user?.userId);
+  }
+
+  @Post("billing/encounters/:encounterId/reopen")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async reopenEncounterBilling(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.queuesService.reopenEncounterBilling(facilityId, encounterId, req.user?.userId);
   }
 
   @Patch("billing/events/:id")

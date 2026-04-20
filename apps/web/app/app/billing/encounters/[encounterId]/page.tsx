@@ -22,13 +22,30 @@ type LedgerEventRow = {
   descriptionSnapshot: string | null;
 };
 
+type ReadinessPayload = {
+  isReady: boolean;
+  blockers: { code: string; detail?: string }[];
+  warnings: { code: string; detail?: string }[];
+  counts: {
+    totalBillingEvents: number;
+    uncodedLines: number;
+    ledgerLinesNeedingReview: number;
+    diagnosisCount: number;
+  };
+};
+
 type SummaryPayload = {
   encounter: {
     id: string;
     type: string;
+    status?: string;
     dischargedAt: string | null;
+    billingFinalizationStatus?: string;
+    billingFinalizedAt?: string | null;
+    billingReopenedAt?: string | null;
     patient: { firstName?: string; lastName?: string; mrn?: string | null };
   };
+  readiness: ReadinessPayload;
   events: LedgerEventRow[];
   summary: {
     totalEvents: number;
@@ -43,6 +60,18 @@ function billingPageKey(t: (k: string) => string, suffix: string): string {
   return v === k ? suffix : v;
 }
 
+function readinessLineLabel(
+  t: (k: string) => string,
+  prefix: "readinessBlocker" | "readinessWarning",
+  code: string,
+  detail?: string
+): string {
+  const k = `billingPage.${prefix}_${code}`;
+  const v = t(k);
+  const base = v === k ? code : v;
+  return detail ? `${base} (${detail})` : base;
+}
+
 export default function BillingEncounterLedgerPage() {
   const params = useParams();
   const encounterId = params.encounterId as string;
@@ -52,9 +81,12 @@ export default function BillingEncounterLedgerPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
   const locale = encounterBcp47(language);
   const canMarkReviewed = roles.includes("BILLING") || roles.includes("ADMIN");
+  const canFinalizeBilling = roles.includes("BILLING") || roles.includes("ADMIN");
 
   const load = useCallback(async () => {
     if (!ready || !facilityId) return;
@@ -81,6 +113,7 @@ export default function BillingEncounterLedgerPage() {
     if (!facilityId) return;
     setMarkingId(billingEventId);
     setToast(null);
+    setActionError(null);
     try {
       await apiFetch(`/billing/events/${billingEventId}`, {
         facilityId,
@@ -96,6 +129,61 @@ export default function BillingEncounterLedgerPage() {
       setMarkingId(null);
     }
   };
+
+  const finalizeEncounter = async () => {
+    if (!facilityId) return;
+    setActionBusy(true);
+    setActionError(null);
+    setToast(null);
+    try {
+      await apiFetch(`/billing/encounters/${encounterId}/finalize`, {
+        facilityId,
+        method: "POST",
+      });
+      setToast(t("billingPage.readinessFinalizedOk"));
+      await load();
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
+          ? (e as { message: string }).message
+          : t("billingPage.readinessActionError");
+      setActionError(msg);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const reopenEncounter = async () => {
+    if (!facilityId) return;
+    setActionBusy(true);
+    setActionError(null);
+    setToast(null);
+    try {
+      await apiFetch(`/billing/encounters/${encounterId}/reopen`, {
+        facilityId,
+        method: "POST",
+      });
+      setToast(t("billingPage.readinessReopenedOk"));
+      await load();
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
+          ? (e as { message: string }).message
+          : t("billingPage.readinessActionError");
+      setActionError(msg);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const wf = data?.encounter?.billingFinalizationStatus ?? "NOT_READY";
+  const readiness = data?.readiness;
+  const showFinalize =
+    canFinalizeBilling &&
+    wf !== "FINALIZED" &&
+    readiness?.isReady === true &&
+    (wf === "NOT_READY" || wf === "READY_FOR_REVIEW" || wf === "REOPENED");
+  const showReopen = canFinalizeBilling && wf === "FINALIZED";
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 12px 40px" }}>
@@ -120,9 +208,88 @@ export default function BillingEncounterLedgerPage() {
           {toast}
         </div>
       )}
+      {actionError && (
+        <div style={{ marginBottom: 12, padding: 10, background: "#fef2f2", color: "#b91c1c", borderRadius: 8 }}>
+          {actionError}
+        </div>
+      )}
 
-      {!loading && !error && data && (
+      {!loading && !error && data && readiness && (
         <>
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 16,
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              background: readiness.isReady ? "#f0fdf4" : "#fffbeb",
+            }}
+          >
+            <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>{t("billingPage.readinessCardTitle")}</h2>
+            <p style={{ margin: "0 0 12px", fontSize: 14, color: "#334155" }}>
+              <strong>{billingPageKey(t, `billingWorkflow_${wf}`)}</strong>
+              {" · "}
+              {readiness.isReady ? t("billingPage.readinessIsReady") : t("billingPage.readinessNotReady")}
+            </p>
+            {readiness.blockers.length > 0 ? (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{t("billingPage.readinessBlockers")}</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#92400e" }}>
+                  {readiness.blockers.map((b) => (
+                    <li key={b.code}>{readinessLineLabel(t, "readinessBlocker", b.code, b.detail)}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {readiness.warnings.length > 0 ? (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{t("billingPage.readinessWarnings")}</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#475569" }}>
+                  {readiness.warnings.map((w) => (
+                    <li key={w.code}>{readinessLineLabel(t, "readinessWarning", w.code, w.detail)}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+              {showFinalize ? (
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={() => void finalizeEncounter()}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: "#0f766e",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: actionBusy ? "wait" : "pointer",
+                  }}
+                >
+                  {t("billingPage.readinessFinalize")}
+                </button>
+              ) : null}
+              {showReopen ? (
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={() => void reopenEncounter()}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "#fff",
+                    fontWeight: 600,
+                    cursor: actionBusy ? "wait" : "pointer",
+                  }}
+                >
+                  {t("billingPage.readinessReopen")}
+                </button>
+              ) : null}
+            </div>
+          </div>
+
           <div style={{ marginBottom: 16, fontSize: 14, color: "#334155" }}>
             <strong>{t("billingPage.billingSummaryTotal")}:</strong> {data.summary.totalEvents} ·{" "}
             {t("billingPage.colNeedsReview")}: {data.summary.needsReview} · {t("billingPage.colMissingCode")}:{" "}

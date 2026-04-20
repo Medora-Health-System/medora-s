@@ -49,17 +49,6 @@ export default function BillingPage() {
     }
   };
 
-  const handleFinalize = async (_encounterId: string) => {
-    if (!effectiveFacilityId) return;
-    try {
-      // Placeholder - would call billing finalize endpoint
-      alert(t("billingPage.alertSavedPlaceholder"));
-      loadQueue();
-    } catch (error) {
-      alert(t("billingPage.alertFinalizeError"));
-    }
-  };
-
   const openBillingCaptureModal = useCallback(
     async (encounterId: string) => {
       if (!effectiveFacilityId) return;
@@ -144,6 +133,7 @@ export default function BillingPage() {
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colBillingEvents")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colNeedsReview")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colMissingCode")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colBillingWorkflow")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -158,6 +148,17 @@ export default function BillingPage() {
                 const needsReview = typeof bl?.needsReview === "number" ? bl.needsReview : needsReviewJson;
                 const missingCode =
                   typeof bl?.missingCode === "number" ? bl.missingCode : t("common.dash");
+                const wf = String(encounter.billingFinalizationStatus ?? "NOT_READY");
+                const wfLabelKey = `billingPage.billingWorkflow_${wf}`;
+                const wfLabel = t(wfLabelKey);
+                const br = encounter.billingReadiness as { isReady?: boolean } | undefined;
+                const queueHint =
+                  wf === "FINALIZED"
+                    ? null
+                    : br?.isReady
+                      ? t("billingPage.readinessQueueHintReady")
+                      : t("billingPage.readinessQueueHintBlocked");
+                const wfDisplay = wfLabel !== wfLabelKey ? wfLabel : wf;
                 return (
                 <tr key={encounter.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: 12 }}>
@@ -176,13 +177,19 @@ export default function BillingPage() {
                   <td style={{ padding: 12 }}>{eventCount}</td>
                   <td style={{ padding: 12 }}>{needsReview}</td>
                   <td style={{ padding: 12 }}>{missingCode}</td>
+                  <td style={{ padding: 12, fontSize: 13 }}>
+                    <div style={{ fontWeight: 600 }}>{wfDisplay}</div>
+                    {queueHint ? (
+                      <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>{queueHint}</div>
+                    ) : null}
+                  </td>
                   <td style={{ padding: 12 }}>
-                    <button
-                      onClick={() => handleFinalize(encounter.id)}
-                      style={{ marginRight: 8, padding: "4px 8px" }}
+                    <Link
+                      href={`/app/billing/encounters/${encounter.id}`}
+                      style={{ marginRight: 8, padding: "4px 8px", display: "inline-block" }}
                     >
-                      {t("billingPage.finalize")}
-                    </button>
+                      {t("billingPage.queueOpenLedgerFinalize")}
+                    </Link>
                     {canEditBillingCapture ? (
                       <button
                         type="button"

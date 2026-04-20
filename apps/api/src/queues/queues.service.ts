@@ -1,6 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { AuditAction, BillingReviewStatus, BillingSourceModule, OrderStatus, RoleCode } from "@prisma/client";
+import {
+  AuditAction,
+  BillingReviewStatus,
+  BillingSourceModule,
+  EncounterBillingFinalizationStatus,
+  OrderStatus,
+  Prisma,
+  RoleCode,
+} from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertCanTransition } from "../common/workflow/status.transitions";
@@ -12,6 +20,10 @@ import {
 } from "../common/workflow/order-item-action-guards.util";
 import { AuditService } from "../common/services/audit.service";
 import { billingLedgerRowHasUsableCode, buildOrderItemCandidate } from "@medora/shared";
+import {
+  computeEncounterBillingReadiness,
+  evaluateEncounterBillingReadinessFromData,
+} from "../billing/billing-encounter-readiness.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 
 @Injectable()
@@ -243,10 +255,63 @@ export class QueuesService {
     });
     const ids = list.map((e) => e.id);
     const rollup = await this.billingLedgerRollup(facilityId, ids);
-    return list.map((e) => ({
-      ...e,
-      billingLedger: rollup.get(e.id) ?? { total: 0, needsReview: 0, missingCode: 0 },
-    }));
+    const [diagGroup, ledgerRows] = await Promise.all([
+      ids.length
+        ? this.prisma.diagnosis.groupBy({
+            by: ["encounterId"],
+            where: { facilityId, encounterId: { in: ids }, status: "ACTIVE" },
+            _count: { _all: true },
+          })
+        : Promise.resolve([] as { encounterId: string; _count: { _all: number } }[]),
+      ids.length
+        ? this.prisma.billingEvent.findMany({
+            where: { facilityId, encounterId: { in: ids } },
+            select: {
+              encounterId: true,
+              reviewStatus: true,
+              procedureCode: true,
+              hcpcsCode: true,
+              code: true,
+              diagnosisCodes: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+    const diagMap = new Map(diagGroup.map((g) => [g.encounterId, g._count._all]));
+    const eventsByEncounter = new Map<
+      string,
+      Array<{
+        reviewStatus: BillingReviewStatus;
+        procedureCode: string | null;
+        hcpcsCode: string | null;
+        code: string | null;
+        diagnosisCodes: string | null;
+      }>
+    >();
+    for (const row of ledgerRows) {
+      const { encounterId: eid, ...ev } = row;
+      const cur = eventsByEncounter.get(eid) ?? [];
+      cur.push(ev);
+      eventsByEncounter.set(eid, cur);
+    }
+    return list.map((e) => {
+      const bl = rollup.get(e.id) ?? { total: 0, needsReview: 0, missingCode: 0 };
+      const evRows = eventsByEncounter.get(e.id) ?? [];
+      const readiness = evaluateEncounterBillingReadinessFromData(
+        {
+          status: e.status,
+          dischargeStatus: e.dischargeStatus,
+          physicianAssignedUserId: e.physicianAssignedUserId,
+        },
+        evRows,
+        diagMap.get(e.id) ?? 0
+      );
+      return {
+        ...e,
+        billingLedger: bl,
+        billingReadiness: readiness,
+      };
+    });
   }
 
   async getBillingEncounterSummary(facilityId: string, encounterId: string) {
@@ -255,8 +320,16 @@ export class QueuesService {
       select: {
         id: true,
         type: true,
+        status: true,
         dischargedAt: true,
         dischargeStatus: true,
+        physicianAssignedUserId: true,
+        billingFinalizationStatus: true,
+        billingFinalizedAt: true,
+        billingFinalizedByUserId: true,
+        billingReopenedAt: true,
+        billingReopenedByUserId: true,
+        billingReadinessSnapshotJson: true,
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
       },
     });
@@ -278,9 +351,11 @@ export class QueuesService {
       if (!billingLedgerRowHasUsableCode(e)) missingCode++;
       bySourceModule[e.sourceModule] = (bySourceModule[e.sourceModule] ?? 0) + 1;
     }
+    const readiness = await computeEncounterBillingReadiness(this.prisma, facilityId, encounterId);
     return {
       encounter: enc,
       events,
+      readiness,
       summary: {
         totalEvents: events.length,
         needsReview,
@@ -289,6 +364,115 @@ export class QueuesService {
         bySourceModule,
       },
     };
+  }
+
+  async getEncounterBillingReadiness(facilityId: string, encounterId: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        id: true,
+        billingFinalizationStatus: true,
+        billingFinalizedAt: true,
+        billingFinalizedByUserId: true,
+        billingReopenedAt: true,
+        billingReopenedByUserId: true,
+        billingReadinessSnapshotJson: true,
+      },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    const readiness = await computeEncounterBillingReadiness(this.prisma, facilityId, encounterId);
+    return { encounter: enc, readiness };
+  }
+
+  async finalizeEncounterBilling(facilityId: string, encounterId: string, userId?: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (enc.billingFinalizationStatus === EncounterBillingFinalizationStatus.FINALIZED) {
+      const readiness = await computeEncounterBillingReadiness(this.prisma, facilityId, encounterId);
+      return { encounter: enc, readiness, alreadyFinalized: true as const };
+    }
+    const readiness = await computeEncounterBillingReadiness(this.prisma, facilityId, encounterId);
+    if (!readiness.isReady) {
+      const codes = readiness.blockers.map((b) => b.code).join(", ");
+      throw new BadRequestException(
+        `Encounter is not ready for billing finalization${codes ? `: ${codes}` : ""}`
+      );
+    }
+    const snapshot = { ...readiness, at: new Date().toISOString(), action: "finalize" as const };
+    const updated = await this.prisma.encounter.update({
+      where: { id: encounterId },
+      data: {
+        billingFinalizationStatus: EncounterBillingFinalizationStatus.FINALIZED,
+        billingFinalizedAt: new Date(),
+        billingFinalizedByUserId: userId ?? null,
+        billingReadinessSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
+        billingReopenedAt: null,
+        billingReopenedByUserId: null,
+      },
+    });
+    await this.audit.log(AuditAction.BILLING_FINALIZED, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: enc.patientId,
+      encounterId,
+      entityId: encounterId,
+      metadata: {
+        blockersAtFinalize: readiness.blockers,
+        warningsAtFinalize: readiness.warnings,
+        previousBillingStatus: enc.billingFinalizationStatus,
+      },
+      critical: true,
+    });
+    return { encounter: updated, readiness, finalized: true as const };
+  }
+
+  async reopenEncounterBilling(facilityId: string, encounterId: string, userId?: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (enc.billingFinalizationStatus !== EncounterBillingFinalizationStatus.FINALIZED) {
+      throw new BadRequestException({
+        message: "Only encounters finalized for billing can be reopened",
+        currentStatus: enc.billingFinalizationStatus,
+      });
+    }
+    const readiness = await computeEncounterBillingReadiness(this.prisma, facilityId, encounterId);
+    const snapshot = {
+      ...readiness,
+      at: new Date().toISOString(),
+      action: "reopen" as const,
+    };
+    const updated = await this.prisma.encounter.update({
+      where: { id: encounterId },
+      data: {
+        billingFinalizationStatus: EncounterBillingFinalizationStatus.REOPENED,
+        billingReopenedAt: new Date(),
+        billingReopenedByUserId: userId ?? null,
+        billingReadinessSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
+      },
+    });
+    await this.audit.log(AuditAction.BILLING_REOPENED, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: enc.patientId,
+      encounterId,
+      entityId: encounterId,
+      metadata: {
+        blockersAtReopen: readiness.blockers,
+        warningsAtReopen: readiness.warnings,
+      },
+      critical: true,
+    });
+    return { encounter: updated, readiness, reopened: true as const };
   }
 
   async patchBillingEventReview(

@@ -12,6 +12,7 @@ import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-gla
 import { AuditService } from "../common/services/audit.service";
 import {
   AuditAction,
+  EncounterBillingFinalizationStatus,
   EncounterStatus,
   EncounterType,
   EncounterWorkflowState,
@@ -41,6 +42,7 @@ import {
   readBillingCaptureV1,
   upsertBillingCaptureItem,
 } from "@medora/shared";
+import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
 import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment";
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
 
@@ -1200,6 +1202,43 @@ export class EncountersService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const dispositionEnriched = await enrichBillingCaptureItem(tx, dispositionCandidate);
       closePayload.billingCaptureJson = upsertBillingCaptureItem(encounter.billingCaptureJson, dispositionEnriched);
+      await upsertBillingEventFromCaptureItem(tx, dispositionEnriched);
+      const effectiveDischarge =
+        closePayload.dischargeStatus !== undefined
+          ? closePayload.dischargeStatus
+          : encounter.dischargeStatus;
+      const [ledgerEvents, diagnosisCount] = await Promise.all([
+        tx.billingEvent.findMany({
+          where: { facilityId, encounterId: id },
+          select: {
+            reviewStatus: true,
+            procedureCode: true,
+            hcpcsCode: true,
+            code: true,
+            diagnosisCodes: true,
+          },
+        }),
+        tx.diagnosis.count({
+          where: { facilityId, encounterId: id, status: "ACTIVE" },
+        }),
+      ]);
+      const readinessAfterClose = evaluateEncounterBillingReadinessFromData(
+        {
+          status: EncounterStatus.CLOSED,
+          dischargeStatus: effectiveDischarge,
+          physicianAssignedUserId: encounter.physicianAssignedUserId,
+        },
+        ledgerEvents,
+        diagnosisCount
+      );
+      closePayload.billingFinalizationStatus = readinessAfterClose.isReady
+        ? EncounterBillingFinalizationStatus.READY_FOR_REVIEW
+        : EncounterBillingFinalizationStatus.NOT_READY;
+      closePayload.billingReadinessSnapshotJson = {
+        ...readinessAfterClose,
+        source: "encounter_close",
+        at: new Date().toISOString(),
+      };
       const um = await tx.encounter.updateMany({
         where: { id, facilityId, version: encounter.version },
         data: {
@@ -1208,7 +1247,6 @@ export class EncountersService {
         },
       });
       if (um.count === 0) throwEncounterConcurrentModification();
-      await upsertBillingEventFromCaptureItem(tx, dispositionEnriched);
       const closeMetadata: Record<string, unknown> = {
         workflowStateBeforeClose: encounter.workflowState,
       };

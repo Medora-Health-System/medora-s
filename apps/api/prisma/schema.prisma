@@ -90,6 +90,7 @@ enum AuditAction {
   RESULT_UPLOAD
   MEDICATION_DISPENSED
   BILLING_FINALIZED
+  BILLING_REOPENED
   CHART_OPEN
   TRIAGE_SAVE
   ORDER_ACK
@@ -137,6 +138,14 @@ enum BillingSide {
   PROFESSIONAL
   FACILITY
   BOTH
+}
+
+/// Claim-readiness workflow for an encounter (Phase 3 — no payer submission).
+enum EncounterBillingFinalizationStatus {
+  NOT_READY
+  READY_FOR_REVIEW
+  FINALIZED
+  REOPENED
 }
 
 enum EncounterType {
@@ -389,6 +398,8 @@ model User {
 
   encountersAsAssignedPhysician Encounter[] @relation("EncounterPhysicianAssigned")
   encountersSignedByProvider    Encounter[] @relation("EncounterSignedBy")
+  encountersBillingFinalizedBy  Encounter[] @relation("EncounterBillingFinalizedBy")
+  encountersBillingReopenedBy   Encounter[] @relation("EncounterBillingReopenedBy")
   providerAddendaCreated EncounterProviderAddendum[]
   orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
   ordersCancelled               Order[]     @relation("OrderCancelledBy")
@@ -579,6 +590,16 @@ model Encounter {
   admissionSummaryJson Json?
   /// U.S. billing foundation — charge capture / billing event candidates (V1 shared schema)
   billingCaptureJson   Json?
+  /// Phase 3 — billing finalization for claim assembly (no submission in this phase).
+  billingFinalizationStatus EncounterBillingFinalizationStatus @default(NOT_READY)
+  billingFinalizedAt        DateTime?
+  billingFinalizedByUserId  String?
+  billingFinalizedBy        User?   @relation("EncounterBillingFinalizedBy", fields: [billingFinalizedByUserId], references: [id], onDelete: SetNull)
+  billingReopenedAt         DateTime?
+  billingReopenedByUserId   String?
+  billingReopenedBy         User?   @relation("EncounterBillingReopenedBy", fields: [billingReopenedByUserId], references: [id], onDelete: SetNull)
+  /// Last computed readiness snapshot (blockers, warnings, counts) for audit / UI.
+  billingReadinessSnapshotJson Json?
   /// Horodatage de la décision d'admission (rempli côté serveur à la 1re sauvegarde du dossier d'admission)
   admittedAt           DateTime?
 
@@ -619,6 +640,7 @@ model Encounter {
   @@index([workflowState])
   @@index([physicianAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
+  @@index([billingFinalizationStatus])
 }
 
 /// Relational billing event ledger — automatic capture from clinical actions (Phase 1).
