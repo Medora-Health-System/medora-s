@@ -27,7 +27,11 @@ import {
   evaluateEncounterBillingReadinessFromData,
 } from "../billing/billing-encounter-readiness.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
-import { tryAutoImagingOrderItemCompleted } from "../billing/billing-auto-append.util";
+import {
+  tryAutoImagingOrderItemCompleted,
+  tryAutoProcedureCareOrderItemCompleted,
+  tryAutoSupplyOrderItemCompleted,
+} from "../billing/billing-auto-append.util";
 import { syncBillingCaptureItemFromLedgerRow } from "../billing/billing-capture-sync-from-ledger.util";
 import { mergeBillingEventPatch } from "../billing/billing-event-patch.helper";
 
@@ -200,10 +204,15 @@ export class QueuesService {
   private async billingLedgerRollup(
     facilityId: string,
     encounterIds: string[]
-  ): Promise<Map<string, { total: number; needsReview: number; missingCode: number }>> {
-    const map = new Map<string, { total: number; needsReview: number; missingCode: number }>();
+  ): Promise<
+    Map<string, { total: number; needsReview: number; missingCode: number; unmappedLinesCount: number }>
+  > {
+    const map = new Map<
+      string,
+      { total: number; needsReview: number; missingCode: number; unmappedLinesCount: number }
+    >();
     for (const id of encounterIds) {
-      map.set(id, { total: 0, needsReview: 0, missingCode: 0 });
+      map.set(id, { total: 0, needsReview: 0, missingCode: 0, unmappedLinesCount: 0 });
     }
     if (encounterIds.length === 0) return map;
     const rows = await this.prisma.billingEvent.findMany({
@@ -223,6 +232,9 @@ export class QueuesService {
       cur.total++;
       if (r.reviewStatus === BillingReviewStatus.CAPTURED) cur.needsReview++;
       if (!billingLedgerRowHasUsableCode(r)) cur.missingCode++;
+      if (r.procedureCode?.trim() === "UNMAPPED" || r.code?.trim() === "UNMAPPED") {
+        cur.unmappedLinesCount++;
+      }
     }
     return map;
   }
@@ -302,7 +314,12 @@ export class QueuesService {
       eventsByEncounter.set(eid, cur);
     }
     return list.map((e) => {
-      const bl = rollup.get(e.id) ?? { total: 0, needsReview: 0, missingCode: 0 };
+      const bl = rollup.get(e.id) ?? {
+        total: 0,
+        needsReview: 0,
+        missingCode: 0,
+        unmappedLinesCount: 0,
+      };
       const evRows = eventsByEncounter.get(e.id) ?? [];
       const readiness = evaluateEncounterBillingReadinessFromData(
         {
@@ -659,26 +676,41 @@ export class QueuesService {
         updated.completedAt instanceof Date && !Number.isNaN(updated.completedAt.getTime())
           ? updated.completedAt.toISOString()
           : new Date().toISOString();
-      await appendBillingCaptureCandidate(
-        this.prisma,
-        orderItem.order.encounterId,
-        facilityId,
-        buildOrderItemCandidate({
-          orderItemId: orderItem.id,
-          orderId: orderItem.orderId,
-          encounterId: orderItem.order.encounterId,
-          patientId: orderItem.order.patientId,
+      // LAB billing handled on RESULT verification only
+      if (orderItem.catalogItemType !== "LAB_TEST") {
+        await appendBillingCaptureCandidate(
+          this.prisma,
+          orderItem.order.encounterId,
           facilityId,
-          orderType: orderItem.order.type,
-          catalogItemType: orderItem.catalogItemType,
-          manualLabel: orderItem.manualLabel,
-          quantity: orderItem.quantity,
-          completedAtIso: completedAt,
-          createdByUserId: userId ?? null,
-        })
-      );
+          buildOrderItemCandidate({
+            orderItemId: orderItem.id,
+            orderId: orderItem.orderId,
+            encounterId: orderItem.order.encounterId,
+            patientId: orderItem.order.patientId,
+            facilityId,
+            orderType: orderItem.order.type,
+            catalogItemType: orderItem.catalogItemType,
+            manualLabel: orderItem.manualLabel,
+            quantity: orderItem.quantity,
+            completedAtIso: completedAt,
+            createdByUserId: userId ?? null,
+          })
+        );
+      }
       if (orderItem.catalogItemType === "IMAGING_STUDY") {
         void tryAutoImagingOrderItemCompleted(this.prisma, {
+          facilityId,
+          orderItemId: orderItem.id,
+        });
+      }
+      if (orderItem.catalogItemType === "SUPPLY") {
+        void tryAutoSupplyOrderItemCompleted(this.prisma, {
+          facilityId,
+          orderItemId: orderItem.id,
+        });
+      }
+      if (orderItem.catalogItemType === "CARE") {
+        void tryAutoProcedureCareOrderItemCompleted(this.prisma, {
           facilityId,
           orderItemId: orderItem.id,
         });

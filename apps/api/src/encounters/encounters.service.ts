@@ -45,6 +45,7 @@ import {
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
 import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment";
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
+import { appendEmergencyEMBilling } from "../billing/billing-em.util";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
 const DISCHARGE_SUMMARY_KEYS = [
@@ -1287,6 +1288,8 @@ export class EncountersService {
       }
       return row;
     });
+
+    void appendEmergencyEMBilling(this.prisma, facilityId, id);
 
     return toEncounterClinicResponse(updated);
   }

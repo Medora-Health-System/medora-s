@@ -1,12 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { BillingSourceModule } from "@prisma/client";
+import { BillingSourceModule, Prisma } from "@prisma/client";
 import type { BillingCaptureItem } from "@medora/shared";
 import type { PrismaService } from "../prisma/prisma.service";
+import { createFallbackBillingLine } from "./billing-fallback.util";
 import { appendBillingCaptureCandidate } from "./billing-capture.append.util";
 import {
+  defaultBillClassForTrigger,
   mapImagingToBillingCode,
   mapLabToBillingCode,
   mapMedicationToBillingCode,
+  mapProcedureToBillingCode,
+  mapSupplyToBillingCode,
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
 
@@ -18,7 +22,7 @@ export type AppendAutoBillingParams = {
   sourceRecordId: string;
   captureSourceType: BillingCaptureItem["sourceType"];
   billingCode: string;
-  system: "CPT" | "HCPCS";
+  system: "CPT" | "HCPCS" | "INTERNAL";
   billClass: "professional" | "facility" | "both";
   description: string;
 };
@@ -43,6 +47,7 @@ export async function appendBillingEventIfNotExists(
   if (existing) return;
 
   const now = new Date().toISOString();
+  const isInternal = params.system === "INTERNAL";
   const item: BillingCaptureItem = {
     id: randomUUID(),
     encounterId: params.encounterId,
@@ -50,19 +55,29 @@ export async function appendBillingEventIfNotExists(
     facilityId: params.facilityId,
     sourceType: params.captureSourceType,
     sourceId: params.sourceRecordId,
-    procedureCode: params.system === "CPT" ? params.billingCode : null,
+    procedureCode: isInternal
+      ? params.billingCode
+      : params.system === "CPT"
+        ? params.billingCode
+        : null,
     hcpcsCode: params.system === "HCPCS" ? params.billingCode : null,
     billClass: params.billClass,
     status: "needs_review",
     createdAt: now,
     note: params.description.slice(0, 4000),
-    catalogEnriched: true,
+    catalogEnriched: !isInternal,
     catalogLabel: params.description.slice(0, 512),
   };
 
   try {
     await appendBillingCaptureCandidate(prisma, params.encounterId, params.facilityId, item);
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      console.warn(
+        `[billing-auto] duplicate billing event ignored (unique idempotency) ${params.sourceModule}/${params.sourceRecordId}`
+      );
+      return;
+    }
     console.warn(
       `[billing-auto] appendBillingCaptureCandidate failed (${params.sourceModule}/${params.sourceRecordId}):`,
       e instanceof Error ? e.message : e
@@ -125,10 +140,34 @@ export async function tryAutoLabResultBillingAfterVerify(
     if (!labCode && orderItem.manualLabel?.trim()) {
       labCode = orderItem.manualLabel.trim();
     }
-    if (!labCode) return;
+    if (!labCode) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: orderItem.order.encounterId,
+        patientId: orderItem.order.patientId,
+        sourceModule: BillingSourceModule.LAB_RESULT,
+        sourceRecordId: input.resultId,
+        captureSourceType: "LAB_RESULT",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("LAB"),
+      });
+      return;
+    }
 
     const mapping = await mapLabToBillingCode(prisma, labCode);
-    if (!mapping) return;
+    if (!mapping) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: orderItem.order.encounterId,
+        patientId: orderItem.order.patientId,
+        sourceModule: BillingSourceModule.LAB_RESULT,
+        sourceRecordId: input.resultId,
+        captureSourceType: "LAB_RESULT",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("LAB"),
+      });
+      return;
+    }
 
     await appendFromMapping(prisma, {
       facilityId: input.facilityId,
@@ -148,6 +187,87 @@ export async function tryAutoLabResultBillingAfterVerify(
   }
 }
 
+async function applyImagingCatalogFromOrderItem(
+  prisma: PrismaService,
+  facilityId: string,
+  orderItem: { id: string; manualLabel: string | null; catalogItemId: string | null; order: { encounterId: string; patientId: string } }
+): Promise<void> {
+  let studyCode: string | null = null;
+  let labelFallback = orderItem.manualLabel?.trim() || "Imaging";
+  if (orderItem.catalogItemId) {
+    const cat = await prisma.catalogImagingStudy.findUnique({
+      where: { id: orderItem.catalogItemId },
+      select: { code: true, name: true },
+    });
+    if (cat?.code?.trim()) {
+      studyCode = cat.code.trim();
+      labelFallback = cat.name?.trim() || labelFallback;
+    }
+  }
+  if (!studyCode && orderItem.manualLabel?.trim()) studyCode = orderItem.manualLabel.trim();
+  if (!studyCode) {
+    await createFallbackBillingLine(prisma, {
+      facilityId,
+      encounterId: orderItem.order.encounterId,
+      patientId: orderItem.order.patientId,
+      sourceModule: BillingSourceModule.IMAGING_RESULT,
+      sourceRecordId: orderItem.id,
+      captureSourceType: "IMAGING_RESULT",
+      description: labelFallback,
+      billClass: defaultBillClassForTrigger("IMAGING"),
+    });
+    return;
+  }
+
+  const mapping = await mapImagingToBillingCode(prisma, studyCode);
+  if (!mapping) {
+    await createFallbackBillingLine(prisma, {
+      facilityId,
+      encounterId: orderItem.order.encounterId,
+      patientId: orderItem.order.patientId,
+      sourceModule: BillingSourceModule.IMAGING_RESULT,
+      sourceRecordId: orderItem.id,
+      captureSourceType: "IMAGING_RESULT",
+      description: labelFallback,
+      billClass: defaultBillClassForTrigger("IMAGING"),
+    });
+    return;
+  }
+
+  await appendFromMapping(prisma, {
+    facilityId,
+    encounterId: orderItem.order.encounterId,
+    patientId: orderItem.order.patientId,
+    sourceModule: BillingSourceModule.IMAGING_RESULT,
+    sourceRecordId: orderItem.id,
+    captureSourceType: "IMAGING_RESULT",
+    mapping,
+    descriptionFallback: labelFallback,
+  });
+}
+
+/**
+ * After imaging result is verified (substantive content) — same IMAGING_RESULT idempotency key as order-item path (`orderItemId`).
+ */
+export async function tryAutoImagingResultBillingAfterVerify(
+  prisma: PrismaService,
+  input: { facilityId: string; orderItemId: string }
+): Promise<void> {
+  try {
+    const orderItem = await prisma.orderItem.findFirst({
+      where: { id: input.orderItemId },
+      include: { order: true },
+    });
+    if (!orderItem || orderItem.catalogItemType !== "IMAGING_STUDY") return;
+    await applyImagingCatalogFromOrderItem(prisma, input.facilityId, orderItem);
+  } catch (e) {
+    console.warn(
+      "[billing-auto] tryAutoImagingResultBillingAfterVerify:",
+      e instanceof Error ? e.message : e
+    );
+  }
+}
+
 /** After imaging order line is completed — optional second line from BillingCatalog (IMAGING). */
 export async function tryAutoImagingOrderItemCompleted(
   prisma: PrismaService,
@@ -160,34 +280,16 @@ export async function tryAutoImagingOrderItemCompleted(
     });
     if (!orderItem || orderItem.catalogItemType !== "IMAGING_STUDY") return;
 
-    let studyCode: string | null = null;
-    let labelFallback = orderItem.manualLabel?.trim() || "Imaging";
-    if (orderItem.catalogItemId) {
-      const cat = await prisma.catalogImagingStudy.findUnique({
-        where: { id: orderItem.catalogItemId },
-        select: { code: true, name: true },
-      });
-      if (cat?.code?.trim()) {
-        studyCode = cat.code.trim();
-        labelFallback = cat.name?.trim() || labelFallback;
-      }
-    }
-    if (!studyCode && orderItem.manualLabel?.trim()) studyCode = orderItem.manualLabel.trim();
-    if (!studyCode) return;
-
-    const mapping = await mapImagingToBillingCode(prisma, studyCode);
-    if (!mapping) return;
-
-    await appendFromMapping(prisma, {
-      facilityId: input.facilityId,
-      encounterId: orderItem.order.encounterId,
-      patientId: orderItem.order.patientId,
-      sourceModule: BillingSourceModule.IMAGING_RESULT,
-      sourceRecordId: orderItem.id,
-      captureSourceType: "IMAGING_RESULT",
-      mapping,
-      descriptionFallback: labelFallback,
+    const linkedResult = await prisma.result.findFirst({
+      where: { orderItemId: orderItem.id },
+      select: { id: true },
     });
+    if (linkedResult) {
+      // Result row exists: IMAGING_RESULT autobill is triggered on result verification; skip to avoid double work and prefer result as source
+      return;
+    }
+
+    await applyImagingCatalogFromOrderItem(prisma, input.facilityId, orderItem);
   } catch (e) {
     console.warn(
       "[billing-auto] tryAutoImagingOrderItemCompleted:",
@@ -222,10 +324,34 @@ export async function tryAutoMedicationAdministrationBilling(
       }
     }
     if (!medCode && oi.manualLabel?.trim()) medCode = oi.manualLabel.trim();
-    if (!medCode) return;
+    if (!medCode) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: adm.encounterId,
+        patientId: adm.patientId,
+        sourceModule: BillingSourceModule.MED_ADMIN,
+        sourceRecordId: adm.id,
+        captureSourceType: "MED_ADMIN",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("MEDICATION"),
+      });
+      return;
+    }
 
     const mapping = await mapMedicationToBillingCode(prisma, medCode);
-    if (!mapping) return;
+    if (!mapping) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: adm.encounterId,
+        patientId: adm.patientId,
+        sourceModule: BillingSourceModule.MED_ADMIN,
+        sourceRecordId: adm.id,
+        captureSourceType: "MED_ADMIN",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("MEDICATION"),
+      });
+      return;
+    }
 
     await appendFromMapping(prisma, {
       facilityId: input.facilityId,
@@ -240,6 +366,128 @@ export async function tryAutoMedicationAdministrationBilling(
   } catch (e) {
     console.warn(
       "[billing-auto] tryAutoMedicationAdministrationBilling:",
+      e instanceof Error ? e.message : e
+    );
+  }
+}
+
+/** After a supply order line is completed (Phase 4.6). */
+export async function tryAutoSupplyOrderItemCompleted(
+  prisma: PrismaService,
+  input: { facilityId: string; orderItemId: string }
+): Promise<void> {
+  try {
+    const orderItem = await prisma.orderItem.findFirst({
+      where: { id: input.orderItemId },
+      include: { order: true },
+    });
+    if (!orderItem || orderItem.catalogItemType !== "SUPPLY") return;
+
+    const labelFallback = orderItem.manualLabel?.trim() || "Supply";
+    const supplyCode = orderItem.manualLabel?.trim() || null;
+    if (!supplyCode) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: orderItem.order.encounterId,
+        patientId: orderItem.order.patientId,
+        sourceModule: BillingSourceModule.SUPPLY,
+        sourceRecordId: orderItem.id,
+        captureSourceType: "SUPPLY",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("SUPPLY"),
+      });
+      return;
+    }
+
+    const mapping = await mapSupplyToBillingCode(prisma, supplyCode);
+    if (!mapping) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: orderItem.order.encounterId,
+        patientId: orderItem.order.patientId,
+        sourceModule: BillingSourceModule.SUPPLY,
+        sourceRecordId: orderItem.id,
+        captureSourceType: "SUPPLY",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("SUPPLY"),
+      });
+      return;
+    }
+
+    await appendFromMapping(prisma, {
+      facilityId: input.facilityId,
+      encounterId: orderItem.order.encounterId,
+      patientId: orderItem.order.patientId,
+      sourceModule: BillingSourceModule.SUPPLY,
+      sourceRecordId: orderItem.id,
+      captureSourceType: "SUPPLY",
+      mapping,
+      descriptionFallback: labelFallback,
+    });
+  } catch (e) {
+    console.warn(
+      "[billing-auto] tryAutoSupplyOrderItemCompleted:",
+      e instanceof Error ? e.message : e
+    );
+  }
+}
+
+/** After a CARE (procedure) order line is completed — map `manualLabel` via BillingCatalog PROCEDURE (Phase 4.6). */
+export async function tryAutoProcedureCareOrderItemCompleted(
+  prisma: PrismaService,
+  input: { facilityId: string; orderItemId: string }
+): Promise<void> {
+  try {
+    const orderItem = await prisma.orderItem.findFirst({
+      where: { id: input.orderItemId },
+      include: { order: true },
+    });
+    if (!orderItem || orderItem.catalogItemType !== "CARE") return;
+
+    const labelFallback = orderItem.manualLabel?.trim() || "Procedure / care";
+    const procCode = orderItem.manualLabel?.trim() || null;
+    if (!procCode) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: orderItem.order.encounterId,
+        patientId: orderItem.order.patientId,
+        sourceModule: BillingSourceModule.PROCEDURE,
+        sourceRecordId: orderItem.id,
+        captureSourceType: "PROCEDURE",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("PROCEDURE"),
+      });
+      return;
+    }
+
+    const mapping = await mapProcedureToBillingCode(prisma, procCode);
+    if (!mapping) {
+      await createFallbackBillingLine(prisma, {
+        facilityId: input.facilityId,
+        encounterId: orderItem.order.encounterId,
+        patientId: orderItem.order.patientId,
+        sourceModule: BillingSourceModule.PROCEDURE,
+        sourceRecordId: orderItem.id,
+        captureSourceType: "PROCEDURE",
+        description: labelFallback,
+        billClass: defaultBillClassForTrigger("PROCEDURE"),
+      });
+      return;
+    }
+
+    await appendFromMapping(prisma, {
+      facilityId: input.facilityId,
+      encounterId: orderItem.order.encounterId,
+      patientId: orderItem.order.patientId,
+      sourceModule: BillingSourceModule.PROCEDURE,
+      sourceRecordId: orderItem.id,
+      captureSourceType: "PROCEDURE",
+      mapping,
+      descriptionFallback: labelFallback,
+    });
+  } catch (e) {
+    console.warn(
+      "[billing-auto] tryAutoProcedureCareOrderItemCompleted:",
       e instanceof Error ? e.message : e
     );
   }

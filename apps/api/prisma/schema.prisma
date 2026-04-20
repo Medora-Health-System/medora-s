@@ -121,6 +121,10 @@ enum BillingSourceModule {
   IMAGING_RESULT
   MED_ADMIN
   PROCEDURE
+  /// Emergency E/M (Phase 4.6) — one per encounter, idempotent on encounter id.
+  ENCOUNTER_EM
+  /// Catalog-driven supply billing (Phase 4.6).
+  SUPPLY
 }
 
 enum BillingReviewStatus {
@@ -656,7 +660,7 @@ model BillingCatalog {
   /// "CPT" | "HCPCS"
   system        String
   description   String
-  /// LAB | IMAGING | MEDICATION | PROCEDURE
+  /// LAB | IMAGING | MEDICATION | PROCEDURE | SUPPLY
   triggerSource String
   /// LOINC, internal lab code, imaging study code, medication code, etc.
   externalCode  String?

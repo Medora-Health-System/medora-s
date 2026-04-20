@@ -18,7 +18,9 @@ export type BillingCaptureSourceType =
   | "LAB_RESULT"
   | "IMAGING_RESULT"
   | "MED_ADMIN"
-  | "PROCEDURE";
+  | "PROCEDURE"
+  | "ENCOUNTER_EM"
+  | "SUPPLY";
 
 /** Review lifecycle — never auto “final”. */
 export type BillingEventStatus = "draft" | "needs_review" | "ready";

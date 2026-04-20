@@ -28,6 +28,12 @@ export function assertDepartmentRoleForItem(catalogItemType: string, roleCodes: 
     }
     return;
   }
+  if (catalogItemType === "SUPPLY") {
+    if (!admin && !roleCodes.includes(RoleCode.RN)) {
+      throw new ForbiddenException("Rôle infirmier requis pour cette action.");
+    }
+    return;
+  }
   throw new BadRequestException("Type de ligne d'ordre non pris en charge.");
 }
 

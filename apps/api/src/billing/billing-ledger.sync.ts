@@ -46,6 +46,8 @@ function mapSourceType(st: string): BillingSourceModule {
     IMAGING_RESULT: BillingSourceModule.IMAGING_RESULT,
     MED_ADMIN: BillingSourceModule.MED_ADMIN,
     PROCEDURE: BillingSourceModule.PROCEDURE,
+    ENCOUNTER_EM: BillingSourceModule.ENCOUNTER_EM,
+    SUPPLY: BillingSourceModule.SUPPLY,
   };
   return m[st] ?? BillingSourceModule.MANUAL;
 }
@@ -64,7 +66,9 @@ function mapReviewStatus(status: BillingEventStatus): BillingReviewStatus {
 }
 
 function inferCodeType(item: BillingCaptureItem): BillingCodeType {
-  if (item.procedureCode?.trim()) return BillingCodeType.CPT;
+  const pc = item.procedureCode?.trim();
+  if (pc === "UNMAPPED") return BillingCodeType.INTERNAL;
+  if (pc) return BillingCodeType.CPT;
   if (item.hcpcsCode?.trim()) return BillingCodeType.HCPCS;
   if (item.diagnosisCodes && item.diagnosisCodes.length > 0) return BillingCodeType.ICD10_CM;
   return BillingCodeType.UNKNOWN;
