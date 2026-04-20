@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -23,6 +23,7 @@ export default function BillingPage() {
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [showJsonEditor, setShowJsonEditor] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [queueFilter, setQueueFilter] = useState<"all" | "unmapped">("all");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -38,6 +39,16 @@ export default function BillingPage() {
   }, [ready, facilityId]);
 
   const effectiveFacilityId = facilityId || facilityIdFromHook;
+
+  const visibleQueue = useMemo(() => {
+    if (queueFilter === "unmapped") {
+      return queue.filter((e) => {
+        const bl = e.billingLedger as { unmappedLinesCount?: number } | undefined;
+        return typeof bl?.unmappedLinesCount === "number" && bl.unmappedLinesCount > 0;
+      });
+    }
+    return queue;
+  }, [queue, queueFilter]);
 
   const loadQueue = async () => {
     if (!facilityId) return;
@@ -142,6 +153,41 @@ export default function BillingPage() {
         </div>
       ) : (
         <div style={{ marginTop: 24 }}>
+          {visibleQueue.length === 0 ? (
+            <p style={{ marginBottom: 12, color: "#64748b" }}>{t("billingPage.queueFilteredEmpty")}</p>
+          ) : null}
+          <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, color: "#475569" }}>{t("common.actions")} :</span>
+            <button
+              type="button"
+              onClick={() => setQueueFilter("all")}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: queueFilter === "all" ? "2px solid #0f766e" : "1px solid #cbd5e1",
+                background: queueFilter === "all" ? "#ecfdf5" : "#fff",
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
+              {t("billingPage.queueFilterAll")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setQueueFilter("unmapped")}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: queueFilter === "unmapped" ? "2px solid #b91c1c" : "1px solid #cbd5e1",
+                background: queueFilter === "unmapped" ? "#fef2f2" : "#fff",
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
+              {t("billingPage.queueFilterUnmappedOnly")}
+            </button>
+          </div>
+          {visibleQueue.length > 0 ? (
           <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
@@ -153,6 +199,7 @@ export default function BillingPage() {
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colBillingEvents")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colNeedsReview")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colMissingCode")}</th>
+                <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colUnmappedLines")}</th>
                 <th style={{ padding: 12, textAlign: "left" }}>{t("billingPage.colBillingWorkflow")}</th>
                 <th style={{ padding: 12, textAlign: "center" }} title={t("billingPage.billingPackageProfReady")}>
                   {t("billingPage.colClaimProf")}
@@ -164,16 +211,18 @@ export default function BillingPage() {
               </tr>
             </thead>
             <tbody>
-              {queue.map((encounter) => {
+              {visibleQueue.map((encounter) => {
                 const bc = readBillingCaptureV1(encounter.billingCaptureJson);
                 const needsReviewJson = bc.items.filter((i) => i.status === "needs_review").length;
                 const bl = encounter.billingLedger as
-                  | { total: number; needsReview: number; missingCode: number }
+                  | { total: number; needsReview: number; missingCode: number; unmappedLinesCount?: number }
                   | undefined;
                 const eventCount = typeof bl?.total === "number" ? bl.total : bc.items.length;
                 const needsReview = typeof bl?.needsReview === "number" ? bl.needsReview : needsReviewJson;
                 const missingCode =
                   typeof bl?.missingCode === "number" ? bl.missingCode : t("common.dash");
+                const unmappedCount =
+                  typeof bl?.unmappedLinesCount === "number" ? bl.unmappedLinesCount : t("common.dash");
                 const wf = String(encounter.billingFinalizationStatus ?? "NOT_READY");
                 const wfLabelKey = `billingPage.billingWorkflow_${wf}`;
                 const wfLabel = t(wfLabelKey);
@@ -206,6 +255,21 @@ export default function BillingPage() {
                     <td style={{ padding: 12 }}>{eventCount}</td>
                     <td style={{ padding: 12 }}>{needsReview}</td>
                     <td style={{ padding: 12 }}>{missingCode}</td>
+                    <td
+                      style={{
+                        padding: 12,
+                        fontWeight:
+                          typeof bl?.unmappedLinesCount === "number" && bl.unmappedLinesCount > 0
+                            ? 600
+                            : 400,
+                        color:
+                          typeof bl?.unmappedLinesCount === "number" && bl.unmappedLinesCount > 0
+                            ? "#b91c1c"
+                            : undefined,
+                      }}
+                    >
+                      {unmappedCount}
+                    </td>
                     <td style={{ padding: 12, fontSize: 13 }}>
                       <div style={{ fontWeight: 600 }}>{wfDisplay}</div>
                       {queueHint ? (
@@ -239,6 +303,7 @@ export default function BillingPage() {
               })}
             </tbody>
           </table>
+          ) : null}
         </div>
       )}
       {captureModalId ? (

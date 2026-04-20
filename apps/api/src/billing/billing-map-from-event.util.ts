@@ -25,12 +25,21 @@ async function findMapping(
   const c = externalCode?.trim();
   if (!c) return null;
 
-  const row = await prisma.billingCatalog.findFirst({
+  let row = await prisma.billingCatalog.findFirst({
     where: {
       triggerSource,
       externalCode: c,
     },
   });
+
+  if (!row) {
+    row = await prisma.billingCatalog.findFirst({
+      where: {
+        triggerSource,
+        externalCode: { equals: c, mode: "insensitive" },
+      },
+    });
+  }
 
   if (!row) {
     return null;

@@ -13,6 +13,7 @@ import {
   mapSupplyToBillingCode,
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
+import { deriveMedicationCodeForBilling } from "./medication-code-derive.util";
 
 export type AppendAutoBillingParams = {
   facilityId: string;
@@ -313,10 +314,27 @@ export async function tryAutoMedicationAdministrationBilling(
     const oi = adm.orderItem;
     let medCode: string | null = null;
     let labelFallback = adm.medicationLabelSnapshot?.trim() || "Medication";
+    let cat: {
+      code: string | null;
+      name: string;
+      displayNameFr: string | null;
+      genericName: string | null;
+      strength: string | null;
+      dosageForm: string | null;
+      route: string | null;
+    } | null = null;
     if (oi.catalogItemId) {
-      const cat = await prisma.catalogMedication.findUnique({
+      cat = await prisma.catalogMedication.findUnique({
         where: { id: oi.catalogItemId },
-        select: { code: true, name: true, displayNameFr: true },
+        select: {
+          code: true,
+          name: true,
+          displayNameFr: true,
+          genericName: true,
+          strength: true,
+          dosageForm: true,
+          route: true,
+        },
       });
       if (cat?.code?.trim()) {
         medCode = cat.code.trim();
@@ -338,7 +356,18 @@ export async function tryAutoMedicationAdministrationBilling(
       return;
     }
 
-    const mapping = await mapMedicationToBillingCode(prisma, medCode);
+    let mapping = await mapMedicationToBillingCode(prisma, medCode);
+    if (!mapping && cat?.genericName) {
+      const derived = deriveMedicationCodeForBilling({
+        genericName: cat.genericName,
+        strength: cat.strength ?? "",
+        dosageForm: cat.dosageForm ?? "comprimé",
+        route: cat.route ?? "orale",
+      });
+      if (derived && derived !== medCode) {
+        mapping = await mapMedicationToBillingCode(prisma, derived);
+      }
+    }
     if (!mapping) {
       await createFallbackBillingLine(prisma, {
         facilityId: input.facilityId,

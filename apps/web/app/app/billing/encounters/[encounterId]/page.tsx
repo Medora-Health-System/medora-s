@@ -7,7 +7,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import { billingLedgerRowHasUsableCode, readBillingCaptureV1 } from "@medora/shared";
+import { billingLedgerRowHasUsableCode, billingLedgerRowIsUnmapped, readBillingCaptureV1 } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 type LedgerEventRow = {
@@ -571,11 +571,19 @@ export default function BillingEncounterLedgerPage() {
                 <tbody>
                   {data.events.map((ev) => {
                     const coded = billingLedgerRowHasUsableCode(ev);
-                    const rowBg = coded ? undefined : "#fffbeb";
+                    const isUnmapped = billingLedgerRowIsUnmapped(ev);
+                    const rowBg = isUnmapped ? "#fef2f2" : coded ? undefined : "#fffbeb";
+                    const rowBorderLeft = isUnmapped ? "4px solid #dc2626" : undefined;
                     const isEditing = editingId === ev.id;
                     return (
                       <React.Fragment key={ev.id}>
-                        <tr style={{ borderBottom: "1px solid #f1f5f9", background: rowBg }}>
+                        <tr
+                          style={{
+                            borderBottom: "1px solid #f1f5f9",
+                            background: rowBg,
+                            borderLeft: rowBorderLeft,
+                          }}
+                        >
                           <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
                             {billingPageKey(t, `billingSourceModule_${ev.sourceModule}`)}
                           </td>
@@ -585,7 +593,19 @@ export default function BillingEncounterLedgerPage() {
                           </td>
                           <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
                             {ev.code?.trim() ? ev.code : t("common.dash")}
-                            {!coded ? (
+                            {isUnmapped ? (
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "#b91c1c",
+                                  fontFamily: "inherit",
+                                }}
+                              >
+                                {t("billingPage.billingSummaryUnmappedBadge")}
+                              </span>
+                            ) : !coded ? (
                               <span
                                 style={{
                                   marginLeft: 8,
