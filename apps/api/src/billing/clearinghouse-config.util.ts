@@ -158,6 +158,10 @@ export interface ClearinghousePublicConfigStatus {
   configured: boolean;
   sandbox: boolean;
   sendEnabled: boolean;
+  /** Inbound ACK SFTP polling (Phase 6.5). */
+  ackSftpIngestEnabled: boolean;
+  /** Inbound ACK webhook (shared secret). */
+  ackWebhookIngestEnabled: boolean;
 }
 
 export function getClearinghousePublicConfigStatus(): ClearinghousePublicConfigStatus {
@@ -170,12 +174,16 @@ export function getClearinghousePublicConfigStatus(): ClearinghousePublicConfigS
       : c.mode === "disabled"
         ? false
         : clearinghouseNetworkSendEnabled(c);
+  const ackSftpIngestEnabled = parseBool(readEnv("CLEARINGHOUSE_ACK_SFTP_ENABLED"), false);
+  const ackWebhookIngestEnabled = parseBool(readEnv("CLEARINGHOUSE_ACK_WEBHOOK_ENABLED"), false);
   return {
     mode: c.mode,
     vendor: c.vendor,
     configured,
     sandbox,
     sendEnabled,
+    ackSftpIngestEnabled,
+    ackWebhookIngestEnabled,
   };
 }
 

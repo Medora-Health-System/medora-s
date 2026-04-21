@@ -213,7 +213,9 @@ type SubmissionAckPayload = {
   statusCode: string | null;
   message: string | null;
   warningCode?: string | null;
+  ackSource?: string | null;
   receivedAt: string;
+  createdAt?: string;
 };
 
 type SubmissionDebugAckPayload = {
@@ -222,6 +224,7 @@ type SubmissionDebugAckPayload = {
   status: string | null;
   warningCode?: string | null;
   lifecycleReason?: string | null;
+  ackSource?: string | null;
   receivedAt: string;
   rawSummary: string;
 };
@@ -245,6 +248,8 @@ type ClearinghouseConfigStatusPayload = {
   configured: boolean;
   sandbox: boolean;
   sendEnabled: boolean;
+  ackSftpIngestEnabled: boolean;
+  ackWebhookIngestEnabled: boolean;
 };
 
 type SummaryPayload = {
@@ -372,6 +377,13 @@ function clearinghouseVendorLabel(t: (k: string) => string, vendor: string): str
   const k = `billingPage.clearinghouseVendor_${vendor}`;
   const v = t(k);
   return v === k ? vendor : v;
+}
+
+function ackSourceLabel(t: (k: string) => string, source: string | null | undefined): string {
+  if (!source) return t("billingPage.ackSource_unknown");
+  const k = `billingPage.ackSource_${source}`;
+  const v = t(k);
+  return v === k ? source : v;
 }
 
 function claimSubmissionKindLabel(t: (k: string) => string, claimType: string): string {
@@ -1513,6 +1525,17 @@ export default function BillingEncounterLedgerPage() {
                     : null}
                 </div>
                 <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>{t("billingPage.clearinghouseManualSendHint")}</div>
+                <div style={{ marginTop: 6, fontSize: 11, color: "#64748b" }}>
+                  {t("billingPage.ackInboundSftpLabel")}:{" "}
+                  {clearinghouseConfigStatus.ackSftpIngestEnabled ?? false
+                    ? t("billingPage.ackInboundOn")
+                    : t("billingPage.ackInboundOff")}
+                  {" · "}
+                  {t("billingPage.ackInboundWebhookLabel")}:{" "}
+                  {clearinghouseConfigStatus.ackWebhookIngestEnabled ?? false
+                    ? t("billingPage.ackInboundOn")
+                    : t("billingPage.ackInboundOff")}
+                </div>
               </div>
             ) : null}
             <div style={{ marginBottom: 12 }}>
@@ -1681,6 +1704,11 @@ export default function BillingEncounterLedgerPage() {
                                 <div key={a.id}>
                                   {a.kind} · {a.statusCode ?? "UNKNOWN"}
                                   {a.message ? ` · ${a.message}` : ""}
+                                  {" · "}
+                                  {t("billingPage.submissionAckSourceLabel")}: {ackSourceLabel(t, a.ackSource)}
+                                  {" · "}
+                                  {t("billingPage.submissionAckIngestedAt")}:{" "}
+                                  {a.receivedAt ? new Date(a.receivedAt).toLocaleString(locale) : "—"}
                                   {submissionLifecycleReasonLabel(t, a.warningCode) ? (
                                     <span style={{ color: "#64748b" }}>
                                       {" "}
@@ -1725,6 +1753,13 @@ export default function BillingEncounterLedgerPage() {
                       {submissionLifecycleReasonLabel(t, s.lastTransitionReason) ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
                           {t("billingPage.submissionLifecycleNote")}: {submissionLifecycleReasonLabel(t, s.lastTransitionReason)}
+                        </div>
+                      ) : null}
+                      {s.acknowledgments[0] ? (
+                        <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>
+                          {t("billingPage.submissionAckSourceLabel")}: {ackSourceLabel(t, s.acknowledgments[0].ackSource)} ·{" "}
+                          {t("billingPage.submissionAckIngestedAt")}:{" "}
+                          {new Date(s.acknowledgments[0].receivedAt).toLocaleString(locale)}
                         </div>
                       ) : null}
                     </div>

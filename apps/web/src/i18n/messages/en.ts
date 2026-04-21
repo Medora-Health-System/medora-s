@@ -424,6 +424,17 @@ export default {
     clearinghouseLiveSendNotEnabled: "External sandbox send disabled (production safety)",
     clearinghouseManualSendHint:
       "The send action below uses manual transport for on-site audit. Sandbox API/SFTP uses separate API calls with credentials configured on the server.",
+    ackInboundSftpLabel: "Inbound ACK (SFTP poll)",
+    ackInboundWebhookLabel: "Inbound ACK (webhook)",
+    ackInboundOn: "On",
+    ackInboundOff: "Off",
+    submissionAckSourceLabel: "ACK source",
+    submissionAckIngestedAt: "Ingested at",
+    ackSource_unknown: "Manual / unknown",
+    ackSource_WEBHOOK: "Webhook",
+    ackSource_SFTP_POLL: "SFTP (polled)",
+    ackSource_MANUAL_API: "Manual (API)",
+    ackSource_DEV_SIMULATE: "Dev simulate",
     x12Warning_X12_837P_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY:
       "837P preview is a flat scaffold only — loops and payer context are incomplete.",
     x12Warning_X12_PATIENT_NAME_FALLBACK_ID: "Patient name defaulted in preview because demographics were unavailable.",

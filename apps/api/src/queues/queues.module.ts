@@ -12,10 +12,13 @@ import { ClaimSubmissionService } from "../billing/claim-submission.service";
 import { ClaimTransmissionService } from "../billing/claim-transmission.service";
 import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
 import { ClearinghouseTransportFactory } from "../billing/clearinghouse-transport.factory";
+import { AckSftpPollerService } from "../billing/ack-sftp-poller.service";
+import { ClearinghouseAckWebhookController } from "../billing/clearinghouse-ack-webhook.controller";
+import { ClearinghouseAckWebhookGuard } from "../billing/clearinghouse-ack-webhook.guard";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [QueuesController],
+  controllers: [QueuesController, ClearinghouseAckWebhookController],
   providers: [
     QueuesService,
     AuditService,
@@ -28,6 +31,8 @@ import { ClearinghouseTransportFactory } from "../billing/clearinghouse-transpor
     ClearinghouseTransportFactory,
     ClaimTransmissionService,
     ClaimAcknowledgmentService,
+    AckSftpPollerService,
+    ClearinghouseAckWebhookGuard,
   ],
   exports: [QueuesService]
 })

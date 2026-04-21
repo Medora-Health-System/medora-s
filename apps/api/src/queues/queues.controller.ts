@@ -7,6 +7,7 @@ import { ClaimExportService } from "../billing/claim-export.service";
 import { X12837GeneratorService } from "../billing/x12-837-generator.service";
 import { ClaimSubmissionService } from "../billing/claim-submission.service";
 import { ClaimTransmissionService } from "../billing/claim-transmission.service";
+import { displayAckSourceFromParsedJson } from "../billing/ack-inbound-parse.util";
 import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
 import type { ClearinghouseTransportHint } from "../billing/clearinghouse-config.util";
 import { RoleCode, OrderStatus } from "@prisma/client";
@@ -149,7 +150,13 @@ export class QueuesController {
   @Post("billing/acknowledgments/ingest")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async ingestAcknowledgment(
-    @Body() body: { rawText: string; kind: "999" | "277CA"; refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string } },
+    @Body()
+    body: {
+      rawText: string;
+      kind: "999" | "277CA";
+      refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+      vendorMeta?: Record<string, unknown>;
+    },
     @Req() req: any
   ) {
     const facilityId = req.facilityId;
@@ -158,6 +165,7 @@ export class QueuesController {
       rawText: body.rawText,
       kind: body.kind,
       refs: body.refs,
+      vendorMeta: body.vendorMeta ?? { source: "MANUAL_API" },
     });
   }
 
@@ -190,6 +198,7 @@ export class QueuesController {
       rawText,
       kind: ackType,
       refs: { submissionId, transactionCtrl: submission.transactionCtrl ?? undefined, batchId: submission.batchId ?? undefined },
+      vendorMeta: { source: "DEV_SIMULATE" },
     });
     return {
       previousStatus: result.previousStatus,
@@ -206,7 +215,17 @@ export class QueuesController {
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getSubmissionAcknowledgments(@Param("submissionId") submissionId: string, @Req() req: any) {
     const facilityId = req.facilityId;
-    return this.claimAcknowledgmentService.getAcknowledgmentsForSubmission(facilityId, submissionId);
+    const rows = await this.claimAcknowledgmentService.getAcknowledgmentsForSubmission(facilityId, submissionId);
+    return rows.map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      statusCode: a.statusCode,
+      message: a.message,
+      warningCode: a.warningCode,
+      receivedAt: a.receivedAt,
+      createdAt: a.createdAt,
+      ackSource: displayAckSourceFromParsedJson(a.parsedJson),
+    }));
   }
 
   @Post("billing/encounters/:encounterId/finalize")

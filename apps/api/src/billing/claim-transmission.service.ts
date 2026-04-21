@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ClaimSubmissionStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { displayAckSourceFromParsedJson } from "./ack-inbound-parse.util";
 import { scrubRecordForPersistence } from "./clearinghouse-audit.util";
 import {
   getClearinghousePublicConfigStatus,
@@ -115,6 +116,7 @@ export class ClaimTransmissionService {
         status: ack.statusCode,
         warningCode: ack.warningCode,
         lifecycleReason: lifecycleReasonFromParsedJson(ack.parsedJson),
+        ackSource: displayAckSourceFromParsedJson(ack.parsedJson),
         receivedAt: ack.receivedAt,
         rawSummary: ack.rawText.slice(0, 140),
       })),

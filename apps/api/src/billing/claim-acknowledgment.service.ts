@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ClaimAcknowledgment, ClaimSubmissionStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { scrubRecordForPersistence } from "./clearinghouse-audit.util";
+import {
+  computeAckDedupeKey,
+  detectAckKindFromRaw,
+  extractAk2TransactionControl,
+  extractIsaInterchangeControl,
+  extractTrnReference,
+  normalizeAckRawText,
+} from "./ack-inbound-parse.util";
 import {
   ClaimAckOutcome,
   nextStatusFrom277CA,
@@ -57,6 +65,7 @@ export function mergeVendorMetaIntoAckParsedJson(vendorMeta: Record<string, unkn
   return { vendorMeta: scrubRecordForPersistence(vendorMeta) };
 }
 
+
 function claimOutcomeFrom277(parsed: ReturnType<typeof parse277ca>): ClaimAckOutcome | null {
   const upper = (parsed.parsed.stc ?? "").toUpperCase();
   if (upper.includes("A1")) return "ACCEPTED";
@@ -71,7 +80,8 @@ export type IngestAcknowledgmentResult = {
   nextStatus: ClaimSubmissionStatus | null;
   statusChanged: boolean;
   reasonCode: SubmissionTransitionReasonCode;
-  ackStored: true;
+  /** False when identical payload was already ingested (idempotent replay). */
+  ackStored: boolean;
   outOfSequence: boolean;
 };
 
@@ -87,8 +97,39 @@ export class ClaimAcknowledgmentService {
     /** Optional envelope from clearinghouse adapter (webhook, SFTP poll, etc.) — scrubbed before persist. */
     vendorMeta?: Record<string, unknown>;
   }): Promise<IngestAcknowledgmentResult> {
-    const parsed999 = input.kind === "999" ? parse999(input.rawText) : null;
-    const parsed277 = input.kind === "277CA" ? parse277ca(input.rawText) : null;
+    const normText = normalizeAckRawText(input.rawText);
+    const dedupeKey = computeAckDedupeKey(input.facilityId, input.kind, normText);
+
+    const recent = await this.prisma.claimAcknowledgment.findMany({
+      where: { facilityId: input.facilityId, kind: input.kind },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    });
+    const priorDup = recent.find((c) => {
+      const pj = c.parsedJson;
+      if (!pj || typeof pj !== "object" || Array.isArray(pj)) return false;
+      return (pj as Record<string, unknown>).dedupeKey === dedupeKey;
+    });
+    if (priorDup) {
+      const sub = priorDup.submissionId
+        ? await this.prisma.claimSubmission.findUnique({
+            where: { id: priorDup.submissionId },
+            select: { status: true },
+          })
+        : null;
+      return {
+        ack: priorDup,
+        previousStatus: sub?.status ?? null,
+        nextStatus: sub?.status ?? null,
+        statusChanged: false,
+        reasonCode: "DUPLICATE_ACK_REPLAY_IGNORED",
+        ackStored: false,
+        outOfSequence: false,
+      };
+    }
+
+    const parsed999 = input.kind === "999" ? parse999(normText) : null;
+    const parsed277 = input.kind === "277CA" ? parse277ca(normText) : null;
 
     let submissionId = input.refs?.submissionId ?? null;
     let batchId = input.refs?.batchId ?? null;
@@ -114,6 +155,42 @@ export class ClaimAcknowledgmentService {
         batchId = found.batchId;
       }
     }
+    const trnRef = parsed277?.trnRef ?? extractTrnReference(normText);
+    if (!submissionId && input.kind === "277CA" && trnRef) {
+      const found = await this.prisma.claimSubmission.findFirst({
+        where: { facilityId: input.facilityId, transactionCtrl: trnRef },
+        select: { id: true, batchId: true },
+      });
+      if (found) {
+        submissionId = found.id;
+        batchId = found.batchId;
+      }
+    }
+
+    const isa13 = extractIsaInterchangeControl(normText);
+    if (!submissionId && isa13) {
+      const b = await this.prisma.claimSubmissionBatch.findFirst({
+        where: { facilityId: input.facilityId, interchangeCtrl: isa13 },
+        include: { submissions: { orderBy: { createdAt: "asc" } } },
+      });
+      if (b) {
+        if (b.submissions.length === 1) {
+          submissionId = b.submissions[0].id;
+          batchId = b.id;
+        } else {
+          const trx =
+            parsed999?.stCtrl ?? extractAk2TransactionControl(normText) ?? trnRef ?? input.refs?.transactionCtrl ?? null;
+          if (trx) {
+            const sub = b.submissions.find((s) => s.transactionCtrl === trx);
+            if (sub) {
+              submissionId = sub.id;
+              batchId = b.id;
+            }
+          }
+        }
+      }
+    }
+
     if (!submissionId) {
       unmatchedWarning = "ACK_UNMATCHED";
     }
@@ -195,6 +272,12 @@ export class ClaimAcknowledgmentService {
     const mergedParsedRaw: Record<string, unknown> = {
       ...parsedBase,
       lifecycle: lifecycleExtra,
+      dedupeKey,
+      matchingHints: {
+        isaInterchangeCtrl: isa13 ?? null,
+        trnRef: trnRef ?? null,
+        ak2StCtrl: extractAk2TransactionControl(normText),
+      },
     };
     if (input.vendorMeta) {
       Object.assign(mergedParsedRaw, mergeVendorMetaIntoAckParsedJson(input.vendorMeta as Record<string, unknown>));
@@ -211,7 +294,7 @@ export class ClaimAcknowledgmentService {
         submissionId,
         batchId: batchId ?? null,
         kind: input.kind,
-        rawText: input.rawText,
+        rawText: normText,
         parsedJson: mergedParsed,
         statusCode: statusCodeStr,
         message: statusCodeStr,
@@ -252,6 +335,34 @@ export class ClaimAcknowledgmentService {
     vendorMeta?: Record<string, unknown>;
   }): Promise<IngestAcknowledgmentResult> {
     return this.ingestAcknowledgment(input);
+  }
+
+  /**
+   * Inbound file/webhook path: optional AUTO kind — detects 999 vs 277 from ST segment.
+   */
+  async ingestInboundAckPayload(input: {
+    facilityId: string;
+    rawText: string;
+    kind?: AckKind | "AUTO";
+    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+    vendorMeta?: Record<string, unknown>;
+  }): Promise<IngestAcknowledgmentResult> {
+    const norm = normalizeAckRawText(input.rawText);
+    const kind =
+      input.kind === "AUTO" || input.kind === undefined ? detectAckKindFromRaw(norm) : input.kind;
+    if (!kind) {
+      throw new BadRequestException({
+        code: "ACK_KIND_UNDETECTABLE",
+        message: "Could not detect ST*999* or ST*277* in payload",
+      });
+    }
+    return this.ingestAcknowledgment({
+      facilityId: input.facilityId,
+      rawText: input.rawText,
+      kind,
+      refs: input.refs,
+      vendorMeta: input.vendorMeta,
+    });
   }
 
   async getAcknowledgmentsForSubmission(facilityId: string, submissionId: string) {
