@@ -333,6 +333,7 @@ model Facility {
   claimSubmissionBatches     ClaimSubmissionBatch[]
   claimSubmissions           ClaimSubmission[]
   claimControlCounters       ClaimControlCounter[]
+  claimAcknowledgments       ClaimAcknowledgment[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -1713,6 +1714,7 @@ model ClaimSubmissionBatch {
 
   facility     Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   submissions  ClaimSubmission[]
+  acknowledgments ClaimAcknowledgment[]
 
   @@index([facilityId])
   @@index([interchangeCtrl])
@@ -1739,9 +1741,52 @@ model ClaimSubmission {
   batch     ClaimSubmissionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
   facility  Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   encounter Encounter             @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  attempts  ClaimSubmissionAttempt[]
+  acknowledgments ClaimAcknowledgment[]
 
   @@index([encounterId])
   @@index([facilityId, status])
   @@index([batchId])
   @@index([claimType])
+}
+
+/// Transmission attempts for one submission (manual/stub transport audit trail).
+model ClaimSubmissionAttempt {
+  id              String   @id @default(cuid())
+  submissionId    String
+  transport       String
+  ok              Boolean
+  requestMetaJson Json?
+  responseMetaJson Json?
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  submission ClaimSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, createdAt])
+}
+
+/// Persisted clearinghouse acknowledgments (999/277CA) including unmatched rows.
+model ClaimAcknowledgment {
+  id              String   @id @default(cuid())
+  facilityId      String
+  submissionId    String?
+  batchId         String?
+  kind            String
+  rawText         String   @db.Text
+  parsedJson      Json?
+  statusCode      String?
+  message         String?
+  warningCode     String?
+  receivedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  facility   Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  submission ClaimSubmission?      @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  batch      ClaimSubmissionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, receivedAt])
+  @@index([submissionId])
+  @@index([batchId])
+  @@index([kind])
 }

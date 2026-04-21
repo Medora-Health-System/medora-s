@@ -185,6 +185,7 @@ type ClaimSubmissionListItemPayload = {
   status: string;
   batchId: string | null;
   transactionCtrl: string | null;
+  externalReference?: string | null;
   warnings: string[];
   missingFields: string[];
   createdAt: string;
@@ -195,6 +196,22 @@ type ClaimSubmissionDetailPayload = ClaimSubmissionListItemPayload & {
   x12Text: string | null;
   exportJson: unknown;
   externalReference: string | null;
+};
+
+type SubmissionAttemptPayload = {
+  id: string;
+  transport: string;
+  ok: boolean;
+  errorMessage: string | null;
+  createdAt: string;
+};
+
+type SubmissionAckPayload = {
+  id: string;
+  kind: string;
+  statusCode: string | null;
+  message: string | null;
+  receivedAt: string;
 };
 
 type SummaryPayload = {
@@ -370,6 +387,8 @@ export default function BillingEncounterLedgerPage() {
   const [showSubmissionInterchange, setShowSubmissionInterchange] = useState(false);
   const [expandedSubmissionDetail, setExpandedSubmissionDetail] = useState<ClaimSubmissionDetailPayload | null>(null);
   const [expandedSubmissionLoading, setExpandedSubmissionLoading] = useState<string | null>(null);
+  const [submissionAttempts, setSubmissionAttempts] = useState<Record<string, SubmissionAttemptPayload[]>>({});
+  const [submissionAcks, setSubmissionAcks] = useState<Record<string, SubmissionAckPayload[]>>({});
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -462,6 +481,31 @@ export default function BillingEncounterLedgerPage() {
     }
   }, [encounterId, facilityId, language, t]);
 
+  const sendSubmissionBatch = useCallback(
+    async (batchId: string) => {
+      if (!facilityId) return;
+      setSubmissionBusy(true);
+      setActionError(null);
+      setToast(null);
+      try {
+        await apiFetch(`/billing/submission-batches/${batchId}/send`, {
+          facilityId,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transport: "MANUAL" }),
+        });
+        setToast(t("billingPage.submissionSendOk"));
+        await load();
+      } catch (e: unknown) {
+        const raw = e instanceof Error && e.message ? e.message : "";
+        setActionError(normalizeUserFacingError(raw, language) || t("billingPage.submissionSendErr"));
+      } finally {
+        setSubmissionBusy(false);
+      }
+    },
+    [facilityId, language, load, t]
+  );
+
   const toggleSubmissionDetail = useCallback(
     async (submissionId: string) => {
       if (!facilityId) return;
@@ -474,6 +518,16 @@ export default function BillingEncounterLedgerPage() {
       try {
         const res = (await apiFetch(`/billing/submissions/${submissionId}`, { facilityId })) as ClaimSubmissionDetailPayload;
         setExpandedSubmissionDetail(res);
+        const [attempts, acks] = await Promise.all([
+          apiFetch(`/billing/submissions/${submissionId}/attempts`, { facilityId }),
+          apiFetch(`/billing/submissions/${submissionId}/acknowledgments`, { facilityId }),
+        ]);
+        if (Array.isArray(attempts)) {
+          setSubmissionAttempts((prev) => ({ ...prev, [submissionId]: attempts as SubmissionAttemptPayload[] }));
+        }
+        if (Array.isArray(acks)) {
+          setSubmissionAcks((prev) => ({ ...prev, [submissionId]: acks as SubmissionAckPayload[] }));
+        }
       } catch (e: unknown) {
         const raw = e instanceof Error && e.message ? e.message : "";
         setActionError(normalizeUserFacingError(raw, language) || t("billingPage.submissionDetailLoadErr"));
@@ -1438,6 +1492,30 @@ export default function BillingEncounterLedgerPage() {
                         {t("billingPage.submissionBatchId")}: {s.batchId}
                       </div>
                     ) : null}
+                    {s.externalReference ? (
+                      <div style={{ fontSize: 12, color: "#475569" }}>
+                        {t("billingPage.submissionExternalReference")}: {s.externalReference}
+                      </div>
+                    ) : null}
+                    {s.batchId ? (
+                      <div style={{ marginTop: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => void sendSubmissionBatch(s.batchId!)}
+                          disabled={submissionBusy}
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #cbd5e1",
+                            background: "#fff",
+                            cursor: submissionBusy ? "wait" : "pointer",
+                          }}
+                        >
+                          {t("billingPage.submissionSendManual")}
+                        </button>
+                      </div>
+                    ) : null}
                     {s.warnings.length > 0 ? (
                       <div style={{ fontSize: 12, marginTop: 4 }}>
                         <span style={{ fontWeight: 600 }}>{t("billingPage.submissionWarnings")}:</span>{" "}
@@ -1485,6 +1563,31 @@ export default function BillingEncounterLedgerPage() {
                           >
                             {expandedSubmissionDetail.x12Text}
                           </pre>
+                        ) : null}
+                        {expandedSubmissionDetail?.id === s.id ? (
+                          <div style={{ marginTop: 6, fontSize: 11, color: "#475569" }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("billingPage.submissionAttempts")}</div>
+                            {(submissionAttempts[s.id]?.length ?? 0) === 0 ? (
+                              <div>{t("billingPage.submissionNoAttempts")}</div>
+                            ) : (
+                              submissionAttempts[s.id]!.map((a) => (
+                                <div key={a.id}>
+                                  {a.transport} · {a.ok ? t("common.yes") : t("common.no")}
+                                  {a.errorMessage ? ` · ${t("billingPage.submissionAttemptFailed")}: ${a.errorMessage}` : ""}
+                                </div>
+                              ))
+                            )}
+                            <div style={{ fontWeight: 600, marginTop: 6, marginBottom: 4 }}>{t("billingPage.submissionAcknowledgments")}</div>
+                            {(submissionAcks[s.id]?.length ?? 0) === 0 ? (
+                              <div>{t("billingPage.submissionNoAcknowledgmentYet")}</div>
+                            ) : (
+                              submissionAcks[s.id]!.map((a) => (
+                                <div key={a.id}>
+                                  {a.kind} · {a.statusCode ?? "UNKNOWN"}{a.message ? ` · ${a.message}` : ""}
+                                </div>
+                              ))
+                            )}
+                          </div>
                         ) : null}
                       </div>
                     ) : null}

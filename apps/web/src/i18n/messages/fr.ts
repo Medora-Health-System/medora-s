@@ -308,6 +308,15 @@ export default {
     submissionDetailLoadErr: "Impossible de charger le détail de l’envoi.",
     submissionKind_PROFESSIONAL_837P: "Professionnel 837P",
     submissionKind_FACILITY_837I: "Établissement 837I",
+    submissionSendManual: "Envoyer via transport manuel",
+    submissionSendOk: "Envoi effectué via transport manuel.",
+    submissionSendErr: "Impossible d'envoyer la soumission.",
+    submissionAttempts: "Tentatives d'envoi",
+    submissionNoAttempts: "Aucune tentative d'envoi.",
+    submissionAttemptFailed: "Tentative échouée",
+    submissionAcknowledgments: "Accusés de réception",
+    submissionNoAcknowledgmentYet: "Aucun accusé pour l'instant.",
+    submissionExternalReference: "Référence externe",
     x12Warning_X12_837P_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY:
       "L’aperçu 837P est un échafaudage plat — boucles et contexte payeur incomplets.",
     x12Warning_X12_PATIENT_NAME_FALLBACK_ID:

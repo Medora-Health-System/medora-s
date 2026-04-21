@@ -6,6 +6,8 @@ import { ClaimBuilderService } from "../billing/claim-builder.service";
 import { ClaimExportService } from "../billing/claim-export.service";
 import { X12837GeneratorService } from "../billing/x12-837-generator.service";
 import { ClaimSubmissionService } from "../billing/claim-submission.service";
+import { ClaimTransmissionService } from "../billing/claim-transmission.service";
+import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
 import { RoleCode, OrderStatus } from "@prisma/client";
 
 @Controller()
@@ -16,7 +18,9 @@ export class QueuesController {
     private readonly claimBuilderService: ClaimBuilderService,
     private readonly claimExportService: ClaimExportService,
     private readonly x12837GeneratorService: X12837GeneratorService,
-    private readonly claimSubmissionService: ClaimSubmissionService
+    private readonly claimSubmissionService: ClaimSubmissionService,
+    private readonly claimTransmissionService: ClaimTransmissionService,
+    private readonly claimAcknowledgmentService: ClaimAcknowledgmentService
   ) {}
 
   @Get("radiology/queue")
@@ -101,6 +105,46 @@ export class QueuesController {
   async getClaimSubmission(@Param("submissionId") submissionId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.claimSubmissionService.getSubmissionById(facilityId, submissionId);
+  }
+
+  @Post("billing/submission-batches/:batchId/send")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async sendSubmissionBatch(
+    @Param("batchId") batchId: string,
+    @Body() body: { transport?: "MANUAL" | "STUB_API" },
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    return this.claimTransmissionService.sendSubmissionBatch(facilityId, batchId, body?.transport ?? "MANUAL");
+  }
+
+  @Get("billing/submissions/:submissionId/attempts")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getSubmissionAttempts(@Param("submissionId") submissionId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimTransmissionService.getSubmissionAttemptHistory(facilityId, submissionId);
+  }
+
+  @Post("billing/acknowledgments/ingest")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async ingestAcknowledgment(
+    @Body() body: { rawText: string; kind: "999" | "277CA"; refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string } },
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    return this.claimAcknowledgmentService.ingestAcknowledgment({
+      facilityId,
+      rawText: body.rawText,
+      kind: body.kind,
+      refs: body.refs,
+    });
+  }
+
+  @Get("billing/submissions/:submissionId/acknowledgments")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getSubmissionAcknowledgments(@Param("submissionId") submissionId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimAcknowledgmentService.getAcknowledgmentsForSubmission(facilityId, submissionId);
   }
 
   @Post("billing/encounters/:encounterId/finalize")

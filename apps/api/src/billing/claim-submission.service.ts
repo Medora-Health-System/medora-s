@@ -44,6 +44,7 @@ export type ClaimSubmissionSummaryDto = {
   status: ClaimSubmissionStatus;
   batchId: string | null;
   transactionCtrl: string | null;
+  externalReference: string | null;
   warnings: string[];
   missingFields: string[];
   createdAt: string;
@@ -215,6 +216,7 @@ export class ClaimSubmissionService {
     status: ClaimSubmissionStatus;
     batchId: string | null;
     transactionCtrl: string | null;
+    externalReference: string | null;
     warningsJson: Prisma.JsonValue | null;
     missingFieldsJson: Prisma.JsonValue | null;
     createdAt: Date;
@@ -228,6 +230,7 @@ export class ClaimSubmissionService {
       status: s.status,
       batchId: s.batchId,
       transactionCtrl: s.transactionCtrl,
+      externalReference: s.externalReference,
       warnings: jsonStringArray(s.warningsJson),
       missingFields: jsonStringArray(s.missingFieldsJson),
       createdAt: s.createdAt.toISOString(),

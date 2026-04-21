@@ -9,6 +9,8 @@ import { X12837GeneratorService } from "../billing/x12-837-generator.service";
 import { ClaimControlNumberService } from "../billing/claim-control-number.service";
 import { X12EnvelopeBuilderService } from "../billing/x12-envelope-builder.service";
 import { ClaimSubmissionService } from "../billing/claim-submission.service";
+import { ClaimTransmissionService } from "../billing/claim-transmission.service";
+import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
 
 @Module({
   imports: [PrismaModule],
@@ -22,6 +24,8 @@ import { ClaimSubmissionService } from "../billing/claim-submission.service";
     ClaimControlNumberService,
     X12EnvelopeBuilderService,
     ClaimSubmissionService,
+    ClaimTransmissionService,
+    ClaimAcknowledgmentService,
   ],
   exports: [QueuesService]
 })
