@@ -15,6 +15,7 @@ import { ClearinghouseTransportFactory } from "../billing/clearinghouse-transpor
 import { AckSftpPollerService } from "../billing/ack-sftp-poller.service";
 import { ClearinghouseAckWebhookController } from "../billing/clearinghouse-ack-webhook.controller";
 import { ClearinghouseAckWebhookGuard } from "../billing/clearinghouse-ack-webhook.guard";
+import { ClearinghouseOpsService } from "../billing/clearinghouse-ops.service";
 
 @Module({
   imports: [PrismaModule],
@@ -32,6 +33,7 @@ import { ClearinghouseAckWebhookGuard } from "../billing/clearinghouse-ack-webho
     ClaimTransmissionService,
     ClaimAcknowledgmentService,
     AckSftpPollerService,
+    ClearinghouseOpsService,
     ClearinghouseAckWebhookGuard,
   ],
   exports: [QueuesService]

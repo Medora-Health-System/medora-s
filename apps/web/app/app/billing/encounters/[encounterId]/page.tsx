@@ -205,6 +205,9 @@ type SubmissionAttemptPayload = {
   status?: string;
   errorMessage: string | null;
   createdAt: string;
+  failureCode?: string | null;
+  retryEligible?: boolean;
+  nextRetryAt?: string | null;
 };
 
 type SubmissionAckPayload = {
@@ -250,6 +253,19 @@ type ClearinghouseConfigStatusPayload = {
   sendEnabled: boolean;
   ackSftpIngestEnabled: boolean;
   ackWebhookIngestEnabled: boolean;
+};
+
+type ClearinghouseOpsStatusPayload = {
+  clearinghouseMode: string;
+  outboundConfigured: boolean;
+  inboundSftpEnabled: boolean;
+  inboundWebhookEnabled: boolean;
+  lastSftpPollAt: string | null;
+  lastSftpPollStatus: string | null;
+  lastSftpPollDetail: string | null;
+  retryEligibleSubmissionCount: number;
+  deadLetterAckCount: number;
+  recentTransportFailureCount: number;
 };
 
 type SummaryPayload = {
@@ -455,6 +471,8 @@ export default function BillingEncounterLedgerPage() {
   const [submissionAcks, setSubmissionAcks] = useState<Record<string, SubmissionAckPayload[]>>({});
   const [submissionDebug, setSubmissionDebug] = useState<SubmissionDebugPayload | null>(null);
   const [clearinghouseConfigStatus, setClearinghouseConfigStatus] = useState<ClearinghouseConfigStatusPayload | null>(null);
+  const [clearinghouseOpsStatus, setClearinghouseOpsStatus] = useState<ClearinghouseOpsStatusPayload | null>(null);
+  const [retrySendBusyId, setRetrySendBusyId] = useState<string | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -466,7 +484,7 @@ export default function BillingEncounterLedgerPage() {
     setLoading(true);
     setError(null);
     try {
-      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome, submissionsOutcome, clearinghouseOutcome] =
+      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome, submissionsOutcome, clearinghouseOutcome, clearinghouseOpsOutcome] =
         await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
@@ -474,6 +492,7 @@ export default function BillingEncounterLedgerPage() {
           apiFetch(`/billing/encounters/${encounterId}/x12-preview`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/submissions`, { facilityId }),
           apiFetch(`/billing/clearinghouse/config-status`, { facilityId }),
+          apiFetch(`/billing/clearinghouse/ops-status`, { facilityId }),
         ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
@@ -483,6 +502,7 @@ export default function BillingEncounterLedgerPage() {
         setClaimSubmissions([]);
         setSubmissionListErr(null);
         setClearinghouseConfigStatus(null);
+        setClearinghouseOpsStatus(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -491,6 +511,11 @@ export default function BillingEncounterLedgerPage() {
         setClearinghouseConfigStatus(clearinghouseOutcome.value as ClearinghouseConfigStatusPayload);
       } else {
         setClearinghouseConfigStatus(null);
+      }
+      if (clearinghouseOpsOutcome.status === "fulfilled" && clearinghouseOpsOutcome.value && typeof clearinghouseOpsOutcome.value === "object") {
+        setClearinghouseOpsStatus(clearinghouseOpsOutcome.value as ClearinghouseOpsStatusPayload);
+      } else {
+        setClearinghouseOpsStatus(null);
       }
       if (claimsOutcome.status === "fulfilled" && claimsOutcome.value && typeof claimsOutcome.value === "object") {
         setClaimAssembly(claimsOutcome.value as ClaimAssemblyPayload);
@@ -526,6 +551,7 @@ export default function BillingEncounterLedgerPage() {
       setSubmissionListErr(null);
       setSubmissionDebug(null);
       setClearinghouseConfigStatus(null);
+      setClearinghouseOpsStatus(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -580,6 +606,35 @@ export default function BillingEncounterLedgerPage() {
         setActionError(normalizeUserFacingError(raw, language) || t("billingPage.submissionSendErr"));
       } finally {
         setSubmissionBusy(false);
+      }
+    },
+    [facilityId, language, load, t]
+  );
+
+  const retrySubmissionSend = useCallback(
+    async (submissionId: string) => {
+      if (!facilityId) return;
+      setRetrySendBusyId(submissionId);
+      setActionError(null);
+      setToast(null);
+      try {
+        await apiFetch(`/billing/submissions/${submissionId}/retry-send`, {
+          facilityId,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transport: "MANUAL" }),
+        });
+        setToast(t("billingPage.submissionRetrySendOk"));
+        await load();
+        const attempts = await apiFetch(`/billing/submissions/${submissionId}/attempts`, { facilityId });
+        if (Array.isArray(attempts)) {
+          setSubmissionAttempts((prev) => ({ ...prev, [submissionId]: attempts as SubmissionAttemptPayload[] }));
+        }
+      } catch (e: unknown) {
+        const raw = e instanceof Error && e.message ? e.message : "";
+        setActionError(normalizeUserFacingError(raw, language) || t("billingPage.submissionRetrySendErr"));
+      } finally {
+        setRetrySendBusyId(null);
       }
     },
     [facilityId, language, load, t]
@@ -1538,6 +1593,40 @@ export default function BillingEncounterLedgerPage() {
                 </div>
               </div>
             ) : null}
+            {clearinghouseOpsStatus ? (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #e2e8f0",
+                  background: "#fafafa",
+                  fontSize: 11,
+                  color: "#475569",
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("billingPage.clearinghouseOpsTitle")}</div>
+                <div>
+                  {t("billingPage.clearinghouseOpsRetryEligibleCount")}: {clearinghouseOpsStatus.retryEligibleSubmissionCount}
+                  {" · "}
+                  {t("billingPage.clearinghouseOpsDeadLetterCount")}: {clearinghouseOpsStatus.deadLetterAckCount}
+                  {" · "}
+                  {t("billingPage.clearinghouseOpsTransportFailures")}: {clearinghouseOpsStatus.recentTransportFailureCount}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {t("billingPage.clearinghouseOpsLastSftpPollStatus")}: {clearinghouseOpsStatus.lastSftpPollStatus ?? "—"}
+                  {clearinghouseOpsStatus.lastSftpPollAt
+                    ? ` · ${new Date(clearinghouseOpsStatus.lastSftpPollAt).toLocaleString(locale)}`
+                    : ""}
+                </div>
+                {clearinghouseOpsStatus.lastSftpPollDetail ? (
+                  <div style={{ marginTop: 2, color: "#64748b", wordBreak: "break-word" }}>
+                    {clearinghouseOpsStatus.lastSftpPollDetail}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div style={{ marginBottom: 12 }}>
               <button
                 type="button"
@@ -1692,7 +1781,33 @@ export default function BillingEncounterLedgerPage() {
                               submissionAttempts[s.id]!.map((a) => (
                                 <div key={a.id}>
                                   {a.transport} · {a.ok ? t("common.yes") : t("common.no")}
+                                  {a.failureCode ? ` · ${t("billingPage.submissionAttemptFailureCode")}: ${a.failureCode}` : ""}
+                                  {a.retryEligible ? ` · ${t("billingPage.submissionRetryEligible")}` : ""}
+                                  {a.nextRetryAt
+                                    ? ` · ${t("billingPage.submissionRetryScheduled")}: ${new Date(a.nextRetryAt).toLocaleString(locale)}`
+                                    : ""}
                                   {a.errorMessage ? ` · ${t("billingPage.submissionAttemptFailed")}: ${a.errorMessage}` : ""}
+                                  {canEditLines && !a.ok && a.retryEligible ? (
+                                    <span style={{ marginLeft: 6 }}>
+                                      <button
+                                        type="button"
+                                        disabled={retrySendBusyId === s.id || submissionBusy}
+                                        onClick={() => void retrySubmissionSend(s.id)}
+                                        style={{
+                                          fontSize: 11,
+                                          padding: "2px 8px",
+                                          borderRadius: 4,
+                                          border: "1px solid #cbd5e1",
+                                          background: "#fff",
+                                          cursor: retrySendBusyId === s.id ? "wait" : "pointer",
+                                        }}
+                                      >
+                                        {retrySendBusyId === s.id
+                                          ? t("billingPage.submissionRetrySendBusy")
+                                          : t("billingPage.submissionRetrySend")}
+                                      </button>
+                                    </span>
+                                  ) : null}
                                 </div>
                               ))
                             )}

@@ -312,6 +312,25 @@ export class ClaimAcknowledgmentService {
     const nextStatus: ClaimSubmissionStatus | null =
       statusChanged && proposedStatus ? proposedStatus : previousStatus;
 
+    if (reasonCode === "ACK_PARSE_INCONCLUSIVE") {
+      const src =
+        input.vendorMeta && typeof (input.vendorMeta as Record<string, unknown>).source === "string"
+          ? String((input.vendorMeta as Record<string, unknown>).source)
+          : "INGEST";
+      await this.recordInboundAckDeadLetter({
+        facilityId: input.facilityId,
+        rawText: normText,
+        source: src,
+        failureCode: "ACK_PARSE_INCONCLUSIVE",
+        failureDetail: `ackId=${ack.id}`,
+        vendorMeta: {
+          ...(input.vendorMeta ?? {}),
+          linkedAckId: ack.id,
+          reasonCode,
+        },
+      });
+    }
+
     return {
       ack,
       previousStatus,
@@ -375,5 +394,76 @@ export class ClaimAcknowledgmentService {
       where: { submissionId },
       orderBy: { createdAt: "desc" },
     });
+  }
+
+  async recordInboundAckDeadLetter(input: {
+    facilityId: string;
+    rawText: string;
+    source: string;
+    failureCode: string;
+    failureDetail?: string;
+    vendorMeta?: Record<string, unknown>;
+  }) {
+    return this.prisma.claimAcknowledgmentDeadLetter.create({
+      data: {
+        facilityId: input.facilityId,
+        rawText: input.rawText,
+        source: input.source,
+        failureCode: input.failureCode,
+        failureDetail: input.failureDetail ?? null,
+        ...(input.vendorMeta
+          ? { vendorMeta: scrubRecordForPersistence(input.vendorMeta as Record<string, unknown>) as Prisma.InputJsonValue }
+          : {}),
+      },
+    });
+  }
+
+  async listInboundAckDeadLetters(facilityId: string, opts?: { openOnly?: boolean; take?: number }) {
+    const take = Math.min(opts?.take ?? 50, 200);
+    return this.prisma.claimAcknowledgmentDeadLetter.findMany({
+      where: {
+        facilityId,
+        ...(opts?.openOnly ? { replayedAt: null } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: {
+        id: true,
+        source: true,
+        failureCode: true,
+        failureDetail: true,
+        createdAt: true,
+        replayedAt: true,
+        replayedToAckId: true,
+        rawText: true,
+      },
+    });
+  }
+
+  async replayInboundAckDeadLetter(facilityId: string, deadLetterId: string) {
+    const row = await this.prisma.claimAcknowledgmentDeadLetter.findFirst({
+      where: { id: deadLetterId, facilityId, replayedAt: null },
+    });
+    if (!row) throw new NotFoundException("Dead letter not found or already replayed");
+    const vm =
+      row.vendorMeta && typeof row.vendorMeta === "object" && !Array.isArray(row.vendorMeta)
+        ? (row.vendorMeta as Record<string, unknown>)
+        : {};
+    const result = await this.ingestInboundAckPayload({
+      facilityId,
+      rawText: row.rawText,
+      kind: "AUTO",
+      vendorMeta: {
+        ...vm,
+        source: "DEAD_LETTER_REPLAY",
+        deadLetterId: row.id,
+        replayedAt: new Date().toISOString(),
+      },
+    });
+    await this.prisma.claimAcknowledgmentDeadLetter.update({
+      where: { id: row.id },
+      data: { replayedAt: new Date(), replayedToAckId: result.ack.id },
+    });
+    return result;
   }
 }

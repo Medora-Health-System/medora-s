@@ -9,6 +9,7 @@ import { ClaimSubmissionService } from "../billing/claim-submission.service";
 import { ClaimTransmissionService } from "../billing/claim-transmission.service";
 import { displayAckSourceFromParsedJson } from "../billing/ack-inbound-parse.util";
 import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
+import { ClearinghouseOpsService } from "../billing/clearinghouse-ops.service";
 import type { ClearinghouseTransportHint } from "../billing/clearinghouse-config.util";
 import { RoleCode, OrderStatus } from "@prisma/client";
 
@@ -22,7 +23,8 @@ export class QueuesController {
     private readonly x12837GeneratorService: X12837GeneratorService,
     private readonly claimSubmissionService: ClaimSubmissionService,
     private readonly claimTransmissionService: ClaimTransmissionService,
-    private readonly claimAcknowledgmentService: ClaimAcknowledgmentService
+    private readonly claimAcknowledgmentService: ClaimAcknowledgmentService,
+    private readonly clearinghouseOpsService: ClearinghouseOpsService
   ) {}
 
   @Get("radiology/queue")
@@ -127,6 +129,42 @@ export class QueuesController {
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getClearinghouseConfigStatus() {
     return this.claimTransmissionService.getClearinghouseConfigStatus();
+  }
+
+  @Get("billing/clearinghouse/ops-status")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getClearinghouseOpsStatus(@Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.clearinghouseOpsService.getOpsStatus(facilityId);
+  }
+
+  /** Alias for ops / load-balancer probes — same payload as `ops-status` (no secrets). */
+  @Get("billing/clearinghouse/health")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getClearinghouseHealth(@Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.clearinghouseOpsService.getOpsStatus(facilityId);
+  }
+
+  @Get("billing/clearinghouse/ack-dead-letters")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async listAckDeadLetters(@Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimAcknowledgmentService.listInboundAckDeadLetters(facilityId, { openOnly: true, take: 50 });
+  }
+
+  @Post("billing/clearinghouse/replay-ack/:deadLetterId")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async replayAckDeadLetter(@Param("deadLetterId") deadLetterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimAcknowledgmentService.replayInboundAckDeadLetter(facilityId, deadLetterId);
+  }
+
+  @Post("billing/submissions/:submissionId/retry-send")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async retrySubmissionSend(@Param("submissionId") submissionId: string, @Body() body: { transport?: ClearinghouseTransportHint }, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimTransmissionService.retrySubmissionSend(facilityId, submissionId, body?.transport ?? "MANUAL");
   }
 
   @Post("billing/submission-batches/:batchId/send")

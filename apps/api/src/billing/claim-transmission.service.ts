@@ -15,6 +15,10 @@ import {
   nextStatusAfterSuccessfulSend,
   SubmissionTransitionReasonCode,
 } from "./claim-submission-state-machine.util";
+import {
+  classifyOutboundAttemptFailure,
+  nextRetryAtForOutboundFailureOrdinal,
+} from "./clearinghouse-retry-policy.util";
 
 export type TransportKind = ClearinghouseTransportHint;
 
@@ -109,6 +113,9 @@ export class ClaimTransmissionService {
         status: a.ok ? "OK" : "FAILED",
         createdAt: a.createdAt,
         errorMessage: a.errorMessage,
+        failureCode: a.failureCode,
+        retryEligible: a.retryEligible,
+        nextRetryAt: a.nextRetryAt,
       })),
       acknowledgments: sub.acknowledgments.map((ack) => ({
         ackId: ack.id,
@@ -164,6 +171,9 @@ export class ClaimTransmissionService {
               ? Number((a.requestMetaJson as Record<string, unknown>).bytes ?? 0)
               : 0,
           errorMessage: a.errorMessage,
+          failureCode: a.failureCode,
+          retryEligible: a.retryEligible,
+          nextRetryAt: a.nextRetryAt,
         })),
         acknowledgments: s.acknowledgments.map((ack) => ({
           ackId: ack.id,
@@ -192,11 +202,15 @@ export class ClaimTransmissionService {
 
     if (!opts.allowNonReady && submission.status !== ClaimSubmissionStatus.READY_TO_SEND) {
       const skipReason = sendSkipReason(submission.status);
+      const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
       await this.prisma.claimSubmissionAttempt.create({
         data: {
           submissionId,
           transport: transport.key,
           ok: false,
+          failureCode: skipClass.failureCode,
+          retryEligible: false,
+          nextRetryAt: null,
           requestMetaJson: scrubRecordForPersistence({
             skipped: true,
             reason: skipReason,
@@ -209,6 +223,10 @@ export class ClaimTransmissionService {
       });
       return { submissionId, skipped: true, status: submission.status, skipReason };
     }
+
+    const priorRetryEligibleFailures = await this.prisma.claimSubmissionAttempt.count({
+      where: { submissionId, ok: false, retryEligible: true },
+    });
 
     const result = await transport.send({
       facilityId: submission.facilityId,
@@ -229,11 +247,34 @@ export class ClaimTransmissionService {
       ...(result.transportMeta ? { transportMeta: result.transportMeta } : {}),
     };
 
+    const classified = classifyOutboundAttemptFailure({
+      ok: result.ok,
+      errorMessage: result.errorMessage,
+    });
+    let failureCode: string | null = classified.failureCode;
+    let retryEligible = classified.retryEligible;
+    let nextRetryAt: Date | null = null;
+    if (!result.ok && classified.failureClass === "retryable") {
+      const failureOrdinal = priorRetryEligibleFailures + 1;
+      nextRetryAt = nextRetryAtForOutboundFailureOrdinal(failureOrdinal);
+      if (!nextRetryAt) {
+        retryEligible = false;
+        failureCode = classified.failureCode ?? "RETRY_EXHAUSTED";
+      }
+    } else if (result.ok) {
+      failureCode = null;
+      retryEligible = false;
+      nextRetryAt = null;
+    }
+
     const attempt = await this.prisma.claimSubmissionAttempt.create({
       data: {
         submissionId,
         transport: transport.key,
         ok: result.ok,
+        failureCode,
+        retryEligible,
+        nextRetryAt,
         requestMetaJson: scrubRecordForPersistence(rawRequest) as Prisma.InputJsonValue,
         responseMetaJson: scrubRecordForPersistence(rawResponse) as Prisma.InputJsonValue,
         errorMessage: result.errorMessage ?? null,
@@ -257,5 +298,32 @@ export class ClaimTransmissionService {
     });
 
     return { submissionId, attemptId: attempt.id, status: updated.status, ok: result.ok };
+  }
+
+  /**
+   * Operator-triggered resend for a submission whose last transport attempt failed in a retryable way.
+   * Does not bypass READY_TO_SEND or the state machine.
+   */
+  async retrySubmissionSend(facilityId: string, submissionId: string, transportKind: TransportKind = "MANUAL") {
+    const sub = await this.prisma.claimSubmission.findFirst({
+      where: { id: submissionId, facilityId },
+      include: { attempts: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    if (!sub) throw new NotFoundException("Submission not found");
+    if (sub.status !== ClaimSubmissionStatus.READY_TO_SEND) {
+      throw new BadRequestException({
+        code: "SUBMISSION_NOT_RETRYABLE_STATE",
+        message: `Submission must be READY_TO_SEND to retry send (current: ${sub.status})`,
+      });
+    }
+    const last = sub.attempts[0];
+    if (!last || last.ok || !last.retryEligible) {
+      throw new BadRequestException({
+        code: "SUBMISSION_NOT_RETRY_ELIGIBLE",
+        message: "Last attempt must be a failed, retry-eligible transport attempt",
+      });
+    }
+    const transport = this.resolveTransport(transportKind);
+    return this.sendOneSubmission(submissionId, transport, { allowNonReady: false });
   }
 }
