@@ -159,6 +159,24 @@ type EncounterClaimExportPayload = {
   };
 };
 
+type X12TransactionPreviewPayload = {
+  kind: string;
+  segments: { tag: string; elements: string[] }[];
+  text: string;
+  warnings: string[];
+  missingFields: string[];
+};
+
+type EncounterX12ExportPayload = {
+  professional: X12TransactionPreviewPayload | null;
+  facility: X12TransactionPreviewPayload | null;
+  summary: {
+    readyForGeneration: boolean;
+    warnings: string[];
+    missingFields: string[];
+  };
+};
+
 type SummaryPayload = {
   encounter: {
     id: string;
@@ -243,6 +261,24 @@ function exportContextWarningLabel(t: (k: string) => string, code: string): stri
   return v === k ? code : v;
 }
 
+/** Localized X12 warning/missing machine id; reuses claim/export labels when codes match. */
+function x12CodeLabel(t: (k: string) => string, prefix: "x12Warning" | "x12Missing", code: string): string {
+  if (prefix === "x12Warning") {
+    const x12k = `billingPage.x12Warning_${code}`;
+    const x12v = t(x12k);
+    if (x12v !== x12k) return x12v;
+    const cv = t(`billingPage.claimValidation_${code}`);
+    if (cv !== `billingPage.claimValidation_${code}`) return cv;
+    const ev = t(`billingPage.exportContextWarning_${code}`);
+    if (ev !== `billingPage.exportContextWarning_${code}`) return ev;
+  } else {
+    const mk = `billingPage.x12Missing_${code}`;
+    const mv = t(mk);
+    if (mv !== mk) return mv;
+  }
+  return code;
+}
+
 function readinessLineLabel(
   t: (k: string) => string,
   prefix: "readinessBlocker" | "readinessWarning" | "packageBlocker" | "packageWarning",
@@ -293,6 +329,8 @@ export default function BillingEncounterLedgerPage() {
   const [claimAssembly, setClaimAssembly] = useState<ClaimAssemblyPayload | null>(null);
   const [claimExport, setClaimExport] = useState<EncounterClaimExportPayload | null>(null);
   const [showExportJson, setShowExportJson] = useState(false);
+  const [claimX12, setClaimX12] = useState<EncounterX12ExportPayload | null>(null);
+  const [showX12Text, setShowX12Text] = useState(false);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -304,15 +342,17 @@ export default function BillingEncounterLedgerPage() {
     setLoading(true);
     setError(null);
     try {
-      const [summaryOutcome, claimsOutcome, exportOutcome] = await Promise.allSettled([
+      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome] = await Promise.allSettled([
         apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
         apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
         apiFetch(`/billing/encounters/${encounterId}/claim-export`, { facilityId }),
+        apiFetch(`/billing/encounters/${encounterId}/x12-preview`, { facilityId }),
       ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
         setClaimAssembly(null);
         setClaimExport(null);
+        setClaimX12(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -327,10 +367,16 @@ export default function BillingEncounterLedgerPage() {
       } else {
         setClaimExport(null);
       }
+      if (x12Outcome.status === "fulfilled" && x12Outcome.value && typeof x12Outcome.value === "object") {
+        setClaimX12(x12Outcome.value as EncounterX12ExportPayload);
+      } else {
+        setClaimX12(null);
+      }
     } catch {
       setData(null);
       setClaimAssembly(null);
       setClaimExport(null);
+      setClaimX12(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -1055,6 +1101,151 @@ export default function BillingEncounterLedgerPage() {
                     >
                       {JSON.stringify(claimExport, null, 2)}
                     </pre>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {claimX12 ? (
+            <div
+              style={{
+                marginBottom: 20,
+                padding: 16,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#fff",
+              }}
+            >
+              <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.x12PreviewSectionTitle")}</h2>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.x12PreviewSectionSubtitle")}</p>
+              <div style={{ fontSize: 13, marginBottom: 10, color: "#334155" }}>
+                <strong>{t("billingPage.x12ReadyForGenerationLabel")}:</strong>{" "}
+                {claimX12.summary.readyForGeneration ? t("billingPage.x12ReadyYes") : t("billingPage.x12ReadyNo")}
+              </div>
+              {(claimX12.summary.warnings?.length ?? 0) > 0 ? (
+                <div style={{ fontSize: 12, marginBottom: 8, color: "#1d4ed8" }}>
+                  <strong>{t("billingPage.x12SummaryWarnings")}:</strong>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                    {claimX12.summary.warnings.map((w) => (
+                      <li key={`x12sw-${w}`}>{x12CodeLabel(t, "x12Warning", w)}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {(claimX12.summary.missingFields?.length ?? 0) > 0 ? (
+                <div style={{ fontSize: 12, marginBottom: 10, color: "#9a3412" }}>
+                  <strong>{t("billingPage.x12SummaryMissingFields")}:</strong>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                    {claimX12.summary.missingFields.map((m) => (
+                      <li key={`x12sm-${m}`}>{x12CodeLabel(t, "x12Missing", m)}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13, marginBottom: 10 }}>
+                <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.x12Professional837P")}</div>
+                  {claimX12.professional ? (
+                    <>
+                      <div>
+                        {t("billingPage.x12KindLabel")}: {claimX12.professional.kind}
+                      </div>
+                      <div>
+                        {t("billingPage.x12SegmentCount")}: {claimX12.professional.segments.length}
+                      </div>
+                      {(claimX12.professional.warnings?.length ?? 0) > 0 ? (
+                        <div style={{ fontSize: 11, color: "#475569", marginTop: 6 }}>
+                          {claimX12.professional.warnings.map((w) => (
+                            <div key={`xpw-${w}`}>{x12CodeLabel(t, "x12Warning", w)}</div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div style={{ color: "#64748b" }}>{t("billingPage.x12NoPreviewPackage")}</div>
+                  )}
+                </div>
+                <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.x12Facility837I")}</div>
+                  {claimX12.facility ? (
+                    <>
+                      <div>
+                        {t("billingPage.x12KindLabel")}: {claimX12.facility.kind}
+                      </div>
+                      <div>
+                        {t("billingPage.x12SegmentCount")}: {claimX12.facility.segments.length}
+                      </div>
+                      {(claimX12.facility.warnings?.length ?? 0) > 0 ? (
+                        <div style={{ fontSize: 11, color: "#475569", marginTop: 6 }}>
+                          {claimX12.facility.warnings.map((w) => (
+                            <div key={`xfw-${w}`}>{x12CodeLabel(t, "x12Warning", w)}</div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div style={{ color: "#64748b" }}>{t("billingPage.x12NoPreviewPackage")}</div>
+                  )}
+                </div>
+              </div>
+              {canViewExportJson ? (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowX12Text((v) => !v)}
+                    style={{
+                      fontSize: 12,
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      background: "#f8fafc",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showX12Text ? t("billingPage.x12PreviewTextHide") : t("billingPage.x12PreviewTextShow")}
+                  </button>
+                  {showX12Text ? (
+                    <div style={{ marginTop: 10 }}>
+                      {claimX12.professional ? (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{t("billingPage.x12Professional837P")}</div>
+                          <pre
+                            style={{
+                              padding: 10,
+                              fontSize: 10,
+                              overflow: "auto",
+                              maxHeight: 200,
+                              borderRadius: 6,
+                              border: "1px solid #e2e8f0",
+                              background: "#f8fafc",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {claimX12.professional.text}
+                          </pre>
+                        </div>
+                      ) : null}
+                      {claimX12.facility ? (
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{t("billingPage.x12Facility837I")}</div>
+                          <pre
+                            style={{
+                              padding: 10,
+                              fontSize: 10,
+                              overflow: "auto",
+                              maxHeight: 200,
+                              borderRadius: 6,
+                              border: "1px solid #e2e8f0",
+                              background: "#f8fafc",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {claimX12.facility.text}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ) : null}

@@ -11,5 +11,6 @@ export * from "./billingCaptureV1.js";
 export * from "./billingLedgerCoding.js";
 export * from "./billingClaimPackages.js";
 export * from "./billingClaimExport.js";
+export * from "./billingX12Preview.js";
 export * from "./billingLedgerInferCode.js";
 

@@ -261,6 +261,42 @@ export default {
       "Aucun id de médecin assigné ni de prestataire sur la visite — peut être requis avant envoi.",
     exportContextWarning_EXPORT_CONTEXT_NO_SERVICE_DATE_RANGE:
       "Aucune date de service sur les lignes et pas d’horodatage d’admission — vérifier les dates avant envoi.",
+    x12PreviewSectionTitle: "Aperçu X12 (837)",
+    x12PreviewSectionSubtitle:
+      "Échafaudage de segments en lecture seule à partir de l’export — pas d’enveloppe d’échange complète ; pas pour envoi.",
+    x12ReadyForGenerationLabel: "Segments générés",
+    x12ReadyYes: "Oui",
+    x12ReadyNo: "Non",
+    x12SummaryWarnings: "Avertissements (résumé)",
+    x12SummaryMissingFields: "Champs manquants (vs 837 production)",
+    x12Professional837P: "Professionnel (style 837P)",
+    x12Facility837I: "Établissement (style 837I)",
+    x12NoPreviewPackage: "Aucun aperçu pour ce côté (pas de lignes d’export).",
+    x12KindLabel: "Type",
+    x12SegmentCount: "Segments",
+    x12PreviewTextShow: "Afficher l’aperçu texte X12",
+    x12PreviewTextHide: "Masquer l’aperçu texte X12",
+    x12Warning_X12_837P_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY:
+      "L’aperçu 837P est un échafaudage plat — boucles et contexte payeur incomplets.",
+    x12Warning_X12_PATIENT_NAME_FALLBACK_ID:
+      "Nom patient par défaut dans l’aperçu (démographie indisponible).",
+    x12Warning_X12_NO_HI_DIAGNOSIS_SEGMENT: "Aucun segment HI (pas de codes diagnostic sur l’export).",
+    x12Warning_X12_837I_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY:
+      "L’aperçu 837I est un échafaudage — mappage institutionnel UB-04 incomplet.",
+    x12Warning_X12_837I_INSTITUTIONAL_FIELDS_INCOMPLETE:
+      "Le contexte de facturation établissement n’est pas encore entièrement modélisé dans Medora.",
+    x12Warning_X12_EXPORT_VALIDATION_NOT_READY:
+      "La validation de réclamation n’était pas entièrement prête pour l’export lors de la génération X12.",
+    x12Missing_MISSING_ENCOUNTER: "Visite introuvable pour cette requête.",
+    x12Missing_MISSING_SERVICE_DATE: "Plage de dates de service absente ou incomplète sur les lignes.",
+    x12Missing_MISSING_DIAGNOSIS_CODE: "Aucun code de diagnostic pour le segment HI.",
+    x12Missing_MISSING_RENDERING_PROVIDER: "Aucun id de prestataire ou médecin assigné sur la visite.",
+    x12Missing_MISSING_SUBSCRIBER_DATA: "Données abonné / assuré non modélisées (phase payeur).",
+    x12Missing_MISSING_PAYER_CONTEXT: "Contexte payeur / plan non modélisé.",
+    x12Missing_MISSING_PROVIDER_NPI: "NPI prestataire non stocké sur les utilisateurs — identification incomplète.",
+    x12Missing_MISSING_FACILITY_EXPORT_CONTEXT: "Contexte de facturation établissement incomplet pour le 837I.",
+    x12Missing_MISSING_REVENUE_CODE_ON_LINE:
+      "Au moins une ligne établissement sans code de revenu (aperçu SV2 avec valeur de repli).",
     claimPreviewProfessionalLines: "Lignes professionnelles",
     claimPreviewFacilityLines: "Lignes établissement",
     claimPreviewSummaryTotalLines: "Total des lignes",
