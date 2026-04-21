@@ -279,6 +279,8 @@ export default {
       "Ce forfait n’a aucune ligne de réclamation mais des lignes non codées bloquantes y sont routées.",
     claimValidation_NO_ASSEMBLED_LINES:
       "Aucune ligne de réclamation assemblée alors que des lignes actives existent au registre.",
+    claimValidation_SUPPRESSED_LINES_PRESENT:
+      "Certaines lignes de facturation ont été supprimées lors de l’assemblage (par exemple, des lignes E/M dupliquées).",
     claimWarning_MISSING_BILLABLE_CODES: "Code facturable manquant (forfait ou visite).",
     claimWarning_NO_CLAIM_LINES: "Aucune ligne CPT/HCPCS dans ce forfait.",
     claimWarning_BOTH_SIDE_UNCODED: "Au moins une ligne « les deux forfaits » n’a pas de code mappable.",

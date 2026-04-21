@@ -355,6 +355,8 @@ export default {
       "This package has no claim lines but blocking uncoded ledger rows are routed here.",
     claimValidation_NO_ASSEMBLED_LINES:
       "No claim lines were assembled even though active ledger rows exist.",
+    claimValidation_SUPPRESSED_LINES_PRESENT:
+      "Some billing lines were suppressed during claim assembly (for example, duplicate E/M lines).",
     claimWarning_MISSING_BILLABLE_CODES: "Missing billable code (package or encounter).",
     claimWarning_NO_CLAIM_LINES: "No CPT/HCPCS lines in this package.",
     claimWarning_BOTH_SIDE_UNCODED: "At least one BOTH-side ledger row has no mappable code.",

@@ -19,11 +19,15 @@ export type ClaimValidationIssueCode =
   | "UNRESOLVED_BOTH_SIDE"
   | "NO_BILLABLE_EVENTS"
   | "EMPTY_PACKAGE_WITH_BLOCKERS"
-  | "NO_ASSEMBLED_LINES";
+  | "NO_ASSEMBLED_LINES"
+  | "SUPPRESSED_LINES_PRESENT";
 
 export type ClaimValidationIssue = {
   code: ClaimValidationIssueCode;
   severity: "warning" | "blocker";
+  meta?: {
+    suppressedCount?: number;
+  };
 };
 
 export type ClaimPackageValidation = {
@@ -42,11 +46,24 @@ export type ClaimEncounterValidation = {
   facility: ClaimPackageValidation;
 };
 
-function issue(code: ClaimValidationIssueCode, severity: "warning" | "blocker"): ClaimValidationIssue {
-  return { code, severity };
+function issue(
+  code: ClaimValidationIssueCode,
+  severity: "warning" | "blocker",
+  meta?: ClaimValidationIssue["meta"]
+): ClaimValidationIssue {
+  return meta !== undefined ? { code, severity, meta } : { code, severity };
 }
 
 function pushUnique(into: ClaimValidationIssue[], item: ClaimValidationIssue): void {
+  if (item.code === "SUPPRESSED_LINES_PRESENT" && item.severity === "warning") {
+    const existing = into.find((x) => x.code === "SUPPRESSED_LINES_PRESENT" && x.severity === "warning");
+    if (existing) {
+      const a = existing.meta?.suppressedCount ?? 0;
+      const b = item.meta?.suppressedCount ?? 0;
+      existing.meta = { suppressedCount: a + b };
+      return;
+    }
+  }
   if (!into.some((x) => x.code === item.code && x.severity === item.severity)) into.push(item);
 }
 
@@ -91,7 +108,7 @@ export function buildEncounterClaimValidation(
     pushUnique(profWarnings, issue("NO_CLAIM_LINES", "warning"));
   }
   if (ctx.multipleEmSuppressedProf > 0) {
-    pushUnique(profWarnings, issue("MULTIPLE_ENCOUNTER_EM", "warning"));
+    pushUnique(profWarnings, issue("SUPPRESSED_LINES_PRESENT", "warning", { suppressedCount: ctx.multipleEmSuppressedProf }));
   }
   if (ctx.medAdminHcpcsWithoutProcedure > 0) {
     pushUnique(profWarnings, issue("MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT", "warning"));
@@ -121,7 +138,7 @@ export function buildEncounterClaimValidation(
     pushUnique(facWarnings, issue("NO_CLAIM_LINES", "warning"));
   }
   if (ctx.multipleEmSuppressedFac > 0) {
-    pushUnique(facWarnings, issue("MULTIPLE_ENCOUNTER_EM", "warning"));
+    pushUnique(facWarnings, issue("SUPPRESSED_LINES_PRESENT", "warning", { suppressedCount: ctx.multipleEmSuppressedFac }));
   }
   if (ctx.medAdminHcpcsWithoutProcedure > 0) {
     pushUnique(facWarnings, issue("MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT", "warning"));
@@ -161,11 +178,7 @@ export function buildEncounterClaimValidation(
   if (ctx.medAdminHcpcsWithoutProcedure > 0) {
     pushUnique(sumWarnings, issue("MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT", "warning"));
   }
-  if (ctx.multipleEmSuppressedProf + ctx.multipleEmSuppressedFac > 0) {
-    pushUnique(sumWarnings, issue("MULTIPLE_ENCOUNTER_EM", "warning"));
-  }
-
-  /** Roll up package issues into encounter summary (dedupe by code + severity). */
+  /** Roll up package issues into encounter summary (dedupe by code + severity; SUPPRESSED_LINES_PRESENT merges counts). */
   for (const x of profBlockers) pushUnique(sumBlockers, x);
   for (const x of facBlockers) pushUnique(sumBlockers, x);
   for (const x of profWarnings) pushUnique(sumWarnings, x);

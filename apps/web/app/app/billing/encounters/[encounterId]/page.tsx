@@ -88,6 +88,9 @@ type ClaimPackageAssembly = {
 type ClaimValidationIssuePayload = {
   code: string;
   severity: "warning" | "blocker";
+  meta?: {
+    suppressedCount?: number;
+  };
 };
 
 type ClaimPackageValidationPayload = {
@@ -184,6 +187,16 @@ function claimValidationLabel(t: (k: string) => string, code: string): string {
   const k = `billingPage.claimValidation_${code}`;
   const v = t(k);
   return v === k ? code : v;
+}
+
+/** Localized validation line; appends suppressed count when API sends meta (SUPPRESSED_LINES_PRESENT). */
+function claimValidationIssueLine(t: (k: string) => string, iss: ClaimValidationIssuePayload): string {
+  const base = claimValidationLabel(t, iss.code);
+  const n = iss.meta?.suppressedCount;
+  if (typeof n === "number" && n > 0 && iss.code === "SUPPRESSED_LINES_PRESENT") {
+    return `${base} (${n})`;
+  }
+  return base;
 }
 
 function readinessLineLabel(
@@ -628,7 +641,7 @@ export default function BillingEncounterLedgerPage() {
                       <div style={{ fontWeight: 600, color: "#9a3412" }}>{t("billingPage.claimPreviewValidationBlockers")}</div>
                       <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
                         {claimAssembly.validation.summary.blockers.map((iss, i) => (
-                          <li key={`sb-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</li>
+                          <li key={`sb-${iss.code}-${i}`}>{claimValidationIssueLine(t, iss)}</li>
                         ))}
                       </ul>
                     </div>
@@ -638,7 +651,7 @@ export default function BillingEncounterLedgerPage() {
                       <div style={{ fontWeight: 600, color: "#1d4ed8" }}>{t("billingPage.claimPreviewValidationWarnings")}</div>
                       <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
                         {claimAssembly.validation.summary.warnings.map((iss, i) => (
-                          <li key={`sw-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</li>
+                          <li key={`sw-${iss.code}-${i}`}>{claimValidationIssueLine(t, iss)}</li>
                         ))}
                       </ul>
                     </div>
@@ -690,7 +703,7 @@ export default function BillingEncounterLedgerPage() {
                         <div style={{ marginBottom: 6, fontSize: 11, color: "#9a3412" }}>
                           <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationBlockers")}</div>
                           {claimAssembly.validation.professional.blockers.map((iss, i) => (
-                            <div key={`pb-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                            <div key={`pb-${iss.code}-${i}`}>{claimValidationIssueLine(t, iss)}</div>
                           ))}
                         </div>
                       ) : null}
@@ -698,7 +711,7 @@ export default function BillingEncounterLedgerPage() {
                         <div style={{ marginBottom: 8, fontSize: 11, color: "#1e40af" }}>
                           <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationWarnings")}</div>
                           {claimAssembly.validation.professional.warnings.map((iss, i) => (
-                            <div key={`pw-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                            <div key={`pw-${iss.code}-${i}`}>{claimValidationIssueLine(t, iss)}</div>
                           ))}
                         </div>
                       ) : null}
@@ -768,7 +781,7 @@ export default function BillingEncounterLedgerPage() {
                         <div style={{ marginBottom: 6, fontSize: 11, color: "#9a3412" }}>
                           <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationBlockers")}</div>
                           {claimAssembly.validation.facility.blockers.map((iss, i) => (
-                            <div key={`fb-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                            <div key={`fb-${iss.code}-${i}`}>{claimValidationIssueLine(t, iss)}</div>
                           ))}
                         </div>
                       ) : null}
@@ -776,7 +789,7 @@ export default function BillingEncounterLedgerPage() {
                         <div style={{ marginBottom: 8, fontSize: 11, color: "#1e40af" }}>
                           <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationWarnings")}</div>
                           {claimAssembly.validation.facility.warnings.map((iss, i) => (
-                            <div key={`fw-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                            <div key={`fw-${iss.code}-${i}`}>{claimValidationIssueLine(t, iss)}</div>
                           ))}
                         </div>
                       ) : null}
