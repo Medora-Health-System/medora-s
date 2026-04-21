@@ -7,16 +7,25 @@ export type ClearinghouseSendInput = {
   transactionCtrl?: string | null;
 };
 
+export type ClearinghouseTransportKey =
+  | "MANUAL"
+  | "STUB_API"
+  | "SANDBOX_API"
+  | "SANDBOX_SFTP"
+  | "DISABLED";
+
 export type ClearinghouseSendResult = {
   ok: boolean;
   requestMeta: Record<string, unknown>;
   responseMeta: Record<string, unknown>;
+  /** Extra vendor-specific audit fields (scrubbed before persistence). */
+  transportMeta?: Record<string, unknown>;
   errorMessage?: string;
   externalReference?: string;
 };
 
 export interface ClearinghouseTransport {
-  readonly key: "MANUAL" | "STUB_API";
+  readonly key: ClearinghouseTransportKey;
   send(input: ClearinghouseSendInput): Promise<ClearinghouseSendResult>;
 }
 
@@ -44,6 +53,7 @@ export class ManualClearinghouseTransport implements ClearinghouseTransport {
   }
 }
 
+/** @deprecated Use SandboxApiClearinghouseTransport via factory — kept for backward-compatible transport hints. */
 export class StubApiClearinghouseTransport implements ClearinghouseTransport {
   readonly key = "STUB_API" as const;
 
@@ -60,6 +70,24 @@ export class StubApiClearinghouseTransport implements ClearinghouseTransport {
         simulated: true,
       },
       errorMessage: "TRANSPORT_NOT_CONFIGURED",
+    };
+  }
+}
+
+export class DisabledClearinghouseTransport implements ClearinghouseTransport {
+  readonly key = "DISABLED" as const;
+
+  async send(input: ClearinghouseSendInput): Promise<ClearinghouseSendResult> {
+    return {
+      ok: false,
+      requestMeta: {
+        transport: this.key,
+        submissionId: input.submissionId,
+        batchId: input.batchId,
+        bytes: Buffer.byteLength(input.x12Text, "utf8"),
+      },
+      responseMeta: { disabled: true },
+      errorMessage: "CLEARINGHOUSE_DISABLED",
     };
   }
 }

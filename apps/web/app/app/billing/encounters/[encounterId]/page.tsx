@@ -239,6 +239,14 @@ type SubmissionDebugPayload = {
   }[];
 };
 
+type ClearinghouseConfigStatusPayload = {
+  mode: string;
+  vendor: string;
+  configured: boolean;
+  sandbox: boolean;
+  sendEnabled: boolean;
+};
+
 type SummaryPayload = {
   encounter: {
     id: string;
@@ -354,6 +362,18 @@ function submissionLifecycleReasonLabel(t: (k: string) => string, code: string |
   return v === k ? code : v;
 }
 
+function clearinghouseModeLabel(t: (k: string) => string, mode: string): string {
+  const k = `billingPage.clearinghouseMode_${mode}`;
+  const v = t(k);
+  return v === k ? mode : v;
+}
+
+function clearinghouseVendorLabel(t: (k: string) => string, vendor: string): string {
+  const k = `billingPage.clearinghouseVendor_${vendor}`;
+  const v = t(k);
+  return v === k ? vendor : v;
+}
+
 function claimSubmissionKindLabel(t: (k: string) => string, claimType: string): string {
   const k = `billingPage.submissionKind_${claimType}`;
   const v = t(k);
@@ -422,6 +442,7 @@ export default function BillingEncounterLedgerPage() {
   const [submissionAttempts, setSubmissionAttempts] = useState<Record<string, SubmissionAttemptPayload[]>>({});
   const [submissionAcks, setSubmissionAcks] = useState<Record<string, SubmissionAckPayload[]>>({});
   const [submissionDebug, setSubmissionDebug] = useState<SubmissionDebugPayload | null>(null);
+  const [clearinghouseConfigStatus, setClearinghouseConfigStatus] = useState<ClearinghouseConfigStatusPayload | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -433,13 +454,15 @@ export default function BillingEncounterLedgerPage() {
     setLoading(true);
     setError(null);
     try {
-      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome, submissionsOutcome] = await Promise.allSettled([
-        apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
-        apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
-        apiFetch(`/billing/encounters/${encounterId}/claim-export`, { facilityId }),
-        apiFetch(`/billing/encounters/${encounterId}/x12-preview`, { facilityId }),
-        apiFetch(`/billing/encounters/${encounterId}/submissions`, { facilityId }),
-      ]);
+      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome, submissionsOutcome, clearinghouseOutcome] =
+        await Promise.allSettled([
+          apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/claim-export`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/x12-preview`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/submissions`, { facilityId }),
+          apiFetch(`/billing/clearinghouse/config-status`, { facilityId }),
+        ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
         setClaimAssembly(null);
@@ -447,10 +470,16 @@ export default function BillingEncounterLedgerPage() {
         setClaimX12(null);
         setClaimSubmissions([]);
         setSubmissionListErr(null);
+        setClearinghouseConfigStatus(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
       setData(summaryOutcome.value as SummaryPayload);
+      if (clearinghouseOutcome.status === "fulfilled" && clearinghouseOutcome.value && typeof clearinghouseOutcome.value === "object") {
+        setClearinghouseConfigStatus(clearinghouseOutcome.value as ClearinghouseConfigStatusPayload);
+      } else {
+        setClearinghouseConfigStatus(null);
+      }
       if (claimsOutcome.status === "fulfilled" && claimsOutcome.value && typeof claimsOutcome.value === "object") {
         setClaimAssembly(claimsOutcome.value as ClaimAssemblyPayload);
       } else {
@@ -484,6 +513,7 @@ export default function BillingEncounterLedgerPage() {
       setClaimSubmissions([]);
       setSubmissionListErr(null);
       setSubmissionDebug(null);
+      setClearinghouseConfigStatus(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -1456,6 +1486,35 @@ export default function BillingEncounterLedgerPage() {
           >
             <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.submissionPreviewSectionTitle")}</h2>
             <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.submissionPreviewSectionSubtitle")}</p>
+            {clearinghouseConfigStatus ? (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #e2e8f0",
+                  background: "#f8fafc",
+                  fontSize: 12,
+                  color: "#475569",
+                  lineHeight: 1.45,
+                }}
+              >
+                <div>
+                  {t("billingPage.clearinghouseModeLabel")}: {clearinghouseModeLabel(t, clearinghouseConfigStatus.mode)}
+                  {" · "}
+                  {t("billingPage.clearinghouseVendorLabel")}: {clearinghouseVendorLabel(t, clearinghouseConfigStatus.vendor)}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {clearinghouseConfigStatus.configured ? t("billingPage.clearinghouseConfiguredYes") : t("billingPage.clearinghouseConfiguredNo")}
+                  {clearinghouseConfigStatus.sandbox ? ` · ${t("billingPage.clearinghouseSandboxBadge")}` : ""}
+                  {(clearinghouseConfigStatus.mode === "sandbox_api" || clearinghouseConfigStatus.mode === "sandbox_sftp") &&
+                  !clearinghouseConfigStatus.sendEnabled
+                    ? ` · ${t("billingPage.clearinghouseLiveSendNotEnabled")}`
+                    : null}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>{t("billingPage.clearinghouseManualSendHint")}</div>
+              </div>
+            ) : null}
             <div style={{ marginBottom: 12 }}>
               <button
                 type="button"

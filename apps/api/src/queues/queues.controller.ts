@@ -8,6 +8,7 @@ import { X12837GeneratorService } from "../billing/x12-837-generator.service";
 import { ClaimSubmissionService } from "../billing/claim-submission.service";
 import { ClaimTransmissionService } from "../billing/claim-transmission.service";
 import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
+import type { ClearinghouseTransportHint } from "../billing/clearinghouse-config.util";
 import { RoleCode, OrderStatus } from "@prisma/client";
 
 @Controller()
@@ -121,11 +122,17 @@ export class QueuesController {
     return this.claimSubmissionService.getSubmissionById(facilityId, submissionId);
   }
 
+  @Get("billing/clearinghouse/config-status")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getClearinghouseConfigStatus() {
+    return this.claimTransmissionService.getClearinghouseConfigStatus();
+  }
+
   @Post("billing/submission-batches/:batchId/send")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async sendSubmissionBatch(
     @Param("batchId") batchId: string,
-    @Body() body: { transport?: "MANUAL" | "STUB_API" },
+    @Body() body: { transport?: ClearinghouseTransportHint },
     @Req() req: any
   ) {
     const facilityId = req.facilityId;

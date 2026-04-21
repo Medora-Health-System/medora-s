@@ -332,6 +332,23 @@ export default {
     submissionLifecycleReason_TRANSPORT_999_REJECT_NO_TRANSITION: "999 rejeté au transport ; soumission inchangée",
     submissionLifecycleReason_ACK_PARSE_INCONCLUSIVE: "Accusé non interprétable pour le cycle de vie",
     submissionLifecycleReason_ACK_UNMATCHED: "Accusé non associé à une soumission",
+    clearinghouseModeLabel: "Mode clearinghouse",
+    clearinghouseVendorLabel: "Profil fournisseur",
+    clearinghouseMode_manual: "Manuel (audit local)",
+    clearinghouseMode_sandbox_api: "API bac à sable",
+    clearinghouseMode_sandbox_sftp: "SFTP bac à sable",
+    clearinghouseMode_disabled: "Désactivé",
+    clearinghouseVendor_generic: "Générique",
+    clearinghouseVendor_change: "Change Healthcare",
+    clearinghouseVendor_availity: "Availity",
+    clearinghouseVendor_office_ally: "Office Ally",
+    clearinghouseVendor_other: "Autre",
+    clearinghouseConfiguredYes: "Adaptateur configuré",
+    clearinghouseConfiguredNo: "Adaptateur incomplet",
+    clearinghouseSandboxBadge: "Bac à sable uniquement (pas de production réelle)",
+    clearinghouseLiveSendNotEnabled: "Envoi sandbox externe désactivé (sécurité production)",
+    clearinghouseManualSendHint:
+      "L’action d’envoi ci-dessous utilise le transport manuel pour audit sur site. L’API/SFTP bac à sable passe par d’autres appels configurés côté serveur.",
     x12Warning_X12_837P_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY:
       "L’aperçu 837P est un échafaudage plat — boucles et contexte payeur incomplets.",
     x12Warning_X12_PATIENT_NAME_FALLBACK_ID:

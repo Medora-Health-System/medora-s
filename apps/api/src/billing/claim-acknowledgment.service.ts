@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { ClaimAcknowledgment, ClaimSubmissionStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { scrubRecordForPersistence } from "./clearinghouse-audit.util";
 import {
   ClaimAckOutcome,
   nextStatusFrom277CA,
@@ -51,6 +52,11 @@ function parse277ca(rawText: string) {
   return { statusCode, trnRef, parsed: { stc: stcFirst, trnRef } };
 }
 
+/** Merge scrubbed vendor metadata into `parsedJson` for audit (adapters / webhooks). */
+export function mergeVendorMetaIntoAckParsedJson(vendorMeta: Record<string, unknown>): Record<string, unknown> {
+  return { vendorMeta: scrubRecordForPersistence(vendorMeta) };
+}
+
 function claimOutcomeFrom277(parsed: ReturnType<typeof parse277ca>): ClaimAckOutcome | null {
   const upper = (parsed.parsed.stc ?? "").toUpperCase();
   if (upper.includes("A1")) return "ACCEPTED";
@@ -78,6 +84,8 @@ export class ClaimAcknowledgmentService {
     rawText: string;
     kind: AckKind;
     refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+    /** Optional envelope from clearinghouse adapter (webhook, SFTP poll, etc.) — scrubbed before persist. */
+    vendorMeta?: Record<string, unknown>;
   }): Promise<IngestAcknowledgmentResult> {
     const parsed999 = input.kind === "999" ? parse999(input.rawText) : null;
     const parsed277 = input.kind === "277CA" ? parse277ca(input.rawText) : null;
@@ -184,10 +192,14 @@ export class ClaimAcknowledgmentService {
         ? { ...parsed999!.parsed, transportAccept: parsed999!.transportAccept }
         : parsed277!.parsed;
 
-    const mergedParsed = {
+    const mergedParsedRaw: Record<string, unknown> = {
       ...parsedBase,
       lifecycle: lifecycleExtra,
-    } as Prisma.InputJsonValue;
+    };
+    if (input.vendorMeta) {
+      Object.assign(mergedParsedRaw, mergeVendorMetaIntoAckParsedJson(input.vendorMeta as Record<string, unknown>));
+    }
+    const mergedParsed = mergedParsedRaw as Prisma.InputJsonValue;
 
     const warn =
       unmatchedWarning ??
@@ -226,6 +238,20 @@ export class ClaimAcknowledgmentService {
       ackStored: true,
       outOfSequence,
     };
+  }
+
+  /**
+   * Integration point for inbound clearinghouse delivery (file drop, webhook, polling job).
+   * Delegates to `ingestAcknowledgment` — no duplicate parsing or direct status mutation outside the state machine.
+   */
+  async ingestClearinghouseInboundAcknowledgment(input: {
+    facilityId: string;
+    rawText: string;
+    kind: AckKind;
+    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+    vendorMeta?: Record<string, unknown>;
+  }): Promise<IngestAcknowledgmentResult> {
+    return this.ingestAcknowledgment(input);
   }
 
   async getAcknowledgmentsForSubmission(facilityId: string, submissionId: string) {

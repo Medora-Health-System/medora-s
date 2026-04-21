@@ -11,6 +11,7 @@ import { X12EnvelopeBuilderService } from "../billing/x12-envelope-builder.servi
 import { ClaimSubmissionService } from "../billing/claim-submission.service";
 import { ClaimTransmissionService } from "../billing/claim-transmission.service";
 import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
+import { ClearinghouseTransportFactory } from "../billing/clearinghouse-transport.factory";
 
 @Module({
   imports: [PrismaModule],
@@ -24,6 +25,7 @@ import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.serv
     ClaimControlNumberService,
     X12EnvelopeBuilderService,
     ClaimSubmissionService,
+    ClearinghouseTransportFactory,
     ClaimTransmissionService,
     ClaimAcknowledgmentService,
   ],

@@ -1,18 +1,21 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ClaimSubmissionStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { scrubRecordForPersistence } from "./clearinghouse-audit.util";
 import {
-  ClearinghouseTransport,
-  ManualClearinghouseTransport,
-  StubApiClearinghouseTransport,
-} from "./clearinghouse-transport.interface";
+  getClearinghousePublicConfigStatus,
+  loadClearinghouseConfig,
+} from "./clearinghouse-config.util";
+import type { ClearinghouseTransportHint } from "./clearinghouse-config.util";
+import type { ClearinghouseTransport } from "./clearinghouse-transport.interface";
+import { ClearinghouseTransportFactory } from "./clearinghouse-transport.factory";
 import {
   isTerminalSubmissionStatus,
   nextStatusAfterSuccessfulSend,
   SubmissionTransitionReasonCode,
 } from "./claim-submission-state-machine.util";
 
-export type TransportKind = "MANUAL" | "STUB_API";
+export type TransportKind = ClearinghouseTransportHint;
 
 function sendSkipReason(current: ClaimSubmissionStatus): SubmissionTransitionReasonCode {
   if (isTerminalSubmissionStatus(current)) {
@@ -35,14 +38,21 @@ function lifecycleReasonFromParsedJson(parsedJson: Prisma.JsonValue | null): str
 
 @Injectable()
 export class ClaimTransmissionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clearinghouseTransportFactory: ClearinghouseTransportFactory
+  ) {}
 
-  private buildTransport(kind: TransportKind): ClearinghouseTransport {
-    return kind === "STUB_API" ? new StubApiClearinghouseTransport() : new ManualClearinghouseTransport();
+  getClearinghouseConfigStatus() {
+    return getClearinghousePublicConfigStatus();
+  }
+
+  private resolveTransport(kind: TransportKind): ClearinghouseTransport {
+    return this.clearinghouseTransportFactory.resolve(kind);
   }
 
   async sendSubmissionBatch(facilityId: string, batchId: string, transportKind: TransportKind = "MANUAL") {
-    const transport = this.buildTransport(transportKind);
+    const transport = this.resolveTransport(transportKind);
     const batch = await this.prisma.claimSubmissionBatch.findFirst({
       where: { id: batchId, facilityId },
       include: { submissions: true },
@@ -52,11 +62,16 @@ export class ClaimTransmissionService {
     for (const s of batch.submissions) {
       out.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false }));
     }
-    return { batchId, transport: transport.key, results: out };
+    return {
+      batchId,
+      transport: transport.key,
+      clearinghouse: getClearinghousePublicConfigStatus(),
+      results: out,
+    };
   }
 
   async sendEncounterSubmissions(facilityId: string, encounterId: string, transportKind: TransportKind = "MANUAL") {
-    const transport = this.buildTransport(transportKind);
+    const transport = this.resolveTransport(transportKind);
     const submissions = await this.prisma.claimSubmission.findMany({
       where: { facilityId, encounterId },
       orderBy: { createdAt: "asc" },
@@ -65,7 +80,13 @@ export class ClaimTransmissionService {
     for (const s of submissions) {
       results.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false }));
     }
-    return { facilityId, encounterId, transport: transport.key, results };
+    return {
+      facilityId,
+      encounterId,
+      transport: transport.key,
+      clearinghouse: getClearinghousePublicConfigStatus(),
+      results,
+    };
   }
 
   async getSubmissionLifecycleDebug(facilityId: string, submissionId: string) {
@@ -165,6 +186,8 @@ export class ClaimTransmissionService {
     if (!submission.batchId) throw new BadRequestException("Submission has no batch");
     if (!submission.x12Text?.trim()) throw new BadRequestException("Submission has no x12 text");
 
+    const cfgSnapshot = loadClearinghouseConfig();
+
     if (!opts.allowNonReady && submission.status !== ClaimSubmissionStatus.READY_TO_SEND) {
       const skipReason = sendSkipReason(submission.status);
       await this.prisma.claimSubmissionAttempt.create({
@@ -172,8 +195,13 @@ export class ClaimTransmissionService {
           submissionId,
           transport: transport.key,
           ok: false,
-          requestMetaJson: { skipped: true, reason: skipReason },
-          responseMetaJson: { currentStatus: submission.status },
+          requestMetaJson: scrubRecordForPersistence({
+            skipped: true,
+            reason: skipReason,
+            clearinghouseMode: cfgSnapshot.mode,
+            transportHint: transport.key,
+          }) as Prisma.InputJsonValue,
+          responseMetaJson: scrubRecordForPersistence({ currentStatus: submission.status }) as Prisma.InputJsonValue,
           errorMessage: skipReason,
         },
       });
@@ -189,13 +217,23 @@ export class ClaimTransmissionService {
       transactionCtrl: submission.transactionCtrl,
     });
 
+    const rawRequest = {
+      ...result.requestMeta,
+      clearinghouseMode: cfgSnapshot.mode,
+      transportHint: transport.key,
+    };
+    const rawResponse = {
+      ...result.responseMeta,
+      ...(result.transportMeta ? { transportMeta: result.transportMeta } : {}),
+    };
+
     const attempt = await this.prisma.claimSubmissionAttempt.create({
       data: {
         submissionId,
         transport: transport.key,
         ok: result.ok,
-        requestMetaJson: result.requestMeta as Prisma.InputJsonValue,
-        responseMetaJson: result.responseMeta as Prisma.InputJsonValue,
+        requestMetaJson: scrubRecordForPersistence(rawRequest) as Prisma.InputJsonValue,
+        responseMetaJson: scrubRecordForPersistence(rawResponse) as Prisma.InputJsonValue,
         errorMessage: result.errorMessage ?? null,
       },
     });
