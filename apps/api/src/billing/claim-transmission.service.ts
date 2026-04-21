@@ -68,6 +68,45 @@ export class ClaimTransmissionService {
     });
   }
 
+  async getEncounterSubmissionDebug(facilityId: string, encounterId: string) {
+    const submissions = await this.prisma.claimSubmission.findMany({
+      where: { facilityId, encounterId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        attempts: { orderBy: { createdAt: "desc" } },
+        acknowledgments: { orderBy: { receivedAt: "desc" } },
+      },
+    });
+
+    return {
+      encounterId,
+      submissions: submissions.map((s) => ({
+        submissionId: s.id,
+        type: s.claimType === "PROFESSIONAL_837P" ? "837P" : "837I",
+        status: s.status,
+        createdAt: s.createdAt,
+        attempts: s.attempts.map((a) => ({
+          attemptId: a.id,
+          transport: a.transport,
+          status: a.ok ? "OK" : "FAILED",
+          createdAt: a.createdAt,
+          payloadSize:
+            a.requestMetaJson && typeof a.requestMetaJson === "object" && "bytes" in (a.requestMetaJson as Record<string, unknown>)
+              ? Number((a.requestMetaJson as Record<string, unknown>).bytes ?? 0)
+              : 0,
+          errorMessage: a.errorMessage,
+        })),
+        acknowledgments: s.acknowledgments.map((ack) => ({
+          ackId: ack.id,
+          type: ack.kind,
+          status: ack.statusCode,
+          receivedAt: ack.receivedAt,
+          rawSummary: ack.rawText.slice(0, 140),
+        })),
+      })),
+    };
+  }
+
   private async sendOneSubmission(
     submissionId: string,
     transport: ClearinghouseTransport,

@@ -392,6 +392,9 @@ export default {
     submissionAcknowledgments: "Acknowledgments",
     submissionNoAcknowledgmentYet: "No acknowledgment yet.",
     submissionExternalReference: "External reference",
+    submissionTimelineTitle: "Submission timeline",
+    submissionLastAttemptStatus: "Last attempt status",
+    submissionAckStatus: "ACK status",
     x12Warning_X12_837P_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY:
       "837P preview is a flat scaffold only — loops and payer context are incomplete.",
     x12Warning_X12_PATIENT_NAME_FALLBACK_ID: "Patient name defaulted in preview because demographics were unavailable.",

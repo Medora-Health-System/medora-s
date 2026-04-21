@@ -202,6 +202,7 @@ type SubmissionAttemptPayload = {
   id: string;
   transport: string;
   ok: boolean;
+  status?: string;
   errorMessage: string | null;
   createdAt: string;
 };
@@ -212,6 +213,18 @@ type SubmissionAckPayload = {
   statusCode: string | null;
   message: string | null;
   receivedAt: string;
+};
+
+type SubmissionDebugPayload = {
+  encounterId: string;
+  submissions: {
+    submissionId: string;
+    type: "837P" | "837I";
+    status: string;
+    createdAt: string;
+    attempts: SubmissionAttemptPayload[];
+    acknowledgments: SubmissionAckPayload[];
+  }[];
 };
 
 type SummaryPayload = {
@@ -389,6 +402,7 @@ export default function BillingEncounterLedgerPage() {
   const [expandedSubmissionLoading, setExpandedSubmissionLoading] = useState<string | null>(null);
   const [submissionAttempts, setSubmissionAttempts] = useState<Record<string, SubmissionAttemptPayload[]>>({});
   const [submissionAcks, setSubmissionAcks] = useState<Record<string, SubmissionAckPayload[]>>({});
+  const [submissionDebug, setSubmissionDebug] = useState<SubmissionDebugPayload | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -436,9 +450,12 @@ export default function BillingEncounterLedgerPage() {
       if (submissionsOutcome.status === "fulfilled" && Array.isArray(submissionsOutcome.value)) {
         setClaimSubmissions(submissionsOutcome.value as ClaimSubmissionListItemPayload[]);
         setSubmissionListErr(null);
+        const dbg = await apiFetch(`/billing/encounters/${encounterId}/submission-debug`, { facilityId });
+        if (dbg && typeof dbg === "object") setSubmissionDebug(dbg as SubmissionDebugPayload);
       } else {
         setClaimSubmissions([]);
         setSubmissionListErr(t("billingPage.submissionListLoadErr"));
+        setSubmissionDebug(null);
       }
     } catch {
       setData(null);
@@ -447,6 +464,7 @@ export default function BillingEncounterLedgerPage() {
       setClaimX12(null);
       setClaimSubmissions([]);
       setSubmissionListErr(null);
+      setSubmissionDebug(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -1596,6 +1614,31 @@ export default function BillingEncounterLedgerPage() {
               </ul>
             )}
           </div>
+
+          {submissionDebug ? (
+            <div style={{ marginBottom: 20, padding: 16, borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff" }}>
+              <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>{t("billingPage.submissionTimelineTitle")}</h2>
+              {submissionDebug.submissions.length === 0 ? (
+                <div style={{ fontSize: 13, color: "#64748b" }}>{t("billingPage.submissionNoArtifact")}</div>
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {submissionDebug.submissions.map((s) => (
+                    <div key={s.submissionId} style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: 10 }}>
+                      <div style={{ fontSize: 13 }}>
+                        <strong>{s.type}</strong> · {submissionStatusLabel(t, s.status)}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>
+                        {new Date(s.createdAt).toLocaleString(locale)} · {t("billingPage.submissionAttempts")}: {s.attempts.length}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#475569" }}>
+                        {t("billingPage.submissionLastAttemptStatus")}: {s.attempts[0]?.status ?? "—"} · {t("billingPage.submissionAckStatus")}: {s.acknowledgments[0]?.statusCode ?? t("billingPage.submissionNoAcknowledgmentYet")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
 
           <div
             style={{

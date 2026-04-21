@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { QueuesService } from "./queues.service";
@@ -100,6 +100,13 @@ export class QueuesController {
     return this.claimSubmissionService.listSubmissionsForEncounter(facilityId, encounterId);
   }
 
+  @Get("billing/encounters/:encounterId/submission-debug")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getEncounterSubmissionDebug(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimTransmissionService.getEncounterSubmissionDebug(facilityId, encounterId);
+  }
+
   @Get("billing/submissions/:submissionId")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getClaimSubmission(@Param("submissionId") submissionId: string, @Req() req: any) {
@@ -137,6 +144,33 @@ export class QueuesController {
       rawText: body.rawText,
       kind: body.kind,
       refs: body.refs,
+    });
+  }
+
+  @Post("billing/submissions/:submissionId/simulate-ack")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async simulateAcknowledgment(
+    @Param("submissionId") submissionId: string,
+    @Body() body: { type: "999" | "277CA"; status: "ACCEPTED" | "REJECTED" },
+    @Req() req: any
+  ) {
+    if (process.env.NODE_ENV === "production") {
+      throw new BadRequestException("simulate-ack disabled in production");
+    }
+    const facilityId = req.facilityId;
+    const submission = await this.claimSubmissionService.getSubmissionById(facilityId, submissionId);
+    const ackType = body.type;
+    const accepted = body.status === "ACCEPTED";
+    const rawText =
+      ackType === "999"
+        ? `ST*999*0001~AK2*837*${submission.transactionCtrl ?? "000000001"}~IK5*${accepted ? "A" : "R"}~AK9*${accepted ? "A" : "R"}~SE*5*0001~`
+        : `ST*277*0001~TRN*2*${submission.transactionCtrl ?? "000000001"}~STC*${accepted ? "A1:20" : "A3:21"}~SE*4*0001~`;
+
+    return this.claimAcknowledgmentService.ingestAcknowledgment({
+      facilityId,
+      rawText,
+      kind: ackType,
+      refs: { submissionId, transactionCtrl: submission.transactionCtrl ?? undefined, batchId: submission.batchId ?? undefined },
     });
   }
 
