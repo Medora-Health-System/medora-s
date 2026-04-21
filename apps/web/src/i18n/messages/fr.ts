@@ -232,7 +232,10 @@ export default {
     billingAdvancedJsonShow: "Afficher l’éditeur JSON",
     billingAdvancedJsonHide: "Masquer l’éditeur JSON",
     claimPreviewTitle: "Aperçu des réclamations",
+    claimReviewSectionTitle: "Revue de la réclamation",
+    claimReviewSectionSubtitle: "Validation et lignes CPT / HCPCS assemblées par forfait (lecture seule).",
     claimPreviewSubtitle: "Lignes CPT / HCPCS structurées par forfait (lecture seule).",
+    claimPreviewAssembledLinesTitle: "Lignes assemblées",
     claimPreviewProfessionalLines: "Lignes professionnelles",
     claimPreviewFacilityLines: "Lignes établissement",
     claimPreviewSummaryTotalLines: "Total des lignes",
@@ -255,7 +258,7 @@ export default {
       "Toutes les lignes établissement figurent aussi sous Professionnel (les deux forfaits). Aucune ligne distincte à afficher.",
     claimPreviewTableMerged: "Fusion",
     claimPreviewMergedCount: "{count}×",
-    claimPreviewEncounterValidationTitle: "Validation de la réclamation (visite)",
+    claimPreviewEncounterValidationTitle: "Validation de la réclamation",
     claimPreviewValidationStatus: "État",
     claimPreviewValidationBlockers: "Blocages",
     claimPreviewValidationWarnings: "Avertissements",
@@ -281,6 +284,26 @@ export default {
       "Aucune ligne de réclamation assemblée alors que des lignes actives existent au registre.",
     claimValidation_SUPPRESSED_LINES_PRESENT:
       "Certaines lignes de facturation ont été supprimées lors de l’assemblage (par exemple, des lignes E/M dupliquées).",
+    claimValidation_E_M_MISSING_FOR_PROFESSIONAL_PACKAGE:
+      "Le forfait professionnel comporte des lignes de procédure ou de médicament mais aucune ligne E/M de visite dans cet aperçu.",
+    claimValidation_E_M_MULTIPLE_VISIBLE:
+      "Plus d’une ligne E/M reste visible dans ce forfait après assemblage (situation inattendue).",
+    claimValidation_E_M_LEVEL_SUSPECT:
+      "Plusieurs codes de procédure E/M différents figurent au registre pour cette visite — vérifier la cohérence.",
+    claimValidation_MODIFIER_POTENTIALLY_REQUIRED:
+      "Au moins une ligne résulte de la fusion de plusieurs lignes identiques au registre — vérifier si des modificateurs sont nécessaires.",
+    claimValidation_PROCEDURE_WITHOUT_DIAGNOSIS_LINK:
+      "Des lignes de procédure ou techniques sont présentes mais aucun code de diagnostic n’a été trouvé sur le registre pour cette visite.",
+    claimValidation_FACILITY_PACKAGE_WITHOUT_TECHNICAL_LINES:
+      "Des lignes codées au périmètre établissement existent au registre mais le forfait établissement n’a aucune ligne assemblée (sans blocage « code manquant »).",
+    claimValidation_PROFESSIONAL_PACKAGE_WITHOUT_PROFESSIONAL_LINES:
+      "Des lignes codées au périmètre professionnel existent au registre mais le forfait professionnel n’a aucune ligne assemblée (sans blocage « code manquant »).",
+    claimValidation_MED_ADMIN_ROUTE_MISSING_FOR_ADMIN_CPT:
+      "L’administration médicamenteuse a un CPT de procédure au registre et des métadonnées structurées, mais la voie est vide — à vérifier.",
+    claimValidation_CLAIM_PACKAGE_INCONSISTENT:
+      "Des lignes de réclamation sont assemblées alors que certaines lignes du registre n’ont toujours pas de code mappable — vérifier le routage et le codage.",
+    claimValidation_ENCOUNTER_BILLING_SIDE_MIX_REVIEW:
+      "Cette visite mélange des lignes « les deux forfaits » et « côté inconnu » — vérifier l’affectation aux forfaits.",
     claimWarning_MISSING_BILLABLE_CODES: "Code facturable manquant (forfait ou visite).",
     claimWarning_NO_CLAIM_LINES: "Aucune ligne CPT/HCPCS dans ce forfait.",
     claimWarning_BOTH_SIDE_UNCODED: "Au moins une ligne « les deux forfaits » n’a pas de code mappable.",

@@ -308,7 +308,10 @@ export default {
     billingAdvancedJsonShow: "Show JSON editor",
     billingAdvancedJsonHide: "Hide JSON editor",
     claimPreviewTitle: "Claim preview",
+    claimReviewSectionTitle: "Claim review",
+    claimReviewSectionSubtitle: "Validation and read-only assembled CPT / HCPCS lines by package.",
     claimPreviewSubtitle: "Structured CPT / HCPCS lines by package (read-only).",
+    claimPreviewAssembledLinesTitle: "Assembled lines",
     claimPreviewProfessionalLines: "Professional lines",
     claimPreviewFacilityLines: "Facility lines",
     claimPreviewSummaryTotalLines: "Total lines",
@@ -331,7 +334,7 @@ export default {
       "All facility lines also appear under Professional (both packages). No separate facility rows to show.",
     claimPreviewTableMerged: "Merged",
     claimPreviewMergedCount: "{count}×",
-    claimPreviewEncounterValidationTitle: "Encounter claim validation",
+    claimPreviewEncounterValidationTitle: "Claim validation",
     claimPreviewValidationStatus: "Status",
     claimPreviewValidationBlockers: "Blockers",
     claimPreviewValidationWarnings: "Warnings",
@@ -357,6 +360,26 @@ export default {
       "No claim lines were assembled even though active ledger rows exist.",
     claimValidation_SUPPRESSED_LINES_PRESENT:
       "Some billing lines were suppressed during claim assembly (for example, duplicate E/M lines).",
+    claimValidation_E_M_MISSING_FOR_PROFESSIONAL_PACKAGE:
+      "Professional package has procedure or medication lines but no encounter E/M line in this preview.",
+    claimValidation_E_M_MULTIPLE_VISIBLE:
+      "More than one E/M line remains visible in this package after assembly (unexpected).",
+    claimValidation_E_M_LEVEL_SUSPECT:
+      "Multiple different E/M procedure codes exist on the ledger for this encounter — review for consistency.",
+    claimValidation_MODIFIER_POTENTIALLY_REQUIRED:
+      "At least one line was merged from multiple identical ledger rows — review whether modifiers are needed.",
+    claimValidation_PROCEDURE_WITHOUT_DIAGNOSIS_LINK:
+      "Procedure or technical lines are present but no diagnosis codes were found on any ledger row for this encounter.",
+    claimValidation_FACILITY_PACKAGE_WITHOUT_TECHNICAL_LINES:
+      "Facility-scoped coded ledger rows exist but the facility package has no assembled lines (and no missing-code blocker).",
+    claimValidation_PROFESSIONAL_PACKAGE_WITHOUT_PROFESSIONAL_LINES:
+      "Professional-scoped coded ledger rows exist but the professional package has no assembled lines (and no missing-code blocker).",
+    claimValidation_MED_ADMIN_ROUTE_MISSING_FOR_ADMIN_CPT:
+      "Medication administration has a procedure CPT on the ledger and structured metadata, but route is empty — review.",
+    claimValidation_CLAIM_PACKAGE_INCONSISTENT:
+      "Claim lines were assembled while some billing-side rows still lack mappable codes — review routing and coding.",
+    claimValidation_ENCOUNTER_BILLING_SIDE_MIX_REVIEW:
+      "This encounter mixes BOTH-side and UNKNOWN-side billing rows — review package assignment.",
     claimWarning_MISSING_BILLABLE_CODES: "Missing billable code (package or encounter).",
     claimWarning_NO_CLAIM_LINES: "No CPT/HCPCS lines in this package.",
     claimWarning_BOTH_SIDE_UNCODED: "At least one BOTH-side ledger row has no mappable code.",

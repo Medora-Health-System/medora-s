@@ -100,6 +100,13 @@ type ClaimPackageValidationPayload = {
 };
 
 type ClaimEncounterValidationPayload = {
+  meta?: {
+    visibleEncounterEmCountProfessional: number;
+    visibleEncounterEmCountFacility: number;
+    diagnosisLinked: boolean;
+    professionalLineCount: number;
+    facilityLineCount: number;
+  };
   summary: {
     ready: boolean;
     blockers: ClaimValidationIssuePayload[];
@@ -613,8 +620,8 @@ export default function BillingEncounterLedgerPage() {
                 background: "#fff",
               }}
             >
-              <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.claimPreviewTitle")}</h2>
-              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewSubtitle")}</p>
+              <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.claimReviewSectionTitle")}</h2>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.claimReviewSectionSubtitle")}</p>
               {claimAssembly.validation ? (
                 <div
                   style={{
@@ -658,6 +665,16 @@ export default function BillingEncounterLedgerPage() {
                   ) : null}
                 </div>
               ) : null}
+              <div
+                style={{
+                  marginTop: 14,
+                  paddingTop: 14,
+                  borderTop: "1px solid #e8ecf0",
+                }}
+              >
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "#475569" }}>
+                  {t("billingPage.claimPreviewAssembledLinesTitle")}
+                </div>
               <div
                 style={{
                   display: "flex",
@@ -852,6 +869,7 @@ export default function BillingEncounterLedgerPage() {
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             </div>
           ) : null}

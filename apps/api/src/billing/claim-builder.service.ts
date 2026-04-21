@@ -18,7 +18,9 @@ import {
 
 export type {
   ClaimEncounterValidation,
+  ClaimEncounterValidationMeta,
   ClaimPackageInput,
+  ClaimValidationLineRef,
   ClaimValidationIssue,
   ClaimValidationIssueCode,
   ClaimPackageValidation,
@@ -377,8 +379,22 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
   const validation = buildEncounterClaimValidation(
     active,
     omitFromClaimAssembly,
-    professional,
-    facility,
+    {
+      ...professional,
+      claimLines: profLines.map((l) => ({
+        sourceModule: l.sourceModule as string,
+        code: l.code,
+        mergedFromCount: l.mergedFromCount,
+      })),
+    },
+    {
+      ...facility,
+      claimLines: facLines.map((l) => ({
+        sourceModule: l.sourceModule as string,
+        code: l.code,
+        mergedFromCount: l.mergedFromCount,
+      })),
+    },
     summaryMissing,
     ctx
   );
