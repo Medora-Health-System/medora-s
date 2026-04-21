@@ -268,18 +268,18 @@ export class ClaimSubmissionService {
       throw new BadRequestException("No claim export packages available for submission preview");
     }
 
-    const interchangeCtrl = await this.controlNumbers.nextNineDigitControl();
+    const interchangeCtrl = await this.controlNumbers.nextNineDigitControl(facilityId, "ISA");
     const groupCount = (hasProf ? 1 : 0) + (hasFac ? 1 : 0);
     const groupControls: string[] = [];
     for (let i = 0; i < groupCount; i++) {
-      groupControls.push(await this.controlNumbers.nextNineDigitControl());
+      groupControls.push(await this.controlNumbers.nextNineDigitControl(facilityId, "GS"));
     }
 
     const txs: EnvelopeTransactionInput[] = [];
     const txCtrls: string[] = [];
 
     if (hasProf) {
-      txCtrls.push(await this.controlNumbers.nextNineDigitControl());
+      txCtrls.push(await this.controlNumbers.nextNineDigitControl(facilityId, "ST"));
       txs.push({
         kind: "837P",
         segments: x12Preview.professional!.segments,
@@ -287,7 +287,7 @@ export class ClaimSubmissionService {
       });
     }
     if (hasFac) {
-      txCtrls.push(await this.controlNumbers.nextNineDigitControl());
+      txCtrls.push(await this.controlNumbers.nextNineDigitControl(facilityId, "ST"));
       txs.push({
         kind: "837I",
         segments: x12Preview.facility!.segments,

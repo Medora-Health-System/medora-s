@@ -332,6 +332,7 @@ model Facility {
   billingEvents              BillingEvent[]
   claimSubmissionBatches     ClaimSubmissionBatch[]
   claimSubmissions           ClaimSubmission[]
+  claimControlCounters       ClaimControlCounter[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -1682,10 +1683,19 @@ model MsppUserRoleAssignment {
   @@index([userId, role, allGeoDepartments])
 }
 
-/// Monotonic counter for X12 control numbers (Phase 6.2). Single row `default`.
+/// Per-facility monotonic sequences for X12 control numbers (ISA / GS / ST, etc.).
 model ClaimControlCounter {
-  id    String @id @default("default")
-  value BigInt @default(0)
+  id         String   @id @default(cuid())
+  facilityId String
+  /// ISA | GS | ST — extensible string discriminator
+  type       String
+  lastValue  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@unique([facilityId, type])
 }
 
 /// One interchange envelope batch (ISA/IEA) — may contain multiple GS groups / ST sets.
