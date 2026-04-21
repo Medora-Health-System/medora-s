@@ -1,2 +1,4 @@
--- AlterTable
-ALTER TABLE "BillingEvent" ALTER COLUMN "updatedAt" DROP DEFAULT;
+-- Intentionally left empty.
+-- This migration was superseded because its original timestamp preceded
+-- billing tables it depended on. Fresh databases receive the actual
+-- schema changes in a later migration (20260430160000_claim_submission_transport_phase63_reordered).
