@@ -498,6 +498,8 @@ export type OrderCancelDto = z.infer<typeof orderCancelDtoSchema>;
 export const medicationAdministrationCreateDtoSchema = z.object({
   orderItemId: z.string().uuid().optional(),
   administeredAt: z.coerce.date().optional(),
+  /// Route at administration (IV, IM, SQ, PO, etc.); optional, preferred for billing CPT inference over catalog.
+  route: z.preprocess(emptyStrToUndefined, z.string().trim().max(128).optional()),
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
 });
 

@@ -258,6 +258,7 @@ export function MedicationAdministrationTab({
       const body: Record<string, unknown> = {
         orderItemId,
         administeredAt: new Date().toISOString(),
+        ...(routeLine ? { route: routeLine } : {}),
         notes: buildMarNotes(modalAction, routeLine, modalNotes, t),
       };
       const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {

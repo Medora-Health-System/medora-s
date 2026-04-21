@@ -1248,6 +1248,8 @@ model MedicationAdministration {
   encounterId             String
   orderItemId             String?
   medicationLabelSnapshot String?
+  /// Route as documented at administration time (e.g. IV, IM, SQ, PO); preferred over catalog for billing CPT inference.
+  route                   String?
   administeredAt          DateTime @default(now())
   administeredByUserId    String
   notes                   String?

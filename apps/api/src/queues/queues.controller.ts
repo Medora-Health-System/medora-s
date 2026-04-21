@@ -2,12 +2,16 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nest
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { QueuesService } from "./queues.service";
+import { ClaimBuilderService } from "../billing/claim-builder.service";
 import { RoleCode, OrderStatus } from "@prisma/client";
 
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class QueuesController {
-  constructor(private readonly queuesService: QueuesService) {}
+  constructor(
+    private readonly queuesService: QueuesService,
+    private readonly claimBuilderService: ClaimBuilderService
+  ) {}
 
   @Get("radiology/queue")
   @RequireRoles(RoleCode.RADIOLOGY, RoleCode.ADMIN)
@@ -49,6 +53,13 @@ export class QueuesController {
   async getEncounterBillingReadiness(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.queuesService.getEncounterBillingReadiness(facilityId, encounterId);
+  }
+
+  @Get("billing/encounters/:encounterId/claims")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getEncounterClaimAssembly(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimBuilderService.buildEncounterClaims(facilityId, encounterId);
   }
 
   @Post("billing/encounters/:encounterId/finalize")

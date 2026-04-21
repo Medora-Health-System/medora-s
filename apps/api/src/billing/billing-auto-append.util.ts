@@ -424,7 +424,10 @@ export async function tryAutoMedicationAdministrationBilling(
       return;
     }
 
-    const adminCptInf = inferMedicationAdministrationCpt({ route: cat?.route ?? null });
+    const adminCptInf = inferMedicationAdministrationCpt({
+      administrationRoute: adm.route ?? null,
+      catalogRoute: cat?.route ?? null,
+    });
 
     await appendFromMapping(prisma, {
       facilityId: input.facilityId,

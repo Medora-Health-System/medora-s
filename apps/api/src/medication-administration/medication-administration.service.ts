@@ -116,6 +116,7 @@ export class MedicationAdministrationService {
           encounterId,
           orderItemId,
           medicationLabelSnapshot,
+          route: data.route?.trim() ? data.route.trim() : null,
           administeredAt: data.administeredAt ?? new Date(),
           administeredByUserId,
           notes: data.notes?.trim() ? data.notes.trim() : null,

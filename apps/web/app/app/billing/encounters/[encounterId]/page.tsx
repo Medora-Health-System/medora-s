@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
@@ -64,6 +64,34 @@ type ReadinessPayload = {
   };
 };
 
+type ClaimAssemblyLineRow = {
+  code: string;
+  codeType: string;
+  description: string;
+  sourceModule: string;
+  quantity: number;
+  unitPrice?: number;
+  /** professional | facility | both — both-package lines may be deduped in the facility table */
+  originSide?: "professional" | "facility" | "both";
+};
+
+type ClaimPackageAssembly = {
+  lines: ClaimAssemblyLineRow[];
+  totalLines: number;
+  missingCodes: number;
+  ready: boolean;
+};
+
+type ClaimAssemblyPayload = {
+  professional: ClaimPackageAssembly;
+  facility: ClaimPackageAssembly;
+  summary: {
+    totalLines: number;
+    missingCodes: number;
+    ready: boolean;
+  };
+};
+
 type SummaryPayload = {
   encounter: {
     id: string;
@@ -97,6 +125,21 @@ type LineDraft = {
   modifier2: string;
   serviceDateIso: string;
 };
+
+function claimAssemblyLineDedupeKey(row: ClaimAssemblyLineRow): string {
+  return [row.code, row.codeType, row.sourceModule, String(row.quantity), row.description, row.unitPrice ?? ""].join("\0");
+}
+
+/** Facility table: hide rows that duplicate a `both`-routed line already shown under Professional (same line content). */
+function facilityClaimLinesForDisplay(prof: ClaimAssemblyLineRow[], fac: ClaimAssemblyLineRow[]): ClaimAssemblyLineRow[] {
+  const bothProfKeys = new Set(
+    prof.filter((r) => r.originSide === "both").map((r) => claimAssemblyLineDedupeKey(r))
+  );
+  return fac.filter((row) => {
+    if (row.originSide !== "both") return true;
+    return !bothProfKeys.has(claimAssemblyLineDedupeKey(row));
+  });
+}
 
 function billingPageKey(t: (k: string) => string, suffix: string): string {
   const k = `billingPage.${suffix}`;
@@ -157,6 +200,7 @@ export default function BillingEncounterLedgerPage() {
   const [advancedLoading, setAdvancedLoading] = useState(false);
   const [advancedSaving, setAdvancedSaving] = useState(false);
   const [advancedErr, setAdvancedErr] = useState<string | null>(null);
+  const [claimAssembly, setClaimAssembly] = useState<ClaimAssemblyPayload | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -167,12 +211,25 @@ export default function BillingEncounterLedgerPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = (await apiFetch(`/billing/encounters/${encounterId}/summary`, {
-        facilityId,
-      })) as SummaryPayload;
-      setData(res);
+      const [summaryOutcome, claimsOutcome] = await Promise.allSettled([
+        apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
+        apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
+      ]);
+      if (summaryOutcome.status === "rejected") {
+        setData(null);
+        setClaimAssembly(null);
+        setError(t("billingPage.billingSummaryLoadError"));
+        return;
+      }
+      setData(summaryOutcome.value as SummaryPayload);
+      if (claimsOutcome.status === "fulfilled" && claimsOutcome.value && typeof claimsOutcome.value === "object") {
+        setClaimAssembly(claimsOutcome.value as ClaimAssemblyPayload);
+      } else {
+        setClaimAssembly(null);
+      }
     } catch {
       setData(null);
+      setClaimAssembly(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -353,6 +410,25 @@ export default function BillingEncounterLedgerPage() {
     (wf === "NOT_READY" || wf === "READY_FOR_REVIEW" || wf === "REOPENED");
   const showReopen = canFinalizeBilling && wf === "FINALIZED";
 
+  const facilityClaimPreviewLines = useMemo(
+    () =>
+      claimAssembly
+        ? facilityClaimLinesForDisplay(claimAssembly.professional.lines, claimAssembly.facility.lines)
+        : [],
+    [claimAssembly]
+  );
+  const omittedBothFacilityLineCount =
+    claimAssembly && claimAssembly.facility.lines.length > 0
+      ? claimAssembly.facility.lines.length - facilityClaimPreviewLines.length
+      : 0;
+
+  const claimPreviewOriginLabel = useCallback((originSide: ClaimAssemblyLineRow["originSide"]) => {
+    if (originSide === "both") return t("billingPage.claimPreviewOriginBoth");
+    if (originSide === "professional") return t("billingPage.claimPreviewOriginProfessional");
+    if (originSide === "facility") return t("billingPage.claimPreviewOriginFacility");
+    return "—";
+  }, [t]);
+
   const billingSides = ["UNKNOWN", "PROFESSIONAL", "FACILITY", "BOTH"] as const;
   const reviewStatuses = ["CAPTURED", "REVIEWED", "VOIDED", "SKIPPED"] as const;
 
@@ -480,6 +556,136 @@ export default function BillingEncounterLedgerPage() {
               </div>
             </div>
           </div>
+
+          {claimAssembly ? (
+            <div
+              style={{
+                marginBottom: 20,
+                padding: 16,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#fff",
+              }}
+            >
+              <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.claimPreviewTitle")}</h2>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewSubtitle")}</p>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  marginBottom: 12,
+                  fontSize: 13,
+                  color: "#334155",
+                }}
+              >
+                <span>
+                  <strong>{t("billingPage.claimPreviewSummaryTotalLines")}:</strong> {claimAssembly.summary.totalLines}
+                </span>
+                <span aria-hidden style={{ color: "#cbd5e1" }}>
+                  ·
+                </span>
+                <span>
+                  <strong>{t("billingPage.claimPreviewSummaryMissing")}:</strong> {claimAssembly.summary.missingCodes}
+                </span>
+                <span aria-hidden style={{ color: "#cbd5e1" }}>
+                  ·
+                </span>
+                <span>
+                  <strong>{t("billingPage.claimPreviewAssemblyLabel")}:</strong>{" "}
+                  {claimAssembly.summary.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+                <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+                    {t("billingPage.claimPreviewProfessionalLines")}{" "}
+                    <span style={{ fontWeight: 400, color: "#64748b" }}>
+                      ({claimAssembly.professional.totalLines} · {claimAssembly.professional.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")})
+                    </span>
+                  </div>
+                  {claimAssembly.professional.lines.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewEmpty")}</p>
+                  ) : (
+                    <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableCode")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableType")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTablePackage")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableModule")}</th>
+                            <th style={{ padding: 8, textAlign: "right" }}>{t("billingPage.claimPreviewTableQty")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableDescription")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {claimAssembly.professional.lines.map((row, i) => (
+                            <tr key={`p-${row.code}-${row.sourceModule}-${i}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                              <td style={{ padding: 8, fontFamily: "monospace" }}>{row.code}</td>
+                              <td style={{ padding: 8 }}>{row.codeType}</td>
+                              <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{claimPreviewOriginLabel(row.originSide)}</td>
+                              <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{row.sourceModule}</td>
+                              <td style={{ padding: 8, textAlign: "right" }}>{row.quantity}</td>
+                              <td style={{ padding: 8, color: "#334155" }}>{row.description || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+                    {t("billingPage.claimPreviewFacilityLines")}{" "}
+                    <span style={{ fontWeight: 400, color: "#64748b" }}>
+                      ({claimAssembly.facility.totalLines} · {claimAssembly.facility.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")})
+                    </span>
+                  </div>
+                  {claimAssembly.facility.lines.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewEmpty")}</p>
+                  ) : facilityClaimPreviewLines.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewAllFacilityDupesUnderProfessional")}</p>
+                  ) : (
+                    <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                      {omittedBothFacilityLineCount > 0 ? (
+                        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+                          {t("billingPage.claimPreviewOmittedBothDuplicates").replace(
+                            "{count}",
+                            String(omittedBothFacilityLineCount)
+                          )}
+                        </p>
+                      ) : null}
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableCode")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableType")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTablePackage")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableModule")}</th>
+                            <th style={{ padding: 8, textAlign: "right" }}>{t("billingPage.claimPreviewTableQty")}</th>
+                            <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableDescription")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facilityClaimPreviewLines.map((row, i) => (
+                            <tr key={`f-${row.code}-${row.sourceModule}-${i}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                              <td style={{ padding: 8, fontFamily: "monospace" }}>{row.code}</td>
+                              <td style={{ padding: 8 }}>{row.codeType}</td>
+                              <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{claimPreviewOriginLabel(row.originSide)}</td>
+                              <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{row.sourceModule}</td>
+                              <td style={{ padding: 8, textAlign: "right" }}>{row.quantity}</td>
+                              <td style={{ padding: 8, color: "#334155" }}>{row.description || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div
             style={{

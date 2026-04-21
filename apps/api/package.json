@@ -21,7 +21,8 @@
     "db:clear:patients": "ts-node --transpile-only scripts/clearPatientData.ts",
     "backfill:mspp-disease-reviews": "ts-node --transpile-only scripts/backfill-mspp-disease-reviews.ts",
     "backfill:billing-events-from-capture": "ts-node --transpile-only scripts/backfill-billing-events-from-capture.ts",
-    "billing:recode-unmapped": "ts-node --transpile-only scripts/recode-unmapped-billing-events.ts"
+    "billing:recode-unmapped": "ts-node --transpile-only scripts/recode-unmapped-billing-events.ts",
+    "backfill:mar-route-from-catalog": "ts-node --transpile-only scripts/backfill-mar-route-from-catalog.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

@@ -99,7 +99,8 @@ export async function recodeBillingEventIfPossible(
 
     let mapping: CatalogBillingMapping | null = null;
     let labelFallback = row.descriptionSnapshot?.trim() || "Billing line";
-    let medAdminCatalogRoute: string | null = null;
+    let marAdministrationRoute: string | null = null;
+    let medCatalogRoute: string | null = null;
 
     switch (row.sourceModule) {
       case BillingSourceModule.DIAGNOSIS:
@@ -189,6 +190,8 @@ export async function recodeBillingEventIfPossible(
         });
         if (!adm?.orderItem || adm.orderItem.catalogItemType !== "MEDICATION") return "skipped";
 
+        marAdministrationRoute = adm.route?.trim() ?? null;
+
         const oi = adm.orderItem;
         labelFallback =
           adm.medicationLabelSnapshot?.trim() || oi.manualLabel?.trim() || labelFallback;
@@ -218,7 +221,7 @@ export async function recodeBillingEventIfPossible(
           if (cat?.code?.trim()) {
             labelFallback = cat.displayNameFr?.trim() || cat.name?.trim() || labelFallback;
           }
-          medAdminCatalogRoute = cat?.route?.trim() ?? null;
+          medCatalogRoute = cat?.route?.trim() ?? null;
         }
 
         const hasMedicationLookup =
@@ -380,12 +383,14 @@ export async function recodeBillingEventIfPossible(
 
     let ledgerFields = buildLedgerFieldsFromMapping(mapping, labelFallback);
     if (
-      medAdminCatalogRoute &&
       (row.sourceModule === BillingSourceModule.MED_ADMIN ||
         row.sourceModule === BillingSourceModule.MEDICATION_ADMINISTRATION) &&
       mapping.system === "HCPCS"
     ) {
-      const admCpt = inferMedicationAdministrationCpt({ route: medAdminCatalogRoute });
+      const admCpt = inferMedicationAdministrationCpt({
+        administrationRoute: marAdministrationRoute,
+        catalogRoute: medCatalogRoute,
+      });
       if (admCpt) {
         ledgerFields = {
           ...ledgerFields,
