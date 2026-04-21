@@ -3,6 +3,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { QueuesService } from "./queues.service";
 import { ClaimBuilderService } from "../billing/claim-builder.service";
+import { ClaimExportService } from "../billing/claim-export.service";
 import { RoleCode, OrderStatus } from "@prisma/client";
 
 @Controller()
@@ -10,7 +11,8 @@ import { RoleCode, OrderStatus } from "@prisma/client";
 export class QueuesController {
   constructor(
     private readonly queuesService: QueuesService,
-    private readonly claimBuilderService: ClaimBuilderService
+    private readonly claimBuilderService: ClaimBuilderService,
+    private readonly claimExportService: ClaimExportService
   ) {}
 
   @Get("radiology/queue")
@@ -60,6 +62,13 @@ export class QueuesController {
   async getEncounterClaimAssembly(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.claimBuilderService.buildEncounterClaims(facilityId, encounterId);
+  }
+
+  @Get("billing/encounters/:encounterId/claim-export")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getEncounterClaimExport(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimExportService.buildEncounterClaimExport(facilityId, encounterId);
   }
 
   @Post("billing/encounters/:encounterId/finalize")

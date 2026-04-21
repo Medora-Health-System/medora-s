@@ -128,6 +128,37 @@ type ClaimAssemblyPayload = {
   validation?: ClaimEncounterValidationPayload;
 };
 
+type ClaimExportHeaderPayload = {
+  encounterId: string;
+  patientId: string;
+  facilityId: string;
+  claimType: "PROFESSIONAL" | "FACILITY";
+  ready: boolean;
+  blockers: string[];
+  warnings: string[];
+  diagnosisCodes: string[];
+  attendingProviderId?: string | null;
+  renderingProviderId?: string | null;
+  serviceStartDate?: string | null;
+  serviceEndDate?: string | null;
+};
+
+type ClaimExportPackagePayload = {
+  header: ClaimExportHeaderPayload;
+  lines: { lineNumber: number; code: string; codeType: string; quantity: number; sourceModule: string }[];
+};
+
+type EncounterClaimExportPayload = {
+  professional: ClaimExportPackagePayload | null;
+  facility: ClaimExportPackagePayload | null;
+  summary: {
+    readyForExport: boolean;
+    blockers: string[];
+    warnings: string[];
+    contextWarnings?: string[];
+  };
+};
+
 type SummaryPayload = {
   encounter: {
     id: string;
@@ -206,6 +237,12 @@ function claimValidationIssueLine(t: (k: string) => string, iss: ClaimValidation
   return base;
 }
 
+function exportContextWarningLabel(t: (k: string) => string, code: string): string {
+  const k = `billingPage.exportContextWarning_${code}`;
+  const v = t(k);
+  return v === k ? code : v;
+}
+
 function readinessLineLabel(
   t: (k: string) => string,
   prefix: "readinessBlocker" | "readinessWarning" | "packageBlocker" | "packageWarning",
@@ -254,23 +291,28 @@ export default function BillingEncounterLedgerPage() {
   const [advancedSaving, setAdvancedSaving] = useState(false);
   const [advancedErr, setAdvancedErr] = useState<string | null>(null);
   const [claimAssembly, setClaimAssembly] = useState<ClaimAssemblyPayload | null>(null);
+  const [claimExport, setClaimExport] = useState<EncounterClaimExportPayload | null>(null);
+  const [showExportJson, setShowExportJson] = useState(false);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
   const canFinalizeBilling = roles.includes("BILLING") || roles.includes("ADMIN");
+  const canViewExportJson = roles.includes("BILLING") || roles.includes("ADMIN");
 
   const load = useCallback(async () => {
     if (!ready || !facilityId) return;
     setLoading(true);
     setError(null);
     try {
-      const [summaryOutcome, claimsOutcome] = await Promise.allSettled([
+      const [summaryOutcome, claimsOutcome, exportOutcome] = await Promise.allSettled([
         apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
         apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
+        apiFetch(`/billing/encounters/${encounterId}/claim-export`, { facilityId }),
       ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
         setClaimAssembly(null);
+        setClaimExport(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -280,9 +322,15 @@ export default function BillingEncounterLedgerPage() {
       } else {
         setClaimAssembly(null);
       }
+      if (exportOutcome.status === "fulfilled" && exportOutcome.value && typeof exportOutcome.value === "object") {
+        setClaimExport(exportOutcome.value as EncounterClaimExportPayload);
+      } else {
+        setClaimExport(null);
+      }
     } catch {
       setData(null);
       setClaimAssembly(null);
+      setClaimExport(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -871,6 +919,145 @@ export default function BillingEncounterLedgerPage() {
                 </div>
               </div>
               </div>
+            </div>
+          ) : null}
+
+          {claimExport ? (
+            <div
+              style={{
+                marginBottom: 20,
+                padding: 16,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#fff",
+              }}
+            >
+              <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.claimExportSectionTitle")}</h2>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.claimExportSectionSubtitle")}</p>
+              <div style={{ fontSize: 13, marginBottom: 10, color: "#334155" }}>
+                <strong>{t("billingPage.claimExportReadyLabel")}:</strong>{" "}
+                {claimExport.summary.readyForExport ? t("billingPage.claimExportReadyYes") : t("billingPage.claimExportReadyNo")}
+              </div>
+              {(claimExport.summary.blockers?.length ?? 0) > 0 ? (
+                <div style={{ fontSize: 12, marginBottom: 8, color: "#9a3412" }}>
+                  <strong>{t("billingPage.claimExportSummaryValidationBlockers")}:</strong> {claimExport.summary.blockers.join(", ")}
+                </div>
+              ) : null}
+              {(claimExport.summary.warnings?.length ?? 0) > 0 ? (
+                <div style={{ fontSize: 12, marginBottom: 8, color: "#1d4ed8" }}>
+                  <strong>{t("billingPage.claimExportSummaryValidationWarnings")}:</strong> {claimExport.summary.warnings.join(", ")}
+                </div>
+              ) : null}
+              {(claimExport.summary.contextWarnings?.length ?? 0) > 0 ? (
+                <div style={{ fontSize: 12, marginBottom: 12, color: "#64748b" }}>
+                  {(claimExport.summary.contextWarnings ?? []).map((cw) => (
+                    <div key={cw}>{exportContextWarningLabel(t, cw)}</div>
+                  ))}
+                </div>
+              ) : null}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13, marginBottom: canViewExportJson ? 10 : 0 }}>
+                <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimExportProfessionalPackage")}</div>
+                  {claimExport.professional ? (
+                    <>
+                      <div>
+                        {t("billingPage.claimExportPackageReady")}:{" "}
+                        {claimExport.professional.header.ready ? t("billingPage.claimExportReadyYes") : t("billingPage.claimExportReadyNo")}
+                      </div>
+                      <div>
+                        {t("billingPage.claimExportLineCount")}: {claimExport.professional.lines.length}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ color: "#64748b" }}>{t("billingPage.claimExportNoPackage")}</div>
+                  )}
+                </div>
+                <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimExportFacilityPackage")}</div>
+                  {claimExport.facility ? (
+                    <>
+                      <div>
+                        {t("billingPage.claimExportPackageReady")}:{" "}
+                        {claimExport.facility.header.ready ? t("billingPage.claimExportReadyYes") : t("billingPage.claimExportReadyNo")}
+                      </div>
+                      <div>
+                        {t("billingPage.claimExportLineCount")}: {claimExport.facility.lines.length}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ color: "#64748b" }}>{t("billingPage.claimExportNoPackage")}</div>
+                  )}
+                </div>
+              </div>
+              {(() => {
+                const dx =
+                  claimExport.professional?.header.diagnosisCodes ??
+                  claimExport.facility?.header.diagnosisCodes ??
+                  [];
+                return dx.length > 0 ? (
+                  <div style={{ fontSize: 12, marginBottom: 10, color: "#334155" }}>
+                    <strong>{t("billingPage.claimExportDiagnosisCodes")}:</strong> {dx.join(", ")}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, marginBottom: 10, color: "#64748b" }}>{t("billingPage.claimExportDiagnosisEmpty")}</div>
+                );
+              })()}
+              <div style={{ fontSize: 12, marginBottom: canViewExportJson ? 8 : 0, color: "#334155" }}>
+                <div>
+                  <strong>{t("billingPage.claimExportAttendingProviderId")}:</strong>{" "}
+                  {claimExport.professional?.header.attendingProviderId ??
+                    claimExport.facility?.header.attendingProviderId ??
+                    t("billingPage.claimExportFieldEmpty")}
+                </div>
+                <div>
+                  <strong>{t("billingPage.claimExportRenderingProviderId")}:</strong>{" "}
+                  {claimExport.professional?.header.renderingProviderId ??
+                    claimExport.facility?.header.renderingProviderId ??
+                    t("billingPage.claimExportFieldEmpty")}
+                </div>
+                <div>
+                  <strong>{t("billingPage.claimExportServiceDates")}:</strong>{" "}
+                  {(claimExport.professional?.header.serviceStartDate ?? claimExport.facility?.header.serviceStartDate) ??
+                    t("billingPage.claimExportFieldEmpty")}
+                  {" · "}
+                  {(claimExport.professional?.header.serviceEndDate ?? claimExport.facility?.header.serviceEndDate) ??
+                    t("billingPage.claimExportFieldEmpty")}
+                </div>
+              </div>
+              {canViewExportJson ? (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowExportJson((v) => !v)}
+                    style={{
+                      fontSize: 12,
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      background: "#f8fafc",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showExportJson ? t("billingPage.claimExportJsonHide") : t("billingPage.claimExportJsonShow")}
+                  </button>
+                  {showExportJson ? (
+                    <pre
+                      style={{
+                        marginTop: 8,
+                        padding: 10,
+                        fontSize: 11,
+                        overflow: "auto",
+                        maxHeight: 280,
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        background: "#f8fafc",
+                      }}
+                    >
+                      {JSON.stringify(claimExport, null, 2)}
+                    </pre>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
 

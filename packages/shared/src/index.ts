@@ -10,5 +10,6 @@ export * from "./erHandoffV1.js";
 export * from "./billingCaptureV1.js";
 export * from "./billingLedgerCoding.js";
 export * from "./billingClaimPackages.js";
+export * from "./billingClaimExport.js";
 export * from "./billingLedgerInferCode.js";
 
