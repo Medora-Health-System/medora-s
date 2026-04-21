@@ -5,6 +5,7 @@ import { QueuesService } from "./queues.service";
 import { ClaimBuilderService } from "../billing/claim-builder.service";
 import { ClaimExportService } from "../billing/claim-export.service";
 import { X12837GeneratorService } from "../billing/x12-837-generator.service";
+import { ClaimSubmissionService } from "../billing/claim-submission.service";
 import { RoleCode, OrderStatus } from "@prisma/client";
 
 @Controller()
@@ -14,7 +15,8 @@ export class QueuesController {
     private readonly queuesService: QueuesService,
     private readonly claimBuilderService: ClaimBuilderService,
     private readonly claimExportService: ClaimExportService,
-    private readonly x12837GeneratorService: X12837GeneratorService
+    private readonly x12837GeneratorService: X12837GeneratorService,
+    private readonly claimSubmissionService: ClaimSubmissionService
   ) {}
 
   @Get("radiology/queue")
@@ -78,6 +80,27 @@ export class QueuesController {
   async getEncounterX12Preview(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.x12837GeneratorService.buildEncounterX12Preview(facilityId, encounterId);
+  }
+
+  @Post("billing/encounters/:encounterId/submission-preview")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async postEncounterSubmissionPreview(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimSubmissionService.createSubmissionBatchForEncounter(facilityId, encounterId);
+  }
+
+  @Get("billing/encounters/:encounterId/submissions")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async listEncounterSubmissions(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimSubmissionService.listSubmissionsForEncounter(facilityId, encounterId);
+  }
+
+  @Get("billing/submissions/:submissionId")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getClaimSubmission(@Param("submissionId") submissionId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimSubmissionService.getSubmissionById(facilityId, submissionId);
   }
 
   @Post("billing/encounters/:encounterId/finalize")

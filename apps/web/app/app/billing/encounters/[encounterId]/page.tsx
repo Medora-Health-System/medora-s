@@ -177,6 +177,26 @@ type EncounterX12ExportPayload = {
   };
 };
 
+type ClaimSubmissionListItemPayload = {
+  id: string;
+  facilityId: string;
+  encounterId: string;
+  claimType: string;
+  status: string;
+  batchId: string | null;
+  transactionCtrl: string | null;
+  warnings: string[];
+  missingFields: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ClaimSubmissionDetailPayload = ClaimSubmissionListItemPayload & {
+  x12Text: string | null;
+  exportJson: unknown;
+  externalReference: string | null;
+};
+
 type SummaryPayload = {
   encounter: {
     id: string;
@@ -279,6 +299,18 @@ function x12CodeLabel(t: (k: string) => string, prefix: "x12Warning" | "x12Missi
   return code;
 }
 
+function submissionStatusLabel(t: (k: string) => string, status: string): string {
+  const k = `billingPage.submissionStatus_${status}`;
+  const v = t(k);
+  return v === k ? status : v;
+}
+
+function claimSubmissionKindLabel(t: (k: string) => string, claimType: string): string {
+  const k = `billingPage.submissionKind_${claimType}`;
+  const v = t(k);
+  return v === k ? claimType : v;
+}
+
 function readinessLineLabel(
   t: (k: string) => string,
   prefix: "readinessBlocker" | "readinessWarning" | "packageBlocker" | "packageWarning",
@@ -331,6 +363,13 @@ export default function BillingEncounterLedgerPage() {
   const [showExportJson, setShowExportJson] = useState(false);
   const [claimX12, setClaimX12] = useState<EncounterX12ExportPayload | null>(null);
   const [showX12Text, setShowX12Text] = useState(false);
+  const [claimSubmissions, setClaimSubmissions] = useState<ClaimSubmissionListItemPayload[]>([]);
+  const [submissionListErr, setSubmissionListErr] = useState<string | null>(null);
+  const [submissionBusy, setSubmissionBusy] = useState(false);
+  const [lastEnvelopePreview, setLastEnvelopePreview] = useState<{ batchId: string; text: string } | null>(null);
+  const [showSubmissionInterchange, setShowSubmissionInterchange] = useState(false);
+  const [expandedSubmissionDetail, setExpandedSubmissionDetail] = useState<ClaimSubmissionDetailPayload | null>(null);
+  const [expandedSubmissionLoading, setExpandedSubmissionLoading] = useState<string | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -342,17 +381,20 @@ export default function BillingEncounterLedgerPage() {
     setLoading(true);
     setError(null);
     try {
-      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome] = await Promise.allSettled([
+      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome, submissionsOutcome] = await Promise.allSettled([
         apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
         apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
         apiFetch(`/billing/encounters/${encounterId}/claim-export`, { facilityId }),
         apiFetch(`/billing/encounters/${encounterId}/x12-preview`, { facilityId }),
+        apiFetch(`/billing/encounters/${encounterId}/submissions`, { facilityId }),
       ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
         setClaimAssembly(null);
         setClaimExport(null);
         setClaimX12(null);
+        setClaimSubmissions([]);
+        setSubmissionListErr(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -372,16 +414,76 @@ export default function BillingEncounterLedgerPage() {
       } else {
         setClaimX12(null);
       }
+      if (submissionsOutcome.status === "fulfilled" && Array.isArray(submissionsOutcome.value)) {
+        setClaimSubmissions(submissionsOutcome.value as ClaimSubmissionListItemPayload[]);
+        setSubmissionListErr(null);
+      } else {
+        setClaimSubmissions([]);
+        setSubmissionListErr(t("billingPage.submissionListLoadErr"));
+      }
     } catch {
       setData(null);
       setClaimAssembly(null);
       setClaimExport(null);
       setClaimX12(null);
+      setClaimSubmissions([]);
+      setSubmissionListErr(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
     }
   }, [encounterId, facilityId, ready, t]);
+
+  const generateSubmissionPreview = useCallback(async () => {
+    if (!facilityId) return;
+    setSubmissionBusy(true);
+    setActionError(null);
+    setToast(null);
+    try {
+      const res = (await apiFetch(`/billing/encounters/${encounterId}/submission-preview`, {
+        facilityId,
+        method: "POST",
+      })) as { batch: { id: string; interchangeX12Text: string | null }; envelopeWarnings?: string[] };
+      if (res.batch?.interchangeX12Text) {
+        setLastEnvelopePreview({ batchId: res.batch.id, text: res.batch.interchangeX12Text });
+      }
+      setToast(t("billingPage.submissionGenerateOk"));
+      const list = await apiFetch(`/billing/encounters/${encounterId}/submissions`, { facilityId });
+      if (Array.isArray(list)) {
+        setClaimSubmissions(list as ClaimSubmissionListItemPayload[]);
+        setSubmissionListErr(null);
+      }
+    } catch (e: unknown) {
+      setToast(null);
+      const raw = e instanceof Error && e.message ? e.message : "";
+      setActionError(normalizeUserFacingError(raw, language) || t("billingPage.submissionGenerateErr"));
+    } finally {
+      setSubmissionBusy(false);
+    }
+  }, [encounterId, facilityId, language, t]);
+
+  const toggleSubmissionDetail = useCallback(
+    async (submissionId: string) => {
+      if (!facilityId) return;
+      if (expandedSubmissionDetail?.id === submissionId) {
+        setExpandedSubmissionDetail(null);
+        return;
+      }
+      setExpandedSubmissionLoading(submissionId);
+      setActionError(null);
+      try {
+        const res = (await apiFetch(`/billing/submissions/${submissionId}`, { facilityId })) as ClaimSubmissionDetailPayload;
+        setExpandedSubmissionDetail(res);
+      } catch (e: unknown) {
+        const raw = e instanceof Error && e.message ? e.message : "";
+        setActionError(normalizeUserFacingError(raw, language) || t("billingPage.submissionDetailLoadErr"));
+        setExpandedSubmissionDetail(null);
+      } finally {
+        setExpandedSubmissionLoading(null);
+      }
+    },
+    [facilityId, expandedSubmissionDetail?.id, language, t]
+  );
 
   useEffect(() => {
     void load();
@@ -1251,6 +1353,146 @@ export default function BillingEncounterLedgerPage() {
               ) : null}
             </div>
           ) : null}
+
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 16,
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+            }}
+          >
+            <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.submissionPreviewSectionTitle")}</h2>
+            <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.submissionPreviewSectionSubtitle")}</p>
+            <div style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                disabled={submissionBusy || !facilityId}
+                onClick={() => void generateSubmissionPreview()}
+                style={{
+                  fontSize: 13,
+                  padding: "8px 14px",
+                  borderRadius: 6,
+                  border: "1px solid #cbd5e1",
+                  background: submissionBusy ? "#e2e8f0" : "#f8fafc",
+                  cursor: submissionBusy || !facilityId ? "not-allowed" : "pointer",
+                }}
+              >
+                {submissionBusy ? t("billingPage.submissionPreviewGenerating") : t("billingPage.submissionPreviewGenerate")}
+              </button>
+            </div>
+            {submissionListErr ? (
+              <div style={{ color: "#b91c1c", fontSize: 12, marginBottom: 8 }}>{submissionListErr}</div>
+            ) : null}
+            {lastEnvelopePreview && canViewExportJson ? (
+              <div style={{ marginBottom: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSubmissionInterchange((v) => !v)}
+                  style={{
+                    fontSize: 12,
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "#f8fafc",
+                    cursor: "pointer",
+                  }}
+                >
+                  {showSubmissionInterchange
+                    ? t("billingPage.submissionInterchangeHide")
+                    : t("billingPage.submissionInterchangeShow")}
+                </button>
+                {showSubmissionInterchange ? (
+                  <pre
+                    style={{
+                      marginTop: 8,
+                      padding: 10,
+                      fontSize: 10,
+                      overflow: "auto",
+                      maxHeight: 240,
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {lastEnvelopePreview.text}
+                  </pre>
+                ) : null}
+              </div>
+            ) : null}
+            {claimSubmissions.length === 0 ? (
+              <div style={{ fontSize: 13, color: "#64748b" }}>{t("billingPage.submissionNoArtifact")}</div>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#334155" }}>
+                {claimSubmissions.map((s) => (
+                  <li key={s.id} style={{ marginBottom: 10 }}>
+                    <div>
+                      <strong>{claimSubmissionKindLabel(t, s.claimType)}</strong>
+                      {" · "}
+                      {t("billingPage.submissionStatus")}: {submissionStatusLabel(t, s.status)}
+                    </div>
+                    {s.batchId ? (
+                      <div style={{ fontSize: 12, color: "#475569" }}>
+                        {t("billingPage.submissionBatchId")}: {s.batchId}
+                      </div>
+                    ) : null}
+                    {s.warnings.length > 0 ? (
+                      <div style={{ fontSize: 12, marginTop: 4 }}>
+                        <span style={{ fontWeight: 600 }}>{t("billingPage.submissionWarnings")}:</span>{" "}
+                        {s.warnings.map((w) => x12CodeLabel(t, "x12Warning", w)).join("; ")}
+                      </div>
+                    ) : null}
+                    {s.missingFields.length > 0 ? (
+                      <div style={{ fontSize: 12, marginTop: 4, color: "#9a3412" }}>
+                        <span style={{ fontWeight: 600 }}>{t("billingPage.submissionMissingFields")}:</span>{" "}
+                        {s.missingFields.map((m) => x12CodeLabel(t, "x12Missing", m)).join("; ")}
+                      </div>
+                    ) : null}
+                    {canViewExportJson ? (
+                      <div style={{ marginTop: 6 }}>
+                        <button
+                          type="button"
+                          disabled={expandedSubmissionLoading === s.id}
+                          onClick={() => void toggleSubmissionDetail(s.id)}
+                          style={{
+                            fontSize: 11,
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #cbd5e1",
+                            background: "#fff",
+                            cursor: expandedSubmissionLoading === s.id ? "wait" : "pointer",
+                          }}
+                        >
+                          {expandedSubmissionDetail?.id === s.id
+                            ? t("billingPage.x12PreviewTextHide")
+                            : t("billingPage.x12PreviewTextShow")}
+                        </button>
+                        {expandedSubmissionDetail?.id === s.id && expandedSubmissionDetail.x12Text ? (
+                          <pre
+                            style={{
+                              marginTop: 6,
+                              padding: 8,
+                              fontSize: 10,
+                              overflow: "auto",
+                              maxHeight: 180,
+                              borderRadius: 6,
+                              border: "1px solid #e2e8f0",
+                              background: "#f8fafc",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {expandedSubmissionDetail.x12Text}
+                          </pre>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <div
             style={{

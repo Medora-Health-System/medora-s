@@ -157,6 +157,24 @@ enum EncounterBillingFinalizationStatus {
   REOPENED
 }
 
+/// Phase 6.2 — persisted claim submission artifacts (no live clearinghouse transmission).
+enum ClaimSubmissionKind {
+  PROFESSIONAL_837P
+  FACILITY_837I
+}
+
+enum ClaimSubmissionStatus {
+  DRAFT
+  GENERATED
+  READY_TO_SEND
+  SENT
+  ACK_PENDING
+  ACCEPTED
+  REJECTED
+  NEEDS_CORRECTION
+  CANCELLED
+}
+
 enum EncounterType {
   OUTPATIENT
   INPATIENT
@@ -312,6 +330,8 @@ model Facility {
   encounterIntakes           EncounterIntake[]
   patientInsuranceCoverages  PatientInsuranceCoverage[]
   billingEvents              BillingEvent[]
+  claimSubmissionBatches     ClaimSubmissionBatch[]
+  claimSubmissions           ClaimSubmission[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -642,6 +662,7 @@ model Encounter {
   breakGlassSessions     BreakGlassSession[]
   intake                 EncounterIntake?
   billingEvents          BillingEvent[]
+  claimSubmissions       ClaimSubmission[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -1659,4 +1680,58 @@ model MsppUserRoleAssignment {
   @@index([geoDepartmentId])
   @@index([userId, role])
   @@index([userId, role, allGeoDepartments])
+}
+
+/// Monotonic counter for X12 control numbers (Phase 6.2). Single row `default`.
+model ClaimControlCounter {
+  id    String @id @default("default")
+  value BigInt @default(0)
+}
+
+/// One interchange envelope batch (ISA/IEA) — may contain multiple GS groups / ST sets.
+model ClaimSubmissionBatch {
+  id                 String   @id @default(cuid())
+  facilityId         String
+  interchangeCtrl    String
+  groupCtrl          String
+  senderId           String?
+  receiverId         String?
+  /// Full interchange text (ISA…IEA) for audit; optional if generation failed mid-flight.
+  interchangeX12Text String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  facility     Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  submissions  ClaimSubmission[]
+
+  @@index([facilityId])
+  @@index([interchangeCtrl])
+}
+
+/// One persisted 837 transaction artifact tied to an encounter package side.
+model ClaimSubmission {
+  id                String                @id @default(cuid())
+  facilityId        String
+  encounterId       String
+  claimType         ClaimSubmissionKind
+  status            ClaimSubmissionStatus @default(DRAFT)
+  batchId           String?
+  transactionCtrl   String?
+  /// Transaction-local ST…SE text (this claim only).
+  x12Text           String?               @db.Text
+  exportJson        Json?
+  warningsJson      Json?
+  missingFieldsJson Json?
+  externalReference String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  batch     ClaimSubmissionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  facility  Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter Encounter             @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+
+  @@index([encounterId])
+  @@index([facilityId, status])
+  @@index([batchId])
+  @@index([claimType])
 }
