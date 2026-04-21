@@ -83,7 +83,27 @@ type ClaimPackageAssembly = {
   totalLines: number;
   missingCodes: number;
   ready: boolean;
-  warnings?: string[];
+};
+
+type ClaimValidationIssuePayload = {
+  code: string;
+  severity: "warning" | "blocker";
+};
+
+type ClaimPackageValidationPayload = {
+  ready: boolean;
+  blockers: ClaimValidationIssuePayload[];
+  warnings: ClaimValidationIssuePayload[];
+};
+
+type ClaimEncounterValidationPayload = {
+  summary: {
+    ready: boolean;
+    blockers: ClaimValidationIssuePayload[];
+    warnings: ClaimValidationIssuePayload[];
+  };
+  professional: ClaimPackageValidationPayload;
+  facility: ClaimPackageValidationPayload;
 };
 
 type ClaimAssemblyPayload = {
@@ -93,8 +113,9 @@ type ClaimAssemblyPayload = {
     totalLines: number;
     missingCodes: number;
     ready: boolean;
-    warnings?: string[];
   };
+  /** Present when API returns Phase 5.2 validation (always for current backend). */
+  validation?: ClaimEncounterValidationPayload;
 };
 
 type SummaryPayload = {
@@ -159,8 +180,8 @@ function billingUnmappedHintText(t: (k: string) => string, sourceModule: string)
   return v === k ? t("billingPage.billingUnmappedHint_FALLBACK") : v;
 }
 
-function claimWarningLabel(t: (k: string) => string, code: string): string {
-  const k = `billingPage.claimWarning_${code}`;
+function claimValidationLabel(t: (k: string) => string, code: string): string {
+  const k = `billingPage.claimValidation_${code}`;
   const v = t(k);
   return v === k ? code : v;
 }
@@ -581,6 +602,49 @@ export default function BillingEncounterLedgerPage() {
             >
               <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.claimPreviewTitle")}</h2>
               <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewSubtitle")}</p>
+              {claimAssembly.validation ? (
+                <div
+                  style={{
+                    marginBottom: 14,
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                    fontSize: 12,
+                    color: "#334155",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+                    {t("billingPage.claimPreviewEncounterValidationTitle")}
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>{t("billingPage.claimPreviewValidationStatus")}:</strong>{" "}
+                    {claimAssembly.validation.summary.ready
+                      ? t("billingPage.billingPackageReadyLabel")
+                      : t("billingPage.billingPackageNotReadyLabel")}
+                  </div>
+                  {(claimAssembly.validation.summary.blockers?.length ?? 0) > 0 ? (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontWeight: 600, color: "#9a3412" }}>{t("billingPage.claimPreviewValidationBlockers")}</div>
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                        {claimAssembly.validation.summary.blockers.map((iss, i) => (
+                          <li key={`sb-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {(claimAssembly.validation.summary.warnings?.length ?? 0) > 0 ? (
+                    <div>
+                      <div style={{ fontWeight: 600, color: "#1d4ed8" }}>{t("billingPage.claimPreviewValidationWarnings")}</div>
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                        {claimAssembly.validation.summary.warnings.map((iss, i) => (
+                          <li key={`sw-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <div
                 style={{
                   display: "flex",
@@ -608,29 +672,37 @@ export default function BillingEncounterLedgerPage() {
                   {claimAssembly.summary.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")}
                 </span>
               </div>
-              {(claimAssembly.summary.warnings?.length ?? 0) > 0 ? (
-                <div style={{ marginBottom: 12, fontSize: 12, color: "#475569" }}>
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {(claimAssembly.summary.warnings ?? []).map((code) => (
-                      <li key={code}>{claimWarningLabel(t, code)}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
                 <div style={{ flex: "1 1 320px", minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
                     {t("billingPage.claimPreviewProfessionalLines")}{" "}
                     <span style={{ fontWeight: 400, color: "#64748b" }}>
-                      ({claimAssembly.professional.totalLines} · {claimAssembly.professional.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")})
+                      ({claimAssembly.professional.totalLines} ·{" "}
+                      {claimAssembly.validation?.professional.ready
+                        ? t("billingPage.billingPackageReadyLabel")
+                        : t("billingPage.billingPackageNotReadyLabel")}
+                      )
                     </span>
                   </div>
-                  {(claimAssembly.professional.warnings?.length ?? 0) > 0 ? (
-                    <div style={{ marginBottom: 8, fontSize: 11, color: "#64748b" }}>
-                      {(claimAssembly.professional.warnings ?? []).map((code) => (
-                        <div key={`pw-${code}`}>{claimWarningLabel(t, code)}</div>
-                      ))}
-                    </div>
+                  {claimAssembly.validation ? (
+                    <>
+                      {(claimAssembly.validation.professional.blockers?.length ?? 0) > 0 ? (
+                        <div style={{ marginBottom: 6, fontSize: 11, color: "#9a3412" }}>
+                          <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationBlockers")}</div>
+                          {claimAssembly.validation.professional.blockers.map((iss, i) => (
+                            <div key={`pb-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {(claimAssembly.validation.professional.warnings?.length ?? 0) > 0 ? (
+                        <div style={{ marginBottom: 8, fontSize: 11, color: "#1e40af" }}>
+                          <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationWarnings")}</div>
+                          {claimAssembly.validation.professional.warnings.map((iss, i) => (
+                            <div key={`pw-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
                   ) : null}
                   {claimAssembly.professional.lines.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewEmpty")}</p>
@@ -683,15 +755,32 @@ export default function BillingEncounterLedgerPage() {
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
                     {t("billingPage.claimPreviewFacilityLines")}{" "}
                     <span style={{ fontWeight: 400, color: "#64748b" }}>
-                      ({claimAssembly.facility.totalLines} · {claimAssembly.facility.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")})
+                      ({claimAssembly.facility.totalLines} ·{" "}
+                      {claimAssembly.validation?.facility.ready
+                        ? t("billingPage.billingPackageReadyLabel")
+                        : t("billingPage.billingPackageNotReadyLabel")}
+                      )
                     </span>
                   </div>
-                  {(claimAssembly.facility.warnings?.length ?? 0) > 0 ? (
-                    <div style={{ marginBottom: 8, fontSize: 11, color: "#64748b" }}>
-                      {(claimAssembly.facility.warnings ?? []).map((code) => (
-                        <div key={`fw-${code}`}>{claimWarningLabel(t, code)}</div>
-                      ))}
-                    </div>
+                  {claimAssembly.validation ? (
+                    <>
+                      {(claimAssembly.validation.facility.blockers?.length ?? 0) > 0 ? (
+                        <div style={{ marginBottom: 6, fontSize: 11, color: "#9a3412" }}>
+                          <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationBlockers")}</div>
+                          {claimAssembly.validation.facility.blockers.map((iss, i) => (
+                            <div key={`fb-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {(claimAssembly.validation.facility.warnings?.length ?? 0) > 0 ? (
+                        <div style={{ marginBottom: 8, fontSize: 11, color: "#1e40af" }}>
+                          <div style={{ fontWeight: 600 }}>{t("billingPage.claimPreviewValidationWarnings")}</div>
+                          {claimAssembly.validation.facility.warnings.map((iss, i) => (
+                            <div key={`fw-${iss.code}-${i}`}>{claimValidationLabel(t, iss.code)}</div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
                   ) : null}
                   {claimAssembly.facility.lines.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewEmpty")}</p>

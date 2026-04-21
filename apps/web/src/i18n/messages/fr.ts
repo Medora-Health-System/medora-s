@@ -255,6 +255,30 @@ export default {
       "Toutes les lignes établissement figurent aussi sous Professionnel (les deux forfaits). Aucune ligne distincte à afficher.",
     claimPreviewTableMerged: "Fusion",
     claimPreviewMergedCount: "{count}×",
+    claimPreviewEncounterValidationTitle: "Validation de la réclamation (visite)",
+    claimPreviewValidationStatus: "État",
+    claimPreviewValidationBlockers: "Blocages",
+    claimPreviewValidationWarnings: "Avertissements",
+    claimValidation_MISSING_BILLABLE_CODES:
+      "Au moins une ligne du registre n’a pas le code facturable requis pour l’assemblage de la réclamation.",
+    claimValidation_NO_CLAIM_LINES: "Ce forfait n’a aucune ligne CPT/HCPCS assemblée.",
+    claimValidation_MULTIPLE_ENCOUNTER_EM:
+      "Plusieurs lignes E/M sur cette visite ; seule la plus récente est conservée dans l’aperçu.",
+    claimValidation_MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT:
+      "Ligne médicament avec HCPCS mais sans CPT de procédure au registre (voie d’administration peut-être non précisée).",
+    claimValidation_NO_PRIMARY_PROFESSIONAL_CODE:
+      "Aucune ligne au forfait professionnel alors que le forfait établissement comporte des lignes assemblées.",
+    claimValidation_NO_FACILITY_LINES:
+      "Aucune ligne au forfait établissement alors que le forfait professionnel comporte des lignes assemblées.",
+    claimValidation_UNRESOLVED_UNKNOWN_SIDE:
+      "Au moins une ligne au côté « inconnu » n’a toujours pas de code facturable mappable.",
+    claimValidation_UNRESOLVED_BOTH_SIDE:
+      "Au moins une ligne « les deux forfaits » n’a toujours pas de code facturable mappable.",
+    claimValidation_NO_BILLABLE_EVENTS: "Aucune ligne du registre n’est éligible à l’assemblage de la réclamation.",
+    claimValidation_EMPTY_PACKAGE_WITH_BLOCKERS:
+      "Ce forfait n’a aucune ligne de réclamation mais des lignes non codées bloquantes y sont routées.",
+    claimValidation_NO_ASSEMBLED_LINES:
+      "Aucune ligne de réclamation assemblée alors que des lignes actives existent au registre.",
     claimWarning_MISSING_BILLABLE_CODES: "Code facturable manquant (forfait ou visite).",
     claimWarning_NO_CLAIM_LINES: "Aucune ligne CPT/HCPCS dans ce forfait.",
     claimWarning_BOTH_SIDE_UNCODED: "Au moins une ligne « les deux forfaits » n’a pas de code mappable.",

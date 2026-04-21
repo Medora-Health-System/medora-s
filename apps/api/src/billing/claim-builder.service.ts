@@ -11,19 +11,21 @@ import {
   billingLedgerRowMissingBillableCodeBlocksReadiness,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  buildEncounterClaimValidation,
+  type ClaimEncounterValidation,
+} from "./claim-validation.util";
+
+export type {
+  ClaimEncounterValidation,
+  ClaimPackageInput,
+  ClaimValidationIssue,
+  ClaimValidationIssueCode,
+  ClaimPackageValidation,
+} from "./claim-validation.util";
 
 /** How this line was routed from `BillingEvent.billingSide` (arrays may still duplicate BOTH rows per package). */
 export type ClaimLineOriginSide = "professional" | "facility" | "both";
-
-/** Stable warning codes for UI i18n (`claimWarning_${code}`). */
-export type ClaimAssemblyWarningCode =
-  | "MISSING_BILLABLE_CODES"
-  | "NO_CLAIM_LINES"
-  | "BOTH_SIDE_UNCODED"
-  | "UNKNOWN_SIDE_UNCODED"
-  | "MULTIPLE_ENCOUNTER_EM"
-  | "MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT"
-  | "NO_ASSEMBLED_LINES";
 
 /** Single service line for professional or facility claim assembly (Phase 5 — no submission). */
 export type ClaimLine = {
@@ -50,8 +52,6 @@ export type ClaimPackage = {
   totalLines: number;
   missingCodes: number;
   ready: boolean;
-  /** Deterministic warning codes (translate in UI). */
-  warnings: ClaimAssemblyWarningCode[];
 };
 
 export type EncounterClaimsResult = {
@@ -61,8 +61,9 @@ export type EncounterClaimsResult = {
     totalLines: number;
     missingCodes: number;
     ready: boolean;
-    warnings: ClaimAssemblyWarningCode[];
   };
+  /** Phase 5.2 — deterministic validation (blockers vs warnings). */
+  validation: ClaimEncounterValidation;
 };
 
 type CodePart = {
@@ -281,43 +282,6 @@ type AssemblyCtx = {
   multipleEmSuppressedFac: number;
 };
 
-function uniqueWarningCodes(codes: ClaimAssemblyWarningCode[]): ClaimAssemblyWarningCode[] {
-  return [...new Set(codes)];
-}
-
-function buildPackageWarnings(
-  lines: ClaimLine[],
-  missingCodes: number,
-  ctx: AssemblyCtx,
-  pkg: "professional" | "facility"
-): ClaimAssemblyWarningCode[] {
-  const w: ClaimAssemblyWarningCode[] = [];
-  if (missingCodes > 0) w.push("MISSING_BILLABLE_CODES");
-  if (lines.length === 0 && missingCodes === 0) w.push("NO_CLAIM_LINES");
-  if (ctx.blockingNoExtractBoth > 0) w.push("BOTH_SIDE_UNCODED");
-  if (ctx.blockingNoExtractUnknown > 0) w.push("UNKNOWN_SIDE_UNCODED");
-  if (ctx.medAdminHcpcsWithoutProcedure > 0) w.push("MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT");
-  if (pkg === "professional" && ctx.multipleEmSuppressedProf > 0) w.push("MULTIPLE_ENCOUNTER_EM");
-  if (pkg === "facility" && ctx.multipleEmSuppressedFac > 0) w.push("MULTIPLE_ENCOUNTER_EM");
-  return uniqueWarningCodes(w);
-}
-
-function buildSummaryWarnings(
-  summaryMissing: number,
-  prof: ClaimLine[],
-  fac: ClaimLine[],
-  ctx: AssemblyCtx
-): ClaimAssemblyWarningCode[] {
-  const w: ClaimAssemblyWarningCode[] = [];
-  if (summaryMissing > 0) w.push("MISSING_BILLABLE_CODES");
-  if (prof.length === 0 && fac.length === 0 && summaryMissing === 0) w.push("NO_ASSEMBLED_LINES");
-  if (ctx.blockingNoExtractBoth > 0) w.push("BOTH_SIDE_UNCODED");
-  if (ctx.blockingNoExtractUnknown > 0) w.push("UNKNOWN_SIDE_UNCODED");
-  if (ctx.medAdminHcpcsWithoutProcedure > 0) w.push("MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT");
-  if (ctx.multipleEmSuppressedProf + ctx.multipleEmSuppressedFac > 0) w.push("MULTIPLE_ENCOUNTER_EM");
-  return [...new Set(w)];
-}
-
 /**
  * Deterministic claim assembly from billing ledger rows (Phase 5).
  * Does not modify BillingEvent rows or existing capture logic.
@@ -402,15 +366,22 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
     totalLines: profLines.length,
     missingCodes: professionalMissing,
     ready: professionalMissing === 0,
-    warnings: buildPackageWarnings(profLines, professionalMissing, ctx, "professional"),
   };
   const facility: ClaimPackage = {
     lines: facLines,
     totalLines: facLines.length,
     missingCodes: facilityMissing,
     ready: facilityMissing === 0,
-    warnings: buildPackageWarnings(facLines, facilityMissing, ctx, "facility"),
   };
+
+  const validation = buildEncounterClaimValidation(
+    active,
+    omitFromClaimAssembly,
+    professional,
+    facility,
+    summaryMissing,
+    ctx
+  );
 
   return {
     professional,
@@ -419,8 +390,8 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
       totalLines: professional.totalLines + facility.totalLines,
       missingCodes: summaryMissing,
       ready: summaryMissing === 0,
-      warnings: buildSummaryWarnings(summaryMissing, profLines, facLines, ctx),
     },
+    validation,
   };
 }
 

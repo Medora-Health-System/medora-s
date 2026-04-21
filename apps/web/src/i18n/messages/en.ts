@@ -331,6 +331,30 @@ export default {
       "All facility lines also appear under Professional (both packages). No separate facility rows to show.",
     claimPreviewTableMerged: "Merged",
     claimPreviewMergedCount: "{count}×",
+    claimPreviewEncounterValidationTitle: "Encounter claim validation",
+    claimPreviewValidationStatus: "Status",
+    claimPreviewValidationBlockers: "Blockers",
+    claimPreviewValidationWarnings: "Warnings",
+    claimValidation_MISSING_BILLABLE_CODES:
+      "At least one ledger line is missing a billable code required for claim assembly.",
+    claimValidation_NO_CLAIM_LINES: "This package has no assembled CPT/HCPCS lines.",
+    claimValidation_MULTIPLE_ENCOUNTER_EM:
+      "Multiple E/M ledger rows exist; only the newest is kept in this preview.",
+    claimValidation_MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT:
+      "Medication row has drug HCPCS but no procedure CPT on the ledger (administration route may be unspecified).",
+    claimValidation_NO_PRIMARY_PROFESSIONAL_CODE:
+      "Professional package has no lines while the facility package has assembled lines.",
+    claimValidation_NO_FACILITY_LINES:
+      "Facility package has no lines while the professional package has assembled lines.",
+    claimValidation_UNRESOLVED_UNKNOWN_SIDE:
+      "At least one UNKNOWN-side ledger row still lacks a mappable billable code.",
+    claimValidation_UNRESOLVED_BOTH_SIDE:
+      "At least one BOTH-side ledger row still lacks a mappable billable code.",
+    claimValidation_NO_BILLABLE_EVENTS: "No ledger rows are eligible for claim assembly.",
+    claimValidation_EMPTY_PACKAGE_WITH_BLOCKERS:
+      "This package has no claim lines but blocking uncoded ledger rows are routed here.",
+    claimValidation_NO_ASSEMBLED_LINES:
+      "No claim lines were assembled even though active ledger rows exist.",
     claimWarning_MISSING_BILLABLE_CODES: "Missing billable code (package or encounter).",
     claimWarning_NO_CLAIM_LINES: "No CPT/HCPCS lines in this package.",
     claimWarning_BOTH_SIDE_UNCODED: "At least one BOTH-side ledger row has no mappable code.",
