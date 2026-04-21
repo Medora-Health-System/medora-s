@@ -71,8 +71,11 @@ type ClaimAssemblyLineRow = {
   sourceModule: string;
   quantity: number;
   unitPrice?: number;
+  companionCode?: string;
+  companionCodeType?: string;
   /** professional | facility | both — both-package lines may be deduped in the facility table */
   originSide?: "professional" | "facility" | "both";
+  mergedFromCount?: number;
 };
 
 type ClaimPackageAssembly = {
@@ -80,6 +83,7 @@ type ClaimPackageAssembly = {
   totalLines: number;
   missingCodes: number;
   ready: boolean;
+  warnings?: string[];
 };
 
 type ClaimAssemblyPayload = {
@@ -89,6 +93,7 @@ type ClaimAssemblyPayload = {
     totalLines: number;
     missingCodes: number;
     ready: boolean;
+    warnings?: string[];
   };
 };
 
@@ -126,8 +131,9 @@ type LineDraft = {
   serviceDateIso: string;
 };
 
+/** Align with API `claimLineMergeKey` for BOTH-package duplicate hiding (code + type + companion + module + origin). */
 function claimAssemblyLineDedupeKey(row: ClaimAssemblyLineRow): string {
-  return [row.code, row.codeType, row.sourceModule, String(row.quantity), row.description, row.unitPrice ?? ""].join("\0");
+  return [row.code, row.codeType, row.companionCode ?? "", row.companionCodeType ?? "", row.sourceModule, row.originSide ?? ""].join("\0");
 }
 
 /** Facility table: hide rows that duplicate a `both`-routed line already shown under Professional (same line content). */
@@ -151,6 +157,12 @@ function billingUnmappedHintText(t: (k: string) => string, sourceModule: string)
   const k = `billingPage.billingUnmappedHint_${sourceModule}`;
   const v = t(k);
   return v === k ? t("billingPage.billingUnmappedHint_FALLBACK") : v;
+}
+
+function claimWarningLabel(t: (k: string) => string, code: string): string {
+  const k = `billingPage.claimWarning_${code}`;
+  const v = t(k);
+  return v === k ? code : v;
 }
 
 function readinessLineLabel(
@@ -596,6 +608,15 @@ export default function BillingEncounterLedgerPage() {
                   {claimAssembly.summary.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")}
                 </span>
               </div>
+              {(claimAssembly.summary.warnings?.length ?? 0) > 0 ? (
+                <div style={{ marginBottom: 12, fontSize: 12, color: "#475569" }}>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {(claimAssembly.summary.warnings ?? []).map((code) => (
+                      <li key={code}>{claimWarningLabel(t, code)}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
                 <div style={{ flex: "1 1 320px", minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
@@ -604,6 +625,13 @@ export default function BillingEncounterLedgerPage() {
                       ({claimAssembly.professional.totalLines} · {claimAssembly.professional.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")})
                     </span>
                   </div>
+                  {(claimAssembly.professional.warnings?.length ?? 0) > 0 ? (
+                    <div style={{ marginBottom: 8, fontSize: 11, color: "#64748b" }}>
+                      {(claimAssembly.professional.warnings ?? []).map((code) => (
+                        <div key={`pw-${code}`}>{claimWarningLabel(t, code)}</div>
+                      ))}
+                    </div>
+                  ) : null}
                   {claimAssembly.professional.lines.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewEmpty")}</p>
                   ) : (
@@ -616,17 +644,33 @@ export default function BillingEncounterLedgerPage() {
                             <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTablePackage")}</th>
                             <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableModule")}</th>
                             <th style={{ padding: 8, textAlign: "right" }}>{t("billingPage.claimPreviewTableQty")}</th>
+                            <th style={{ padding: 8, textAlign: "right", whiteSpace: "nowrap" }}>
+                              {t("billingPage.claimPreviewTableMerged")}
+                            </th>
                             <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableDescription")}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {claimAssembly.professional.lines.map((row, i) => (
                             <tr key={`p-${row.code}-${row.sourceModule}-${i}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                              <td style={{ padding: 8, fontFamily: "monospace" }}>{row.code}</td>
+                              <td style={{ padding: 8, fontFamily: "monospace" }}>
+                                {row.code}
+                                {row.companionCode ? (
+                                  <span style={{ color: "#64748b" }}>
+                                    {" "}
+                                    + {row.companionCode} ({row.companionCodeType ?? "?"})
+                                  </span>
+                                ) : null}
+                              </td>
                               <td style={{ padding: 8 }}>{row.codeType}</td>
                               <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{claimPreviewOriginLabel(row.originSide)}</td>
                               <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{row.sourceModule}</td>
                               <td style={{ padding: 8, textAlign: "right" }}>{row.quantity}</td>
+                              <td style={{ padding: 8, textAlign: "right", fontSize: 12, color: "#64748b" }}>
+                                {row.mergedFromCount != null && row.mergedFromCount > 1
+                                  ? t("billingPage.claimPreviewMergedCount").replace("{count}", String(row.mergedFromCount))
+                                  : "—"}
+                              </td>
                               <td style={{ padding: 8, color: "#334155" }}>{row.description || "—"}</td>
                             </tr>
                           ))}
@@ -642,6 +686,13 @@ export default function BillingEncounterLedgerPage() {
                       ({claimAssembly.facility.totalLines} · {claimAssembly.facility.ready ? t("billingPage.billingPackageReadyLabel") : t("billingPage.billingPackageNotReadyLabel")})
                     </span>
                   </div>
+                  {(claimAssembly.facility.warnings?.length ?? 0) > 0 ? (
+                    <div style={{ marginBottom: 8, fontSize: 11, color: "#64748b" }}>
+                      {(claimAssembly.facility.warnings ?? []).map((code) => (
+                        <div key={`fw-${code}`}>{claimWarningLabel(t, code)}</div>
+                      ))}
+                    </div>
+                  ) : null}
                   {claimAssembly.facility.lines.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("billingPage.claimPreviewEmpty")}</p>
                   ) : facilityClaimPreviewLines.length === 0 ? (
@@ -664,17 +715,33 @@ export default function BillingEncounterLedgerPage() {
                             <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTablePackage")}</th>
                             <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableModule")}</th>
                             <th style={{ padding: 8, textAlign: "right" }}>{t("billingPage.claimPreviewTableQty")}</th>
+                            <th style={{ padding: 8, textAlign: "right", whiteSpace: "nowrap" }}>
+                              {t("billingPage.claimPreviewTableMerged")}
+                            </th>
                             <th style={{ padding: 8, textAlign: "left" }}>{t("billingPage.claimPreviewTableDescription")}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {facilityClaimPreviewLines.map((row, i) => (
                             <tr key={`f-${row.code}-${row.sourceModule}-${i}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                              <td style={{ padding: 8, fontFamily: "monospace" }}>{row.code}</td>
+                              <td style={{ padding: 8, fontFamily: "monospace" }}>
+                                {row.code}
+                                {row.companionCode ? (
+                                  <span style={{ color: "#64748b" }}>
+                                    {" "}
+                                    + {row.companionCode} ({row.companionCodeType ?? "?"})
+                                  </span>
+                                ) : null}
+                              </td>
                               <td style={{ padding: 8 }}>{row.codeType}</td>
                               <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{claimPreviewOriginLabel(row.originSide)}</td>
                               <td style={{ padding: 8, fontSize: 12, color: "#475569" }}>{row.sourceModule}</td>
                               <td style={{ padding: 8, textAlign: "right" }}>{row.quantity}</td>
+                              <td style={{ padding: 8, textAlign: "right", fontSize: 12, color: "#64748b" }}>
+                                {row.mergedFromCount != null && row.mergedFromCount > 1
+                                  ? t("billingPage.claimPreviewMergedCount").replace("{count}", String(row.mergedFromCount))
+                                  : "—"}
+                              </td>
                               <td style={{ padding: 8, color: "#334155" }}>{row.description || "—"}</td>
                             </tr>
                           ))}

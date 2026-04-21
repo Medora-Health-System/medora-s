@@ -326,9 +326,19 @@ export default {
     claimPreviewOriginFacility: "Facility",
     claimPreviewOriginBoth: "Both",
     claimPreviewOmittedBothDuplicates:
-      "{count} duplicate line(s) omitted below — identical lines for both packages are listed under Professional only.",
+      "{count} line(s) hidden here — same charge appears on Professional and Facility; shown once under Professional to avoid double-counting in the preview.",
     claimPreviewAllFacilityDupesUnderProfessional:
       "All facility lines also appear under Professional (both packages). No separate facility rows to show.",
+    claimPreviewTableMerged: "Merged",
+    claimPreviewMergedCount: "{count}×",
+    claimWarning_MISSING_BILLABLE_CODES: "Missing billable code (package or encounter).",
+    claimWarning_NO_CLAIM_LINES: "No CPT/HCPCS lines in this package.",
+    claimWarning_BOTH_SIDE_UNCODED: "At least one BOTH-side ledger row has no mappable code.",
+    claimWarning_UNKNOWN_SIDE_UNCODED: "At least one UNKNOWN-side ledger row has no mappable code.",
+    claimWarning_MULTIPLE_ENCOUNTER_EM: "Multiple E/M ledger rows — only the newest is shown in this preview.",
+    claimWarning_MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT:
+      "Medication line has drug HCPCS but no procedure CPT on the ledger (administration route may be unspecified).",
+    claimWarning_NO_ASSEMBLED_LINES: "No claim lines assembled for this encounter.",
   },
   medicationsPage: {
     title: "Medications",

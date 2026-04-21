@@ -15,6 +15,16 @@ import { PrismaService } from "../prisma/prisma.service";
 /** How this line was routed from `BillingEvent.billingSide` (arrays may still duplicate BOTH rows per package). */
 export type ClaimLineOriginSide = "professional" | "facility" | "both";
 
+/** Stable warning codes for UI i18n (`claimWarning_${code}`). */
+export type ClaimAssemblyWarningCode =
+  | "MISSING_BILLABLE_CODES"
+  | "NO_CLAIM_LINES"
+  | "BOTH_SIDE_UNCODED"
+  | "UNKNOWN_SIDE_UNCODED"
+  | "MULTIPLE_ENCOUNTER_EM"
+  | "MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT"
+  | "NO_ASSEMBLED_LINES";
+
 /** Single service line for professional or facility claim assembly (Phase 5 — no submission). */
 export type ClaimLine = {
   code: string;
@@ -25,6 +35,14 @@ export type ClaimLine = {
   unitPrice?: number;
   /** Source routing: BOTH events duplicate the same line on pro + fac packages; UI may collapse identical pairs. */
   originSide: ClaimLineOriginSide;
+  /** Present when >1: identical routed rows merged (same merge key within this package). */
+  mergedFromCount?: number;
+  /** When drug HCPCS + admin CPT share one ledger row (MAR-style). */
+  companionCode?: string;
+  companionCodeType?: "CPT" | "HCPCS";
+  /** For ENCOUNTER_EM dedup: newest row wins. */
+  billingEventId?: string;
+  eventCreatedAt?: string;
 };
 
 export type ClaimPackage = {
@@ -32,6 +50,8 @@ export type ClaimPackage = {
   totalLines: number;
   missingCodes: number;
   ready: boolean;
+  /** Deterministic warning codes (translate in UI). */
+  warnings: ClaimAssemblyWarningCode[];
 };
 
 export type EncounterClaimsResult = {
@@ -41,15 +61,43 @@ export type EncounterClaimsResult = {
     totalLines: number;
     missingCodes: number;
     ready: boolean;
+    warnings: ClaimAssemblyWarningCode[];
   };
 };
 
-type CodePart = { code: string; codeType: "CPT" | "HCPCS" };
+type CodePart = {
+  code: string;
+  codeType: "CPT" | "HCPCS";
+  companionCode?: string;
+  companionCodeType?: "CPT" | "HCPCS";
+};
+
+/**
+ * Phase 5.1 prep — normalize free-text route for future CPT/rules (not used for inference yet).
+ * Deterministic lowercase trim + a few canonical synonyms.
+ */
+export function normalizeRouteForFutureUse(route: string): string {
+  const raw = route.trim();
+  if (!raw) return "";
+  let n = raw
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\u0300-\u036f/g, "")
+    .replace(/œ/g, "oe");
+  if (/\binjectable\b/.test(n)) n = n.replace(/\binjectable\b/g, "injection");
+  if (/\borale\b/.test(n)) n = n.replace(/\borale\b/g, "po");
+  return n.trim();
+}
 
 function omitFromClaimAssembly(ev: Pick<BillingEvent, "sourceModule" | "codeType" | "procedureCode" | "hcpcsCode" | "code">): boolean {
   if (billingLedgerRowIsInformationalNonBillable(ev)) return true;
   if (ev.codeType === BillingCodeType.ICD10_CM) return true;
   return false;
+}
+
+function isMedAdminModule(sm: BillingSourceModule): boolean {
+  const s = sm as string;
+  return s === "MED_ADMIN" || s === "MEDICATION_ADMINISTRATION";
 }
 
 function extractCodeParts(ev: BillingEvent): CodePart[] {
@@ -61,7 +109,7 @@ function extractCodeParts(ev: BillingEvent): CodePart[] {
   if (pc) parts.push({ code: pc, codeType: "CPT" });
   if (hc) parts.push({ code: hc, codeType: "HCPCS" });
 
-  if (parts.length > 0) return parts;
+  if (parts.length > 0) return collapseMedicationDualCodes(ev, parts);
 
   if (c) {
     if (ev.codeType === BillingCodeType.CPT) parts.push({ code: c, codeType: "CPT" });
@@ -71,20 +119,36 @@ function extractCodeParts(ev: BillingEvent): CodePart[] {
     }
   }
 
-  return parts.filter((p) => p.code.trim().toUpperCase() !== "UNMAPPED");
+  return collapseMedicationDualCodes(ev, parts.filter((p) => p.code.trim().toUpperCase() !== "UNMAPPED"));
+}
+
+/** Drug HCPCS + admin CPT on the same MAR ledger row → one claim line (do not split). */
+function collapseMedicationDualCodes(ev: BillingEvent, parts: CodePart[]): CodePart[] {
+  if (!isMedAdminModule(ev.sourceModule) || parts.length !== 2) return parts;
+  const cpt = parts.find((p) => p.codeType === "CPT");
+  const hcpcs = parts.find((p) => p.codeType === "HCPCS");
+  if (!cpt || !hcpcs) return parts;
+  return [
+    {
+      code: cpt.code,
+      codeType: "CPT",
+      companionCode: hcpcs.code,
+      companionCodeType: "HCPCS",
+    },
+  ];
 }
 
 function routePartToTargets(side: BillingSide, part: CodePart): ("professional" | "facility")[] {
+  /* Combined drug + admin on one row: same logical line on both packages (no split by UNKNOWN). */
+  if (part.companionCode && part.companionCodeType) {
+    return ["professional", "facility"];
+  }
   if (side === BillingSide.BOTH) return ["professional", "facility"];
   if (side === BillingSide.PROFESSIONAL) return ["professional"];
   if (side === BillingSide.FACILITY) return ["facility"];
   return part.codeType === "CPT" ? ["professional"] : ["facility"];
 }
 
-/**
- * When a blocking event has no extractable codes (e.g. UNMAPPED-only), attribute missing readiness
- * to each package that would have received lines from this row (same rules as billingSide / UNKNOWN).
- */
 function packageMissingDeltasForBlockingEventNoLines(ev: BillingEvent): { prof: number; fac: number } {
   switch (ev.billingSide) {
     case BillingSide.BOTH:
@@ -108,7 +172,7 @@ function originSideForLine(ev: BillingEvent, target: "professional" | "facility"
 function toClaimLine(ev: BillingEvent, part: CodePart, target: "professional" | "facility"): ClaimLine {
   const qty = ev.units != null && ev.units > 0 ? ev.units : 1;
   const price = ev.priceSnapshot != null ? Number(ev.priceSnapshot) : undefined;
-  return {
+  const line: ClaimLine = {
     code: part.code,
     codeType: part.codeType,
     description: ev.descriptionSnapshot?.trim() || "",
@@ -116,7 +180,69 @@ function toClaimLine(ev: BillingEvent, part: CodePart, target: "professional" | 
     quantity: qty,
     unitPrice: price != null && Number.isFinite(price) ? price : undefined,
     originSide: originSideForLine(ev, target),
+    billingEventId: ev.id,
+    eventCreatedAt: ev.createdAt.toISOString(),
   };
+  if (part.companionCode && part.companionCodeType) {
+    line.companionCode = part.companionCode;
+    line.companionCodeType = part.companionCodeType;
+  }
+  return line;
+}
+
+/** Merge key: code + codeType + sourceModule + originSide (+ companion pair when present). No description/price. */
+function claimLineMergeKey(line: ClaimLine): string {
+  return [
+    line.code,
+    line.codeType,
+    line.companionCode ?? "",
+    line.companionCodeType ?? "",
+    line.sourceModule,
+    line.originSide,
+  ].join("\0");
+}
+
+/**
+ * Deterministic merge within one package: same merge key → one row, quantities summed.
+ */
+export function mergeClaimLinesForPackage(lines: ClaimLine[]): ClaimLine[] {
+  const ordered = [...lines].sort(compareClaimLinesClinically);
+  const map = new Map<string, ClaimLine>();
+  for (const line of ordered) {
+    const key = claimLineMergeKey(line);
+    const existing = map.get(key);
+    if (!existing) {
+      const { mergedFromCount: _m, ...rest } = line;
+      map.set(key, { ...rest, mergedFromCount: 1 });
+    } else {
+      existing.quantity += line.quantity;
+      existing.mergedFromCount = (existing.mergedFromCount ?? 1) + 1;
+    }
+  }
+  return Array.from(map.values()).sort(compareClaimLinesClinically);
+}
+
+/** Keep newest ENCOUNTER_EM line per package when multiple ledger rows exist (deterministic by `eventCreatedAt`). */
+function dedupeEncounterEmLines(lines: ClaimLine[]): { lines: ClaimLine[]; suppressedCount: number } {
+  const em = lines.filter((l) => (l.sourceModule as string) === "ENCOUNTER_EM");
+  if (em.length <= 1) return { lines, suppressedCount: 0 };
+  let winner = em[0]!;
+  for (const l of em) {
+    if ((l.eventCreatedAt ?? "").localeCompare(winner.eventCreatedAt ?? "") > 0) winner = l;
+  }
+  const keepId = winner.billingEventId;
+  if (!keepId) return { lines, suppressedCount: 0 };
+  const out: ClaimLine[] = [];
+  let suppressed = 0;
+  for (const l of lines) {
+    if ((l.sourceModule as string) !== "ENCOUNTER_EM") {
+      out.push(l);
+      continue;
+    }
+    if (l.billingEventId === keepId) out.push(l);
+    else suppressed++;
+  }
+  return { lines: out.sort(compareClaimLinesClinically), suppressedCount: suppressed };
 }
 
 type RoutedLine = {
@@ -124,13 +250,12 @@ type RoutedLine = {
   line: ClaimLine;
 };
 
-/** Clinical display order for claim lines (lower = earlier). Other modules sort after MED_ADMIN. */
-const CLAIM_LINE_MODULE_PRIORITY: Partial<Record<BillingSourceModule, number>> = {
-  [BillingSourceModule.ENCOUNTER_EM]: 1,
-  [BillingSourceModule.PROCEDURE]: 2,
-  [BillingSourceModule.LAB_RESULT]: 3,
-  [BillingSourceModule.IMAGING_RESULT]: 4,
-  [BillingSourceModule.MED_ADMIN]: 5,
+const CLAIM_LINE_MODULE_PRIORITY: Record<string, number> = {
+  ENCOUNTER_EM: 1,
+  PROCEDURE: 2,
+  LAB_RESULT: 3,
+  IMAGING_RESULT: 4,
+  MED_ADMIN: 5,
 };
 
 function claimLineModulePriority(m: BillingSourceModule): number {
@@ -143,7 +268,54 @@ function compareClaimLinesClinically(a: ClaimLine, b: ClaimLine): number {
   if (pa !== pb) return pa - pb;
   const byCode = a.code.localeCompare(b.code);
   if (byCode !== 0) return byCode;
+  const cc = (a.companionCode ?? "").localeCompare(b.companionCode ?? "");
+  if (cc !== 0) return cc;
   return a.sourceModule.localeCompare(b.sourceModule);
+}
+
+type AssemblyCtx = {
+  blockingNoExtractBoth: number;
+  blockingNoExtractUnknown: number;
+  medAdminHcpcsWithoutProcedure: number;
+  multipleEmSuppressedProf: number;
+  multipleEmSuppressedFac: number;
+};
+
+function uniqueWarningCodes(codes: ClaimAssemblyWarningCode[]): ClaimAssemblyWarningCode[] {
+  return [...new Set(codes)];
+}
+
+function buildPackageWarnings(
+  lines: ClaimLine[],
+  missingCodes: number,
+  ctx: AssemblyCtx,
+  pkg: "professional" | "facility"
+): ClaimAssemblyWarningCode[] {
+  const w: ClaimAssemblyWarningCode[] = [];
+  if (missingCodes > 0) w.push("MISSING_BILLABLE_CODES");
+  if (lines.length === 0 && missingCodes === 0) w.push("NO_CLAIM_LINES");
+  if (ctx.blockingNoExtractBoth > 0) w.push("BOTH_SIDE_UNCODED");
+  if (ctx.blockingNoExtractUnknown > 0) w.push("UNKNOWN_SIDE_UNCODED");
+  if (ctx.medAdminHcpcsWithoutProcedure > 0) w.push("MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT");
+  if (pkg === "professional" && ctx.multipleEmSuppressedProf > 0) w.push("MULTIPLE_ENCOUNTER_EM");
+  if (pkg === "facility" && ctx.multipleEmSuppressedFac > 0) w.push("MULTIPLE_ENCOUNTER_EM");
+  return uniqueWarningCodes(w);
+}
+
+function buildSummaryWarnings(
+  summaryMissing: number,
+  prof: ClaimLine[],
+  fac: ClaimLine[],
+  ctx: AssemblyCtx
+): ClaimAssemblyWarningCode[] {
+  const w: ClaimAssemblyWarningCode[] = [];
+  if (summaryMissing > 0) w.push("MISSING_BILLABLE_CODES");
+  if (prof.length === 0 && fac.length === 0 && summaryMissing === 0) w.push("NO_ASSEMBLED_LINES");
+  if (ctx.blockingNoExtractBoth > 0) w.push("BOTH_SIDE_UNCODED");
+  if (ctx.blockingNoExtractUnknown > 0) w.push("UNKNOWN_SIDE_UNCODED");
+  if (ctx.medAdminHcpcsWithoutProcedure > 0) w.push("MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT");
+  if (ctx.multipleEmSuppressedProf + ctx.multipleEmSuppressedFac > 0) w.push("MULTIPLE_ENCOUNTER_EM");
+  return [...new Set(w)];
 }
 
 /**
@@ -163,20 +335,28 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
   const routed: RoutedLine[] = [];
   let professionalMissing = 0;
   let facilityMissing = 0;
+  let blockingNoExtractBoth = 0;
+  let blockingNoExtractUnknown = 0;
+  let medAdminHcpcsWithoutProcedure = 0;
 
   for (const ev of active) {
     if (omitFromClaimAssembly(ev)) continue;
 
     const parts = extractCodeParts(ev);
+    if (isMedAdminModule(ev.sourceModule) && parts.length >= 1) {
+      const singleHcpcsOnly =
+        parts.length === 1 && parts[0].codeType === "HCPCS" && !parts[0].companionCode;
+      if (singleHcpcsOnly) medAdminHcpcsWithoutProcedure++;
+    }
     const blocks = billingLedgerRowMissingBillableCodeBlocksReadiness(ev);
 
     if (parts.length === 0) {
-      /* No billable codes to list (e.g. uncoded / UNMAPPED only). Do not emit placeholder lines;
-       * package missing counts still reflect per-package readiness when the event blocks. */
       if (blocks) {
         const d = packageMissingDeltasForBlockingEventNoLines(ev);
         professionalMissing += d.prof;
         facilityMissing += d.fac;
+        if (ev.billingSide === BillingSide.BOTH) blockingNoExtractBoth++;
+        if (ev.billingSide === BillingSide.UNKNOWN) blockingNoExtractUnknown++;
       }
       continue;
     }
@@ -198,22 +378,38 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
   const profRouted = routed.filter((r) => r.target === "professional");
   const facRouted = routed.filter((r) => r.target === "facility");
 
-  const profLines = profRouted.map((r) => r.line);
-  const facLines = facRouted.map((r) => r.line);
-  profLines.sort(compareClaimLinesClinically);
-  facLines.sort(compareClaimLinesClinically);
+  let profLinesRaw = profRouted.map((r) => r.line);
+  let facLinesRaw = facRouted.map((r) => r.line);
+
+  const emP = dedupeEncounterEmLines(profLinesRaw);
+  const emF = dedupeEncounterEmLines(facLinesRaw);
+  profLinesRaw = emP.lines;
+  facLinesRaw = emF.lines;
+
+  const profLines = mergeClaimLinesForPackage(profLinesRaw);
+  const facLines = mergeClaimLinesForPackage(facLinesRaw);
+
+  const ctx: AssemblyCtx = {
+    blockingNoExtractBoth,
+    blockingNoExtractUnknown,
+    medAdminHcpcsWithoutProcedure,
+    multipleEmSuppressedProf: emP.suppressedCount,
+    multipleEmSuppressedFac: emF.suppressedCount,
+  };
 
   const professional: ClaimPackage = {
     lines: profLines,
     totalLines: profLines.length,
     missingCodes: professionalMissing,
     ready: professionalMissing === 0,
+    warnings: buildPackageWarnings(profLines, professionalMissing, ctx, "professional"),
   };
   const facility: ClaimPackage = {
     lines: facLines,
     totalLines: facLines.length,
     missingCodes: facilityMissing,
     ready: facilityMissing === 0,
+    warnings: buildPackageWarnings(facLines, facilityMissing, ctx, "facility"),
   };
 
   return {
@@ -223,6 +419,7 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
       totalLines: professional.totalLines + facility.totalLines,
       missingCodes: summaryMissing,
       ready: summaryMissing === 0,
+      warnings: buildSummaryWarnings(summaryMissing, profLines, facLines, ctx),
     },
   };
 }
@@ -231,9 +428,6 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
 export class ClaimBuilderService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Loads ledger rows for the encounter and returns professional vs facility claim packages.
-   */
   async buildEncounterClaims(facilityId: string, encounterId: string): Promise<EncounterClaimsResult> {
     const events = await this.prisma.billingEvent.findMany({
       where: { facilityId, encounterId },

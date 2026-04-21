@@ -250,9 +250,19 @@ export default {
     claimPreviewOriginFacility: "Établissement",
     claimPreviewOriginBoth: "Les deux",
     claimPreviewOmittedBothDuplicates:
-      "{count} ligne(s) en double omises ci-dessous — les lignes identiques pour les deux forfaits figurent sous Professionnel seulement.",
+      "{count} ligne(s) masquées ici — la même prestation figure aux forfaits Professionnel et Établissement ; affichée une seule fois sous Professionnel pour éviter un double comptage dans l’aperçu.",
     claimPreviewAllFacilityDupesUnderProfessional:
       "Toutes les lignes établissement figurent aussi sous Professionnel (les deux forfaits). Aucune ligne distincte à afficher.",
+    claimPreviewTableMerged: "Fusion",
+    claimPreviewMergedCount: "{count}×",
+    claimWarning_MISSING_BILLABLE_CODES: "Code facturable manquant (forfait ou visite).",
+    claimWarning_NO_CLAIM_LINES: "Aucune ligne CPT/HCPCS dans ce forfait.",
+    claimWarning_BOTH_SIDE_UNCODED: "Au moins une ligne « les deux forfaits » n’a pas de code mappable.",
+    claimWarning_UNKNOWN_SIDE_UNCODED: "Au moins une ligne au côté inconnu n’a pas de code mappable.",
+    claimWarning_MULTIPLE_ENCOUNTER_EM: "Plusieurs lignes E/M — seule la plus récente est affichée dans l’aperçu.",
+    claimWarning_MED_ADMIN_HCPCS_WITHOUT_PROCEDURE_CPT:
+      "Ligne médicament avec HCPCS mais sans CPT de procédure au registre (voie d’administration peut-être non précisée).",
+    claimWarning_NO_ASSEMBLED_LINES: "Aucune ligne de réclamation assemblée pour cette visite.",
   },
   medicationsPage: {
     title: "Médicaments",
