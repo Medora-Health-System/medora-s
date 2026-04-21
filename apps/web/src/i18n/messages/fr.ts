@@ -320,6 +320,18 @@ export default {
     submissionTimelineTitle: "Chronologie des soumissions",
     submissionLastAttemptStatus: "Statut de la dernière tentative",
     submissionAckStatus: "Statut ACK",
+    submissionCurrentStatus: "Statut actuel de la soumission",
+    submissionLifecycleNote: "Accusé enregistré ; statut inchangé",
+    submissionLifecycleReason_INVALID_TRANSITION: "Transition de cycle de vie non valide",
+    submissionLifecycleReason_ACK_OUT_OF_SEQUENCE: "Accusé hors séquence",
+    submissionLifecycleReason_TERMINAL_STATE_ALREADY_REACHED: "Soumission déjà finalisée",
+    submissionLifecycleReason_DUPLICATE_ACK_REPLAY_IGNORED: "Accusé en double ignoré",
+    submissionLifecycleReason_DUPLICATE_SEND_BLOCKED: "Envoi non répété en attente d’accusés",
+    submissionLifecycleReason_SEND_NOT_ALLOWED: "Envoi non autorisé depuis ce statut",
+    submissionLifecycleReason_TRANSPORT_999_NOT_APPLICABLE: "Accusé 999 non applicable au statut actuel",
+    submissionLifecycleReason_TRANSPORT_999_REJECT_NO_TRANSITION: "999 rejeté au transport ; soumission inchangée",
+    submissionLifecycleReason_ACK_PARSE_INCONCLUSIVE: "Accusé non interprétable pour le cycle de vie",
+    submissionLifecycleReason_ACK_UNMATCHED: "Accusé non associé à une soumission",
     x12Warning_X12_837P_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY:
       "L’aperçu 837P est un échafaudage plat — boucles et contexte payeur incomplets.",
     x12Warning_X12_PATIENT_NAME_FALLBACK_ID:

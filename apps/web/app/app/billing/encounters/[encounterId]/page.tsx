@@ -212,7 +212,18 @@ type SubmissionAckPayload = {
   kind: string;
   statusCode: string | null;
   message: string | null;
+  warningCode?: string | null;
   receivedAt: string;
+};
+
+type SubmissionDebugAckPayload = {
+  ackId: string;
+  type: string;
+  status: string | null;
+  warningCode?: string | null;
+  lifecycleReason?: string | null;
+  receivedAt: string;
+  rawSummary: string;
 };
 
 type SubmissionDebugPayload = {
@@ -222,8 +233,9 @@ type SubmissionDebugPayload = {
     type: "837P" | "837I";
     status: string;
     createdAt: string;
+    lastTransitionReason?: string | null;
     attempts: SubmissionAttemptPayload[];
-    acknowledgments: SubmissionAckPayload[];
+    acknowledgments: SubmissionDebugAckPayload[];
   }[];
 };
 
@@ -333,6 +345,13 @@ function submissionStatusLabel(t: (k: string) => string, status: string): string
   const k = `billingPage.submissionStatus_${status}`;
   const v = t(k);
   return v === k ? status : v;
+}
+
+function submissionLifecycleReasonLabel(t: (k: string) => string, code: string | null | undefined): string | null {
+  if (!code || code === "OK") return null;
+  const k = `billingPage.submissionLifecycleReason_${code}`;
+  const v = t(k);
+  return v === k ? code : v;
 }
 
 function claimSubmissionKindLabel(t: (k: string) => string, claimType: string): string {
@@ -1601,7 +1620,14 @@ export default function BillingEncounterLedgerPage() {
                             ) : (
                               submissionAcks[s.id]!.map((a) => (
                                 <div key={a.id}>
-                                  {a.kind} · {a.statusCode ?? "UNKNOWN"}{a.message ? ` · ${a.message}` : ""}
+                                  {a.kind} · {a.statusCode ?? "UNKNOWN"}
+                                  {a.message ? ` · ${a.message}` : ""}
+                                  {submissionLifecycleReasonLabel(t, a.warningCode) ? (
+                                    <span style={{ color: "#64748b" }}>
+                                      {" "}
+                                      · {t("billingPage.submissionLifecycleNote")}: {submissionLifecycleReasonLabel(t, a.warningCode)}
+                                    </span>
+                                  ) : null}
                                 </div>
                               ))
                             )}
@@ -1631,8 +1657,17 @@ export default function BillingEncounterLedgerPage() {
                         {new Date(s.createdAt).toLocaleString(locale)} · {t("billingPage.submissionAttempts")}: {s.attempts.length}
                       </div>
                       <div style={{ fontSize: 12, color: "#475569" }}>
-                        {t("billingPage.submissionLastAttemptStatus")}: {s.attempts[0]?.status ?? "—"} · {t("billingPage.submissionAckStatus")}: {s.acknowledgments[0]?.statusCode ?? t("billingPage.submissionNoAcknowledgmentYet")}
+                        {t("billingPage.submissionLastAttemptStatus")}: {s.attempts[0]?.status ?? "—"} · {t("billingPage.submissionAckStatus")}:{" "}
+                        {s.acknowledgments[0]?.status ?? t("billingPage.submissionNoAcknowledgmentYet")}
                       </div>
+                      <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+                        {t("billingPage.submissionCurrentStatus")}: {submissionStatusLabel(t, s.status)}
+                      </div>
+                      {submissionLifecycleReasonLabel(t, s.lastTransitionReason) ? (
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                          {t("billingPage.submissionLifecycleNote")}: {submissionLifecycleReasonLabel(t, s.lastTransitionReason)}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>

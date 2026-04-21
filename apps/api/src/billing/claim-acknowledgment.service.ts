@@ -1,6 +1,12 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { ClaimSubmissionStatus } from "@prisma/client";
+import { ClaimAcknowledgment, ClaimSubmissionStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  ClaimAckOutcome,
+  nextStatusFrom277CA,
+  nextStatusFrom999Transport,
+  SubmissionTransitionReasonCode,
+} from "./claim-submission-state-machine.util";
 
 type AckKind = "999" | "277CA";
 
@@ -19,10 +25,16 @@ function parse999(rawText: string) {
   const stCtrl = ak2?.split("*")[2] ?? null;
   const ak9Code = ak9?.split("*")[1] ?? null;
   const ik5Code = ik5?.split("*")[1] ?? null;
-  const accepted = ak9Code === "A" || ik5Code === "A";
-  const rejected = ["R", "E"].includes(ak9Code ?? "") || ["R", "E"].includes(ik5Code ?? "");
-  const statusCode = accepted ? "ACCEPTED" : rejected ? "REJECTED" : "UNKNOWN";
-  return { statusCode, stCtrl, parsed: { ak9Code, ik5Code, stCtrl } };
+  const transportAccept = ak9Code === "A" || ik5Code === "A";
+  const transportReject = ["R", "E"].includes(ak9Code ?? "") || ["R", "E"].includes(ik5Code ?? "");
+  const statusCode = transportAccept ? "TRANSPORT_ACCEPT" : transportReject ? "TRANSPORT_REJECT" : "UNKNOWN";
+  return {
+    statusCode,
+    transportAccept,
+    transportReject,
+    stCtrl,
+    parsed: { ak9Code, ik5Code, stCtrl },
+  };
 }
 
 function parse277ca(rawText: string) {
@@ -35,16 +47,27 @@ function parse277ca(rawText: string) {
   const accepted = upper.includes("A1");
   const rejected = upper.includes("A3");
   const needsCorrection = upper.includes("A6") || upper.includes("A7");
-  const statusCode = accepted ? "ACCEPTED" : rejected ? "REJECTED" : needsCorrection ? "NEEDS_CORRECTION" : "UNKNOWN";
+  const statusCode = accepted ? "CLAIM_ACCEPTED" : rejected ? "CLAIM_REJECTED" : needsCorrection ? "NEEDS_CORRECTION" : "UNKNOWN";
   return { statusCode, trnRef, parsed: { stc: stcFirst, trnRef } };
 }
 
-function ackStatusToSubmissionStatus(s: string): ClaimSubmissionStatus | null {
-  if (s === "ACCEPTED") return ClaimSubmissionStatus.ACCEPTED;
-  if (s === "REJECTED") return ClaimSubmissionStatus.REJECTED;
-  if (s === "NEEDS_CORRECTION") return ClaimSubmissionStatus.NEEDS_CORRECTION;
+function claimOutcomeFrom277(parsed: ReturnType<typeof parse277ca>): ClaimAckOutcome | null {
+  const upper = (parsed.parsed.stc ?? "").toUpperCase();
+  if (upper.includes("A1")) return "ACCEPTED";
+  if (upper.includes("A3")) return "REJECTED";
+  if (upper.includes("A6") || upper.includes("A7")) return "NEEDS_CORRECTION";
   return null;
 }
+
+export type IngestAcknowledgmentResult = {
+  ack: ClaimAcknowledgment;
+  previousStatus: ClaimSubmissionStatus | null;
+  nextStatus: ClaimSubmissionStatus | null;
+  statusChanged: boolean;
+  reasonCode: SubmissionTransitionReasonCode;
+  ackStored: true;
+  outOfSequence: boolean;
+};
 
 @Injectable()
 export class ClaimAcknowledgmentService {
@@ -55,12 +78,13 @@ export class ClaimAcknowledgmentService {
     rawText: string;
     kind: AckKind;
     refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
-  }) {
-    const parsed = input.kind === "999" ? parse999(input.rawText) : parse277ca(input.rawText);
+  }): Promise<IngestAcknowledgmentResult> {
+    const parsed999 = input.kind === "999" ? parse999(input.rawText) : null;
+    const parsed277 = input.kind === "277CA" ? parse277ca(input.rawText) : null;
 
     let submissionId = input.refs?.submissionId ?? null;
     let batchId = input.refs?.batchId ?? null;
-    let warningCode: string | null = null;
+    let unmatchedWarning: string | null = null;
 
     if (!submissionId && input.refs?.transactionCtrl) {
       const found = await this.prisma.claimSubmission.findFirst({
@@ -72,9 +96,9 @@ export class ClaimAcknowledgmentService {
         batchId = found.batchId;
       }
     }
-    if (!submissionId && input.kind === "999" && "stCtrl" in parsed && parsed.stCtrl) {
+    if (!submissionId && parsed999?.stCtrl) {
       const found = await this.prisma.claimSubmission.findFirst({
-        where: { facilityId: input.facilityId, transactionCtrl: parsed.stCtrl },
+        where: { facilityId: input.facilityId, transactionCtrl: parsed999.stCtrl },
         select: { id: true, batchId: true },
       });
       if (found) {
@@ -83,8 +107,91 @@ export class ClaimAcknowledgmentService {
       }
     }
     if (!submissionId) {
-      warningCode = "ACK_UNMATCHED";
+      unmatchedWarning = "ACK_UNMATCHED";
     }
+
+    const existing = submissionId
+      ? await this.prisma.claimSubmission.findUnique({
+          where: { id: submissionId },
+          select: { status: true, facilityId: true },
+        })
+      : null;
+
+    if (existing && existing.facilityId !== input.facilityId) {
+      submissionId = null;
+      batchId = null;
+      unmatchedWarning = "ACK_UNMATCHED";
+    }
+
+    const previousStatus = existing?.status ?? null;
+
+    let reasonCode: SubmissionTransitionReasonCode = "OK";
+    let proposedStatus: ClaimSubmissionStatus | null = null;
+    let statusChanged = false;
+    let outOfSequence = false;
+    let lifecycleExtra: Record<string, unknown> = {};
+
+    if (!submissionId || !existing) {
+      reasonCode = "ACK_UNMATCHED";
+      lifecycleExtra = { reasonCode: "ACK_UNMATCHED", previousStatus: null };
+    } else if (input.kind === "999" && parsed999) {
+      const t = nextStatusFrom999Transport(existing.status, parsed999.transportAccept);
+      reasonCode = t.reason;
+      proposedStatus = t.next;
+      outOfSequence = t.reason === "ACK_OUT_OF_SEQUENCE";
+      if (t.next && t.reason === "OK") {
+        statusChanged = true;
+      }
+      lifecycleExtra = {
+        kind: "999",
+        transportAccept: parsed999.transportAccept,
+        previousStatus: existing.status,
+        proposedStatus,
+        reasonCode: t.reason,
+      };
+    } else if (input.kind === "277CA" && parsed277) {
+      const outcome = claimOutcomeFrom277(parsed277);
+      if (!outcome) {
+        reasonCode = "ACK_PARSE_INCONCLUSIVE";
+        proposedStatus = null;
+        lifecycleExtra = {
+          kind: "277CA",
+          previousStatus: existing.status,
+          reasonCode,
+        };
+      } else {
+        const t = nextStatusFrom277CA(existing.status, outcome);
+        reasonCode = t.reason;
+        proposedStatus = t.next;
+        outOfSequence = t.reason === "ACK_OUT_OF_SEQUENCE";
+        if (t.next && t.reason === "OK") {
+          statusChanged = true;
+        }
+        lifecycleExtra = {
+          kind: "277CA",
+          claimOutcome: outcome,
+          previousStatus: existing.status,
+          proposedStatus,
+          reasonCode: t.reason,
+        };
+      }
+    }
+
+    const statusCodeStr = input.kind === "999" ? parsed999!.statusCode : parsed277!.statusCode;
+
+    const parsedBase =
+      input.kind === "999"
+        ? { ...parsed999!.parsed, transportAccept: parsed999!.transportAccept }
+        : parsed277!.parsed;
+
+    const mergedParsed = {
+      ...parsedBase,
+      lifecycle: lifecycleExtra,
+    } as Prisma.InputJsonValue;
+
+    const warn =
+      unmatchedWarning ??
+      (!statusChanged && reasonCode !== "OK" && submissionId && existing ? reasonCode : null);
 
     const ack = await this.prisma.claimAcknowledgment.create({
       data: {
@@ -93,24 +200,32 @@ export class ClaimAcknowledgmentService {
         batchId: batchId ?? null,
         kind: input.kind,
         rawText: input.rawText,
-        parsedJson: parsed.parsed,
-        statusCode: parsed.statusCode,
-        message: parsed.statusCode,
-        warningCode,
+        parsedJson: mergedParsed,
+        statusCode: statusCodeStr,
+        message: statusCodeStr,
+        warningCode: warn,
       },
     });
 
-    if (submissionId) {
-      const next = ackStatusToSubmissionStatus(parsed.statusCode);
-      if (next) {
-        const existing = await this.prisma.claimSubmission.findUnique({ where: { id: submissionId } });
-        if (existing && existing.status === ClaimSubmissionStatus.ACK_PENDING) {
-          await this.prisma.claimSubmission.update({ where: { id: submissionId }, data: { status: next } });
-        }
-      }
+    if (submissionId && existing && proposedStatus && statusChanged) {
+      await this.prisma.claimSubmission.update({
+        where: { id: submissionId },
+        data: { status: proposedStatus },
+      });
     }
 
-    return ack;
+    const nextStatus: ClaimSubmissionStatus | null =
+      statusChanged && proposedStatus ? proposedStatus : previousStatus;
+
+    return {
+      ack,
+      previousStatus,
+      nextStatus,
+      statusChanged,
+      reasonCode,
+      ackStored: true,
+      outOfSequence,
+    };
   }
 
   async getAcknowledgmentsForSubmission(facilityId: string, submissionId: string) {

@@ -6,22 +6,31 @@ import {
   ManualClearinghouseTransport,
   StubApiClearinghouseTransport,
 } from "./clearinghouse-transport.interface";
+import {
+  isTerminalSubmissionStatus,
+  nextStatusAfterSuccessfulSend,
+  SubmissionTransitionReasonCode,
+} from "./claim-submission-state-machine.util";
 
 export type TransportKind = "MANUAL" | "STUB_API";
 
-function canTransition(from: ClaimSubmissionStatus, to: ClaimSubmissionStatus): boolean {
-  const allowed: Record<ClaimSubmissionStatus, ClaimSubmissionStatus[]> = {
-    DRAFT: [ClaimSubmissionStatus.GENERATED],
-    GENERATED: [ClaimSubmissionStatus.READY_TO_SEND],
-    READY_TO_SEND: [ClaimSubmissionStatus.SENT],
-    SENT: [ClaimSubmissionStatus.ACK_PENDING],
-    ACK_PENDING: [ClaimSubmissionStatus.ACCEPTED, ClaimSubmissionStatus.REJECTED, ClaimSubmissionStatus.NEEDS_CORRECTION],
-    ACCEPTED: [],
-    REJECTED: [],
-    NEEDS_CORRECTION: [],
-    CANCELLED: [],
-  };
-  return allowed[from].includes(to);
+function sendSkipReason(current: ClaimSubmissionStatus): SubmissionTransitionReasonCode {
+  if (isTerminalSubmissionStatus(current)) {
+    return "TERMINAL_STATE_ALREADY_REACHED";
+  }
+  if (current === ClaimSubmissionStatus.SENT || current === ClaimSubmissionStatus.ACK_PENDING) {
+    return "DUPLICATE_SEND_BLOCKED";
+  }
+  return "SEND_NOT_ALLOWED";
+}
+
+function lifecycleReasonFromParsedJson(parsedJson: Prisma.JsonValue | null): string | null {
+  if (!parsedJson || typeof parsedJson !== "object" || Array.isArray(parsedJson)) return null;
+  const rec = parsedJson as Record<string, unknown>;
+  const lc = rec.lifecycle;
+  if (!lc || typeof lc !== "object" || Array.isArray(lc)) return null;
+  const r = (lc as Record<string, unknown>).reasonCode;
+  return typeof r === "string" ? r : null;
 }
 
 @Injectable()
@@ -59,6 +68,39 @@ export class ClaimTransmissionService {
     return { facilityId, encounterId, transport: transport.key, results };
   }
 
+  async getSubmissionLifecycleDebug(facilityId: string, submissionId: string) {
+    const sub = await this.prisma.claimSubmission.findFirst({
+      where: { id: submissionId, facilityId },
+      include: {
+        attempts: { orderBy: { createdAt: "desc" } },
+        acknowledgments: { orderBy: { receivedAt: "desc" } },
+      },
+    });
+    if (!sub) throw new NotFoundException("Submission not found");
+    const lastAck = sub.acknowledgments[0];
+    return {
+      submissionId: sub.id,
+      currentStatus: sub.status,
+      attempts: sub.attempts.map((a) => ({
+        attemptId: a.id,
+        transport: a.transport,
+        status: a.ok ? "OK" : "FAILED",
+        createdAt: a.createdAt,
+        errorMessage: a.errorMessage,
+      })),
+      acknowledgments: sub.acknowledgments.map((ack) => ({
+        ackId: ack.id,
+        type: ack.kind,
+        status: ack.statusCode,
+        warningCode: ack.warningCode,
+        lifecycleReason: lifecycleReasonFromParsedJson(ack.parsedJson),
+        receivedAt: ack.receivedAt,
+        rawSummary: ack.rawText.slice(0, 140),
+      })),
+      lastTransitionReason: lastAck ? lifecycleReasonFromParsedJson(lastAck.parsedJson) : null,
+    };
+  }
+
   async getSubmissionAttemptHistory(facilityId: string, submissionId: string) {
     const sub = await this.prisma.claimSubmission.findFirst({ where: { id: submissionId, facilityId }, select: { id: true } });
     if (!sub) throw new NotFoundException("Submission not found");
@@ -81,6 +123,10 @@ export class ClaimTransmissionService {
     return {
       encounterId,
       submissions: submissions.map((s) => ({
+        lastTransitionReason: (() => {
+          const first = s.acknowledgments[0];
+          return first ? lifecycleReasonFromParsedJson(first.parsedJson) : null;
+        })(),
         submissionId: s.id,
         type: s.claimType === "PROFESSIONAL_837P" ? "837P" : "837I",
         status: s.status,
@@ -100,6 +146,8 @@ export class ClaimTransmissionService {
           ackId: ack.id,
           type: ack.kind,
           status: ack.statusCode,
+          warningCode: ack.warningCode,
+          lifecycleReason: lifecycleReasonFromParsedJson(ack.parsedJson),
           receivedAt: ack.receivedAt,
           rawSummary: ack.rawText.slice(0, 140),
         })),
@@ -118,17 +166,18 @@ export class ClaimTransmissionService {
     if (!submission.x12Text?.trim()) throw new BadRequestException("Submission has no x12 text");
 
     if (!opts.allowNonReady && submission.status !== ClaimSubmissionStatus.READY_TO_SEND) {
+      const skipReason = sendSkipReason(submission.status);
       await this.prisma.claimSubmissionAttempt.create({
         data: {
           submissionId,
           transport: transport.key,
           ok: false,
-          requestMetaJson: { skipped: true, reason: "STATUS_NOT_READY_TO_SEND" },
+          requestMetaJson: { skipped: true, reason: skipReason },
           responseMetaJson: { currentStatus: submission.status },
-          errorMessage: "STATUS_NOT_READY_TO_SEND",
+          errorMessage: skipReason,
         },
       });
-      return { submissionId, skipped: true, status: submission.status };
+      return { submissionId, skipped: true, status: submission.status, skipReason };
     }
 
     const result = await transport.send({
@@ -152,10 +201,10 @@ export class ClaimTransmissionService {
     });
 
     let nextStatus = submission.status;
-    if (result.ok && canTransition(submission.status, ClaimSubmissionStatus.SENT)) {
-      nextStatus = ClaimSubmissionStatus.SENT;
-      if (canTransition(nextStatus, ClaimSubmissionStatus.ACK_PENDING)) {
-        nextStatus = ClaimSubmissionStatus.ACK_PENDING;
+    if (result.ok) {
+      const t = nextStatusAfterSuccessfulSend(submission.status);
+      if (t.next) {
+        nextStatus = t.next;
       }
     }
 

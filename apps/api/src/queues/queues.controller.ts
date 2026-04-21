@@ -107,6 +107,13 @@ export class QueuesController {
     return this.claimTransmissionService.getEncounterSubmissionDebug(facilityId, encounterId);
   }
 
+  @Get("billing/submissions/:submissionId/lifecycle-debug")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getSubmissionLifecycleDebug(@Param("submissionId") submissionId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimTransmissionService.getSubmissionLifecycleDebug(facilityId, submissionId);
+  }
+
   @Get("billing/submissions/:submissionId")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getClaimSubmission(@Param("submissionId") submissionId: string, @Req() req: any) {
@@ -151,7 +158,7 @@ export class QueuesController {
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async simulateAcknowledgment(
     @Param("submissionId") submissionId: string,
-    @Body() body: { type: "999" | "277CA"; status: "ACCEPTED" | "REJECTED" },
+    @Body() body: { type: "999" | "277CA"; status: "ACCEPTED" | "REJECTED" | "NEEDS_CORRECTION" },
     @Req() req: any
   ) {
     if (process.env.NODE_ENV === "production") {
@@ -160,18 +167,32 @@ export class QueuesController {
     const facilityId = req.facilityId;
     const submission = await this.claimSubmissionService.getSubmissionById(facilityId, submissionId);
     const ackType = body.type;
+    if (ackType === "999" && body.status === "NEEDS_CORRECTION") {
+      throw new BadRequestException("NEEDS_CORRECTION applies to 277CA only");
+    }
     const accepted = body.status === "ACCEPTED";
     const rawText =
       ackType === "999"
         ? `ST*999*0001~AK2*837*${submission.transactionCtrl ?? "000000001"}~IK5*${accepted ? "A" : "R"}~AK9*${accepted ? "A" : "R"}~SE*5*0001~`
-        : `ST*277*0001~TRN*2*${submission.transactionCtrl ?? "000000001"}~STC*${accepted ? "A1:20" : "A3:21"}~SE*4*0001~`;
+        : body.status === "NEEDS_CORRECTION"
+          ? `ST*277*0001~TRN*2*${submission.transactionCtrl ?? "000000001"}~STC*A6:20~SE*4*0001~`
+          : `ST*277*0001~TRN*2*${submission.transactionCtrl ?? "000000001"}~STC*${accepted ? "A1:20" : "A3:21"}~SE*4*0001~`;
 
-    return this.claimAcknowledgmentService.ingestAcknowledgment({
+    const result = await this.claimAcknowledgmentService.ingestAcknowledgment({
       facilityId,
       rawText,
       kind: ackType,
       refs: { submissionId, transactionCtrl: submission.transactionCtrl ?? undefined, batchId: submission.batchId ?? undefined },
     });
+    return {
+      previousStatus: result.previousStatus,
+      nextStatus: result.nextStatus,
+      statusChanged: result.statusChanged,
+      reasonCode: result.reasonCode,
+      ackStored: result.ackStored,
+      outOfSequence: result.outOfSequence,
+      ack: result.ack,
+    };
   }
 
   @Get("billing/submissions/:submissionId/acknowledgments")
