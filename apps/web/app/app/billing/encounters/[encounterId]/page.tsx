@@ -156,6 +156,8 @@ type EncounterClaimExportPayload = {
     blockers: string[];
     warnings: string[];
     contextWarnings?: string[];
+    claimIdentityGaps?: string[];
+    claimIdentityReady?: boolean;
   };
 };
 
@@ -1296,6 +1298,34 @@ export default function BillingEncounterLedgerPage() {
                   {(claimExport.summary.contextWarnings ?? []).map((cw) => (
                     <div key={cw}>{exportContextWarningLabel(t, cw)}</div>
                   ))}
+                </div>
+              ) : null}
+              {claimExport.summary.claimIdentityGaps !== undefined ? (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: "10px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
+                    background: claimExport.summary.claimIdentityReady ? "#f0fdf4" : "#fffbeb",
+                    fontSize: 12,
+                    color: "#334155",
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimIdentityReadinessTitle")}</div>
+                  <div style={{ marginBottom: 6 }}>
+                    <strong>{t("billingPage.claimIdentityReadyLabel")}:</strong>{" "}
+                    {claimExport.summary.claimIdentityReady ? t("common.yes") : t("common.no")}
+                  </div>
+                  {(claimExport.summary.claimIdentityGaps?.length ?? 0) > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {(claimExport.summary.claimIdentityGaps ?? []).map((code) => (
+                        <li key={code}>{x12CodeLabel(t, "x12Missing", code)}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ color: "#15803d" }}>{t("billingPage.claimIdentityChecklistComplete")}</div>
+                  )}
                 </div>
               ) : null}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13, marginBottom: canViewExportJson ? 10 : 0 }}>

@@ -57,6 +57,13 @@ export type EncounterClaimExportSummary = {
   warnings: string[];
   /** Export-only hints (e.g. missing optional context); not claim validation codes. */
   contextWarnings?: string[];
+  /**
+   * Phase 7 — payer / subscriber / provider NPI / facility billing identity gaps for this encounter.
+   * When empty, modeled claim identity is sufficient for preview (structural issues may still apply).
+   */
+  claimIdentityGaps?: string[];
+  /** True when `claimIdentityGaps` is empty or absent. */
+  claimIdentityReady?: boolean;
 };
 
 export type EncounterClaimExportResult = {

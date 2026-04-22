@@ -13,7 +13,8 @@ import type {
   UpdateAdminUserDto,
   UpdateAdminUserRolesDto,
   UpdateAdminUserStatusDto,
-} from "./dto/admin-user.dto";
+  UserBillingIdentityPatchDto,
+} from "@medora/shared";
 
 @Injectable()
 export class AdminUsersService {
@@ -289,6 +290,57 @@ export class AdminUsersService {
     });
 
     return { message: "Mot de passe réinitialisé" };
+  }
+
+  async getUserBillingIdentity(facilityId: string, userId: string) {
+    const u = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        userRoles: { some: { facilityId } },
+      },
+      select: {
+        id: true,
+        billingNpi: true,
+        billingTaxonomyCode: true,
+        billingNameOverride: true,
+      },
+    });
+    if (!u) {
+      throw new NotFoundException("Utilisateur introuvable.");
+    }
+    return u;
+  }
+
+  async updateUserBillingIdentity(
+    facilityId: string,
+    userId: string,
+    dto: UserBillingIdentityPatchDto,
+    _actorUserId: string
+  ) {
+    const exists = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        userRoles: { some: { facilityId } },
+      },
+      select: { id: true },
+    });
+    if (!exists) {
+      throw new NotFoundException("Utilisateur introuvable.");
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        billingNpi: dto.billingNpi,
+        billingTaxonomyCode: dto.billingTaxonomyCode,
+        billingNameOverride: dto.billingNameOverride,
+      },
+      select: {
+        id: true,
+        billingNpi: true,
+        billingTaxonomyCode: true,
+        billingNameOverride: true,
+      },
+    });
   }
 
   private async getOneSummary(facilityId: string, userId: string) {

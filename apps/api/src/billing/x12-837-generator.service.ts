@@ -121,19 +121,21 @@ export class X12837GeneratorService {
     const profPkg = exportResult.professional;
     const facPkg = exportResult.facility;
 
+    const claimIdentityGaps = exportResult.summary.claimIdentityGaps ?? [];
+
     const headerCtx = profPkg?.header ?? facPkg?.header;
     const renderingId = headerCtx?.renderingProviderId;
     const attendingId = headerCtx?.attendingProviderId;
     const renderingUser = renderingId
       ? await this.prisma.user.findUnique({
           where: { id: renderingId },
-          select: { firstName: true, lastName: true },
+          select: { firstName: true, lastName: true, billingNpi: true },
         })
       : null;
     const attendingUser = attendingId
       ? await this.prisma.user.findUnique({
           where: { id: attendingId },
-          select: { firstName: true, lastName: true },
+          select: { firstName: true, lastName: true, billingNpi: true },
         })
       : null;
 
@@ -144,6 +146,7 @@ export class X12837GeneratorService {
           patient,
           renderingUser,
           attendingUser,
+          claimIdentityGaps,
         })
       : null;
 
@@ -154,6 +157,7 @@ export class X12837GeneratorService {
           patient,
           renderingUser,
           attendingUser,
+          claimIdentityGaps,
         })
       : null;
 
@@ -190,8 +194,9 @@ export class X12837GeneratorService {
       facilityName: string | null;
       facilityId: string;
       patient: { firstName: string | null; lastName: string | null; mrn: string | null } | null;
-      renderingUser: { firstName: string | null; lastName: string | null } | null;
-      attendingUser: { firstName: string | null; lastName: string | null } | null;
+      renderingUser: { firstName: string | null; lastName: string | null; billingNpi: string | null } | null;
+      attendingUser: { firstName: string | null; lastName: string | null; billingNpi: string | null } | null;
+      claimIdentityGaps: string[];
     }
   ): X12TransactionPreview {
     const warnings: string[] = ["X12_837P_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY"];
@@ -207,7 +212,8 @@ export class X12837GeneratorService {
     if (!svcDate) missingFields.push("MISSING_SERVICE_DATE");
     if (h.diagnosisCodes.length === 0) missingFields.push("MISSING_DIAGNOSIS_CODE");
     if (!h.renderingProviderId && !h.attendingProviderId) missingFields.push("MISSING_RENDERING_PROVIDER");
-    missingFields.push("MISSING_SUBSCRIBER_DATA", "MISSING_PAYER_CONTEXT", "MISSING_PROVIDER_NPI");
+    const identityProf = ctx.claimIdentityGaps.filter((m) => m !== "MISSING_FACILITY_EXPORT_CONTEXT");
+    for (const m of identityProf) missingFields.push(m);
 
     segments.push(x12BuildSegment("ST", ["837", TS_REF, IMPL_PROF]));
     segments.push(x12BuildSegment("BHT", ["0019", "00", claimRef, ymd, tm, "CH"]));
@@ -235,9 +241,10 @@ export class X12837GeneratorService {
     }
 
     const prov = ctx.renderingUser ?? ctx.attendingUser;
+    const npi = prov?.billingNpi?.trim() ?? "";
     if (prov) {
       segments.push(
-        x12BuildSegment("NM1", ["82", "1", prov.lastName ?? "", prov.firstName ?? "", "", "", "", "XX", ""])
+        x12BuildSegment("NM1", ["82", "1", prov.lastName ?? "", prov.firstName ?? "", "", "", "", "XX", npi])
       );
     } else {
       segments.push(x12BuildSegment("NM1", ["82", "1", "UNKNOWN", "PROVIDER", "", "", "", "XX", ""]));
@@ -274,20 +281,16 @@ export class X12837GeneratorService {
       facilityName: string | null;
       facilityId: string;
       patient: { firstName: string | null; lastName: string | null; mrn: string | null } | null;
-      renderingUser: { firstName: string | null; lastName: string | null } | null;
-      attendingUser: { firstName: string | null; lastName: string | null } | null;
+      renderingUser: { firstName: string | null; lastName: string | null; billingNpi: string | null } | null;
+      attendingUser: { firstName: string | null; lastName: string | null; billingNpi: string | null } | null;
+      claimIdentityGaps: string[];
     }
   ): X12TransactionPreview {
     const warnings: string[] = [
       "X12_837I_PREVIEW_SCAFFOLD_NOT_SUBMISSION_READY",
       "X12_837I_INSTITUTIONAL_FIELDS_INCOMPLETE",
     ];
-    const missingFields: string[] = [
-      "MISSING_FACILITY_EXPORT_CONTEXT",
-      "MISSING_SUBSCRIBER_DATA",
-      "MISSING_PAYER_CONTEXT",
-      "MISSING_PROVIDER_NPI",
-    ];
+    const missingFields: string[] = [];
     const segments: X12Segment[] = [];
 
     const h = pkg.header;
@@ -299,6 +302,7 @@ export class X12837GeneratorService {
     if (!svcDate) missingFields.push("MISSING_SERVICE_DATE");
     if (h.diagnosisCodes.length === 0) missingFields.push("MISSING_DIAGNOSIS_CODE");
     if (!h.renderingProviderId && !h.attendingProviderId) missingFields.push("MISSING_RENDERING_PROVIDER");
+    for (const m of ctx.claimIdentityGaps) missingFields.push(m);
 
     segments.push(x12BuildSegment("ST", ["837", TS_REF, IMPL_INST]));
     segments.push(x12BuildSegment("BHT", ["0019", "00", claimRef, ymd, tm, "CH"]));
@@ -325,9 +329,10 @@ export class X12837GeneratorService {
     }
 
     const prov = ctx.renderingUser ?? ctx.attendingUser;
+    const npi = prov?.billingNpi?.trim() ?? "";
     if (prov) {
       segments.push(
-        x12BuildSegment("NM1", ["82", "1", prov.lastName ?? "", prov.firstName ?? "", "", "", "", "XX", ""])
+        x12BuildSegment("NM1", ["82", "1", prov.lastName ?? "", prov.firstName ?? "", "", "", "", "XX", npi])
       );
     } else {
       segments.push(x12BuildSegment("NM1", ["82", "1", "UNKNOWN", "PROVIDER", "", "", "", "XX", ""]));

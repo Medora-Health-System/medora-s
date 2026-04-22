@@ -92,12 +92,29 @@ export const patientInsuranceCoverageUpsertDtoSchema = z
       .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
     planName: optionalTrimmed(512),
     memberId: optionalTrimmed(256),
+    policyNumber: optionalTrimmed(256),
     groupNumber: optionalTrimmed(256),
     subscriberName: optionalTrimmed(512),
     relationToSubscriber: optionalTrimmed(128),
     phone: optionalTrimmed(64),
     notes: optionalTrimmed(8000),
+    effectiveFrom: z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : v), z.coerce.date().optional()),
+    effectiveTo: z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : v), z.coerce.date().optional()),
+    isActive: z.boolean().optional(),
     clear: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.effectiveFrom &&
+      data.effectiveTo &&
+      data.effectiveFrom.getTime() > data.effectiveTo.getTime()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La date de fin de couverture doit être après la date de début.",
+        path: ["effectiveTo"],
+      });
+    }
   })
   .superRefine((data, ctx) => {
     if (data.payerId && data.payerNameFreeText) {
@@ -114,6 +131,7 @@ export const patientInsuranceCoverageUpsertDtoSchema = z
     const hasAncillary = Boolean(
       data.planName ||
         data.memberId ||
+        data.policyNumber ||
         data.groupNumber ||
         data.subscriberName ||
         data.relationToSubscriber ||

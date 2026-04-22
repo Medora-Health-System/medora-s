@@ -77,3 +77,36 @@ export const updateAdminUserStatusDtoSchema = z.object({
 
 export type UpdateAdminUserStatusDto = z.infer<typeof updateAdminUserStatusDtoSchema>;
 export type UpdateUserStatusDto = UpdateAdminUserStatusDto;
+
+/** PATCH /admin/users/:id/billing-identity — provider NPI for claims (ADMIN). */
+export const userBillingIdentityPatchDtoSchema = z.object({
+  billingNpi: z
+    .string()
+    .max(10)
+    .optional()
+    .nullable()
+    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim().replace(/\D/g, "").slice(0, 10))),
+  billingTaxonomyCode: z
+    .string()
+    .max(16)
+    .optional()
+    .nullable()
+    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
+  billingNameOverride: z
+    .string()
+    .max(256)
+    .optional()
+    .nullable()
+    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
+})
+  .superRefine((d, ctx) => {
+    if (d.billingNpi && !/^\d{10}$/.test(d.billingNpi)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Le NPI doit comporter 10 chiffres.",
+        path: ["billingNpi"],
+      });
+    }
+  });
+
+export type UserBillingIdentityPatchDto = z.infer<typeof userBillingIdentityPatchDtoSchema>;

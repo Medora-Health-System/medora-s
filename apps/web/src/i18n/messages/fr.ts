@@ -255,6 +255,21 @@ export default {
     claimExportRenderingProviderId: "Id prestataire / visite",
     claimExportServiceDates: "Plage de dates de service (début · fin)",
     claimExportFieldEmpty: "—",
+    claimIdentityReadinessTitle: "Identité de la réclamation (payeur et prestataire)",
+    claimIdentityReadyLabel: "Liste d’identité complète",
+    claimIdentityChecklistComplete:
+      "Payeur, assuré, prestataire et établissement (si requis) sont renseignés pour cet aperçu.",
+    identityTerm_payer: "Payeur",
+    identityTerm_insurance: "Assurance",
+    identityTerm_subscriber: "Assuré principal",
+    identityTerm_memberId: "Numéro d’adhérent",
+    identityTerm_groupNumber: "Numéro de groupe",
+    identityTerm_relationToSubscriber: "Lien avec l’assuré principal",
+    identityTerm_providerNpiMissing: "NPI de facturation du prestataire manquant",
+    identityTerm_facilityBillingIdentityMissing: "Identité de facturation de l’établissement incomplète",
+    identityTerm_claimIdentityReadiness: "Préparation de l’identité de réclamation",
+    identityTerm_primaryCoverage: "Couverture principale",
+    identityTerm_secondaryCoverage: "Couverture secondaire",
     claimExportJsonShow: "Afficher le JSON d’export",
     claimExportJsonHide: "Masquer le JSON d’export",
     exportContextWarning_EXPORT_CONTEXT_NO_PROVIDER_ON_ENCOUNTER:
@@ -414,10 +429,14 @@ export default {
     x12Missing_MISSING_SERVICE_DATE: "Plage de dates de service absente ou incomplète sur les lignes.",
     x12Missing_MISSING_DIAGNOSIS_CODE: "Aucun code de diagnostic pour le segment HI.",
     x12Missing_MISSING_RENDERING_PROVIDER: "Aucun id de prestataire ou médecin assigné sur la visite.",
-    x12Missing_MISSING_SUBSCRIBER_DATA: "Données abonné / assuré non modélisées (phase payeur).",
-    x12Missing_MISSING_PAYER_CONTEXT: "Contexte payeur / plan non modélisé.",
-    x12Missing_MISSING_PROVIDER_NPI: "NPI prestataire non stocké sur les utilisateurs — identification incomplète.",
-    x12Missing_MISSING_FACILITY_EXPORT_CONTEXT: "Contexte de facturation établissement incomplet pour le 837I.",
+    x12Missing_MISSING_SUBSCRIBER_DATA:
+      "Ajoutez le numéro d’adhérent ou de police et le nom de l’assuré principal si le patient n’est pas l’assuré.",
+    x12Missing_MISSING_PAYER_CONTEXT:
+      "Liez la couverture principale à un payeur actif (ou saisissez un nom de payeur) et vérifiez les dates de couverture.",
+    x12Missing_MISSING_PROVIDER_NPI:
+      "Saisissez un NPI de facturation valide à 10 chiffres sur le compte prestataire utilisé pour cette réclamation.",
+    x12Missing_MISSING_FACILITY_EXPORT_CONTEXT:
+      "Complétez le profil de facturation de l’établissement : raison sociale, NPI, identifiant fiscal et adresse de facturation.",
     x12Missing_MISSING_REVENUE_CODE_ON_LINE:
       "Au moins une ligne établissement sans code de revenu (aperçu SV2 avec valeur de repli).",
     claimPreviewProfessionalLines: "Lignes professionnelles",

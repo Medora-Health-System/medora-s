@@ -301,6 +301,17 @@ model Facility {
   timezone  String
   defaultLanguage String @default("fr")
   isActive  Boolean  @default(true)
+  /// Phase 7 — institutional / UB-style claim billing identity (optional).
+  billingLegalName       String?
+  billingNpi             String?
+  taxIdEin               String?
+  billingAddressLine1    String?
+  billingAddressLine2    String?
+  billingCity            String?
+  billingStateProvince   String?
+  billingPostalCode      String?
+  billingCountry         String?
+  billingFacilityTypeLabel String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -363,11 +374,15 @@ model PatientInsuranceCoverage {
   payerNameFreeText    String?
   planName             String?
   memberId             String?
+  policyNumber         String?
   groupNumber          String?
   subscriberName       String?
   relationToSubscriber String?
   phone                String?
   notes                String?
+  effectiveFrom        DateTime?
+  effectiveTo          DateTime?
+  isActive             Boolean               @default(true)
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
@@ -410,6 +425,10 @@ model User {
   email            String   @unique
   firstName        String
   lastName         String
+  /// Phase 7 — 10-digit NPI for professional claim rendering (optional).
+  billingNpi             String?
+  billingTaxonomyCode    String?
+  billingNameOverride    String?
   passwordHash     String
   refreshTokenHash String?
   isActive         Boolean  @default(true)

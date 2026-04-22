@@ -113,6 +113,7 @@ export class PatientInsuranceService {
     const hasAncillary = Boolean(
       data.planName ||
         data.memberId ||
+        data.policyNumber ||
         data.groupNumber ||
         data.subscriberName ||
         data.relationToSubscriber ||
@@ -207,22 +208,30 @@ export class PatientInsuranceService {
         payerNameFreeText: payerFree,
         planName: data.planName ?? null,
         memberId: data.memberId ?? null,
+        policyNumber: data.policyNumber ?? null,
         groupNumber: data.groupNumber ?? null,
         subscriberName: data.subscriberName ?? null,
         relationToSubscriber: data.relationToSubscriber ?? null,
         phone: data.phone ?? null,
         notes: data.notes ?? null,
+        effectiveFrom: data.effectiveFrom ?? null,
+        effectiveTo: data.effectiveTo ?? null,
+        isActive: data.isActive ?? true,
       },
       update: {
         payerId: data.payerId ?? null,
         payerNameFreeText: payerFree,
         planName: data.planName ?? null,
         memberId: data.memberId ?? null,
+        policyNumber: data.policyNumber ?? null,
         groupNumber: data.groupNumber ?? null,
         subscriberName: data.subscriberName ?? null,
         relationToSubscriber: data.relationToSubscriber ?? null,
         phone: data.phone ?? null,
         notes: data.notes ?? null,
+        effectiveFrom: data.effectiveFrom ?? null,
+        effectiveTo: data.effectiveTo ?? null,
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       },
       include: {
         payer: { select: { id: true, name: true, code: true } },

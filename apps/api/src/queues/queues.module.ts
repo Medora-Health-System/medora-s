@@ -17,10 +17,12 @@ import { ClearinghouseAckWebhookController } from "../billing/clearinghouse-ack-
 import { ClearinghouseAckWebhookGuard } from "../billing/clearinghouse-ack-webhook.guard";
 import { ClearinghouseOpsService } from "../billing/clearinghouse-ops.service";
 import { ClaimRetryWorkerService } from "../billing/claim-retry-worker.service";
+import { BillingIdentityService } from "../billing/billing-identity.service";
+import { BillingIdentityController } from "../billing/billing-identity.controller";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [QueuesController, ClearinghouseAckWebhookController],
+  controllers: [QueuesController, ClearinghouseAckWebhookController, BillingIdentityController],
   providers: [
     QueuesService,
     AuditService,
@@ -36,6 +38,7 @@ import { ClaimRetryWorkerService } from "../billing/claim-retry-worker.service";
     ClaimAcknowledgmentService,
     AckSftpPollerService,
     ClearinghouseOpsService,
+    BillingIdentityService,
     ClearinghouseAckWebhookGuard,
   ],
   exports: [QueuesService]

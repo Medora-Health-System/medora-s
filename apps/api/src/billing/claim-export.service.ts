@@ -11,6 +11,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { ClaimBuilderService, type ClaimLine } from "./claim-builder.service";
 import type { ClaimValidationIssue } from "./claim-validation.util";
+import { evaluateClaimIdentityGaps } from "./claim-billing-identity.util";
 
 function issueCodes(issues: ClaimValidationIssue[]): string[] {
   return [...new Set(issues.map((i) => i.code))];
@@ -146,6 +147,20 @@ export class ClaimExportService {
     const serviceStartDate = svcDates.start ?? (encounter.admittedAt ? encounter.admittedAt.toISOString() : null);
     const serviceEndDate = svcDates.end ?? (encounter.dischargedAt ? encounter.dischargedAt.toISOString() : null);
 
+    const serviceDateForIdentity = svcDates.start
+      ? new Date(svcDates.start)
+      : encounter.admittedAt ?? encounter.createdAt ?? null;
+
+    const claimIdentityGaps = await evaluateClaimIdentityGaps(this.prisma, {
+      facilityId,
+      patientId: encounter.patientId,
+      serviceDate: serviceDateForIdentity,
+      renderingProviderId: encounter.providerId ?? null,
+      attendingProviderId: encounter.physicianAssignedUserId ?? null,
+      includeFacilityInstitutionalGaps: true,
+    });
+    const claimIdentityReady = claimIdentityGaps.length === 0;
+
     const v = claims.validation;
     const summaryBlockers = issueCodes(v.summary.blockers);
     const summaryWarnings = issueCodes(v.summary.warnings);
@@ -201,6 +216,8 @@ export class ClaimExportService {
         blockers: summaryBlockers,
         warnings: summaryWarnings,
         ...(contextWarnings.length > 0 ? { contextWarnings } : {}),
+        claimIdentityGaps,
+        claimIdentityReady,
       },
     };
   }

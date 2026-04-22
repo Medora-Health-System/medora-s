@@ -19,6 +19,7 @@ import {
   updateAdminUserRolesDtoSchema,
   updateAdminUserStatusDtoSchema,
 } from "./dto/admin-user.dto";
+import { userBillingIdentityPatchDtoSchema } from "@medora/shared";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }): string {
   const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
@@ -89,6 +90,24 @@ export class AdminUsersController {
       });
     }
     return this.adminUsers.updateStatus(facilityId, id, parsed.data, req.user.userId);
+  }
+
+  @Get("users/:id/billing-identity")
+  @RequireRoles(RoleCode.ADMIN)
+  async getBillingIdentity(@Param("id") id: string, @Req() req: any) {
+    const facilityId = facilityIdFromReq(req);
+    return this.adminUsers.getUserBillingIdentity(facilityId, id);
+  }
+
+  @Patch("users/:id/billing-identity")
+  @RequireRoles(RoleCode.ADMIN)
+  async patchBillingIdentity(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = facilityIdFromReq(req);
+    const parsed = userBillingIdentityPatchDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.flatten());
+    }
+    return this.adminUsers.updateUserBillingIdentity(facilityId, id, parsed.data, req.user.userId);
   }
 
   @Patch("users/:id/password")
