@@ -3,6 +3,7 @@
  * UserRole rows link users to roles per facility (see Prisma `UserRole`).
  */
 
+import type { CreateAdminUserDto, CreateFacilityDto } from "@medora/shared";
 import { normalizeUserFacingError } from "./userFacingError";
 import { parseApiResponse } from "./apiClient";
 
@@ -69,18 +70,7 @@ export async function fetchAdminUsers(facilityId: string): Promise<{ items: Admi
 }
 
 /** POST /admin/users */
-export async function createAdminUser(
-  facilityId: string,
-  body: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    facilityId: string;
-    roles: string[];
-    isActive?: boolean;
-  }
-): Promise<AdminUserRow> {
+export async function createAdminUser(facilityId: string, body: CreateAdminUserDto): Promise<AdminUserRow> {
   return adminApiFetch("/users", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -145,6 +135,77 @@ export async function patchAdminUserPassword(
   }) as Promise<{ message: string }>;
 }
 
+export type FacilityBillingIdentityPayload = {
+  id: string;
+  name: string;
+  code: string;
+  billingLegalName: string | null;
+  billingNpi: string | null;
+  taxIdEin: string | null;
+  billingAddressLine1: string | null;
+  billingAddressLine2: string | null;
+  billingCity: string | null;
+  billingStateProvince: string | null;
+  billingPostalCode: string | null;
+  billingCountry: string | null;
+  billingFacilityTypeLabel: string | null;
+};
+
+/** GET /admin/facilities/:id/billing-identity — platform principal or facility ADMIN. */
+export async function fetchAdminFacilityBillingIdentity(
+  headerFacilityId: string,
+  targetFacilityId: string
+): Promise<FacilityBillingIdentityPayload> {
+  return adminApiFetch(`/facilities/${targetFacilityId}/billing-identity`, {
+    method: "GET",
+    facilityId: headerFacilityId,
+  }) as Promise<FacilityBillingIdentityPayload>;
+}
+
+/** PATCH /admin/facilities/:id/billing-identity */
+export async function patchAdminFacilityBillingIdentity(
+  headerFacilityId: string,
+  targetFacilityId: string,
+  body: Record<string, string | null | undefined>
+): Promise<FacilityBillingIdentityPayload> {
+  return adminApiFetch(`/facilities/${targetFacilityId}/billing-identity`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId: headerFacilityId,
+  }) as Promise<FacilityBillingIdentityPayload>;
+}
+
+export type UserBillingIdentityPayload = {
+  id: string;
+  billingNpi: string | null;
+  billingTaxonomyCode: string | null;
+  billingNameOverride: string | null;
+};
+
+export async function fetchAdminUserBillingIdentity(
+  facilityId: string,
+  userId: string
+): Promise<UserBillingIdentityPayload> {
+  return adminApiFetch(`/users/${userId}/billing-identity`, {
+    method: "GET",
+    facilityId,
+  }) as Promise<UserBillingIdentityPayload>;
+}
+
+export async function patchAdminUserBillingIdentity(
+  facilityId: string,
+  userId: string,
+  body: { billingNpi?: string | null; billingTaxonomyCode?: string | null; billingNameOverride?: string | null }
+): Promise<UserBillingIdentityPayload> {
+  return adminApiFetch(`/users/${userId}/billing-identity`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId,
+  }) as Promise<UserBillingIdentityPayload>;
+}
+
 export type AdminFacilityRow = {
   id: string;
   name: string;
@@ -195,7 +256,7 @@ export async function setAdminFacilityLanguage(
 /** POST /admin/facilities — crée un établissement et rattache l’admin courant (côté API). */
 export async function createAdminFacility(
   facilityId: string,
-  body: { name: string; defaultLanguage?: "fr" | "en" }
+  body: CreateFacilityDto
 ): Promise<{ id: string; name: string; defaultLanguage: "fr" | "en" }> {
   return adminApiFetch("/facilities", {
     method: "POST",

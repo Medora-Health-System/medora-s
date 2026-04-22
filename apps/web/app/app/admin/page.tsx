@@ -9,6 +9,7 @@ import {
   setAdminFacilityLanguage,
   type AdminFacilityRow,
 } from "@/lib/adminUsersApi";
+import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 
@@ -27,6 +28,7 @@ export default function AdminPage() {
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [facilityToggleId, setFacilityToggleId] = useState<string | null>(null);
   const [languageSavingId, setLanguageSavingId] = useState<string | null>(null);
+  const [billingFacility, setBillingFacility] = useState<AdminFacilityRow | null>(null);
 
   const loadFacilities = useCallback(async () => {
     setFacilitiesLoading(true);
@@ -134,6 +136,7 @@ export default function AdminPage() {
                     <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colName")}</th>
                     <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colState")}</th>
                     <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colId")}</th>
+                    <th style={{ textAlign: "right", padding: 10 }}>{t("adminHub.colBillingIdentity")}</th>
                     <th style={{ textAlign: "right", padding: 10 }}>{t("adminHub.colActions")}</th>
                   </tr>
                 </thead>
@@ -187,6 +190,26 @@ export default function AdminPage() {
                           {rowActive ? t("adminHub.statusActive") : t("adminHub.statusInactive")}
                         </td>
                         <td style={{ padding: 10, fontFamily: "monospace", fontSize: 13 }}>{f.id}</td>
+                        <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
+                          <button
+                            type="button"
+                            disabled={!facilityId}
+                            onClick={() => setBillingFacility(f)}
+                            style={{
+                              padding: "6px 12px",
+                              fontSize: 13,
+                              cursor: facilityId ? "pointer" : "not-allowed",
+                              border: "1px solid #1565c0",
+                              borderRadius: 4,
+                              background: "#fff",
+                              color: "#1565c0",
+                              fontWeight: 600,
+                              marginRight: 8,
+                            }}
+                          >
+                            {t("adminHub.facilityBillingButton")}
+                          </button>
+                        </td>
                         <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
                           {rowActive ? (
                             <>
@@ -251,6 +274,20 @@ export default function AdminPage() {
             </div>
           ) : null}
         </section>
+      ) : null}
+
+      {billingFacility && facilityId ? (
+        <FacilityBillingIdentityModal
+          headerFacilityId={billingFacility.id}
+          targetFacilityId={billingFacility.id}
+          facilityDisplayName={billingFacility.name}
+          onClose={() => setBillingFacility(null)}
+          onSuccess={async () => {
+            setBillingFacility(null);
+            await loadFacilities();
+          }}
+          onError={(m) => setFacilitiesError(m)}
+        />
       ) : null}
     </div>
   );

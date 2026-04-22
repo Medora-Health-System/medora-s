@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { APP_ROLE_CODES, getLandingRouteForRoles, getLandingHomeLabel } from "@/lib/landingRoute";
 import { useFacilityAndRoles, type UserFacilityOption } from "@/hooks/useFacilityAndRoles";
+import type { CreateAdminUserDto, CreateFacilityDto } from "@medora/shared";
+import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import {
   fetchAdminUsers,
   createAdminUser,
@@ -12,6 +14,8 @@ import {
   patchAdminUserPassword,
   patchAdminUserRoles,
   patchAdminUserStatus,
+  fetchAdminUserBillingIdentity,
+  patchAdminUserBillingIdentity,
   type AdminUserRow,
 } from "@/lib/adminUsersApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -70,6 +74,7 @@ export default function AdminUsersPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(null);
   const [showAddFacility, setShowAddFacility] = useState(false);
+  const [showFacilityBilling, setShowFacilityBilling] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
   const [profileUser, setProfileUser] = useState<AdminUserRow | null>(null);
@@ -210,6 +215,40 @@ export default function AdminUsersPage() {
           {t("adminUsers.backToAdmin")}
         </Link>
       </p>
+
+      {isAdmin && facilityId ? (
+        <div
+          style={{
+            marginTop: 16,
+            marginBottom: 8,
+            padding: 14,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+            maxWidth: 720,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("adminUsers.facilityBillingCardTitle")}</div>
+          <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#475569" }}>
+            {t("adminUsers.facilityBillingCardIntro")}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowFacilityBilling(true)}
+            style={{
+              padding: "8px 14px",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              background: "#fff",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            {t("adminUsers.openFacilityBilling")}
+          </button>
+        </div>
+      ) : null}
 
       {isAdmin ? (
         loading ? (
@@ -459,6 +498,20 @@ export default function AdminUsersPage() {
         />
       )}
 
+      {showFacilityBilling && facilityId && isAdmin ? (
+        <FacilityBillingIdentityModal
+          headerFacilityId={facilityId}
+          targetFacilityId={facilityId}
+          facilityDisplayName={currentFacilityName}
+          onClose={() => setShowFacilityBilling(false)}
+          onSuccess={async () => {
+            setShowFacilityBilling(false);
+            setToast({ message: t("adminUsers.toastFacilityBillingSaved"), ok: true });
+          }}
+          onError={(m) => setToast({ message: m, ok: false })}
+        />
+      ) : null}
+
       {resetPasswordUser && facilityId && isAdmin && (
         <ResetPasswordModal
           facilityId={facilityId}
@@ -490,6 +543,17 @@ function AddFacilityModal({
   const { t, language } = useI18n();
   const [name, setName] = useState("");
   const [defaultLanguage, setDefaultLanguage] = useState<"fr" | "en">("fr");
+  const [showOptionalBilling, setShowOptionalBilling] = useState(false);
+  const [billingLegalName, setBillingLegalName] = useState("");
+  const [billingNpi, setBillingNpi] = useState("");
+  const [taxIdEin, setTaxIdEin] = useState("");
+  const [billingAddressLine1, setBillingAddressLine1] = useState("");
+  const [billingAddressLine2, setBillingAddressLine2] = useState("");
+  const [billingCity, setBillingCity] = useState("");
+  const [billingStateProvince, setBillingStateProvince] = useState("");
+  const [billingPostalCode, setBillingPostalCode] = useState("");
+  const [billingCountry, setBillingCountry] = useState("");
+  const [billingFacilityTypeLabel, setBillingFacilityTypeLabel] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -498,12 +562,34 @@ function AddFacilityModal({
       onError(t("adminUsers.valFacilityNameRequired"));
       return;
     }
+    if (showOptionalBilling && billingNpi.trim()) {
+      const d = billingNpi.replace(/\D/g, "").slice(0, 10);
+      if (d.length !== 10) {
+        onError(t("adminUsers.valBillingNpiDigits"));
+        return;
+      }
+    }
     setSubmitting(true);
     try {
-      await createAdminFacility(facilityId, {
+      const payload: CreateFacilityDto = {
         name: name.trim(),
         defaultLanguage,
-      });
+      };
+      if (showOptionalBilling) {
+        const trim = (s: string) => (s.trim() === "" ? undefined : s.trim());
+        const npiDigits = billingNpi.replace(/\D/g, "").slice(0, 10);
+        if (trim(billingLegalName)) payload.billingLegalName = trim(billingLegalName)!;
+        if (npiDigits.length === 10) payload.billingNpi = npiDigits;
+        if (trim(taxIdEin)) payload.taxIdEin = trim(taxIdEin)!;
+        if (trim(billingAddressLine1)) payload.billingAddressLine1 = trim(billingAddressLine1)!;
+        if (trim(billingAddressLine2)) payload.billingAddressLine2 = trim(billingAddressLine2)!;
+        if (trim(billingCity)) payload.billingCity = trim(billingCity)!;
+        if (trim(billingStateProvince)) payload.billingStateProvince = trim(billingStateProvince)!;
+        if (trim(billingPostalCode)) payload.billingPostalCode = trim(billingPostalCode)!;
+        if (trim(billingCountry)) payload.billingCountry = trim(billingCountry)!;
+        if (trim(billingFacilityTypeLabel)) payload.billingFacilityTypeLabel = trim(billingFacilityTypeLabel)!;
+      }
+      await createAdminFacility(facilityId, payload);
       await onSuccess();
     } catch (err: unknown) {
       onError(
@@ -535,7 +621,7 @@ function AddFacilityModal({
           background: "white",
           borderRadius: 8,
           padding: 24,
-          maxWidth: 440,
+          maxWidth: 520,
           width: "100%",
           maxHeight: "90vh",
           overflow: "auto",
@@ -572,6 +658,126 @@ function AddFacilityModal({
               <option value="en">{t("adminUsers.langEn")}</option>
             </select>
           </div>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              marginBottom: 12,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showOptionalBilling}
+              onChange={(e) => setShowOptionalBilling(e.target.checked)}
+            />
+            <span>
+              <strong>{t("adminUsers.optionalBillingOnCreate")}</strong>
+              <span style={{ display: "block", fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                {t("adminUsers.optionalBillingOnCreateHint")}
+              </span>
+            </span>
+          </label>
+          {showOptionalBilling ? (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: 12,
+                border: "1px solid #e2e8f0",
+                borderRadius: 6,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("adminUsers.facilityBillingIntro")}</p>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingLegalNameLabel")}
+                <input
+                  value={billingLegalName}
+                  onChange={(e) => setBillingLegalName(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingNpiLabel")}
+                <input
+                  value={billingNpi}
+                  onChange={(e) => setBillingNpi(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <p style={{ fontSize: 11, color: "#888", margin: 0 }}>{t("adminUsers.billingNpiHint")}</p>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.taxIdEinLabel")}
+                <input
+                  value={taxIdEin}
+                  onChange={(e) => setTaxIdEin(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingAddressLine1Label")}
+                <input
+                  value={billingAddressLine1}
+                  onChange={(e) => setBillingAddressLine1(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingAddressLine2Label")}
+                <input
+                  value={billingAddressLine2}
+                  onChange={(e) => setBillingAddressLine2(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 600 }}>
+                  {t("adminUsers.billingCityLabel")}
+                  <input
+                    value={billingCity}
+                    onChange={(e) => setBillingCity(e.target.value)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ fontSize: 13, fontWeight: 600 }}>
+                  {t("adminUsers.billingStateProvinceLabel")}
+                  <input
+                    value={billingStateProvince}
+                    onChange={(e) => setBillingStateProvince(e.target.value)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingPostalCodeLabel")}
+                <input
+                  value={billingPostalCode}
+                  onChange={(e) => setBillingPostalCode(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingCountryLabel")}
+                <input
+                  value={billingCountry}
+                  onChange={(e) => setBillingCountry(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingFacilityTypeLabel")}
+                <input
+                  value={billingFacilityTypeLabel}
+                  onChange={(e) => setBillingFacilityTypeLabel(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+            </div>
+          ) : null}
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
               type="button"
@@ -630,6 +836,9 @@ function CreateUserModal({
   const [password, setPassword] = useState("");
   const [accountActive, setAccountActive] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [billingNpi, setBillingNpi] = useState("");
+  const [billingTaxonomyCode, setBillingTaxonomyCode] = useState("");
+  const [billingNameOverride, setBillingNameOverride] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const toggle = (code: string) => {
@@ -674,17 +883,34 @@ function CreateUserModal({
       onError(t("adminUsers.valAtLeastOneRole"));
       return;
     }
+    const isProvider = selected.has("PROVIDER");
+    if (isProvider && billingNpi.trim()) {
+      const d = billingNpi.replace(/\D/g, "").slice(0, 10);
+      if (d.length !== 10) {
+        onError(t("adminUsers.valBillingNpiDigits"));
+        return;
+      }
+    }
     setSubmitting(true);
     try {
-      await createAdminUser(selectedFacilityId, {
+      const body: CreateAdminUserDto = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         password,
         facilityId: selectedFacilityId,
-        roles: Array.from(selected),
+        roles: Array.from(selected) as CreateAdminUserDto["roles"],
         isActive: accountActive,
-      });
+      };
+      if (isProvider) {
+        const npiDigits = billingNpi.replace(/\D/g, "").slice(0, 10);
+        if (npiDigits.length === 10) body.billingNpi = npiDigits;
+        const tax = billingTaxonomyCode.trim();
+        if (tax) body.billingTaxonomyCode = tax;
+        const nm = billingNameOverride.trim();
+        if (nm) body.billingNameOverride = nm;
+      }
+      await createAdminUser(selectedFacilityId, body);
       await onSuccess();
     } catch (err: unknown) {
       onError(
@@ -827,6 +1053,47 @@ function CreateUserModal({
             </span>
             {roleCheckboxes(selected, toggle, t)}
           </div>
+          {selected.has("PROVIDER") ? (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: 12,
+                border: "1px solid #e2e8f0",
+                borderRadius: 6,
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+                {t("adminUsers.providerBillingSectionTitle")}
+              </div>
+              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 10px 0" }}>
+                {t("adminUsers.providerBillingSectionHint")}
+              </p>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                {t("adminUsers.billingNpiLabel")}
+                <input
+                  value={billingNpi}
+                  onChange={(e) => setBillingNpi(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                {t("adminUsers.billingTaxonomyCodeLabel")}
+                <input
+                  value={billingTaxonomyCode}
+                  onChange={(e) => setBillingTaxonomyCode(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingNameOverrideLabel")}
+                <input
+                  value={billingNameOverride}
+                  onChange={(e) => setBillingNameOverride(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+            </div>
+          ) : null}
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
               type="button"
@@ -1173,10 +1440,34 @@ function EditProfileModal({
   onError: (m: string) => void;
 }) {
   const { t, language } = useI18n();
+  const isProvider = user.roles.includes("PROVIDER");
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [email, setEmail] = useState(user.email);
+  const [billingNpi, setBillingNpi] = useState("");
+  const [billingTaxonomyCode, setBillingTaxonomyCode] = useState("");
+  const [billingNameOverride, setBillingNameOverride] = useState("");
+  const [billingLoadError, setBillingLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isProvider) return;
+    let cancelled = false;
+    setBillingLoadError(null);
+    void fetchAdminUserBillingIdentity(facilityId, user.id)
+      .then((b) => {
+        if (cancelled) return;
+        setBillingNpi(b.billingNpi ?? "");
+        setBillingTaxonomyCode(b.billingTaxonomyCode ?? "");
+        setBillingNameOverride(b.billingNameOverride ?? "");
+      })
+      .catch(() => {
+        if (!cancelled) setBillingLoadError(t("adminUsers.errLoadUserBilling"));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId, user.id, isProvider, t]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1192,18 +1483,37 @@ function EditProfileModal({
       onError(t("adminUsers.valEmail"));
       return;
     }
+    if (isProvider && billingNpi.trim()) {
+      const d = billingNpi.replace(/\D/g, "").slice(0, 10);
+      if (d.length !== 10) {
+        onError(t("adminUsers.valBillingNpiDigits"));
+        return;
+      }
+    }
     const body: { firstName?: string; lastName?: string; email?: string } = {};
     if (firstName.trim() !== user.firstName) body.firstName = firstName.trim();
     if (lastName.trim() !== user.lastName) body.lastName = lastName.trim();
     const em = email.trim().toLowerCase();
     if (em !== user.email.toLowerCase()) body.email = em;
-    if (Object.keys(body).length === 0) {
+    const profileChanged = Object.keys(body).length > 0;
+    if (!profileChanged && !isProvider) {
       onClose();
       return;
     }
+
     setSubmitting(true);
     try {
-      await patchAdminUserProfile(facilityId, user.id, body);
+      if (profileChanged) {
+        await patchAdminUserProfile(facilityId, user.id, body);
+      }
+      if (isProvider) {
+        const npiDigits = billingNpi.replace(/\D/g, "").slice(0, 10);
+        await patchAdminUserBillingIdentity(facilityId, user.id, {
+          billingNpi: npiDigits.length === 10 ? npiDigits : null,
+          billingTaxonomyCode: billingTaxonomyCode.trim() || null,
+          billingNameOverride: billingNameOverride.trim() || null,
+        });
+      }
       await onSuccess();
     } catch (err: unknown) {
       onError(
@@ -1235,8 +1545,10 @@ function EditProfileModal({
           background: "white",
           borderRadius: 8,
           padding: 24,
-          maxWidth: 440,
+          maxWidth: 480,
           width: "100%",
+          maxHeight: "90vh",
+          overflow: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -1280,6 +1592,50 @@ function EditProfileModal({
               style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
             />
           </div>
+          {isProvider ? (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: 12,
+                border: "1px solid #e2e8f0",
+                borderRadius: 6,
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+                {t("adminUsers.providerBillingSectionTitle")}
+              </div>
+              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 8px 0" }}>
+                {t("adminUsers.providerBillingSectionHint")}
+              </p>
+              {billingLoadError ? (
+                <p style={{ fontSize: 12, color: "#b71c1c", marginBottom: 8 }}>{billingLoadError}</p>
+              ) : null}
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                {t("adminUsers.billingNpiLabel")}
+                <input
+                  value={billingNpi}
+                  onChange={(e) => setBillingNpi(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                {t("adminUsers.billingTaxonomyCodeLabel")}
+                <input
+                  value={billingTaxonomyCode}
+                  onChange={(e) => setBillingTaxonomyCode(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
+                {t("adminUsers.billingNameOverrideLabel")}
+                <input
+                  value={billingNameOverride}
+                  onChange={(e) => setBillingNameOverride(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: 8, border: "1px solid #ccc", borderRadius: 4 }}
+                />
+              </label>
+            </div>
+          ) : null}
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
               type="button"

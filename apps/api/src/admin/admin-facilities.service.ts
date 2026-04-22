@@ -4,19 +4,47 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { CreateFacilityDto } from "@medora/shared";
+import type { CreateFacilityDto, FacilityBillingIdentityPatchDto } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
+import { BillingIdentityService } from "../billing/billing-identity.service";
 
 /** Valeurs par défaut — le schéma Prisma exige country et timezone ; non exposés sur POST minimal (nom seul). */
 const DEFAULT_NEW_FACILITY_COUNTRY = "Haiti";
 const DEFAULT_NEW_FACILITY_TIMEZONE = "America/Port-au-Prince";
 
+const FACILITY_BILLING_KEYS = [
+  "billingLegalName",
+  "billingNpi",
+  "taxIdEin",
+  "billingAddressLine1",
+  "billingAddressLine2",
+  "billingCity",
+  "billingStateProvince",
+  "billingPostalCode",
+  "billingCountry",
+  "billingFacilityTypeLabel",
+] as const;
+
+function pickFacilityBillingFromCreateDto(dto: CreateFacilityDto): Partial<FacilityBillingIdentityPatchDto> {
+  const out: Partial<FacilityBillingIdentityPatchDto> = {};
+  for (const k of FACILITY_BILLING_KEYS) {
+    const v = dto[k];
+    if (v !== undefined) {
+      (out as Record<string, unknown>)[k] = v;
+    }
+  }
+  return out;
+}
+
 @Injectable()
 export class AdminFacilitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billingIdentity: BillingIdentityService
+  ) {}
 
   async create(dto: CreateFacilityDto, userId: string) {
     const actor = await this.prisma.user.findUnique({
@@ -29,6 +57,8 @@ export class AdminFacilitiesService {
 
     const trimmed = dto.name.trim();
     const code = `FAC-${randomBytes(6).toString("hex")}`;
+    const billingFragment = pickFacilityBillingFromCreateDto(dto);
+    const hasBillingInput = Object.keys(billingFragment).length > 0;
 
     return this.prisma.$transaction(async (tx) => {
       const facility = await tx.facility.create({
@@ -38,6 +68,7 @@ export class AdminFacilitiesService {
           country: DEFAULT_NEW_FACILITY_COUNTRY,
           timezone: DEFAULT_NEW_FACILITY_TIMEZONE,
           defaultLanguage: dto.defaultLanguage ?? "fr",
+          ...(hasBillingInput ? billingFragment : {}),
         },
       });
 
@@ -63,6 +94,43 @@ export class AdminFacilitiesService {
         defaultLanguage: facility.defaultLanguage as "fr" | "en",
       };
     });
+  }
+
+  /** Platform principal or facility ADMIN — same data as GET billing/facility-identity for `id`. */
+  async getFacilityBillingIdentityForAdmin(actorUserId: string, facilityId: string) {
+    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    return this.billingIdentity.getFacilityBillingIdentity(facilityId);
+  }
+
+  async updateFacilityBillingIdentityForAdmin(
+    actorUserId: string,
+    facilityId: string,
+    dto: FacilityBillingIdentityPatchDto
+  ) {
+    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    return this.billingIdentity.updateFacilityBillingIdentity(facilityId, dto);
+  }
+
+  private async assertCanManageFacilityBilling(actorUserId: string, facilityId: string) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorUserId },
+      select: { email: true },
+    });
+    if (actor?.email && isPlatformPrincipalAdminEmail(actor.email)) {
+      return;
+    }
+    const adminHere = await this.prisma.userRole.findFirst({
+      where: {
+        userId: actorUserId,
+        facilityId,
+        isActive: true,
+        role: { code: RoleCode.ADMIN },
+      },
+    });
+    if (adminHere) {
+      return;
+    }
+    throw new ForbiddenException("Profil de facturation établissement : accès refusé.");
   }
 
   /**

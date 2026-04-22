@@ -20,8 +20,39 @@ function uniqueRoleCodes<T extends string>(arr: T[]): T[] {
   return [...new Set(arr)];
 }
 
-/** POST /admin/users */
-export const createAdminUserDtoSchema = z.object({
+/** Shared field shape for PATCH and optional POST user create. */
+export const userBillingIdentityFieldsSchema = z.object({
+  billingNpi: z
+    .string()
+    .max(10)
+    .optional()
+    .nullable()
+    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim().replace(/\D/g, "").slice(0, 10))),
+  billingTaxonomyCode: z
+    .string()
+    .max(16)
+    .optional()
+    .nullable()
+    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
+  billingNameOverride: z
+    .string()
+    .max(256)
+    .optional()
+    .nullable()
+    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
+});
+
+function refineUserBillingNpi(d: { billingNpi?: string | null }, ctx: z.RefinementCtx) {
+  if (d.billingNpi && !/^\d{10}$/.test(d.billingNpi)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Le NPI doit comporter 10 chiffres.",
+      path: ["billingNpi"],
+    });
+  }
+}
+
+const createAdminUserBaseSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis").max(120),
   lastName: z.string().min(1, "Le nom est requis").max(120),
   email: z.string().min(1, "Le courriel est requis").email().max(320),
@@ -38,6 +69,11 @@ export const createAdminUserDtoSchema = z.object({
     .min(1, "Au moins un rôle est requis")
     .transform((roles) => uniqueRoleCodes(roles)),
 });
+
+/** POST /admin/users — optional provider billing identity (stored when provided). */
+export const createAdminUserDtoSchema = createAdminUserBaseSchema
+  .merge(userBillingIdentityFieldsSchema.partial())
+  .superRefine(refineUserBillingNpi);
 
 export type CreateAdminUserDto = z.infer<typeof createAdminUserDtoSchema>;
 
@@ -79,34 +115,6 @@ export type UpdateAdminUserStatusDto = z.infer<typeof updateAdminUserStatusDtoSc
 export type UpdateUserStatusDto = UpdateAdminUserStatusDto;
 
 /** PATCH /admin/users/:id/billing-identity — provider NPI for claims (ADMIN). */
-export const userBillingIdentityPatchDtoSchema = z.object({
-  billingNpi: z
-    .string()
-    .max(10)
-    .optional()
-    .nullable()
-    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim().replace(/\D/g, "").slice(0, 10))),
-  billingTaxonomyCode: z
-    .string()
-    .max(16)
-    .optional()
-    .nullable()
-    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
-  billingNameOverride: z
-    .string()
-    .max(256)
-    .optional()
-    .nullable()
-    .transform((s) => (s == null || String(s).trim() === "" ? null : String(s).trim())),
-})
-  .superRefine((d, ctx) => {
-    if (d.billingNpi && !/^\d{10}$/.test(d.billingNpi)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Le NPI doit comporter 10 chiffres.",
-        path: ["billingNpi"],
-      });
-    }
-  });
+export const userBillingIdentityPatchDtoSchema = userBillingIdentityFieldsSchema.superRefine(refineUserBillingNpi);
 
 export type UserBillingIdentityPatchDto = z.infer<typeof userBillingIdentityPatchDtoSchema>;

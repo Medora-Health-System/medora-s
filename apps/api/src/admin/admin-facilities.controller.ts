@@ -1,6 +1,11 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards, BadRequestException } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { createFacilityDtoSchema, setFacilityActiveDtoSchema, setFacilityLanguageDtoSchema } from "@medora/shared";
+import {
+  createFacilityDtoSchema,
+  facilityBillingIdentityPatchDtoSchema,
+  setFacilityActiveDtoSchema,
+  setFacilityLanguageDtoSchema,
+} from "@medora/shared";
 import { AdminFacilitiesService } from "./admin-facilities.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }): string | undefined {
@@ -70,5 +75,27 @@ export class AdminFacilitiesController {
     const include =
       includeInactive === "true" || includeInactive === "1" || includeInactive === "yes";
     return this.facilities.list(req.user.userId, include);
+  }
+
+  /** Profil de facturation (lecture) — principal plateforme ou ADMIN de l'établissement cible. */
+  @Get("facilities/:id/billing-identity")
+  @UseGuards(AuthGuard("jwt"))
+  async getFacilityBillingIdentity(@Param("id") id: string, @Req() req: { user: { userId: string } }) {
+    return this.facilities.getFacilityBillingIdentityForAdmin(req.user.userId, id);
+  }
+
+  /** Profil de facturation (écriture) — même règle que GET. */
+  @Patch("facilities/:id/billing-identity")
+  @UseGuards(AuthGuard("jwt"))
+  async patchFacilityBillingIdentity(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: { user: { userId: string } }
+  ) {
+    const parsed = facilityBillingIdentityPatchDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.flatten());
+    }
+    return this.facilities.updateFacilityBillingIdentityForAdmin(req.user.userId, id, parsed.data);
   }
 }

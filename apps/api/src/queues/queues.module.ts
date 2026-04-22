@@ -41,7 +41,7 @@ import { BillingIdentityController } from "../billing/billing-identity.controlle
     BillingIdentityService,
     ClearinghouseAckWebhookGuard,
   ],
-  exports: [QueuesService]
+  exports: [QueuesService, BillingIdentityService],
 })
 export class QueuesModule {}
 

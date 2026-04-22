@@ -84,6 +84,9 @@ export class AdminUsersService {
           lastName: dto.lastName.trim(),
           passwordHash,
           isActive: dto.isActive !== false,
+          ...(dto.billingNpi !== undefined && { billingNpi: dto.billingNpi }),
+          ...(dto.billingTaxonomyCode !== undefined && { billingTaxonomyCode: dto.billingTaxonomyCode }),
+          ...(dto.billingNameOverride !== undefined && { billingNameOverride: dto.billingNameOverride }),
         },
       });
 

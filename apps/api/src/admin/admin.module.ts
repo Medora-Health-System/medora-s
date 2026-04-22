@@ -6,9 +6,10 @@ import { AdminFacilitiesService } from "./admin-facilities.service";
 import { AdminMsppAccessController } from "./admin-mspp-access.controller";
 import { AdminMsppAccessService } from "./admin-mspp-access.service";
 import { PrismaModule } from "../prisma/prisma.module";
+import { QueuesModule } from "../queues/queues.module";
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, QueuesModule],
   controllers: [AdminUsersController, AdminFacilitiesController, AdminMsppAccessController],
   providers: [AdminUsersService, AdminFacilitiesService, AdminMsppAccessService],
 })
