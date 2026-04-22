@@ -259,6 +259,20 @@ export default {
     claimIdentityReadyLabel: "Liste d’identité complète",
     claimIdentityChecklistComplete:
       "Payeur, assuré, prestataire et établissement (si requis) sont renseignés pour cet aperçu.",
+    claimCompletenessNotReady: "Pas prêt pour l’envoi — corrigez les blocages ci-dessous.",
+    claimCompletenessReadyWithWarnings: "Prêt avec avertissements — à vérifier avant envoi.",
+    claimCompletenessReadySubmit: "Prêt à envoyer (aucun blocage de complétude).",
+    claimCompletenessBlockersTitle: "Blocages",
+    claimCompletenessWarningsTitle: "Avertissements",
+    claimCompletenessInfoTitle: "Informations",
+    completenessIssue_NO_DIAGNOSIS_CODES: "Aucun code de diagnostic sur les lignes d’export facturables pour cette visite.",
+    completenessIssue_INCOMPLETE_SUBSCRIBER_DATA:
+      "Données assuré / adhérent ou police incomplètes pour la couverture principale.",
+    completenessIssue_INCOMPLETE_SERVICE_DATES:
+      "Plage de dates de service incomplète (pas de dates sur les lignes ni d’horodatage d’admission).",
+    completenessIssue_FACILITY_LINE_MISSING_REVENUE_CODE: "Au moins une ligne d’export établissement n’a pas de code de revenu.",
+    completenessIssue_INFO_EXPORT_NOT_INTERCHANGE_SUBMISSION:
+      "L’export sert à la structure et à l’audit — ce n’est pas un fichier d’échange ni un envoi payeur.",
     identityTerm_payer: "Payeur",
     identityTerm_insurance: "Assurance",
     identityTerm_subscriber: "Assuré principal",

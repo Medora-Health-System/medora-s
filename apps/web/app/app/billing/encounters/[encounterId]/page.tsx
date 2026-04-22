@@ -158,6 +158,10 @@ type EncounterClaimExportPayload = {
     contextWarnings?: string[];
     claimIdentityGaps?: string[];
     claimIdentityReady?: boolean;
+    claimReady?: boolean;
+    claimBlockers?: string[];
+    claimWarnings?: string[];
+    claimInfo?: string[];
   };
 };
 
@@ -359,6 +363,23 @@ function exportContextWarningLabel(t: (k: string) => string, code: string): stri
   const k = `billingPage.exportContextWarning_${code}`;
   const v = t(k);
   return v === k ? code : v;
+}
+
+/** Completeness engine codes → i18n; falls back to validation / X12 missing / export context. */
+function completenessIssueLabel(t: (k: string) => string, code: string): string {
+  const ck = `billingPage.completenessIssue_${code}`;
+  const cv = t(ck);
+  if (cv !== ck) return cv;
+  const vk = `billingPage.claimValidation_${code}`;
+  const vv = t(vk);
+  if (vv !== vk) return vv;
+  const xk = `billingPage.x12Missing_${code}`;
+  const xv = t(xk);
+  if (xv !== xk) return xv;
+  const ek = `billingPage.exportContextWarning_${code}`;
+  const ev = t(ek);
+  if (ev !== ek) return ev;
+  return code;
 }
 
 /** Localized X12 warning/missing machine id; reuses claim/export labels when codes match. */
@@ -1279,55 +1300,119 @@ export default function BillingEncounterLedgerPage() {
             >
               <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.claimExportSectionTitle")}</h2>
               <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("billingPage.claimExportSectionSubtitle")}</p>
-              <div style={{ fontSize: 13, marginBottom: 10, color: "#334155" }}>
-                <strong>{t("billingPage.claimExportReadyLabel")}:</strong>{" "}
-                {claimExport.summary.readyForExport ? t("billingPage.claimExportReadyYes") : t("billingPage.claimExportReadyNo")}
-              </div>
-              {(claimExport.summary.blockers?.length ?? 0) > 0 ? (
-                <div style={{ fontSize: 12, marginBottom: 8, color: "#9a3412" }}>
-                  <strong>{t("billingPage.claimExportSummaryValidationBlockers")}:</strong> {claimExport.summary.blockers.join(", ")}
-                </div>
-              ) : null}
-              {(claimExport.summary.warnings?.length ?? 0) > 0 ? (
-                <div style={{ fontSize: 12, marginBottom: 8, color: "#1d4ed8" }}>
-                  <strong>{t("billingPage.claimExportSummaryValidationWarnings")}:</strong> {claimExport.summary.warnings.join(", ")}
-                </div>
-              ) : null}
-              {(claimExport.summary.contextWarnings?.length ?? 0) > 0 ? (
-                <div style={{ fontSize: 12, marginBottom: 12, color: "#64748b" }}>
-                  {(claimExport.summary.contextWarnings ?? []).map((cw) => (
-                    <div key={cw}>{exportContextWarningLabel(t, cw)}</div>
-                  ))}
-                </div>
-              ) : null}
-              {claimExport.summary.claimIdentityGaps !== undefined ? (
-                <div
-                  style={{
-                    marginBottom: 12,
-                    padding: "10px 12px",
-                    borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    background: claimExport.summary.claimIdentityReady ? "#f0fdf4" : "#fffbeb",
-                    fontSize: 12,
-                    color: "#334155",
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimIdentityReadinessTitle")}</div>
-                  <div style={{ marginBottom: 6 }}>
-                    <strong>{t("billingPage.claimIdentityReadyLabel")}:</strong>{" "}
-                    {claimExport.summary.claimIdentityReady ? t("common.yes") : t("common.no")}
+              {claimExport.summary.claimBlockers !== undefined &&
+              claimExport.summary.claimWarnings !== undefined &&
+              claimExport.summary.claimInfo !== undefined &&
+              claimExport.summary.claimReady !== undefined ? (
+                <>
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: "10px 12px",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      background: !claimExport.summary.claimReady
+                        ? "#fef2f2"
+                        : (claimExport.summary.claimWarnings?.length ?? 0) > 0
+                          ? "#fffbeb"
+                          : "#f0fdf4",
+                      fontSize: 13,
+                      color: "#334155",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {!claimExport.summary.claimReady
+                      ? t("billingPage.claimCompletenessNotReady")
+                      : (claimExport.summary.claimWarnings?.length ?? 0) > 0
+                        ? t("billingPage.claimCompletenessReadyWithWarnings")
+                        : t("billingPage.claimCompletenessReadySubmit")}
                   </div>
-                  {(claimExport.summary.claimIdentityGaps?.length ?? 0) > 0 ? (
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {(claimExport.summary.claimIdentityGaps ?? []).map((code) => (
-                        <li key={code}>{x12CodeLabel(t, "x12Missing", code)}</li>
+                  {(claimExport.summary.claimBlockers?.length ?? 0) > 0 ? (
+                    <div style={{ marginBottom: 12, fontSize: 12, color: "#9a3412" }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimCompletenessBlockersTitle")}</div>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {(claimExport.summary.claimBlockers ?? []).map((code) => (
+                          <li key={code}>{completenessIssueLabel(t, code)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {(claimExport.summary.claimWarnings?.length ?? 0) > 0 ? (
+                    <div style={{ marginBottom: 12, fontSize: 12, color: "#a16207" }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimCompletenessWarningsTitle")}</div>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {(claimExport.summary.claimWarnings ?? []).map((code) => (
+                          <li key={code}>{completenessIssueLabel(t, code)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {(claimExport.summary.claimInfo?.length ?? 0) > 0 ? (
+                    <div style={{ marginBottom: 12, fontSize: 12, color: "#64748b" }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimCompletenessInfoTitle")}</div>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {(claimExport.summary.claimInfo ?? []).map((code) => (
+                          <li key={code}>{completenessIssueLabel(t, code)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 13, marginBottom: 10, color: "#334155" }}>
+                    <strong>{t("billingPage.claimExportReadyLabel")}:</strong>{" "}
+                    {claimExport.summary.readyForExport ? t("billingPage.claimExportReadyYes") : t("billingPage.claimExportReadyNo")}
+                  </div>
+                  {(claimExport.summary.blockers?.length ?? 0) > 0 ? (
+                    <div style={{ fontSize: 12, marginBottom: 8, color: "#9a3412" }}>
+                      <strong>{t("billingPage.claimExportSummaryValidationBlockers")}:</strong>{" "}
+                      {claimExport.summary.blockers.join(", ")}
+                    </div>
+                  ) : null}
+                  {(claimExport.summary.warnings?.length ?? 0) > 0 ? (
+                    <div style={{ fontSize: 12, marginBottom: 8, color: "#1d4ed8" }}>
+                      <strong>{t("billingPage.claimExportSummaryValidationWarnings")}:</strong>{" "}
+                      {claimExport.summary.warnings.join(", ")}
+                    </div>
+                  ) : null}
+                  {(claimExport.summary.contextWarnings?.length ?? 0) > 0 ? (
+                    <div style={{ fontSize: 12, marginBottom: 12, color: "#64748b" }}>
+                      {(claimExport.summary.contextWarnings ?? []).map((cw) => (
+                        <div key={cw}>{exportContextWarningLabel(t, cw)}</div>
                       ))}
-                    </ul>
-                  ) : (
-                    <div style={{ color: "#15803d" }}>{t("billingPage.claimIdentityChecklistComplete")}</div>
-                  )}
-                </div>
-              ) : null}
+                    </div>
+                  ) : null}
+                  {claimExport.summary.claimIdentityGaps !== undefined ? (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        padding: "10px 12px",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        background: claimExport.summary.claimIdentityReady ? "#f0fdf4" : "#fffbeb",
+                        fontSize: 12,
+                        color: "#334155",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimIdentityReadinessTitle")}</div>
+                      <div style={{ marginBottom: 6 }}>
+                        <strong>{t("billingPage.claimIdentityReadyLabel")}:</strong>{" "}
+                        {claimExport.summary.claimIdentityReady ? t("common.yes") : t("common.no")}
+                      </div>
+                      {(claimExport.summary.claimIdentityGaps?.length ?? 0) > 0 ? (
+                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                          {(claimExport.summary.claimIdentityGaps ?? []).map((code) => (
+                            <li key={code}>{x12CodeLabel(t, "x12Missing", code)}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div style={{ color: "#15803d" }}>{t("billingPage.claimIdentityChecklistComplete")}</div>
+                      )}
+                    </div>
+                  ) : null}
+                </>
+              )}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13, marginBottom: canViewExportJson ? 10 : 0 }}>
                 <div style={{ flex: "1 1 260px", minWidth: 0 }}>
                   <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimExportProfessionalPackage")}</div>

@@ -12,6 +12,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ClaimBuilderService, type ClaimLine } from "./claim-builder.service";
 import type { ClaimValidationIssue } from "./claim-validation.util";
 import { evaluateClaimIdentityGaps } from "./claim-billing-identity.util";
+import { evaluateClaimCompleteness } from "./claim-completeness.util";
 
 function issueCodes(issues: ClaimValidationIssue[]): string[] {
   return [...new Set(issues.map((i) => i.code))];
@@ -173,12 +174,27 @@ export class ClaimExportService {
     const facBlockers = issueCodes(v.facility.blockers);
     const facWarnings = issueCodes(v.facility.warnings);
 
+    const completeness = evaluateClaimCompleteness({
+      identityGaps: claimIdentityGaps,
+      encounterValidationSummaryBlockers: summaryBlockers,
+      encounterValidationSummaryWarnings: summaryWarnings,
+      professionalBlockers: profBlockers,
+      professionalWarnings: profWarnings,
+      facilityBlockers: facBlockers,
+      facilityWarnings: facWarnings,
+      contextWarnings,
+      diagnosisCodes,
+      hasProfessionalPackage: profLines.length > 0,
+      hasFacilityPackage: facLines.length > 0,
+      facilityExportLines: facLines,
+    });
+
     const profHeader: ClaimExportHeader = {
       encounterId,
       patientId: encounter.patientId,
       facilityId,
       claimType: "PROFESSIONAL",
-      ready: packageReady(profLines.length > 0, v.professional.blockers),
+      ready: completeness.claimReady && packageReady(profLines.length > 0, v.professional.blockers),
       blockers: profBlockers,
       warnings: profWarnings,
       diagnosisCodes,
@@ -193,7 +209,7 @@ export class ClaimExportService {
       patientId: encounter.patientId,
       facilityId,
       claimType: "FACILITY",
-      ready: packageReady(facLines.length > 0, v.facility.blockers),
+      ready: completeness.claimReady && packageReady(facLines.length > 0, v.facility.blockers),
       blockers: facBlockers,
       warnings: facWarnings,
       diagnosisCodes,
@@ -212,12 +228,16 @@ export class ClaimExportService {
       professional,
       facility,
       summary: {
-        readyForExport: v.summary.ready,
+        readyForExport: completeness.claimReady,
         blockers: summaryBlockers,
         warnings: summaryWarnings,
         ...(contextWarnings.length > 0 ? { contextWarnings } : {}),
         claimIdentityGaps,
         claimIdentityReady,
+        claimReady: completeness.claimReady,
+        claimBlockers: completeness.blockers,
+        claimWarnings: completeness.warnings,
+        claimInfo: completeness.info,
       },
     };
   }

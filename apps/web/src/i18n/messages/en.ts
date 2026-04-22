@@ -333,6 +333,20 @@ export default {
     claimIdentityReadinessTitle: "Claim identity readiness",
     claimIdentityReadyLabel: "Identity checklist complete",
     claimIdentityChecklistComplete: "Payer, subscriber, provider, and facility (when required) are present for this preview.",
+    claimCompletenessNotReady: "Not ready for submission — resolve blockers below.",
+    claimCompletenessReadyWithWarnings: "Ready with warnings — review before sending.",
+    claimCompletenessReadySubmit: "Ready to submit (no completeness blockers).",
+    claimCompletenessBlockersTitle: "Blockers",
+    claimCompletenessWarningsTitle: "Warnings",
+    claimCompletenessInfoTitle: "Information",
+    completenessIssue_NO_DIAGNOSIS_CODES: "No diagnosis codes on billable export lines for this encounter.",
+    completenessIssue_INCOMPLETE_SUBSCRIBER_DATA:
+      "Subscriber or member ID / policy details are incomplete for primary coverage.",
+    completenessIssue_INCOMPLETE_SERVICE_DATES:
+      "Service date range is incomplete (no dates on billing lines and no admission timestamp).",
+    completenessIssue_FACILITY_LINE_MISSING_REVENUE_CODE: "At least one facility export line has no revenue code.",
+    completenessIssue_INFO_EXPORT_NOT_INTERCHANGE_SUBMISSION:
+      "Export payload is for structure and audits only — not an interchange file or payer submission.",
     identityTerm_payer: "Payer",
     identityTerm_insurance: "Insurance",
     identityTerm_subscriber: "Subscriber",

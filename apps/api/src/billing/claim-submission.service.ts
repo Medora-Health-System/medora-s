@@ -21,7 +21,12 @@ function computeSubmissionStatus(params: {
   x12Missing: string[];
 }): ClaimSubmissionStatus {
   const { exportSummary, packageHeader, x12Missing } = params;
-  if (!exportSummary.readyForExport || exportSummary.blockers.length > 0) {
+  const exportBlocked =
+    exportSummary.claimReady === false ||
+    (exportSummary.claimBlockers?.length ?? 0) > 0 ||
+    (exportSummary.claimReady === undefined &&
+      (!exportSummary.readyForExport || exportSummary.blockers.length > 0));
+  if (exportBlocked) {
     return ClaimSubmissionStatus.DRAFT;
   }
   if (!packageHeader?.ready) {

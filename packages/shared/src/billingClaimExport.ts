@@ -64,6 +64,14 @@ export type EncounterClaimExportSummary = {
   claimIdentityGaps?: string[];
   /** True when `claimIdentityGaps` is empty or absent. */
   claimIdentityReady?: boolean;
+  /**
+   * Phase 7.1 — Unified completeness gate (validation + identity + export context + line rules).
+   * `claimReady` is false when `claimBlockers` is non-empty.
+   */
+  claimReady: boolean;
+  claimBlockers: string[];
+  claimWarnings: string[];
+  claimInfo: string[];
 };
 
 export type EncounterClaimExportResult = {
