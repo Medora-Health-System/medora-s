@@ -117,3 +117,38 @@ export type EncounterClaimExportResult = {
   facility: ClaimExportPackage | null;
   summary: EncounterClaimExportSummary;
 };
+
+/**
+ * Phase 7.6 — Per-row clearinghouse send outcome (837P vs 837I). Additive audit fields for API responses.
+ * Mirrors `ClaimTransmissionService.sendOneSubmission` return shape.
+ */
+export type ClaimSubmissionSendOutcomeSideContext = {
+  claimType: string;
+  sideGateAllowed: boolean | null;
+  sideGateReasonCode: string | null;
+  sideGateBlockers: string[];
+  sideSent: boolean;
+  sideSkipped: boolean;
+  sideRetryEligible: boolean;
+};
+
+export type ClaimSubmissionSendOutcome = ClaimSubmissionSendOutcomeSideContext & {
+  submissionId: string;
+  skipped?: boolean;
+  status?: string;
+  skipReason?: string;
+  blockedByCompleteness?: boolean;
+  submissionGateReasonCode?: string | null;
+  submissionGateBlockers?: string[];
+  claimReady?: boolean | null;
+  ok?: boolean;
+  attemptId?: string;
+};
+
+/** Aggregated counts when sending multiple submission rows (batch / encounter orchestration). */
+export type ClaimSubmissionBatchSendSummary = {
+  submissionCount: number;
+  transportSucceeded: number;
+  transportFailed: number;
+  sideSkipped: number;
+};

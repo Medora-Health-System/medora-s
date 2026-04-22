@@ -160,6 +160,17 @@ export class QueuesController {
     return this.claimAcknowledgmentService.replayInboundAckDeadLetter(facilityId, deadLetterId);
   }
 
+  @Post("billing/submissions/:submissionId/send")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async sendSubmission(
+    @Param("submissionId") submissionId: string,
+    @Body() body: { transport?: ClearinghouseTransportHint },
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    return this.claimTransmissionService.sendSubmission(facilityId, submissionId, body?.transport ?? "MANUAL");
+  }
+
   @Post("billing/submissions/:submissionId/retry-send")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async retrySubmissionSend(@Param("submissionId") submissionId: string, @Body() body: { transport?: ClearinghouseTransportHint }, @Req() req: any) {

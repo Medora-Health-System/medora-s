@@ -259,6 +259,8 @@ type SubmissionDebugPayload = {
   encounterId: string;
   submissions: {
     submissionId: string;
+    /** Prisma `ClaimSubmissionKind` when provided by API (Phase 7.6). */
+    claimType?: string;
     type: "837P" | "837I";
     status: string;
     createdAt: string;
@@ -528,6 +530,34 @@ function claimSubmissionKindLabel(t: (k: string) => string, claimType: string): 
   return v === k ? claimType : v;
 }
 
+function claimSubmissionIsProfessional837P(claimType: string): boolean {
+  return claimType === "PROFESSIONAL_837P";
+}
+
+function sendSubmissionSideActionLabel(t: (k: string) => string, claimType: string): string {
+  return claimSubmissionIsProfessional837P(claimType)
+    ? t("billingPage.sendProfessionalClaim")
+    : t("billingPage.sendFacilityClaim");
+}
+
+function retrySubmissionSideActionLabel(t: (k: string) => string, claimType: string): string {
+  return claimSubmissionIsProfessional837P(claimType)
+    ? t("billingPage.professionalRetrySend")
+    : t("billingPage.facilityRetrySend");
+}
+
+function submissionAckSideSectionLabel(t: (k: string) => string, claimType: string): string {
+  return claimSubmissionIsProfessional837P(claimType)
+    ? t("billingPage.professionalAcknowledgment")
+    : t("billingPage.facilityAcknowledgment");
+}
+
+function submissionTimelineSideTitle(t: (k: string) => string, claimType: string): string {
+  return claimSubmissionIsProfessional837P(claimType)
+    ? t("billingPage.submissionTimelineProfessionalTitle")
+    : t("billingPage.submissionTimelineFacilityTitle");
+}
+
 function readinessLineLabel(
   t: (k: string) => string,
   prefix: "readinessBlocker" | "readinessWarning" | "packageBlocker" | "packageWarning",
@@ -732,15 +762,79 @@ export default function BillingEncounterLedgerPage() {
           body: JSON.stringify({ transport: "MANUAL" }),
         })) as {
           results?: Array<{
+            ok?: boolean;
             skipped?: boolean;
+            sideSkipped?: boolean;
             blockedByCompleteness?: boolean;
             submissionGateReasonCode?: string | null;
             submissionGateBlockers?: string[];
           }>;
         };
-        const blocked = (resp.results ?? []).filter((r) => r.blockedByCompleteness || r.skipped);
-        if (blocked.length > 0) {
+        const results = resp.results ?? [];
+        const okCount = results.filter((r) => r.ok === true).length;
+        const sideSkippedCount = results.filter((r) => r.sideSkipped === true).length;
+        const transportFailed = results.filter((r) => r.ok === false && r.sideSkipped !== true).length;
+        if (okCount > 0) {
+          if (sideSkippedCount > 0) {
+            setToast(
+              t("billingPage.submissionSendBatchPartialOk")
+                .replace("{sent}", String(okCount))
+                .replace("{skipped}", String(sideSkippedCount))
+            );
+          } else {
+            setToast(t("billingPage.submissionSendOk"));
+          }
+        } else if (results.length > 0 && sideSkippedCount === results.length) {
+          setActionError(t("billingPage.submissionSendAllSidesSkipped"));
+        } else if (transportFailed > 0) {
+          setActionError(t("billingPage.submissionSendTransportFailures"));
+        } else {
           setActionError(t("billingPage.submissionBlockedByCompleteness"));
+        }
+        await load();
+      } catch (e: unknown) {
+        const raw = e instanceof Error && e.message ? e.message : "";
+        setActionError(normalizeUserFacingError(raw, language) || t("billingPage.submissionSendErr"));
+      } finally {
+        setSubmissionBusy(false);
+      }
+    },
+    [facilityId, language, load, t]
+  );
+
+  const sendSubmissionSingle = useCallback(
+    async (submissionId: string, claimType: string) => {
+      if (!facilityId) return;
+      setSubmissionBusy(true);
+      setActionError(null);
+      setToast(null);
+      try {
+        const res = (await apiFetch(`/billing/submissions/${submissionId}/send`, {
+          facilityId,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transport: "MANUAL" }),
+        })) as {
+          claimType?: string;
+          sideSent?: boolean;
+          sideSkipped?: boolean;
+          ok?: boolean;
+        };
+        const ct = typeof res.claimType === "string" ? res.claimType : claimType;
+        if (res.sideSent === true) {
+          setToast(
+            claimSubmissionIsProfessional837P(ct)
+              ? t("billingPage.professionalClaimSent")
+              : t("billingPage.facilityClaimSent")
+          );
+        } else if (res.sideSkipped === true) {
+          setActionError(
+            claimSubmissionIsProfessional837P(ct)
+              ? t("billingPage.professionalSubmissionSkipped")
+              : t("billingPage.facilitySubmissionSkipped")
+          );
+        } else if (res.ok === false) {
+          setActionError(t("billingPage.submissionSendTransportFailures"));
         } else {
           setToast(t("billingPage.submissionSendOk"));
         }
@@ -762,16 +856,27 @@ export default function BillingEncounterLedgerPage() {
       setActionError(null);
       setToast(null);
       try {
+        const row = claimSubmissions.find((x) => x.id === submissionId);
+        const claimType = row?.claimType ?? "PROFESSIONAL_837P";
         const res = (await apiFetch(`/billing/submissions/${submissionId}/retry-send`, {
           facilityId,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transport: "MANUAL" }),
-        })) as { skipped?: boolean; blockedByCompleteness?: boolean };
+        })) as { skipped?: boolean; blockedByCompleteness?: boolean; claimType?: string };
+        const ct = typeof res.claimType === "string" ? res.claimType : claimType;
         if (res.skipped || res.blockedByCompleteness) {
-          setActionError(t("billingPage.submissionRetrySkippedClaimNotReady"));
+          setActionError(
+            claimSubmissionIsProfessional837P(ct)
+              ? t("billingPage.professionalRetrySkippedClaimNotReady")
+              : t("billingPage.facilityRetrySkippedClaimNotReady")
+          );
         } else {
-          setToast(t("billingPage.submissionRetrySendOk"));
+          setToast(
+            claimSubmissionIsProfessional837P(ct)
+              ? t("billingPage.professionalRetrySendOk")
+              : t("billingPage.facilityRetrySendOk")
+          );
         }
         await load();
         const attempts = await apiFetch(`/billing/submissions/${submissionId}/attempts`, { facilityId });
@@ -785,7 +890,7 @@ export default function BillingEncounterLedgerPage() {
         setRetrySendBusyId(null);
       }
     },
-    [facilityId, language, load, t]
+    [claimSubmissions, facilityId, language, load, t]
   );
 
   const toggleSubmissionDetail = useCallback(
@@ -2235,6 +2340,10 @@ export default function BillingEncounterLedgerPage() {
                     batchPeers.length > 0 &&
                     batchPeers.some((x) => !submissionSideReadinessBlocked(claimExport?.summary, x.claimType).blocked);
                   const sideSendBlocked = submissionSideReadinessBlocked(claimExport?.summary, s.claimType).blocked;
+                  const sortedBatchPeers =
+                    batchPeers.length > 0 ? [...batchPeers].sort((a, b) => a.id.localeCompare(b.id)) : [];
+                  const isOrchestratedBatchSendRow =
+                    Boolean(s.batchId) && sortedBatchPeers.length > 1 && sortedBatchPeers[0]?.id === s.id;
                   return (
                   <li key={s.id} style={{ marginBottom: 10 }}>
                     <div>
@@ -2253,22 +2362,52 @@ export default function BillingEncounterLedgerPage() {
                       </div>
                     ) : null}
                     {s.batchId ? (
-                      <div style={{ marginTop: 6 }}>
+                      <div
+                        style={{
+                          marginTop: 6,
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
+                      >
                         <button
                           type="button"
-                          onClick={() => void sendSubmissionBatch(s.batchId!)}
-                          disabled={submissionBusy || !anySideInBatchCanSend}
+                          onClick={() => void sendSubmissionSingle(s.id, s.claimType)}
+                          disabled={
+                            submissionBusy || sideSendBlocked || s.status !== "READY_TO_SEND" || !facilityId
+                          }
                           style={{
                             fontSize: 11,
                             padding: "4px 8px",
                             borderRadius: 6,
                             border: "1px solid #cbd5e1",
                             background: "#fff",
-                            cursor: submissionBusy || !anySideInBatchCanSend ? "not-allowed" : "pointer",
+                            cursor:
+                              submissionBusy || sideSendBlocked || s.status !== "READY_TO_SEND" || !facilityId
+                                ? "not-allowed"
+                                : "pointer",
                           }}
                         >
-                          {t("billingPage.submissionSendManual")}
+                          {sendSubmissionSideActionLabel(t, s.claimType)}
                         </button>
+                        {isOrchestratedBatchSendRow ? (
+                          <button
+                            type="button"
+                            onClick={() => void sendSubmissionBatch(s.batchId!)}
+                            disabled={submissionBusy || !anySideInBatchCanSend}
+                            style={{
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid #cbd5e1",
+                              background: "#f8fafc",
+                              cursor: submissionBusy || !anySideInBatchCanSend ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {t("billingPage.sendAllReadySubmissionsInBatch")}
+                          </button>
+                        ) : null}
                       </div>
                     ) : null}
                     {s.warnings.length > 0 ? (
@@ -2362,14 +2501,16 @@ export default function BillingEncounterLedgerPage() {
                                       >
                                         {retrySendBusyId === s.id
                                           ? t("billingPage.submissionRetrySendBusy")
-                                          : t("billingPage.submissionRetrySend")}
+                                          : retrySubmissionSideActionLabel(t, s.claimType)}
                                       </button>
                                     </span>
                                   ) : null}
                                 </div>
                               ))
                             )}
-                            <div style={{ fontWeight: 600, marginTop: 6, marginBottom: 4 }}>{t("billingPage.submissionAcknowledgments")}</div>
+                            <div style={{ fontWeight: 600, marginTop: 6, marginBottom: 4 }}>
+                              {submissionAckSideSectionLabel(t, s.claimType)}
+                            </div>
                             {(submissionAcks[s.id]?.length ?? 0) === 0 ? (
                               <div>{t("billingPage.submissionNoAcknowledgmentYet")}</div>
                             ) : (
@@ -2412,7 +2553,13 @@ export default function BillingEncounterLedgerPage() {
                   {submissionDebug.submissions.map((s) => (
                     <div key={s.submissionId} style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: 10 }}>
                       <div style={{ fontSize: 13 }}>
-                        <strong>{s.type}</strong> · {submissionStatusLabel(t, s.status)}
+                        <strong>
+                          {submissionTimelineSideTitle(
+                            t,
+                            s.claimType ?? (s.type === "837P" ? "PROFESSIONAL_837P" : "FACILITY_837I")
+                          )}
+                        </strong>{" "}
+                        · {submissionStatusLabel(t, s.status)}
                       </div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>
                         {new Date(s.createdAt).toLocaleString(locale)} · {t("billingPage.submissionAttempts")}: {s.attempts.length}

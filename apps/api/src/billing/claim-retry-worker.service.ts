@@ -160,13 +160,21 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         });
 
         if (!fresh) {
-          log.log("retry_attempt_skipped", { submissionId: sub.id, reason: "RETRY_SKIPPED_NOT_FOUND" });
+          log.log("retry_attempt_skipped", {
+            submissionId: sub.id,
+            claimType: sub.claimType,
+            reason: "RETRY_SKIPPED_NOT_FOUND",
+          });
           skipped += 1;
           continue;
         }
 
         if (isTerminalSubmissionStatus(fresh.status)) {
-          log.log("retry_attempt_skipped", { submissionId: fresh.id, reason: "RETRY_SKIPPED_TERMINAL" });
+          log.log("retry_attempt_skipped", {
+            submissionId: fresh.id,
+            claimType: fresh.claimType,
+            reason: "RETRY_SKIPPED_TERMINAL",
+          });
           skipped += 1;
           continue;
         }
@@ -174,6 +182,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         if (fresh.status !== ClaimSubmissionStatus.READY_TO_SEND) {
           log.log("retry_attempt_skipped", {
             submissionId: fresh.id,
+            claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_STATUS_CHANGED",
             status: fresh.status,
           });
@@ -183,25 +192,38 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
 
         const last = fresh.attempts[0];
         if (!last) {
-          log.log("retry_attempt_skipped", { submissionId: fresh.id, reason: "RETRY_SKIPPED_NO_ATTEMPTS" });
+          log.log("retry_attempt_skipped", {
+            submissionId: fresh.id,
+            claimType: fresh.claimType,
+            reason: "RETRY_SKIPPED_NO_ATTEMPTS",
+          });
           skipped += 1;
           continue;
         }
 
         if (last.ok) {
-          log.log("retry_attempt_skipped", { submissionId: fresh.id, reason: "RETRY_SKIPPED_NEWER_ATTEMPT_EXISTS" });
+          log.log("retry_attempt_skipped", {
+            submissionId: fresh.id,
+            claimType: fresh.claimType,
+            reason: "RETRY_SKIPPED_NEWER_ATTEMPT_EXISTS",
+          });
           skipped += 1;
           continue;
         }
 
         if (!isLatestAttemptDueForWorkerRetry({ latestAttempt: last, now })) {
-          log.log("retry_attempt_skipped", { submissionId: fresh.id, reason: "RETRY_SKIPPED_NOT_DUE" });
+          log.log("retry_attempt_skipped", {
+            submissionId: fresh.id,
+            claimType: fresh.claimType,
+            reason: "RETRY_SKIPPED_NOT_DUE",
+          });
           skipped += 1;
           continue;
         }
 
         log.log("retry_candidate_found", {
           submissionId: fresh.id,
+          claimType: fresh.claimType,
           facilityId: fresh.facilityId,
           attemptId: last.id,
         });
@@ -209,21 +231,31 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         const hint = normalizeTransportHint(last.transport);
 
         try {
-          log.log("retry_attempt_triggered", { submissionId: fresh.id, transport: hint });
+          log.log("retry_attempt_triggered", {
+            submissionId: fresh.id,
+            claimType: fresh.claimType,
+            transport: hint,
+          });
           const res = await this.claimTransmissionService.retrySubmissionSend(fresh.facilityId, fresh.id, hint, {
             attemptTrigger: "WORKER",
           });
           if (res && typeof res === "object" && "skipped" in res && (res as { skipped?: boolean }).skipped) {
             const reason = (res as { skipReason?: string }).skipReason ?? "RETRY_SKIPPED";
-            log.log("retry_attempt_skipped", { submissionId: fresh.id, reason });
+            const gateReason = (res as { sideGateReasonCode?: string | null }).sideGateReasonCode;
+            log.log("retry_attempt_skipped", {
+              submissionId: fresh.id,
+              claimType: fresh.claimType,
+              reason,
+              sideGateReasonCode: gateReason ?? undefined,
+            });
             skipped += 1;
           } else {
-            log.log("retry_attempt_succeeded", { submissionId: fresh.id });
+            log.log("retry_attempt_succeeded", { submissionId: fresh.id, claimType: fresh.claimType });
             succeeded += 1;
           }
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          log.log("retry_attempt_failed", { submissionId: fresh.id, error: msg });
+          log.log("retry_attempt_failed", { submissionId: fresh.id, claimType: fresh.claimType, error: msg });
           failed += 1;
         }
       }

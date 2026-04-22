@@ -24,6 +24,25 @@ import { evaluateSubmissionGate, type SubmissionGateScope } from "./claim-submis
 
 export type TransportKind = ClearinghouseTransportHint;
 
+function summarizeBatchSendResults(
+  results: Array<{ ok?: boolean; sideSkipped?: boolean }>
+) {
+  let transportSucceeded = 0;
+  let transportFailed = 0;
+  let sideSkippedCount = 0;
+  for (const r of results) {
+    if (r.sideSkipped === true) sideSkippedCount += 1;
+    if (r.ok === true) transportSucceeded += 1;
+    if (r.ok === false && r.sideSkipped !== true) transportFailed += 1;
+  }
+  return {
+    submissionCount: results.length,
+    transportSucceeded,
+    transportFailed,
+    sideSkipped: sideSkippedCount,
+  };
+}
+
 function sendSkipReason(current: ClaimSubmissionStatus): SubmissionTransitionReasonCode {
   if (isTerminalSubmissionStatus(current)) {
     return "TERMINAL_STATE_ALREADY_REACHED";
@@ -61,6 +80,19 @@ export class ClaimTransmissionService {
     return getClearinghousePublicConfigStatus();
   }
 
+  /**
+   * Send a single persisted submission row (837P or 837I). Gate and lifecycle are evaluated for that row only.
+   */
+  async sendSubmission(facilityId: string, submissionId: string, transportKind: TransportKind = "MANUAL") {
+    const sub = await this.prisma.claimSubmission.findFirst({ where: { id: submissionId, facilityId } });
+    if (!sub) throw new NotFoundException("Submission not found");
+    const transport = this.resolveTransport(transportKind);
+    return this.sendOneSubmission(submissionId, transport, {
+      allowNonReady: false,
+      attemptTrigger: "MANUAL",
+    });
+  }
+
   private resolveTransport(kind: TransportKind): ClearinghouseTransport {
     return this.clearinghouseTransportFactory.resolve(kind);
   }
@@ -74,13 +106,14 @@ export class ClaimTransmissionService {
     if (!batch) throw new NotFoundException("Submission batch not found");
     const out = [];
     for (const s of batch.submissions) {
-      out.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false }));
+      out.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false, attemptTrigger: "BATCH" }));
     }
     return {
       batchId,
       transport: transport.key,
       clearinghouse: getClearinghousePublicConfigStatus(),
       results: out,
+      batchSummary: summarizeBatchSendResults(out),
     };
   }
 
@@ -92,7 +125,7 @@ export class ClaimTransmissionService {
     });
     const results = [];
     for (const s of submissions) {
-      results.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false }));
+      results.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false, attemptTrigger: "BATCH" }));
     }
     return {
       facilityId,
@@ -100,6 +133,7 @@ export class ClaimTransmissionService {
       transport: transport.key,
       clearinghouse: getClearinghousePublicConfigStatus(),
       results,
+      batchSummary: summarizeBatchSendResults(results),
     };
   }
 
@@ -121,6 +155,7 @@ export class ClaimTransmissionService {
     const lastAck = sub.acknowledgments[0];
     return {
       submissionId: sub.id,
+      claimType: sub.claimType,
       currentStatus: sub.status,
       claimReady: submissionGateEncounter.claimReady,
       blockedByCompleteness: !submissionGateEncounter.allowed,
@@ -189,6 +224,7 @@ export class ClaimTransmissionService {
           return first ? lifecycleReasonFromParsedJson(first.parsedJson) : null;
         })(),
         submissionId: s.id,
+        claimType: s.claimType,
         type: s.claimType === "PROFESSIONAL_837P" ? "837P" : "837I",
         submissionGateScope: this.submissionGateScopeForKind(s.claimType),
         submissionSideGateAllowed: sideGate.allowed,
@@ -252,6 +288,7 @@ export class ClaimTransmissionService {
             reason: skipReason,
             clearinghouseMode: cfgSnapshot.mode,
             transportHint: transport.key,
+            ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
           }) as Prisma.InputJsonValue,
           responseMetaJson: scrubRecordForPersistence({ currentStatus: submission.status }) as Prisma.InputJsonValue,
           errorMessage: skipReason,
@@ -259,6 +296,7 @@ export class ClaimTransmissionService {
       });
       return {
         submissionId,
+        claimType: submission.claimType,
         skipped: true,
         status: submission.status,
         skipReason,
@@ -266,6 +304,12 @@ export class ClaimTransmissionService {
         submissionGateReasonCode: skipReason,
         submissionGateBlockers: [],
         claimReady: null,
+        sideGateAllowed: null,
+        sideGateReasonCode: null,
+        sideGateBlockers: [] as string[],
+        sideSent: false,
+        sideSkipped: true,
+        sideRetryEligible: false,
       };
     }
 
@@ -305,6 +349,7 @@ export class ClaimTransmissionService {
       });
       return {
         submissionId,
+        claimType: submission.claimType,
         skipped: true,
         status: submission.status,
         skipReason,
@@ -312,6 +357,12 @@ export class ClaimTransmissionService {
         submissionGateReasonCode: submissionGate.reasonCode,
         submissionGateBlockers: submissionGate.blockers,
         claimReady: submissionGate.claimReady,
+        sideGateAllowed: submissionGate.allowed,
+        sideGateReasonCode: submissionGate.reasonCode,
+        sideGateBlockers: submissionGate.blockers,
+        sideSent: false,
+        sideSkipped: true,
+        sideRetryEligible: false,
       };
     }
 
@@ -332,6 +383,7 @@ export class ClaimTransmissionService {
       ...result.requestMeta,
       clearinghouseMode: cfgSnapshot.mode,
       transportHint: transport.key,
+      claimType: submission.claimType,
       ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
     };
     const rawResponse = {
@@ -391,6 +443,7 @@ export class ClaimTransmissionService {
 
     return {
       submissionId,
+      claimType: submission.claimType,
       attemptId: attempt.id,
       status: updated.status,
       ok: result.ok,
@@ -398,6 +451,12 @@ export class ClaimTransmissionService {
       submissionGateReasonCode: submissionGate.reasonCode,
       submissionGateBlockers: submissionGate.blockers,
       claimReady: submissionGate.claimReady,
+      sideGateAllowed: submissionGate.allowed,
+      sideGateReasonCode: submissionGate.reasonCode,
+      sideGateBlockers: submissionGate.blockers,
+      sideSent: result.ok,
+      sideSkipped: false,
+      sideRetryEligible: !result.ok && retryEligible,
     };
   }
 
