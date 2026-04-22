@@ -81,6 +81,21 @@ export type EncounterClaimExportSummary = {
   claimWarnings: string[];
   claimInfo: string[];
   /**
+   * Phase 7.5 — Professional package readiness (vacuously true when no professional export lines).
+   * Independent from facility side when both packages exist.
+   */
+  professionalClaimReady?: boolean;
+  professionalClaimBlockers?: string[];
+  professionalClaimWarnings?: string[];
+  professionalClaimInfo?: string[];
+  /**
+   * Phase 7.5 — Facility package readiness (vacuously true when no facility export lines).
+   */
+  facilityClaimReady?: boolean;
+  facilityClaimBlockers?: string[];
+  facilityClaimWarnings?: string[];
+  facilityClaimInfo?: string[];
+  /**
    * Phase 7.4 — Same user ids as export headers: who is treated as rendering vs billing for this export.
    */
   resolvedRenderingProviderUserId?: string | null;

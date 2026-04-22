@@ -164,6 +164,14 @@ type EncounterClaimExportPayload = {
     claimBlockers?: string[];
     claimWarnings?: string[];
     claimInfo?: string[];
+    professionalClaimReady?: boolean;
+    professionalClaimBlockers?: string[];
+    professionalClaimWarnings?: string[];
+    professionalClaimInfo?: string[];
+    facilityClaimReady?: boolean;
+    facilityClaimBlockers?: string[];
+    facilityClaimWarnings?: string[];
+    facilityClaimInfo?: string[];
     resolvedRenderingProviderUserId?: string | null;
     resolvedBillingProviderUserId?: string | null;
     facilityBillingRoleActive?: boolean;
@@ -255,6 +263,10 @@ type SubmissionDebugPayload = {
     status: string;
     createdAt: string;
     lastTransitionReason?: string | null;
+    submissionGateScope?: string;
+    submissionSideGateAllowed?: boolean;
+    submissionSideGateReasonCode?: string;
+    submissionSideGateBlockers?: string[];
     attempts: SubmissionAttemptPayload[];
     acknowledgments: SubmissionDebugAckPayload[];
   }[];
@@ -433,6 +445,26 @@ function pickCodes(codes: readonly string[] | undefined, set: ReadonlySet<string
   return codes.filter((code) => set.has(code));
 }
 
+/** Phase 7.5 — Gate aligned with the submission row’s claim type (837P vs 837I). */
+function submissionSideReadinessBlocked(
+  summary: EncounterClaimExportPayload["summary"] | undefined,
+  claimType: string
+): { blocked: boolean; blockers: string[] } {
+  if (!summary) return { blocked: true, blockers: [] };
+  const isProf = claimType === "PROFESSIONAL_837P" || claimType.includes("PROFESSIONAL");
+  const isFac = claimType === "FACILITY_837I" || claimType.includes("FACILITY");
+  if (isProf && typeof summary.professionalClaimReady === "boolean") {
+    const blockers = summary.professionalClaimBlockers ?? [];
+    return { blocked: !summary.professionalClaimReady || blockers.length > 0, blockers };
+  }
+  if (isFac && typeof summary.facilityClaimReady === "boolean") {
+    const blockers = summary.facilityClaimBlockers ?? [];
+    return { blocked: !summary.facilityClaimReady || blockers.length > 0, blockers };
+  }
+  const blockers = summary.claimBlockers ?? [];
+  return { blocked: summary.claimReady === false || blockers.length > 0, blockers };
+}
+
 /** Localized X12 warning/missing machine id; reuses claim/export labels when codes match. */
 function x12CodeLabel(t: (k: string) => string, prefix: "x12Warning" | "x12Missing", code: string): string {
   if (prefix === "x12Warning") {
@@ -571,6 +603,13 @@ export default function BillingEncounterLedgerPage() {
   const submissionGateBlocked =
     submissionGateReady === false ||
     submissionGateBlockers.length > 0;
+  const submissionReadinessMixed = Boolean(
+    claimExport?.professional &&
+      claimExport.facility &&
+      typeof claimExport.summary.professionalClaimReady === "boolean" &&
+      typeof claimExport.summary.facilityClaimReady === "boolean" &&
+      claimExport.summary.professionalClaimReady !== claimExport.summary.facilityClaimReady
+  );
 
   const load = useCallback(async () => {
     if (!ready || !facilityId) return;
@@ -682,10 +721,6 @@ export default function BillingEncounterLedgerPage() {
   const sendSubmissionBatch = useCallback(
     async (batchId: string) => {
       if (!facilityId) return;
-      if (submissionGateBlocked) {
-        setActionError(t("billingPage.submissionBlockedByCompleteness"));
-        return;
-      }
       setSubmissionBusy(true);
       setActionError(null);
       setToast(null);
@@ -717,16 +752,12 @@ export default function BillingEncounterLedgerPage() {
         setSubmissionBusy(false);
       }
     },
-    [facilityId, language, load, submissionGateBlocked, t]
+    [facilityId, language, load, t]
   );
 
   const retrySubmissionSend = useCallback(
     async (submissionId: string) => {
       if (!facilityId) return;
-      if (submissionGateBlocked) {
-        setActionError(t("billingPage.submissionRetrySkippedClaimNotReady"));
-        return;
-      }
       setRetrySendBusyId(submissionId);
       setActionError(null);
       setToast(null);
@@ -754,7 +785,7 @@ export default function BillingEncounterLedgerPage() {
         setRetrySendBusyId(null);
       }
     },
-    [facilityId, language, load, submissionGateBlocked, t]
+    [facilityId, language, load, t]
   );
 
   const toggleSubmissionDetail = useCallback(
@@ -1414,6 +1445,103 @@ export default function BillingEncounterLedgerPage() {
                         ? t("billingPage.claimCompletenessReadyWithWarnings")
                         : t("billingPage.claimCompletenessReadySubmit")}
                   </div>
+                  {typeof claimExport.summary.professionalClaimReady === "boolean" ||
+                  typeof claimExport.summary.facilityClaimReady === "boolean" ? (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        display: "grid",
+                        gap: 10,
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      }}
+                    >
+                      {typeof claimExport.summary.professionalClaimReady === "boolean" ? (
+                        <div
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #e2e8f0",
+                            background: claimExport.summary.professionalClaimReady ? "#f0fdf4" : "#fef2f2",
+                            fontSize: 12,
+                            color: "#334155",
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                            {claimExport.professional
+                              ? t("billingPage.professionalReadinessTitle")
+                              : t("billingPage.professionalReadinessNoPackage")}
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>
+                              {claimExport.summary.professionalClaimReady
+                                ? t("billingPage.sideReadinessReady")
+                                : t("billingPage.sideReadinessBlocked")}
+                            </strong>
+                          </div>
+                          {(claimExport.summary.professionalClaimBlockers?.length ?? 0) > 0 ? (
+                            <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                              {(claimExport.summary.professionalClaimBlockers ?? []).map((code) => (
+                                <li key={`prof-bl-${code}`}>{completenessIssueLabel(t, code)}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          {(claimExport.summary.professionalClaimWarnings?.length ?? 0) > 0 ? (
+                            <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#a16207" }}>
+                              {(claimExport.summary.professionalClaimWarnings ?? []).map((code) => (
+                                <li key={`prof-w-${code}`}>{completenessIssueLabel(t, code)}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {typeof claimExport.summary.facilityClaimReady === "boolean" ? (
+                        <div
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #e2e8f0",
+                            background: claimExport.summary.facilityClaimReady ? "#f0fdf4" : "#fef2f2",
+                            fontSize: 12,
+                            color: "#334155",
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                            {claimExport.facility
+                              ? t("billingPage.facilityReadinessTitle")
+                              : t("billingPage.facilityReadinessNoPackage")}
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>
+                              {claimExport.summary.facilityClaimReady
+                                ? t("billingPage.sideReadinessReady")
+                                : t("billingPage.sideReadinessBlocked")}
+                            </strong>
+                          </div>
+                          {(claimExport.summary.facilityClaimBlockers?.length ?? 0) > 0 ? (
+                            <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                              {(claimExport.summary.facilityClaimBlockers ?? []).map((code) => (
+                                <li key={`fac-bl-${code}`}>{completenessIssueLabel(t, code)}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          {(claimExport.summary.facilityClaimWarnings?.length ?? 0) > 0 ? (
+                            <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#a16207" }}>
+                              {(claimExport.summary.facilityClaimWarnings ?? []).map((code) => (
+                                <li key={`fac-w-${code}`}>{completenessIssueLabel(t, code)}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {!claimExport.summary.claimReady &&
+                  claimExport.summary.professionalClaimReady === true &&
+                  claimExport.summary.facilityClaimReady === true ? (
+                    <div style={{ marginBottom: 12, fontSize: 12, color: "#64748b" }}>
+                      {t("billingPage.sideReadinessOverallBlockedNote")}
+                    </div>
+                  ) : null}
                   {claimExport.summary.resolvedRenderingProviderUserId !== undefined ? (
                     <div
                       style={{
@@ -1988,7 +2116,22 @@ export default function BillingEncounterLedgerPage() {
                 ) : null}
               </div>
             ) : null}
-            {submissionGateBlocked ? (
+            {submissionReadinessMixed ? (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #fde68a",
+                  background: "#fffbeb",
+                  color: "#92400e",
+                  fontSize: 12,
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{t("billingPage.submissionReadinessMixedTitle")}</div>
+                <div style={{ marginTop: 4 }}>{t("billingPage.submissionReadinessMixedBody")}</div>
+              </div>
+            ) : submissionGateBlocked ? (
               <div
                 style={{
                   marginBottom: 12,
@@ -2086,7 +2229,13 @@ export default function BillingEncounterLedgerPage() {
               <div style={{ fontSize: 13, color: "#64748b" }}>{t("billingPage.submissionNoArtifact")}</div>
             ) : (
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#334155" }}>
-                {claimSubmissions.map((s) => (
+                {claimSubmissions.map((s) => {
+                  const batchPeers = s.batchId ? claimSubmissions.filter((x) => x.batchId === s.batchId) : [];
+                  const anySideInBatchCanSend =
+                    batchPeers.length > 0 &&
+                    batchPeers.some((x) => !submissionSideReadinessBlocked(claimExport?.summary, x.claimType).blocked);
+                  const sideSendBlocked = submissionSideReadinessBlocked(claimExport?.summary, s.claimType).blocked;
+                  return (
                   <li key={s.id} style={{ marginBottom: 10 }}>
                     <div>
                       <strong>{claimSubmissionKindLabel(t, s.claimType)}</strong>
@@ -2108,14 +2257,14 @@ export default function BillingEncounterLedgerPage() {
                         <button
                           type="button"
                           onClick={() => void sendSubmissionBatch(s.batchId!)}
-                          disabled={submissionBusy || submissionGateBlocked}
+                          disabled={submissionBusy || !anySideInBatchCanSend}
                           style={{
                             fontSize: 11,
                             padding: "4px 8px",
                             borderRadius: 6,
                             border: "1px solid #cbd5e1",
                             background: "#fff",
-                            cursor: submissionBusy || submissionGateBlocked ? "not-allowed" : "pointer",
+                            cursor: submissionBusy || !anySideInBatchCanSend ? "not-allowed" : "pointer",
                           }}
                         >
                           {t("billingPage.submissionSendManual")}
@@ -2199,7 +2348,7 @@ export default function BillingEncounterLedgerPage() {
                                     <span style={{ marginLeft: 6 }}>
                                       <button
                                         type="button"
-                                        disabled={retrySendBusyId === s.id || submissionBusy || submissionGateBlocked}
+                                        disabled={retrySendBusyId === s.id || submissionBusy || sideSendBlocked}
                                         onClick={() => void retrySubmissionSend(s.id)}
                                         style={{
                                           fontSize: 11,
@@ -2208,7 +2357,7 @@ export default function BillingEncounterLedgerPage() {
                                           border: "1px solid #cbd5e1",
                                           background: "#fff",
                                           cursor:
-                                            retrySendBusyId === s.id || submissionGateBlocked ? "not-allowed" : "pointer",
+                                            retrySendBusyId === s.id || sideSendBlocked ? "not-allowed" : "pointer",
                                         }}
                                       >
                                         {retrySendBusyId === s.id
@@ -2247,7 +2396,8 @@ export default function BillingEncounterLedgerPage() {
                       </div>
                     ) : null}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

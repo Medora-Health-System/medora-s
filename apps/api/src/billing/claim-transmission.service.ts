@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { ClaimSubmissionStatus, Prisma } from "@prisma/client";
+import { ClaimSubmissionKind, ClaimSubmissionStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { displayAckSourceFromParsedJson } from "./ack-inbound-parse.util";
 import { scrubRecordForPersistence } from "./clearinghouse-audit.util";
@@ -20,7 +20,7 @@ import {
   classifyOutboundAttemptFailure,
   nextRetryAtForOutboundFailureOrdinal,
 } from "./clearinghouse-retry-policy.util";
-import { evaluateSubmissionGate } from "./claim-submission-gate.util";
+import { evaluateSubmissionGate, type SubmissionGateScope } from "./claim-submission-gate.util";
 
 export type TransportKind = ClearinghouseTransportHint;
 
@@ -50,6 +50,12 @@ export class ClaimTransmissionService {
     private readonly clearinghouseTransportFactory: ClearinghouseTransportFactory,
     private readonly claimExportService: ClaimExportService
   ) {}
+
+  private submissionGateScopeForKind(claimType: ClaimSubmissionKind): SubmissionGateScope {
+    if (claimType === ClaimSubmissionKind.FACILITY_837I) return "facility";
+    if (claimType === ClaimSubmissionKind.PROFESSIONAL_837P) return "professional";
+    return "encounter";
+  }
 
   getClearinghouseConfigStatus() {
     return getClearinghousePublicConfigStatus();
@@ -107,15 +113,23 @@ export class ClaimTransmissionService {
     });
     if (!sub) throw new NotFoundException("Submission not found");
     const exportSnapshot = await this.claimExportService.buildEncounterClaimExport(facilityId, sub.encounterId);
-    const submissionGate = evaluateSubmissionGate(exportSnapshot.summary);
+    const submissionGateEncounter = evaluateSubmissionGate(exportSnapshot.summary, "encounter");
+    const submissionGateForSend = evaluateSubmissionGate(
+      exportSnapshot.summary,
+      this.submissionGateScopeForKind(sub.claimType)
+    );
     const lastAck = sub.acknowledgments[0];
     return {
       submissionId: sub.id,
       currentStatus: sub.status,
-      claimReady: submissionGate.claimReady,
-      blockedByCompleteness: !submissionGate.allowed,
-      submissionGateReasonCode: submissionGate.reasonCode,
-      submissionGateBlockers: submissionGate.blockers,
+      claimReady: submissionGateEncounter.claimReady,
+      blockedByCompleteness: !submissionGateEncounter.allowed,
+      submissionGateReasonCode: submissionGateEncounter.reasonCode,
+      submissionGateBlockers: submissionGateEncounter.blockers,
+      submissionGateScope: this.submissionGateScopeForKind(sub.claimType),
+      submissionSideGateAllowed: submissionGateForSend.allowed,
+      submissionSideGateReasonCode: submissionGateForSend.reasonCode,
+      submissionSideGateBlockers: submissionGateForSend.blockers,
       attempts: sub.attempts.map((a) => ({
         attemptId: a.id,
         transport: a.transport,
@@ -159,7 +173,7 @@ export class ClaimTransmissionService {
       },
     });
     const exportSnapshot = await this.claimExportService.buildEncounterClaimExport(facilityId, encounterId);
-    const submissionGate = evaluateSubmissionGate(exportSnapshot.summary);
+    const submissionGate = evaluateSubmissionGate(exportSnapshot.summary, "encounter");
 
     return {
       encounterId,
@@ -167,13 +181,19 @@ export class ClaimTransmissionService {
       blockedByCompleteness: !submissionGate.allowed,
       submissionGateReasonCode: submissionGate.reasonCode,
       submissionGateBlockers: submissionGate.blockers,
-      submissions: submissions.map((s) => ({
+      submissions: submissions.map((s) => {
+        const sideGate = evaluateSubmissionGate(exportSnapshot.summary, this.submissionGateScopeForKind(s.claimType));
+        return {
         lastTransitionReason: (() => {
           const first = s.acknowledgments[0];
           return first ? lifecycleReasonFromParsedJson(first.parsedJson) : null;
         })(),
         submissionId: s.id,
         type: s.claimType === "PROFESSIONAL_837P" ? "837P" : "837I",
+        submissionGateScope: this.submissionGateScopeForKind(s.claimType),
+        submissionSideGateAllowed: sideGate.allowed,
+        submissionSideGateReasonCode: sideGate.reasonCode,
+        submissionSideGateBlockers: sideGate.blockers,
         status: s.status,
         createdAt: s.createdAt,
         attempts: s.attempts.map((a) => ({
@@ -199,7 +219,8 @@ export class ClaimTransmissionService {
           receivedAt: ack.receivedAt,
           rawSummary: ack.rawText.slice(0, 140),
         })),
-      })),
+      };
+      }),
     };
   }
 
@@ -249,7 +270,10 @@ export class ClaimTransmissionService {
     }
 
     const exportSnapshot = await this.claimExportService.buildEncounterClaimExport(submission.facilityId, submission.encounterId);
-    const submissionGate = evaluateSubmissionGate(exportSnapshot.summary);
+    const submissionGate = evaluateSubmissionGate(
+      exportSnapshot.summary,
+      this.submissionGateScopeForKind(submission.claimType)
+    );
     if (!submissionGate.allowed) {
       const skipReason = opts.retryFlow ? "RETRY_SKIPPED_CLAIM_NOT_READY" : "SEND_BLOCKED_CLAIM_NOT_READY";
       const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });

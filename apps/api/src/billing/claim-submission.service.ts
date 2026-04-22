@@ -6,7 +6,7 @@ import { ClaimControlNumberService } from "./claim-control-number.service";
 import { ClaimExportService } from "./claim-export.service";
 import { X12837GeneratorService } from "./x12-837-generator.service";
 import { X12EnvelopeBuilderService, type EnvelopeTransactionInput } from "./x12-envelope-builder.service";
-import { evaluateSubmissionGate } from "./claim-submission-gate.util";
+import { evaluateSubmissionGate, type SubmissionGateScope } from "./claim-submission-gate.util";
 
 /** Missing-field codes that block READY_TO_SEND until payer / identity modeling is complete. */
 const HARD_MISSING_FOR_READY = new Set([
@@ -24,9 +24,10 @@ function computeSubmissionStatus(params: {
   exportSummary: EncounterClaimExportResult["summary"];
   packageHeader: ClaimExportPackage["header"] | null;
   x12Missing: string[];
+  submissionGateScope?: SubmissionGateScope;
 }): ClaimSubmissionStatus {
-  const { exportSummary, packageHeader, x12Missing } = params;
-  const gate = evaluateSubmissionGate(exportSummary);
+  const { exportSummary, packageHeader, x12Missing, submissionGateScope } = params;
+  const gate = evaluateSubmissionGate(exportSummary, submissionGateScope ?? "encounter");
   if (!gate.allowed) {
     return ClaimSubmissionStatus.DRAFT;
   }
@@ -329,6 +330,7 @@ export class ClaimSubmissionService {
         exportSummary: exportResult.summary,
         packageHeader: exportResult.professional!.header,
         x12Missing: prev.missingFields,
+        submissionGateScope: "professional",
       });
       submissionRows.push({
         claimType: ClaimSubmissionKind.PROFESSIONAL_837P,
@@ -347,6 +349,7 @@ export class ClaimSubmissionService {
         exportSummary: exportResult.summary,
         packageHeader: exportResult.facility!.header,
         x12Missing: prev.missingFields,
+        submissionGateScope: "facility",
       });
       submissionRows.push({
         claimType: ClaimSubmissionKind.FACILITY_837I,
