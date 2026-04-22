@@ -191,7 +191,7 @@ export class ClaimTransmissionService {
   private async sendOneSubmission(
     submissionId: string,
     transport: ClearinghouseTransport,
-    opts: { allowNonReady: boolean }
+    opts: { allowNonReady: boolean; attemptTrigger?: "WORKER" | "MANUAL" | "BATCH" }
   ) {
     const submission = await this.prisma.claimSubmission.findUnique({ where: { id: submissionId } });
     if (!submission) throw new NotFoundException("Submission not found");
@@ -241,6 +241,7 @@ export class ClaimTransmissionService {
       ...result.requestMeta,
       clearinghouseMode: cfgSnapshot.mode,
       transportHint: transport.key,
+      ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
     };
     const rawResponse = {
       ...result.responseMeta,
@@ -304,7 +305,12 @@ export class ClaimTransmissionService {
    * Operator-triggered resend for a submission whose last transport attempt failed in a retryable way.
    * Does not bypass READY_TO_SEND or the state machine.
    */
-  async retrySubmissionSend(facilityId: string, submissionId: string, transportKind: TransportKind = "MANUAL") {
+  async retrySubmissionSend(
+    facilityId: string,
+    submissionId: string,
+    transportKind: TransportKind = "MANUAL",
+    opts?: { attemptTrigger?: "WORKER" | "MANUAL" }
+  ) {
     const sub = await this.prisma.claimSubmission.findFirst({
       where: { id: submissionId, facilityId },
       include: { attempts: { orderBy: { createdAt: "desc" }, take: 1 } },
@@ -324,6 +330,9 @@ export class ClaimTransmissionService {
       });
     }
     const transport = this.resolveTransport(transportKind);
-    return this.sendOneSubmission(submissionId, transport, { allowNonReady: false });
+    return this.sendOneSubmission(submissionId, transport, {
+      allowNonReady: false,
+      attemptTrigger: opts?.attemptTrigger ?? "MANUAL",
+    });
   }
 }

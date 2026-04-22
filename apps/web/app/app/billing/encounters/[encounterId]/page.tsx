@@ -264,6 +264,13 @@ type ClearinghouseOpsStatusPayload = {
   lastSftpPollStatus: string | null;
   lastSftpPollDetail: string | null;
   retryEligibleSubmissionCount: number;
+  retryDueSubmissionCount?: number;
+  retryExhaustedCount?: number;
+  recentRetryAttemptCount?: number;
+  clearinghouseRetryWorkerEnabled?: boolean;
+  lastRetryWorkerRunAt?: string | null;
+  lastRetryWorkerStatus?: string | null;
+  lastRetryWorkerDetail?: string | null;
   deadLetterAckCount: number;
   recentTransportFailureCount: number;
 };
@@ -1610,10 +1617,34 @@ export default function BillingEncounterLedgerPage() {
                 <div>
                   {t("billingPage.clearinghouseOpsRetryEligibleCount")}: {clearinghouseOpsStatus.retryEligibleSubmissionCount}
                   {" · "}
+                  {t("billingPage.clearinghouseRetryDueCount")}: {clearinghouseOpsStatus.retryDueSubmissionCount ?? "—"}
+                  {" · "}
+                  {t("billingPage.clearinghouseRetryExhaustedCount")}: {clearinghouseOpsStatus.retryExhaustedCount ?? "—"}
+                  {" · "}
                   {t("billingPage.clearinghouseOpsDeadLetterCount")}: {clearinghouseOpsStatus.deadLetterAckCount}
                   {" · "}
                   {t("billingPage.clearinghouseOpsTransportFailures")}: {clearinghouseOpsStatus.recentTransportFailureCount}
+                  {" · "}
+                  {t("billingPage.clearinghouseRecentWorkerRetries")}: {clearinghouseOpsStatus.recentRetryAttemptCount ?? "—"}
                 </div>
+                <div style={{ marginTop: 4 }}>
+                  {t("billingPage.clearinghouseRetryWorkerEnabledLabel")}:{" "}
+                  {clearinghouseOpsStatus.clearinghouseRetryWorkerEnabled
+                    ? t("billingPage.clearinghouseRetryWorkerOn")
+                    : t("billingPage.clearinghouseRetryWorkerOff")}
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  {t("billingPage.clearinghouseLastRetryWorkerRun")}:{" "}
+                  {clearinghouseOpsStatus.lastRetryWorkerRunAt
+                    ? new Date(clearinghouseOpsStatus.lastRetryWorkerRunAt).toLocaleString(locale)
+                    : "—"}{" "}
+                  · {t("billingPage.clearinghouseRetryWorkerStatusLabel")}: {clearinghouseOpsStatus.lastRetryWorkerStatus ?? "—"}
+                </div>
+                {clearinghouseOpsStatus.lastRetryWorkerDetail ? (
+                  <div style={{ marginTop: 2, color: "#64748b", wordBreak: "break-word" }}>
+                    {t("billingPage.clearinghouseRetryWorkerDetailLabel")}: {clearinghouseOpsStatus.lastRetryWorkerDetail}
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 4 }}>
                   {t("billingPage.clearinghouseOpsLastSftpPollStatus")}: {clearinghouseOpsStatus.lastSftpPollStatus ?? "—"}
                   {clearinghouseOpsStatus.lastSftpPollAt
@@ -1782,9 +1813,15 @@ export default function BillingEncounterLedgerPage() {
                                 <div key={a.id}>
                                   {a.transport} · {a.ok ? t("common.yes") : t("common.no")}
                                   {a.failureCode ? ` · ${t("billingPage.submissionAttemptFailureCode")}: ${a.failureCode}` : ""}
+                                  {a.failureCode === "RETRY_EXHAUSTED"
+                                    ? ` · ${t("billingPage.submissionRetryExhausted")}`
+                                    : null}
                                   {a.retryEligible ? ` · ${t("billingPage.submissionRetryEligible")}` : ""}
+                                  {!a.ok && !a.retryEligible && a.failureCode && a.failureCode !== "RETRY_EXHAUSTED"
+                                    ? ` · ${t("billingPage.submissionRetryNotEligible")}`
+                                    : null}
                                   {a.nextRetryAt
-                                    ? ` · ${t("billingPage.submissionRetryScheduled")}: ${new Date(a.nextRetryAt).toLocaleString(locale)}`
+                                    ? ` · ${t("billingPage.submissionNextRetryAt")}: ${new Date(a.nextRetryAt).toLocaleString(locale)}`
                                     : ""}
                                   {a.errorMessage ? ` · ${t("billingPage.submissionAttemptFailed")}: ${a.errorMessage}` : ""}
                                   {canEditLines && !a.ok && a.retryEligible ? (

@@ -1,12 +1,14 @@
--- Phase 6.6 — operational retry metadata on attempts + inbound ACK dead-letter storage
+-- Phase 6.6 (ordering repair): inbound ACK dead-letter storage only at this timestamp.
+--
+-- ClaimSubmissionAttempt retry columns (failureCode, retryEligible, nextRetryAt) and their index
+-- were originally placed here but that runs BEFORE `ClaimSubmissionAttempt` is created by
+-- `20260430170000_claim_submission_attempts_and_ack_loop`. Those DDL statements were moved to
+-- `20260430180000_phase_66_operational_hardening_reordered`.
+--
+-- This migration only creates `ClaimAcknowledgmentDeadLetter`, which references `Facility` and is
+-- valid before `ClaimSubmissionAttempt` exists.
 
-ALTER TABLE "ClaimSubmissionAttempt" ADD COLUMN "failureCode" TEXT,
-ADD COLUMN "retryEligible" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN "nextRetryAt" TIMESTAMP(3);
-
-CREATE INDEX "ClaimSubmissionAttempt_retryEligible_nextRetryAt_idx" ON "ClaimSubmissionAttempt"("retryEligible", "nextRetryAt");
-
-CREATE TABLE "ClaimAcknowledgmentDeadLetter" (
+CREATE TABLE IF NOT EXISTS "ClaimAcknowledgmentDeadLetter" (
     "id" TEXT NOT NULL,
     "facilityId" TEXT NOT NULL,
     "rawText" TEXT NOT NULL,
@@ -21,7 +23,15 @@ CREATE TABLE "ClaimAcknowledgmentDeadLetter" (
     CONSTRAINT "ClaimAcknowledgmentDeadLetter_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "ClaimAcknowledgmentDeadLetter_facilityId_createdAt_idx" ON "ClaimAcknowledgmentDeadLetter"("facilityId", "createdAt");
-CREATE INDEX "ClaimAcknowledgmentDeadLetter_facilityId_replayedAt_idx" ON "ClaimAcknowledgmentDeadLetter"("facilityId", "replayedAt");
+CREATE INDEX IF NOT EXISTS "ClaimAcknowledgmentDeadLetter_facilityId_createdAt_idx" ON "ClaimAcknowledgmentDeadLetter"("facilityId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ClaimAcknowledgmentDeadLetter_facilityId_replayedAt_idx" ON "ClaimAcknowledgmentDeadLetter"("facilityId", "replayedAt");
 
-ALTER TABLE "ClaimAcknowledgmentDeadLetter" ADD CONSTRAINT "ClaimAcknowledgmentDeadLetter_facilityId_fkey" FOREIGN KEY ("facilityId") REFERENCES "Facility"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'ClaimAcknowledgmentDeadLetter_facilityId_fkey'
+  ) THEN
+    ALTER TABLE "ClaimAcknowledgmentDeadLetter" ADD CONSTRAINT "ClaimAcknowledgmentDeadLetter_facilityId_fkey"
+      FOREIGN KEY ("facilityId") REFERENCES "Facility"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;

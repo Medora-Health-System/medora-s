@@ -69,3 +69,14 @@ export function shouldRetryOutboundAttempt(retryEligible: boolean, nextRetryAt: 
   if (!nextRetryAt) return false;
   return now.getTime() >= nextRetryAt.getTime();
 }
+
+/** True when the latest failed attempt is retry-eligible and the scheduled time has passed (worker / ops). */
+export function isLatestAttemptDueForWorkerRetry(input: {
+  latestAttempt: { ok: boolean; retryEligible: boolean; nextRetryAt: Date | null } | null | undefined;
+  now?: Date;
+}): boolean {
+  const a = input.latestAttempt;
+  const now = input.now ?? new Date();
+  if (!a || a.ok) return false;
+  return shouldRetryOutboundAttempt(a.retryEligible, a.nextRetryAt, now);
+}
