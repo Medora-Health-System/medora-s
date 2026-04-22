@@ -22,6 +22,8 @@ export type ClaimCompletenessInput = {
   hasFacilityPackage: boolean;
   /** Facility-side export lines only (for revenue code presence). */
   facilityExportLines: readonly { revenueCode?: string | null }[];
+  /** Phase 7.4 — Auditable provider-role fallback hints (merged into `warnings`). */
+  roleResolutionWarnings?: readonly string[];
 };
 
 export type ClaimCompletenessResult = {
@@ -32,7 +34,6 @@ export type ClaimCompletenessResult = {
 };
 
 const IDENTITY_BLOCKERS = new Set([
-  "MISSING_PROVIDER_NPI",
   "MISSING_FACILITY_EXPORT_CONTEXT",
   "MISSING_PAYER_CONTEXT",
   "MISSING_PRIMARY_COVERAGE",
@@ -41,6 +42,12 @@ const IDENTITY_BLOCKERS = new Set([
   "MISSING_SUBSCRIBER_NAME",
   "MISSING_PAYER_SOURCE",
   "AMBIGUOUS_PAYER",
+  "MISSING_RENDERING_PROVIDER",
+  "MISSING_BILLING_PROVIDER",
+  "MISSING_RENDERING_PROVIDER_NPI",
+  "MISSING_BILLING_PROVIDER_NPI",
+  /** Legacy identity code; retained for older stored payloads. */
+  "MISSING_PROVIDER_NPI",
 ]);
 
 function addAll(target: Set<string>, codes: readonly string[]): void {
@@ -83,14 +90,19 @@ export function evaluateClaimCompleteness(input: ClaimCompletenessInput): ClaimC
   addAll(warnings, input.encounterValidationSummaryWarnings);
   addAll(warnings, input.professionalWarnings);
   addAll(warnings, input.facilityWarnings);
+  addAll(warnings, input.roleResolutionWarnings ?? []);
 
   if (input.contextWarnings.includes("EXPORT_CONTEXT_NO_SERVICE_DATE_RANGE")) {
     warnings.add("INCOMPLETE_SERVICE_DATES");
   }
-  if (
-    input.contextWarnings.includes("EXPORT_CONTEXT_NO_PROVIDER_ON_ENCOUNTER") &&
-    !gapSet.has("MISSING_PROVIDER_NPI")
-  ) {
+  const hasProviderHardGap = [
+    "MISSING_RENDERING_PROVIDER",
+    "MISSING_BILLING_PROVIDER",
+    "MISSING_RENDERING_PROVIDER_NPI",
+    "MISSING_BILLING_PROVIDER_NPI",
+    "MISSING_PROVIDER_NPI",
+  ].some((code) => gapSet.has(code));
+  if (input.contextWarnings.includes("EXPORT_CONTEXT_NO_PROVIDER_ON_ENCOUNTER") && !hasProviderHardGap) {
     warnings.add("EXPORT_CONTEXT_NO_PROVIDER_ON_ENCOUNTER");
   }
 

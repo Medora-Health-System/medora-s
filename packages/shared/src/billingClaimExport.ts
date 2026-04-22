@@ -23,6 +23,14 @@ export type ClaimExportHeader = {
   attendingProviderId?: string | null;
   /** Encounter provider id when present (e.g. rendering / treating). */
   renderingProviderId?: string | null;
+  /**
+   * Phase 7.4 — Resolved rendering provider user id for billing (encounter provider, else attending).
+   */
+  resolvedRenderingProviderUserId?: string | null;
+  /**
+   * Phase 7.4 — Resolved billing provider user id (attending when present, else encounter provider).
+   */
+  resolvedBillingProviderUserId?: string | null;
   serviceStartDate?: string | null;
   serviceEndDate?: string | null;
 };
@@ -72,6 +80,21 @@ export type EncounterClaimExportSummary = {
   claimBlockers: string[];
   claimWarnings: string[];
   claimInfo: string[];
+  /**
+   * Phase 7.4 — Same user ids as export headers: who is treated as rendering vs billing for this export.
+   */
+  resolvedRenderingProviderUserId?: string | null;
+  resolvedBillingProviderUserId?: string | null;
+  /** True when a facility export package exists (institutional billing entity applies). */
+  facilityBillingRoleActive?: boolean;
+  /** Facility billing identity satisfies institutional structural checks (or no facility package). */
+  facilityBillingEntityResolved?: boolean;
+  /** Professional provider + NPI requirements satisfied for the professional package (or no professional package). */
+  professionalBillingContextResolved?: boolean;
+  /** Institutional facility billing identity satisfied (or no facility package). */
+  institutionalBillingContextResolved?: boolean;
+  /** Auditable fallback hints (e.g. rendering fell back to attending). */
+  roleResolutionWarnings?: string[];
 };
 
 export type EncounterClaimExportResult = {

@@ -139,6 +139,8 @@ type ClaimExportHeaderPayload = {
   diagnosisCodes: string[];
   attendingProviderId?: string | null;
   renderingProviderId?: string | null;
+  resolvedRenderingProviderUserId?: string | null;
+  resolvedBillingProviderUserId?: string | null;
   serviceStartDate?: string | null;
   serviceEndDate?: string | null;
 };
@@ -162,6 +164,13 @@ type EncounterClaimExportPayload = {
     claimBlockers?: string[];
     claimWarnings?: string[];
     claimInfo?: string[];
+    resolvedRenderingProviderUserId?: string | null;
+    resolvedBillingProviderUserId?: string | null;
+    facilityBillingRoleActive?: boolean;
+    facilityBillingEntityResolved?: boolean;
+    professionalBillingContextResolved?: boolean;
+    institutionalBillingContextResolved?: boolean;
+    roleResolutionWarnings?: string[];
   };
 };
 
@@ -397,11 +406,26 @@ const SUBSCRIBER_IDENTITY_CODES = new Set([
   "INCOMPLETE_SUBSCRIBER_DATA",
 ]);
 
-const PROVIDER_IDENTITY_CODES = new Set(["MISSING_PROVIDER_NPI"]);
+const FACILITY_ENTITY_CODES = new Set(["MISSING_FACILITY_EXPORT_CONTEXT"]);
+
+const PROVIDER_IDENTITY_CODES = new Set([
+  "MISSING_PROVIDER_NPI",
+  "MISSING_RENDERING_PROVIDER",
+  "MISSING_BILLING_PROVIDER",
+  "MISSING_RENDERING_PROVIDER_NPI",
+  "MISSING_BILLING_PROVIDER_NPI",
+]);
+
+const ROLE_FALLBACK_WARNING_CODES = new Set([
+  "RENDERING_PROVIDER_FALLBACK_TO_ATTENDING",
+  "BILLING_PROVIDER_FALLBACK_TO_RENDERING",
+]);
+
 const IDENTITY_SECTION_CODES = new Set([
   ...COVERAGE_IDENTITY_CODES,
   ...SUBSCRIBER_IDENTITY_CODES,
   ...PROVIDER_IDENTITY_CODES,
+  ...FACILITY_ENTITY_CODES,
 ]);
 
 function pickCodes(codes: readonly string[] | undefined, set: ReadonlySet<string>): string[] {
@@ -1390,6 +1414,70 @@ export default function BillingEncounterLedgerPage() {
                         ? t("billingPage.claimCompletenessReadyWithWarnings")
                         : t("billingPage.claimCompletenessReadySubmit")}
                   </div>
+                  {claimExport.summary.resolvedRenderingProviderUserId !== undefined ? (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        display: "grid",
+                        gap: 10,
+                        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: 6,
+                          border: "1px solid #e2e8f0",
+                          background: "#f8fafc",
+                          fontSize: 12,
+                          color: "#334155",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.providerRoleReadinessTitle")}</div>
+                        <div style={{ marginBottom: 4 }}>
+                          <strong>{t("billingPage.resolvedRenderingProviderLabel")}:</strong>{" "}
+                          {claimExport.summary.resolvedRenderingProviderUserId ?? t("billingPage.claimExportFieldEmpty")}
+                        </div>
+                        <div style={{ marginBottom: 4 }}>
+                          <strong>{t("billingPage.resolvedBillingProviderLabel")}:</strong>{" "}
+                          {claimExport.summary.resolvedBillingProviderUserId ?? t("billingPage.claimExportFieldEmpty")}
+                        </div>
+                        <div style={{ marginBottom: 4 }}>
+                          <strong>{t("billingPage.professionalBillingContextLabel")}:</strong>{" "}
+                          {claimExport.summary.professionalBillingContextResolved
+                            ? t("common.yes")
+                            : t("common.no")}
+                        </div>
+                        {(claimExport.summary.roleResolutionWarnings?.length ?? 0) > 0 ? (
+                          <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                            {(claimExport.summary.roleResolutionWarnings ?? []).map((code) => (
+                              <li key={code}>{completenessIssueLabel(t, code)}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                      <div
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: 6,
+                          border: "1px solid #e2e8f0",
+                          background: "#f8fafc",
+                          fontSize: 12,
+                          color: "#334155",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.facilityBillingEntityReadinessTitle")}</div>
+                        <div style={{ marginBottom: 4 }}>
+                          <strong>{t("billingPage.facilityBillingRoleActiveLabel")}:</strong>{" "}
+                          {claimExport.summary.facilityBillingRoleActive ? t("common.yes") : t("common.no")}
+                        </div>
+                        <div>
+                          <strong>{t("billingPage.facilityBillingEntityResolvedLabel")}:</strong>{" "}
+                          {claimExport.summary.facilityBillingEntityResolved ? t("common.yes") : t("common.no")}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                   {(claimExport.summary.claimBlockers?.length ?? 0) > 0 ? (
                     <div style={{ marginBottom: 12, fontSize: 12, color: "#9a3412" }}>
                       <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimCompletenessBlockersTitle")}</div>
@@ -1398,7 +1486,14 @@ export default function BillingEncounterLedgerPage() {
                         const coverageCodes = pickCodes(blockerCodes, COVERAGE_IDENTITY_CODES);
                         const subscriberCodes = pickCodes(blockerCodes, SUBSCRIBER_IDENTITY_CODES);
                         const providerCodes = pickCodes(blockerCodes, PROVIDER_IDENTITY_CODES);
-                        if (!coverageCodes.length && !subscriberCodes.length && !providerCodes.length) return null;
+                        const facilityCodes = pickCodes(blockerCodes, FACILITY_ENTITY_CODES);
+                        if (
+                          !coverageCodes.length &&
+                          !subscriberCodes.length &&
+                          !providerCodes.length &&
+                          !facilityCodes.length
+                        )
+                          return null;
                         return (
                           <div style={{ marginBottom: 8, display: "grid", gap: 6 }}>
                             {coverageCodes.length > 0 ? (
@@ -1431,6 +1526,16 @@ export default function BillingEncounterLedgerPage() {
                                 </ul>
                               </div>
                             ) : null}
+                            {facilityCodes.length > 0 ? (
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{t("billingPage.claimIdentityFacilitySectionTitle")}</div>
+                                <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+                                  {facilityCodes.map((code) => (
+                                    <li key={`facility-${code}`}>{completenessIssueLabel(t, code)}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
                           </div>
                         );
                       })()}
@@ -1443,16 +1548,20 @@ export default function BillingEncounterLedgerPage() {
                       </ul>
                     </div>
                   ) : null}
-                  {(claimExport.summary.claimWarnings?.length ?? 0) > 0 ? (
+                  {(() => {
+                    const allWarnings = claimExport.summary.claimWarnings ?? [];
+                    const generalWarnings = allWarnings.filter((code) => !ROLE_FALLBACK_WARNING_CODES.has(code));
+                    return generalWarnings.length > 0 ? (
                     <div style={{ marginBottom: 12, fontSize: 12, color: "#a16207" }}>
                       <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimCompletenessWarningsTitle")}</div>
                       <ul style={{ margin: 0, paddingLeft: 18 }}>
-                        {(claimExport.summary.claimWarnings ?? []).map((code) => (
+                        {generalWarnings.map((code) => (
                           <li key={code}>{completenessIssueLabel(t, code)}</li>
                         ))}
                       </ul>
                     </div>
-                  ) : null}
+                    ) : null;
+                  })()}
                   {(claimExport.summary.claimInfo?.length ?? 0) > 0 ? (
                     <div style={{ marginBottom: 12, fontSize: 12, color: "#64748b" }}>
                       <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimCompletenessInfoTitle")}</div>

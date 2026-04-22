@@ -342,6 +342,24 @@ export default {
     claimIdentityCoverageSectionTitle: "Coverage",
     claimIdentitySubscriberSectionTitle: "Subscriber",
     claimIdentityProviderSectionTitle: "Provider",
+    claimIdentityFacilitySectionTitle: "Facility billing entity",
+    providerRoleReadinessTitle: "Provider role readiness",
+    resolvedRenderingProviderLabel: "Rendering provider (resolved user id)",
+    resolvedBillingProviderLabel: "Billing provider (resolved user id)",
+    professionalBillingContextLabel: "Professional billing context resolved",
+    facilityBillingEntityReadinessTitle: "Facility billing entity readiness",
+    facilityBillingRoleActiveLabel: "Facility / institutional package present",
+    facilityBillingEntityResolvedLabel: "Facility billing identity complete for institutional export",
+    completenessIssue_RENDERING_PROVIDER_FALLBACK_TO_ATTENDING:
+      "No encounter rendering provider id — using assigned physician (attending) as rendering provider for this export.",
+    completenessIssue_BILLING_PROVIDER_FALLBACK_TO_RENDERING:
+      "No assigned physician id — using encounter rendering provider as billing provider for this export.",
+    completenessIssue_MISSING_RENDERING_PROVIDER: "No rendering or attending provider could be resolved for this encounter.",
+    completenessIssue_MISSING_BILLING_PROVIDER: "No billing provider could be resolved for this encounter.",
+    completenessIssue_MISSING_RENDERING_PROVIDER_NPI:
+      "Rendering provider account is missing a valid 10-digit billing NPI (or account is inactive).",
+    completenessIssue_MISSING_BILLING_PROVIDER_NPI:
+      "Billing provider account is missing a valid 10-digit billing NPI (or account is inactive).",
     completenessIssue_MISSING_PRIMARY_COVERAGE:
       "No active primary coverage is valid for this encounter service date.",
     completenessIssue_MULTIPLE_PRIMARY_COVERAGE:
@@ -533,7 +551,13 @@ export default {
     x12Missing_MISSING_ENCOUNTER: "Encounter not found for this request.",
     x12Missing_MISSING_SERVICE_DATE: "Service date range missing or incomplete on billing lines.",
     x12Missing_MISSING_DIAGNOSIS_CODE: "No diagnosis codes collected for HI mapping.",
-    x12Missing_MISSING_RENDERING_PROVIDER: "No rendering or attending provider id on the encounter.",
+    x12Missing_MISSING_RENDERING_PROVIDER:
+      "No rendering or attending provider could be resolved for this encounter export (set encounter provider or assigned physician).",
+    x12Missing_MISSING_BILLING_PROVIDER: "No billing provider could be resolved for this encounter export.",
+    x12Missing_MISSING_RENDERING_PROVIDER_NPI:
+      "Rendering provider account is missing a valid 10-digit billing NPI for this export.",
+    x12Missing_MISSING_BILLING_PROVIDER_NPI:
+      "Billing provider account is missing a valid 10-digit billing NPI for this export.",
     x12Missing_MISSING_SUBSCRIBER_DATA:
       "Add member ID or policy number, and subscriber name when the patient is not the subscriber.",
     x12Missing_MISSING_PAYER_CONTEXT:

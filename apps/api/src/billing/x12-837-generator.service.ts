@@ -124,20 +124,27 @@ export class X12837GeneratorService {
     const claimIdentityGaps = exportResult.summary.claimIdentityGaps ?? [];
 
     const headerCtx = profPkg?.header ?? facPkg?.header;
-    const renderingId = headerCtx?.renderingProviderId;
-    const attendingId = headerCtx?.attendingProviderId;
-    const renderingUser = renderingId
-      ? await this.prisma.user.findUnique({
-          where: { id: renderingId },
-          select: { firstName: true, lastName: true, billingNpi: true },
-        })
-      : null;
-    const attendingUser = attendingId
-      ? await this.prisma.user.findUnique({
-          where: { id: attendingId },
-          select: { firstName: true, lastName: true, billingNpi: true },
-        })
-      : null;
+    const rendUserId =
+      headerCtx?.resolvedRenderingProviderUserId ??
+      headerCtx?.renderingProviderId ??
+      headerCtx?.attendingProviderId ??
+      null;
+    const billUserId =
+      headerCtx?.resolvedBillingProviderUserId ??
+      headerCtx?.attendingProviderId ??
+      headerCtx?.renderingProviderId ??
+      null;
+    const userIds = [...new Set([rendUserId, billUserId].filter(Boolean))] as string[];
+    const users =
+      userIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, firstName: true, lastName: true, billingNpi: true },
+          })
+        : [];
+    const userById = new Map(users.map((u) => [u.id, u]));
+    const renderingUser = rendUserId ? userById.get(rendUserId) ?? null : null;
+    const attendingUser = billUserId ? userById.get(billUserId) ?? null : null;
 
     const professional = profPkg
       ? this.build837PPreview(profPkg, {
@@ -211,7 +218,9 @@ export class X12837GeneratorService {
 
     if (!svcDate) missingFields.push("MISSING_SERVICE_DATE");
     if (h.diagnosisCodes.length === 0) missingFields.push("MISSING_DIAGNOSIS_CODE");
-    if (!h.renderingProviderId && !h.attendingProviderId) missingFields.push("MISSING_RENDERING_PROVIDER");
+    const resolvedRenderingId =
+      h.resolvedRenderingProviderUserId ?? h.renderingProviderId ?? h.attendingProviderId ?? null;
+    if (!resolvedRenderingId) missingFields.push("MISSING_RENDERING_PROVIDER");
     const identityProf = ctx.claimIdentityGaps.filter((m) => m !== "MISSING_FACILITY_EXPORT_CONTEXT");
     for (const m of identityProf) missingFields.push(m);
 
@@ -301,7 +310,9 @@ export class X12837GeneratorService {
 
     if (!svcDate) missingFields.push("MISSING_SERVICE_DATE");
     if (h.diagnosisCodes.length === 0) missingFields.push("MISSING_DIAGNOSIS_CODE");
-    if (!h.renderingProviderId && !h.attendingProviderId) missingFields.push("MISSING_RENDERING_PROVIDER");
+    const resolvedRenderingId =
+      h.resolvedRenderingProviderUserId ?? h.renderingProviderId ?? h.attendingProviderId ?? null;
+    if (!resolvedRenderingId) missingFields.push("MISSING_RENDERING_PROVIDER");
     for (const m of ctx.claimIdentityGaps) missingFields.push(m);
 
     segments.push(x12BuildSegment("ST", ["837", TS_REF, IMPL_INST]));

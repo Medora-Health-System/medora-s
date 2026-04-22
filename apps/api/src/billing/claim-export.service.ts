@@ -13,6 +13,7 @@ import { ClaimBuilderService, type ClaimLine } from "./claim-builder.service";
 import type { ClaimValidationIssue } from "./claim-validation.util";
 import { evaluateClaimIdentityGaps } from "./claim-billing-identity.util";
 import { evaluateClaimCompleteness } from "./claim-completeness.util";
+import { resolveClaimBillingRoles } from "./claim-provider-role-resolution.util";
 
 function issueCodes(issues: ClaimValidationIssue[]): string[] {
   return [...new Set(issues.map((i) => i.code))];
@@ -152,22 +153,33 @@ export class ClaimExportService {
       ? new Date(svcDates.start)
       : encounter.admittedAt ?? encounter.createdAt ?? null;
 
-    const claimIdentityGaps = await evaluateClaimIdentityGaps(this.prisma, {
-      facilityId,
-      patientId: encounter.patientId,
-      serviceDate: serviceDateForIdentity,
-      renderingProviderId: encounter.providerId ?? null,
-      attendingProviderId: encounter.physicianAssignedUserId ?? null,
-      includeFacilityInstitutionalGaps: true,
-    });
-    const claimIdentityReady = claimIdentityGaps.length === 0;
-
     const v = claims.validation;
     const summaryBlockers = issueCodes(v.summary.blockers);
     const summaryWarnings = issueCodes(v.summary.warnings);
 
     const profLines = mapClaimLinesToExport(claims.professional.lines, eventMods);
     const facLines = mapClaimLinesToExport(claims.facility.lines, eventMods);
+
+    const hasProfessionalPackage = profLines.length > 0;
+    const hasFacilityPackage = facLines.length > 0;
+
+    const roleResolution = await resolveClaimBillingRoles(this.prisma, {
+      facilityId,
+      encounterRenderingProviderId: encounter.providerId ?? null,
+      encounterAttendingProviderId: encounter.physicianAssignedUserId ?? null,
+      hasProfessionalPackage,
+      hasFacilityPackage,
+    });
+
+    const payerSubscriberGaps = await evaluateClaimIdentityGaps(this.prisma, {
+      facilityId,
+      patientId: encounter.patientId,
+      serviceDate: serviceDateForIdentity,
+    });
+    const claimIdentityGaps = [...new Set([...payerSubscriberGaps, ...roleResolution.roleBlockers])].sort((a, b) =>
+      a.localeCompare(b)
+    );
+    const claimIdentityReady = claimIdentityGaps.length === 0;
 
     const profBlockers = issueCodes(v.professional.blockers);
     const profWarnings = issueCodes(v.professional.warnings);
@@ -184,9 +196,10 @@ export class ClaimExportService {
       facilityWarnings: facWarnings,
       contextWarnings,
       diagnosisCodes,
-      hasProfessionalPackage: profLines.length > 0,
-      hasFacilityPackage: facLines.length > 0,
+      hasProfessionalPackage,
+      hasFacilityPackage,
       facilityExportLines: facLines,
+      roleResolutionWarnings: roleResolution.roleWarnings,
     });
 
     const profHeader: ClaimExportHeader = {
@@ -200,6 +213,8 @@ export class ClaimExportService {
       diagnosisCodes,
       attendingProviderId,
       renderingProviderId,
+      resolvedRenderingProviderUserId: roleResolution.renderingProviderUserId,
+      resolvedBillingProviderUserId: roleResolution.billingProviderUserId,
       serviceStartDate,
       serviceEndDate,
     };
@@ -215,6 +230,8 @@ export class ClaimExportService {
       diagnosisCodes,
       attendingProviderId,
       renderingProviderId,
+      resolvedRenderingProviderUserId: roleResolution.renderingProviderUserId,
+      resolvedBillingProviderUserId: roleResolution.billingProviderUserId,
       serviceStartDate,
       serviceEndDate,
     };
@@ -238,6 +255,13 @@ export class ClaimExportService {
         claimBlockers: completeness.blockers,
         claimWarnings: completeness.warnings,
         claimInfo: completeness.info,
+        resolvedRenderingProviderUserId: roleResolution.renderingProviderUserId,
+        resolvedBillingProviderUserId: roleResolution.billingProviderUserId,
+        facilityBillingRoleActive: roleResolution.facilityBillingUsed,
+        facilityBillingEntityResolved: roleResolution.institutionalBillingContextResolved,
+        professionalBillingContextResolved: roleResolution.professionalBillingContextResolved,
+        institutionalBillingContextResolved: roleResolution.institutionalBillingContextResolved,
+        roleResolutionWarnings: roleResolution.roleWarnings,
       },
     };
   }

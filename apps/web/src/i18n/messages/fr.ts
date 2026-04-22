@@ -268,6 +268,25 @@ export default {
     claimIdentityCoverageSectionTitle: "Couverture",
     claimIdentitySubscriberSectionTitle: "Assuré",
     claimIdentityProviderSectionTitle: "Prestataire",
+    claimIdentityFacilitySectionTitle: "Entité de facturation (établissement)",
+    providerRoleReadinessTitle: "Rôles prestataire (facturation)",
+    resolvedRenderingProviderLabel: "Prestataire exécutant (id utilisateur résolu)",
+    resolvedBillingProviderLabel: "Prestataire de facturation (id utilisateur résolu)",
+    professionalBillingContextLabel: "Contexte professionnel résolu",
+    facilityBillingEntityReadinessTitle: "Entité de facturation établissement",
+    facilityBillingRoleActiveLabel: "Forfait établissement / institutionnel présent",
+    facilityBillingEntityResolvedLabel: "Identité de facturation établissement complète pour l’export institutionnel",
+    completenessIssue_RENDERING_PROVIDER_FALLBACK_TO_ATTENDING:
+      "Pas d’id prestataire sur la visite — le médecin assigné est utilisé comme prestataire exécutant pour cet export.",
+    completenessIssue_BILLING_PROVIDER_FALLBACK_TO_RENDERING:
+      "Pas de médecin assigné — le prestataire de la visite est utilisé comme prestataire de facturation pour cet export.",
+    completenessIssue_MISSING_RENDERING_PROVIDER:
+      "Aucun prestataire exécutant ni médecin assigné n’a pu être résolu pour cette visite.",
+    completenessIssue_MISSING_BILLING_PROVIDER: "Aucun prestataire de facturation n’a pu être résolu pour cette visite.",
+    completenessIssue_MISSING_RENDERING_PROVIDER_NPI:
+      "Le compte du prestataire exécutant n’a pas de NPI de facturation valide à 10 chiffres (ou compte inactif).",
+    completenessIssue_MISSING_BILLING_PROVIDER_NPI:
+      "Le compte du prestataire de facturation n’a pas de NPI de facturation valide à 10 chiffres (ou compte inactif).",
     completenessIssue_MISSING_PRIMARY_COVERAGE:
       "Aucune couverture principale active n’est valide à la date de service de cette visite.",
     completenessIssue_MULTIPLE_PRIMARY_COVERAGE:
@@ -463,7 +482,13 @@ export default {
     x12Missing_MISSING_ENCOUNTER: "Visite introuvable pour cette requête.",
     x12Missing_MISSING_SERVICE_DATE: "Plage de dates de service absente ou incomplète sur les lignes.",
     x12Missing_MISSING_DIAGNOSIS_CODE: "Aucun code de diagnostic pour le segment HI.",
-    x12Missing_MISSING_RENDERING_PROVIDER: "Aucun id de prestataire ou médecin assigné sur la visite.",
+    x12Missing_MISSING_RENDERING_PROVIDER:
+      "Aucun prestataire exécutant ni médecin assigné n’a pu être résolu pour cet export (renseignez le prestataire ou le médecin assigné).",
+    x12Missing_MISSING_BILLING_PROVIDER: "Aucun prestataire de facturation n’a pu être résolu pour cet export.",
+    x12Missing_MISSING_RENDERING_PROVIDER_NPI:
+      "Le compte du prestataire exécutant n’a pas de NPI de facturation valide à 10 chiffres pour cet export.",
+    x12Missing_MISSING_BILLING_PROVIDER_NPI:
+      "Le compte du prestataire de facturation n’a pas de NPI de facturation valide à 10 chiffres pour cet export.",
     x12Missing_MISSING_SUBSCRIBER_DATA:
       "Ajoutez le numéro d’adhérent ou de police et le nom de l’assuré principal si le patient n’est pas l’assuré.",
     x12Missing_MISSING_PAYER_CONTEXT:
