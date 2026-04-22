@@ -31,7 +31,17 @@ export type ClaimCompletenessResult = {
   info: string[];
 };
 
-const IDENTITY_BLOCKERS = new Set(["MISSING_PROVIDER_NPI", "MISSING_FACILITY_EXPORT_CONTEXT", "MISSING_PAYER_CONTEXT"]);
+const IDENTITY_BLOCKERS = new Set([
+  "MISSING_PROVIDER_NPI",
+  "MISSING_FACILITY_EXPORT_CONTEXT",
+  "MISSING_PAYER_CONTEXT",
+  "MISSING_PRIMARY_COVERAGE",
+  "MULTIPLE_PRIMARY_COVERAGE",
+  "MISSING_SUBSCRIBER_RELATIONSHIP",
+  "MISSING_SUBSCRIBER_NAME",
+  "MISSING_PAYER_SOURCE",
+  "AMBIGUOUS_PAYER",
+]);
 
 function addAll(target: Set<string>, codes: readonly string[]): void {
   for (const c of codes) {

@@ -339,6 +339,19 @@ export default {
     claimCompletenessBlockersTitle: "Blockers",
     claimCompletenessWarningsTitle: "Warnings",
     claimCompletenessInfoTitle: "Information",
+    claimIdentityCoverageSectionTitle: "Coverage",
+    claimIdentitySubscriberSectionTitle: "Subscriber",
+    claimIdentityProviderSectionTitle: "Provider",
+    completenessIssue_MISSING_PRIMARY_COVERAGE:
+      "No active primary coverage is valid for this encounter service date.",
+    completenessIssue_MULTIPLE_PRIMARY_COVERAGE:
+      "Multiple active primary coverages match this encounter service date; keep only one primary coverage.",
+    completenessIssue_MISSING_SUBSCRIBER_RELATIONSHIP: "Set relationship to subscriber on primary coverage.",
+    completenessIssue_MISSING_SUBSCRIBER_NAME:
+      "Subscriber name is required when relationship to subscriber is not SELF.",
+    completenessIssue_MISSING_PAYER_SOURCE: "Primary coverage must include a payer id or payer name.",
+    completenessIssue_AMBIGUOUS_PAYER:
+      "Primary coverage includes both payer id and payer name; keep one payer source to avoid ambiguity.",
     completenessIssue_NO_DIAGNOSIS_CODES: "No diagnosis codes on billable export lines for this encounter.",
     completenessIssue_INCOMPLETE_SUBSCRIBER_DATA:
       "Subscriber or member ID / policy details are incomplete for primary coverage.",
@@ -525,6 +538,16 @@ export default {
       "Add member ID or policy number, and subscriber name when the patient is not the subscriber.",
     x12Missing_MISSING_PAYER_CONTEXT:
       "Link primary coverage to an active payer (or enter a payer name) and ensure coverage dates include the service date.",
+    x12Missing_MISSING_PRIMARY_COVERAGE:
+      "No active primary coverage is valid for this encounter service date.",
+    x12Missing_MULTIPLE_PRIMARY_COVERAGE:
+      "Multiple active primary coverages are valid for this encounter service date.",
+    x12Missing_MISSING_SUBSCRIBER_RELATIONSHIP: "Relationship to subscriber is missing on primary coverage.",
+    x12Missing_MISSING_SUBSCRIBER_NAME:
+      "Subscriber name is required when relationship to subscriber is not SELF.",
+    x12Missing_MISSING_PAYER_SOURCE: "Primary coverage must include either payer id or payer name.",
+    x12Missing_AMBIGUOUS_PAYER:
+      "Primary coverage includes both payer id and payer name; payer source must be unambiguous.",
     x12Missing_MISSING_PROVIDER_NPI: "Enter a valid 10-digit billing NPI on the provider account used for this claim.",
     x12Missing_MISSING_FACILITY_EXPORT_CONTEXT:
       "Complete facility billing profile: legal name, billing NPI, tax ID, and billing address for institutional claims.",

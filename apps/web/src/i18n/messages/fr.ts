@@ -265,6 +265,21 @@ export default {
     claimCompletenessBlockersTitle: "Blocages",
     claimCompletenessWarningsTitle: "Avertissements",
     claimCompletenessInfoTitle: "Informations",
+    claimIdentityCoverageSectionTitle: "Couverture",
+    claimIdentitySubscriberSectionTitle: "Assuré",
+    claimIdentityProviderSectionTitle: "Prestataire",
+    completenessIssue_MISSING_PRIMARY_COVERAGE:
+      "Aucune couverture principale active n’est valide à la date de service de cette visite.",
+    completenessIssue_MULTIPLE_PRIMARY_COVERAGE:
+      "Plusieurs couvertures principales actives sont valides à la date de service; conservez une seule couverture principale.",
+    completenessIssue_MISSING_SUBSCRIBER_RELATIONSHIP:
+      "Renseignez le lien avec l’assuré principal sur la couverture principale.",
+    completenessIssue_MISSING_SUBSCRIBER_NAME:
+      "Le nom de l’assuré principal est requis quand le lien n’est pas SELF.",
+    completenessIssue_MISSING_PAYER_SOURCE:
+      "La couverture principale doit inclure un identifiant payeur ou un nom de payeur.",
+    completenessIssue_AMBIGUOUS_PAYER:
+      "La couverture principale contient à la fois un identifiant payeur et un nom de payeur; gardez une seule source payeur.",
     completenessIssue_NO_DIAGNOSIS_CODES: "Aucun code de diagnostic sur les lignes d’export facturables pour cette visite.",
     completenessIssue_INCOMPLETE_SUBSCRIBER_DATA:
       "Données assuré / adhérent ou police incomplètes pour la couverture principale.",
@@ -453,6 +468,18 @@ export default {
       "Ajoutez le numéro d’adhérent ou de police et le nom de l’assuré principal si le patient n’est pas l’assuré.",
     x12Missing_MISSING_PAYER_CONTEXT:
       "Liez la couverture principale à un payeur actif (ou saisissez un nom de payeur) et vérifiez les dates de couverture.",
+    x12Missing_MISSING_PRIMARY_COVERAGE:
+      "Aucune couverture principale active n’est valide à la date de service de cette visite.",
+    x12Missing_MULTIPLE_PRIMARY_COVERAGE:
+      "Plusieurs couvertures principales actives sont valides à la date de service de cette visite.",
+    x12Missing_MISSING_SUBSCRIBER_RELATIONSHIP:
+      "Le lien avec l’assuré principal est manquant sur la couverture principale.",
+    x12Missing_MISSING_SUBSCRIBER_NAME:
+      "Le nom de l’assuré principal est requis lorsque le lien n’est pas SELF.",
+    x12Missing_MISSING_PAYER_SOURCE:
+      "La couverture principale doit inclure soit un identifiant payeur, soit un nom de payeur.",
+    x12Missing_AMBIGUOUS_PAYER:
+      "La couverture principale contient un identifiant payeur et un nom de payeur; la source payeur doit être non ambiguë.",
     x12Missing_MISSING_PROVIDER_NPI:
       "Saisissez un NPI de facturation valide à 10 chiffres sur le compte prestataire utilisé pour cette réclamation.",
     x12Missing_MISSING_FACILITY_EXPORT_CONTEXT:

@@ -1,4 +1,5 @@
 import { PrismaService } from "../prisma/prisma.service";
+import { resolvePrimaryCoverage } from "./claim-coverage-resolution.util";
 
 /** CMS NPI (10 digits). */
 const NPI_REGEX = /^\d{10}$/;
@@ -7,33 +8,23 @@ function isValidNpi(s: string | null | undefined): boolean {
   return Boolean(s && NPI_REGEX.test(s.trim()));
 }
 
-/** True when the patient is the insured subscriber (no separate subscriber demographics required). */
 function subscriberRelationIsPatient(relation: string | null | undefined): boolean {
-  if (!relation?.trim()) return true;
-  const u = relation.trim().toLowerCase();
+  const rel = relation?.trim();
+  if (!rel) return false;
+  const u = rel.toLowerCase();
   if (u === "18" || u === "self" || u === "insured") return true;
   if (/\bself\b/.test(u)) return true;
   return false;
 }
 
-function utcDay(d: Date): number {
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+function hasSubscriberRelationship(relation: string | null | undefined): boolean {
+  return Boolean(relation?.trim());
 }
 
-function coverageActiveForServiceDate(
-  cov: { isActive: boolean; effectiveFrom: Date | null; effectiveTo: Date | null },
-  serviceDate: Date | null
-): boolean {
-  if (!cov.isActive) return false;
-  if (!serviceDate) return true;
-  const svc = utcDay(serviceDate);
-  if (cov.effectiveFrom) {
-    if (svc < utcDay(cov.effectiveFrom)) return false;
-  }
-  if (cov.effectiveTo) {
-    if (svc > utcDay(cov.effectiveTo)) return false;
-  }
-  return true;
+function resolveProviderRoles(input: { renderingProviderId: string | null; attendingProviderId: string | null }) {
+  const renderingProviderId = input.renderingProviderId ?? input.attendingProviderId;
+  const billingProviderId = input.attendingProviderId ?? input.renderingProviderId;
+  return { renderingProviderId, billingProviderId };
 }
 
 /**
@@ -53,27 +44,32 @@ export async function evaluateClaimIdentityGaps(
 ): Promise<string[]> {
   const gaps: string[] = [];
 
-  const primary = await prisma.patientInsuranceCoverage.findFirst({
-    where: { patientId: input.patientId, facilityId: input.facilityId, rank: "PRIMARY" },
-    include: { payer: { select: { id: true, name: true, isActive: true } } },
+  const primaryResolution = await resolvePrimaryCoverage(prisma, {
+    facilityId: input.facilityId,
+    patientId: input.patientId,
+    serviceDate: input.serviceDate,
   });
 
-  if (!primary) {
+  if (!primaryResolution.ok) {
+    gaps.push(primaryResolution.reasonCode);
     gaps.push("MISSING_PAYER_CONTEXT");
     gaps.push("MISSING_SUBSCRIBER_DATA");
   } else {
+    const primary = primaryResolution.coverage;
     const freeTextPayer = Boolean(primary.payerNameFreeText?.trim());
     const catalogPayerOk = Boolean(primary.payerId && primary.payer && primary.payer.isActive);
-    const hasPayer = freeTextPayer || catalogPayerOk;
-    if (primary.payerId && !primary.payer) {
+    const hasPayerSource = Boolean(primary.payerId?.trim()) || freeTextPayer;
+    if (!hasPayerSource) {
+      gaps.push("MISSING_PAYER_SOURCE");
       gaps.push("MISSING_PAYER_CONTEXT");
-    } else if (!hasPayer) {
+    } else if (Boolean(primary.payerId?.trim()) && freeTextPayer) {
+      gaps.push("AMBIGUOUS_PAYER");
+      gaps.push("MISSING_PAYER_CONTEXT");
+    } else if (primary.payerId && !primary.payer) {
+      gaps.push("MISSING_PAYER_CONTEXT");
+    } else if (!catalogPayerOk && !freeTextPayer) {
       gaps.push("MISSING_PAYER_CONTEXT");
     } else if (primary.payerId && primary.payer && primary.payer.isActive === false) {
-      gaps.push("MISSING_PAYER_CONTEXT");
-    }
-
-    if (!coverageActiveForServiceDate(primary, input.serviceDate)) {
       gaps.push("MISSING_PAYER_CONTEXT");
     }
 
@@ -82,12 +78,17 @@ export async function evaluateClaimIdentityGaps(
       gaps.push("MISSING_SUBSCRIBER_DATA");
     }
 
-    if (!subscriberRelationIsPatient(primary.relationToSubscriber) && !primary.subscriberName?.trim()) {
+    if (!hasSubscriberRelationship(primary.relationToSubscriber)) {
+      gaps.push("MISSING_SUBSCRIBER_RELATIONSHIP");
+      gaps.push("MISSING_SUBSCRIBER_DATA");
+    } else if (!subscriberRelationIsPatient(primary.relationToSubscriber) && !primary.subscriberName?.trim()) {
+      gaps.push("MISSING_SUBSCRIBER_NAME");
       gaps.push("MISSING_SUBSCRIBER_DATA");
     }
   }
 
-  const providerId = input.renderingProviderId ?? input.attendingProviderId;
+  const { renderingProviderId, billingProviderId } = resolveProviderRoles(input);
+  const providerId = renderingProviderId ?? billingProviderId;
   if (providerId) {
     const u = await prisma.user.findUnique({
       where: { id: providerId },

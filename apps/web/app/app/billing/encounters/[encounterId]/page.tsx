@@ -382,6 +382,33 @@ function completenessIssueLabel(t: (k: string) => string, code: string): string 
   return code;
 }
 
+const COVERAGE_IDENTITY_CODES = new Set([
+  "MISSING_PRIMARY_COVERAGE",
+  "MULTIPLE_PRIMARY_COVERAGE",
+  "MISSING_PAYER_SOURCE",
+  "AMBIGUOUS_PAYER",
+  "MISSING_PAYER_CONTEXT",
+]);
+
+const SUBSCRIBER_IDENTITY_CODES = new Set([
+  "MISSING_SUBSCRIBER_RELATIONSHIP",
+  "MISSING_SUBSCRIBER_NAME",
+  "MISSING_SUBSCRIBER_DATA",
+  "INCOMPLETE_SUBSCRIBER_DATA",
+]);
+
+const PROVIDER_IDENTITY_CODES = new Set(["MISSING_PROVIDER_NPI"]);
+const IDENTITY_SECTION_CODES = new Set([
+  ...COVERAGE_IDENTITY_CODES,
+  ...SUBSCRIBER_IDENTITY_CODES,
+  ...PROVIDER_IDENTITY_CODES,
+]);
+
+function pickCodes(codes: readonly string[] | undefined, set: ReadonlySet<string>): string[] {
+  if (!codes?.length) return [];
+  return codes.filter((code) => set.has(code));
+}
+
 /** Localized X12 warning/missing machine id; reuses claim/export labels when codes match. */
 function x12CodeLabel(t: (k: string) => string, prefix: "x12Warning" | "x12Missing", code: string): string {
   if (prefix === "x12Warning") {
@@ -1366,10 +1393,53 @@ export default function BillingEncounterLedgerPage() {
                   {(claimExport.summary.claimBlockers?.length ?? 0) > 0 ? (
                     <div style={{ marginBottom: 12, fontSize: 12, color: "#9a3412" }}>
                       <div style={{ fontWeight: 600, marginBottom: 6 }}>{t("billingPage.claimCompletenessBlockersTitle")}</div>
+                      {(() => {
+                        const blockerCodes = claimExport.summary.claimBlockers ?? [];
+                        const coverageCodes = pickCodes(blockerCodes, COVERAGE_IDENTITY_CODES);
+                        const subscriberCodes = pickCodes(blockerCodes, SUBSCRIBER_IDENTITY_CODES);
+                        const providerCodes = pickCodes(blockerCodes, PROVIDER_IDENTITY_CODES);
+                        if (!coverageCodes.length && !subscriberCodes.length && !providerCodes.length) return null;
+                        return (
+                          <div style={{ marginBottom: 8, display: "grid", gap: 6 }}>
+                            {coverageCodes.length > 0 ? (
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{t("billingPage.claimIdentityCoverageSectionTitle")}</div>
+                                <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+                                  {coverageCodes.map((code) => (
+                                    <li key={`coverage-${code}`}>{completenessIssueLabel(t, code)}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                            {subscriberCodes.length > 0 ? (
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{t("billingPage.claimIdentitySubscriberSectionTitle")}</div>
+                                <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+                                  {subscriberCodes.map((code) => (
+                                    <li key={`subscriber-${code}`}>{completenessIssueLabel(t, code)}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                            {providerCodes.length > 0 ? (
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{t("billingPage.claimIdentityProviderSectionTitle")}</div>
+                                <ul style={{ margin: "2px 0 0", paddingLeft: 18 }}>
+                                  {providerCodes.map((code) => (
+                                    <li key={`provider-${code}`}>{completenessIssueLabel(t, code)}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                       <ul style={{ margin: 0, paddingLeft: 18 }}>
-                        {(claimExport.summary.claimBlockers ?? []).map((code) => (
+                        {(claimExport.summary.claimBlockers ?? [])
+                          .filter((code) => !IDENTITY_SECTION_CODES.has(code))
+                          .map((code) => (
                           <li key={code}>{completenessIssueLabel(t, code)}</li>
-                        ))}
+                          ))}
                       </ul>
                     </div>
                   ) : null}
