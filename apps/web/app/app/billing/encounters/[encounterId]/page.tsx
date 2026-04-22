@@ -413,6 +413,13 @@ function submissionLifecycleReasonLabel(t: (k: string) => string, code: string |
   return v === k ? code : v;
 }
 
+function submissionFailureCodeLabel(t: (k: string) => string, code: string | null | undefined): string | null {
+  if (!code) return null;
+  const k = `billingPage.submissionFailureCode_${code}`;
+  const v = t(k);
+  return v === k ? code : v;
+}
+
 function clearinghouseModeLabel(t: (k: string) => string, mode: string): string {
   const k = `billingPage.clearinghouseMode_${mode}`;
   const v = t(k);
@@ -508,6 +515,11 @@ export default function BillingEncounterLedgerPage() {
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
   const canFinalizeBilling = roles.includes("BILLING") || roles.includes("ADMIN");
   const canViewExportJson = roles.includes("BILLING") || roles.includes("ADMIN");
+  const submissionGateBlockers = claimExport?.summary.claimBlockers ?? [];
+  const submissionGateReady = claimExport?.summary.claimReady ?? null;
+  const submissionGateBlocked =
+    submissionGateReady === false ||
+    submissionGateBlockers.length > 0;
 
   const load = useCallback(async () => {
     if (!ready || !facilityId) return;
@@ -619,17 +631,33 @@ export default function BillingEncounterLedgerPage() {
   const sendSubmissionBatch = useCallback(
     async (batchId: string) => {
       if (!facilityId) return;
+      if (submissionGateBlocked) {
+        setActionError(t("billingPage.submissionBlockedByCompleteness"));
+        return;
+      }
       setSubmissionBusy(true);
       setActionError(null);
       setToast(null);
       try {
-        await apiFetch(`/billing/submission-batches/${batchId}/send`, {
+        const resp = (await apiFetch(`/billing/submission-batches/${batchId}/send`, {
           facilityId,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transport: "MANUAL" }),
-        });
-        setToast(t("billingPage.submissionSendOk"));
+        })) as {
+          results?: Array<{
+            skipped?: boolean;
+            blockedByCompleteness?: boolean;
+            submissionGateReasonCode?: string | null;
+            submissionGateBlockers?: string[];
+          }>;
+        };
+        const blocked = (resp.results ?? []).filter((r) => r.blockedByCompleteness || r.skipped);
+        if (blocked.length > 0) {
+          setActionError(t("billingPage.submissionBlockedByCompleteness"));
+        } else {
+          setToast(t("billingPage.submissionSendOk"));
+        }
         await load();
       } catch (e: unknown) {
         const raw = e instanceof Error && e.message ? e.message : "";
@@ -638,23 +666,31 @@ export default function BillingEncounterLedgerPage() {
         setSubmissionBusy(false);
       }
     },
-    [facilityId, language, load, t]
+    [facilityId, language, load, submissionGateBlocked, t]
   );
 
   const retrySubmissionSend = useCallback(
     async (submissionId: string) => {
       if (!facilityId) return;
+      if (submissionGateBlocked) {
+        setActionError(t("billingPage.submissionRetrySkippedClaimNotReady"));
+        return;
+      }
       setRetrySendBusyId(submissionId);
       setActionError(null);
       setToast(null);
       try {
-        await apiFetch(`/billing/submissions/${submissionId}/retry-send`, {
+        const res = (await apiFetch(`/billing/submissions/${submissionId}/retry-send`, {
           facilityId,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transport: "MANUAL" }),
-        });
-        setToast(t("billingPage.submissionRetrySendOk"));
+        })) as { skipped?: boolean; blockedByCompleteness?: boolean };
+        if (res.skipped || res.blockedByCompleteness) {
+          setActionError(t("billingPage.submissionRetrySkippedClaimNotReady"));
+        } else {
+          setToast(t("billingPage.submissionRetrySendOk"));
+        }
         await load();
         const attempts = await apiFetch(`/billing/submissions/${submissionId}/attempts`, { facilityId });
         if (Array.isArray(attempts)) {
@@ -667,7 +703,7 @@ export default function BillingEncounterLedgerPage() {
         setRetrySendBusyId(null);
       }
     },
-    [facilityId, language, load, t]
+    [facilityId, language, load, submissionGateBlocked, t]
   );
 
   const toggleSubmissionDetail = useCallback(
@@ -1773,6 +1809,43 @@ export default function BillingEncounterLedgerPage() {
                 ) : null}
               </div>
             ) : null}
+            {submissionGateBlocked ? (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#991b1b",
+                  fontSize: 12,
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{t("billingPage.submissionNotReadyToSend")}</div>
+                <div style={{ marginTop: 4 }}>{t("billingPage.submissionBlockedByCompleteness")}</div>
+                {submissionGateBlockers.length > 0 ? (
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                    {submissionGateBlockers.map((b) => (
+                      <li key={b}>{completenessIssueLabel(t, b)}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #bbf7d0",
+                  background: "#f0fdf4",
+                  color: "#166534",
+                  fontSize: 12,
+                }}
+              >
+                <strong>{t("billingPage.submissionReadyToSend")}</strong>
+              </div>
+            )}
             <div style={{ marginBottom: 12 }}>
               <button
                 type="button"
@@ -1856,14 +1929,14 @@ export default function BillingEncounterLedgerPage() {
                         <button
                           type="button"
                           onClick={() => void sendSubmissionBatch(s.batchId!)}
-                          disabled={submissionBusy}
+                          disabled={submissionBusy || submissionGateBlocked}
                           style={{
                             fontSize: 11,
                             padding: "4px 8px",
                             borderRadius: 6,
                             border: "1px solid #cbd5e1",
                             background: "#fff",
-                            cursor: submissionBusy ? "wait" : "pointer",
+                            cursor: submissionBusy || submissionGateBlocked ? "not-allowed" : "pointer",
                           }}
                         >
                           {t("billingPage.submissionSendManual")}
@@ -1927,7 +2000,11 @@ export default function BillingEncounterLedgerPage() {
                               submissionAttempts[s.id]!.map((a) => (
                                 <div key={a.id}>
                                   {a.transport} · {a.ok ? t("common.yes") : t("common.no")}
-                                  {a.failureCode ? ` · ${t("billingPage.submissionAttemptFailureCode")}: ${a.failureCode}` : ""}
+                                  {a.failureCode
+                                    ? ` · ${t("billingPage.submissionAttemptFailureCode")}: ${
+                                        submissionFailureCodeLabel(t, a.failureCode) ?? a.failureCode
+                                      }`
+                                    : ""}
                                   {a.failureCode === "RETRY_EXHAUSTED"
                                     ? ` · ${t("billingPage.submissionRetryExhausted")}`
                                     : null}
@@ -1943,7 +2020,7 @@ export default function BillingEncounterLedgerPage() {
                                     <span style={{ marginLeft: 6 }}>
                                       <button
                                         type="button"
-                                        disabled={retrySendBusyId === s.id || submissionBusy}
+                                        disabled={retrySendBusyId === s.id || submissionBusy || submissionGateBlocked}
                                         onClick={() => void retrySubmissionSend(s.id)}
                                         style={{
                                           fontSize: 11,
@@ -1951,7 +2028,8 @@ export default function BillingEncounterLedgerPage() {
                                           borderRadius: 4,
                                           border: "1px solid #cbd5e1",
                                           background: "#fff",
-                                          cursor: retrySendBusyId === s.id ? "wait" : "pointer",
+                                          cursor:
+                                            retrySendBusyId === s.id || submissionGateBlocked ? "not-allowed" : "pointer",
                                         }}
                                       >
                                         {retrySendBusyId === s.id

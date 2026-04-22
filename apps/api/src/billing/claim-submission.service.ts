@@ -6,6 +6,7 @@ import { ClaimControlNumberService } from "./claim-control-number.service";
 import { ClaimExportService } from "./claim-export.service";
 import { X12837GeneratorService } from "./x12-837-generator.service";
 import { X12EnvelopeBuilderService, type EnvelopeTransactionInput } from "./x12-envelope-builder.service";
+import { evaluateSubmissionGate } from "./claim-submission-gate.util";
 
 /** Missing-field codes that block READY_TO_SEND until payer / identity modeling is complete. */
 const HARD_MISSING_FOR_READY = new Set([
@@ -21,12 +22,8 @@ function computeSubmissionStatus(params: {
   x12Missing: string[];
 }): ClaimSubmissionStatus {
   const { exportSummary, packageHeader, x12Missing } = params;
-  const exportBlocked =
-    exportSummary.claimReady === false ||
-    (exportSummary.claimBlockers?.length ?? 0) > 0 ||
-    (exportSummary.claimReady === undefined &&
-      (!exportSummary.readyForExport || exportSummary.blockers.length > 0));
-  if (exportBlocked) {
+  const gate = evaluateSubmissionGate(exportSummary);
+  if (!gate.allowed) {
     return ClaimSubmissionStatus.DRAFT;
   }
   if (!packageHeader?.ready) {

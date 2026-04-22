@@ -15,10 +15,12 @@ import {
   nextStatusAfterSuccessfulSend,
   SubmissionTransitionReasonCode,
 } from "./claim-submission-state-machine.util";
+import { ClaimExportService } from "./claim-export.service";
 import {
   classifyOutboundAttemptFailure,
   nextRetryAtForOutboundFailureOrdinal,
 } from "./clearinghouse-retry-policy.util";
+import { evaluateSubmissionGate } from "./claim-submission-gate.util";
 
 export type TransportKind = ClearinghouseTransportHint;
 
@@ -45,7 +47,8 @@ function lifecycleReasonFromParsedJson(parsedJson: Prisma.JsonValue | null): str
 export class ClaimTransmissionService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly clearinghouseTransportFactory: ClearinghouseTransportFactory
+    private readonly clearinghouseTransportFactory: ClearinghouseTransportFactory,
+    private readonly claimExportService: ClaimExportService
   ) {}
 
   getClearinghouseConfigStatus() {
@@ -103,10 +106,16 @@ export class ClaimTransmissionService {
       },
     });
     if (!sub) throw new NotFoundException("Submission not found");
+    const exportSnapshot = await this.claimExportService.buildEncounterClaimExport(facilityId, sub.encounterId);
+    const submissionGate = evaluateSubmissionGate(exportSnapshot.summary);
     const lastAck = sub.acknowledgments[0];
     return {
       submissionId: sub.id,
       currentStatus: sub.status,
+      claimReady: submissionGate.claimReady,
+      blockedByCompleteness: !submissionGate.allowed,
+      submissionGateReasonCode: submissionGate.reasonCode,
+      submissionGateBlockers: submissionGate.blockers,
       attempts: sub.attempts.map((a) => ({
         attemptId: a.id,
         transport: a.transport,
@@ -149,9 +158,15 @@ export class ClaimTransmissionService {
         acknowledgments: { orderBy: { receivedAt: "desc" } },
       },
     });
+    const exportSnapshot = await this.claimExportService.buildEncounterClaimExport(facilityId, encounterId);
+    const submissionGate = evaluateSubmissionGate(exportSnapshot.summary);
 
     return {
       encounterId,
+      claimReady: submissionGate.claimReady,
+      blockedByCompleteness: !submissionGate.allowed,
+      submissionGateReasonCode: submissionGate.reasonCode,
+      submissionGateBlockers: submissionGate.blockers,
       submissions: submissions.map((s) => ({
         lastTransitionReason: (() => {
           const first = s.acknowledgments[0];
@@ -191,7 +206,7 @@ export class ClaimTransmissionService {
   private async sendOneSubmission(
     submissionId: string,
     transport: ClearinghouseTransport,
-    opts: { allowNonReady: boolean; attemptTrigger?: "WORKER" | "MANUAL" | "BATCH" }
+    opts: { allowNonReady: boolean; attemptTrigger?: "WORKER" | "MANUAL" | "BATCH"; retryFlow?: boolean }
   ) {
     const submission = await this.prisma.claimSubmission.findUnique({ where: { id: submissionId } });
     if (!submission) throw new NotFoundException("Submission not found");
@@ -221,7 +236,59 @@ export class ClaimTransmissionService {
           errorMessage: skipReason,
         },
       });
-      return { submissionId, skipped: true, status: submission.status, skipReason };
+      return {
+        submissionId,
+        skipped: true,
+        status: submission.status,
+        skipReason,
+        blockedByCompleteness: false,
+        submissionGateReasonCode: skipReason,
+        submissionGateBlockers: [],
+        claimReady: null,
+      };
+    }
+
+    const exportSnapshot = await this.claimExportService.buildEncounterClaimExport(submission.facilityId, submission.encounterId);
+    const submissionGate = evaluateSubmissionGate(exportSnapshot.summary);
+    if (!submissionGate.allowed) {
+      const skipReason = opts.retryFlow ? "RETRY_SKIPPED_CLAIM_NOT_READY" : "SEND_BLOCKED_CLAIM_NOT_READY";
+      const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
+      await this.prisma.claimSubmissionAttempt.create({
+        data: {
+          submissionId,
+          transport: transport.key,
+          ok: false,
+          failureCode: skipClass.failureCode,
+          retryEligible: false,
+          nextRetryAt: null,
+          requestMetaJson: scrubRecordForPersistence({
+            skipped: true,
+            reason: skipReason,
+            submissionGateReasonCode: submissionGate.reasonCode,
+            submissionGateBlockers: submissionGate.blockers,
+            claimReady: submissionGate.claimReady,
+            blockedByCompleteness: true,
+            clearinghouseMode: cfgSnapshot.mode,
+            transportHint: transport.key,
+            ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
+          }) as Prisma.InputJsonValue,
+          responseMetaJson: scrubRecordForPersistence({
+            currentStatus: submission.status,
+            gate: submissionGate,
+          }) as Prisma.InputJsonValue,
+          errorMessage: skipReason,
+        },
+      });
+      return {
+        submissionId,
+        skipped: true,
+        status: submission.status,
+        skipReason,
+        blockedByCompleteness: true,
+        submissionGateReasonCode: submissionGate.reasonCode,
+        submissionGateBlockers: submissionGate.blockers,
+        claimReady: submissionGate.claimReady,
+      };
     }
 
     const priorRetryEligibleFailures = await this.prisma.claimSubmissionAttempt.count({
@@ -298,7 +365,16 @@ export class ClaimTransmissionService {
       },
     });
 
-    return { submissionId, attemptId: attempt.id, status: updated.status, ok: result.ok };
+    return {
+      submissionId,
+      attemptId: attempt.id,
+      status: updated.status,
+      ok: result.ok,
+      blockedByCompleteness: false,
+      submissionGateReasonCode: submissionGate.reasonCode,
+      submissionGateBlockers: submissionGate.blockers,
+      claimReady: submissionGate.claimReady,
+    };
   }
 
   /**
@@ -333,6 +409,7 @@ export class ClaimTransmissionService {
     return this.sendOneSubmission(submissionId, transport, {
       allowNonReady: false,
       attemptTrigger: opts?.attemptTrigger ?? "MANUAL",
+      retryFlow: true,
     });
   }
 }

@@ -210,11 +210,17 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
 
         try {
           log.log("retry_attempt_triggered", { submissionId: fresh.id, transport: hint });
-          await this.claimTransmissionService.retrySubmissionSend(fresh.facilityId, fresh.id, hint, {
+          const res = await this.claimTransmissionService.retrySubmissionSend(fresh.facilityId, fresh.id, hint, {
             attemptTrigger: "WORKER",
           });
-          log.log("retry_attempt_succeeded", { submissionId: fresh.id });
-          succeeded += 1;
+          if (res && typeof res === "object" && "skipped" in res && (res as { skipped?: boolean }).skipped) {
+            const reason = (res as { skipReason?: string }).skipReason ?? "RETRY_SKIPPED";
+            log.log("retry_attempt_skipped", { submissionId: fresh.id, reason });
+            skipped += 1;
+          } else {
+            log.log("retry_attempt_succeeded", { submissionId: fresh.id });
+            succeeded += 1;
+          }
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           log.log("retry_attempt_failed", { submissionId: fresh.id, error: msg });

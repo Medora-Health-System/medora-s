@@ -20,6 +20,8 @@ const NON_RETRY_EXACT = new Set([
   "DUPLICATE_SEND_BLOCKED",
   "TERMINAL_STATE_ALREADY_REACHED",
   "SEND_NOT_ALLOWED",
+  "SEND_BLOCKED_CLAIM_NOT_READY",
+  "RETRY_SKIPPED_CLAIM_NOT_READY",
 ]);
 
 function normalizeErr(s: string | null | undefined): string {
