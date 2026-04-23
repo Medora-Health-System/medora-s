@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { apiFetch } from "@/lib/apiClient";
 import { fetchChartSummary, createDiagnosis, type ChartSummary } from "@/lib/chartApi";
+import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
 import { fetchPatientFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
 import { ChartSection, tableStyles, btnPrimary, btnSecondary } from "@/components/chart/ChartSection";
 import { COMMON_DIAGNOSES } from "@/constants/clinicalTemplates";
@@ -746,44 +747,13 @@ function AddDiagnosisModal({
 }) {
   const { t, language } = useI18n();
   const [encounterId, setEncounterId] = useState("");
-  const [code, setCode] = useState("");
-  const [description, setDescription] = useState("");
-  const [onsetDate, setOnsetDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const [manualPrefill, setManualPrefill] = useState<{ code: string; description?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ encounter?: string; code?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ encounter?: string }>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setFieldErrors({});
-    const errs: { encounter?: string; code?: string } = {};
-    if (!encounterId.trim()) errs.encounter = t("patientChartUi.addDiagnosisErrEncounter");
-    if (!code.trim()) errs.code = t("patientChartUi.addDiagnosisErrCode");
-    if (Object.keys(errs).length > 0) {
-      setFieldErrors(errs);
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await createDiagnosis(facilityId, encounterId, {
-        code: code.trim(),
-        description: description.trim() || undefined,
-        onsetDate: onsetDate.trim() || undefined,
-        notes: notes.trim() || undefined,
-      });
-      setSuccess(true);
-      setTimeout(() => {
-        onSuccess();
-      }, 1200);
-    } catch (err: any) {
-      setError(normalizeUserFacingError(err?.message) || t("patientChartUi.addDiagnosisError"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const tEntry = useCallback((key: string) => t(key), [t]);
 
   const encounterLabel = (e: ChartSummary["recentEncounters"][0]) => {
     const reason = e.visitReason || e.chiefComplaint;
@@ -794,7 +764,7 @@ function AddDiagnosisModal({
 
   return (
     <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div style={{ backgroundColor: "white", borderRadius: 8, padding: 24, maxWidth: 480, width: "90%" }}>
+      <div style={{ backgroundColor: "white", borderRadius: 8, padding: 24, maxWidth: 520, width: "92%" }}>
         <h3 style={{ margin: "0 0 4px 0" }}>{t("patientChartUi.addDiagnosisTitle")}</h3>
         <p style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>{t("patientChartUi.addDiagnosisIntro")}</p>
         {recentEncounters.length === 0 ? (
@@ -807,23 +777,28 @@ function AddDiagnosisModal({
         ) : success ? (
           <div style={{ padding: "16px 0", color: "#2e7d32", fontSize: 15 }}>{t("patientChartUi.addDiagnosisSuccess")}</div>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <div>
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>
                 {t("patientChartUi.addDiagnosisEncounterLabel")}
               </label>
               <select
                 value={encounterId}
-                onChange={(e) => { setEncounterId(e.target.value); setFieldErrors((prev) => ({ ...prev, encounter: undefined })); }}
+                onChange={(e) => {
+                  setEncounterId(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, encounter: undefined }));
+                }}
                 style={{ width: "100%", padding: 10, fontSize: 14, border: fieldErrors.encounter ? "1px solid #c62828" : "1px solid #ccc", borderRadius: 4 }}
                 aria-invalid={!!fieldErrors.encounter}
               >
                 <option value="">{t("patientChartUi.addDiagnosisEncounterPlaceholder")}</option>
                 {recentEncounters.map((e) => (
-                  <option key={e.id} value={e.id}>{encounterLabel(e)}</option>
+                  <option key={e.id} value={e.id}>
+                    {encounterLabel(e)}
+                  </option>
                 ))}
               </select>
-              {fieldErrors.encounter && <div style={{ fontSize: 13, color: "#c62828", marginTop: 4 }}>{fieldErrors.encounter}</div>}
+              {fieldErrors.encounter ? <div style={{ fontSize: 13, color: "#c62828", marginTop: 4 }}>{fieldErrors.encounter}</div> : null}
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisCommonLabel")}</label>
@@ -834,9 +809,7 @@ function AddDiagnosisModal({
                   if (v) {
                     const d = COMMON_DIAGNOSES.find((x) => `${x.code} - ${x.label}` === v);
                     if (d) {
-                      setCode(d.code);
-                      setDescription(d.label);
-                      setFieldErrors((prev) => ({ ...prev, code: undefined }));
+                      setManualPrefill({ code: d.code, description: d.label });
                     }
                   }
                 }}
@@ -851,52 +824,77 @@ function AddDiagnosisModal({
                 ))}
               </select>
             </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>{t("patientChartUi.addDiagnosisCodeLabel")}</label>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => { setCode(e.target.value); setFieldErrors((prev) => ({ ...prev, code: undefined })); }}
-                style={{ width: "100%", padding: 10, fontSize: 14, border: fieldErrors.code ? "1px solid #c62828" : "1px solid #ccc", borderRadius: 4 }}
-                placeholder="ex. I10, J06.9"
-                aria-invalid={!!fieldErrors.code}
-              />
-              {fieldErrors.code && <div style={{ fontSize: 13, color: "#c62828", marginTop: 4 }}>{fieldErrors.code}</div>}
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisDescriptionLabel")}</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
-                placeholder={t("patientChartUi.addDiagnosisOptionalPh")}
-              />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisOnsetLabel")}</label>
-              <input type="date" value={onsetDate} onChange={(e) => setOnsetDate(e.target.value)} style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }} />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ display: "block", marginBottom: 4, fontSize: 14 }}>{t("patientChartUi.addDiagnosisNotesLabel")}</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #ccc", borderRadius: 4 }}
-                placeholder={t("patientChartUi.addDiagnosisOptionalPh")}
-              />
-            </div>
-            {error && <div style={{ color: "#c62828", marginBottom: 12, fontSize: 14 }}>{error}</div>}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button type="button" style={btnSecondary} onClick={onClose}>
+            <Icd10DiagnosisEntryPanel
+              facilityId={facilityId}
+              disabled={!encounterId.trim()}
+              language={language}
+              t={tEntry}
+              showOnsetNotes
+              saving={submitting}
+              manualPrefill={manualPrefill}
+              onError={(msg) => setError(msg ?? "")}
+              onPickCatalog={async (hit, extra) => {
+                if (!encounterId.trim()) {
+                  setFieldErrors({ encounter: t("patientChartUi.addDiagnosisErrEncounter") });
+                  return;
+                }
+                setFieldErrors({});
+                setSubmitting(true);
+                setError("");
+                try {
+                  await createDiagnosis(facilityId, encounterId, {
+                    icd10CatalogId: hit.id,
+                    onsetDate: extra?.onsetDate,
+                    notes: extra?.notes,
+                  });
+                  setManualPrefill(null);
+                  setSuccess(true);
+                  window.setTimeout(() => {
+                    onSuccess();
+                  }, 1200);
+                } catch (err: unknown) {
+                  const m = err instanceof Error ? err.message : (err as { message?: string })?.message;
+                  setError(normalizeUserFacingError(m, language) || t("patientChartUi.addDiagnosisError"));
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              onSubmitManual={async (payload) => {
+                if (!encounterId.trim()) {
+                  setFieldErrors({ encounter: t("patientChartUi.addDiagnosisErrEncounter") });
+                  return;
+                }
+                setFieldErrors({});
+                setSubmitting(true);
+                setError("");
+                try {
+                  await createDiagnosis(facilityId, encounterId, {
+                    code: payload.code,
+                    description: payload.description,
+                    onsetDate: payload.onsetDate,
+                    notes: payload.notes,
+                    manualNonCatalog: true,
+                  });
+                  setManualPrefill(null);
+                  setSuccess(true);
+                  window.setTimeout(() => {
+                    onSuccess();
+                  }, 1200);
+                } catch (err: unknown) {
+                  const m = err instanceof Error ? err.message : (err as { message?: string })?.message;
+                  setError(normalizeUserFacingError(m, language) || t("patientChartUi.addDiagnosisError"));
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            />
+            {error ? <div style={{ color: "#c62828", marginTop: 12, fontSize: 14 }}>{error}</div> : null}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" style={btnSecondary} onClick={onClose} disabled={submitting}>
                 {t("patientChartUi.addDiagnosisCancel")}
               </button>
-              <button type="submit" style={btnPrimary} disabled={submitting}>
-                {submitting ? t("patientChartUi.addDiagnosisSaving") : t("patientChartUi.addDiagnosisSubmit")}
-              </button>
             </div>
-          </form>
+          </div>
         )}
       </div>
     </div>

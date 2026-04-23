@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
-import {
-  createDiagnosis,
-  reorderEncounterDiagnoses,
-  searchIcd10Catalog,
-  type Icd10SearchHit,
-} from "@/lib/chartApi";
+import { createDiagnosis, reorderEncounterDiagnoses, type Icd10SearchHit } from "@/lib/chartApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
 
 type DxRow = {
   id: string;
@@ -42,15 +38,11 @@ export function EncounterDiagnosticsPanel({
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DxRow[]>([]);
-  const [searchQ, setSearchQ] = useState("");
-  const [searchHits, setSearchHits] = useState<Icd10SearchHit[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [manualOpen, setManualOpen] = useState(false);
-  const [manualCode, setManualCode] = useState("");
-  const [manualDesc, setManualDesc] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reorderBusy, setReorderBusy] = useState(false);
+
+  const tEntry = useCallback((key: string) => t(key), [t]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,76 +74,46 @@ export function EncounterDiagnosticsPanel({
     void load();
   }, [load]);
 
-  useEffect(() => {
-    const q = searchQ.trim();
-    if (q.length < 2) {
-      setSearchHits([]);
-      return;
-    }
-    let cancelled = false;
-    const tmr = setTimeout(() => {
-      setSearching(true);
-      void searchIcd10Catalog(facilityId, q, 25)
-        .then((res) => {
-          if (!cancelled) setSearchHits(Array.isArray(res.items) ? res.items : []);
-        })
-        .catch(() => {
-          if (!cancelled) setSearchHits([]);
-        })
-        .finally(() => {
-          if (!cancelled) setSearching(false);
-        });
-    }, 280);
-    return () => {
-      cancelled = true;
-      clearTimeout(tmr);
-    };
-  }, [searchQ, facilityId]);
-
-  const primaryHint = useMemo(() => t("encounterConsultDiagnostics.primaryHint"), [t]);
-
   const pickCatalog = async (hit: Icd10SearchHit) => {
     if (isLocked) return;
     setSaving(true);
     setError(null);
     try {
       await createDiagnosis(facilityId, encounterId, { icd10CatalogId: hit.id });
-      setSearchQ("");
-      setSearchHits([]);
       await load();
     } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
       setError(
-        normalizeUserFacingError((e as { message?: string })?.message, language) ||
-          t("encounterConsultDiagnostics.saveError")
+        normalizeUserFacingError(raw, language) || t("encounterConsultDiagnostics.saveError")
       );
     } finally {
       setSaving(false);
     }
   };
 
-  const submitManual = async () => {
+  const submitManual = async (payload: {
+    code: string;
+    description?: string;
+    onsetDate?: string;
+    notes?: string;
+    manualNonCatalog: true;
+  }) => {
     if (isLocked) return;
-    const code = manualCode.trim();
-    if (!code) {
-      setError(t("encounterConsultDiagnostics.manualCodeRequired"));
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
       await createDiagnosis(facilityId, encounterId, {
-        code,
-        description: manualDesc.trim() || undefined,
+        code: payload.code,
+        description: payload.description,
+        onsetDate: payload.onsetDate,
+        notes: payload.notes,
         manualNonCatalog: true,
       });
-      setManualOpen(false);
-      setManualCode("");
-      setManualDesc("");
       await load();
     } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
       setError(
-        normalizeUserFacingError((e as { message?: string })?.message, language) ||
-          t("encounterConsultDiagnostics.saveError")
+        normalizeUserFacingError(raw, language) || t("encounterConsultDiagnostics.saveError")
       );
     } finally {
       setSaving(false);
@@ -172,9 +134,9 @@ export function EncounterDiagnosticsPanel({
       await reorderEncounterDiagnoses(facilityId, encounterId, orderedIds);
       await load();
     } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
       setError(
-        normalizeUserFacingError((e as { message?: string })?.message, language) ||
-          t("encounterConsultDiagnostics.reorderError")
+        normalizeUserFacingError(raw, language) || t("encounterConsultDiagnostics.reorderError")
       );
     } finally {
       setReorderBusy(false);
@@ -255,125 +217,18 @@ export function EncounterDiagnosticsPanel({
 
       {canDocumentDiagnoses && !isLocked ? (
         <div style={{ ...dxShell, padding: "14px 18px" }}>
-          <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#64748b" }}>{primaryHint}</p>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "#334155", display: "block", marginBottom: 6 }}>
-            {t("encounterConsultDiagnostics.icdSearchLabel")}
-          </label>
-          <input
-            type="search"
-            value={searchQ}
-            onChange={(e) => setSearchQ(e.target.value)}
-            placeholder={t("encounterConsultDiagnostics.icdSearchPlaceholder")}
-            autoComplete="off"
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              fontSize: 14,
+          <Icd10DiagnosisEntryPanel
+            facilityId={facilityId}
+            disabled={isLocked}
+            language={language}
+            t={tEntry}
+            saving={saving}
+            onError={setError}
+            onPickCatalog={async (hit) => {
+              await pickCatalog(hit);
             }}
+            onSubmitManual={submitManual}
           />
-          {searching ? (
-            <div style={{ marginTop: 8, fontSize: 13, color: "#64748b" }}>{t("encounterConsultDiagnostics.icdSearching")}</div>
-          ) : null}
-          {!searching && searchQ.trim().length >= 2 && searchHits.length === 0 ? (
-            <div style={{ marginTop: 8, fontSize: 13, color: "#64748b" }}>{t("encounterConsultDiagnostics.icdNoResults")}</div>
-          ) : null}
-          {searchHits.length > 0 ? (
-            <ul
-              style={{
-                margin: "10px 0 0 0",
-                padding: 0,
-                listStyle: "none",
-                maxHeight: 220,
-                overflowY: "auto",
-                border: "1px solid #e2e8f0",
-                borderRadius: 10,
-                background: "#fff",
-              }}
-            >
-              {searchHits.map((h) => (
-                <li key={h.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <button
-                    type="button"
-                    disabled={saving || isLocked}
-                    onClick={() => void pickCatalog(h)}
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "10px 12px",
-                      border: "none",
-                      background: "transparent",
-                      cursor: saving || isLocked ? "not-allowed" : "pointer",
-                      fontSize: 13,
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: "#0f172a" }}>{h.code}</div>
-                    <div style={{ color: "#475569", marginTop: 2 }}>{h.shortDescription}</div>
-                    {!h.isBillable ? (
-                      <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>{t("encounterConsultDiagnostics.nonBillableCode")}</div>
-                    ) : null}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <div style={{ marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={() => setManualOpen((v) => !v)}
-              style={{
-                padding: "8px 12px",
-                fontSize: 13,
-                fontWeight: 600,
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                background: manualOpen ? "#e2e8f0" : "#fff",
-                cursor: "pointer",
-              }}
-            >
-              {t("encounterConsultDiagnostics.manualToggle")}
-            </button>
-          </div>
-          {manualOpen ? (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e2e8f0" }}>
-              <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#b45309", lineHeight: 1.45 }}>
-                {t("encounterConsultDiagnostics.manualWarning")}
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 420 }}>
-                <input
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  placeholder={t("encounterConsultDiagnostics.manualCodePh")}
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14 }}
-                />
-                <input
-                  value={manualDesc}
-                  onChange={(e) => setManualDesc(e.target.value)}
-                  placeholder={t("encounterConsultDiagnostics.manualDescPh")}
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 14 }}
-                />
-                <button
-                  type="button"
-                  onClick={() => void submitManual()}
-                  disabled={saving}
-                  style={{
-                    alignSelf: "flex-start",
-                    padding: "8px 16px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "#0f172a",
-                    color: "#fff",
-                    fontWeight: 600,
-                    cursor: saving ? "wait" : "pointer",
-                  }}
-                >
-                  {t("encounterConsultDiagnostics.manualSubmit")}
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -421,39 +276,54 @@ export function EncounterDiagnosticsPanel({
                 <tr key={r.id} style={{ borderTop: "1px solid #e2e8f0", backgroundColor: "#fff" }}>
                   <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>
                     {canDocumentDiagnoses && !isLocked ? (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          type="button"
-                          disabled={reorderBusy || idx === 0}
-                          onClick={() => void moveRow(idx, -1)}
-                          aria-label={t("encounterConsultDiagnostics.moveUp")}
-                          style={{
-                            padding: "4px 8px",
-                            fontSize: 12,
-                            borderRadius: 8,
-                            border: "1px solid #e2e8f0",
-                            background: "#fff",
-                            cursor: idx === 0 || reorderBusy ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          disabled={reorderBusy || idx === rows.length - 1}
-                          onClick={() => void moveRow(idx, 1)}
-                          aria-label={t("encounterConsultDiagnostics.moveDown")}
-                          style={{
-                            padding: "4px 8px",
-                            fontSize: 12,
-                            borderRadius: 8,
-                            border: "1px solid #e2e8f0",
-                            background: "#fff",
-                            cursor: idx === rows.length - 1 || reorderBusy ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          ↓
-                        </button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            type="button"
+                            disabled={reorderBusy || idx === 0}
+                            onClick={() => void moveRow(idx, -1)}
+                            aria-label={t("encounterConsultDiagnostics.moveUp")}
+                            style={{
+                              padding: "4px 8px",
+                              fontSize: 12,
+                              borderRadius: 8,
+                              border: "1px solid #e2e8f0",
+                              background: "#fff",
+                              cursor: idx === 0 || reorderBusy ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            disabled={reorderBusy || idx === rows.length - 1}
+                            onClick={() => void moveRow(idx, 1)}
+                            aria-label={t("encounterConsultDiagnostics.moveDown")}
+                            style={{
+                              padding: "4px 8px",
+                              fontSize: 12,
+                              borderRadius: 8,
+                              border: "1px solid #e2e8f0",
+                              background: "#fff",
+                              cursor: idx === rows.length - 1 || reorderBusy ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            ↓
+                          </button>
+                        </div>
+                        {idx === 0 ? (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "#1d4ed8",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                            }}
+                          >
+                            {t("diagnosisEntry.primaryBadge")}
+                          </span>
+                        ) : null}
                       </div>
                     ) : (
                       "—"

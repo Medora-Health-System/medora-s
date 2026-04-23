@@ -170,6 +170,14 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "Les lignes de facturation ne peuvent pas être modifiées tant que la consultation est finalisée pour la facturation. Rouvrez la facturation d’abord.",
     en: "Billing lines cannot be edited while the encounter is finalized for billing. Reopen billing first.",
   },
+  {
+    test: (s) =>
+      /DIAGNOSIS_INVALID_ICD_FORMAT/i.test(s) ||
+      /ICD-10-CM-like format/i.test(s) ||
+      /letter \+ two digits \+ optional extension/i.test(s),
+    fr: "Le code saisi ne respecte pas le format CIM-10 attendu (ex. I10 ou J069). Corrigez ou choisissez une entrée du référentiel.",
+    en: "That code does not match the expected ICD-10-style pattern (e.g. I10 or J069). Fix it or pick a catalog entry.",
+  },
 ];
 
 /**

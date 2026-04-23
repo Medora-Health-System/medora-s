@@ -3,6 +3,8 @@ import {
   billingLedgerRowIsDiagnosisLedgerLine,
 } from "./billingLedgerCoding.js";
 
+/** @see buildDiagnosisPointerIndex — future CPT/HCPCS line → diagnosis pointer (ER-1.1 groundwork). */
+
 type DxRow = { code: string };
 type EvRow = {
   sourceModule: string;

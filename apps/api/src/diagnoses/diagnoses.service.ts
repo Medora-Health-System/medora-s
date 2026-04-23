@@ -9,7 +9,12 @@ import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-gla
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
-import { buildDiagnosisCandidate, type DiagnosisBillingCodeSource } from "@medora/shared";
+import {
+  buildDiagnosisCandidate,
+  type DiagnosisBillingCodeSource,
+  DIAGNOSIS_INVALID_ICD_FORMAT,
+  isIcd10CmLikeCodeFormat,
+} from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import type {
   CreateDiagnosisDto,
@@ -41,6 +46,13 @@ function toBillingCodeSource(s: DiagnosisCodeSource): DiagnosisBillingCodeSource
   return "LEGACY";
 }
 
+function assertNonCatalogIcdFormat(code: string): void {
+  const c = code.trim();
+  if (!isIcd10CmLikeCodeFormat(c)) {
+    throw new BadRequestException(DIAGNOSIS_INVALID_ICD_FORMAT);
+  }
+}
+
 @Injectable()
 export class DiagnosesService {
   constructor(
@@ -54,6 +66,24 @@ export class DiagnosesService {
       _max: { sortOrder: true },
     });
     return (agg._max.sortOrder ?? -1) + 1;
+  }
+
+  /** Renumber active encounter rows 0..n-1 by current sortOrder then createdAt (collision / drift safety). */
+  private async normalizeEncounterDiagnosisSortOrders(encounterId: string, facilityId: string): Promise<void> {
+    const rows = await this.prisma.diagnosis.findMany({
+      where: { encounterId, facilityId, status: "ACTIVE" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true },
+    });
+    if (rows.length === 0) return;
+    await this.prisma.$transaction(
+      rows.map((r, idx) =>
+        this.prisma.diagnosis.update({
+          where: { id: r.id },
+          data: { sortOrder: idx },
+        })
+      )
+    );
   }
 
   private async syncDiagnosisBillingCapture(params: {
@@ -123,6 +153,11 @@ export class DiagnosesService {
       codeSource = DiagnosisCodeSource.MANUAL_DECLARED;
     }
 
+    if (!icd10CatalogId) {
+      assertNonCatalogIcdFormat(code);
+    }
+    code = code.trim();
+
     const sortOrder = dto.sortOrder ?? (await this.nextSortOrder(encounterId));
 
     const row = await this.prisma.diagnosis.create({
@@ -167,7 +202,13 @@ export class DiagnosesService {
       atIso: createdAtIso,
     });
 
-    return row;
+    await this.normalizeEncounterDiagnosisSortOrders(encounterId, facilityId);
+
+    const refreshed = await this.prisma.diagnosis.findFirst({
+      where: { id: row.id },
+      include: diagnosisInclude,
+    });
+    return refreshed ?? row;
   }
 
   async findByPatient(
@@ -263,6 +304,7 @@ export class DiagnosesService {
       if (dto.code === undefined || !dto.code.trim()) {
         throw new BadRequestException("code is required when manualNonCatalog is true");
       }
+      assertNonCatalogIcdFormat(dto.code);
       data.code = dto.code.trim();
       data.icd10Catalog = { disconnect: true };
       data.codeSource = DiagnosisCodeSource.MANUAL_DECLARED;
@@ -273,6 +315,7 @@ export class DiagnosesService {
       if (dto.icd10CatalogId === null) {
         data.icd10Catalog = { disconnect: true };
         if (dto.code !== undefined) {
+          assertNonCatalogIcdFormat(dto.code);
           data.code = dto.code.trim();
         }
         data.codeSource = DiagnosisCodeSource.LEGACY;
@@ -294,6 +337,7 @@ export class DiagnosesService {
       }
     } else {
       if (dto.code !== undefined) {
+        assertNonCatalogIcdFormat(dto.code);
         data.code = dto.code.trim();
         if (existing.icd10CatalogId) {
           const stillMatches = await this.prisma.icd10DiagnosisCode.findFirst({
@@ -348,7 +392,13 @@ export class DiagnosesService {
       });
     }
 
-    return row;
+    await this.normalizeEncounterDiagnosisSortOrders(existing.encounterId, facilityId);
+
+    const refreshed = await this.prisma.diagnosis.findFirst({
+      where: { id },
+      include: diagnosisInclude,
+    });
+    return refreshed ?? row;
   }
 
   async reorderEncounterDiagnoses(
@@ -375,6 +425,21 @@ export class DiagnosesService {
       throw new BadRequestException("One or more diagnosis ids are invalid for this encounter");
     }
 
+    const active = await this.prisma.diagnosis.findMany({
+      where: { encounterId, facilityId, status: "ACTIVE" },
+      select: { id: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+    const activeIds = new Set(active.map((r) => r.id));
+    if (activeIds.size !== orderedIds.length) {
+      throw new BadRequestException("orderedIds must include every active diagnosis for this encounter");
+    }
+    for (const id of orderedIds) {
+      if (!activeIds.has(id)) {
+        throw new BadRequestException("orderedIds must match the active diagnosis set for this encounter");
+      }
+    }
+
     await this.prisma.$transaction(
       orderedIds.map((dxId, idx) =>
         this.prisma.diagnosis.update({
@@ -383,6 +448,8 @@ export class DiagnosesService {
         })
       )
     );
+
+    await this.normalizeEncounterDiagnosisSortOrders(encounterId, facilityId);
 
     await this.audit.log(AuditAction.UPDATE, "DIAGNOSIS", {
       userId,

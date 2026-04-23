@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { createDiagnosis } from "@/lib/chartApi";
+import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
@@ -156,23 +157,6 @@ const shellBox: React.CSSProperties = {
   padding: "14px 16px",
 };
 
-/** TEMP (ER-Dx-2): pas de GET /diagnoses/search côté API — assistance code / libellé locale uniquement. */
-type ErDxSuggestion = { code: string; label: string };
-const TEMP_DX_ICD10_CODES = [
-  "I10",
-  "E11.9",
-  "J18.9",
-  "R50.9",
-  "R51",
-  "K29.7",
-  "N39.0",
-  "S09.90",
-  "T14.90",
-  "R07.4",
-  "R06.02",
-  "A09",
-] as const;
-
 /** Zones du tableau de bord urgences (navigation locale + zone active). */
 export type ErWorkspaceSection =
   | "triage"
@@ -222,13 +206,8 @@ export function EmergencyActiveWorkspaceView() {
   const [showOperationalPanel, setShowOperationalPanel] = useState(false);
   const [showCreateDx, setShowCreateDx] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [dxCode, setDxCode] = useState("");
-  const [dxDescription, setDxDescription] = useState("");
-  const [dxOnsetDate, setDxOnsetDate] = useState("");
-  const [dxNotes, setDxNotes] = useState("");
   const [dxSubmitting, setDxSubmitting] = useState(false);
   const [dxError, setDxError] = useState<string | null>(null);
-  const [dxSuggestions, setDxSuggestions] = useState<ErDxSuggestion[]>([]);
 
   const fid = facilityId || facilityIdFromHook;
   const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
@@ -472,14 +451,7 @@ export function EmergencyActiveWorkspaceView() {
     return raw || t("common.dash");
   }, [encounter, t]);
 
-  const tempDxAssistLocalized = useMemo(
-    () =>
-      TEMP_DX_ICD10_CODES.map((code) => ({
-        code,
-        label: t(`emergencyWorkspace.dxAssist.${code.replace(/\./g, "_")}`),
-      })),
-    [t]
-  );
+  const tDxEntry = useCallback((key: string) => t(key), [t]);
 
   useEffect(() => {
     if (!canFetchEncounterTriage && activeSection === "triage") {
@@ -492,22 +464,6 @@ export function EmergencyActiveWorkspaceView() {
       setActiveSection("results");
     }
   }, [showNursingTab, activeSection]);
-
-  useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      const q = dxDescription.trim();
-      if (q.length < 2) {
-        setDxSuggestions([]);
-        return;
-      }
-      const ql = q.toLowerCase();
-      const filtered = tempDxAssistLocalized.filter(
-        (s) => s.code.toLowerCase().includes(ql) || s.label.toLowerCase().includes(ql)
-      ).slice(0, 8);
-      setDxSuggestions(filtered);
-    }, 300);
-    return () => window.clearTimeout(timerId);
-  }, [dxDescription, tempDxAssistLocalized]);
 
   const sectionTitle = useMemo(
     (): Record<ErWorkspaceSection, string> => ({
@@ -615,42 +571,7 @@ export function EmergencyActiveWorkspaceView() {
     if (dxSubmitting) return;
     setShowCreateDx(false);
     setDxError(null);
-    setDxCode("");
-    setDxDescription("");
-    setDxOnsetDate("");
-    setDxNotes("");
-    setDxSuggestions([]);
   }, [dxSubmitting]);
-
-  const submitCreateDx = useCallback(async () => {
-    if (!encounter?.id || !fid) return;
-    const code = dxCode.trim();
-    if (!code) return;
-    setDxSubmitting(true);
-    setDxError(null);
-    try {
-      await createDiagnosis(fid, encounter.id, {
-        code,
-        description: dxDescription.trim() || undefined,
-        onsetDate: dxOnsetDate.trim() || undefined,
-        notes: dxNotes.trim() || undefined,
-      });
-      setShowCreateDx(false);
-      setRefreshTick((prev) => prev + 1);
-      setDxCode("");
-      setDxDescription("");
-      setDxOnsetDate("");
-      setDxNotes("");
-      setDxSuggestions([]);
-    } catch (e) {
-      console.error(e);
-      setDxError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ?? t("emergencyWorkspace.errSaveDx")
-      );
-    } finally {
-      setDxSubmitting(false);
-    }
-  }, [dxCode, dxDescription, dxOnsetDate, dxNotes, fid, encounter?.id, t]);
 
   if (!rolesReady || !fid) {
     return (
@@ -1292,7 +1213,7 @@ export function EmergencyActiveWorkspaceView() {
 
         </section>
 
-        {showCreateDx ? (
+        {showCreateDx && encounter ? (
           <div
             role="dialog"
             aria-modal="true"
@@ -1312,133 +1233,64 @@ export function EmergencyActiveWorkspaceView() {
             }}
           >
             <div
-              style={{ ...shellBox, maxWidth: 440, width: "100%" }}
+              style={{ ...shellBox, maxWidth: 520, width: "100%" }}
               onClick={(ev) => ev.stopPropagation()}
             >
               <h2 id="er-create-dx-title" style={{ margin: "0 0 14px", fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
                 {t("emergencyWorkspace.createDxTitle")}
               </h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                  {t("emergencyWorkspace.createDxCode")}
-                  <input
-                    type="text"
-                    value={dxCode}
-                    onChange={(e) => setDxCode(e.target.value)}
-                    disabled={dxSubmitting}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #e2e8f0",
-                      fontSize: 14,
-                    }}
-                  />
-                </label>
-                <label
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#334155",
-                    position: "relative",
-                  }}
-                >
-                  {t("emergencyWorkspace.createDxDescription")}
-                  <input
-                    type="text"
-                    value={dxDescription}
-                    onChange={(e) => setDxDescription(e.target.value)}
-                    onBlur={() => {
-                      window.setTimeout(() => setDxSuggestions([]), 150);
-                    }}
-                    autoComplete="off"
-                    disabled={dxSubmitting}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #e2e8f0",
-                      fontSize: 14,
-                    }}
-                  />
-                  {dxSuggestions.length > 0 && (
-                    <ul
-                      role="listbox"
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        right: 0,
-                        top: "100%",
-                        margin: "4px 0 0 0",
-                        padding: 4,
-                        listStyle: "none",
-                        maxHeight: 200,
-                        overflowY: "auto",
-                        borderRadius: 10,
-                        border: "1px solid #e2e8f0",
-                        backgroundColor: "#fff",
-                        boxShadow: "0 4px 12px rgba(15, 23, 42, 0.12)",
-                        zIndex: 2,
-                      }}
-                    >
-                      {dxSuggestions.map((s) => (
-                        <li
-                          key={s.code}
-                          role="option"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setDxCode(s.code);
-                            setDxDescription(s.label);
-                            setDxSuggestions([]);
-                          }}
-                          style={{
-                            cursor: "pointer",
-                            padding: "6px 8px",
-                            borderRadius: 6,
-                            fontSize: 13,
-                            color: "#0f172a",
-                          }}
-                        >
-                          <strong style={{ fontVariantNumeric: "tabular-nums" }}>{s.code}</strong> — {s.label}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                  {t("emergencyWorkspace.createDxOnset")}
-                  <input
-                    type="date"
-                    value={dxOnsetDate}
-                    onChange={(e) => setDxOnsetDate(e.target.value)}
-                    disabled={dxSubmitting}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #e2e8f0",
-                      fontSize: 14,
-                    }}
-                  />
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                  {t("emergencyWorkspace.createDxNotes")}
-                  <textarea
-                    value={dxNotes}
-                    onChange={(e) => setDxNotes(e.target.value)}
-                    rows={3}
-                    disabled={dxSubmitting}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #e2e8f0",
-                      fontSize: 14,
-                      resize: "vertical",
-                      fontFamily: "inherit",
-                    }}
-                  />
-                </label>
-              </div>
+              <Icd10DiagnosisEntryPanel
+                facilityId={fid}
+                language={language}
+                t={tDxEntry}
+                showOnsetNotes
+                saving={dxSubmitting}
+                onError={setDxError}
+                onPickCatalog={async (hit, extra) => {
+                  setDxSubmitting(true);
+                  setDxError(null);
+                  try {
+                    await createDiagnosis(fid, encounter.id, {
+                      icd10CatalogId: hit.id,
+                      onsetDate: extra?.onsetDate,
+                      notes: extra?.notes,
+                    });
+                    setShowCreateDx(false);
+                    setRefreshTick((prev) => prev + 1);
+                  } catch (e) {
+                    console.error(e);
+                    setDxError(
+                      normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+                        t("emergencyWorkspace.errSaveDx")
+                    );
+                  } finally {
+                    setDxSubmitting(false);
+                  }
+                }}
+                onSubmitManual={async (payload) => {
+                  setDxSubmitting(true);
+                  setDxError(null);
+                  try {
+                    await createDiagnosis(fid, encounter.id, {
+                      code: payload.code,
+                      description: payload.description,
+                      onsetDate: payload.onsetDate,
+                      notes: payload.notes,
+                      manualNonCatalog: true,
+                    });
+                    setShowCreateDx(false);
+                    setRefreshTick((prev) => prev + 1);
+                  } catch (e) {
+                    console.error(e);
+                    setDxError(
+                      normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+                        t("emergencyWorkspace.errSaveDx")
+                    );
+                  } finally {
+                    setDxSubmitting(false);
+                  }
+                }}
+              />
               {dxError ? (
                 <p style={{ margin: "12px 0 0", fontSize: 13, color: "#b91c1c" }}>{dxError}</p>
               ) : null}
@@ -1459,23 +1311,6 @@ export function EmergencyActiveWorkspaceView() {
                   }}
                 >
                   {t("emergencyWorkspace.createDxCancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void submitCreateDx()}
-                  disabled={!dxCode.trim() || dxSubmitting}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #2563eb",
-                    backgroundColor: !dxCode.trim() || dxSubmitting ? "#e2e8f0" : "#2563eb",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: !dxCode.trim() || dxSubmitting ? "#94a3b8" : "#fff",
-                    cursor: !dxCode.trim() || dxSubmitting ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {t("emergencyWorkspace.createDxSave")}
                 </button>
               </div>
             </div>

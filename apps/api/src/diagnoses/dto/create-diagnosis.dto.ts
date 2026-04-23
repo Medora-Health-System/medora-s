@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isIcd10CmLikeCodeFormat } from "@medora/shared";
 
 export const createDiagnosisDtoSchema = z
   .object({
@@ -35,6 +36,15 @@ export const createDiagnosisDtoSchema = z
           message: "code is required when manualNonCatalog is true",
           path: ["code"],
         });
+        return;
+      }
+      const mc = data.code.trim();
+      if (!isIcd10CmLikeCodeFormat(mc)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "code must match ICD-10-CM-like format (letter + two digits + optional extension)",
+          path: ["code"],
+        });
       }
       return;
     }
@@ -42,6 +52,15 @@ export const createDiagnosisDtoSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "code is required when not using icd10CatalogId",
+        path: ["code"],
+      });
+      return;
+    }
+    const c = data.code.trim();
+    if (!isIcd10CmLikeCodeFormat(c)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "code must match ICD-10-CM-like format (letter + two digits + optional extension)",
         path: ["code"],
       });
     }
