@@ -264,6 +264,14 @@ enum MedicationFulfillmentIntent {
   PHARMACY_DISPENSE
 }
 
+/// ER-3.2: structured MAR clinical outcome (stored on `MedicationAdministration`; notes are supplemental).
+enum MedicationMarAction {
+  administered
+  refused
+  not_available
+  md_changed
+}
+
 enum DiagnosisStatus {
   ACTIVE
   RESOLVED
@@ -1452,6 +1460,8 @@ model MedicationAdministration {
   ndcDisplaySnapshot      String?  @db.VarChar(32)
   administeredAt          DateTime @default(now())
   administeredByUserId    String
+  /// ER-3.2: primary MAR outcome; null = legacy row (derive from notes only for display).
+  marAction               MedicationMarAction?
   notes                   String?
   createdAt               DateTime @default(now())
 

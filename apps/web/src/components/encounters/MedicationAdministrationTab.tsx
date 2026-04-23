@@ -9,6 +9,7 @@ import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
+import { resolveMedicationMarActionFromStorage } from "@medora/shared";
 
 type AdminRow = {
   id: string;
@@ -16,6 +17,8 @@ type AdminRow = {
   medicationLabelSnapshot?: string | null;
   administeredAt: string;
   notes: string | null;
+  /** From API (`findByEncounter`) or offline queue payload when present. */
+  marAction?: string | null;
   administeredBy: { id: string; firstName: string; lastName: string };
   pendingSync?: boolean;
 };
@@ -71,18 +74,16 @@ function buildMarNotes(action: MarAction, routeLine: string | undefined, userNot
   return lines.join("\n");
 }
 
-/** Latest MAR indicates administered (first line after colon). */
-function latestMarIsAdministered(latest: AdminRow | undefined, tr: (k: string) => string): boolean {
-  const body = latest?.notes?.trim();
-  if (!body) return false;
-  const firstLine = body.split("\n")[0] ?? "";
-  const idx = firstLine.indexOf(":");
-  if (idx < 0) return false;
-  const after = firstLine.slice(idx + 1).trim();
-  const administered = tr("marTab.actions.administered");
-  return (
-    after.startsWith(administered) || after.startsWith("Administré") || after.startsWith("Administered")
-  );
+/**
+ * Resolved MAR clinical outcome: prefer persisted `marAction` (ER-3.2), then legacy notes parse.
+ * `OrderItem.status` only answers active vs terminal lifecycle for the Orders dashboard.
+ */
+function latestMarClinicalActionForRow(latest: AdminRow | undefined): MarAction | undefined {
+  if (!latest) return undefined;
+  return resolveMedicationMarActionFromStorage({
+    marAction: latest.marAction ?? null,
+    notes: latest.notes,
+  });
 }
 
 async function getPendingMedicationAdminsFromQueue(
@@ -109,12 +110,14 @@ async function getPendingMedicationAdminsFromQueue(
     const administeredAt =
       typeof payload.administeredAt === "string" ? payload.administeredAt : item.createdAt;
     const notes = typeof payload.notes === "string" ? payload.notes : null;
+    const marAction = typeof payload.marAction === "string" ? payload.marAction : null;
     out.push({
       id: `local:${item.id}`,
       orderItemId,
       medicationLabelSnapshot: null,
       administeredAt,
       notes,
+      marAction,
       administeredBy: { id: "pending-sync", firstName: pendingSyncFirstName, lastName: pendingSyncLastName },
       pendingSync: true,
     });
@@ -280,6 +283,7 @@ export function MedicationAdministrationTab({
       const routeLine = modalRoute.trim() || modalItem.routeHint;
       const body: Record<string, unknown> = {
         orderItemId,
+        marAction: modalAction,
         administeredAt: new Date().toISOString(),
         ...(routeLine ? { route: routeLine } : {}),
         ...(modalDoseValue.trim() ? { doseValue: Number(modalDoseValue) } : {}),
@@ -374,9 +378,10 @@ export function MedicationAdministrationTab({
                 const list = adminsByOrderItemId.get(row.orderItemId) ?? [];
                 const latest = list[0];
                 const latestTime = latest ? new Date(latest.administeredAt).getTime() : 0;
-                const marSaysAdministered = latestMarIsAdministered(latest, t);
-                const recent =
-                  !marSaysAdministered && latestTime > 0 && nowMs - latestTime < RECENT_MS;
+                const marActionResolved = latestMarClinicalActionForRow(latest);
+                const marSaysAdministered = marActionResolved === "administered";
+                const marRowLocked = Boolean(latest);
+                const recentWindow = latestTime > 0 && nowMs - latestTime < RECENT_MS;
 
                 let statusCell: React.ReactNode;
 
@@ -397,8 +402,13 @@ export function MedicationAdministrationTab({
                   );
                 } else if (marSaysAdministered) {
                   statusCell = <span>🟢 {t("marTab.statusAdministered")}</span>;
-                } else if (recent) {
-                  statusCell = <span>🟡 {t("marTab.statusRecentLabel")}</span>;
+                } else if (latest && !marSaysAdministered) {
+                  statusCell = (
+                    <span>
+                      🟠 {actionLabel(marActionResolved as MarAction, t)}
+                      {recentWindow ? ` · ${t("marTab.statusRecentLabel")}` : ""}
+                    </span>
+                  );
                 } else {
                   statusCell = <span>🔴 {t("marTab.statusPending")}</span>;
                 }
@@ -477,7 +487,7 @@ export function MedicationAdministrationTab({
                     <td style={{ padding: "12px 8px" }}>
                       <button
                         type="button"
-                        disabled={!isOpen || submitting || marSaysAdministered}
+                        disabled={!isOpen || submitting || marRowLocked}
                         onClick={() => openModal(row)}
                         style={{
                           padding: "10px 14px",
@@ -485,11 +495,11 @@ export function MedicationAdministrationTab({
                           minHeight: 44,
                           width: "100%",
                           maxWidth: 200,
-                          backgroundColor: isOpen && !marSaysAdministered ? "#2e7d32" : "#bdbdbd",
+                          backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
                           color: "white",
                           border: "none",
                           borderRadius: 6,
-                          cursor: isOpen && !marSaysAdministered ? "pointer" : "not-allowed",
+                          cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
                           fontWeight: 600,
                         }}
                       >

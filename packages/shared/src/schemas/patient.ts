@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { marClinicalActionSchema } from "../mar/marClinicalAction.js";
 
 /** Corps JSON : `""` sur champs optionnels doit être traité comme absent. */
 const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
@@ -515,6 +516,8 @@ export type OrderCancelDto = z.infer<typeof orderCancelDtoSchema>;
 /** POST /encounters/:encounterId/medication-administrations — append-only MAR log. */
 export const medicationAdministrationCreateDtoSchema = z.object({
   orderItemId: z.string().uuid().optional(),
+  /** Clinical outcome from MAR modal; defaults to administered when omitted (legacy clients). */
+  marAction: marClinicalActionSchema.optional(),
   administeredAt: z.coerce.date().optional(),
   /// Route at administration (IV, IM, SQ, PO, etc.); optional, preferred for billing CPT inference over catalog.
   route: z.preprocess(emptyStrToUndefined, z.string().trim().max(128).optional()),

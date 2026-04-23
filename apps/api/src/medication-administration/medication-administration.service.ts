@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   AuditAction,
-  MedicationFulfillmentIntent,
+  MedicationMarAction,
   OrderEventOrderType,
   OrderEventType,
   OrderStatus,
@@ -10,14 +10,26 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import type { MedicationAdministrationCreateDto } from "@medora/shared";
-import { buildMedicationAdministrationCandidate, normalizeNdc } from "@medora/shared";
+import type { MarClinicalAction, MedicationAdministrationCreateDto } from "@medora/shared";
+import {
+  buildMedicationAdministrationCandidate,
+  deriveMarClinicalActionFromNotes,
+  normalizeNdc,
+  resolveMedicationMarActionFromStorage,
+} from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
-import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
+
+/** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
+const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
+  OrderStatus.PLACED,
+  OrderStatus.PENDING,
+  OrderStatus.ACKNOWLEDGED,
+  OrderStatus.IN_PROGRESS,
+];
 
 @Injectable()
 export class MedicationAdministrationService {
@@ -32,6 +44,91 @@ export class MedicationAdministrationService {
     if (orderType === "MEDICATION") return OrderEventOrderType.MEDICATION;
     if (orderType === "CARE") return OrderEventOrderType.PROCEDURE;
     throw new BadRequestException("Type de commande invalide pour audit.");
+  }
+
+  private assertMedicationLineCloseableViaMar(status: OrderStatus) {
+    if (!MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES.includes(status)) {
+      throw new BadRequestException(
+        "Statut de ligne médicamenteuse incompatible avec l'enregistrement MAR (déjà terminée ou annulée)."
+      );
+    }
+  }
+
+  private async writeMarOrderEventIfNeeded(
+    tx: Prisma.TransactionClient,
+    input: {
+      facilityId: string;
+      orderId: string;
+      encounterId: string;
+      orderType: string;
+      orderItemId: string;
+      medicationAdministrationId: string;
+      marAction: MarClinicalAction;
+      performedByUserId: string;
+    }
+  ): Promise<void> {
+    const dedupeKey = `mar-lifecycle:${input.medicationAdministrationId}`;
+    const existingByDedupe = await tx.orderEvent.findFirst({
+      where: {
+        orderId: input.orderId,
+        eventType: OrderEventType.COMPLETED,
+        metadata: {
+          path: ["dedupeKey"],
+          equals: dedupeKey,
+        } as Prisma.JsonFilter,
+      },
+    });
+    if (existingByDedupe) return;
+    const existingByAdminId = await tx.orderEvent.findFirst({
+      where: {
+        orderId: input.orderId,
+        eventType: OrderEventType.COMPLETED,
+        metadata: {
+          path: ["medicationAdministrationId"],
+          equals: input.medicationAdministrationId,
+        } as Prisma.JsonFilter,
+      },
+    });
+    if (existingByAdminId) return;
+    const roleSnapshot = await this.buildRoleSnapshotTx(
+      tx,
+      input.facilityId,
+      input.performedByUserId
+    );
+    await tx.orderEvent.create({
+      data: {
+        facilityId: input.facilityId,
+        encounterId: input.encounterId,
+        orderId: input.orderId,
+        orderType: this.mapOrderTypeToOrderEventType(input.orderType),
+        eventType: OrderEventType.COMPLETED,
+        performedByUserId: input.performedByUserId,
+        performedAt: new Date(),
+        roleSnapshot,
+        metadata: {
+          dedupeKey,
+          orderItemId: input.orderItemId,
+          medicationAdministrationId: input.medicationAdministrationId,
+          marAction: input.marAction,
+          source: "MEDICATION_ADMINISTRATION_SERVICE",
+        } as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  private toPrismaMarAction(action: MarClinicalAction): MedicationMarAction {
+    switch (action) {
+      case "administered":
+        return MedicationMarAction.administered;
+      case "refused":
+        return MedicationMarAction.refused;
+      case "not_available":
+        return MedicationMarAction.not_available;
+      case "md_changed":
+        return MedicationMarAction.md_changed;
+      default:
+        return MedicationMarAction.administered;
+    }
   }
 
   private async buildRoleSnapshotTx(
@@ -81,13 +178,20 @@ export class MedicationAdministrationService {
       throw new NotFoundException("Encounter not found");
     }
 
-    return this.prisma.medicationAdministration.findMany({
+    const rows = await this.prisma.medicationAdministration.findMany({
       where: { encounterId, facilityId },
       orderBy: { administeredAt: "desc" },
       include: {
         administeredBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+    return rows.map((r) => ({
+      ...r,
+      marAction: resolveMedicationMarActionFromStorage({
+        marAction: r.marAction ?? null,
+        notes: r.notes,
+      }),
+    }));
   }
 
   async create(
@@ -176,6 +280,9 @@ export class MedicationAdministrationService {
       : catalogMedication?.ndcDisplay?.trim() || null;
     const candidateQuantityUnit = quantityUnit || catalogMedication?.billingUnitType?.trim() || null;
 
+    const marActionResolved: MarClinicalAction =
+      data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
+
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.medicationAdministration.create({
         data: {
@@ -194,6 +301,7 @@ export class MedicationAdministrationService {
           ndcDisplaySnapshot,
           administeredAt: data.administeredAt ?? new Date(),
           administeredByUserId,
+          marAction: this.toPrismaMarAction(marActionResolved),
           notes: data.notes?.trim() ? data.notes.trim() : null,
         },
         include: {
@@ -212,36 +320,33 @@ export class MedicationAdministrationService {
       });
 
       const line = linkedMedicationLine;
-      if (
-        line &&
-        line.medicationFulfillmentIntent === MedicationFulfillmentIntent.ADMINISTER_CHART &&
-        line.status !== OrderStatus.COMPLETED &&
-        line.status !== OrderStatus.CANCELLED
-      ) {
-        assertCanTransition(line.status, OrderStatus.COMPLETED);
-        const lifecycleState = applyLifecycleWithStatus(line.lifecycleState, OrderStatus.COMPLETED);
-        await tx.orderItem.update({
-          where: { id: line.id },
-          data: {
-            status: OrderStatus.COMPLETED,
-            lifecycleState,
-            completedAt: new Date(),
-            completedByUserId: administeredByUserId,
-          },
-        });
-        const roleSnapshot = await this.buildRoleSnapshotTx(tx, facilityId, administeredByUserId);
-        await tx.orderEvent.create({
-          data: {
-            facilityId,
-            encounterId: line.order.encounterId,
-            orderId: line.orderId,
-            orderType: this.mapOrderTypeToOrderEventType(line.order.type),
-            eventType: OrderEventType.COMPLETED,
-            performedByUserId: administeredByUserId,
-            performedAt: new Date(),
-            roleSnapshot,
-            metadata: { orderItemId: line.id, medicationAdministrationId: row.id },
-          },
+      if (line && line.catalogItemType === "MEDICATION") {
+        /**
+         * Orders dashboard: `OrderItem.status === COMPLETED` means “terminal / not open” for all MAR outcomes.
+         * Clinical outcome (administered vs refused, etc.) is `MedicationAdministration.marAction` + OrderEvent metadata.
+         */
+        if (line.status !== OrderStatus.COMPLETED && line.status !== OrderStatus.CANCELLED) {
+          this.assertMedicationLineCloseableViaMar(line.status);
+          const lifecycleState = applyLifecycleWithStatus(line.lifecycleState, OrderStatus.COMPLETED);
+          await tx.orderItem.update({
+            where: { id: line.id },
+            data: {
+              status: OrderStatus.COMPLETED,
+              lifecycleState,
+              completedAt: new Date(),
+              completedByUserId: administeredByUserId,
+            },
+          });
+        }
+        await this.writeMarOrderEventIfNeeded(tx, {
+          facilityId,
+          orderId: line.orderId,
+          encounterId: line.order.encounterId,
+          orderType: line.order.type,
+          orderItemId: line.id,
+          medicationAdministrationId: row.id,
+          marAction: marActionResolved,
+          performedByUserId: administeredByUserId,
         });
       }
 
@@ -253,33 +358,35 @@ export class MedicationAdministrationService {
         ? created.administeredAt.toISOString()
         : new Date().toISOString();
     const medLabel = created.medicationLabelSnapshot?.trim() || "Medication";
-    await appendBillingCaptureCandidate(
-      this.prisma,
-      encounterId,
-      facilityId,
-      buildMedicationAdministrationCandidate({
-        administrationId: created.id,
+    if (marActionResolved === "administered") {
+      await appendBillingCaptureCandidate(
+        this.prisma,
         encounterId,
-        patientId: encounter.patientId,
         facilityId,
-        medicationLabel: medLabel,
-        atIso,
-        ndc11: created.ndc11Snapshot,
-        ndcDisplay: created.ndcDisplaySnapshot,
-        doseValue: created.doseValue != null ? Number(created.doseValue) : null,
-        doseUnit: created.doseUnit,
-        administeredQuantity:
-          created.administeredQuantity != null ? Number(created.administeredQuantity) : null,
-        billingQuantity: created.billingQuantity != null ? Number(created.billingQuantity) : null,
-        quantityUnit: created.quantityUnit,
-        createdByUserId: administeredByUserId,
-      })
-    );
+        buildMedicationAdministrationCandidate({
+          administrationId: created.id,
+          encounterId,
+          patientId: encounter.patientId,
+          facilityId,
+          medicationLabel: medLabel,
+          atIso,
+          ndc11: created.ndc11Snapshot,
+          ndcDisplay: created.ndcDisplaySnapshot,
+          doseValue: created.doseValue != null ? Number(created.doseValue) : null,
+          doseUnit: created.doseUnit,
+          administeredQuantity:
+            created.administeredQuantity != null ? Number(created.administeredQuantity) : null,
+          billingQuantity: created.billingQuantity != null ? Number(created.billingQuantity) : null,
+          quantityUnit: created.quantityUnit,
+          createdByUserId: administeredByUserId,
+        })
+      );
 
-    void tryAutoMedicationAdministrationBilling(this.prisma, {
-      facilityId,
-      medicationAdministrationId: created.id,
-    });
+      void tryAutoMedicationAdministrationBilling(this.prisma, {
+        facilityId,
+        medicationAdministrationId: created.id,
+      });
+    }
 
     return created;
   }
