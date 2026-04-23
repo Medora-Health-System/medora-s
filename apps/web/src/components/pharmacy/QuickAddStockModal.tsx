@@ -21,9 +21,9 @@ export function QuickAddStockModal({
   onSuccess: () => void;
   initialMedication?: MedicationSearchItem | null;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [query, setQuery] = useState(
-    initialMedication ? medicationSearchLabel(initialMedication) : ""
+    initialMedication ? medicationSearchLabel(initialMedication, language) : ""
   );
   const [selected, setSelected] = useState<MedicationSearchItem | null>(initialMedication ?? null);
   const [quantityOnHand, setQuantityOnHand] = useState("");
@@ -38,13 +38,13 @@ export function QuickAddStockModal({
   useEffect(() => {
     if (initialMedication) {
       setSelected(initialMedication);
-      setQuery(medicationSearchLabel(initialMedication));
+      setQuery(medicationSearchLabel(initialMedication, language));
     }
-  }, [initialMedication]);
+  }, [initialMedication, language]);
 
   const handleSelect = (med: MedicationSearchItem) => {
     setSelected(med);
-    setQuery(medicationSearchLabel(med));
+    setQuery(medicationSearchLabel(med, language));
     setTimeout(() => qtyInputRef.current?.focus(), 100);
   };
 
@@ -96,7 +96,7 @@ export function QuickAddStockModal({
           onSelect={handleSelect}
           favoritesFirst
           autoFocus={!initialMedication}
-          value={selected ? medicationSearchLabel(selected) : query}
+          value={selected ? medicationSearchLabel(selected, language) : query}
           onChange={(val) => {
             setQuery(val ?? "");
             if (!val?.trim()) setSelected(null);
@@ -106,31 +106,31 @@ export function QuickAddStockModal({
 
       {selected && (
         <>
-          <Field label="Dosage">
+          <Field label={t("pharmacyQuickAdd.fieldStrength")}>
             <input
               type="text"
               readOnly
-              value={selected.metadata?.strength ?? "—"}
+              value={selected.metadata?.strength ?? t("common.dash")}
               style={{ ...inputStyle, backgroundColor: "#f5f5f5", cursor: "default" }}
             />
           </Field>
-          <Field label="Forme">
+          <Field label={t("pharmacyQuickAdd.fieldDosageForm")}>
             <input
               type="text"
               readOnly
-              value={selected.metadata?.dosageForm ?? "—"}
+              value={selected.metadata?.dosageForm ?? t("common.dash")}
               style={{ ...inputStyle, backgroundColor: "#f5f5f5", cursor: "default" }}
             />
           </Field>
-          <Field label="Voie">
+          <Field label={t("pharmacyQuickAdd.fieldRoute")}>
             <input
               type="text"
               readOnly
-              value={selected.metadata?.route ?? "—"}
+              value={selected.metadata?.route ?? t("common.dash")}
               style={{ ...inputStyle, backgroundColor: "#f5f5f5", cursor: "default" }}
             />
           </Field>
-          <Field label="Quantité initiale *">
+          <Field label={t("pharmacyQuickAdd.fieldInitialQty")}>
             <input
               ref={qtyInputRef}
               name="quick-add-qty"
@@ -138,11 +138,11 @@ export function QuickAddStockModal({
               min={1}
               value={quantityOnHand}
               onChange={(e) => setQuantityOnHand(e.target.value)}
-              placeholder="Ex. 100"
+              placeholder={t("pharmacyQuickAdd.qtyPlaceholderExample")}
               style={inputStyle}
             />
           </Field>
-          <Field label="Date d'expiration">
+          <Field label={t("pharmacyQuickAdd.fieldExpiration")}>
             <input
               type="date"
               value={expirationDate}
@@ -150,16 +150,16 @@ export function QuickAddStockModal({
               style={inputStyle}
             />
           </Field>
-          <Field label="Numéro de lot">
+          <Field label={t("pharmacyQuickAdd.fieldLot")}>
             <input
               type="text"
               value={lotNumber}
               onChange={(e) => setLotNumber(e.target.value)}
-              placeholder="Optionnel"
+              placeholder={t("pharmacyAdjustStock.optionalPlaceholder")}
               style={inputStyle}
             />
           </Field>
-          <Field label="Seuil d'alerte">
+          <Field label={t("pharmacyQuickAdd.fieldReorder")}>
             <input
               type="number"
               min={0}
@@ -168,12 +168,12 @@ export function QuickAddStockModal({
               style={inputStyle}
             />
           </Field>
-          <Field label="Unité">
+          <Field label={t("pharmacyQuickAdd.fieldUnit")}>
             <input
               type="text"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              placeholder="Ex. comprimé, flacon"
+              placeholder={t("pharmacyQuickAdd.unitPlaceholderExample")}
               style={inputStyle}
             />
           </Field>

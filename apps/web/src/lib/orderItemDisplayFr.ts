@@ -66,10 +66,10 @@ export function getOrderItemDisplayLabelForLanguage(
   if (language === "fr") return orderItemDisplayLabelFr(item);
   const generic = item.displayLabel?.trim();
   if (generic) return generic;
-  if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
   const resolvedType = resolveCatalogItemType(item);
   const fromCatalog = catalogDisplayLabelEn(item, resolvedType);
   if (fromCatalog) return fromCatalog;
+  if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
   const man = item.manualLabel?.trim();
   if (man) {
     const sec = item.manualSecondaryText?.trim();

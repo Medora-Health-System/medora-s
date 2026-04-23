@@ -3,6 +3,8 @@
 import React from "react";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
 import { medicationSearchLabel } from "@/lib/pharmacyApi";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
+import { useI18n } from "@/lib/i18n";
 
 const chipStyle: React.CSSProperties = {
   display: "inline-flex",
@@ -28,6 +30,7 @@ export function MedicationChip({
   actionLabel?: string;
   compact?: boolean;
 }) {
+  const { language } = useI18n();
   return (
     <button
       type="button"
@@ -43,7 +46,9 @@ export function MedicationChip({
       }}
     >
       <span style={{ fontWeight: 500 }}>
-        {compact ? med.displayNameFr : medicationSearchLabel(med)}
+        {compact
+          ? catalogMedicationNameForLocale(med, language)
+          : medicationSearchLabel(med, language)}
       </span>
       {actionLabel && (
         <span style={{ color: "#666", fontSize: 12 }}>{actionLabel}</span>

@@ -3,6 +3,7 @@
 import React from "react";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
 import { medicationSearchLabel } from "@/lib/pharmacyApi";
+import { useI18n } from "@/lib/i18n";
 
 const rowStyle: React.CSSProperties = {
   width: "100%",
@@ -26,6 +27,7 @@ export function MedicationSuggestionList({
   onSelect: (med: MedicationSearchItem) => void;
   stockBadge?: (med: MedicationSearchItem) => string | null;
 }) {
+  const { t, language } = useI18n();
   return (
     <>
       {items.map((med, idx) => {
@@ -50,9 +52,11 @@ export function MedicationSuggestionList({
             }}
           >
             <div style={{ fontWeight: 500 }}>
-              {medicationSearchLabel(med)}
+              {medicationSearchLabel(med, language)}
               {med.isEssential && (
-                <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>Essentiel</span>
+                <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>
+                  {t("pharmacyMedicationSearch.essentialBadge")}
+                </span>
               )}
               {med.isFavorite && (
                 <span style={{ marginLeft: 6, fontSize: 12 }} aria-hidden>

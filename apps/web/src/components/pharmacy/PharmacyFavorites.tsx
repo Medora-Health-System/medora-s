@@ -45,7 +45,7 @@ export function PharmacyFavorites({
 
   return (
     <div style={sectionStyle}>
-      <div style={titleStyle}>Médicaments favoris</div>
+      <div style={titleStyle}>{t("pharmacyFavorites.title")}</div>
       {loading ? (
         <div style={{ fontSize: 13, color: "#666" }}>{t("common.loading")}</div>
       ) : (
@@ -64,7 +64,7 @@ export function PharmacyFavorites({
                   onClick={() => onAddToStock(med)}
                   style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", background: "#fff" }}
                 >
-                  Ajouter
+                  {t("pharmacyFavorites.addToStock")}
                 </button>
               )}
               {onDispense && (
@@ -73,7 +73,7 @@ export function PharmacyFavorites({
                   onClick={() => onDispense(med)}
                   style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", background: "#fff" }}
                 >
-                  Délivrer
+                  {t("pharmacyFavorites.dispense")}
                 </button>
               )}
             </span>

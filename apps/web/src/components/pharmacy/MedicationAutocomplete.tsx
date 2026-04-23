@@ -114,7 +114,7 @@ function MedicationAutocompleteControlled({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const search = useMedicationSearch(facilityId, { favoritesFirst, limit: 20 });
@@ -157,7 +157,7 @@ function MedicationAutocompleteControlled({
       const selected = search.selectCurrent();
       if (selected) {
         onSelect(selected);
-        onChange(medicationSearchLabel(selected));
+        onChange(medicationSearchLabel(selected, language));
         search.close();
       }
       return;
@@ -170,7 +170,7 @@ function MedicationAutocompleteControlled({
 
   const handleSelect = (med: MedicationSearchItem) => {
     onSelect(med);
-    onChange(medicationSearchLabel(med));
+    onChange(medicationSearchLabel(med, language));
     search.close();
   };
 

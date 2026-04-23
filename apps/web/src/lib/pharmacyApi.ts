@@ -1,3 +1,4 @@
+import type { SupportedLanguage } from "@/i18n/config";
 import { apiFetch } from "./apiClient";
 import { searchCatalog } from "./catalogSearchApi";
 import type { CatalogSearchItem } from "./catalogSearchTypes";
@@ -5,8 +6,13 @@ import type { CatalogSearchItem } from "./catalogSearchTypes";
 /** Réponse normalisée `GET /catalog/medications/search` (identique au type catalogue). */
 export type MedicationSearchItem = CatalogSearchItem;
 
-export function medicationSearchLabel(m: CatalogSearchItem): string {
-  return [m.displayNameFr, m.secondaryText].filter(Boolean).join(" · ");
+export function medicationSearchLabel(m: CatalogSearchItem, language: SupportedLanguage): string {
+  const primary =
+    language === "fr"
+      ? (m.displayNameFr?.trim() || m.name?.trim() || "")
+      : (m.name?.trim() || m.displayNameFr?.trim() || "");
+  const head = primary || m.displayNameFr?.trim() || m.code;
+  return [head, m.secondaryText].filter(Boolean).join(" · ");
 }
 
 export type CatalogMedication = {

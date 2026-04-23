@@ -20,6 +20,10 @@ import {
 } from "@/features/emergency/erOrderLifecycleUi";
 import { ER_IV_LIFECYCLE_ORDER_TYPE } from "@/features/emergency/erIvOrderLifecycle";
 import { apiFetch } from "@/lib/apiClient";
+import {
+  formatCancellationReasonForDisplay,
+  ORDER_CANCEL_API_REASON_PATIENT_REQUEST,
+} from "@/lib/orderCancelReasonDisplay";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -124,6 +128,16 @@ function lifecycleOutcomeSubLabel(metadata: unknown, tr: (k: string) => string):
   const lo = (metadata as { lifecycleOutcome?: unknown }).lifecycleOutcome;
   if (lo === "VERIFIED") return tr("orderEvent.resultVerified");
   if (lo === "RESULTED") return tr("orderEvent.resultAcknowledged");
+  return null;
+}
+
+function marActionOutcomeSubLabel(metadata: unknown, tr: (k: string) => string): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const ma = (metadata as { marAction?: unknown }).marAction;
+  if (ma === "administered") return tr("orderEvent.medicationCompleted");
+  if (ma === "refused") return tr("orderEvent.medicationOutcomeRefused");
+  if (ma === "not_available") return tr("orderEvent.medicationOutcomeNotAvailable");
+  if (ma === "md_changed") return tr("orderEvent.medicationOutcomeMdChanged");
   return null;
 }
 
@@ -370,7 +384,7 @@ export function EmergencyErOrdersPanel({
       await apiFetch(`/orders/${orderId}/cancel`, {
         method: "POST",
         facilityId,
-        body: JSON.stringify({ cancellationReason: "Demande annulée" }),
+        body: JSON.stringify({ cancellationReason: ORDER_CANCEL_API_REASON_PATIENT_REQUEST }),
       });
       setOrdersRefresh((x) => x + 1);
     } finally {
@@ -540,8 +554,9 @@ export function EmergencyErOrdersPanel({
                 <div style={{ display: "grid", gap: 6 }}>
                   {completedRows.map((e) => {
                     const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
+                    const marLine = marActionOutcomeSubLabel(e.metadata, t);
                     const careLine = careLineCompletedSubLabel(e, e.metadata, t);
-                    const secondaryLine = outcomeLine ?? careLine;
+                    const secondaryLine = outcomeLine ?? marLine ?? careLine;
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
@@ -592,7 +607,8 @@ export function EmergencyErOrdersPanel({
                         {e.roleSnapshot ?? "—"}
                       </div>
                       <div style={{ fontSize: 11, color: "#475569" }}>
-                        {t("orderEvent.cancelReason")}: {e.note || e.order?.cancellationReason || "—"}
+                        {t("orderEvent.cancelReason")}:{" "}
+                        {formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t)}
                       </div>
                     </div>
                     );

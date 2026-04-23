@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { InventoryItemRow } from "@/lib/pharmacyApi";
+import { useI18n } from "@/lib/i18n";
 
 const th: React.CSSProperties = {
   padding: 12,
@@ -26,31 +27,32 @@ export function InventoryTable({
   onReceive?: (id: string) => void;
   onAdjust?: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const fmtDate = (d: string | null) =>
-    d ? new Date(d).toLocaleDateString() : "—";
+    d ? new Date(d).toLocaleDateString() : t("common.dash");
 
   return (
     <div style={{ overflowX: "auto", backgroundColor: "white", borderRadius: 4 }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th style={th}>Médicament</th>
-            <th style={th}>Code</th>
-            <th style={th}>Référence</th>
-            <th style={th}>Lot</th>
-            <th style={th}>Péremption</th>
-            <th style={th}>En stock</th>
-            <th style={th}>Réappro.</th>
-            <th style={th}>Unité</th>
-            <th style={th}>Actif</th>
-            {showActions && <th style={th}>Actions</th>}
+            <th style={th}>{t("pharmacyInventoryTable.medication")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.code")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.reference")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.lot")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.expiration")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.onHand")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.reorder")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.unit")}</th>
+            <th style={th}>{t("pharmacyInventoryTable.active")}</th>
+            {showActions && <th style={th}>{t("pharmacyInventoryTable.actions")}</th>}
           </tr>
         </thead>
         <tbody>
           {items.length === 0 ? (
             <tr>
               <td colSpan={showActions ? 10 : 9} style={{ ...td, color: "#666" }}>
-                Aucune ligne.
+                {t("pharmacyInventoryTable.empty")}
               </td>
             </tr>
           ) : (
@@ -64,7 +66,7 @@ export function InventoryTable({
                 <td style={td}>{row.quantityOnHand}</td>
                 <td style={td}>{row.reorderLevel}</td>
                 <td style={td}>{row.unit ?? "—"}</td>
-                <td style={td}>{row.isActive ? "Oui" : "Non"}</td>
+                <td style={td}>{row.isActive ? t("pharmacyInventoryTable.yes") : t("pharmacyInventoryTable.no")}</td>
                 {showActions && (
                   <td style={td}>
                     <button
@@ -72,14 +74,14 @@ export function InventoryTable({
                       onClick={() => onReceive?.(row.id)}
                       style={{ marginRight: 8, padding: "4px 10px", fontSize: 13 }}
                     >
-                      Réceptionner
+                      {t("pharmacyInventoryTable.receive")}
                     </button>
                     <button
                       type="button"
                       onClick={() => onAdjust?.(row.id)}
                       style={{ padding: "4px 10px", fontSize: 13 }}
                     >
-                      Ajuster
+                      {t("pharmacyInventoryTable.adjust")}
                     </button>
                   </td>
                 )}
