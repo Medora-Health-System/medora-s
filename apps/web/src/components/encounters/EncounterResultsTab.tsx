@@ -241,7 +241,6 @@ export function EncounterResultsTab({
       {rows.map(({ item, pendingSync }) => {
         const v = clinicalResultFromOrderItemLike({
           displayLabel: getOrderItemDisplayLabelForLanguage(item, language, t),
-          displayLabelFr: item.displayLabelFr,
           status: item.status,
           catalogItemType: item.catalogItemType,
           result: item.result,

@@ -26,6 +26,7 @@ import {
   tEncounterType,
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
 type Patient = {
@@ -427,8 +428,10 @@ function PharmacyDispensePageContent() {
                 <option value="">{t("pharmacyDispense.chooseItemOption")}</option>
                 {inventoryItems.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {(i.catalogMedication as { displayNameFr?: string })?.displayNameFr ??
-                      i.catalogMedication?.name}{" "}
+                    {catalogMedicationNameForLocale(i.catalogMedication, language) ||
+                      i.catalogMedication?.name ||
+                      i.catalogMedication?.code ||
+                      "—"}{" "}
                     — SKU {i.sku} — {t("pharmacyDispense.onHand")} {i.quantityOnHand}
                   </option>
                 ))}

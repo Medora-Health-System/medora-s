@@ -243,8 +243,9 @@ export function getPatientChartPrintHtml(params: {
           (d) =>
             `<li>${esc(
               catalogMedicationNameForLocale(d.catalogMedication, lang) ||
-                d.catalogMedication.name ||
-                d.catalogMedication.displayNameFr ||
+                (lang === "en"
+                  ? d.catalogMedication.name || d.catalogMedication.code
+                  : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
                 "—"
             )} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt, lang)}</li>`
         )
@@ -336,8 +337,9 @@ export function getPatientChartPrintHtml(params: {
     .map((d) => {
       const med = esc(
         catalogMedicationNameForLocale(d.catalogMedication, lang) ||
-          d.catalogMedication.name ||
-          d.catalogMedication.displayNameFr ||
+          (lang === "en"
+            ? d.catalogMedication.name || d.catalogMedication.code
+            : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
           "—"
       );
       const by = d.dispensedBy

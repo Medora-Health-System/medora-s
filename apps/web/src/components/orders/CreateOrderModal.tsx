@@ -28,16 +28,17 @@ function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
 function catalogLineLabel(item: CatalogSearchItem, language: SupportedLanguage): string {
   if (item.type === "MEDICATION") return medicationSearchLabel(item, language);
   if (item.type === "LAB_TEST" || item.type === "IMAGING_STUDY") {
-    const en = item.name?.trim();
-    const fr = item.displayNameFr?.trim();
     const primary =
-      language === "en" ? (en || fr || "") : (fr || en || "");
+      language === "en"
+        ? item.name?.trim() || item.code?.trim() || ""
+        : item.displayNameFr?.trim() || item.name?.trim() || item.code?.trim() || "";
     const line = [primary, item.secondaryText].filter(Boolean).join(" · ");
     return line || item.code;
   }
-  const en = item.name?.trim();
-  const fr = item.displayNameFr?.trim();
-  const primary = language === "en" ? (en || fr || "") : (fr || en || "");
+  const primary =
+    language === "en"
+      ? item.name?.trim() || item.code?.trim() || ""
+      : item.displayNameFr?.trim() || item.name?.trim() || item.code?.trim() || "";
   const line = [primary, item.secondaryText].filter(Boolean).join(" · ");
   return line || item.code;
 }

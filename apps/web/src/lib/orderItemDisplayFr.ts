@@ -1,5 +1,6 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
+import { isInvalidTechnicalOrderDisplayLabel } from "@medora/shared";
 
 /**
  * Libellé affichable pour une ligne d’ordre (priorité alignée sur l’API enrichOrderItemsForDisplay).
@@ -13,9 +14,22 @@ function orderItemDisplayLabelFr(item: {
   manualLabel?: string | null;
   manualSecondaryText?: string | null;
   catalogItemType?: string | null;
-  catalogLabTest?: { displayNameFr?: string | null; name?: string | null } | null;
-  catalogImagingStudy?: { displayNameFr?: string | null; name?: string | null; modality?: string | null } | null;
+  catalogLabTest?: {
+    code?: string | null;
+    displayNameEn?: string | null;
+    displayNameFr?: string | null;
+    name?: string | null;
+  } | null;
+  catalogImagingStudy?: {
+    code?: string | null;
+    displayNameEn?: string | null;
+    displayNameFr?: string | null;
+    name?: string | null;
+    modality?: string | null;
+  } | null;
   catalogMedication?: {
+    code?: string | null;
+    displayNameEn?: string | null;
     displayNameFr?: string | null;
     name?: string | null;
     strength?: string | null;
@@ -25,9 +39,12 @@ function orderItemDisplayLabelFr(item: {
   strength?: string | null;
   notes?: string | null;
 }): string {
-  if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
+  const resolvedTypeFr = resolveCatalogItemType(item);
+  const catGuardFr = String(item.catalogItemType ?? resolvedTypeFr ?? "CARE");
+  const dlf = item.displayLabelFr?.trim();
+  if (dlf && !isInvalidTechnicalOrderDisplayLabel(dlf, catGuardFr)) return dlf;
 
-  const resolvedType = resolveCatalogItemType(item);
+  const resolvedType = resolvedTypeFr;
   const fromCatalog = catalogDisplayLabelFr(item, resolvedType);
   if (fromCatalog) return fromCatalog;
 
@@ -50,9 +67,22 @@ export function getOrderItemDisplayLabelForLanguage(
     manualLabel?: string | null;
     manualSecondaryText?: string | null;
     catalogItemType?: string | null;
-    catalogLabTest?: { displayNameFr?: string | null; name?: string | null } | null;
-    catalogImagingStudy?: { displayNameFr?: string | null; name?: string | null; modality?: string | null } | null;
+    catalogLabTest?: {
+      code?: string | null;
+      displayNameEn?: string | null;
+      displayNameFr?: string | null;
+      name?: string | null;
+    } | null;
+    catalogImagingStudy?: {
+      code?: string | null;
+      displayNameEn?: string | null;
+      displayNameFr?: string | null;
+      name?: string | null;
+      modality?: string | null;
+    } | null;
     catalogMedication?: {
+      code?: string | null;
+      displayNameEn?: string | null;
       displayNameFr?: string | null;
       name?: string | null;
       strength?: string | null;
@@ -66,16 +96,17 @@ export function getOrderItemDisplayLabelForLanguage(
   t: (key: string) => string
 ): string {
   if (language === "fr") return orderItemDisplayLabelFr(item);
-  const generic = (item.displayLabelEn ?? item.displayLabel)?.trim();
-  if (generic) return generic;
   const resolvedType = resolveCatalogItemType(item);
-  const fromCatalog = catalogDisplayLabelEn(item, resolvedType);
+  const catType = String(item.catalogItemType ?? resolvedType ?? "CARE");
+  const enApi = item.displayLabelEn?.trim();
+  if (enApi && !isInvalidTechnicalOrderDisplayLabel(enApi, catType)) return enApi;
+  const fromCatalog = catalogDisplayLabelEn(item, resolvedType, catType);
   if (fromCatalog) return fromCatalog;
-  if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
   const man = item.manualLabel?.trim();
-  if (man) {
+  if (man && !isInvalidTechnicalOrderDisplayLabel(man, catType)) {
     const sec = item.manualSecondaryText?.trim();
-    return sec ? `${man} — ${sec}` : man;
+    const line = sec ? `${man} — ${sec}` : man;
+    if (!isInvalidTechnicalOrderDisplayLabel(line, catType)) return line;
   }
   return typeFallbackEn(resolvedType, t);
 }
@@ -149,9 +180,22 @@ function catalogDisplayLabelFr(
 
 function catalogDisplayLabelEn(
   item: {
-    catalogLabTest?: { displayNameFr?: string | null; name?: string | null } | null;
-    catalogImagingStudy?: { displayNameFr?: string | null; name?: string | null; modality?: string | null } | null;
+    catalogLabTest?: {
+      code?: string | null;
+      displayNameEn?: string | null;
+      displayNameFr?: string | null;
+      name?: string | null;
+    } | null;
+    catalogImagingStudy?: {
+      code?: string | null;
+      displayNameEn?: string | null;
+      displayNameFr?: string | null;
+      name?: string | null;
+      modality?: string | null;
+    } | null;
     catalogMedication?: {
+      code?: string | null;
+      displayNameEn?: string | null;
       displayNameFr?: string | null;
       name?: string | null;
       strength?: string | null;
@@ -160,26 +204,29 @@ function catalogDisplayLabelEn(
     } | null;
     strength?: string | null;
   },
-  t: string | null
+  t: string | null,
+  catalogItemTypeForGuard: string
 ): string | null {
   if (t === "LAB_TEST") {
     const c = item.catalogLabTest;
-    if (c?.name?.trim()) return c.name.trim();
-    if (c?.displayNameFr?.trim()) return c.displayNameFr.trim();
-    return null;
+    const line =
+      pickFirstValidEnCatalogField(catalogItemTypeForGuard, c?.displayNameEn, c?.name, c?.code) ?? null;
+    return line;
   }
   if (t === "IMAGING_STUDY") {
     const c = item.catalogImagingStudy;
-    const base = c?.name?.trim() || c?.displayNameFr?.trim();
+    const base =
+      pickFirstValidEnCatalogField(catalogItemTypeForGuard, c?.displayNameEn, c?.name, c?.code) ?? null;
     if (base) {
       const mod = c?.modality ? ` (${c.modality})` : "";
-      return `${base}${mod}`;
+      const full = `${base}${mod}`;
+      return isInvalidTechnicalOrderDisplayLabel(full, catalogItemTypeForGuard) ? base : full;
     }
     return null;
   }
   if (t === "MEDICATION") {
     const c = item.catalogMedication;
-    const n = c?.name?.trim() || c?.displayNameFr?.trim();
+    const n = pickFirstValidEnCatalogField(catalogItemTypeForGuard, c?.displayNameEn, c?.name, c?.code);
     const parts = [
       n,
       item.strength?.trim() || c?.strength?.trim(),
@@ -188,6 +235,17 @@ function catalogDisplayLabelEn(
     ].filter(Boolean);
     if (parts.length) return parts.join(" · ");
     return null;
+  }
+  return null;
+}
+
+function pickFirstValidEnCatalogField(
+  catalogItemType: string,
+  ...candidates: (string | null | undefined)[]
+): string | null {
+  for (const c of candidates) {
+    const v = (c ?? "").trim();
+    if (v && !isInvalidTechnicalOrderDisplayLabel(v, catalogItemType)) return v;
   }
   return null;
 }
@@ -210,12 +268,18 @@ function typeFallbackEn(t: string | null, tr: (key: string) => string): string {
 
 /** Base medication name: English catalog `name` first in EN, French display name first in FR. */
 export function catalogMedicationNameForLocale(
-  m: { name?: string | null; displayNameFr?: string | null } | null | undefined,
+  m: {
+    code?: string | null;
+    name?: string | null;
+    displayNameEn?: string | null;
+    displayNameFr?: string | null;
+  } | null | undefined,
   language: SupportedLanguage
 ): string {
   if (!m) return "";
+  const catType = "MEDICATION";
   if (language === "en") {
-    return (m.name?.trim() || m.displayNameFr?.trim() || "").trim();
+    return pickFirstValidEnCatalogField(catType, m.displayNameEn, m.name, m.code) ?? "";
   }
-  return (m.displayNameFr?.trim() || m.name?.trim() || "").trim();
+  return (m.displayNameFr?.trim() || m.name?.trim() || m.displayNameEn?.trim() || "").trim();
 }

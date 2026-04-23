@@ -7,8 +7,20 @@ import {
   type CatalogSearchAdapter,
 } from "@/lib/catalogSearchAdapter";
 import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSearchOfflineAdapter";
+import type { SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
+import { medicationSearchLabel } from "@/lib/pharmacyApi";
 import { useI18n } from "@/lib/i18n";
+
+function catalogListPrimaryLine(item: CatalogSearchItem, language: SupportedLanguage): string {
+  if (item.type === "MEDICATION") {
+    return medicationSearchLabel(item, language);
+  }
+  if (language === "en") {
+    return item.name?.trim() || item.code?.trim() || "";
+  }
+  return item.displayNameFr?.trim() || item.name?.trim() || item.code?.trim() || "";
+}
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -87,7 +99,7 @@ export function SharedCatalogAutocomplete({
   stockBadge,
 }: SharedCatalogAutocompleteProps) {
   void _value;
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const adapter = useMemo(
@@ -218,7 +230,7 @@ export function SharedCatalogAutocomplete({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>
-                    <HighlightMatch text={item.displayNameFr} needle={needle} />
+                    <HighlightMatch text={catalogListPrimaryLine(item, language)} needle={needle} />
                     {item.type === "MEDICATION" && item.isEssential && (
                       <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>Essentiel</span>
                     )}

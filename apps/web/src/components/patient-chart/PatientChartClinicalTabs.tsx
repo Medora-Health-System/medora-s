@@ -405,8 +405,9 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
               {encDisp.map((d) => {
                 const label =
                   catalogMedicationNameForLocale(d.catalogMedication, language) ||
-                  d.catalogMedication.name ||
-                  d.catalogMedication.displayNameFr ||
+                  (language === "en"
+                    ? d.catalogMedication.name || d.catalogMedication.code
+                    : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
                   "—";
                 const by = d.dispensedBy
                   ? `${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim()
@@ -453,8 +454,9 @@ function wrapWithGlobalDispenseChart(
           {globalDisp.slice(0, 25).map((d) => {
             const label =
               catalogMedicationNameForLocale(d.catalogMedication, language) ||
-              d.catalogMedication.name ||
-              d.catalogMedication.displayNameFr ||
+              (language === "en"
+                ? d.catalogMedication.name || d.catalogMedication.code
+                : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
               "—";
             const by = d.dispensedBy
               ? `${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim()

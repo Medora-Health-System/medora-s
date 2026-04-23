@@ -10,8 +10,8 @@ export function medicationSearchLabel(m: CatalogSearchItem, language: SupportedL
   const primary =
     language === "fr"
       ? (m.displayNameFr?.trim() || m.name?.trim() || "")
-      : (m.name?.trim() || m.displayNameFr?.trim() || "");
-  const head = primary || m.displayNameFr?.trim() || m.code;
+      : (m.name?.trim() || m.code?.trim() || "");
+  const head = language === "fr" ? primary || m.displayNameFr?.trim() || m.code : primary || m.code;
   return [head, m.secondaryText].filter(Boolean).join(" · ");
 }
 

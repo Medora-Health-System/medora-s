@@ -18,6 +18,7 @@ export type RxOrderItem = {
   quantity?: number | null;
   refillCount?: number | null;
   catalogMedication?: {
+    code?: string | null;
     displayNameFr?: string | null;
     name?: string;
     strength?: string | null;
@@ -55,8 +56,11 @@ function medicationLabel(item: RxOrderItem, language: SupportedLanguage): string
     return strength ? `${manual} ${strength}`.trim() : manual;
   }
   const cat = item.catalogMedication;
-  if (cat?.displayNameFr || cat?.name) {
-    const name = catalogMedicationNameForLocale(cat, language) || cat.name || cat.displayNameFr || "";
+  if (cat) {
+    const name =
+      language === "en"
+        ? catalogMedicationNameForLocale(cat, language) || cat.name?.trim() || cat.code?.trim() || ""
+        : catalogMedicationNameForLocale(cat, language) || cat.displayNameFr?.trim() || cat.name?.trim() || "";
     const strength = item.strength ?? cat.strength;
     return strength ? `${name} ${strength}`.trim() : name;
   }

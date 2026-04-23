@@ -581,8 +581,9 @@ export function EncounterClinicalTimeline({
                       {encDisp.map((d) => {
                         const label =
                           catalogMedicationNameForLocale(d.catalogMedication, language) ||
-                          d.catalogMedication.name ||
-                          d.catalogMedication.displayNameFr ||
+                          (language === "en"
+                            ? d.catalogMedication.name || d.catalogMedication.code
+                            : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
                           "—";
                         const by = physicianName(d.dispensedBy);
                         return (

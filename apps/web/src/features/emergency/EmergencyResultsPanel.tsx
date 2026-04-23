@@ -92,7 +92,6 @@ function CompactResultRow({
   const disp = getOrderItemDisplayLabelForLanguage(row.item, language, t);
   const v = clinicalResultFromOrderItemLike({
     displayLabel: disp,
-    displayLabelFr: disp,
     status: row.item.status,
     catalogItemType: row.item.catalogItemType,
     result: row.item.result,

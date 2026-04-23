@@ -1,6 +1,8 @@
 /**
  * Single source of truth for order-line display strings (FR vs EN catalog preference).
  * Used by API enrichment and chart; web mirrors logic in {@link orderItemDisplayFr.ts} for client-side rows.
+ *
+ * EN resolution: never uses `displayNameFr` or `displayLabelFr`; optional `displayNameEn` when present on catalog rows.
  */
 
 export type OrderItemLabelInput = {
@@ -10,17 +12,26 @@ export type OrderItemLabelInput = {
   strength?: string | null;
 };
 
-export type CatalogLabLabel = { displayNameFr?: string | null; name?: string | null };
+export type CatalogLabLabel = {
+  code?: string | null;
+  name?: string | null;
+  displayNameEn?: string | null;
+  displayNameFr?: string | null;
+};
 
 export type CatalogImagingLabel = {
-  displayNameFr?: string | null;
+  code?: string | null;
   name?: string | null;
+  displayNameEn?: string | null;
+  displayNameFr?: string | null;
   modality?: string | null;
 };
 
 export type CatalogMedicationLabel = {
-  displayNameFr?: string | null;
+  code?: string | null;
   name?: string | null;
+  displayNameEn?: string | null;
+  displayNameFr?: string | null;
   strength?: string | null;
 };
 
@@ -36,6 +47,28 @@ const FALLBACK_EN: Record<string, string> = {
   MEDICATION: "Medication (label unavailable)",
 };
 
+/** Tokens that must never be shown as a human order line title in EN (or as FR primary). */
+const TECHNICAL_DISPLAY_TOKENS = new Set([
+  "LAB_TEST",
+  "IMAGING_STUDY",
+  "MEDICATION",
+  "CARE",
+  "SUPPLY",
+  "IVP",
+]);
+
+/**
+ * True when `raw` is empty, a known internal type token, matches `catalogItemType`, or looks like an ALL_CAPS_SNAKE enum (no digits).
+ */
+export function isInvalidTechnicalOrderDisplayLabel(raw: string, catalogItemType: string): boolean {
+  const s = raw.trim();
+  if (!s) return true;
+  if (TECHNICAL_DISPLAY_TOKENS.has(s)) return true;
+  if (s === String(catalogItemType ?? "").trim()) return true;
+  if (/^[A-Z]+(_[A-Z]+)+$/.test(s)) return true;
+  return false;
+}
+
 function manualLine(it: OrderItemLabelInput): string {
   const manual = it.manualLabel?.trim();
   if (manual && manual === String(it.catalogItemType ?? "").trim()) {
@@ -50,8 +83,20 @@ function typeFallback(catalogItemType: string, lang: "fr" | "en"): string {
   return map[catalogItemType] ?? (lang === "fr" ? "Article prescrit" : "Prescribed item");
 }
 
+function firstAcceptableLineLabel(
+  catalogItemType: string,
+  ...candidates: (string | null | undefined)[]
+): string | null {
+  for (const c of candidates) {
+    const t = (c ?? "").trim();
+    if (t && !isInvalidTechnicalOrderDisplayLabel(t, catalogItemType)) return t;
+  }
+  return null;
+}
+
 /**
  * French-first catalog label (legacy product default).
+ * Order: displayNameFr → name → displayNameEn → manual → type fallback.
  */
 export function buildOrderItemDisplayLabelFr(
   it: OrderItemLabelInput,
@@ -63,37 +108,45 @@ export function buildOrderItemDisplayLabelFr(
   if (it.catalogItemType === "LAB_TEST") {
     const fr = catalogLab?.displayNameFr?.trim();
     const n = catalogLab?.name?.trim();
-    if (fr) return fr;
-    if (n) return n;
-    if (manualLineStr) return manualLineStr;
+    const enOpt = catalogLab?.displayNameEn?.trim();
+    const line = firstAcceptableLineLabel(it.catalogItemType, fr, n, enOpt, manualLineStr, catalogLab?.code);
+    if (line) return line;
     return typeFallback(it.catalogItemType, "fr");
   }
   if (it.catalogItemType === "IMAGING_STUDY") {
     const fr = catalogImg?.displayNameFr?.trim();
     const n = catalogImg?.name?.trim();
-    const base = fr || n;
+    const enOpt = catalogImg?.displayNameEn?.trim();
+    const base = firstAcceptableLineLabel(it.catalogItemType, fr, n, enOpt, manualLineStr, catalogImg?.code);
     if (base) {
       const mod = catalogImg?.modality?.trim();
       return mod ? `${base} (${mod})` : base;
     }
-    if (manualLineStr) return manualLineStr;
     return typeFallback(it.catalogItemType, "fr");
   }
   if (it.catalogItemType === "MEDICATION") {
-    const base = catalogMed?.displayNameFr?.trim() || catalogMed?.name?.trim() || null;
+    const base = firstAcceptableLineLabel(
+      it.catalogItemType,
+      catalogMed?.displayNameFr,
+      catalogMed?.name,
+      catalogMed?.displayNameEn,
+      manualLineStr,
+      catalogMed?.code
+    );
     if (base) {
       const str = (it.strength ?? catalogMed?.strength)?.trim();
       return str ? `${base} ${str}` : base;
     }
-    if (manualLineStr) return manualLineStr;
     return typeFallback(it.catalogItemType, "fr");
   }
-  if (manualLineStr) return manualLineStr;
+  const man = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
+  if (man) return man;
   return typeFallback(it.catalogItemType, "fr");
 }
 
 /**
- * English-first catalog label (US / English UI); `name` before `displayNameFr`.
+ * English UI: displayNameEn → name → manual → catalog code → typed EN fallback.
+ * Never reads displayNameFr.
  */
 export function buildOrderItemDisplayLabelEn(
   it: OrderItemLabelInput,
@@ -103,33 +156,45 @@ export function buildOrderItemDisplayLabelEn(
 ): string {
   const manualLineStr = manualLine(it);
   if (it.catalogItemType === "LAB_TEST") {
-    const n = catalogLab?.name?.trim();
-    const fr = catalogLab?.displayNameFr?.trim();
-    if (n) return n;
-    if (fr) return fr;
-    if (manualLineStr) return manualLineStr;
+    const line = firstAcceptableLineLabel(
+      it.catalogItemType,
+      catalogLab?.displayNameEn,
+      catalogLab?.name,
+      manualLineStr,
+      catalogLab?.code
+    );
+    if (line) return line;
     return typeFallback(it.catalogItemType, "en");
   }
   if (it.catalogItemType === "IMAGING_STUDY") {
-    const n = catalogImg?.name?.trim();
-    const fr = catalogImg?.displayNameFr?.trim();
-    const base = n || fr;
+    const base = firstAcceptableLineLabel(
+      it.catalogItemType,
+      catalogImg?.displayNameEn,
+      catalogImg?.name,
+      manualLineStr,
+      catalogImg?.code
+    );
     if (base) {
       const mod = catalogImg?.modality?.trim();
       return mod ? `${base} (${mod})` : base;
     }
-    if (manualLineStr) return manualLineStr;
     return typeFallback(it.catalogItemType, "en");
   }
   if (it.catalogItemType === "MEDICATION") {
-    const base = catalogMed?.name?.trim() || catalogMed?.displayNameFr?.trim() || null;
+    const base = firstAcceptableLineLabel(
+      it.catalogItemType,
+      catalogMed?.displayNameEn,
+      catalogMed?.name,
+      manualLineStr,
+      catalogMed?.code
+    );
     if (base) {
       const str = (it.strength ?? catalogMed?.strength)?.trim();
       return str ? `${base} ${str}` : base;
     }
-    if (manualLineStr) return manualLineStr;
     return typeFallback(it.catalogItemType, "en");
   }
-  if (manualLineStr) return manualLineStr;
+  const man = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
+  if (man) return man;
   return typeFallback(it.catalogItemType, "en");
 }

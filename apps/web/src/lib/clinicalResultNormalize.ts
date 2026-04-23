@@ -45,7 +45,6 @@ export type ClinicalResultViewerInput = {
 
 /** Ligne commande enrichie (GET encounter orders ou résumé dossier). */
 export function clinicalResultFromOrderItemLike(item: {
-  displayLabelFr?: string;
   displayLabel?: string;
   displayLabelEn?: string;
   status?: string;
@@ -62,7 +61,7 @@ export function clinicalResultFromOrderItemLike(item: {
 }): ClinicalResultViewerInput {
   /** Prefer explicit localized `displayLabel` when callers set it (e.g. encounter results tab). */
   const title =
-    (item.displayLabel ?? item.displayLabelEn ?? item.displayLabelFr ?? "").trim() ||
+    (item.displayLabel ?? item.displayLabelEn ?? "").trim() ||
     item.emptyTitleFallback?.trim() ||
     "—";
   const r = item.result;
