@@ -1,5 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { AuditAction, type OrderItem } from "@prisma/client";
+import {
+  AuditAction,
+  MedicationFulfillmentIntent,
+  OrderEventOrderType,
+  OrderEventType,
+  OrderStatus,
+  type OrderItem,
+  type Prisma,
+} from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import type { MedicationAdministrationCreateDto } from "@medora/shared";
@@ -8,6 +16,8 @@ import { appendBillingCaptureCandidate } from "../billing/billing-capture.append
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { assertCanTransition } from "../common/workflow/status.transitions";
+import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 
 @Injectable()
 export class MedicationAdministrationService {
@@ -15,6 +25,28 @@ export class MedicationAdministrationService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
+
+  private mapOrderTypeToOrderEventType(orderType: string): OrderEventOrderType {
+    if (orderType === "LAB") return OrderEventOrderType.LAB;
+    if (orderType === "IMAGING") return OrderEventOrderType.IMAGING;
+    if (orderType === "MEDICATION") return OrderEventOrderType.MEDICATION;
+    if (orderType === "CARE") return OrderEventOrderType.PROCEDURE;
+    throw new BadRequestException("Type de commande invalide pour audit.");
+  }
+
+  private async buildRoleSnapshotTx(
+    tx: Prisma.TransactionClient,
+    facilityId: string,
+    userId: string
+  ): Promise<string> {
+    const roles = await tx.userRole.findMany({
+      where: { facilityId, userId, isActive: true },
+      include: { role: { select: { code: true } } },
+    });
+    const unique = [...new Set(roles.map((r) => r.role.code))];
+    if (unique.length === 0) return "UNKNOWN";
+    return unique.join("|");
+  }
 
   /**
    * Stable French medication label for MAR — aligned with `OrdersService.displayLabelFrForItem`
@@ -78,6 +110,8 @@ export class MedicationAdministrationService {
     let orderItemId: string | null = data.orderItemId ?? null;
     let medicationLabelSnapshot: string | null = null;
     let orderIdForAudit: string | undefined;
+    let linkedMedicationLine: (OrderItem & { order: { id: string; encounterId: string; type: string; status: string } }) | null =
+      null;
     let catalogMedication: {
       displayNameFr: string | null;
       name: string | null;
@@ -89,7 +123,7 @@ export class MedicationAdministrationService {
     if (orderItemId) {
       const item = await this.prisma.orderItem.findFirst({
         where: { id: orderItemId },
-        include: { order: true },
+        include: { order: { select: { id: true, encounterId: true, facilityId: true, type: true, status: true } } },
       });
       if (!item) {
         throw new BadRequestException("Ligne d'ordre introuvable.");
@@ -104,6 +138,9 @@ export class MedicationAdministrationService {
         throw new BadRequestException("La ligne doit être un médicament.");
       }
       assertParentOrderNotCancelled(item.order.status);
+      linkedMedicationLine = item as OrderItem & {
+        order: { id: string; encounterId: string; facilityId: string; type: string; status: string };
+      };
       if (item.catalogItemId) {
         catalogMedication = await this.prisma.catalogMedication.findUnique({
           where: { id: item.catalogItemId },
@@ -173,6 +210,41 @@ export class MedicationAdministrationService {
         critical: true,
         tx,
       });
+
+      const line = linkedMedicationLine;
+      if (
+        line &&
+        line.medicationFulfillmentIntent === MedicationFulfillmentIntent.ADMINISTER_CHART &&
+        line.status !== OrderStatus.COMPLETED &&
+        line.status !== OrderStatus.CANCELLED
+      ) {
+        assertCanTransition(line.status, OrderStatus.COMPLETED);
+        const lifecycleState = applyLifecycleWithStatus(line.lifecycleState, OrderStatus.COMPLETED);
+        await tx.orderItem.update({
+          where: { id: line.id },
+          data: {
+            status: OrderStatus.COMPLETED,
+            lifecycleState,
+            completedAt: new Date(),
+            completedByUserId: administeredByUserId,
+          },
+        });
+        const roleSnapshot = await this.buildRoleSnapshotTx(tx, facilityId, administeredByUserId);
+        await tx.orderEvent.create({
+          data: {
+            facilityId,
+            encounterId: line.order.encounterId,
+            orderId: line.orderId,
+            orderType: this.mapOrderTypeToOrderEventType(line.order.type),
+            eventType: OrderEventType.COMPLETED,
+            performedByUserId: administeredByUserId,
+            performedAt: new Date(),
+            roleSnapshot,
+            metadata: { orderItemId: line.id, medicationAdministrationId: row.id },
+          },
+        });
+      }
+
       return row;
     });
 

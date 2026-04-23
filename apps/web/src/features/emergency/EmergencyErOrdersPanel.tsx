@@ -10,6 +10,13 @@ import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
 import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
+import {
+  isOrderItemActiveForErDashboard,
+  isOrderItemCompletedForErDashboard,
+  isParentOrderCancelled,
+  orderHasAnyActiveItemForEr,
+  orderItemIdFromEventMetadata,
+} from "@/features/emergency/erOrderLifecycleUi";
 import { apiFetch } from "@/lib/apiClient";
 
 const btn: React.CSSProperties = {
@@ -46,7 +53,8 @@ function domainHeadingKey(d: ErOrderDomain): string {
   }
 }
 
-function extractLineLabelsForDomain(
+/** 4 domain boxes: active / pending lines only (exclude completed, resulted, verified, cancelled). */
+function extractActiveLineLabelsForDomain(
   orders: unknown[],
   domain: ErOrderDomain,
   language: SupportedLanguage,
@@ -65,8 +73,11 @@ function extractLineLabelsForDomain(
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
     const o = raw as Record<string, unknown>;
     if (o.type !== typeStr) continue;
+    if (isParentOrderCancelled(o)) continue;
     const items = Array.isArray(o.items) ? o.items : [];
     for (const it of items) {
+      const row = it as Record<string, unknown>;
+      if (!isOrderItemActiveForErDashboard(row)) continue;
       const label = getOrderItemDisplayLabelForLanguage(
         it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
         language,
@@ -98,6 +109,7 @@ type OrderEventRow = {
   performedAt: string;
   roleSnapshot?: string | null;
   note?: string | null;
+  metadata?: unknown;
   order?: {
     displayName?: string | null;
     cancellationReason?: string | null;
@@ -169,10 +181,10 @@ export function EmergencyErOrdersPanel({
   const labelsByDomain = useMemo(() => {
     if (!ordersRaw) return null;
     const rec: Record<ErOrderDomain, string[]> = {
-      LAB: extractLineLabelsForDomain(ordersRaw, "LAB", language, t),
-      IMAGING: extractLineLabelsForDomain(ordersRaw, "IMAGING", language, t),
-      MEDICATION: extractLineLabelsForDomain(ordersRaw, "MEDICATION", language, t),
-      CARE: extractLineLabelsForDomain(ordersRaw, "CARE", language, t),
+      LAB: extractActiveLineLabelsForDomain(ordersRaw, "LAB", language, t),
+      IMAGING: extractActiveLineLabelsForDomain(ordersRaw, "IMAGING", language, t),
+      MEDICATION: extractActiveLineLabelsForDomain(ordersRaw, "MEDICATION", language, t),
+      CARE: extractActiveLineLabelsForDomain(ordersRaw, "CARE", language, t),
     };
     return rec;
   }, [ordersRaw, language, t]);
@@ -209,28 +221,93 @@ export function EmergencyErOrdersPanel({
         performedAt: String(row.performedAt ?? ""),
         roleSnapshot: typeof row.roleSnapshot === "string" ? row.roleSnapshot : null,
         note: typeof row.note === "string" ? row.note : null,
+        metadata: row.metadata,
         order: row.order && typeof row.order === "object" ? (row.order as OrderEventRow["order"]) : null,
       }))
       .filter((e) => e.id && e.orderId && e.performedAt);
   }, [orderEventsRaw]);
 
-  const activeOrders = useMemo(
-    () => parsedOrders.filter((o) => o.status !== "COMPLETED" && o.status !== "CANCELLED"),
-    [parsedOrders]
-  );
-  const completedEvents = useMemo(
+  const activeOrders = useMemo(() => parsedOrders.filter((o) => orderHasAnyActiveItemForEr(o)), [parsedOrders]);
+
+  const completedFromEvents = useMemo(
     () => parsedEvents.filter((e) => e.eventType === "COMPLETED"),
     [parsedEvents]
   );
+
+  /** Completed lines: events plus item-level fallback when no COMPLETED event exists for that line (e.g. legacy lab/imaging paths). */
+  const completedRows = useMemo((): OrderEventRow[] => {
+    const fromEvents = completedFromEvents;
+    const coveredItemIds = new Set<string>();
+    for (const e of fromEvents) {
+      const oid = orderItemIdFromEventMetadata(e.metadata);
+      if (oid) coveredItemIds.add(oid);
+    }
+
+    const fallback: OrderEventRow[] = [];
+    for (const o of parsedOrders) {
+      if (o.status === "CANCELLED") continue;
+      const items = Array.isArray(o.items) ? o.items : [];
+      for (const it of items) {
+        const row = it as Record<string, unknown>;
+        if (!isOrderItemCompletedForErDashboard(row)) continue;
+        const itemId = String(row.id ?? "");
+        if (!itemId || coveredItemIds.has(itemId)) continue;
+        coveredItemIds.add(itemId);
+        const nurse = row.completedByNurse as { firstName?: string; lastName?: string } | undefined;
+        const performedByDisplayName = nurse
+          ? `${nurse.firstName ?? ""} ${nurse.lastName ?? ""}`.trim() || null
+          : null;
+        const completedAt = row.completedAt;
+        const updatedAt = row.updatedAt;
+        const performedAt =
+          completedAt instanceof Date
+            ? completedAt.toISOString()
+            : typeof completedAt === "string" && completedAt.trim()
+              ? completedAt
+              : updatedAt instanceof Date
+                ? updatedAt.toISOString()
+                : typeof updatedAt === "string" && updatedAt.trim()
+                  ? updatedAt
+                  : "";
+        if (!performedAt) continue;
+        fallback.push({
+          id: `er-fallback-completed-${itemId}`,
+          orderId: o.id,
+          eventType: "COMPLETED",
+          performedByDisplayName,
+          performedAt,
+          roleSnapshot: null,
+          note: null,
+          metadata: { orderItemId: itemId },
+          order: {
+            displayName: getOrderItemDisplayLabelForLanguage(
+              it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+              language,
+              t
+            ),
+            cancellationReason: null,
+          },
+        });
+      }
+    }
+
+    return [...fromEvents, ...fallback].sort(
+      (a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime()
+    );
+  }, [completedFromEvents, parsedOrders, language, t]);
+
   const cancelledEvents = useMemo(
     () => parsedEvents.filter((e) => e.eventType === "CANCELLED"),
     [parsedEvents]
   );
 
   const orderDisplayName = (order: OrderRow): string => {
-    const firstItem = order.items[0];
+    const items = Array.isArray(order.items) ? order.items : [];
+    const activeItem = items.find((it) => isOrderItemActiveForErDashboard(it as Record<string, unknown>));
+    const it = activeItem ?? items[0];
+    if (!it) return order.type;
     return getOrderItemDisplayLabelForLanguage(
-      firstItem as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+      it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
       language,
       t
     );
@@ -406,11 +483,11 @@ export function EmergencyErOrdersPanel({
               </div>
               {eventLoading ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("common.loading")}</div>
-              ) : completedEvents.length === 0 ? (
+              ) : completedRows.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.completedOrdersEmpty")}</div>
               ) : (
                 <div style={{ display: "grid", gap: 6 }}>
-                  {completedEvents.map((e) => (
+                  {completedRows.map((e) => (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
                         {e.order?.displayName || e.orderId}
@@ -418,7 +495,7 @@ export function EmergencyErOrdersPanel({
                       <div style={{ fontSize: 11, color: "#475569" }}>
                         {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
                         {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
-                        {e.roleSnapshot || "UNKNOWN"}
+                        {e.roleSnapshot ?? "—"}
                       </div>
                     </div>
                   ))}
