@@ -14,6 +14,7 @@ import {
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
 import { collectMedicationMarLookupOrder } from "./medication-code-derive.util";
+import { resolveMedicationMarActionFromStorage } from "@medora/shared";
 import { inferMedicationAdministrationCpt } from "./medication-admin-cpt.util";
 
 export type AppendAutoBillingParams = {
@@ -337,6 +338,12 @@ export async function tryAutoMedicationAdministrationBilling(
       include: { orderItem: { include: { order: true } } },
     });
     if (!adm?.orderItem || adm.orderItem.catalogItemType !== "MEDICATION") return;
+
+    const marOutcome = resolveMedicationMarActionFromStorage({
+      marAction: adm.marAction ?? null,
+      notes: adm.notes,
+    });
+    if (marOutcome !== "administered") return;
 
     const oi = adm.orderItem;
     let labelFallback =

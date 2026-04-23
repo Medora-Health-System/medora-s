@@ -1,6 +1,6 @@
 /**
- * RN medication line workload — mirrors OrdersTab (encounters/[id]/page.tsx):
- * MEDICATION + ADMINISTER_CHART + not completed/cancelled.
+ * RN medication line workload — MAR-eligible MEDICATION lines (any fulfillment intent)
+ * that are not yet terminal on the order line. MAR links lifecycle to `OrderItem.status`.
  */
 export function isOrderItemPendingNurseMedication(it: {
   catalogItemType?: string | null;
@@ -9,7 +9,6 @@ export function isOrderItemPendingNurseMedication(it: {
 }): boolean {
   return (
     it.catalogItemType === "MEDICATION" &&
-    it.medicationFulfillmentIntent === "ADMINISTER_CHART" &&
     it.status !== "COMPLETED" &&
     it.status !== "CANCELLED"
   );
