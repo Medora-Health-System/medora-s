@@ -146,18 +146,26 @@ export class MedicationAdministrationService {
   }
 
   /**
-   * Stable medication label for MAR / audit — aligned with order-line catalog resolution (English `name` first, then `displayNameFr`).
-   * for MEDICATION lines, then row-level fallbacks if needed.
+   * Stable medication label for MAR / audit — prefers `displayNameEn` when set, then `name` / `displayNameFr` (Phase B additive).
    */
   private medicationLabelSnapshotFromMedicationOrderItem(
     item: OrderItem,
-    catalogMedication: { displayNameFr: string | null; name: string | null; strength: string | null } | null
+    catalogMedication: {
+      displayNameEn: string | null;
+      displayNameFr: string | null;
+      name: string | null;
+      strength: string | null;
+    } | null
   ): string {
     const manual = item.manualLabel?.trim();
     const manualSec = item.manualSecondaryText?.trim();
     const manualLine = manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
 
-    const base = catalogMedication?.name?.trim() || catalogMedication?.displayNameFr?.trim() || null;
+    const base =
+      catalogMedication?.displayNameEn?.trim() ||
+      catalogMedication?.name?.trim() ||
+      catalogMedication?.displayNameFr?.trim() ||
+      null;
     if (base) {
       const str = (item.strength ?? catalogMedication?.strength)?.trim();
       return str ? `${base} ${str}` : base;
@@ -217,6 +225,7 @@ export class MedicationAdministrationService {
     let linkedMedicationLine: (OrderItem & { order: { id: string; encounterId: string; type: string; status: string } }) | null =
       null;
     let catalogMedication: {
+      displayNameEn: string | null;
       displayNameFr: string | null;
       name: string | null;
       strength: string | null;
@@ -249,6 +258,7 @@ export class MedicationAdministrationService {
         catalogMedication = await this.prisma.catalogMedication.findUnique({
           where: { id: item.catalogItemId },
           select: {
+            displayNameEn: true,
             displayNameFr: true,
             name: true,
             strength: true,

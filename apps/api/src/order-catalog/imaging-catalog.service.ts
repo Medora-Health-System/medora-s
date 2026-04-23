@@ -24,6 +24,7 @@ export class ImagingCatalogService {
         OR: [
           { code: { contains: q, mode: "insensitive" } },
           { name: { contains: q, mode: "insensitive" } },
+          { displayNameEn: { contains: q, mode: "insensitive" } },
           { displayNameFr: { contains: q, mode: "insensitive" } },
           { searchText: { contains: q, mode: "insensitive" } },
           { modality: { contains: q, mode: "insensitive" } },
@@ -56,6 +57,7 @@ export class ImagingCatalogService {
       const rankable: CatalogRankableRow = {
         code: row.code,
         name: row.name,
+        displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         searchText: row.searchText,
         isEssential: row.isEssential,
@@ -69,6 +71,7 @@ export class ImagingCatalogService {
       const rankable: CatalogRankableRow = {
         code: row.code,
         name: row.name,
+        displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         searchText: row.searchText,
         isEssential: row.isEssential,
@@ -91,6 +94,7 @@ export class ImagingCatalogService {
           id: row.id,
           code: row.code,
           name: row.name,
+          displayNameEn: row.displayNameEn,
           displayNameFr: row.displayNameFr,
           modality: row.modality,
           bodyRegion: row.bodyRegion,

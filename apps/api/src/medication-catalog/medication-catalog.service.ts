@@ -17,6 +17,7 @@ function medicationToRankable(m: CatalogMedication): CatalogRankableRow {
   return {
     code: m.code,
     name: m.name,
+    displayNameEn: m.displayNameEn,
     displayNameFr: m.displayNameFr,
     searchText: m.searchText,
     isEssential: m.isEssential,
@@ -46,6 +47,7 @@ export class MedicationCatalogService {
           { code: { contains: q, mode: "insensitive" } },
           { name: { contains: q, mode: "insensitive" } },
           { genericName: { contains: q, mode: "insensitive" } },
+          { displayNameEn: { contains: q, mode: "insensitive" } },
           { displayNameFr: { contains: q, mode: "insensitive" } },
           { strength: { contains: q, mode: "insensitive" } },
           { searchText: { contains: q, mode: "insensitive" } },

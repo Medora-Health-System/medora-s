@@ -6,6 +6,7 @@
 export type CatalogRankableRow = {
   code: string;
   name: string;
+  displayNameEn?: string | null;
   displayNameFr?: string | null;
   searchText?: string | null;
   isEssential: boolean;
@@ -21,20 +22,30 @@ export function matchTierForQuery(
   if (!ql) return 9;
   const code = (row.code ?? "").toLowerCase();
   const name = (row.name ?? "").toLowerCase();
+  const den = (row.displayNameEn ?? "").toLowerCase();
   const dfr = (row.displayNameFr ?? "").toLowerCase();
   const st = (row.searchText ?? "").toLowerCase();
 
-  const exact = code === ql || name === ql || dfr === ql || (st.length > 0 && st === ql);
+  const exact =
+    code === ql || name === ql || den === ql || dfr === ql || (st.length > 0 && st === ql);
   if (exact) return 0;
 
   const prefix =
-    code.startsWith(ql) || name.startsWith(ql) || dfr.startsWith(ql) || st.startsWith(ql);
+    code.startsWith(ql) ||
+    name.startsWith(ql) ||
+    den.startsWith(ql) ||
+    dfr.startsWith(ql) ||
+    st.startsWith(ql);
   if (prefix) return 1;
 
   if (opts.aliasOnlyMatch) return 2;
 
   const contains =
-    code.includes(ql) || name.includes(ql) || dfr.includes(ql) || st.includes(ql);
+    code.includes(ql) ||
+    name.includes(ql) ||
+    den.includes(ql) ||
+    dfr.includes(ql) ||
+    st.includes(ql);
   if (contains) return 3;
 
   return 9;

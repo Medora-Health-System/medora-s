@@ -341,7 +341,7 @@ export class ChartSummaryService {
             dosageInstructions: true,
             dispensedAt: true,
             catalogMedication: {
-              select: { code: true, name: true, displayNameFr: true },
+              select: { code: true, name: true, displayNameEn: true, displayNameFr: true },
             },
             inventoryItem: { select: { sku: true, lotNumber: true } },
             dispensedBy: { select: { firstName: true, lastName: true } },
@@ -485,7 +485,7 @@ export class ChartSummaryService {
                 dosageInstructions: true,
                 dispensedAt: true,
                 catalogMedication: {
-                  select: { code: true, name: true, displayNameFr: true },
+                  select: { code: true, name: true, displayNameEn: true, displayNameFr: true },
                 },
                 dispensedBy: { select: { firstName: true, lastName: true } },
               },

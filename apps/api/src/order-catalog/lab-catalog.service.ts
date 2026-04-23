@@ -24,6 +24,7 @@ export class LabCatalogService {
         OR: [
           { code: { contains: q, mode: "insensitive" } },
           { name: { contains: q, mode: "insensitive" } },
+          { displayNameEn: { contains: q, mode: "insensitive" } },
           { displayNameFr: { contains: q, mode: "insensitive" } },
           { searchText: { contains: q, mode: "insensitive" } },
         ],
@@ -54,6 +55,7 @@ export class LabCatalogService {
       const rankable: CatalogRankableRow = {
         code: row.code,
         name: row.name,
+        displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         searchText: row.searchText,
         isEssential: row.isEssential,
@@ -67,6 +69,7 @@ export class LabCatalogService {
       const rankable: CatalogRankableRow = {
         code: row.code,
         name: row.name,
+        displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         searchText: row.searchText,
         isEssential: row.isEssential,
@@ -89,6 +92,7 @@ export class LabCatalogService {
           id: row.id,
           code: row.code,
           name: row.name,
+          displayNameEn: row.displayNameEn,
           displayNameFr: row.displayNameFr,
           description: row.description,
           searchText: row.searchText,

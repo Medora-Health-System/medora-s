@@ -5,6 +5,7 @@ type LabRow = {
   id: string;
   code: string;
   name: string;
+  displayNameEn: string | null;
   displayNameFr: string | null;
   description: string | null;
   searchText: string | null;
@@ -15,6 +16,7 @@ type ImagingRow = {
   id: string;
   code: string;
   name: string;
+  displayNameEn: string | null;
   displayNameFr: string | null;
   modality: string | null;
   bodyRegion: string | null;
@@ -37,6 +39,7 @@ export function mapMedicationToCatalogSearchItem(
     code: m.code,
     type: "MEDICATION",
     displayNameFr,
+    displayNameEn: m.displayNameEn?.trim() || null,
     name: m.name?.trim() || undefined,
     secondaryText,
     searchText: searchTextTruncated,
@@ -74,6 +77,7 @@ export function mapLabRowToCatalogSearchItem(
     code: m.code,
     type: "LAB_TEST",
     displayNameFr,
+    displayNameEn: m.displayNameEn?.trim() || null,
     name: namePrimary,
     secondaryText,
     searchText: searchTextTruncated,
@@ -94,6 +98,7 @@ export function mapImagingRowToCatalogSearchItem(
     code: m.code,
     type: "IMAGING_STUDY",
     displayNameFr,
+    displayNameEn: m.displayNameEn?.trim() || null,
     name: m.name.trim() || undefined,
     secondaryText,
     searchText: searchTextTruncated,

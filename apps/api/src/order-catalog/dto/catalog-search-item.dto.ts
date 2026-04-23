@@ -9,7 +9,9 @@ export type CatalogSearchItemDto = {
   code: string;
   type: CatalogSearchItemType;
   displayNameFr: string;
-  /** English / primary catalog `name` (lab & imaging: EN in U.S. set; repli côté client). */
+  /** English-primary display (nullable until backfilled). Additive for Phase B clients. */
+  displayNameEn?: string | null;
+  /** Legacy / internal catalog `name` (unchanged semantics; keep for compatibility). */
   name?: string;
   secondaryText?: string;
   searchText?: string;
