@@ -178,6 +178,16 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "Le code saisi ne respecte pas le format CIM-10 attendu (ex. I10 ou J069). Corrigez ou choisissez une entrée du référentiel.",
     en: "That code does not match the expected ICD-10-style pattern (e.g. I10 or J069). Fix it or pick a catalog entry.",
   },
+  {
+    test: (s) => /PROCEDURE_INVALID_CODE_FORMAT/i.test(s),
+    fr: "Le code d’acte ne correspond pas au format CPT/HCPCS attendu. Corrigez ou choisissez une entrée du référentiel.",
+    en: "That procedure code does not match the expected CPT/HCPCS-style pattern. Fix it or pick a catalog entry.",
+  },
+  {
+    test: (s) => /PROCEDURE_DUPLICATE_BLOCKED/i.test(s),
+    fr: "Cet acte est déjà enregistré pour cette consultation.",
+    en: "This procedure is already recorded for this encounter.",
+  },
 ];
 
 /**

@@ -16,6 +16,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { EncountersService } from "./encounters.service";
 import { DiagnosesService } from "../diagnoses/diagnoses.service";
 import { createDiagnosisDtoSchema, reorderDiagnosesDtoSchema } from "../diagnoses/dto";
+import { appendProcedureCaptureDtoSchema } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 import {
   encounterCloseDtoSchema,
   encounterCloseCheckDtoSchema,
@@ -154,6 +155,31 @@ export class EncountersController {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
     return this.diagnosesService.create(
+      encounterId,
+      facilityId,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("encounters/:encounterId/procedure-capture")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
+  async appendProcedureCapture(
+    @Param("encounterId") encounterId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = appendProcedureCaptureDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.appendProcedureCapture(
       encounterId,
       facilityId,
       parsed.data,

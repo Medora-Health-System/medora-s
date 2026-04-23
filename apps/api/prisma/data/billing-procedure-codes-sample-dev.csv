@@ -1,0 +1,10 @@
+code,code_system,short_description,long_description,effective_year,code_set_version,is_active
+99283,CPT,Emergency department visit — moderately severe,,2025,sample-dev,true
+99284,CPT,Emergency department visit — high severity,,2025,sample-dev,true
+99291,CPT,Critical care — first 30-74 minutes,,2025,sample-dev,true
+99292,CPT,Critical care — each additional 30 minutes,,2025,sample-dev,true
+36415,CPT,Venipuncture — single vein,,2025,sample-dev,true
+93010,CPT,"Electrocardiogram, routine ECG with interpretation",,2025,sample-dev,true
+A0429,HCPCS,Ambulance — basic life support non-emergency,,2025,sample-dev,true
+G0008,HCPCS,"Administration, influenza vaccine",,2025,sample-dev,true
+J0690,HCPCS,"Injection, ceftriaxone sodium, per 250 mg",,2025,sample-dev,true

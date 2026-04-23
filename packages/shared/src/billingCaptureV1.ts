@@ -60,6 +60,10 @@ export type BillingCaptureItem = {
   catalogLabel?: string | null;
   /** True when a default billing code was applied from a Medora catalog (Phase 2). */
   catalogEnriched?: boolean;
+  /** ER-2: optional link to `BillingProcedureCode.id` when catalog-backed. */
+  procedureCatalogId?: string | null;
+  /** ER-2: explicit manual procedure path (not reference-validated). */
+  procedureManualNonCatalog?: boolean;
   createdAt: string;
   createdByUserId?: string | null;
 };
@@ -190,6 +194,9 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
     const catLabel = trimStr(r.catalogLabel, 512);
     if (catLabel) item.catalogLabel = catLabel;
     if (r.catalogEnriched === true) item.catalogEnriched = true;
+    const procCatId = trimStr(r.procedureCatalogId, 64);
+    if (procCatId) item.procedureCatalogId = procCatId;
+    if (r.procedureManualNonCatalog === true) item.procedureManualNonCatalog = true;
     items.push(item);
   }
   return { version: BILLING_CAPTURE_VERSION, items: items.slice(0, MAX_ITEMS) };
@@ -370,6 +377,118 @@ export function buildVaccineAdministrationCandidate(params: {
     billClass: "professional",
     status: "needs_review",
     note: `Vaccine administration — ${params.vaccineLabel}`.slice(0, MAX_NOTE),
+    serviceDate: params.atIso,
+    createdAt: params.atIso,
+    createdByUserId: params.createdByUserId ?? undefined,
+  };
+}
+
+/**
+ * ER-2 — structured procedure line on billing capture (`sourceType` PROCEDURE).
+ * `sourceId` matches `id` so each append is a distinct line unless replaced by same id upstream.
+ */
+const DEFAULT_PROCEDURE_CAPTURE_DEDUP_WINDOW_MS = 120_000;
+
+function effectiveProcedureCaptureUnits(units: number | null | undefined): number {
+  return units != null && units > 0 ? Math.min(Math.floor(units), 999999) : 1;
+}
+
+export type ProcedureCaptureDuplicateCheckParams = {
+  procedureCatalogId?: string | null;
+  codeSystem: "CPT" | "HCPCS";
+  code: string;
+  units: number;
+  /** ISO timestamp of the append attempt (e.g. `new Date().toISOString()`). */
+  pendingCreatedAtIso: string;
+  /** Defaults to 2 minutes. */
+  windowMs?: number;
+};
+
+/**
+ * ER-2.1 — Detect a near-duplicate structured PROCEDURE line on billing capture.
+ * Duplicate when: same encounter context (caller passes stored items for one encounter),
+ * same units, same catalog id OR same billable code (CPT vs HCPCS slot), and prior row's
+ * `createdAt` is within `windowMs` of `pendingCreatedAtIso`.
+ */
+export function findBillingCaptureProcedureDuplicate(
+  stored: BillingCaptureV1Stored,
+  params: ProcedureCaptureDuplicateCheckParams
+): BillingCaptureItem | null {
+  const atMs = Date.parse(params.pendingCreatedAtIso);
+  if (!Number.isFinite(atMs)) return null;
+  const windowMs = params.windowMs ?? DEFAULT_PROCEDURE_CAPTURE_DEDUP_WINDOW_MS;
+  const cat = params.procedureCatalogId?.trim() ?? "";
+  const normCode = params.code.trim().toUpperCase();
+  const u = params.units;
+
+  for (const it of stored.items) {
+    if (it.sourceType !== "PROCEDURE") continue;
+    if (effectiveProcedureCaptureUnits(it.units) !== u) continue;
+    const createdMs = Date.parse(it.createdAt);
+    if (!Number.isFinite(createdMs)) continue;
+    const delta = atMs - createdMs;
+    if (delta < 0 || delta > windowMs) continue;
+
+    if (cat && it.procedureCatalogId?.trim() === cat) {
+      return it;
+    }
+    const cpt = it.procedureCode?.trim().toUpperCase() ?? "";
+    const hc = it.hcpcsCode?.trim().toUpperCase() ?? "";
+    if (params.codeSystem === "CPT" && cpt && cpt === normCode) return it;
+    if (params.codeSystem === "HCPCS" && hc && hc === normCode) return it;
+  }
+  return null;
+}
+
+export function buildProcedureCaptureCandidate(params: {
+  encounterId: string;
+  patientId: string;
+  facilityId: string;
+  codeSystem: "CPT" | "HCPCS";
+  code: string;
+  shortDescription?: string | null;
+  billingProcedureCodeId?: string | null;
+  manualNonCatalog?: boolean;
+  modifiers?: string[];
+  units?: number | null;
+  atIso: string;
+  createdByUserId?: string | null;
+}): BillingCaptureItem {
+  const id = newBillingCaptureItemId();
+  const fromCatalog = !!params.billingProcedureCodeId?.trim() && params.manualNonCatalog !== true;
+  const c = params.code.trim();
+  const desc = (params.shortDescription ?? "").trim();
+  const relNote = fromCatalog
+    ? "Catalog CPT/HCPCS (reference table)"
+    : params.manualNonCatalog === true
+      ? "Manual non-catalog procedure code (format-only check)"
+      : "Structured procedure capture";
+  const noteParts = ["Procedure charge capture", `${params.codeSystem} ${c}`, `— ${relNote}`];
+  if (desc) noteParts.push(desc);
+  const mods = (params.modifiers ?? [])
+    .map((m) => m.trim())
+    .filter(Boolean)
+    .map((m) => m.slice(0, 8))
+    .slice(0, 8);
+
+  return {
+    id,
+    encounterId: params.encounterId,
+    patientId: params.patientId,
+    facilityId: params.facilityId,
+    sourceType: "PROCEDURE",
+    sourceId: id,
+    procedureCode: params.codeSystem === "CPT" ? c.slice(0, 32) : null,
+    hcpcsCode: params.codeSystem === "HCPCS" ? c.slice(0, 32) : null,
+    modifiers: mods.length ? mods : undefined,
+    units: effectiveProcedureCaptureUnits(params.units),
+    billClass: "both",
+    status: "needs_review",
+    note: noteParts.join(" — ").slice(0, MAX_NOTE),
+    catalogLabel: (desc || c).slice(0, 512),
+    catalogEnriched: fromCatalog,
+    procedureCatalogId: params.billingProcedureCodeId?.trim() || undefined,
+    procedureManualNonCatalog: params.manualNonCatalog === true ? true : undefined,
     serviceDate: params.atIso,
     createdAt: params.atIso,
     createdByUserId: params.createdByUserId ?? undefined,

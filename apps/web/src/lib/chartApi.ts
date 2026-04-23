@@ -265,3 +265,55 @@ export async function resolveDiagnosis(
     facilityId,
   });
 }
+
+export type BillingProcedureSearchHit = {
+  id: string;
+  code: string;
+  normalizedCode: string;
+  codeSystem: "CPT" | "HCPCS";
+  shortDescription: string;
+  longDescription: string | null;
+  effectiveYear: number | null;
+  codeSetVersion: string | null;
+};
+
+export async function searchBillingProcedureCodes(
+  facilityId: string,
+  q: string,
+  limit = 30,
+  system?: "CPT" | "HCPCS"
+): Promise<{ items: BillingProcedureSearchHit[] }> {
+  const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
+  if (system) params.set("system", system);
+  return apiFetch(`/billing/procedure-codes/search?${params.toString()}`, { facilityId }) as Promise<{
+    items: BillingProcedureSearchHit[];
+  }>;
+}
+
+export type AppendProcedureCaptureBody =
+  | { billingProcedureCodeId: string; modifiers?: string[]; units?: number }
+  | {
+      manualNonCatalog: true;
+      code: string;
+      codeSystem: "CPT" | "HCPCS";
+      description?: string;
+      modifiers?: string[];
+      units?: number;
+    };
+
+export type AppendProcedureCaptureResult =
+  | { duplicateBlocked: true; reasonCode: "PROCEDURE_DUPLICATE_BLOCKED" }
+  | { duplicateBlocked: false; captureItemId: string };
+
+export async function appendProcedureCapture(
+  facilityId: string,
+  encounterId: string,
+  body: AppendProcedureCaptureBody
+): Promise<AppendProcedureCaptureResult> {
+  return apiFetch(`/encounters/${encounterId}/procedure-capture`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId,
+  }) as Promise<AppendProcedureCaptureResult>;
+}

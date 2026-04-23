@@ -11,6 +11,7 @@ export type BillingEnrichmentDb = Pick<
   | "medicationDispense"
   | "medicationAdministration"
   | "vaccineAdministration"
+  | "billingProcedureCode"
 >;
 
 /**
@@ -119,6 +120,24 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
           appliedCatalogCode = true;
         }
         catalogLabel = catalogLabel ?? vc.name;
+        break;
+      }
+      case "PROCEDURE": {
+        const pcid = next.procedureCatalogId?.trim();
+        if (!pcid) break;
+        const row = await db.billingProcedureCode.findFirst({
+          where: { id: pcid, isActive: true },
+        });
+        if (!row) break;
+        catalogLabel = catalogLabel ?? row.shortDescription;
+        if (row.codeSystem === "CPT") {
+          next.procedureCode = row.code.trim().slice(0, 32);
+          next.hcpcsCode = null;
+        } else {
+          next.hcpcsCode = row.code.trim().slice(0, 32);
+          next.procedureCode = null;
+        }
+        appliedCatalogCode = true;
         break;
       }
       default:

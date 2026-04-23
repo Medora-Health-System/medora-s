@@ -24,6 +24,7 @@ import { assertCanTransitionEncounter } from "../common/workflow/encounter.trans
 import { assertValidEncounterWorkflowTransition } from "../common/workflow/encounter-workflow-state.machine";
 import {
   SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR,
+  assertEncounterNotSigned,
   assertOperationalUpdateAllowedWhenSigned,
 } from "./encounter-sign-lock.util";
 import {
@@ -39,6 +40,11 @@ import {
   type EncounterCloseDocumentationCheckResult,
   type EncounterIntakeUpsertDto,
   buildEncounterDispositionCandidate,
+  buildProcedureCaptureCandidate,
+  findBillingCaptureProcedureDuplicate,
+  isProcedureCodeLikeForSystem,
+  PROCEDURE_DUPLICATE_BLOCKED,
+  PROCEDURE_INVALID_CODE_FORMAT,
   readBillingCaptureV1,
   upsertBillingCaptureItem,
 } from "@medora/shared";
@@ -46,6 +52,8 @@ import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-en
 import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment";
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
 import { appendEmergencyEMBilling } from "../billing/billing-em.util";
+import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import type { AppendProcedureCaptureDto } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
 const DISCHARGE_SUMMARY_KEYS = [
@@ -1346,6 +1354,161 @@ export class EncountersService {
     });
 
     return row;
+  }
+
+  /**
+   * ER-2 — append a structured PROCEDURE billing capture line (catalog or explicit manual).
+   * Preserves existing capture + ledger flows via `appendBillingCaptureCandidate`.
+   */
+  async appendProcedureCapture(
+    encounterId: string,
+    facilityId: string,
+    dto: AppendProcedureCaptureDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ): Promise<
+    | { duplicateBlocked: true; reasonCode: typeof PROCEDURE_DUPLICATE_BLOCKED }
+    | { duplicateBlocked: false; captureItemId: string }
+  > {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        id: true,
+        patientId: true,
+        facilityId: true,
+        providerDocumentationStatus: true,
+        billingFinalizationStatus: true,
+        billingCaptureJson: true,
+      },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    assertEncounterNotSigned(encounter);
+    if (encounter.billingFinalizationStatus === EncounterBillingFinalizationStatus.FINALIZED) {
+      throw new BadRequestException(
+        "billing capture cannot be edited while the encounter is finalized for billing"
+      );
+    }
+
+    const atIso = new Date().toISOString();
+    const stored = readBillingCaptureV1(encounter.billingCaptureJson);
+    const unitsEff =
+      dto.units != null && dto.units > 0 ? Math.min(Math.floor(dto.units), 999999) : 1;
+
+    let item;
+
+    const catId = dto.billingProcedureCodeId?.trim();
+    if (catId) {
+      const row = await this.prisma.billingProcedureCode.findFirst({
+        where: { id: catId, isActive: true },
+      });
+      if (!row) {
+        throw new BadRequestException("Unknown or inactive procedure catalog entry");
+      }
+      const sys = row.codeSystem === "CPT" ? "CPT" : "HCPCS";
+      const dup = findBillingCaptureProcedureDuplicate(stored, {
+        procedureCatalogId: row.id,
+        codeSystem: sys,
+        code: row.code,
+        units: unitsEff,
+        pendingCreatedAtIso: atIso,
+      });
+      if (dup) {
+        await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+          userId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId: encounter.id,
+          entityId: encounter.id,
+          ip,
+          userAgent,
+          metadata: {
+            procedureCaptureDuplicateBlocked: true,
+            reasonCode: PROCEDURE_DUPLICATE_BLOCKED,
+            existingCaptureItemId: dup.id,
+          },
+        });
+        return { duplicateBlocked: true, reasonCode: PROCEDURE_DUPLICATE_BLOCKED };
+      }
+      item = buildProcedureCaptureCandidate({
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        facilityId: encounter.facilityId,
+        codeSystem: sys,
+        code: row.code,
+        shortDescription: row.shortDescription,
+        billingProcedureCodeId: row.id,
+        manualNonCatalog: false,
+        modifiers: dto.modifiers,
+        units: dto.units ?? undefined,
+        atIso,
+        createdByUserId: userId ?? null,
+      });
+    } else {
+      const manual = dto.manualNonCatalog === true;
+      const code = dto.code?.trim() ?? "";
+      const sys = dto.codeSystem;
+      if (!manual || !sys) {
+        throw new BadRequestException("Invalid procedure capture payload");
+      }
+      if (!isProcedureCodeLikeForSystem(code, sys)) {
+        throw new BadRequestException(PROCEDURE_INVALID_CODE_FORMAT);
+      }
+      const dupManual = findBillingCaptureProcedureDuplicate(stored, {
+        procedureCatalogId: null,
+        codeSystem: sys,
+        code,
+        units: unitsEff,
+        pendingCreatedAtIso: atIso,
+      });
+      if (dupManual) {
+        await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+          userId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId: encounter.id,
+          entityId: encounter.id,
+          ip,
+          userAgent,
+          metadata: {
+            procedureCaptureDuplicateBlocked: true,
+            reasonCode: PROCEDURE_DUPLICATE_BLOCKED,
+            existingCaptureItemId: dupManual.id,
+          },
+        });
+        return { duplicateBlocked: true, reasonCode: PROCEDURE_DUPLICATE_BLOCKED };
+      }
+      item = buildProcedureCaptureCandidate({
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        facilityId: encounter.facilityId,
+        codeSystem: sys,
+        code,
+        shortDescription: dto.description?.trim() ?? null,
+        manualNonCatalog: true,
+        modifiers: dto.modifiers,
+        units: dto.units ?? undefined,
+        atIso,
+        createdByUserId: userId ?? null,
+      });
+    }
+
+    await appendBillingCaptureCandidate(this.prisma, encounterId, facilityId, item);
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+      metadata: { procedureCapture: true, captureItemId: item.id },
+    });
+
+    return { duplicateBlocked: false, captureItemId: item.id };
   }
 }
 

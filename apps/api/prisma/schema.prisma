@@ -142,6 +142,12 @@ enum BillingCodeType {
   ICD10_CM
 }
 
+/// CPT vs HCPCS on the unified procedure reference table (ER-2).
+enum BillingProcedureCodeSystem {
+  CPT
+  HCPCS
+}
+
 enum BillingSide {
   UNKNOWN
   PROFESSIONAL
@@ -1191,6 +1197,29 @@ model Icd10DiagnosisCode {
 
   @@index([normalizedCode])
   @@index([isActive])
+}
+
+/// CPT / HCPCS Level I & Level II reference rows (imported from vendor/CMS-style files — sample CSV in repo is not production-complete).
+model BillingProcedureCode {
+  id               String                   @id @default(uuid())
+  /// Canonical display code (e.g. 99283, A0429).
+  code             String
+  /// Uppercase, normalized for matching (alphanumeric only, no spaces).
+  normalizedCode   String
+  codeSystem       BillingProcedureCodeSystem
+  shortDescription String
+  longDescription  String?                  @db.Text
+  isActive         Boolean                  @default(true)
+  effectiveYear    Int?
+  codeSetVersion   String?                  @db.VarChar(32)
+  /// Lowercase denormalized search blob (code + descriptions).
+  searchText       String?                  @db.Text
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  @@unique([codeSystem, normalizedCode])
+  @@index([isActive])
+  @@index([codeSystem])
 }
 
 // --- Medora Core: continuity / diagnoses ---

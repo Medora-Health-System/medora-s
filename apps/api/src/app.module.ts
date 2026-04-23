@@ -26,6 +26,7 @@ import { MedicationAdministrationModule } from "./medication-administration/medi
 import { MsppModule } from "./mspp/mspp.module";
 import { FhirModule } from "./fhir/fhir.module";
 import { InsuranceModule } from "./insurance/insurance.module";
+import { BillingProcedureCodesModule } from "./billing-procedure-codes/billing-procedure-codes.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -62,6 +63,7 @@ const imports = [
   MsppModule,
   FhirModule,
   InsuranceModule,
+  BillingProcedureCodesModule,
 ];
 
 @Module({

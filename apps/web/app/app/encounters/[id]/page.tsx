@@ -44,6 +44,7 @@ import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
+import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import {
@@ -215,6 +216,12 @@ export default function EncounterDetailPage() {
   /** Matches POST /encounters/:id/diagnoses roles (RN, provider, admin). */
   const canDocumentEncounterDiagnoses =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+  /** Matches POST /encounters/:id/procedure-capture (RN, provider, admin, billing). */
+  const canCaptureStructuredProcedures =
+    roles.includes("RN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("ADMIN") ||
+    roles.includes("BILLING");
   const canFetchMarTab =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canManageEncounterClosure =
@@ -1558,14 +1565,22 @@ export default function EncounterDetailPage() {
             />
           )}
           {activeTab === "diagnostics" && (
-            <EncounterDiagnosticsPanel
-              encounterId={encounter.id}
-              patientId={patient.id}
-              facilityId={facilityId}
-              canDocumentDiagnoses={canDocumentEncounterDiagnoses}
-              isLocked={isLocked}
-              onGoPatientChart={() => router.push(`/app/patients/${patient.id}`)}
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <EncounterDiagnosticsPanel
+                encounterId={encounter.id}
+                patientId={patient.id}
+                facilityId={facilityId}
+                canDocumentDiagnoses={canDocumentEncounterDiagnoses}
+                isLocked={isLocked}
+                onGoPatientChart={() => router.push(`/app/patients/${patient.id}`)}
+              />
+              <EncounterProcedureCapturePanel
+                encounterId={encounter.id}
+                facilityId={facilityId}
+                canCapture={canCaptureStructuredProcedures}
+                isLocked={isLocked}
+              />
+            </div>
           )}
           {activeTab === "pathways" && (
             <PathwaysTab encounterId={encounterId} encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} isLocked={isLocked} />
