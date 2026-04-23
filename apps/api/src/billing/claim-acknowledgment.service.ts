@@ -6,6 +6,7 @@ import {
   computeAckDedupeKey,
   detectAckKindFromRaw,
   extractAk2TransactionControl,
+  extractGsGroupControl,
   extractIsaInterchangeControl,
   extractTrnReference,
   normalizeAckRawText,
@@ -93,7 +94,7 @@ export class ClaimAcknowledgmentService {
     facilityId: string;
     rawText: string;
     kind: AckKind;
-    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string; externalReference?: string };
     /** Optional envelope from clearinghouse adapter (webhook, SFTP poll, etc.) — scrubbed before persist. */
     vendorMeta?: Record<string, unknown>;
   }): Promise<IngestAcknowledgmentResult> {
@@ -134,6 +135,22 @@ export class ClaimAcknowledgmentService {
     let submissionId = input.refs?.submissionId ?? null;
     let batchId = input.refs?.batchId ?? null;
     let unmatchedWarning: string | null = null;
+    let correlationMatchMethod: string | null = submissionId ? "EXPLICIT_SUBMISSION_ID" : null;
+
+    if (!submissionId && input.refs?.externalReference?.trim()) {
+      const ref = input.refs.externalReference.trim();
+      const matches = await this.prisma.claimSubmission.findMany({
+        where: { facilityId: input.facilityId, externalReference: ref },
+        select: { id: true, batchId: true },
+      });
+      if (matches.length === 1) {
+        submissionId = matches[0]!.id;
+        batchId = matches[0]!.batchId;
+        correlationMatchMethod = "EXTERNAL_REFERENCE";
+      } else if (matches.length > 1) {
+        unmatchedWarning = "ACK_EXTERNAL_REF_AMBIGUOUS";
+      }
+    }
 
     if (!submissionId && input.refs?.transactionCtrl) {
       const found = await this.prisma.claimSubmission.findFirst({
@@ -143,6 +160,7 @@ export class ClaimAcknowledgmentService {
       if (found) {
         submissionId = found.id;
         batchId = found.batchId;
+        correlationMatchMethod = correlationMatchMethod ?? "REF_TRANSACTION_CTRL";
       }
     }
     if (!submissionId && parsed999?.stCtrl) {
@@ -153,6 +171,7 @@ export class ClaimAcknowledgmentService {
       if (found) {
         submissionId = found.id;
         batchId = found.batchId;
+        correlationMatchMethod = correlationMatchMethod ?? "X12_999_ST_CTRL";
       }
     }
     const trnRef = parsed277?.trnRef ?? extractTrnReference(normText);
@@ -164,6 +183,7 @@ export class ClaimAcknowledgmentService {
       if (found) {
         submissionId = found.id;
         batchId = found.batchId;
+        correlationMatchMethod = correlationMatchMethod ?? "X12_277_TRN";
       }
     }
 
@@ -177,6 +197,7 @@ export class ClaimAcknowledgmentService {
         if (b.submissions.length === 1) {
           submissionId = b.submissions[0].id;
           batchId = b.id;
+          correlationMatchMethod = correlationMatchMethod ?? "X12_ISA_INTERCHANGE";
         } else {
           const trx =
             parsed999?.stCtrl ?? extractAk2TransactionControl(normText) ?? trnRef ?? input.refs?.transactionCtrl ?? null;
@@ -185,6 +206,33 @@ export class ClaimAcknowledgmentService {
             if (sub) {
               submissionId = sub.id;
               batchId = b.id;
+              correlationMatchMethod = correlationMatchMethod ?? "X12_ISA_PLUS_TRX";
+            }
+          }
+        }
+      }
+    }
+
+    const gs6 = extractGsGroupControl(normText);
+    if (!submissionId && gs6) {
+      const b = await this.prisma.claimSubmissionBatch.findFirst({
+        where: { facilityId: input.facilityId, groupCtrl: gs6 },
+        include: { submissions: { orderBy: { createdAt: "asc" } } },
+      });
+      if (b) {
+        if (b.submissions.length === 1) {
+          submissionId = b.submissions[0].id;
+          batchId = b.id;
+          correlationMatchMethod = "X12_GS_GROUP_CTRL";
+        } else {
+          const trx =
+            parsed999?.stCtrl ?? extractAk2TransactionControl(normText) ?? trnRef ?? input.refs?.transactionCtrl ?? null;
+          if (trx) {
+            const sub = b.submissions.find((s) => s.transactionCtrl === trx);
+            if (sub) {
+              submissionId = sub.id;
+              batchId = b.id;
+              correlationMatchMethod = "X12_GS_GROUP_CTRL_PLUS_TRX";
             }
           }
         }
@@ -194,6 +242,9 @@ export class ClaimAcknowledgmentService {
     if (!submissionId) {
       unmatchedWarning = "ACK_UNMATCHED";
     }
+
+    const weakCorrelation =
+      correlationMatchMethod === "EXTERNAL_REFERENCE" && !input.refs?.submissionId;
 
     const existing = submissionId
       ? await this.prisma.claimSubmission.findUnique({
@@ -275,8 +326,11 @@ export class ClaimAcknowledgmentService {
       dedupeKey,
       matchingHints: {
         isaInterchangeCtrl: isa13 ?? null,
+        gsGroupCtrl: gs6 ?? null,
         trnRef: trnRef ?? null,
         ak2StCtrl: extractAk2TransactionControl(normText),
+        correlationMatchMethod,
+        weakCorrelation: weakCorrelation && submissionId ? true : false,
       },
     };
     if (input.vendorMeta) {
@@ -284,9 +338,12 @@ export class ClaimAcknowledgmentService {
     }
     const mergedParsed = mergedParsedRaw as Prisma.InputJsonValue;
 
-    const warn =
+    let warn =
       unmatchedWarning ??
       (!statusChanged && reasonCode !== "OK" && submissionId && existing ? reasonCode : null);
+    if (!warn && weakCorrelation && submissionId && existing) {
+      warn = "ACK_WEAK_CORRELATION";
+    }
 
     const ack = await this.prisma.claimAcknowledgment.create({
       data: {
@@ -350,7 +407,7 @@ export class ClaimAcknowledgmentService {
     facilityId: string;
     rawText: string;
     kind: AckKind;
-    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string; externalReference?: string };
     vendorMeta?: Record<string, unknown>;
   }): Promise<IngestAcknowledgmentResult> {
     return this.ingestAcknowledgment(input);
@@ -363,7 +420,7 @@ export class ClaimAcknowledgmentService {
     facilityId: string;
     rawText: string;
     kind?: AckKind | "AUTO";
-    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+    refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string; externalReference?: string };
     vendorMeta?: Record<string, unknown>;
   }): Promise<IngestAcknowledgmentResult> {
     const norm = normalizeAckRawText(input.rawText);

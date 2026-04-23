@@ -23,7 +23,8 @@ export class ClearinghouseOpsService {
     const now = new Date();
     const workerSnap = this.claimRetryWorkerService.getLastSnapshot();
 
-    const [retryReadySubs, deadLetterOpen, recentTransportFailures, sftpSnap, recentWorkerRows] = await Promise.all([
+    const [retryReadySubs, deadLetterOpen, recentTransportFailures, sftpSnap, recentWorkerRows, lastLiveAttempt, recentLiveTransportFailures] =
+      await Promise.all([
       this.prisma.claimSubmission.findMany({
         where: { facilityId, status: ClaimSubmissionStatus.READY_TO_SEND },
         select: {
@@ -56,6 +57,22 @@ export class ClearinghouseOpsService {
             AND COALESCE(a."requestMetaJson"::jsonb->>'attemptTrigger', '') = 'WORKER'
         `
       ),
+      this.prisma.claimSubmissionAttempt.findFirst({
+        where: {
+          submission: { facilityId },
+          transport: { in: ["LIVE_API", "LIVE_SFTP"] },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { ok: true, createdAt: true, transport: true, errorMessage: true },
+      }),
+      this.prisma.claimSubmissionAttempt.count({
+        where: {
+          ok: false,
+          createdAt: { gte: since },
+          transport: { in: ["LIVE_API", "LIVE_SFTP"] },
+          submission: { facilityId },
+        },
+      }),
     ]);
 
     let retryEligibleSubmissionCount = 0;
@@ -79,9 +96,21 @@ export class ClearinghouseOpsService {
 
     return {
       clearinghouseMode: cfg.mode,
+      integrationTier: cfg.integrationTier,
+      liveSendExplicitlyEnabled: cfg.liveSendExplicitlyEnabled,
+      liveOutboundReady: cfg.liveOutboundReady,
+      outboundLiveConfigComplete: cfg.outboundLiveConfigComplete,
+      inboundAckPollEnabled: cfg.inboundAckPollEnabled,
+      inboundAckPathConfigured: cfg.inboundAckPathConfigured,
+      clearinghouseConfigWarningCodes: cfg.configWarningCodes,
       outboundConfigured: cfg.configured,
       inboundSftpEnabled: cfg.ackSftpIngestEnabled,
       inboundWebhookEnabled: cfg.ackWebhookIngestEnabled,
+      lastLiveOutboundAttemptAt: lastLiveAttempt?.createdAt?.toISOString() ?? null,
+      lastLiveOutboundAttemptOk: lastLiveAttempt?.ok ?? null,
+      lastLiveOutboundTransport: lastLiveAttempt?.transport ?? null,
+      lastLiveOutboundError: lastLiveAttempt?.errorMessage ?? null,
+      recentLiveTransportFailureCount: recentLiveTransportFailures,
       lastSftpPollAt: sftpSnap?.at ?? null,
       lastSftpPollStatus: sftpSnap?.status ?? null,
       lastSftpPollDetail: sftpSnap?.detail ?? null,

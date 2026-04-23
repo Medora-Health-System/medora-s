@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, HttpCode, Post, UseGuards } from
 import { z } from "zod";
 import { ClaimAcknowledgmentService } from "./claim-acknowledgment.service";
 import { ClearinghouseAckWebhookGuard } from "./clearinghouse-ack-webhook.guard";
+import { getClearinghousePublicConfigStatus } from "./clearinghouse-config.util";
 
 const WebhookBodySchema = z
   .object({
@@ -14,6 +15,7 @@ const WebhookBodySchema = z
         submissionId: z.string().optional(),
         batchId: z.string().optional(),
         transactionCtrl: z.string().optional(),
+        externalReference: z.string().optional(),
       })
       .optional(),
   })
@@ -70,6 +72,7 @@ export class ClearinghouseAckWebhookController {
       }
     }
     try {
+      const pub = getClearinghousePublicConfigStatus();
       return await this.claimAcknowledgmentService.ingestInboundAckPayload({
         facilityId: parsed.data.facilityId,
         rawText,
@@ -78,6 +81,8 @@ export class ClearinghouseAckWebhookController {
         vendorMeta: {
           source: "WEBHOOK",
           ingestedAt: new Date().toISOString(),
+          clearinghouseMode: pub.mode,
+          integrationTier: pub.integrationTier,
         },
       });
     } catch (e) {

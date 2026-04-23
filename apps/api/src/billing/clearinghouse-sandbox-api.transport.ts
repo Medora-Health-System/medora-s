@@ -10,12 +10,30 @@ import {
   safeEndpointHostForAudit,
 } from "./clearinghouse-config.util";
 
+function httpBaseUrl(cfg: ReturnType<typeof loadClearinghouseConfig>): string | undefined {
+  return cfg.apiBaseUrl ?? cfg.endpointUrl;
+}
+
 export class SandboxApiClearinghouseTransport implements ClearinghouseTransport {
   readonly key = "SANDBOX_API" as const;
 
   async send(input: ClearinghouseSendInput): Promise<ClearinghouseSendResult> {
     const cfg = loadClearinghouseConfig();
-    const endpoint = cfg.endpointUrl;
+    if (cfg.mode === "live_api" || cfg.mode === "live_sftp") {
+      return {
+        ok: false,
+        requestMeta: {
+          transport: this.key,
+          blockedByMode: true,
+          clearinghouseMode: cfg.mode,
+          submissionId: input.submissionId,
+          batchId: input.batchId,
+        },
+        responseMeta: { sandbox: true, note: "Sandbox transport cannot run while CLEARINGHOUSE_MODE is live_*" },
+        errorMessage: "SANDBOX_TRANSPORT_DISALLOWED_IN_LIVE_MODE",
+      };
+    }
+    const endpoint = httpBaseUrl(cfg);
     const apiKey = cfg.apiKey;
 
     if (!endpoint || !apiKey) {

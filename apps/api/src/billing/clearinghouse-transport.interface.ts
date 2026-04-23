@@ -12,6 +12,8 @@ export type ClearinghouseTransportKey =
   | "STUB_API"
   | "SANDBOX_API"
   | "SANDBOX_SFTP"
+  | "LIVE_API"
+  | "LIVE_SFTP"
   | "DISABLED";
 
 export type ClearinghouseSendResult = {

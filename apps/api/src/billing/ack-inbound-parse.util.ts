@@ -32,6 +32,15 @@ export function detectAckKindFromRaw(raw: string): AckKindDetected | null {
   return null;
 }
 
+/** GS-06 group control number (best-effort) for batch-level correlation. */
+export function extractGsGroupControl(raw: string): string | null {
+  const line = raw.split(/[~]/).find((s) => s.startsWith("GS*"));
+  if (!line) return null;
+  const p = line.split("*");
+  const gs6 = (p[6] ?? "").trim();
+  return gs6.length > 0 ? gs6 : null;
+}
+
 /** ISA-13 interchange control number (best-effort split on *). */
 export function extractIsaInterchangeControl(raw: string): string | null {
   const line = raw.split(/[~]/).find((s) => s.startsWith("ISA*"));

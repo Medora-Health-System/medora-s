@@ -203,7 +203,7 @@ export class QueuesController {
     body: {
       rawText: string;
       kind: "999" | "277CA";
-      refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string };
+      refs?: { submissionId?: string; batchId?: string; transactionCtrl?: string; externalReference?: string };
       vendorMeta?: Record<string, unknown>;
     },
     @Req() req: any

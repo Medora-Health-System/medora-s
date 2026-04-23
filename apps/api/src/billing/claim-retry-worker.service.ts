@@ -36,7 +36,15 @@ export type ClaimRetryWorkerLastSnapshot = {
   skipped: number;
 };
 
-const TRANSPORT_HINTS = new Set<string>(["MANUAL", "DISABLED", "STUB_API", "SANDBOX_API", "SANDBOX_SFTP"]);
+const TRANSPORT_HINTS = new Set<string>([
+  "MANUAL",
+  "DISABLED",
+  "STUB_API",
+  "SANDBOX_API",
+  "SANDBOX_SFTP",
+  "LIVE_API",
+  "LIVE_SFTP",
+]);
 
 function normalizeTransportHint(raw: string): ClearinghouseTransportHint {
   return TRANSPORT_HINTS.has(raw) ? (raw as ClearinghouseTransportHint) : "MANUAL";

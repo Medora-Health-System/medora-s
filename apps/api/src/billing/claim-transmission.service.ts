@@ -4,6 +4,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { displayAckSourceFromParsedJson } from "./ack-inbound-parse.util";
 import { scrubRecordForPersistence } from "./clearinghouse-audit.util";
 import {
+  clearinghouseIntegrationTier,
+  clearinghouseLiveSendExplicitlyEnabled,
   getClearinghousePublicConfigStatus,
   loadClearinghouseConfig,
 } from "./clearinghouse-config.util";
@@ -382,6 +384,8 @@ export class ClaimTransmissionService {
     const rawRequest = {
       ...result.requestMeta,
       clearinghouseMode: cfgSnapshot.mode,
+      integrationTier: clearinghouseIntegrationTier(cfgSnapshot.mode),
+      liveSendExplicitlyEnabled: clearinghouseLiveSendExplicitlyEnabled(),
       transportHint: transport.key,
       claimType: submission.claimType,
       ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),

@@ -280,15 +280,34 @@ type ClearinghouseConfigStatusPayload = {
   configured: boolean;
   sandbox: boolean;
   sendEnabled: boolean;
+  integrationTier?: string;
+  liveSendExplicitlyEnabled?: boolean;
+  liveOutboundReady?: boolean;
+  outboundLiveConfigComplete?: boolean;
+  inboundAckPollEnabled?: boolean;
+  inboundAckPathConfigured?: boolean;
+  configWarningCodes?: string[];
   ackSftpIngestEnabled: boolean;
   ackWebhookIngestEnabled: boolean;
 };
 
 type ClearinghouseOpsStatusPayload = {
   clearinghouseMode: string;
+  integrationTier?: string;
+  liveSendExplicitlyEnabled?: boolean;
+  liveOutboundReady?: boolean;
+  outboundLiveConfigComplete?: boolean;
+  inboundAckPollEnabled?: boolean;
+  inboundAckPathConfigured?: boolean;
+  clearinghouseConfigWarningCodes?: string[];
   outboundConfigured: boolean;
   inboundSftpEnabled: boolean;
   inboundWebhookEnabled: boolean;
+  lastLiveOutboundAttemptAt?: string | null;
+  lastLiveOutboundAttemptOk?: boolean | null;
+  lastLiveOutboundTransport?: string | null;
+  lastLiveOutboundError?: string | null;
+  recentLiveTransportFailureCount?: number;
   lastSftpPollAt: string | null;
   lastSftpPollStatus: string | null;
   lastSftpPollDetail: string | null;
@@ -509,6 +528,13 @@ function clearinghouseModeLabel(t: (k: string) => string, mode: string): string 
   const k = `billingPage.clearinghouseMode_${mode}`;
   const v = t(k);
   return v === k ? mode : v;
+}
+
+function clearinghouseIntegrationTierLabel(t: (k: string) => string, tier: string | undefined): string {
+  if (!tier) return "—";
+  const k = `billingPage.integrationTier_${tier}`;
+  const v = t(k);
+  return v === k ? tier : v;
 }
 
 function clearinghouseVendorLabel(t: (k: string) => string, vendor: string): string {
@@ -2144,11 +2170,45 @@ export default function BillingEncounterLedgerPage() {
                 <div style={{ marginTop: 4 }}>
                   {clearinghouseConfigStatus.configured ? t("billingPage.clearinghouseConfiguredYes") : t("billingPage.clearinghouseConfiguredNo")}
                   {clearinghouseConfigStatus.sandbox ? ` · ${t("billingPage.clearinghouseSandboxBadge")}` : ""}
+                  {clearinghouseConfigStatus.integrationTier === "live"
+                    ? ` · ${t("billingPage.liveClearinghouseMode")}`
+                    : clearinghouseConfigStatus.integrationTier === "sandbox"
+                      ? ` · ${t("billingPage.usingSandboxMode")}`
+                      : clearinghouseConfigStatus.mode === "manual"
+                        ? ` · ${t("billingPage.usingManualMode")}`
+                        : null}
                   {(clearinghouseConfigStatus.mode === "sandbox_api" || clearinghouseConfigStatus.mode === "sandbox_sftp") &&
                   !clearinghouseConfigStatus.sendEnabled
-                    ? ` · ${t("billingPage.clearinghouseLiveSendNotEnabled")}`
+                    ? ` · ${t("billingPage.clearinghouseSandboxSendNotEnabled")}`
+                    : null}
+                  {(clearinghouseConfigStatus.mode === "live_api" || clearinghouseConfigStatus.mode === "live_sftp") &&
+                  !clearinghouseConfigStatus.liveOutboundReady
+                    ? ` · ${t("billingPage.liveConfigIncomplete")}`
                     : null}
                 </div>
+                {clearinghouseConfigStatus.integrationTier ? (
+                  <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>
+                    {t("billingPage.clearinghouseIntegrationTierLabel")}:{" "}
+                    {clearinghouseIntegrationTierLabel(t, clearinghouseConfigStatus.integrationTier)}
+                    {" · "}
+                    {clearinghouseConfigStatus.liveSendExplicitlyEnabled
+                      ? t("billingPage.liveSendEnabled")
+                      : t("billingPage.liveSendDisabled")}
+                    {" · "}
+                    {clearinghouseConfigStatus.inboundAckPollEnabled
+                      ? t("billingPage.inboundAckPollOn")
+                      : t("billingPage.inboundAckPollOff")}
+                    {clearinghouseConfigStatus.inboundAckPathConfigured === false &&
+                    (clearinghouseConfigStatus.ackSftpIngestEnabled ?? false)
+                      ? ` · ${t("billingPage.inboundAckPathIncomplete")}`
+                      : null}
+                  </div>
+                ) : null}
+                {clearinghouseConfigStatus.configWarningCodes && clearinghouseConfigStatus.configWarningCodes.length > 0 ? (
+                  <div style={{ marginTop: 4, fontSize: 11, color: "#9a3412" }}>
+                    {t("billingPage.clearinghouseConfigWarningsLabel")}: {clearinghouseConfigStatus.configWarningCodes.join(", ")}
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>{t("billingPage.clearinghouseManualSendHint")}</div>
                 <div style={{ marginTop: 6, fontSize: 11, color: "#64748b" }}>
                   {t("billingPage.ackInboundSftpLabel")}:{" "}
@@ -2177,6 +2237,45 @@ export default function BillingEncounterLedgerPage() {
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("billingPage.clearinghouseOpsTitle")}</div>
+                {clearinghouseOpsStatus.integrationTier ? (
+                  <div style={{ marginBottom: 4 }}>
+                    {t("billingPage.clearinghouseIntegrationTierLabel")}:{" "}
+                    {clearinghouseIntegrationTierLabel(t, clearinghouseOpsStatus.integrationTier)}
+                    {clearinghouseOpsStatus.integrationTier === "live" && clearinghouseOpsStatus.liveSendExplicitlyEnabled === false
+                      ? ` · ${t("billingPage.liveSendDisabled")}`
+                      : null}
+                  </div>
+                ) : null}
+                {clearinghouseOpsStatus.lastLiveOutboundAttemptAt ? (
+                  <div style={{ marginBottom: 4 }}>
+                    {t("billingPage.clearinghouseLastLiveOutbound")}:{" "}
+                    {new Date(clearinghouseOpsStatus.lastLiveOutboundAttemptAt).toLocaleString(locale)}
+                    {clearinghouseOpsStatus.lastLiveOutboundTransport
+                      ? ` · ${clearinghouseOpsStatus.lastLiveOutboundTransport}`
+                      : ""}
+                    {clearinghouseOpsStatus.lastLiveOutboundAttemptOk === true
+                      ? ` · ${t("billingPage.outboundLiveOk")}`
+                      : clearinghouseOpsStatus.lastLiveOutboundAttemptOk === false
+                        ? ` · ${t("billingPage.outboundLiveTransportFailed")}`
+                        : ""}
+                    {clearinghouseOpsStatus.lastLiveOutboundError
+                      ? ` (${clearinghouseOpsStatus.lastLiveOutboundError})`
+                      : ""}
+                  </div>
+                ) : null}
+                {typeof clearinghouseOpsStatus.recentLiveTransportFailureCount === "number" &&
+                clearinghouseOpsStatus.recentLiveTransportFailureCount > 0 ? (
+                  <div style={{ marginBottom: 4, color: "#9a3412" }}>
+                    {t("billingPage.recentLiveTransportFailures")}: {clearinghouseOpsStatus.recentLiveTransportFailureCount}
+                  </div>
+                ) : null}
+                {clearinghouseOpsStatus.clearinghouseConfigWarningCodes &&
+                clearinghouseOpsStatus.clearinghouseConfigWarningCodes.length > 0 ? (
+                  <div style={{ marginBottom: 4, color: "#9a3412", wordBreak: "break-word" }}>
+                    {t("billingPage.clearinghouseConfigWarningsLabel")}:{" "}
+                    {clearinghouseOpsStatus.clearinghouseConfigWarningCodes.join(", ")}
+                  </div>
+                ) : null}
                 <div>
                   {t("billingPage.clearinghouseOpsRetryEligibleCount")}: {clearinghouseOpsStatus.retryEligibleSubmissionCount}
                   {" · "}
@@ -2358,7 +2457,7 @@ export default function BillingEncounterLedgerPage() {
                     ) : null}
                     {s.externalReference ? (
                       <div style={{ fontSize: 12, color: "#475569" }}>
-                        {t("billingPage.submissionExternalReference")}: {s.externalReference}
+                        {t("billingPage.clearinghouseReferenceLabel")}: {s.externalReference}
                       </div>
                     ) : null}
                     {s.batchId ? (

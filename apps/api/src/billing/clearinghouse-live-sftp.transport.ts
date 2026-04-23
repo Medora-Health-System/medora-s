@@ -4,64 +4,50 @@ import type {
   ClearinghouseSendResult,
   ClearinghouseTransport,
 } from "./clearinghouse-transport.interface";
-import {
-  clearinghouseExternalSendAllowedInProduction,
-  clearinghouseIsNonProduction,
-  loadClearinghouseConfig,
-} from "./clearinghouse-config.util";
+import { clearinghouseLiveOutboundSendAllowed, loadClearinghouseConfig } from "./clearinghouse-config.util";
 
-export class SandboxSftpClearinghouseTransport implements ClearinghouseTransport {
-  readonly key = "SANDBOX_SFTP" as const;
+/**
+ * Live SFTP outbound. Requires CLEARINGHOUSE_MODE=live_sftp, outbound path + credentials,
+ * and CLEARINGHOUSE_LIVE_SEND_ENABLED=true (plus production guard when applicable).
+ */
+export class LiveSftpClearinghouseTransport implements ClearinghouseTransport {
+  readonly key = "LIVE_SFTP" as const;
 
   async send(input: ClearinghouseSendInput): Promise<ClearinghouseSendResult> {
     const cfg = loadClearinghouseConfig();
-    if (cfg.mode === "live_api" || cfg.mode === "live_sftp") {
+    if (cfg.mode !== "live_sftp") {
       return {
         ok: false,
         requestMeta: {
           transport: this.key,
-          blockedByMode: true,
+          modeMismatch: true,
           clearinghouseMode: cfg.mode,
           submissionId: input.submissionId,
           batchId: input.batchId,
         },
-        responseMeta: { sandbox: true, note: "Sandbox transport cannot run while CLEARINGHOUSE_MODE is live_*" },
-        errorMessage: "SANDBOX_TRANSPORT_DISALLOWED_IN_LIVE_MODE",
+        responseMeta: { live: true },
+        errorMessage: "LIVE_SFTP_CLEARINGHOUSE_MODE_MISMATCH",
       };
     }
+
     const host = cfg.sftpHost;
     const username = cfg.sftpUsername;
     const password = cfg.sftpPassword;
     const remoteDir = cfg.sftpRemoteOutboundPath ?? cfg.sftpRemotePath;
 
-    if (!host || !username || !password || !remoteDir) {
+    if (!host || !username || !password || !remoteDir || !clearinghouseLiveOutboundSendAllowed(cfg)) {
       return {
         ok: false,
         requestMeta: {
           transport: this.key,
           configured: false,
+          live: true,
           submissionId: input.submissionId,
           batchId: input.batchId,
           bytes: Buffer.byteLength(input.x12Text, "utf8"),
         },
-        responseMeta: { configured: false, sandbox: true },
-        errorMessage: "CLEARINGHOUSE_NOT_CONFIGURED",
-      };
-    }
-
-    if (!clearinghouseIsNonProduction() && !clearinghouseExternalSendAllowedInProduction()) {
-      return {
-        ok: false,
-        requestMeta: {
-          transport: this.key,
-          blockedInProduction: true,
-          host,
-          submissionId: input.submissionId,
-          batchId: input.batchId,
-          bytes: Buffer.byteLength(input.x12Text, "utf8"),
-        },
-        responseMeta: { sandbox: true, note: "External sandbox send blocked in production unless CLEARINGHOUSE_EXTERNAL_SEND_IN_PRODUCTION=true" },
-        errorMessage: "EXTERNAL_SEND_BLOCKED_IN_PRODUCTION",
+        responseMeta: { live: true, sendNotAllowed: true },
+        errorMessage: "CLEARINGHOUSE_LIVE_OUTBOUND_NOT_ALLOWED",
       };
     }
 
@@ -75,7 +61,8 @@ export class SandboxSftpClearinghouseTransport implements ClearinghouseTransport
       bytes: Buffer.byteLength(input.x12Text, "utf8"),
       submissionId: input.submissionId,
       vendor: cfg.vendor,
-      isTest: cfg.isTest,
+      live: true,
+      integrationTier: "live",
     };
 
     const client = new SftpClient();
@@ -89,13 +76,13 @@ export class SandboxSftpClearinghouseTransport implements ClearinghouseTransport
       const buf = Buffer.from(input.x12Text, "utf8");
       await client.put(buf, remoteFile);
       await client.end();
-      const transportMeta: Record<string, unknown> = { remoteFile, uploadedBytes: buf.length };
+      const transportMeta: Record<string, unknown> = { remoteFile, uploadedBytes: buf.length, live: true };
       return {
         ok: true,
         requestMeta,
-        responseMeta: { sandbox: true, uploaded: true },
+        responseMeta: { live: true, uploaded: true },
         transportMeta,
-        externalReference: `SANDBOX-SFTP-${input.submissionId}-${Date.now()}`,
+        externalReference: `LIVE-SFTP-${input.submissionId}-${Date.now()}`,
       };
     } catch (e) {
       try {
@@ -103,11 +90,11 @@ export class SandboxSftpClearinghouseTransport implements ClearinghouseTransport
       } catch {
         /* ignore */
       }
-      const msg = e instanceof Error ? e.message : "SANDBOX_SFTP_FAILED";
+      const msg = e instanceof Error ? e.message : "LIVE_SFTP_FAILED";
       return {
         ok: false,
         requestMeta,
-        responseMeta: { sandbox: true, error: msg },
+        responseMeta: { live: true, error: msg },
         errorMessage: msg,
       };
     }

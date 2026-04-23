@@ -1,7 +1,11 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import SftpClient from "ssh2-sftp-client";
 import { createStructuredLogger } from "../common/logging/structured-logger";
-import { loadClearinghouseConfig } from "./clearinghouse-config.util";
+import {
+  clearinghouseAckSftpPollGloballyEnabled,
+  getClearinghousePublicConfigStatus,
+  loadClearinghouseConfig,
+} from "./clearinghouse-config.util";
 import { ClaimAcknowledgmentService } from "./claim-acknowledgment.service";
 
 const log = createStructuredLogger("AckSftpPoller");
@@ -52,12 +56,15 @@ export class AckSftpPollerService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit(): void {
-    if (readEnv("CLEARINGHOUSE_ACK_SFTP_ENABLED") !== "true") {
+    if (!clearinghouseAckSftpPollGloballyEnabled()) {
       log.log("ack_sftp_poller_disabled", {});
       this.lastPollSnapshot = {
         at: new Date().toISOString(),
         status: "skipped_config",
-        detail: "CLEARINGHOUSE_ACK_SFTP_ENABLED not true",
+        detail:
+          readEnv("CLEARINGHOUSE_ACK_SFTP_ENABLED") !== "true"
+            ? "CLEARINGHOUSE_ACK_SFTP_ENABLED not true"
+            : "CLEARINGHOUSE_ACK_POLL_ENABLED is false",
         ingested: [],
         skipped: [],
         errors: [],
@@ -127,6 +134,7 @@ export class AckSftpPollerService implements OnModuleInit, OnModuleDestroy {
     const ingested: string[] = [];
     const skipped: string[] = [];
     const errors: { file: string; error: string; outcome?: AckSftpPollFileOutcome }[] = [];
+    const chPub = getClearinghousePublicConfigStatus();
 
     try {
       await client.connect({
@@ -163,6 +171,8 @@ export class AckSftpPollerService implements OnModuleInit, OnModuleDestroy {
                 source: "SFTP_POLL",
                 remoteFile,
                 ingestedAt: new Date().toISOString(),
+                clearinghouseMode: chPub.mode,
+                integrationTier: chPub.integrationTier,
               },
             });
           } catch (ingestErr) {
