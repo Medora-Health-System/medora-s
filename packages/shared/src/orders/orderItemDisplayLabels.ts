@@ -38,6 +38,9 @@ const FALLBACK_EN: Record<string, string> = {
 
 function manualLine(it: OrderItemLabelInput): string {
   const manual = it.manualLabel?.trim();
+  if (manual && manual === String(it.catalogItemType ?? "").trim()) {
+    return "";
+  }
   const manualSec = it.manualSecondaryText?.trim();
   return manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
 }

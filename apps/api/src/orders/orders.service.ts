@@ -174,34 +174,29 @@ export class OrdersService {
     };
   }
 
-  private resolveOrderEventLineLabels(
-    metadata: unknown,
-    order: {
-      type: string;
-      items: Array<{
-        id: string;
-        catalogItemType: string;
-        catalogItemId: string | null;
-        manualLabel: string | null;
-        manualSecondaryText: string | null;
-        strength: string | null;
-        notes: string | null;
-      }>;
+  private orderItemIdFromEventMetadataForLabels(metadata: unknown): string | null {
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+    const m = metadata as Record<string, unknown>;
+    const camel = m.orderItemId;
+    const snake = m.order_item_id;
+    if (typeof camel === "string" && camel.length > 0) return camel;
+    if (typeof snake === "string" && snake.length > 0) return snake;
+    return null;
+  }
+
+  /** One order line → locale labels (catalog maps must already include this line’s catalog ids). */
+  private lineLabelsForOrderItemRow(
+    row: {
+      catalogItemType: string;
+      catalogItemId: string | null;
+      manualLabel: string | null;
+      manualSecondaryText: string | null;
+      strength: string | null;
     },
     labMap: Map<string, CatalogLabTestEnrichment>,
     imgMap: Map<string, CatalogImagingStudyEnrichment>,
     medMap: Map<string, CatalogMedicationEnrichment>
   ): { en: string; fr: string } {
-    let itemId: string | null = null;
-    if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
-      const m = metadata as Record<string, unknown>;
-      if (typeof m.orderItemId === "string" && m.orderItemId.length > 0) itemId = m.orderItemId;
-    }
-    const items = order.items ?? [];
-    const row = itemId ? items.find((i) => i.id === itemId) : items[0];
-    if (!row) {
-      return { en: order.type, fr: order.type };
-    }
     const labelIn = {
       catalogItemType: String(row.catalogItemType),
       manualLabel: row.manualLabel,
@@ -230,6 +225,52 @@ export class OrdersService {
       en: buildOrderItemDisplayLabelEn(labelIn, catalogLabTest, catalogImagingStudy, catalogMedication),
       fr: buildOrderItemDisplayLabelFr(labelIn, catalogLabTest, catalogImagingStudy, catalogMedication),
     };
+  }
+
+  private resolveOrderEventLineLabels(
+    metadata: unknown,
+    order: {
+      type: string;
+      items: Array<{
+        id: string;
+        catalogItemType: string;
+        catalogItemId: string | null;
+        manualLabel: string | null;
+        manualSecondaryText: string | null;
+        strength: string | null;
+        notes: string | null;
+      }>;
+    },
+    labMap: Map<string, CatalogLabTestEnrichment>,
+    imgMap: Map<string, CatalogImagingStudyEnrichment>,
+    medMap: Map<string, CatalogMedicationEnrichment>
+  ): { en: string; fr: string } {
+    const itemId = this.orderItemIdFromEventMetadataForLabels(metadata);
+    const itemsSorted = [...(order.items ?? [])].sort((a, b) => a.id.localeCompare(b.id));
+
+    if (itemId) {
+      const row = itemsSorted.find((i) => i.id === itemId);
+      if (row) return this.lineLabelsForOrderItemRow(row, labMap, imgMap, medMap);
+    }
+
+    if (itemsSorted.length === 1) {
+      return this.lineLabelsForOrderItemRow(itemsSorted[0], labMap, imgMap, medMap);
+    }
+
+    if (itemsSorted.length > 1) {
+      const enParts: string[] = [];
+      const frParts: string[] = [];
+      for (const it of itemsSorted) {
+        const { en, fr } = this.lineLabelsForOrderItemRow(it, labMap, imgMap, medMap);
+        if (en.trim()) enParts.push(en.trim());
+        if (fr.trim()) frParts.push(fr.trim());
+      }
+      const en = [...new Set(enParts)].join(" · ");
+      const fr = [...new Set(frParts)].join(" · ");
+      if (en || fr) return { en: en || order.type, fr: fr || order.type };
+    }
+
+    return { en: order.type, fr: order.type };
   }
 
   private async buildRoleSnapshot(

@@ -126,13 +126,69 @@ type OrderEventRow = {
   } | null;
 };
 
-function eventLinePrimaryTitle(e: OrderEventRow, language: SupportedLanguage): string {
+/** Tokens that must never beat a recoverable encounter-order line label. */
+const GENERIC_ORDER_LINE_TITLE_TOKENS = new Set([
+  "LAB_TEST",
+  "IMAGING_STUDY",
+  "MEDICATION",
+  "CARE",
+  "SUPPLY",
+  "IVP",
+]);
+
+function isLikelyGenericOrderLineTitle(s: string): boolean {
+  const v = s.trim();
+  if (!v) return true;
+  if (GENERIC_ORDER_LINE_TITLE_TOKENS.has(v)) return true;
+  if (/^[A-Z][A-Z0-9_]+$/.test(v) && v.includes("_")) return true;
+  return false;
+}
+
+function resolveOrderEventTitleFromEncounterOrders(
+  e: OrderEventRow,
+  language: SupportedLanguage,
+  tr: (k: string) => string,
+  orders: Pick<OrderRow, "id" | "items">[]
+): string {
+  const ord = orders.find((o) => o.id === e.orderId);
+  if (!ord) return "";
+  const rawItems = Array.isArray(ord.items) ? ord.items : [];
+  const sorted = [...rawItems].sort((a, b) =>
+    String((a as Record<string, unknown>).id ?? "").localeCompare(String((b as Record<string, unknown>).id ?? ""))
+  );
+  const oid = orderItemIdFromEventMetadata(e.metadata);
+  const labelOne = (it: unknown) =>
+    getOrderItemDisplayLabelForLanguage(
+      it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+      language,
+      tr
+    ).trim();
+
+  if (oid) {
+    const it = sorted.find((x) => String((x as Record<string, unknown>).id ?? "") === oid);
+    return it ? labelOne(it) : "";
+  }
+  const labels = sorted.map((it) => labelOne(it)).filter(Boolean);
+  return [...new Set(labels)].join(" · ");
+}
+
+function eventLinePrimaryTitle(
+  e: OrderEventRow,
+  language: SupportedLanguage,
+  tr: (k: string) => string,
+  orders: Pick<OrderRow, "id" | "items">[]
+): string {
   const en = typeof e.lineLabelEn === "string" ? e.lineLabelEn.trim() : "";
   const fr = typeof e.lineLabelFr === "string" ? e.lineLabelFr.trim() : "";
-  if (language === "fr") {
-    return (fr || en || e.order?.displayName?.trim() || e.orderId).trim();
-  }
-  return (en || fr || e.order?.displayName?.trim() || e.orderId).trim();
+  const fromEncounter = resolveOrderEventTitleFromEncounterOrders(e, language, tr, orders).trim();
+  const apiPreferred = language === "fr" ? fr || en : en || fr;
+  const apiOk = apiPreferred.length > 0 && !isLikelyGenericOrderLineTitle(apiPreferred);
+  if (apiOk) return apiPreferred;
+  if (fromEncounter) return fromEncounter;
+  if (apiPreferred) return apiPreferred;
+  const legacy = e.order?.displayName?.trim();
+  if (legacy) return legacy;
+  return e.orderId.trim();
 }
 
 function lifecycleOutcomeSubLabel(metadata: unknown, tr: (k: string) => string): string | null {
@@ -715,7 +771,7 @@ export function EmergencyErOrdersPanel({
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
-                        {eventLinePrimaryTitle(e, language)}
+                        {eventLinePrimaryTitle(e, language, t, parsedOrders)}
                       </div>
                       {secondaryLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
@@ -749,7 +805,7 @@ export function EmergencyErOrdersPanel({
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
-                        {eventLinePrimaryTitle(e, language)}
+                        {eventLinePrimaryTitle(e, language, t, parsedOrders)}
                       </div>
                       {medCancelLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>

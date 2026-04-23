@@ -40,8 +40,12 @@ export function orderHasAnyActiveItemForEr(order: { items: unknown[] }): boolean
 
 export function orderItemIdFromEventMetadata(metadata: unknown): string | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
-  const id = (metadata as { orderItemId?: unknown }).orderItemId;
-  return typeof id === "string" && id.length > 0 ? id : null;
+  const m = metadata as { orderItemId?: unknown; order_item_id?: unknown };
+  const camel = m.orderItemId;
+  const snake = m.order_item_id;
+  if (typeof camel === "string" && camel.length > 0) return camel;
+  if (typeof snake === "string" && snake.length > 0) return snake;
+  return null;
 }
 
 /**
