@@ -326,59 +326,60 @@ enum MsppRoleCode {
 }
 
 model Facility {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String
-  country   String
-  timezone  String
-  defaultLanguage String @default("fr")
-  isActive  Boolean  @default(true)
+  id                       String   @id @default(uuid())
+  code                     String   @unique
+  name                     String
+  country                  String
+  timezone                 String
+  defaultLanguage          String   @default("fr")
+  isActive                 Boolean  @default(true)
   /// Phase 7 — institutional / UB-style claim billing identity (optional).
-  billingLegalName       String?
-  billingNpi             String?
-  taxIdEin               String?
-  billingAddressLine1    String?
-  billingAddressLine2    String?
-  billingCity            String?
-  billingStateProvince   String?
-  billingPostalCode      String?
-  billingCountry         String?
+  billingLegalName         String?
+  billingNpi               String?
+  taxIdEin                 String?
+  billingAddressLine1      String?
+  billingAddressLine2      String?
+  billingCity              String?
+  billingStateProvince     String?
+  billingPostalCode        String?
+  billingCountry           String?
   billingFacilityTypeLabel String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
-  departments            Department[]
-  userRoles              UserRole[]
-  patientsRegistered     Patient[]               @relation("RegisteredAtFacility")
-  patients               Patient[]               @relation("PatientFacility")
-  encounters             Encounter[]
-  orders                 Order[]
-  auditLogs              AuditLog[]
-  triages                Triage[]
-  results                Result[]
-  pathwaySessions        PathwaySession[]
-  protocolOrderSets      ProtocolOrderSet[]
-  diagnoses              Diagnosis[]
-  medicationDispenses    MedicationDispense[]
-  medicationAdministrations MedicationAdministration[]
-  inventoryItems             InventoryItem[]
-  inventoryTransactions      InventoryTransaction[]
-  facilityMedicationUsages   FacilityMedicationUsage[]
-  vaccineAdministrations     VaccineAdministration[]
-  diseaseCaseReports         DiseaseCaseReport[]
-  followUps                  FollowUp[]
-  triageVitalsReadings       TriageVitalsReading[]
-  encounterProviderAddenda   EncounterProviderAddendum[]
-  breakGlassSessions         BreakGlassSession[]
-  encounterIntakes           EncounterIntake[]
-  patientInsuranceCoverages  PatientInsuranceCoverage[]
-  billingEvents              BillingEvent[]
-  claimSubmissionBatches     ClaimSubmissionBatch[]
-  claimSubmissions           ClaimSubmission[]
-  claimControlCounters       ClaimControlCounter[]
-  claimAcknowledgments            ClaimAcknowledgment[]
-  claimAcknowledgmentDeadLetters  ClaimAcknowledgmentDeadLetter[]
-  claimOperationalEvents          ClaimOperationalEvent[]
+  departments                    Department[]
+  userRoles                      UserRole[]
+  patientsRegistered             Patient[]                       @relation("RegisteredAtFacility")
+  patients                       Patient[]                       @relation("PatientFacility")
+  encounters                     Encounter[]
+  orders                         Order[]
+  auditLogs                      AuditLog[]
+  triages                        Triage[]
+  results                        Result[]
+  pathwaySessions                PathwaySession[]
+  protocolOrderSets              ProtocolOrderSet[]
+  diagnoses                      Diagnosis[]
+  medicationDispenses            MedicationDispense[]
+  medicationAdministrations      MedicationAdministration[]
+  inventoryItems                 InventoryItem[]
+  inventoryTransactions          InventoryTransaction[]
+  facilityMedicationUsages       FacilityMedicationUsage[]
+  vaccineAdministrations         VaccineAdministration[]
+  diseaseCaseReports             DiseaseCaseReport[]
+  followUps                      FollowUp[]
+  triageVitalsReadings           TriageVitalsReading[]
+  encounterProviderAddenda       EncounterProviderAddendum[]
+  breakGlassSessions             BreakGlassSession[]
+  encounterIntakes               EncounterIntake[]
+  patientInsuranceCoverages      PatientInsuranceCoverage[]
+  billingEvents                  BillingEvent[]
+  claimSubmissionBatches         ClaimSubmissionBatch[]
+  claimSubmissions               ClaimSubmission[]
+  claimControlCounters           ClaimControlCounter[]
+  claimAcknowledgments           ClaimAcknowledgment[]
+  claimAcknowledgmentDeadLetters ClaimAcknowledgmentDeadLetter[]
+  claimOperationalEvents         ClaimOperationalEvent[]
+  orderEvents                    OrderEvent[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -419,9 +420,9 @@ model PatientInsuranceCoverage {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  patient Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  facility  Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  payer     InsurancePayer? @relation(fields: [payerId], references: [id], onDelete: SetNull)
+  patient  Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  payer    InsurancePayer? @relation(fields: [payerId], references: [id], onDelete: SetNull)
 
   @@unique([patientId, facilityId, rank])
   @@index([patientId])
@@ -454,49 +455,49 @@ model Role {
 }
 
 model User {
-  id               String   @id @default(uuid())
-  email            String   @unique
-  firstName        String
-  lastName         String
+  id                  String   @id @default(uuid())
+  email               String   @unique
+  firstName           String
+  lastName            String
   /// Phase 7 — 10-digit NPI for professional claim rendering (optional).
-  billingNpi             String?
-  billingTaxonomyCode    String?
-  billingNameOverride    String?
-  passwordHash     String
-  refreshTokenHash String?
-  isActive         Boolean  @default(true)
+  billingNpi          String?
+  billingTaxonomyCode String?
+  billingNameOverride String?
+  passwordHash        String
+  refreshTokenHash    String?
+  isActive            Boolean  @default(true)
   /// Plateforme : réservé au compte principal unique (`atranchant@medora.local`); tenir aligné avec les migrations (index unique partiel).
-  canCreateFacilities Boolean @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  canCreateFacilities Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  userRoles              UserRole[]
-  auditLogs              AuditLog[]
-  medicationDispenses    MedicationDispense[]
+  userRoles                 UserRole[]
+  auditLogs                 AuditLog[]
+  medicationDispenses       MedicationDispense[]
   medicationAdministrations MedicationAdministration[]
-  inventoryTransactions  InventoryTransaction[]
-  vaccineAdministrations VaccineAdministration[]
-  diseaseCaseReports     DiseaseCaseReport[]
-  followUpsCreated      FollowUp[]
-  passwordResetTokens   PasswordResetToken[]
+  inventoryTransactions     InventoryTransaction[]
+  vaccineAdministrations    VaccineAdministration[]
+  diseaseCaseReports        DiseaseCaseReport[]
+  followUpsCreated          FollowUp[]
+  passwordResetTokens       PasswordResetToken[]
 
-  encountersAsAssignedPhysician Encounter[] @relation("EncounterPhysicianAssigned")
-  encountersSignedByProvider    Encounter[] @relation("EncounterSignedBy")
-  encountersBillingFinalizedBy  Encounter[] @relation("EncounterBillingFinalizedBy")
-  encountersBillingReopenedBy   Encounter[] @relation("EncounterBillingReopenedBy")
-  providerAddendaCreated EncounterProviderAddendum[]
-  orderItemsCompletedNurse      OrderItem[] @relation("OrderItemNurseCompleted")
-  ordersCancelled               Order[]     @relation("OrderCancelledBy")
-  msppUserRoleAssignments       MsppUserRoleAssignment[]
-  msppReviewAuditEvents         MsppReviewAuditEvent[]
-  msppAlertTriagesAcknowledged  MsppAlertTriage[]        @relation("MsppAlertTriageAckBy")
-  msppAlertTriagesAssigned      MsppAlertTriage[]        @relation("MsppAlertTriageAssignTo")
-  msppAlertInvestigationsOpened   MsppAlertInvestigation[]       @relation("MsppAlertInvestigationOpenedBy")
-  msppAlertInvestigationsAssigned MsppAlertInvestigation[]       @relation("MsppAlertInvestigationAssignedTo")
-  msppAlertInvestigationEventsCreated MsppAlertInvestigationEvent[] @relation("MsppAlertInvestigationEventCreatedBy")
-  msppDiseaseReportFeedbacksCreated          MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackCreatedBy")
-  msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
-  msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackResolvedBy")
+  encountersAsAssignedPhysician              Encounter[]                   @relation("EncounterPhysicianAssigned")
+  encountersSignedByProvider                 Encounter[]                   @relation("EncounterSignedBy")
+  encountersBillingFinalizedBy               Encounter[]                   @relation("EncounterBillingFinalizedBy")
+  encountersBillingReopenedBy                Encounter[]                   @relation("EncounterBillingReopenedBy")
+  providerAddendaCreated                     EncounterProviderAddendum[]
+  orderItemsCompletedNurse                   OrderItem[]                   @relation("OrderItemNurseCompleted")
+  ordersCancelled                            Order[]                       @relation("OrderCancelledBy")
+  msppUserRoleAssignments                    MsppUserRoleAssignment[]
+  msppReviewAuditEvents                      MsppReviewAuditEvent[]
+  msppAlertTriagesAcknowledged               MsppAlertTriage[]             @relation("MsppAlertTriageAckBy")
+  msppAlertTriagesAssigned                   MsppAlertTriage[]             @relation("MsppAlertTriageAssignTo")
+  msppAlertInvestigationsOpened              MsppAlertInvestigation[]      @relation("MsppAlertInvestigationOpenedBy")
+  msppAlertInvestigationsAssigned            MsppAlertInvestigation[]      @relation("MsppAlertInvestigationAssignedTo")
+  msppAlertInvestigationEventsCreated        MsppAlertInvestigationEvent[] @relation("MsppAlertInvestigationEventCreatedBy")
+  msppDiseaseReportFeedbacksCreated          MsppDiseaseReportFeedback[]   @relation("MsppDiseaseReportFeedbackCreatedBy")
+  msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[]   @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
+  msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[]   @relation("MsppDiseaseReportFeedbackResolvedBy")
   authSessions                               AuthSession[]
   breakGlassSessions                         BreakGlassSession[]
   performedOrderEvents                       OrderEvent[]
@@ -524,13 +525,14 @@ model AuthSession {
 }
 
 model PasswordResetToken {
-  id         String    @id @default(uuid())
-  userId     String
-  tokenHash  String
-  expiresAt  DateTime
-  usedAt     DateTime?
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([expiresAt])
 }
@@ -560,53 +562,53 @@ model UserRole {
 
 /// Demographics: date of birth is `dob` only (age is always derived). `sex` is canonical; `sexAtBirth` kept for legacy/API parity.
 model Patient {
-  id                     String      @id @default(uuid())
-  facilityId             String
-  mrn                    String?
-  globalMrn              String      @unique
-  firstName              String
-  lastName               String
-  middleName             String?
-  dob                    DateTime?
-  phone                  String?
-  email                  String?
-  sexAtBirth             SexAtBirth?
-  sex                    PatientSex  @default(UNKNOWN)
-  nationalId             String?
-  address                String?
-  addressLine1           String?
-  addressLine2           String?
-  city                   String?
-  stateProvince          String?
-  postalCode             String?
-  country                String?
-  emergencyContactName           String?
-  emergencyContactRelationship   String?
-  emergencyContactPhone          String?
-  adminNotes                     String?
-  language               String?
-  registeredAtFacilityId String
+  id                           String      @id @default(uuid())
+  facilityId                   String
+  mrn                          String?
+  globalMrn                    String      @unique
+  firstName                    String
+  lastName                     String
+  middleName                   String?
+  dob                          DateTime?
+  phone                        String?
+  email                        String?
+  sexAtBirth                   SexAtBirth?
+  sex                          PatientSex  @default(UNKNOWN)
+  nationalId                   String?
+  address                      String?
+  addressLine1                 String?
+  addressLine2                 String?
+  city                         String?
+  stateProvince                String?
+  postalCode                   String?
+  country                      String?
+  emergencyContactName         String?
+  emergencyContactRelationship String?
+  emergencyContactPhone        String?
+  adminNotes                   String?
+  language                     String?
+  registeredAtFacilityId       String
   /// Denormalized latest vitals JSON for chart header / offline read models; updated when triage or encounter vitals are saved.
-  latestVitalsJson       Json?
-  latestVitalsAt         DateTime?
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
+  latestVitalsJson             Json?
+  latestVitalsAt               DateTime?
+  createdAt                    DateTime    @default(now())
+  updatedAt                    DateTime    @updatedAt
 
-  facility               Facility                @relation("PatientFacility", fields: [facilityId], references: [id], onDelete: Restrict)
-  registeredAtFacility   Facility                @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id], onDelete: Restrict)
-  encounters             Encounter[]
-  orders                 Order[]
-  auditLogs              AuditLog[]
-  diagnoses              Diagnosis[]
-  medicationDispenses    MedicationDispense[]
+  facility                  Facility                   @relation("PatientFacility", fields: [facilityId], references: [id], onDelete: Restrict)
+  registeredAtFacility      Facility                   @relation("RegisteredAtFacility", fields: [registeredAtFacilityId], references: [id], onDelete: Restrict)
+  encounters                Encounter[]
+  orders                    Order[]
+  auditLogs                 AuditLog[]
+  diagnoses                 Diagnosis[]
+  medicationDispenses       MedicationDispense[]
   medicationAdministrations MedicationAdministration[]
-  vaccineAdministrations VaccineAdministration[]
-  diseaseCaseReports     DiseaseCaseReport[]
-  followUps              FollowUp[]
-  triageVitalsReadings   TriageVitalsReading[]
-  breakGlassSessions     BreakGlassSession[]
-  insuranceCoverages     PatientInsuranceCoverage[]
-  billingEvents          BillingEvent[]
+  vaccineAdministrations    VaccineAdministration[]
+  diseaseCaseReports        DiseaseCaseReport[]
+  followUps                 FollowUp[]
+  triageVitalsReadings      TriageVitalsReading[]
+  breakGlassSessions        BreakGlassSession[]
+  insuranceCoverages        PatientInsuranceCoverage[]
+  billingEvents             BillingEvent[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -643,12 +645,12 @@ model AuditLog {
 }
 
 model Encounter {
-  id         String          @id @default(uuid())
-  facilityId String
-  patientId  String
-  providerId String?
-  type       EncounterType
-  status     EncounterStatus @default(OPEN)
+  id            String                 @id @default(uuid())
+  facilityId    String
+  patientId     String
+  providerId    String?
+  type          EncounterType
+  status        EncounterStatus        @default(OPEN)
   workflowState EncounterWorkflowState @default(ARRIVED)
 
   chiefComplaint    String?
@@ -672,21 +674,21 @@ model Encounter {
   dischargeSummaryJson    Json?
 
   /// Synthèse structurée d'admission (hospitalisation depuis la consultation) — MVP, une décision par visite
-  admissionSummaryJson Json?
+  admissionSummaryJson         Json?
   /// U.S. billing foundation — charge capture / billing event candidates (V1 shared schema)
-  billingCaptureJson   Json?
+  billingCaptureJson           Json?
   /// Phase 3 — billing finalization for claim assembly (no submission in this phase).
-  billingFinalizationStatus EncounterBillingFinalizationStatus @default(NOT_READY)
-  billingFinalizedAt        DateTime?
-  billingFinalizedByUserId  String?
-  billingFinalizedBy        User?   @relation("EncounterBillingFinalizedBy", fields: [billingFinalizedByUserId], references: [id], onDelete: SetNull)
-  billingReopenedAt         DateTime?
-  billingReopenedByUserId   String?
-  billingReopenedBy         User?   @relation("EncounterBillingReopenedBy", fields: [billingReopenedByUserId], references: [id], onDelete: SetNull)
+  billingFinalizationStatus    EncounterBillingFinalizationStatus @default(NOT_READY)
+  billingFinalizedAt           DateTime?
+  billingFinalizedByUserId     String?
+  billingFinalizedBy           User?                              @relation("EncounterBillingFinalizedBy", fields: [billingFinalizedByUserId], references: [id], onDelete: SetNull)
+  billingReopenedAt            DateTime?
+  billingReopenedByUserId      String?
+  billingReopenedBy            User?                              @relation("EncounterBillingReopenedBy", fields: [billingReopenedByUserId], references: [id], onDelete: SetNull)
   /// Last computed readiness snapshot (blockers, warnings, counts) for audit / UI.
   billingReadinessSnapshotJson Json?
   /// Horodatage de la décision d'admission (rempli côté serveur à la 1re sauvegarde du dossier d'admission)
-  admittedAt           DateTime?
+  admittedAt                   DateTime?
 
   notes String?
 
@@ -701,25 +703,25 @@ model Encounter {
   /// Optimistic locking — increment on every successful mutating write.
   version   Int      @default(1)
 
-  patient                Patient                 @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  facility               Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  orders                 Order[]
-  auditLogs              AuditLog[]              @relation("EncounterAuditLogs")
-  triage                 Triage?
-  pathwaySession         PathwaySession?
-  diagnoses              Diagnosis[]
-  medicationDispenses    MedicationDispense[]
+  patient                   Patient                     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility                  Facility                    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  orders                    Order[]
+  auditLogs                 AuditLog[]                  @relation("EncounterAuditLogs")
+  triage                    Triage?
+  pathwaySession            PathwaySession?
+  diagnoses                 Diagnosis[]
+  medicationDispenses       MedicationDispense[]
   medicationAdministrations MedicationAdministration[]
-  vaccineAdministrations VaccineAdministration[]
-  diseaseCaseReports     DiseaseCaseReport[]
-  followUps              FollowUp[]
-  triageVitalsReadings   TriageVitalsReading[]
-  providerAddenda        EncounterProviderAddendum[]
-  breakGlassSessions     BreakGlassSession[]
-  intake                 EncounterIntake?
-  billingEvents          BillingEvent[]
-  claimSubmissions       ClaimSubmission[]
-  orderEvents            OrderEvent[]
+  vaccineAdministrations    VaccineAdministration[]
+  diseaseCaseReports        DiseaseCaseReport[]
+  followUps                 FollowUp[]
+  triageVitalsReadings      TriageVitalsReading[]
+  providerAddenda           EncounterProviderAddendum[]
+  breakGlassSessions        BreakGlassSession[]
+  intake                    EncounterIntake?
+  billingEvents             BillingEvent[]
+  claimSubmissions          ClaimSubmission[]
+  orderEvents               OrderEvent[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -891,34 +893,34 @@ model Order {
 }
 
 model OrderItem {
-  id              String      @id @default(uuid())
-  orderId         String
+  id                          String                       @id @default(uuid())
+  orderId                     String
   /// Référence catalogue (nullable si saisie manuelle — `manualLabel` requis dans ce cas).
-  catalogItemId   String?
-  catalogItemType String // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
+  catalogItemId               String?
+  catalogItemType             String // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
   /// Libellé saisi à la main lorsque l’article n’existe pas au catalogue (analyse, examen, médicament).
-  manualLabel          String?
+  manualLabel                 String?
   /// Précision (ex. région imagerie) ou texte secondaire d’affichage.
-  manualSecondaryText  String?
-  quantity        Int?
-  notes           String?
-  strength        String?     // e.g. "500 mg" for medication
-  refillCount     Int?        // number of refills for Rx
+  manualSecondaryText         String?
+  quantity                    Int?
+  notes                       String?
+  strength                    String? // e.g. "500 mg" for medication
+  refillCount                 Int? // number of refills for Rx
   medicationFulfillmentIntent MedicationFulfillmentIntent?
   /// Administration prévue (information clinique, pas planification récurrente).
-  intendedAdministrationAt DateTime?
-  completedAt     DateTime?
-  completedByUserId String?
-  completedByNurse User?     @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
-  status          OrderStatus @default(PENDING)
+  intendedAdministrationAt    DateTime?
+  completedAt                 DateTime?
+  completedByUserId           String?
+  completedByNurse            User?                        @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  status                      OrderStatus                  @default(PENDING)
   /// Explicit visit lifecycle — kept in sync with `status` in application code; `REVIEWED` = chart/review closure.
-  lifecycleState  OrderItemLifecycleState @default(ORDERED)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  lifecycleState              OrderItemLifecycleState      @default(ORDERED)
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
 
-  order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  result Result?
-  pharmacyDispenseRecord MedicationDispense?
+  order                     Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  result                    Result?
+  pharmacyDispenseRecord    MedicationDispense?
   medicationAdministrations MedicationAdministration[]
 
   @@index([orderId])
@@ -932,18 +934,18 @@ model OrderItem {
 
 /// ER-ORDER-LIFECYCLE: immutable audit events for all order domains.
 model OrderEvent {
-  id                String             @id @default(cuid())
+  id                String              @id @default(cuid())
   facilityId        String
   encounterId       String
   orderId           String
   orderType         OrderEventOrderType
   eventType         OrderEventType
   performedByUserId String
-  performedAt       DateTime           @default(now())
+  performedAt       DateTime            @default(now())
   roleSnapshot      String
   note              String?
   metadata          Json?
-  createdAt         DateTime           @default(now())
+  createdAt         DateTime            @default(now())
 
   facility    Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
@@ -972,8 +974,8 @@ model Triage {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter            Encounter             @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  facility             Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   triageVitalsReadings TriageVitalsReading[]
 
   @@index([facilityId])
@@ -1025,19 +1027,19 @@ model Result {
 
 /// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
 model CatalogLabTest {
-  id            String   @id @default(uuid())
-  code          String   @unique
-  name          String
-  displayNameFr String?
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
+  displayNameFr      String?
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
-  description   String?
-  searchText    String?
-  sortPriority  Int      @default(0)
-  isEssential   Boolean  @default(false)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  description        String?
+  searchText         String?
+  sortPriority       Int      @default(0)
+  isEssential        Boolean  @default(false)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   aliases LabTestAlias[]
 }
@@ -1051,94 +1053,94 @@ model LabTestAlias {
 
   catalogLabTest CatalogLabTest @relation(fields: [catalogLabTestId], references: [id], onDelete: Cascade)
 
+  @@unique([catalogLabTestId, alias])
   @@index([catalogLabTestId])
   @@index([alias])
-  @@unique([catalogLabTestId, alias])
 }
 
 /// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
 model CatalogImagingStudy {
-  id            String   @id @default(uuid())
-  code          String   @unique
-  name          String
-  displayNameFr String?
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
+  displayNameFr      String?
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
-  description   String?
-  modality      String?
-  bodyRegion    String?
-  searchText    String?
-  sortPriority  Int      @default(0)
-  isEssential   Boolean  @default(false)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  description        String?
+  modality           String?
+  bodyRegion         String?
+  searchText         String?
+  sortPriority       Int      @default(0)
+  isEssential        Boolean  @default(false)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   aliases ImagingStudyAlias[]
 }
 
 model ImagingStudyAlias {
-  id                     String   @id @default(uuid())
-  catalogImagingStudyId  String
-  alias                  String
-  language               String?
-  createdAt              DateTime @default(now())
+  id                    String   @id @default(uuid())
+  catalogImagingStudyId String
+  alias                 String
+  language              String?
+  createdAt             DateTime @default(now())
 
   catalogImagingStudy CatalogImagingStudy @relation(fields: [catalogImagingStudyId], references: [id], onDelete: Cascade)
 
+  @@unique([catalogImagingStudyId, alias])
   @@index([catalogImagingStudyId])
   @@index([alias])
-  @@unique([catalogImagingStudyId, alias])
 }
 
 /// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
 model CatalogMedication {
-  id                String   @id @default(uuid())
-  code              String   @unique
-  name              String
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
   /// Optional HCPCS/J-code-style suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
   /// ER-3: normalized National Drug Code (11 digits). Optional until local catalog quality is complete.
-  ndc11             String?  @db.VarChar(11)
+  ndc11              String?  @db.VarChar(11)
   /// ER-3: display NDC as entered/imported (e.g. 12345-6789-01) for UI readability.
-  ndcDisplay        String?  @db.VarChar(32)
+  ndcDisplay         String?  @db.VarChar(32)
   /// ER-3: preferred quantity basis for billing math (e.g. mg, mL, each, unit).
-  billingUnitType   String?  @db.VarChar(32)
-  description       String?
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  genericName       String?
-  displayNameFr     String?
-  strength          String?
-  dosageForm        String?
-  route             String?
-  therapeuticClass  String?
-  sortPriority      Int      @default(0)
-  isEssential       Boolean  @default(false)
-  searchText        String?
+  billingUnitType    String?  @db.VarChar(32)
+  description        String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  genericName        String?
+  displayNameFr      String?
+  strength           String?
+  dosageForm         String?
+  route              String?
+  therapeuticClass   String?
+  sortPriority       Int      @default(0)
+  isEssential        Boolean  @default(false)
+  searchText         String?
 
-  inventoryItems         InventoryItem[]
-  medicationDispenses    MedicationDispense[]
-  aliases                MedicationAlias[]
+  inventoryItems           InventoryItem[]
+  medicationDispenses      MedicationDispense[]
+  aliases                  MedicationAlias[]
   facilityMedicationUsages FacilityMedicationUsage[]
 
   @@index([ndc11])
 }
 
 model MedicationAlias {
-  id                 String   @id @default(uuid())
+  id                  String   @id @default(uuid())
   catalogMedicationId String
-  alias              String
-  language           String?
-  isPrimary          Boolean  @default(false)
-  createdAt          DateTime @default(now())
+  alias               String
+  language            String?
+  isPrimary           Boolean  @default(false)
+  createdAt           DateTime @default(now())
 
   catalogMedication CatalogMedication @relation(fields: [catalogMedicationId], references: [id], onDelete: Cascade)
 
+  @@unique([catalogMedicationId, alias])
   @@index([catalogMedicationId])
   @@index([alias])
-  @@unique([catalogMedicationId, alias])
 }
 
 model PathwaySession {
@@ -1254,21 +1256,21 @@ model Icd10DiagnosisCode {
 
 /// CPT / HCPCS Level I & Level II reference rows (imported from vendor/CMS-style files — sample CSV in repo is not production-complete).
 model BillingProcedureCode {
-  id               String                   @id @default(uuid())
+  id               String                     @id @default(uuid())
   /// Canonical display code (e.g. 99283, A0429).
   code             String
   /// Uppercase, normalized for matching (alphanumeric only, no spaces).
   normalizedCode   String
   codeSystem       BillingProcedureCodeSystem
   shortDescription String
-  longDescription  String?                  @db.Text
-  isActive         Boolean                  @default(true)
+  longDescription  String?                    @db.Text
+  isActive         Boolean                    @default(true)
   effectiveYear    Int?
-  codeSetVersion   String?                  @db.VarChar(32)
+  codeSetVersion   String?                    @db.VarChar(32)
   /// Lowercase denormalized search blob (code + descriptions).
-  searchText       String?                  @db.Text
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
+  searchText       String?                    @db.Text
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 
   @@unique([codeSystem, normalizedCode])
   @@index([isActive])
@@ -1277,27 +1279,27 @@ model BillingProcedureCode {
 
 // --- Medora Core: continuity / diagnoses ---
 model Diagnosis {
-  id           String          @id @default(uuid())
-  patientId    String
-  encounterId  String
-  facilityId   String
-  code         String
-  description  String?
-  status       DiagnosisStatus @default(ACTIVE)
-  onsetDate    DateTime?
-  resolvedDate DateTime?
-  notes        String?
+  id             String              @id @default(uuid())
+  patientId      String
+  encounterId    String
+  facilityId     String
+  code           String
+  description    String?
+  status         DiagnosisStatus     @default(ACTIVE)
+  onsetDate      DateTime?
+  resolvedDate   DateTime?
+  notes          String?
   /// Encounter-scoped ordering: lower = earlier in claim / primary-first convention (0 = principal).
-  sortOrder          Int                 @default(0)
-  icd10CatalogId    String?
-  codeSource         DiagnosisCodeSource @default(LEGACY)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  sortOrder      Int                 @default(0)
+  icd10CatalogId String?
+  codeSource     DiagnosisCodeSource @default(LEGACY)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
-  patient        Patient             @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  encounter      Encounter           @relation(fields: [encounterId], references: [id], onDelete: Restrict)
-  facility       Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  icd10Catalog   Icd10DiagnosisCode? @relation(fields: [icd10CatalogId], references: [id], onDelete: SetNull)
+  patient      Patient             @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter    Encounter           @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility     Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  icd10Catalog Icd10DiagnosisCode? @relation(fields: [icd10CatalogId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([encounterId])
@@ -1337,14 +1339,14 @@ model InventoryItem {
 }
 
 model FacilityMedicationUsage {
-  id                  String   @id @default(uuid())
+  id                  String    @id @default(uuid())
   facilityId          String
   catalogMedicationId String
-  inventoryAddsCount  Int      @default(0)
-  dispenseCount       Int      @default(0)
+  inventoryAddsCount  Int       @default(0)
+  dispenseCount       Int       @default(0)
   lastUsedAt          DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   facility          Facility          @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   catalogMedication CatalogMedication @relation(fields: [catalogMedicationId], references: [id], onDelete: Cascade)
@@ -1377,44 +1379,44 @@ model InventoryTransaction {
 }
 
 model MedicationDispense {
-  id                  String   @id @default(uuid())
-  patientId           String
-  encounterId         String
-  facilityId          String
+  id                    String   @id @default(uuid())
+  patientId             String
+  encounterId           String
+  facilityId            String
   /// Null si dispensation liée à une ligne d’ordonnance sans entrée catalogue (saisie manuelle).
-  catalogMedicationId String?
+  catalogMedicationId   String?
   /// Libellé figé lorsque `catalogMedicationId` est absent (même source que `OrderItem.manualLabel`).
   manualMedicationLabel String?
   /// When null, dispense is documentation-only (no stock movement), e.g. ordonnance remise.
-  inventoryItemId     String?
-  orderItemId         String?  @unique
-  quantityDispensed   Int
+  inventoryItemId       String?
+  orderItemId           String?  @unique
+  quantityDispensed     Int
   /// ER-3: structured dose value for billing-safe medication capture.
-  doseValue           Decimal? @db.Decimal(12, 4)
+  doseValue             Decimal? @db.Decimal(12, 4)
   /// ER-3: structured dose unit (mg, mL, unit, each, etc.).
-  doseUnit            String?  @db.VarChar(32)
+  doseUnit              String?  @db.VarChar(32)
   /// ER-3: billing quantity snapshot (can differ from quantityDispensed in future payer logic).
-  billingQuantity     Decimal? @db.Decimal(12, 4)
+  billingQuantity       Decimal? @db.Decimal(12, 4)
   /// ER-3: quantity unit (tablet, mL, vial, each, etc.).
-  quantityUnit        String?  @db.VarChar(32)
+  quantityUnit          String?  @db.VarChar(32)
   /// ER-3: normalized NDC snapshot at dispense time (11 digits), optional.
-  ndc11Snapshot       String?  @db.VarChar(11)
+  ndc11Snapshot         String?  @db.VarChar(11)
   /// ER-3: human display NDC snapshot (hyphenated), optional.
-  ndcDisplaySnapshot  String?  @db.VarChar(32)
-  dosageInstructions  String?
-  dispensedByUserId   String
-  dispensedAt         DateTime @default(now())
-  notes               String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  ndcDisplaySnapshot    String?  @db.VarChar(32)
+  dosageInstructions    String?
+  dispensedByUserId     String
+  dispensedAt           DateTime @default(now())
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   patient           Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict)
   encounter         Encounter          @relation(fields: [encounterId], references: [id], onDelete: Restrict)
   facility          Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   catalogMedication CatalogMedication? @relation(fields: [catalogMedicationId], references: [id], onDelete: Restrict)
-  inventoryItem     InventoryItem?    @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
-  orderItem         OrderItem?        @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
-  dispensedBy       User              @relation(fields: [dispensedByUserId], references: [id], onDelete: Restrict)
+  inventoryItem     InventoryItem?     @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  orderItem         OrderItem?         @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  dispensedBy       User               @relation(fields: [dispensedByUserId], references: [id], onDelete: Restrict)
 
   @@index([patientId])
   @@index([encounterId])
@@ -1469,16 +1471,16 @@ model MedicationAdministration {
 
 // --- Medora Public Health: vaccination + disease reporting ---
 model VaccineCatalog {
-  id           String   @id @default(uuid())
-  code         String   @unique
-  name         String
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
   /// Optional CPT/HCPCS-style suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
-  description  String?
-  manufacturer String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  description        String?
+  manufacturer       String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   vaccineAdministrations VaccineAdministration[]
 }
@@ -1532,22 +1534,22 @@ model DiseaseCaseReport {
   updatedAt        DateTime          @updatedAt
 
   /// Dossier initial — signes (pas de champs de décision MSPP département/central ici).
-  feverReported    Boolean?
-  symptomDuration  String?           @db.VarChar(256)
-  hospitalized     Boolean?
-  outcomeStatus    String?           @db.VarChar(128)
-  labConfirmed     Boolean?
-  labEvidenceType  MsppLabEvidenceType?
-  epiLinkedCase    Boolean?
-  travelOrExposureContext String?    @db.Text
-  clinicalSummary  String?           @db.Text
+  feverReported                 Boolean?
+  symptomDuration               String?                 @db.VarChar(256)
+  hospitalized                  Boolean?
+  outcomeStatus                 String?                 @db.VarChar(128)
+  labConfirmed                  Boolean?
+  labEvidenceType               MsppLabEvidenceType?
+  epiLinkedCase                 Boolean?
+  travelOrExposureContext       String?                 @db.Text
+  clinicalSummary               String?                 @db.Text
   provisionalCaseClassification MsppCaseClassification?
 
-  patient     Patient?     @relation(fields: [patientId], references: [id], onDelete: SetNull)
-  facility    Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  encounter   Encounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
-  reportedBy  User?        @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
-  geoCommune  GeoCommune?  @relation(fields: [geoCommuneId], references: [id], onDelete: SetNull)
+  patient       Patient?                    @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  facility      Facility                    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter     Encounter?                  @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  reportedBy    User?                       @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
+  geoCommune    GeoCommune?                 @relation(fields: [geoCommuneId], references: [id], onDelete: SetNull)
   msppFeedbacks MsppDiseaseReportFeedback[]
 
   @@index([facilityId])
@@ -1560,18 +1562,18 @@ model DiseaseCaseReport {
 
 /// FRONT_DESK (and others) create via API; `encounterId` optional for registration desk follow-ups.
 model FollowUp {
-  id               String         @id @default(uuid())
-  patientId        String
-  facilityId       String
-  encounterId      String?
-  dueDate          DateTime
-  reason           String?
-  status           FollowUpStatus  @default(OPEN)
-  notes            String?
-  createdByUserId  String?
-  completedAt      DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  patientId       String
+  facilityId      String
+  encounterId     String?
+  dueDate         DateTime
+  reason          String?
+  status          FollowUpStatus @default(OPEN)
+  notes           String?
+  createdByUserId String?
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
   facility  Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
@@ -1605,22 +1607,22 @@ enum MsppLabEvidenceType {
 
 /// MSPP-style review record. Phase 1: optional `diseaseCaseReportId` without FK to `DiseaseCaseReport` until relations are confirmed.
 model DiseaseCaseReview {
-  id                  String    @id @default(uuid())
-  diseaseCaseReportId String?
-  reviewerUserId      String?
-  status              String
-  reviewerLevel       String
-  departmentId        String
-  notes               String?
-  reviewedAt          DateTime?
+  id                       String                  @id @default(uuid())
+  diseaseCaseReportId      String?
+  reviewerUserId           String?
+  status                   String
+  reviewerLevel            String
+  departmentId             String
+  notes                    String?
+  reviewedAt               DateTime?
   /// Dernière décision : critère structuré — présence de fièvre (oui/non).
-  validationFever         Boolean?
+  validationFever          Boolean?
   /// Durée des signes ou de l’épisode (texte court).
-  validationDuration      String?
+  validationDuration       String?
   /// Confirmation biologique (oui/non).
-  validationLabConfirmed  Boolean?
+  validationLabConfirmed   Boolean?
   /// Risque d’exposition : LOW | MEDIUM | HIGH | UNKNOWN.
-  validationExposureRisk  String?
+  validationExposureRisk   String?
   /// Classification épidémiologique du cas (revue structurée).
   caseClassification       MsppCaseClassification?
   inclusionCriteriaSummary String?                 @db.Text
@@ -1632,10 +1634,10 @@ model DiseaseCaseReview {
   epiLinkedCase            Boolean?
   travelOrExposureContext  String?                 @db.Text
   finalDecisionRationale   String?                 @db.Text
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
 
-  auditEvents MsppReviewAuditEvent[]
+  auditEvents   MsppReviewAuditEvent[]
   msppFeedbacks MsppDiseaseReportFeedback[]
 
   @@unique([diseaseCaseReportId])
@@ -1669,24 +1671,24 @@ model MsppReviewAuditEvent {
 
 /// Haiti national geographic department (département).
 model GeoDepartment {
-  id        String   @id @default(uuid())
-  code      String   @unique
+  id        String       @id @default(uuid())
+  code      String       @unique
   name      String
   sortOrder Int?
   communes  GeoCommune[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
 
 /// Commune within a geographic department.
 model GeoCommune {
-  id              String            @id @default(uuid())
-  geoDepartmentId String
-  department      GeoDepartment     @relation(fields: [geoDepartmentId], references: [id], onDelete: Restrict)
-  code            String?
-  name            String
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                 String              @id @default(uuid())
+  geoDepartmentId    String
+  department         GeoDepartment       @relation(fields: [geoDepartmentId], references: [id], onDelete: Restrict)
+  code               String?
+  name               String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   diseaseCaseReports DiseaseCaseReport[]
 
   @@unique([geoDepartmentId, name])
@@ -1722,8 +1724,8 @@ model MsppAlertTriage {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  acknowledgedBy User? @relation("MsppAlertTriageAckBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
-  assignedTo     User? @relation("MsppAlertTriageAssignTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  acknowledgedBy User?                   @relation("MsppAlertTriageAckBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+  assignedTo     User?                   @relation("MsppAlertTriageAssignTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   investigation  MsppAlertInvestigation?
 
   @@index([triageStatus])
@@ -1763,10 +1765,10 @@ model MsppAlertInvestigation {
   createdAt           DateTime                     @default(now())
   updatedAt           DateTime                     @updatedAt
 
-  msppAlertTriage MsppAlertTriage? @relation(fields: [msppAlertTriageId], references: [id], onDelete: SetNull)
-  openedBy       User @relation("MsppAlertInvestigationOpenedBy", fields: [openedByUserId], references: [id], onDelete: Restrict)
-  assignedTo     User? @relation("MsppAlertInvestigationAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
-  events         MsppAlertInvestigationEvent[]
+  msppAlertTriage MsppAlertTriage?              @relation(fields: [msppAlertTriageId], references: [id], onDelete: SetNull)
+  openedBy        User                          @relation("MsppAlertInvestigationOpenedBy", fields: [openedByUserId], references: [id], onDelete: Restrict)
+  assignedTo      User?                         @relation("MsppAlertInvestigationAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  events          MsppAlertInvestigationEvent[]
 
   @@index([investigationStatus])
   @@index([departmentId])
@@ -1774,18 +1776,18 @@ model MsppAlertInvestigation {
 }
 
 model MsppAlertInvestigationEvent {
-  id               String                         @id @default(uuid())
+  id               String                            @id @default(uuid())
   investigationId  String
   action           MsppAlertInvestigationEventAction
-  note             String?                        @db.Text
+  note             String?                           @db.Text
   statusBefore     MsppAlertInvestigationStatus?
   statusAfter      MsppAlertInvestigationStatus?
   assignedToUserId String?
   createdByUserId  String
-  createdAt        DateTime                       @default(now())
+  createdAt        DateTime                          @default(now())
 
   investigation MsppAlertInvestigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
-  createdBy     User @relation("MsppAlertInvestigationEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdBy     User                   @relation("MsppAlertInvestigationEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   @@index([investigationId, createdAt])
 }
@@ -1820,7 +1822,7 @@ model MsppDiseaseReportFeedback {
   category                 MsppDiseaseReportFeedbackCategory
   severity                 MsppDiseaseReportFeedbackSeverity
   feedbackText             String                            @db.Text
-  status                   MsppDiseaseReportFeedbackStatus @default(OPEN)
+  status                   MsppDiseaseReportFeedbackStatus   @default(OPEN)
   createdByUserId          String
   createdAt                DateTime                          @default(now())
   updatedAt                DateTime                          @updatedAt
@@ -1829,11 +1831,11 @@ model MsppDiseaseReportFeedback {
   resolvedAt               DateTime?
   resolvedByUserId         String?
 
-  report             DiseaseCaseReport @relation(fields: [diseaseCaseReportId], references: [id], onDelete: Restrict)
+  report             DiseaseCaseReport  @relation(fields: [diseaseCaseReportId], references: [id], onDelete: Restrict)
   review             DiseaseCaseReview? @relation(fields: [diseaseCaseReviewId], references: [id], onDelete: SetNull)
-  createdBy          User              @relation("MsppDiseaseReportFeedbackCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  facilityReviewedBy User?             @relation("MsppDiseaseReportFeedbackFacilityReviewedBy", fields: [facilityReviewedByUserId], references: [id], onDelete: SetNull)
-  resolvedBy         User?             @relation("MsppDiseaseReportFeedbackResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  createdBy          User               @relation("MsppDiseaseReportFeedbackCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  facilityReviewedBy User?              @relation("MsppDiseaseReportFeedbackFacilityReviewedBy", fields: [facilityReviewedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy         User?              @relation("MsppDiseaseReportFeedbackResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
 
   @@index([diseaseCaseReportId])
   @@index([status])
@@ -1842,15 +1844,15 @@ model MsppDiseaseReportFeedback {
 
 /// National MSPP access (not tied to facility `UserRole`). For `MSPP_VALIDATOR_DEPT`: either `geoDepartmentId` or `allGeoDepartments`.
 model MsppUserRoleAssignment {
-  id                 String       @id @default(uuid())
-  userId             String
-  role               MsppRoleCode
-  geoDepartmentId    String?
+  id                String       @id @default(uuid())
+  userId            String
+  role              MsppRoleCode
+  geoDepartmentId   String?
   /// When true with `MSPP_VALIDATOR_DEPT`, user may act on every geographic department (national dept-level scope).
-  allGeoDepartments    Boolean      @default(false)
-  isActive           Boolean      @default(true)
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  allGeoDepartments Boolean      @default(false)
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -1888,8 +1890,8 @@ model ClaimSubmissionBatch {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  facility     Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  submissions  ClaimSubmission[]
+  facility        Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  submissions     ClaimSubmission[]
   acknowledgments ClaimAcknowledgment[]
 
   @@index([facilityId])
@@ -1914,11 +1916,11 @@ model ClaimSubmission {
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
 
-  batch     ClaimSubmissionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  facility  Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  encounter Encounter             @relation(fields: [encounterId], references: [id], onDelete: Restrict)
-  attempts  ClaimSubmissionAttempt[]
-  acknowledgments ClaimAcknowledgment[]
+  batch             ClaimSubmissionBatch?    @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  facility          Facility                 @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter         Encounter                @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  attempts          ClaimSubmissionAttempt[]
+  acknowledgments   ClaimAcknowledgment[]
   operationalEvents ClaimOperationalEvent[]
 
   @@index([encounterId])
@@ -1929,18 +1931,18 @@ model ClaimSubmission {
 
 /// Transmission attempts for one submission (manual/stub transport audit trail).
 model ClaimSubmissionAttempt {
-  id              String   @id @default(cuid())
-  submissionId    String
-  transport       String
-  ok              Boolean
-  requestMetaJson Json?
+  id               String    @id @default(cuid())
+  submissionId     String
+  transport        String
+  ok               Boolean
+  requestMetaJson  Json?
   responseMetaJson Json?
-  errorMessage    String?
+  errorMessage     String?
   /// Phase 6.6 — operational classification (e.g. same as errorMessage or normalized token).
-  failureCode     String?
-  retryEligible   Boolean  @default(false)
-  nextRetryAt     DateTime?
-  createdAt       DateTime @default(now())
+  failureCode      String?
+  retryEligible    Boolean   @default(false)
+  nextRetryAt      DateTime?
+  createdAt        DateTime  @default(now())
 
   submission ClaimSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
@@ -1950,18 +1952,18 @@ model ClaimSubmissionAttempt {
 
 /// Persisted clearinghouse acknowledgments (999/277CA) including unmatched rows.
 model ClaimAcknowledgment {
-  id              String   @id @default(cuid())
-  facilityId      String
-  submissionId    String?
-  batchId         String?
-  kind            String
-  rawText         String   @db.Text
-  parsedJson      Json?
-  statusCode      String?
-  message         String?
-  warningCode     String?
-  receivedAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
+  id           String   @id @default(cuid())
+  facilityId   String
+  submissionId String?
+  batchId      String?
+  kind         String
+  rawText      String   @db.Text
+  parsedJson   Json?
+  statusCode   String?
+  message      String?
+  warningCode  String?
+  receivedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   facility   Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   submission ClaimSubmission?      @relation(fields: [submissionId], references: [id], onDelete: SetNull)
@@ -1994,19 +1996,19 @@ model ClaimAcknowledgmentDeadLetter {
 
 /// Phase 8.2 — append-only clearinghouse / claim operational audit (durable observability).
 model ClaimOperationalEvent {
-  id             String               @id @default(cuid())
-  facilityId     String
-  encounterId    String?
-  submissionId   String?
-  batchId        String?
-  eventType      String
-  eventAt        DateTime             @default(now())
-  claimType      ClaimSubmissionKind?
-  statusBefore   String?
-  statusAfter    String?
-  reasonCode     String?
-  message        String?              @db.Text
-  metadataJson   Json?
+  id           String               @id @default(cuid())
+  facilityId   String
+  encounterId  String?
+  submissionId String?
+  batchId      String?
+  eventType    String
+  eventAt      DateTime             @default(now())
+  claimType    ClaimSubmissionKind?
+  statusBefore String?
+  statusAfter  String?
+  reasonCode   String?
+  message      String?              @db.Text
+  metadataJson Json?
 
   facility   Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   submission ClaimSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
