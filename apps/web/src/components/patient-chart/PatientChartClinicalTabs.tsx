@@ -16,6 +16,7 @@ import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { nursingAssessmentDisplayLines, nursingAssessmentSignatureForLocale } from "./patientChartHelpers";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { clinicalResultFromChartOrderItem } from "@/lib/clinicalResultNormalize";
+import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 
 const emptyBox: React.CSSProperties = {
   padding: "16px 14px",
@@ -157,7 +158,8 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
             <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
               {(o.items || []).map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {tOrderItemStatusForWorklist(t, it.status)}
+                  <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong> —{" "}
+                  {tOrderItemStatusForWorklist(t, it.status)}
                 </li>
               ))}
             </ul>
@@ -182,7 +184,7 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
       (it) =>
         !!(
           it.result?.resultText?.trim() ||
-          it.result?.attachmentSummaryFr ||
+          chartSummaryAttachmentSummary(it.result, language) ||
           (it.result?.attachments && it.result.attachments.length > 0) ||
           it.status === "RESULTED" ||
           it.status === "VERIFIED"
@@ -195,12 +197,17 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
           {t("encounterChrome.chartTabs.sectionResults")}
         </div>
         {withResults.map((it) => {
-          const v = clinicalResultFromChartOrderItem({
-            displayLabel: it.displayLabel,
-            status: it.status,
-            catalogItemType: it.catalogItemType,
-            result: it.result,
-          });
+          const v = clinicalResultFromChartOrderItem(
+            {
+              displayLabel: it.displayLabel,
+              displayLabelFr: it.displayLabelFr,
+              displayLabelEn: it.displayLabelEn,
+              status: it.status,
+              catalogItemType: it.catalogItemType,
+              result: it.result,
+            },
+            language
+          );
           return (
             <ClinicalResultViewer
               key={it.id}
@@ -242,7 +249,8 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
         <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
           {all.map((it) => (
             <li key={it.id}>
-              <strong>{it.displayLabel}</strong> — {tOrderItemStatusForWorklist(t, it.status)}
+              <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong> —{" "}
+              {tOrderItemStatusForWorklist(t, it.status)}
             </li>
           ))}
         </ul>
@@ -251,7 +259,7 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
             (it) =>
               !!(
                 it.result?.resultText?.trim() ||
-                it.result?.attachmentSummaryFr ||
+                chartSummaryAttachmentSummary(it.result, language) ||
                 (it.result?.attachments && it.result.attachments.length > 0) ||
                 it.status === "RESULTED" ||
                 it.status === "VERIFIED"
@@ -264,12 +272,17 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
                 {t("encounterChrome.chartTabs.sectionReports")}
               </div>
               {withResults.map((it) => {
-                const v = clinicalResultFromChartOrderItem({
-                  displayLabel: it.displayLabel,
-                  status: it.status,
-                  catalogItemType: it.catalogItemType,
-                  result: it.result,
-                });
+                const v = clinicalResultFromChartOrderItem(
+                  {
+                    displayLabel: it.displayLabel,
+                    displayLabelFr: it.displayLabelFr,
+                    displayLabelEn: it.displayLabelEn,
+                    status: it.status,
+                    catalogItemType: it.catalogItemType,
+                    result: it.result,
+                  },
+                  language
+                );
                 return (
                   <ClinicalResultViewer
                     key={`cr-${it.id}`}
@@ -319,7 +332,8 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {medLines.map((it) => (
                 <li key={it.id}>
-                  <strong>{it.displayLabel}</strong> — {tOrderItemStatusForWorklist(t, it.status)}
+                  <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong> —{" "}
+                  {tOrderItemStatusForWorklist(t, it.status)}
                   {it.status === "CANCELLED" &&
                   (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
                     <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>
@@ -365,7 +379,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {administered.map((it) => (
                 <li key={`adm-${it.id}`}>
-                  <strong>{it.displayLabel}</strong>
+                  <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
                   {it.completedAt && it.completedBy
                     ? t("encounterChrome.chartTabs.medicationAdministeredFull")
                         .replace("{firstName}", it.completedBy.firstName ?? "")

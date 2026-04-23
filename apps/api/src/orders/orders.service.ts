@@ -27,6 +27,7 @@ import {
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
 import type { OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
+import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
   stripUndefinedDeep,
@@ -520,53 +521,6 @@ export class OrdersService {
   }
 
   /**
-   * Libellé affiché par ligne — aligné sur le client (`orderItemDisplayFr`) :
-   * catalogue (displayNameFr / name) d’abord si référence catalogue, puis saisie manuelle, puis repli FR.
-   */
-  private displayLabelFrForItem(
-    it: OrderItem,
-    catalogLabTest: CatalogLabTestEnrichment | null | undefined,
-    catalogImagingStudy: CatalogImagingStudyEnrichment | null | undefined,
-    catalogMedication: CatalogMedicationEnrichment | null | undefined
-  ): string {
-    const manual = it.manualLabel?.trim();
-    const manualSec = it.manualSecondaryText?.trim();
-    const manualLine = manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
-
-    if (it.catalogItemType === "LAB_TEST") {
-      const fr = catalogLabTest?.displayNameFr?.trim();
-      const n = catalogLabTest?.name?.trim();
-      if (fr) return fr;
-      if (n) return n;
-      if (manualLine) return manualLine;
-      return "Analyse (libellé indisponible)";
-    }
-    if (it.catalogItemType === "IMAGING_STUDY") {
-      const fr = catalogImagingStudy?.displayNameFr?.trim();
-      const n = catalogImagingStudy?.name?.trim();
-      const base = fr || n;
-      if (base) {
-        const mod = catalogImagingStudy?.modality?.trim();
-        return mod ? `${base} (${mod})` : base;
-      }
-      if (manualLine) return manualLine;
-      return "Imagerie (libellé indisponible)";
-    }
-    if (it.catalogItemType === "MEDICATION") {
-      const base =
-        catalogMedication?.displayNameFr?.trim() || catalogMedication?.name?.trim() || null;
-      if (base) {
-        const str = (it.strength ?? catalogMedication?.strength)?.trim();
-        return str ? `${base} ${str}` : base;
-      }
-      if (manualLine) return manualLine;
-      return "Médicament (libellé indisponible)";
-    }
-    if (manualLine) return manualLine;
-    return "Article prescrit";
-  }
-
-  /**
    * Attach catalog rows for LAB_TEST, IMAGING_STUDY, and MEDICATION lines (offline-safe labels).
    */
   enrichOrderItemsForDisplay(orders: OrderWithItems[]): Promise<OrderWithEnrichedItems[]> {
@@ -626,13 +580,25 @@ export class OrdersService {
               : it.catalogItemType === "MEDICATION"
                 ? null
                 : undefined;
+          const labelIn = {
+            catalogItemType: String(it.catalogItemType),
+            manualLabel: it.manualLabel,
+            manualSecondaryText: it.manualSecondaryText,
+            strength: it.strength,
+          };
           return {
             ...it,
             catalogLabTest,
             catalogImagingStudy,
             catalogMedication,
-            displayLabelFr: this.displayLabelFrForItem(
-              it as OrderItem,
+            displayLabelFr: buildOrderItemDisplayLabelFr(
+              labelIn,
+              catalogLabTest,
+              catalogImagingStudy,
+              catalogMedication
+            ),
+            displayLabelEn: buildOrderItemDisplayLabelEn(
+              labelIn,
               catalogLabTest,
               catalogImagingStudy,
               catalogMedication

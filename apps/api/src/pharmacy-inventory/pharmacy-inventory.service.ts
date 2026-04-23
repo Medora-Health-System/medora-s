@@ -500,8 +500,8 @@ export class PharmacyInventoryService {
     }
 
     const medName =
-      dispense.catalogMedication?.displayNameFr?.trim() ||
       dispense.catalogMedication?.name?.trim() ||
+      dispense.catalogMedication?.displayNameFr?.trim() ||
       dispense.manualMedicationLabel?.trim() ||
       "Medication";
     const dispAt =

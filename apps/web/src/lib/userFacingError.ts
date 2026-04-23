@@ -25,6 +25,16 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "Authentification requise.",
     en: "Authentication required.",
   },
+  {
+    test: (s) => /réponse json invalide/i.test(s),
+    fr: "Réponse JSON invalide du serveur.",
+    en: "Invalid JSON response from the server.",
+  },
+  {
+    test: (s) => /payload trop volumineux/i.test(s),
+    fr: "Fichier ou texte trop volumineux. Réduisez la taille ou contactez l’administrateur.",
+    en: "Payload too large. Reduce file or text size, or contact your administrator.",
+  },
   { test: (s) => /^forbidden$/i.test(s.trim()), fr: "Accès refusé.", en: "Access denied." },
   {
     test: (s) => /not authorized for this department/i.test(s),

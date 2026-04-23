@@ -74,21 +74,23 @@ const encounterChartSelect = {
   },
 } satisfies Prisma.EncounterSelect;
 
-function frCatalogLabel(
-  row: { displayNameFr?: string | null; name: string } | null | undefined
-): string | null {
-  if (!row) return null;
-  const fr = row.displayNameFr?.trim();
-  if (fr) return fr;
-  const n = row.name?.trim();
-  return n || null;
+function attachmentCountFromResultData(resultData: unknown): number {
+  if (!resultData || typeof resultData !== "object" || Array.isArray(resultData)) return 0;
+  const att = (resultData as Record<string, unknown>).attachments;
+  if (!Array.isArray(att) || att.length === 0) return 0;
+  return att.length;
 }
 
 function attachmentSummaryFr(resultData: unknown): string | null {
-  if (!resultData || typeof resultData !== "object" || Array.isArray(resultData)) return null;
-  const att = (resultData as Record<string, unknown>).attachments;
-  if (!Array.isArray(att) || att.length === 0) return null;
-  return `${att.length} pièce(s) jointe(s)`;
+  const n = attachmentCountFromResultData(resultData);
+  if (n === 0) return null;
+  return `${n} pièce(s) jointe(s)`;
+}
+
+function attachmentSummaryEn(resultData: unknown): string | null {
+  const n = attachmentCountFromResultData(resultData);
+  if (n === 0) return null;
+  return `${n} attachment(s)`;
 }
 
 /** Pièces jointes pour l’UI dossier — toutes les entrées (avec ou sans base64) pour message FR si indisponible. */
@@ -110,32 +112,6 @@ function attachmentsForChartUi(resultData: unknown): Array<{
         dataBase64: typeof o.dataBase64 === "string" ? o.dataBase64 : null,
       };
     });
-}
-
-function orderItemDisplayLabel(item: OrderItemWithCatalogMedication): string {
-  /** Libellé enrichi (API) puis repli catalogue / manuel — même priorité que `OrdersService.displayLabelFrForItem`. */
-  if (item.displayLabelFr?.trim()) return item.displayLabelFr.trim();
-  if (item.catalogItemType === "LAB_TEST") {
-    const lab = frCatalogLabel(item.catalogLabTest ?? null);
-    if (lab) return lab;
-  } else if (item.catalogItemType === "IMAGING_STUDY") {
-    const img = frCatalogLabel(item.catalogImagingStudy ?? null);
-    if (img) return img;
-  } else if (item.catalogItemType === "MEDICATION") {
-    const med = frCatalogLabel(item.catalogMedication ?? null);
-    if (med) return med;
-  }
-  const manual = item.manualLabel?.trim();
-  if (manual) {
-    const sec = item.manualSecondaryText?.trim();
-    return sec ? `${manual} — ${sec}` : manual;
-  }
-  const fallback: Record<string, string> = {
-    LAB_TEST: "Analyse (libellé indisponible)",
-    IMAGING_STUDY: "Imagerie (libellé indisponible)",
-    MEDICATION: "Médicament (libellé indisponible)",
-  };
-  return fallback[item.catalogItemType] ?? "Article prescrit";
 }
 
 /** Chart-only: merge MAR + pharmacy dispense into MEDICATION lines so dossier matches bedside reality (OrderItem may stay PLACED). Lab/imagerie unchanged. */
@@ -232,14 +208,16 @@ function toChartOrderItems(order: OrderWithEnrichedItems) {
         : String(order.cancelledAt)
       : null;
   return (order.items || []).map((it) => {
-    const label = orderItemDisplayLabel(it);
     const res = it.result ?? null;
     const cf = chartItemStatusAndCompletion(it, parentCancelled);
     return {
       id: it.id,
       catalogItemType: it.catalogItemType,
       status: cf.chartStatus,
-      displayLabel: label,
+      /** @deprecated Prefer `displayLabelFr` / `displayLabelEn` + UI locale; kept as French-first for legacy clients. */
+      displayLabel: it.displayLabelFr,
+      displayLabelFr: it.displayLabelFr,
+      displayLabelEn: it.displayLabelEn,
       medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? null,
       completedAt: cf.chartCompletedAt,
       completedBy: cf.chartCompletedBy,
@@ -253,6 +231,7 @@ function toChartOrderItems(order: OrderWithEnrichedItems) {
             criticalValue: res.criticalValue,
             enteredByDisplayFr: res.enteredByDisplayFr ?? null,
             attachmentSummaryFr: attachmentSummaryFr(res.resultData),
+            attachmentSummaryEn: attachmentSummaryEn(res.resultData),
             attachments: attachmentsForChartUi(res.resultData),
           }
         : null,

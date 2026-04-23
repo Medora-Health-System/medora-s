@@ -23,6 +23,7 @@ import {
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
+import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 
 function esc(s: string): string {
   return String(s)
@@ -121,7 +122,8 @@ function flattenOrderItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] 
 function resultSnippet(lang: SupportedLanguage, it: ChartSummaryOrderItem): string {
   const parts: string[] = [];
   if (it.result?.resultText?.trim()) parts.push(it.result.resultText.trim().slice(0, 500));
-  if (it.result?.attachmentSummaryFr?.trim()) parts.push(it.result.attachmentSummaryFr.trim());
+  const attSnip = chartSummaryAttachmentSummary(it.result, lang);
+  if (attSnip) parts.push(attSnip);
   if (it.result?.verifiedAt) {
     parts.push(
       `${printT(lang, "printOutput.patientChart.resultVerified")} ${fmtShort(it.result.verifiedAt, lang)}`
@@ -130,11 +132,11 @@ function resultSnippet(lang: SupportedLanguage, it: ChartSummaryOrderItem): stri
   return parts.join(" — ") || "—";
 }
 
-function isResultLike(it: ChartSummaryOrderItem): boolean {
+function isResultLike(it: ChartSummaryOrderItem, lang: SupportedLanguage): boolean {
   if (it.catalogItemType !== "LAB_TEST" && it.catalogItemType !== "IMAGING_STUDY") return false;
   return !!(
     it.result?.resultText?.trim() ||
-    it.result?.attachmentSummaryFr ||
+    chartSummaryAttachmentSummary(it.result, lang) ||
     (it.result?.attachments && it.result.attachments.length > 0) ||
     it.status === "RESULTED" ||
     it.status === "VERIFIED"
@@ -213,7 +215,7 @@ export function getPatientChartPrintHtml(params: {
               : "";
           const items = (o.items ?? [])
             .map((it) => {
-              const label = esc(it.displayLabel || "—");
+              const label = esc(chartSummaryOrderItemLineLabel(it, lang) || "—");
               const st = esc(printOrderItemChartLabel(lang, it.status));
               return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
             })
@@ -231,7 +233,7 @@ export function getPatientChartPrintHtml(params: {
                 const who = it.completedBy
                   ? esc(`${it.completedBy.firstName} ${it.completedBy.lastName}`.trim())
                   : esc(pc("emptyDash"));
-                return `<li>${esc(it.displayLabel)} — ${fmtShort(it.completedAt, lang)} — ${who}</li>`;
+                return `<li>${esc(chartSummaryOrderItemLineLabel(it, lang))} — ${fmtShort(it.completedAt, lang)} — ${who}</li>`;
               })
               .join("")}</ul>`
           : `<p style="margin:4px 0;">${esc(pc("emptyDash"))}</p>`;
@@ -321,8 +323,8 @@ export function getPatientChartPrintHtml(params: {
     const when = fmtShort(enc.createdAt, lang);
     const typeLbl = encounterTypeLabel(lang, enc.type);
     for (const it of flattenOrderItems(enc)) {
-      if (!isResultLike(it)) continue;
-      const label = esc(it.displayLabel || "—");
+      if (!isResultLike(it, lang)) continue;
+      const label = esc(chartSummaryOrderItemLineLabel(it, lang) || "—");
       const snip = esc(resultSnippet(lang, it));
       resultsLines.push(
         `<li><strong>${esc(typeLbl)}</strong> (${when}) — ${label}<br/><span style="font-size:11px;">${snip}</span></li>`
@@ -332,7 +334,12 @@ export function getPatientChartPrintHtml(params: {
 
   const dispAll = (chartSummary.recentMedicationDispenses ?? [])
     .map((d) => {
-      const med = esc(d.catalogMedication.displayNameFr ?? d.catalogMedication.name);
+      const med = esc(
+        catalogMedicationNameForLocale(d.catalogMedication, lang) ||
+          d.catalogMedication.name ||
+          d.catalogMedication.displayNameFr ||
+          "—"
+      );
       const by = d.dispensedBy
         ? esc(`${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim())
         : esc(pc("emptyDash"));

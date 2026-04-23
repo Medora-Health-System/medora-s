@@ -5,7 +5,10 @@ export type ChartSummaryOrderItem = {
   id: string;
   catalogItemType: string;
   status: string;
+  /** @deprecated Prefer `displayLabelFr` / `displayLabelEn` with locale; kept as French-first for legacy. */
   displayLabel: string;
+  displayLabelFr?: string;
+  displayLabelEn?: string;
   medicationFulfillmentIntent: string | null;
   completedAt: string | null;
   completedBy: { firstName: string; lastName: string } | null;
@@ -20,6 +23,7 @@ export type ChartSummaryOrderItem = {
     /** Nom du professionnel ayant saisi / validé le résultat */
     enteredByDisplayFr?: string | null;
     attachmentSummaryFr?: string | null;
+    attachmentSummaryEn?: string | null;
     /** Pièces jointes (avec ou sans base64 — message FR si fichier indisponible). */
     attachments?: Array<{
       fileName?: string | null;

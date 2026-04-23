@@ -118,7 +118,7 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
 
   if (!accessToken) {
     if (isDev) console.log("[proxy auth] No token found, returning 401");
-    const res = NextResponse.json({ message: "Authentification requise." }, { status: 401 });
+    const res = NextResponse.json({ message: "Authentication required." }, { status: 401 });
     if (requestId) res.headers.set("x-request-id", requestId);
     return res;
   }
@@ -150,7 +150,7 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
   }
 
   if (!facilityId) {
-    const res = NextResponse.json({ message: "Aucun établissement sélectionné." }, { status: 400 });
+    const res = NextResponse.json({ message: "No facility selected." }, { status: 400 });
     if (requestId) res.headers.set("x-request-id", requestId);
     return res;
   }

@@ -22,6 +22,7 @@ import {
   formatEncounterChromeDateTimeFromDate,
   tFollowUpStatus,
 } from "@/lib/encounterChromeI18n";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 
 const emptyStateStyle: React.CSSProperties = {
   padding: "16px 14px",
@@ -325,8 +326,7 @@ export function PatientSummaryTab({
               {recentMedicationDispenses.map((m) => (
                 <tr key={m.id}>
                   <td style={tableStyles.td}>
-                    {m.catalogMedication?.displayNameFr?.trim() ||
-                      m.catalogMedication?.name ||
+                    {catalogMedicationNameForLocale(m.catalogMedication, language) ||
                       m.catalogMedication?.code ||
                       t("common.dash")}
                   </td>

@@ -219,7 +219,7 @@ export async function recodeBillingEventIfPossible(
             },
           });
           if (cat?.code?.trim()) {
-            labelFallback = cat.displayNameFr?.trim() || cat.name?.trim() || labelFallback;
+            labelFallback = cat.name?.trim() || cat.displayNameFr?.trim() || labelFallback;
           }
           medCatalogRoute = cat?.route?.trim() ?? null;
         }

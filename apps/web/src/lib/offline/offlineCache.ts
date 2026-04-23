@@ -70,10 +70,12 @@ export async function searchCatalogCache(
   }
   const items = [...uniq.values()];
   const score = (it: CatalogSearchItem) => {
-    const name = (it.displayNameFr || "").toLowerCase();
+    const nameEn = (it.name || "").toLowerCase();
+    const nameFr = (it.displayNameFr || "").toLowerCase();
+    const name = `${nameEn} ${nameFr}`.trim() || nameFr;
     const code = (it.code || "").toLowerCase();
     const aliases = (it.searchText || "").toLowerCase();
-    const hay = `${name} ${code} ${aliases}`;
+    const hay = `${nameEn} ${nameFr} ${code} ${aliases}`;
     if (name === needle || code === needle) return 1000;
     if (name.startsWith(needle) || code.startsWith(needle)) return 800;
     if (aliases.includes(needle)) return 700;

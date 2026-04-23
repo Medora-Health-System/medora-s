@@ -371,7 +371,7 @@ export async function tryAutoMedicationAdministrationBilling(
         },
       });
       if (cat?.code?.trim()) {
-        labelFallback = cat.displayNameFr?.trim() || cat.name?.trim() || labelFallback;
+        labelFallback = cat.name?.trim() || cat.displayNameFr?.trim() || labelFallback;
       }
     }
 

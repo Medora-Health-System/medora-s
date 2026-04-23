@@ -43,6 +43,8 @@ function orderItemDisplayLabelFr(item: {
 /** Locale-aware chrome label for order rows (facility language). */
 export function getOrderItemDisplayLabelForLanguage(
   item: {
+    /** English-first label from API enrichment (preferred over legacy `displayLabel`). */
+    displayLabelEn?: string | null;
     displayLabel?: string | null;
     displayLabelFr?: string | null;
     manualLabel?: string | null;
@@ -64,7 +66,7 @@ export function getOrderItemDisplayLabelForLanguage(
   t: (key: string) => string
 ): string {
   if (language === "fr") return orderItemDisplayLabelFr(item);
-  const generic = item.displayLabel?.trim();
+  const generic = (item.displayLabelEn ?? item.displayLabel)?.trim();
   if (generic) return generic;
   const resolvedType = resolveCatalogItemType(item);
   const fromCatalog = catalogDisplayLabelEn(item, resolvedType);

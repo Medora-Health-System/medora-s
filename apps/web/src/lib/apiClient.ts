@@ -1,4 +1,6 @@
 /** Base path for backend proxy. Pass backend-relative paths only (e.g. "/trackboard", "/pharmacy/inventory"), not "/api/backend/...". */
+import { readStoredUiLanguage } from "@/i18n/readStoredUiLanguage";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { normalizeUserFacingError } from "./userFacingError";
 import { enqueueOfflineAction } from "@/lib/offline/offlineQueue";
 import type { OfflineQueueItemType } from "@/lib/offline/offlineTypes";
@@ -27,7 +29,8 @@ export async function parseApiResponse(response: Response): Promise<unknown> {
     try {
       return JSON.parse(trimmed);
     } catch {
-      throw new Error("Réponse JSON invalide du serveur");
+      const locale = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
+      throw new Error(normalizeUserFacingError("Réponse JSON invalide du serveur", locale));
     }
   }
 
@@ -145,22 +148,28 @@ export async function apiFetch(
         payload = fetchOptions.body ?? {};
       }
       await enqueueOfflineAction(queueType, path, method as "POST" | "PATCH" | "PUT", payload, providedFacilityId);
+      const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
       return {
         queued: true,
         syncState: "pending",
-        message: "En attente de synchronisation",
+        message: i18nMessage(loc, "worklistDepartments.shared.syncPendingStatus"),
       };
     }
-    throw new Error(normalizeUserFacingError((networkErr as Error)?.message) || "Erreur de communication avec le serveur.");
+    const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
+    throw new Error(
+      normalizeUserFacingError((networkErr as Error)?.message, loc) ||
+        normalizeUserFacingError("Erreur de communication avec le serveur", loc)
+    );
   }
 
   if (!response.ok) {
+    const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
     if (response.status === 413) {
       throw new Error(
         normalizeUserFacingError(
-          "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite."
-        ) ||
-          "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite."
+          "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite.",
+          loc
+        ) || (loc === "en" ? "Payload too large." : "Fichier ou texte trop volumineux.")
       );
     }
     const txt = await response.text().catch(() => "");
@@ -184,7 +193,11 @@ export async function apiFetch(
         message = `${response.status} ${response.statusText}`;
       }
     }
-    throw new Error(message.trim() || `Request failed (${response.status}).`);
+    throw new Error(
+      normalizeUserFacingError(message.trim() || `Request failed (${response.status}).`, loc) ||
+        message.trim() ||
+        `Request failed (${response.status}).`
+    );
   }
 
   if (queueType && method !== "GET") {

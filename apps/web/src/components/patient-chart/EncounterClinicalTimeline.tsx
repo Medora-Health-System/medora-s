@@ -16,6 +16,8 @@ import {
 } from "./patientChartHelpers";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
+import type { SupportedLanguage } from "@/i18n/config";
+import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 
 const subTitle: React.CSSProperties = {
   fontSize: 12,
@@ -107,18 +109,21 @@ function flattenOrderItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] 
 function OrderItemLine({
   it,
   showMode,
+  language,
   t,
   formatShortDateTime,
 }: {
   it: ChartSummaryOrderItem;
   showMode: "request" | "result";
+  language: SupportedLanguage;
   t: (k: string) => string;
   formatShortDateTime: (iso: string | null | undefined) => string;
 }) {
   if (showMode === "result") {
+    const attSummary = chartSummaryAttachmentSummary(it.result, language);
     const hasResult = !!(
       it.result?.resultText?.trim() ||
-      it.result?.attachmentSummaryFr ||
+      attSummary ||
       it.result?.verifiedAt ||
       it.status === "RESULTED" ||
       it.status === "VERIFIED"
@@ -126,12 +131,12 @@ function OrderItemLine({
     if (!hasResult) return null;
     const crit = it.result?.criticalValue ? t("encounterClinicalTimeline.criticalPrefix") : "";
     const txt = it.result?.resultText?.trim();
-    const att = it.result?.attachmentSummaryFr;
+    const att = attSummary;
     const statusLbl = chartOrderItemLabel(it.status, t);
     const body = txt ? `${crit}${txt}` : att ? `${crit}${att}` : `${crit}${statusLbl}`;
     return (
       <li>
-        <strong>{it.displayLabel}</strong>
+        <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
         {` — ${body}`}
         {it.result?.verifiedAt ? ` (${formatShortDateTime(it.result.verifiedAt)})` : null}
       </li>
@@ -172,7 +177,7 @@ function OrderItemLine({
 
   return (
     <li>
-      <strong>{it.displayLabel}</strong>
+      <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
       {extras.length ? ` — ${extras.join(" · ")}` : null}
       {cancelMeta}
     </li>
@@ -181,10 +186,12 @@ function OrderItemLine({
 
 function NurseAdminLine({
   it,
+  language,
   t,
   formatShortDateTime,
 }: {
   it: ChartSummaryOrderItem;
+  language: SupportedLanguage;
   t: (k: string) => string;
   formatShortDateTime: (iso: string | null | undefined) => string;
 }) {
@@ -192,7 +199,7 @@ function NurseAdminLine({
   const who = physicianName(it.completedBy);
   return (
     <li>
-      <strong>{it.displayLabel}</strong>
+      <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
       {who ? (
         <>
           {" "}
@@ -267,7 +274,7 @@ export function EncounterClinicalTimeline({
           if (it.catalogItemType !== "LAB_TEST" && it.catalogItemType !== "IMAGING_STUDY") return false;
           return !!(
             it.result?.resultText?.trim() ||
-            it.result?.attachmentSummaryFr ||
+            chartSummaryAttachmentSummary(it.result, language) ||
             it.result?.verifiedAt ||
             it.status === "RESULTED" ||
             it.status === "VERIFIED"
@@ -464,6 +471,7 @@ export function EncounterClinicalTimeline({
                           key={it.id}
                           it={it}
                           showMode="request"
+                          language={language}
                           t={t}
                           formatShortDateTime={formatShortDateTime}
                         />
@@ -480,6 +488,7 @@ export function EncounterClinicalTimeline({
                           key={it.id}
                           it={it}
                           showMode="request"
+                          language={language}
                           t={t}
                           formatShortDateTime={formatShortDateTime}
                         />
@@ -496,6 +505,7 @@ export function EncounterClinicalTimeline({
                           key={it.id}
                           it={it}
                           showMode="request"
+                          language={language}
                           t={t}
                           formatShortDateTime={formatShortDateTime}
                         />
@@ -512,6 +522,7 @@ export function EncounterClinicalTimeline({
                           key={it.id}
                           it={it}
                           showMode="request"
+                          language={language}
                           t={t}
                           formatShortDateTime={formatShortDateTime}
                         />
@@ -531,6 +542,7 @@ export function EncounterClinicalTimeline({
                       key={`r-${it.id}`}
                       it={it}
                       showMode="result"
+                      language={language}
                       t={t}
                       formatShortDateTime={formatShortDateTime}
                     />
@@ -549,7 +561,13 @@ export function EncounterClinicalTimeline({
                     </div>
                     <ul style={listStyle}>
                       {adminLines.map((it) => (
-                        <NurseAdminLine key={it.id} it={it} t={t} formatShortDateTime={formatShortDateTime} />
+                        <NurseAdminLine
+                          key={it.id}
+                          it={it}
+                          language={language}
+                          t={t}
+                          formatShortDateTime={formatShortDateTime}
+                        />
                       ))}
                     </ul>
                   </>

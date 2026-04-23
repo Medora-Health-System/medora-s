@@ -44,6 +44,8 @@ export type OrderItemChartResult = Pick<
 export type OrderItemWithCatalogMedication = OrderItem & {
   /** Libellé catalogue en français (ou repli sûr) — ne jamais afficher l’UUID brut. */
   displayLabelFr: string;
+  /** English-first display line (catalog `name` before `displayNameFr`) for US / English UI. */
+  displayLabelEn: string;
   catalogMedication?: CatalogMedicationEnrichment | null;
   catalogLabTest?: CatalogLabTestEnrichment | null;
   catalogImagingStudy?: CatalogImagingStudyEnrichment | null;

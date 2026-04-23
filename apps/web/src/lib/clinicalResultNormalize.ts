@@ -4,6 +4,8 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import type { ChartSummaryOrderItem } from "@/lib/chartApi";
+import { chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 
 export type ResultAttachmentRow = {
   fileName?: string | null;
@@ -45,6 +47,7 @@ export type ClinicalResultViewerInput = {
 export function clinicalResultFromOrderItemLike(item: {
   displayLabelFr?: string;
   displayLabel?: string;
+  displayLabelEn?: string;
   status?: string;
   catalogItemType?: string;
   result?: {
@@ -57,8 +60,11 @@ export function clinicalResultFromOrderItemLike(item: {
   /** When no display label is available (locale-aware UI). */
   emptyTitleFallback?: string;
 }): ClinicalResultViewerInput {
+  /** Prefer explicit localized `displayLabel` when callers set it (e.g. encounter results tab). */
   const title =
-    (item.displayLabel ?? item.displayLabelFr ?? "").trim() || item.emptyTitleFallback?.trim() || "—";
+    (item.displayLabel ?? item.displayLabelEn ?? item.displayLabelFr ?? "").trim() ||
+    item.emptyTitleFallback?.trim() ||
+    "—";
   const r = item.result;
   return {
     title,
@@ -76,19 +82,24 @@ export function clinicalResultFromOrderItemLike(item: {
 }
 
 /** Résumé dossier patient : pièces déjà aplanies par l’API (`attachments`). */
-export function clinicalResultFromChartOrderItem(item: {
-  displayLabel: string;
-  status: string;
-  catalogItemType?: string;
-  result: {
-    resultText: string | null;
-    verifiedAt: string | null;
-    criticalValue: boolean;
-    enteredByDisplayFr?: string | null;
-    attachments?: ResultAttachmentRow[] | null;
-  } | null;
-}): ClinicalResultViewerInput {
-  const title = item.displayLabel.trim() || "—";
+export function clinicalResultFromChartOrderItem(
+  item: {
+    displayLabel: string;
+    displayLabelFr?: string;
+    displayLabelEn?: string;
+    status: string;
+    catalogItemType?: string;
+    result: {
+      resultText: string | null;
+      verifiedAt: string | null;
+      criticalValue: boolean;
+      enteredByDisplayFr?: string | null;
+      attachments?: ResultAttachmentRow[] | null;
+    } | null;
+  },
+  language: SupportedLanguage
+): ClinicalResultViewerInput {
+  const title = chartSummaryOrderItemLineLabel(item as ChartSummaryOrderItem, language);
   const r = item.result;
   return {
     title,

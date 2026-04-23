@@ -146,7 +146,7 @@ export class MedicationAdministrationService {
   }
 
   /**
-   * Stable French medication label for MAR — aligned with `OrdersService.displayLabelFrForItem`
+   * Stable medication label for MAR / audit — aligned with order-line catalog resolution (English `name` first, then `displayNameFr`).
    * for MEDICATION lines, then row-level fallbacks if needed.
    */
   private medicationLabelSnapshotFromMedicationOrderItem(
@@ -157,7 +157,7 @@ export class MedicationAdministrationService {
     const manualSec = item.manualSecondaryText?.trim();
     const manualLine = manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
 
-    const base = catalogMedication?.displayNameFr?.trim() || catalogMedication?.name?.trim() || null;
+    const base = catalogMedication?.name?.trim() || catalogMedication?.displayNameFr?.trim() || null;
     if (base) {
       const str = (item.strength ?? catalogMedication?.strength)?.trim();
       return str ? `${base} ${str}` : base;
