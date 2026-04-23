@@ -1037,9 +1037,11 @@ model Result {
 model CatalogLabTest {
   id                 String   @id @default(uuid())
   code               String   @unique
+  /// Legacy internal / compat field; historically French-first for Haiti seeds. Do not use as English UI — use `displayNameEn`.
   name               String
-  /// English-primary display label (US workflows). Nullable until backfilled; do not infer from `name` in resolvers.
+  /// English-primary display label for catalog search, orders, MAR, and billing-enrichment line text.
   displayNameEn      String?
+  /// French display label; must not be overwritten by English backfill workflows.
   displayNameFr      String?
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
@@ -1072,9 +1074,11 @@ model LabTestAlias {
 model CatalogImagingStudy {
   id                 String   @id @default(uuid())
   code               String   @unique
+  /// Legacy internal / compat field; French-first for Haiti seeds. Do not use as English UI — use `displayNameEn`.
   name               String
-  /// English-primary display label (US workflows). Nullable until backfilled; do not infer from `name` in resolvers.
+  /// English-primary display label for catalog search, orders, and billing-enrichment line text.
   displayNameEn      String?
+  /// French display label; must not be overwritten by English backfill workflows.
   displayNameFr      String?
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
@@ -1109,8 +1113,9 @@ model ImagingStudyAlias {
 model CatalogMedication {
   id                 String   @id @default(uuid())
   code               String   @unique
+  /// Legacy internal / compat (often mirrors `displayNameFr`). Do not use as English UI — use `displayNameEn`.
   name               String
-  /// English-primary display label (US workflows). Nullable until backfilled; do not infer from `name` in resolvers.
+  /// English-primary display label for pharmacy, search, orders, and MAR surfaces.
   displayNameEn      String?
   /// Optional HCPCS/J-code-style suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
@@ -1125,6 +1130,7 @@ model CatalogMedication {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   genericName        String?
+  /// French display label; must not be overwritten by English backfill workflows.
   displayNameFr      String?
   strength           String?
   dosageForm         String?

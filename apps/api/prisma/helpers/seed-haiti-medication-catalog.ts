@@ -80,7 +80,7 @@ function buildSearchText(row: HaitiMedicationSeed): string {
   const parts = [
     row.genericName,
     row.displayNameFr,
-    row.displayNameEn,
+    resolveDisplayNameEn(row),
     row.strength,
     row.dosageForm,
     row.route,
@@ -88,6 +88,31 @@ function buildSearchText(row: HaitiMedicationSeed): string {
     ...(row.commonAliases ?? []),
   ].filter(Boolean);
   return parts.join(" ").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Phase E: English-primary catalog — curated INN / US equivalents only (no `displayNameFr` copy).
+ * Explicit `row.displayNameEn` always wins. Otherwise map a few cross-market names, then safe ASCII `genericName`.
+ */
+function resolveDisplayNameEn(row: HaitiMedicationSeed): string | undefined {
+  const explicit = row.displayNameEn?.trim();
+  if (explicit) return explicit;
+
+  const g = row.genericName.trim();
+  const mapped: Record<string, string> = {
+    Paracetamol: "Acetaminophen",
+    Salbutamol: "Albuterol",
+    Adrenaline: "Epinephrine",
+    "Ringer Lactate": "Lactated Ringer's",
+    "Normal Saline": "Normal saline",
+    "Regular Insulin": "Insulin (regular)",
+    "NPH Insulin": "NPH insulin",
+    "Insulin 70/30": "Insulin 70/30",
+  };
+  if (mapped[g]) return mapped[g];
+
+  if (/^[A-Za-z0-9][A-Za-z0-9\s+\-/&,']*$/.test(g)) return g;
+  return undefined;
 }
 
 export async function seedHaitiMedicationCatalog(
@@ -100,11 +125,13 @@ export async function seedHaitiMedicationCatalog(
     const code = row.code ?? deriveMedicationCode(row);
     const searchText = buildSearchText(row);
 
+    const displayNameEn = resolveDisplayNameEn(row);
+
     const upsertBody = {
       name: row.displayNameFr || row.genericName,
       genericName: row.genericName,
       displayNameFr: row.displayNameFr,
-      ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
+      ...(displayNameEn !== undefined ? { displayNameEn } : {}),
       strength: row.strength || null,
       dosageForm: row.dosageForm || null,
       route: row.route || null,

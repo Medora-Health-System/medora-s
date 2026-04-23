@@ -1,0 +1,70 @@
+code,display_name_en
+CBC,CBC
+HB,Hemoglobin
+GLU,Glucose
+HBA1C,HbA1c
+CREAT,Creatinine
+UREA,Urea
+NA,Sodium
+K,Potassium
+AST,AST
+ALT,ALT
+BILI,Total bilirubin
+LIPID,Lipid panel
+CRP,CRP
+ESR,ESR
+TSH,TSH
+HIV,HIV test
+VDRL,VDRL (syphilis)
+MALARIA,Malaria test
+UA,Urinalysis
+CULT_URINE,Urine culture
+STOOL,Stool studies
+INR,INR
+TROP,Troponin
+DDIMER,D-dimer
+NFS_DIFF,CBC with differential
+BMP,BMP
+HCG_BETA,Beta-hCG (serum)
+HCG_URINE,Urine pregnancy test
+GROUPAGE_ABO,ABO/Rh typing
+TP_INR,PT/INR
+TCA,aPTT
+DENGUE_NS1,Dengue NS1 antigen
+TYPHOID_IgM,Typhoid serology
+MALARIA_RDT,Malaria rapid diagnostic test
+CHIKUNGUNYA,Chikungunya serology
+HEP_B_RAPID,Hepatitis B rapid antigen (HBsAg)
+HEP_C_AB,Hepatitis C antibody
+LACTATE,Lactate
+PROCALCITONIN,Procalcitonin
+ER_CBC,CBC
+ER_BMP,BMP (7)
+ER_CMP,CMP
+ER_LAC,Lactate
+ER_TROP,Troponin
+ER_DDM,D-dimer
+ER_PT_INR,PT/INR
+ER_APTT,aPTT
+ER_UA,Urinalysis
+ER_UHCG,Urine pregnancy test
+ER_ABG,Arterial blood gas
+ER_VBG,Venous blood gas
+ER_GLU_POC,Glucose (POC)
+ER_BNP,BNP / NT-proBNP
+ER_CRP,CRP
+ER_LIP,Lipase
+ER_AMY,Amylase
+ER_TSH,TSH
+ER_PCT,Procalcitonin
+ER_ETOH,Ethanol level
+ER_SAL,Salicylate
+ER_APAP,Acetaminophen level
+ER_BLOOD_TYPE,Type & screen
+ER_ANTIB_SC,Antibody screen
+ER_BC,Blood culture
+ER_UA_DRUG,Urine drug screen
+ER_COVID,SARS-CoV-2 antigen (rapid)
+ER_FLU,Influenza A/B rapid
+ER_STREPA,Rapid Strep A
+ER_RSV,RSV rapid

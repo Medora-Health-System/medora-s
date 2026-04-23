@@ -27,14 +27,42 @@ function imagingSearchTextStored(row: ImagingCatalogSeed): string {
   );
 }
 
-/** Marqueurs cliniques prioritaires (Haïti / urgences / infectieux). */
+/** Marqueurs cliniques prioritaires (Haïti / urgences / infectieux / coagulation courante). */
 function labIsEssential(row: LabCatalogSeed): boolean {
-  const codes = new Set(["CBC", "GLU", "HIV", "MALARIA", "TROP", "CRP", "CREAT", "UA"]);
+  const codes = new Set([
+    "CBC",
+    "NFS_DIFF",
+    "GLU",
+    "HIV",
+    "MALARIA",
+    "MALARIA_RDT",
+    "TROP",
+    "CRP",
+    "CREAT",
+    "UA",
+    "BMP",
+    "LACTATE",
+    "DDIMER",
+    "TP_INR",
+    "TCA",
+    "CULT_URINE",
+    "HCG_URINE",
+  ]);
   return codes.has(row.code);
 }
 
 function imagingIsEssential(row: ImagingCatalogSeed): boolean {
-  return row.code === "XR_CHEST" || row.code === "US_ABD";
+  const codes = new Set([
+    "XR_CHEST",
+    "US_ABD",
+    "CT_HEAD",
+    "CT_ABD",
+    "CT_CHEST",
+    "DOPPLER_VEIN",
+    "XR_PELVIS",
+    "US_FAST",
+  ]);
+  return codes.has(row.code);
 }
 
 export async function seedHaitiLabImagingCatalog(

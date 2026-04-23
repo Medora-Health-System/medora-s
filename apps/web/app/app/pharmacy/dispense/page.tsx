@@ -429,7 +429,6 @@ function PharmacyDispensePageContent() {
                 {inventoryItems.map((i) => (
                   <option key={i.id} value={i.id}>
                     {catalogMedicationNameForLocale(i.catalogMedication, language) ||
-                      i.catalogMedication?.name ||
                       i.catalogMedication?.code ||
                       "—"}{" "}
                     — SKU {i.sku} — {t("pharmacyDispense.onHand")} {i.quantityOnHand}

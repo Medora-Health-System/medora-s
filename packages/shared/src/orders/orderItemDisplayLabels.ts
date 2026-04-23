@@ -4,6 +4,9 @@
  *
  * Phase C EN: for lab / imaging / medication catalog lines, never `displayNameFr` and never legacy `name`
  * (may be French data). Order: `displayNameEn` → acceptable manual → `code` → typed EN fallback.
+ *
+ * Phase E legacy fields: catalog `name` is internal/compat; `displayNameEn` is English display; `displayNameFr`
+ * is French display. English UI must not treat `name` as the English label.
  */
 
 export type OrderItemLabelInput = {
