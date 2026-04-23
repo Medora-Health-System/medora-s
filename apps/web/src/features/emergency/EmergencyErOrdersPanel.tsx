@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
+import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
@@ -10,6 +10,7 @@ import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
 import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
+import { apiFetch } from "@/lib/apiClient";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -81,6 +82,28 @@ type EncounterPatientForOrder = {
   patient?: { firstName?: string | null; lastName?: string | null; mrn?: string | null } | null;
 };
 
+type OrderRow = {
+  id: string;
+  type: ErOrderDomain;
+  status: string;
+  cancellationReason?: string | null;
+  items: unknown[];
+};
+
+type OrderEventRow = {
+  id: string;
+  orderId: string;
+  eventType: "CREATED" | "STARTED" | "COMPLETED" | "CANCELLED";
+  performedByDisplayName?: string | null;
+  performedAt: string;
+  roleSnapshot?: string | null;
+  note?: string | null;
+  order?: {
+    displayName?: string | null;
+    cancellationReason?: string | null;
+  } | null;
+};
+
 export function EmergencyErOrdersPanel({
   encounterId,
   facilityId,
@@ -110,7 +133,10 @@ export function EmergencyErOrdersPanel({
 }) {
   const { t, language } = useI18n();
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
+  const [orderEventsRaw, setOrderEventsRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [eventLoading, setEventLoading] = useState(true);
+  const [cancelBusyOrderId, setCancelBusyOrderId] = useState<string | null>(null);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
@@ -119,13 +145,20 @@ export function EmergencyErOrdersPanel({
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setEventLoading(true);
       try {
-        const orders = await fetchOrdersForEncounter(facilityId, encounterId);
+        const [orders, events] = await Promise.all([
+          fetchOrdersForEncounter(facilityId, encounterId),
+          fetchOrderEventsForEncounter(facilityId, encounterId),
+        ]);
         if (!cancelled) setOrdersRaw(Array.isArray(orders) ? orders : []);
+        if (!cancelled) setOrderEventsRaw(Array.isArray(events) ? events : []);
       } catch {
         if (!cancelled) setOrdersRaw(null);
+        if (!cancelled) setOrderEventsRaw(null);
       } finally {
         if (!cancelled) setLoading(false);
+        if (!cancelled) setEventLoading(false);
       }
     })();
     return () => {
@@ -147,6 +180,74 @@ export function EmergencyErOrdersPanel({
   const openModal = (tab: OrderModalTab) => {
     setCreateModalInitialTab(tab);
     setShowCreateModal(true);
+  };
+
+  const parsedOrders = useMemo(() => {
+    if (!Array.isArray(ordersRaw)) return [];
+    return ordersRaw
+      .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row))
+      .map((row) => ({
+        id: String(row.id ?? ""),
+        type: (row.type as ErOrderDomain) ?? "CARE",
+        status: String(row.status ?? ""),
+        cancellationReason: typeof row.cancellationReason === "string" ? row.cancellationReason : null,
+        items: Array.isArray(row.items) ? row.items : [],
+      }))
+      .filter((o) => o.id);
+  }, [ordersRaw]);
+
+  const parsedEvents = useMemo((): OrderEventRow[] => {
+    if (!Array.isArray(orderEventsRaw)) return [];
+    return orderEventsRaw
+      .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row))
+      .map((row) => ({
+        id: String(row.id ?? ""),
+        orderId: String(row.orderId ?? ""),
+        eventType: String(row.eventType ?? "") as OrderEventRow["eventType"],
+        performedByDisplayName:
+          typeof row.performedByDisplayName === "string" ? row.performedByDisplayName : null,
+        performedAt: String(row.performedAt ?? ""),
+        roleSnapshot: typeof row.roleSnapshot === "string" ? row.roleSnapshot : null,
+        note: typeof row.note === "string" ? row.note : null,
+        order: row.order && typeof row.order === "object" ? (row.order as OrderEventRow["order"]) : null,
+      }))
+      .filter((e) => e.id && e.orderId && e.performedAt);
+  }, [orderEventsRaw]);
+
+  const activeOrders = useMemo(
+    () => parsedOrders.filter((o) => o.status !== "COMPLETED" && o.status !== "CANCELLED"),
+    [parsedOrders]
+  );
+  const completedEvents = useMemo(
+    () => parsedEvents.filter((e) => e.eventType === "COMPLETED"),
+    [parsedEvents]
+  );
+  const cancelledEvents = useMemo(
+    () => parsedEvents.filter((e) => e.eventType === "CANCELLED"),
+    [parsedEvents]
+  );
+
+  const orderDisplayName = (order: OrderRow): string => {
+    const firstItem = order.items[0];
+    return getOrderItemDisplayLabelForLanguage(
+      firstItem as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+      language,
+      t
+    );
+  };
+
+  const onCancelOrder = async (orderId: string) => {
+    setCancelBusyOrderId(orderId);
+    try {
+      await apiFetch(`/orders/${orderId}/cancel`, {
+        method: "POST",
+        facilityId,
+        body: JSON.stringify({ cancellationReason: "Demande annulée" }),
+      });
+      setOrdersRefresh((x) => x + 1);
+    } finally {
+      setCancelBusyOrderId(null);
+    }
   };
 
   return (
@@ -174,16 +275,17 @@ export function EmergencyErOrdersPanel({
         ) : labelsByDomain == null ? (
           <p style={{ margin: 0, fontSize: 13, color: "#b91c1c" }}>{t("erEmergencyOrders.loadOrdersError")}</p>
         ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 12,
-              width: "100%",
-              alignItems: "stretch",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 12,
+                width: "100%",
+                alignItems: "stretch",
+              }}
+            >
             <div
               style={{
                 flex: "1 1 200px",
@@ -258,6 +360,100 @@ export function EmergencyErOrdersPanel({
                   </div>
                 );
               })}
+            </div>
+
+            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                {t("erEmergencyOrders.openOrdersTitle")}
+              </div>
+              {activeOrders.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.openOrdersEmpty")}</div>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {activeOrders.map((o) => (
+                    <div
+                      key={o.id}
+                      style={{
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: "#0f172a" }}>{orderDisplayName(o)}</div>
+                      <button
+                        type="button"
+                        style={btn}
+                        disabled={cancelBusyOrderId === o.id}
+                        onClick={() => void onCancelOrder(o.id)}
+                      >
+                        {cancelBusyOrderId === o.id
+                          ? t("erEmergencyOrders.cancelOrderBusy")
+                          : t("erEmergencyOrders.cancelOrder")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                {t("erEmergencyOrders.completedOrdersTitle")}
+              </div>
+              {eventLoading ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t("common.loading")}</div>
+              ) : completedEvents.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.completedOrdersEmpty")}</div>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {completedEvents.map((e) => (
+                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
+                        {e.order?.displayName || e.orderId}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#475569" }}>
+                        {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
+                        {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
+                        {e.roleSnapshot || "UNKNOWN"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                {t("erEmergencyOrders.cancelledOrdersTitle")}
+              </div>
+              {eventLoading ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t("common.loading")}</div>
+              ) : cancelledEvents.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.cancelledOrdersEmpty")}</div>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {cancelledEvents.map((e) => (
+                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
+                        {e.order?.displayName || e.orderId}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#475569" }}>
+                        {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
+                        {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
+                        {e.roleSnapshot || "UNKNOWN"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#475569" }}>
+                        {t("orderEvent.cancelReason")}: {e.note || e.order?.cancellationReason || "—"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             </div>
           </div>
         )}

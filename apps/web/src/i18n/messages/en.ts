@@ -3388,6 +3388,21 @@ export default {
     domainCare: "Care / procedures",
     emptyDomain: "No orders",
     moreItems: "+{count} more…",
+    openOrdersTitle: "Open orders",
+    openOrdersEmpty: "No active orders.",
+    completedOrdersTitle: "Completed orders",
+    completedOrdersEmpty: "No completed orders.",
+    cancelledOrdersTitle: "Cancelled orders",
+    cancelledOrdersEmpty: "No cancelled orders.",
+    cancelOrder: "Cancel order",
+    cancelOrderBusy: "Cancelling…",
+  },
+  orderEvent: {
+    created: "Created",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    performedBy: "Performed by",
+    cancelReason: "Cancellation reason",
   },
   erTriageComplaintTemplates: {
     helper:

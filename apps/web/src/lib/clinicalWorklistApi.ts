@@ -20,6 +20,15 @@ export async function fetchOrdersForEncounter(facilityId: string, encounterId: s
   }
 }
 
+/** Order lifecycle event stream for one encounter (descending by performedAt). */
+export async function fetchOrderEventsForEncounter(
+  facilityId: string,
+  encounterId: string
+): Promise<unknown[]> {
+  const data = await apiFetch(`/encounters/${encounterId}/order-events`, { facilityId });
+  return Array.isArray(data) ? data : [];
+}
+
 /** Open inpatient encounters (hospitalisation board — no today-only filter on API). */
 export async function fetchHospitalisationEncounters(
   facilityId: string

@@ -10,6 +10,8 @@ import {
   AuditAction,
   OrderItem,
   OrderItemLifecycleState,
+  OrderEventOrderType,
+  OrderEventType,
   OrderPriority,
   OrderStatus,
   RoleCode,
@@ -120,7 +122,67 @@ export class OrdersService {
     private readonly audit: AuditService
   ) {}
 
+  private mapOrderTypeToEventOrderType(orderType: string): OrderEventOrderType {
+    if (orderType === "LAB") return OrderEventOrderType.LAB;
+    if (orderType === "IMAGING") return OrderEventOrderType.IMAGING;
+    if (orderType === "MEDICATION") return OrderEventOrderType.MEDICATION;
+    if (orderType === "CARE") return OrderEventOrderType.PROCEDURE;
+    throw new BadRequestException("Type de commande invalide pour audit.");
+  }
+
+  private async buildRoleSnapshot(
+    facilityId: string,
+    userId: string,
+    tx?: Prisma.TransactionClient
+  ): Promise<string> {
+    const db = tx ?? this.prisma;
+    const roles = await db.userRole.findMany({
+      where: { facilityId, userId, isActive: true },
+      include: { role: { select: { code: true } } },
+    });
+    const unique = [...new Set(roles.map((r) => r.role.code))];
+    if (unique.length === 0) return "UNKNOWN";
+    return unique.join("|");
+  }
+
+  private async writeOrderEvent(input: {
+    facilityId: string;
+    encounterId: string;
+    orderId: string;
+    orderType: string;
+    eventType: OrderEventType;
+    performedByUserId: string;
+    note?: string;
+    metadata?: Prisma.InputJsonValue;
+    tx?: Prisma.TransactionClient;
+  }) {
+    const roleSnapshot = await this.buildRoleSnapshot(
+      input.facilityId,
+      input.performedByUserId,
+      input.tx
+    );
+    const db = input.tx ?? this.prisma;
+    await db.orderEvent.create({
+      data: {
+        facilityId: input.facilityId,
+        encounterId: input.encounterId,
+        orderId: input.orderId,
+        orderType: this.mapOrderTypeToEventOrderType(input.orderType),
+        eventType: input.eventType,
+        performedByUserId: input.performedByUserId,
+        performedAt: new Date(),
+        roleSnapshot,
+        note: input.note?.trim() || undefined,
+        metadata: input.metadata,
+      },
+    });
+  }
+
   async create(encounterId: string, facilityId: string, data: OrderCreateDto, userId?: string, ip?: string, userAgent?: string) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour créer une commande.");
+    }
+
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       include: { patient: true },
@@ -184,6 +246,15 @@ export class OrdersService {
           userAgent,
           metadata: { type: data.type, itemCount: data.items.length },
           critical: true,
+          tx,
+        });
+        await this.writeOrderEvent({
+          facilityId,
+          encounterId,
+          orderId: created.id,
+          orderType: created.type,
+          eventType: OrderEventType.CREATED,
+          performedByUserId: userId,
           tx,
         });
         return created;
@@ -250,6 +321,68 @@ export class OrdersService {
     const withResultLabels = await this.attachEnteredByDisplayOnOrders(enriched);
     const withCancellation = await this.attachCancellationDisplayOnOrders(withResultLabels);
     return this.attachOrderedByDisplayOnOrders(withCancellation);
+  }
+
+  async findOrderEventsByEncounter(encounterId: string, facilityId: string) {
+    const events = await this.prisma.orderEvent.findMany({
+      where: { encounterId, facilityId },
+      orderBy: { performedAt: "desc" },
+      include: {
+        order: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            cancellationReason: true,
+            items: {
+              select: {
+                id: true,
+                catalogItemType: true,
+                catalogItemId: true,
+                manualLabel: true,
+                manualSecondaryText: true,
+                strength: true,
+                notes: true,
+              },
+            },
+          },
+        },
+        performedBy: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    });
+
+    const orderIdToName = new Map<string, string>();
+    for (const event of events) {
+      if (orderIdToName.has(event.order.id)) continue;
+      const firstItem = event.order.items[0];
+      const itemLabel = firstItem
+        ? `${firstItem.manualLabel?.trim() || firstItem.notes?.trim() || firstItem.catalogItemType}`
+        : event.order.type;
+      orderIdToName.set(event.order.id, itemLabel);
+    }
+
+    return events.map((event) => ({
+      id: event.id,
+      encounterId: event.encounterId,
+      orderId: event.orderId,
+      orderType: event.orderType,
+      eventType: event.eventType,
+      performedByUserId: event.performedByUserId,
+      performedByDisplayName: `${event.performedBy.firstName} ${event.performedBy.lastName}`.trim(),
+      performedAt: event.performedAt,
+      roleSnapshot: event.roleSnapshot,
+      note: event.note,
+      metadata: event.metadata,
+      order: {
+        id: event.order.id,
+        type: event.order.type,
+        status: event.order.status,
+        cancellationReason: event.order.cancellationReason,
+        displayName: orderIdToName.get(event.order.id) ?? event.order.type,
+      },
+    }));
   }
 
   /**
@@ -637,6 +770,16 @@ export class OrdersService {
       if (!row) {
         throw new NotFoundException("Order not found");
       }
+      await this.writeOrderEvent({
+        facilityId,
+        encounterId: order.encounterId,
+        orderId: order.id,
+        orderType: order.type,
+        eventType: OrderEventType.CANCELLED,
+        performedByUserId: userId,
+        note: reason,
+        tx,
+      });
       return row;
     });
 
@@ -656,6 +799,17 @@ export class OrdersService {
     const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
     const [withCancelDisplay] = await this.attachCancellationDisplayOnOrders([withSig]);
     return withCancelDisplay;
+  }
+
+  async cancelOrder(
+    facilityId: string,
+    orderId: string,
+    dto: OrderCancelDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    return this.cancel(facilityId, orderId, dto, userId, ip, userAgent);
   }
 
   async acknowledgeOrderItem(
@@ -749,9 +903,26 @@ export class OrdersService {
       OrderStatus.IN_PROGRESS
     );
 
-    const updated = await this.prisma.orderItem.update({
-      where: { id: orderItemId },
-      data: { status: OrderStatus.IN_PROGRESS, lifecycleState },
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour démarrer une ligne.");
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.orderItem.update({
+        where: { id: orderItemId },
+        data: { status: OrderStatus.IN_PROGRESS, lifecycleState },
+      });
+      await this.writeOrderEvent({
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        eventType: OrderEventType.STARTED,
+        performedByUserId: userId,
+        metadata: { orderItemId },
+        tx,
+      });
+      return row;
     });
 
     await this.audit.log(AuditAction.ORDER_START, "ORDER_ITEM", {
@@ -809,9 +980,26 @@ export class OrdersService {
       OrderStatus.COMPLETED
     );
 
-    const updated = await this.prisma.orderItem.update({
-      where: { id: orderItemId },
-      data: { status: OrderStatus.COMPLETED, lifecycleState },
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour terminer une ligne.");
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.orderItem.update({
+        where: { id: orderItemId },
+        data: { status: OrderStatus.COMPLETED, lifecycleState },
+      });
+      await this.writeOrderEvent({
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        eventType: OrderEventType.COMPLETED,
+        performedByUserId: userId,
+        metadata: { orderItemId },
+        tx,
+      });
+      return row;
     });
 
     await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {
@@ -884,14 +1072,27 @@ export class OrdersService {
       OrderStatus.COMPLETED
     );
 
-    const updated = await this.prisma.orderItem.update({
-      where: { id: orderItemId },
-      data: {
-        status: OrderStatus.COMPLETED,
-        lifecycleState,
-        completedAt: new Date(),
-        completedByUserId: userId,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.orderItem.update({
+        where: { id: orderItemId },
+        data: {
+          status: OrderStatus.COMPLETED,
+          lifecycleState,
+          completedAt: new Date(),
+          completedByUserId: userId,
+        },
+      });
+      await this.writeOrderEvent({
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        eventType: OrderEventType.COMPLETED,
+        performedByUserId: userId,
+        metadata: { orderItemId, completedByNurse: true },
+        tx,
+      });
+      return row;
     });
 
     await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {
