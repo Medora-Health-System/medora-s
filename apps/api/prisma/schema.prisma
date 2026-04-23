@@ -226,6 +226,22 @@ enum OrderStatus {
   SIGNED
 }
 
+/// ER-ORDER-LIFECYCLE: normalized order domains for legal/clinical audit.
+enum OrderEventOrderType {
+  LAB
+  MEDICATION
+  IMAGING
+  PROCEDURE
+}
+
+/// ER-ORDER-LIFECYCLE: additive event stream for order lifecycle auditing.
+enum OrderEventType {
+  CREATED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
 /// Closed-loop line-item lifecycle (distinct from legacy `OrderStatus` values like RESULTED / VERIFIED).
 enum OrderItemLifecycleState {
   ORDERED
@@ -483,6 +499,7 @@ model User {
   msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[] @relation("MsppDiseaseReportFeedbackResolvedBy")
   authSessions                               AuthSession[]
   breakGlassSessions                         BreakGlassSession[]
+  performedOrderEvents                       OrderEvent[]
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -702,6 +719,7 @@ model Encounter {
   intake                 EncounterIntake?
   billingEvents          BillingEvent[]
   claimSubmissions       ClaimSubmission[]
+  orderEvents            OrderEvent[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -862,6 +880,7 @@ model Order {
   cancelledBy    User?           @relation("OrderCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   items          OrderItem[]
   auditLogs      AuditLog[]      @relation("OrderAuditLogs")
+  orderEvents    OrderEvent[]
 
   @@index([encounterId])
   @@index([facilityId])
@@ -909,6 +928,32 @@ model OrderItem {
   @@index([catalogItemId])
   @@index([completedByUserId])
   @@index([medicationFulfillmentIntent])
+}
+
+/// ER-ORDER-LIFECYCLE: immutable audit events for all order domains.
+model OrderEvent {
+  id                String             @id @default(cuid())
+  facilityId        String
+  encounterId       String
+  orderId           String
+  orderType         OrderEventOrderType
+  eventType         OrderEventType
+  performedByUserId String
+  performedAt       DateTime           @default(now())
+  roleSnapshot      String
+  note              String?
+  metadata          Json?
+  createdAt         DateTime           @default(now())
+
+  facility    Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  performedBy User      @relation(fields: [performedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([encounterId])
+  @@index([orderId])
+  @@index([performedAt])
+  @@index([facilityId, encounterId, performedAt])
 }
 
 model Triage {
