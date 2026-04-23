@@ -131,6 +131,107 @@ export class OrdersService {
     throw new BadRequestException("Type de commande invalide pour audit.");
   }
 
+  /** Minimal order line shape for event timeline label resolution (no Prisma join on catalog). */
+  private async loadCatalogMapsForEventLabelResolution(
+    items: ReadonlyArray<{ catalogItemType: string; catalogItemId: string | null }>
+  ): Promise<{
+    labMap: Map<string, CatalogLabTestEnrichment>;
+    imgMap: Map<string, CatalogImagingStudyEnrichment>;
+    medMap: Map<string, CatalogMedicationEnrichment>;
+  }> {
+    const labIds = new Set<string>();
+    const imgIds = new Set<string>();
+    const medIds = new Set<string>();
+    for (const it of items) {
+      if (it.catalogItemType === "LAB_TEST" && it.catalogItemId) labIds.add(it.catalogItemId);
+      if (it.catalogItemType === "IMAGING_STUDY" && it.catalogItemId) imgIds.add(it.catalogItemId);
+      if (it.catalogItemType === "MEDICATION" && it.catalogItemId) medIds.add(it.catalogItemId);
+    }
+    const [labs, imgs, meds] = await Promise.all([
+      labIds.size
+        ? this.prisma.catalogLabTest.findMany({
+            where: { id: { in: [...labIds] } },
+            select: CATALOG_LAB_SELECT,
+          })
+        : Promise.resolve([] as CatalogLabTestEnrichment[]),
+      imgIds.size
+        ? this.prisma.catalogImagingStudy.findMany({
+            where: { id: { in: [...imgIds] } },
+            select: CATALOG_IMAGING_SELECT,
+          })
+        : Promise.resolve([] as CatalogImagingStudyEnrichment[]),
+      medIds.size
+        ? this.prisma.catalogMedication.findMany({
+            where: { id: { in: [...medIds] } },
+            select: CATALOG_MEDICATION_ENRICHMENT_SELECT,
+          })
+        : Promise.resolve([] as CatalogMedicationEnrichment[]),
+    ]);
+    return {
+      labMap: new Map(labs.map((c) => [c.id, c])),
+      imgMap: new Map(imgs.map((c) => [c.id, c])),
+      medMap: new Map(meds.map((c) => [c.id, c])),
+    };
+  }
+
+  private resolveOrderEventLineLabels(
+    metadata: unknown,
+    order: {
+      type: string;
+      items: Array<{
+        id: string;
+        catalogItemType: string;
+        catalogItemId: string | null;
+        manualLabel: string | null;
+        manualSecondaryText: string | null;
+        strength: string | null;
+        notes: string | null;
+      }>;
+    },
+    labMap: Map<string, CatalogLabTestEnrichment>,
+    imgMap: Map<string, CatalogImagingStudyEnrichment>,
+    medMap: Map<string, CatalogMedicationEnrichment>
+  ): { en: string; fr: string } {
+    let itemId: string | null = null;
+    if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+      const m = metadata as Record<string, unknown>;
+      if (typeof m.orderItemId === "string" && m.orderItemId.length > 0) itemId = m.orderItemId;
+    }
+    const items = order.items ?? [];
+    const row = itemId ? items.find((i) => i.id === itemId) : items[0];
+    if (!row) {
+      return { en: order.type, fr: order.type };
+    }
+    const labelIn = {
+      catalogItemType: String(row.catalogItemType),
+      manualLabel: row.manualLabel,
+      manualSecondaryText: row.manualSecondaryText,
+      strength: row.strength,
+    };
+    const catalogLabTest =
+      row.catalogItemType === "LAB_TEST" && row.catalogItemId
+        ? labMap.get(row.catalogItemId) ?? null
+        : row.catalogItemType === "LAB_TEST"
+          ? null
+          : undefined;
+    const catalogImagingStudy =
+      row.catalogItemType === "IMAGING_STUDY" && row.catalogItemId
+        ? imgMap.get(row.catalogItemId) ?? null
+        : row.catalogItemType === "IMAGING_STUDY"
+          ? null
+          : undefined;
+    const catalogMedication =
+      row.catalogItemType === "MEDICATION" && row.catalogItemId
+        ? medMap.get(row.catalogItemId) ?? null
+        : row.catalogItemType === "MEDICATION"
+          ? null
+          : undefined;
+    return {
+      en: buildOrderItemDisplayLabelEn(labelIn, catalogLabTest, catalogImagingStudy, catalogMedication),
+      fr: buildOrderItemDisplayLabelFr(labelIn, catalogLabTest, catalogImagingStudy, catalogMedication),
+    };
+  }
+
   private async buildRoleSnapshot(
     facilityId: string,
     userId: string,
@@ -352,36 +453,49 @@ export class OrdersService {
       },
     });
 
-    const orderIdToName = new Map<string, string>();
-    for (const event of events) {
-      if (orderIdToName.has(event.order.id)) continue;
-      const firstItem = event.order.items[0];
-      const itemLabel = firstItem
-        ? `${firstItem.manualLabel?.trim() || firstItem.notes?.trim() || firstItem.catalogItemType}`
-        : event.order.type;
-      orderIdToName.set(event.order.id, itemLabel);
+    const flatItemsForCatalog: Array<{
+      catalogItemType: string;
+      catalogItemId: string | null;
+    }> = [];
+    const seenItemId = new Set<string>();
+    for (const ev of events) {
+      for (const it of ev.order.items) {
+        if (seenItemId.has(it.id)) continue;
+        seenItemId.add(it.id);
+        flatItemsForCatalog.push({
+          catalogItemType: it.catalogItemType,
+          catalogItemId: it.catalogItemId,
+        });
+      }
     }
+    const { labMap, imgMap, medMap } = await this.loadCatalogMapsForEventLabelResolution(flatItemsForCatalog);
 
-    return events.map((event) => ({
-      id: event.id,
-      encounterId: event.encounterId,
-      orderId: event.orderId,
-      orderType: event.orderType,
-      eventType: event.eventType,
-      performedByUserId: event.performedByUserId,
-      performedByDisplayName: `${event.performedBy.firstName} ${event.performedBy.lastName}`.trim(),
-      performedAt: event.performedAt,
-      roleSnapshot: event.roleSnapshot,
-      note: event.note,
-      metadata: event.metadata,
-      order: {
-        id: event.order.id,
-        type: event.order.type,
-        status: event.order.status,
-        cancellationReason: event.order.cancellationReason,
-        displayName: orderIdToName.get(event.order.id) ?? event.order.type,
-      },
-    }));
+    return events.map((event) => {
+      const { en, fr } = this.resolveOrderEventLineLabels(event.metadata, event.order, labMap, imgMap, medMap);
+      return {
+        id: event.id,
+        encounterId: event.encounterId,
+        orderId: event.orderId,
+        orderType: event.orderType,
+        eventType: event.eventType,
+        performedByUserId: event.performedByUserId,
+        performedByDisplayName: `${event.performedBy.firstName} ${event.performedBy.lastName}`.trim(),
+        performedAt: event.performedAt,
+        roleSnapshot: event.roleSnapshot,
+        note: event.note,
+        metadata: event.metadata,
+        lineLabelEn: en,
+        lineLabelFr: fr,
+        order: {
+          id: event.order.id,
+          type: event.order.type,
+          status: event.order.status,
+          cancellationReason: event.order.cancellationReason,
+          /** @deprecated Prefer `lineLabelEn` / `lineLabelFr` (locale-aware). Kept as FR-first line for legacy clients. */
+          displayName: fr,
+        },
+      };
+    });
   }
 
   /**

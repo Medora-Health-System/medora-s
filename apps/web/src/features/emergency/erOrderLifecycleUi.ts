@@ -1,6 +1,9 @@
 /**
  * ER order dashboard — item-level lifecycle truth aligned with Prisma `OrderItem.status`
  * (parent `Order.status` may remain PLACED while lines complete).
+ *
+ * Completed/cancelled **titles** in the ER orders card use API `lineLabelEn` / `lineLabelFr`
+ * from `GET /encounters/:id/order-events` (catalog-resolved); open-line labels use encounter orders enrichment.
  */
 
 const TERMINAL_DONE_STATUSES = new Set(["COMPLETED", "RESULTED", "VERIFIED"]);

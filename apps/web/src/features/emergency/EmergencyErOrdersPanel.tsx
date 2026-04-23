@@ -18,7 +18,6 @@ import {
   orderItemIdFromEventMetadata,
   shouldIncludeCompletedOrderEventInErMerge,
 } from "@/features/emergency/erOrderLifecycleUi";
-import { ER_IV_LIFECYCLE_ORDER_TYPE } from "@/features/emergency/erIvOrderLifecycle";
 import { apiFetch } from "@/lib/apiClient";
 import {
   formatCancellationReasonForDisplay,
@@ -116,12 +115,25 @@ type OrderEventRow = {
   roleSnapshot?: string | null;
   note?: string | null;
   metadata?: unknown;
+  /** API: resolved catalog line label (English-first). */
+  lineLabelEn?: string | null;
+  /** API: resolved catalog line label (French-first). */
+  lineLabelFr?: string | null;
   order?: {
     displayName?: string | null;
     cancellationReason?: string | null;
     type?: string | null;
   } | null;
 };
+
+function eventLinePrimaryTitle(e: OrderEventRow, language: SupportedLanguage): string {
+  const en = typeof e.lineLabelEn === "string" ? e.lineLabelEn.trim() : "";
+  const fr = typeof e.lineLabelFr === "string" ? e.lineLabelFr.trim() : "";
+  if (language === "fr") {
+    return (fr || en || e.order?.displayName?.trim() || e.orderId).trim();
+  }
+  return (en || fr || e.order?.displayName?.trim() || e.orderId).trim();
+}
 
 function lifecycleOutcomeSubLabel(metadata: unknown, tr: (k: string) => string): string | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
@@ -144,19 +156,48 @@ function marActionOutcomeSubLabel(metadata: unknown, tr: (k: string) => string):
 function medicationCancellationSubLabel(e: OrderEventRow, tr: (k: string) => string): string | null {
   if (e.eventType !== "CANCELLED") return null;
   if (e.order?.type === "MEDICATION") return tr("orderEvent.medicationCancelled");
-  if (e.order?.type === ER_IV_LIFECYCLE_ORDER_TYPE) return tr("orderEvent.ivCancelled");
+  if (e.order?.type === "CARE") return tr("orderEvent.careOrderCancelled");
   return null;
 }
 
-function careLineCompletedSubLabel(
+function hasAnyRole(roles: string[] | undefined, ...codes: string[]): boolean {
+  if (!roles?.length) return false;
+  const set = new Set(roles.map((r) => String(r).toUpperCase()));
+  for (const c of codes) {
+    if (set.has(String(c).toUpperCase())) return true;
+  }
+  return false;
+}
+
+function itemStatusAllowsAcknowledge(st: string): boolean {
+  return st === "PLACED" || st === "PENDING";
+}
+
+function itemStatusAllowsStart(st: string): boolean {
+  return st === "ACKNOWLEDGED";
+}
+
+function itemStatusAllowsComplete(st: string): boolean {
+  return st === "IN_PROGRESS";
+}
+
+function isBedsideAdministerMedicationRow(row: Record<string, unknown>): boolean {
+  return (
+    String(row.catalogItemType ?? "") === "MEDICATION" &&
+    String(row.medicationFulfillmentIntent ?? "") === "ADMINISTER_CHART"
+  );
+}
+
+/** CARE / procedure lines (order.type CARE) — distinct from lab/imaging result lifecycle subtitles. */
+function careProcedureCompletedSubLabel(
   e: OrderEventRow,
   metadata: unknown,
   tr: (k: string) => string
 ): string | null {
   if (e.eventType !== "COMPLETED") return null;
-  if (e.order?.type !== ER_IV_LIFECYCLE_ORDER_TYPE) return null;
+  if (e.order?.type !== "CARE") return null;
   if (lifecycleOutcomeSubLabel(metadata, tr)) return null;
-  return tr("orderEvent.ivCompleted");
+  return tr("orderEvent.careProcedureCompleted");
 }
 
 export function EmergencyErOrdersPanel({
@@ -192,6 +233,7 @@ export function EmergencyErOrdersPanel({
   const [loading, setLoading] = useState(true);
   const [eventLoading, setEventLoading] = useState(true);
   const [cancelBusyOrderId, setCancelBusyOrderId] = useState<string | null>(null);
+  const [lineActionBusy, setLineActionBusy] = useState<string | null>(null);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
@@ -265,6 +307,8 @@ export function EmergencyErOrdersPanel({
         roleSnapshot: typeof row.roleSnapshot === "string" ? row.roleSnapshot : null,
         note: typeof row.note === "string" ? row.note : null,
         metadata: row.metadata,
+        lineLabelEn: typeof row.lineLabelEn === "string" ? row.lineLabelEn : null,
+        lineLabelFr: typeof row.lineLabelFr === "string" ? row.lineLabelFr : null,
         order:
           row.order && typeof row.order === "object"
             ? ({
@@ -286,7 +330,16 @@ export function EmergencyErOrdersPanel({
       .filter((e) => e.id && e.orderId && e.performedAt);
   }, [orderEventsRaw]);
 
-  const activeOrders = useMemo(() => parsedOrders.filter((o) => orderHasAnyActiveItemForEr(o)), [parsedOrders]);
+  const activeOrderGroups = useMemo(() => {
+    return parsedOrders
+      .filter((o) => orderHasAnyActiveItemForEr(o))
+      .map((o) => ({
+        order: o,
+        lines: (Array.isArray(o.items) ? o.items : []).filter((it) =>
+          isOrderItemActiveForErDashboard(it as Record<string, unknown>)
+        ),
+      }));
+  }, [parsedOrders]);
 
   const completedFromEvents = useMemo(
     () => parsedEvents.filter((e) => e.eventType === "COMPLETED"),
@@ -366,18 +419,6 @@ export function EmergencyErOrdersPanel({
     [parsedEvents]
   );
 
-  const orderDisplayName = (order: OrderRow): string => {
-    const items = Array.isArray(order.items) ? order.items : [];
-    const activeItem = items.find((it) => isOrderItemActiveForErDashboard(it as Record<string, unknown>));
-    const it = activeItem ?? items[0];
-    if (!it) return order.type;
-    return getOrderItemDisplayLabelForLanguage(
-      it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
-      language,
-      t
-    );
-  };
-
   const onCancelOrder = async (orderId: string) => {
     setCancelBusyOrderId(orderId);
     try {
@@ -389,6 +430,21 @@ export function EmergencyErOrdersPanel({
       setOrdersRefresh((x) => x + 1);
     } finally {
       setCancelBusyOrderId(null);
+    }
+  };
+
+  const runOrderItemLifecycleAction = async (itemId: string, op: "acknowledge" | "start" | "complete" | "nurse") => {
+    const busyKey = `${itemId}:${op}`;
+    setLineActionBusy(busyKey);
+    try {
+      const path =
+        op === "nurse"
+          ? `/orders/items/${itemId}/nurse-complete`
+          : `/orders/items/${itemId}/${op === "acknowledge" ? "acknowledge" : op}`;
+      await apiFetch(path, { method: "POST", facilityId });
+      setOrdersRefresh((x) => x + 1);
+    } finally {
+      setLineActionBusy(null);
     }
   };
 
@@ -508,11 +564,11 @@ export function EmergencyErOrdersPanel({
               <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
                 {t("erEmergencyOrders.openOrdersTitle")}
               </div>
-              {activeOrders.length === 0 ? (
+              {activeOrderGroups.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.openOrdersEmpty")}</div>
               ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {activeOrders.map((o) => (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {activeOrderGroups.map(({ order: o, lines }) => (
                     <div
                       key={o.id}
                       style={{
@@ -520,22 +576,121 @@ export function EmergencyErOrdersPanel({
                         borderRadius: 10,
                         padding: "8px 10px",
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                        flexDirection: "column",
                         gap: 8,
                       }}
                     >
-                      <div style={{ fontSize: 12, color: "#0f172a" }}>{orderDisplayName(o)}</div>
-                      <button
-                        type="button"
-                        style={btn}
-                        disabled={cancelBusyOrderId === o.id}
-                        onClick={() => void onCancelOrder(o.id)}
-                      >
-                        {cancelBusyOrderId === o.id
-                          ? t("erEmergencyOrders.cancelOrderBusy")
-                          : t("erEmergencyOrders.cancelOrder")}
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>{o.type}</span>
+                        <button
+                          type="button"
+                          style={btn}
+                          disabled={cancelBusyOrderId === o.id}
+                          onClick={() => void onCancelOrder(o.id)}
+                        >
+                          {cancelBusyOrderId === o.id
+                            ? t("erEmergencyOrders.cancelOrderBusy")
+                            : t("erEmergencyOrders.cancelOrder")}
+                        </button>
+                      </div>
+                      <div style={{ display: "grid", gap: 6 }}>
+                        {lines.map((raw) => {
+                          const item = raw as Record<string, unknown>;
+                          const itemId = String(item.id ?? "");
+                          const st = String(item.status ?? "");
+                          const cat = String(item.catalogItemType ?? "");
+                          const label = getOrderItemDisplayLabelForLanguage(
+                            item as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+                            language,
+                            t
+                          );
+                          const busy = lineActionBusy;
+                          const lineBtns: React.ReactNode[] = [];
+                          if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
+                            lineBtns.push(
+                              <button
+                                key="nurse"
+                                type="button"
+                                style={btn}
+                                disabled={busy === `${itemId}:nurse`}
+                                onClick={() => void runOrderItemLifecycleAction(itemId, "nurse")}
+                              >
+                                {busy === `${itemId}:nurse`
+                                  ? t("erEmergencyOrders.lineActionBusy")
+                                  : t("erEmergencyOrders.nurseMarkBedsideComplete")}
+                              </button>
+                            );
+                          } else {
+                            const deptOk =
+                              (o.type === "LAB" && hasAnyRole(roles, "LAB", "ADMIN")) ||
+                              (o.type === "IMAGING" && hasAnyRole(roles, "RADIOLOGY", "ADMIN")) ||
+                              (o.type === "MEDICATION" && hasAnyRole(roles, "PHARMACY", "ADMIN")) ||
+                              ((o.type === "CARE" || cat === "SUPPLY") && hasAnyRole(roles, "RN", "ADMIN"));
+                            if (deptOk && itemStatusAllowsAcknowledge(st)) {
+                              lineBtns.push(
+                                <button
+                                  key="ack"
+                                  type="button"
+                                  style={btn}
+                                  disabled={busy === `${itemId}:acknowledge`}
+                                  onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
+                                >
+                                  {busy === `${itemId}:acknowledge`
+                                    ? t("erEmergencyOrders.lineActionBusy")
+                                    : t("erEmergencyOrders.acknowledgeOrder")}
+                                </button>
+                              );
+                            }
+                            if (deptOk && itemStatusAllowsStart(st)) {
+                              lineBtns.push(
+                                <button
+                                  key="start"
+                                  type="button"
+                                  style={btn}
+                                  disabled={busy === `${itemId}:start`}
+                                  onClick={() => void runOrderItemLifecycleAction(itemId, "start")}
+                                >
+                                  {busy === `${itemId}:start`
+                                    ? t("erEmergencyOrders.lineActionBusy")
+                                    : t("erEmergencyOrders.startOrder")}
+                                </button>
+                              );
+                            }
+                            if (deptOk && itemStatusAllowsComplete(st)) {
+                              lineBtns.push(
+                                <button
+                                  key="complete"
+                                  type="button"
+                                  style={btn}
+                                  disabled={busy === `${itemId}:complete`}
+                                  onClick={() => void runOrderItemLifecycleAction(itemId, "complete")}
+                                >
+                                  {busy === `${itemId}:complete`
+                                    ? t("erEmergencyOrders.lineActionBusy")
+                                    : t("erEmergencyOrders.completeOrder")}
+                                </button>
+                              );
+                            }
+                          }
+                          return (
+                            <div
+                              key={itemId}
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 8,
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <div style={{ fontSize: 12, color: "#0f172a", flex: "1 1 160px", minWidth: 0 }}>{label}</div>
+                              {lineBtns.length > 0 ? (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -555,12 +710,12 @@ export function EmergencyErOrdersPanel({
                   {completedRows.map((e) => {
                     const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
                     const marLine = marActionOutcomeSubLabel(e.metadata, t);
-                    const careLine = careLineCompletedSubLabel(e, e.metadata, t);
-                    const secondaryLine = outcomeLine ?? marLine ?? careLine;
+                    const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
+                    const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
-                        {e.order?.displayName || e.orderId}
+                        {eventLinePrimaryTitle(e, language)}
                       </div>
                       {secondaryLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
@@ -594,7 +749,7 @@ export function EmergencyErOrdersPanel({
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
-                        {e.order?.displayName || e.orderId}
+                        {eventLinePrimaryTitle(e, language)}
                       </div>
                       {medCancelLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
