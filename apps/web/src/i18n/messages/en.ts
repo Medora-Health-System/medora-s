@@ -2645,6 +2645,8 @@ export default {
       imaging: "Imaging study (label not available)",
       medication: "Medication (label not available)",
       care: "Care order (label not available)",
+      supply: "Supply (label not available)",
+      englishLabelPending: "English label pending",
     },
     loading: "Loading…",
     patientNotFound: "Patient not found",

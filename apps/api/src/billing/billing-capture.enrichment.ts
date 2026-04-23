@@ -46,21 +46,30 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
             next.procedureCode = lab.billingCodeDefault.trim();
             appliedCatalogCode = true;
           }
-          if (lab?.name) catalogLabel = catalogLabel ?? lab.name;
+          if (lab) {
+            const labLine = lab.displayNameEn?.trim() || lab.code?.trim() || null;
+            if (labLine) catalogLabel = catalogLabel ?? labLine;
+          }
         } else if (cit === "IMAGING_STUDY") {
           const img = await db.catalogImagingStudy.findUnique({ where: { id: oi.catalogItemId } });
           if (img?.billingCodeDefault?.trim()) {
             next.procedureCode = img.billingCodeDefault.trim();
             appliedCatalogCode = true;
           }
-          if (img?.name) catalogLabel = catalogLabel ?? img.name;
+          if (img) {
+            const imgLine = img.displayNameEn?.trim() || img.code?.trim() || null;
+            if (imgLine) catalogLabel = catalogLabel ?? imgLine;
+          }
         } else if (cit === "MEDICATION") {
           const med = await db.catalogMedication.findUnique({ where: { id: oi.catalogItemId } });
           if (med?.billingCodeDefault?.trim()) {
             next.hcpcsCode = med.billingCodeDefault.trim();
             appliedCatalogCode = true;
           }
-          if (med?.name) catalogLabel = catalogLabel ?? med.name;
+          if (med) {
+            const medLine = med.displayNameEn?.trim() || med.code?.trim() || null;
+            if (medLine) catalogLabel = catalogLabel ?? medLine;
+          }
         }
         break;
       }
@@ -78,7 +87,10 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
             next.hcpcsCode = cm.billingCodeDefault.trim();
             appliedCatalogCode = true;
           }
-          catalogLabel = catalogLabel ?? cm.name;
+          {
+            const cmLine = cm.displayNameEn?.trim() || cm.code?.trim() || null;
+            if (cmLine) catalogLabel = catalogLabel ?? cmLine;
+          }
           if (!next.ndc11 && cm.ndc11?.trim()) next.ndc11 = cm.ndc11.trim();
           if (!next.ndcDisplay && cm.ndcDisplay?.trim()) next.ndcDisplay = cm.ndcDisplay.trim();
           if (!next.quantityUnit && cm.billingUnitType?.trim()) next.quantityUnit = cm.billingUnitType.trim();
@@ -88,7 +100,10 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
             next.hcpcsCode = med.billingCodeDefault.trim();
             appliedCatalogCode = true;
           }
-          if (med?.name) catalogLabel = catalogLabel ?? med.name;
+          if (med) {
+            const medLine = med.displayNameEn?.trim() || med.code?.trim() || null;
+            if (medLine) catalogLabel = catalogLabel ?? medLine;
+          }
           if (!next.ndc11 && med?.ndc11?.trim()) next.ndc11 = med.ndc11.trim();
           if (!next.ndcDisplay && med?.ndcDisplay?.trim()) next.ndcDisplay = med.ndcDisplay.trim();
           if (!next.quantityUnit && med?.billingUnitType?.trim()) next.quantityUnit = med.billingUnitType.trim();
@@ -108,7 +123,10 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
           next.hcpcsCode = med.billingCodeDefault.trim();
           appliedCatalogCode = true;
         }
-        if (med?.name) catalogLabel = catalogLabel ?? med.name;
+        if (med) {
+          const medLine = med.displayNameEn?.trim() || med.code?.trim() || null;
+          if (medLine) catalogLabel = catalogLabel ?? medLine;
+        }
         if (!next.ndc11 && med?.ndc11?.trim()) next.ndc11 = med.ndc11.trim();
         if (!next.ndcDisplay && med?.ndcDisplay?.trim()) next.ndcDisplay = med.ndcDisplay.trim();
         if (!next.quantityUnit && med?.billingUnitType?.trim()) next.quantityUnit = med.billingUnitType.trim();

@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
-import { medicationSearchLabel } from "@/lib/pharmacyApi";
+import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { useI18n } from "@/lib/i18n";
 
 const rowStyle: React.CSSProperties = {
@@ -34,7 +34,7 @@ export function MedicationSuggestionList({
         const isSelected = idx === selectedIndex;
         const badge = stockBadge?.(med);
         const meta = med.metadata;
-        const sub = [meta?.dosageForm, meta?.route].filter(Boolean).join(" · ");
+        const sub = [med.secondaryText, meta?.dosageForm, meta?.route].filter(Boolean).join(" · ");
         return (
           <button
             key={med.id}
@@ -52,7 +52,7 @@ export function MedicationSuggestionList({
             }}
           >
             <div style={{ fontWeight: 500 }}>
-              {medicationSearchLabel(med, language)}
+              {getCatalogSearchItemDisplayLabel(med, language, t)}
               {med.isEssential && (
                 <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>
                   {t("pharmacyMedicationSearch.essentialBadge")}

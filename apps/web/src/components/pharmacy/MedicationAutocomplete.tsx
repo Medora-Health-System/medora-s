@@ -157,7 +157,7 @@ function MedicationAutocompleteControlled({
       const selected = search.selectCurrent();
       if (selected) {
         onSelect(selected);
-        onChange(medicationSearchLabel(selected, language));
+        onChange(medicationSearchLabel(selected, language, t));
         search.close();
       }
       return;
@@ -170,7 +170,7 @@ function MedicationAutocompleteControlled({
 
   const handleSelect = (med: MedicationSearchItem) => {
     onSelect(med);
-    onChange(medicationSearchLabel(med, language));
+    onChange(medicationSearchLabel(med, language, t));
     search.close();
   };
 

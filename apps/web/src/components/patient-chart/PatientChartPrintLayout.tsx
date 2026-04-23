@@ -110,6 +110,10 @@ function physicianName(u: { firstName: string; lastName: string } | null | undef
   return s || "—";
 }
 
+function chartOrderLineT(lang: SupportedLanguage): (k: string) => string {
+  return (k: string) => printT(lang, k);
+}
+
 function flattenOrderItems(enc: ChartSummaryEncounter): ChartSummaryOrderItem[] {
   const orders = enc.orders ?? [];
   const items: ChartSummaryOrderItem[] = [];
@@ -215,7 +219,7 @@ export function getPatientChartPrintHtml(params: {
               : "";
           const items = (o.items ?? [])
             .map((it) => {
-              const label = esc(chartSummaryOrderItemLineLabel(it, lang) || "—");
+              const label = esc(chartSummaryOrderItemLineLabel(it, lang, chartOrderLineT(lang)) || "—");
               const st = esc(printOrderItemChartLabel(lang, it.status));
               return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
             })
@@ -233,7 +237,7 @@ export function getPatientChartPrintHtml(params: {
                 const who = it.completedBy
                   ? esc(`${it.completedBy.firstName} ${it.completedBy.lastName}`.trim())
                   : esc(pc("emptyDash"));
-                return `<li>${esc(chartSummaryOrderItemLineLabel(it, lang))} — ${fmtShort(it.completedAt, lang)} — ${who}</li>`;
+                return `<li>${esc(chartSummaryOrderItemLineLabel(it, lang, chartOrderLineT(lang)))} — ${fmtShort(it.completedAt, lang)} — ${who}</li>`;
               })
               .join("")}</ul>`
           : `<p style="margin:4px 0;">${esc(pc("emptyDash"))}</p>`;
@@ -243,9 +247,7 @@ export function getPatientChartPrintHtml(params: {
           (d) =>
             `<li>${esc(
               catalogMedicationNameForLocale(d.catalogMedication, lang) ||
-                (lang === "en"
-                  ? d.catalogMedication.name || d.catalogMedication.code
-                  : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
+                d.catalogMedication.code ||
                 "—"
             )} × ${d.quantityDispensed} — ${fmtShort(d.dispensedAt, lang)}</li>`
         )
@@ -325,7 +327,7 @@ export function getPatientChartPrintHtml(params: {
     const typeLbl = encounterTypeLabel(lang, enc.type);
     for (const it of flattenOrderItems(enc)) {
       if (!isResultLike(it, lang)) continue;
-      const label = esc(chartSummaryOrderItemLineLabel(it, lang) || "—");
+      const label = esc(chartSummaryOrderItemLineLabel(it, lang, chartOrderLineT(lang)) || "—");
       const snip = esc(resultSnippet(lang, it));
       resultsLines.push(
         `<li><strong>${esc(typeLbl)}</strong> (${when}) — ${label}<br/><span style="font-size:11px;">${snip}</span></li>`
@@ -337,9 +339,7 @@ export function getPatientChartPrintHtml(params: {
     .map((d) => {
       const med = esc(
         catalogMedicationNameForLocale(d.catalogMedication, lang) ||
-          (lang === "en"
-            ? d.catalogMedication.name || d.catalogMedication.code
-            : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
+          d.catalogMedication.code ||
           "—"
       );
       const by = d.dispensedBy

@@ -2,13 +2,25 @@ import type { SupportedLanguage } from "@/i18n/config";
 import type { ChartSummaryOrderItem } from "@/lib/chartApi";
 import { isInvalidTechnicalOrderDisplayLabel } from "@medora/shared";
 
+function chartOrderTypeFallbackEn(catalogItemType: string, t: (key: string) => string): string {
+  const c = catalogItemType.trim();
+  if (c === "LAB_TEST") return t("patientChartUi.orderDisplayFallback.labTest");
+  if (c === "IMAGING_STUDY") return t("patientChartUi.orderDisplayFallback.imaging");
+  if (c === "MEDICATION") return t("patientChartUi.orderDisplayFallback.medication");
+  if (c === "CARE") return t("patientChartUi.orderDisplayFallback.care");
+  if (c === "SUPPLY") return t("patientChartUi.orderDisplayFallback.supply");
+  return t("common.dash");
+}
+
 /**
  * Order line title for patient chart (API sends `displayLabelFr` + `displayLabelEn`).
- * EN UI uses only `displayLabelEn` — never `displayLabel` / `displayLabelFr`.
+ * EN: strict — `displayLabelEn` only when valid; never legacy `displayLabel` / `displayLabelFr`.
+ * If `displayLabelEn` is missing/invalid, use typed EN fallback (needs `t`).
  */
 export function chartSummaryOrderItemLineLabel(
   it: ChartSummaryOrderItem,
-  language: SupportedLanguage
+  language: SupportedLanguage,
+  t?: (key: string) => string
 ): string {
   const cat = String(it.catalogItemType ?? "CARE");
   if (language === "fr") {
@@ -20,6 +32,7 @@ export function chartSummaryOrderItemLineLabel(
   }
   const enOnly = it.displayLabelEn?.trim();
   if (enOnly && !isInvalidTechnicalOrderDisplayLabel(enOnly, cat)) return enOnly;
+  if (t) return chartOrderTypeFallbackEn(cat, t);
   return "—";
 }
 

@@ -2614,6 +2614,8 @@ export default {
       imaging: "Imagerie (libellé indisponible)",
       medication: "Médicament (libellé indisponible)",
       care: "Soin (libellé indisponible)",
+      supply: "Article / fourniture (libellé indisponible)",
+      englishLabelPending: "Libellé anglais à compléter",
     },
     loading: "Chargement…",
     patientNotFound: "Patient introuvable",

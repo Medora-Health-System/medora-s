@@ -72,10 +72,11 @@ export async function searchCatalogCache(
   const score = (it: CatalogSearchItem) => {
     const nameEn = (it.name || "").toLowerCase();
     const nameFr = (it.displayNameFr || "").toLowerCase();
+    const displayEn = (it.displayNameEn || "").toLowerCase();
     const name = `${nameEn} ${nameFr}`.trim() || nameFr;
     const code = (it.code || "").toLowerCase();
     const aliases = (it.searchText || "").toLowerCase();
-    const hay = `${nameEn} ${nameFr} ${code} ${aliases}`;
+    const hay = `${nameEn} ${displayEn} ${nameFr} ${code} ${aliases}`;
     if (name === needle || code === needle) return 1000;
     if (name.startsWith(needle) || code.startsWith(needle)) return 800;
     if (aliases.includes(needle)) return 700;

@@ -2,23 +2,25 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { apiFetch } from "./apiClient";
 import { searchCatalog } from "./catalogSearchApi";
 import type { CatalogSearchItem } from "./catalogSearchTypes";
+import { catalogSearchItemFullDisplayLine } from "./catalogDisplayLabel";
 
 /** Réponse normalisée `GET /catalog/medications/search` (identique au type catalogue). */
 export type MedicationSearchItem = CatalogSearchItem;
 
-export function medicationSearchLabel(m: CatalogSearchItem, language: SupportedLanguage): string {
-  const primary =
-    language === "fr"
-      ? (m.displayNameFr?.trim() || m.name?.trim() || "")
-      : (m.name?.trim() || m.code?.trim() || "");
-  const head = language === "fr" ? primary || m.displayNameFr?.trim() || m.code : primary || m.code;
-  return [head, m.secondaryText].filter(Boolean).join(" · ");
+/** Locale-aware medication line (primary + secondary); delegates to shared catalog helper. */
+export function medicationSearchLabel(
+  m: CatalogSearchItem,
+  language: SupportedLanguage,
+  t?: (key: string) => string
+): string {
+  return catalogSearchItemFullDisplayLine(m, language, t);
 }
 
 export type CatalogMedication = {
   id: string;
   code: string;
   name: string;
+  displayNameEn?: string | null;
   displayNameFr?: string | null;
   genericName?: string | null;
   strength?: string | null;
@@ -176,7 +178,12 @@ export type PharmacyDispenseContext = {
       strength?: string | null;
       notes?: string | null;
       status: string;
-      catalogMedication?: { code: string; name: string; displayNameFr?: string | null };
+      catalogMedication?: {
+        code: string;
+        name: string;
+        displayNameEn?: string | null;
+        displayNameFr?: string | null;
+      };
     }>;
   }>;
 };

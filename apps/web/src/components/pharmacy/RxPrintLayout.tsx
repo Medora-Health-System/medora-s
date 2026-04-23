@@ -59,7 +59,7 @@ function medicationLabel(item: RxOrderItem, language: SupportedLanguage): string
   if (cat) {
     const name =
       language === "en"
-        ? catalogMedicationNameForLocale(cat, language) || cat.name?.trim() || cat.code?.trim() || ""
+        ? catalogMedicationNameForLocale(cat, language) || cat.code?.trim() || ""
         : catalogMedicationNameForLocale(cat, language) || cat.displayNameFr?.trim() || cat.name?.trim() || "";
     const strength = item.strength ?? cat.strength;
     return strength ? `${name} ${strength}`.trim() : name;

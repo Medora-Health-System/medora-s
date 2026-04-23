@@ -7,8 +7,8 @@ import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/
 import type { OrderCreateDto } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
-import { medicationSearchLabel } from "@/lib/pharmacyApi";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
+import { catalogSearchItemFullDisplayLine } from "@/lib/catalogDisplayLabel";
 import { OrderTypeTabs } from "./createOrderModal/OrderTypeTabs";
 import { OrderPriorityField } from "./createOrderModal/OrderPriorityField";
 import { SelectedLabItems } from "./createOrderModal/SelectedLabItems";
@@ -25,22 +25,12 @@ function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
   return normalizeUserFacingError(msg.trim() || null) || t("createOrderModal.mapOrderCreateError");
 }
 
-function catalogLineLabel(item: CatalogSearchItem, language: SupportedLanguage): string {
-  if (item.type === "MEDICATION") return medicationSearchLabel(item, language);
-  if (item.type === "LAB_TEST" || item.type === "IMAGING_STUDY") {
-    const primary =
-      language === "en"
-        ? item.name?.trim() || item.code?.trim() || ""
-        : item.displayNameFr?.trim() || item.name?.trim() || item.code?.trim() || "";
-    const line = [primary, item.secondaryText].filter(Boolean).join(" · ");
-    return line || item.code;
-  }
-  const primary =
-    language === "en"
-      ? item.name?.trim() || item.code?.trim() || ""
-      : item.displayNameFr?.trim() || item.name?.trim() || item.code?.trim() || "";
-  const line = [primary, item.secondaryText].filter(Boolean).join(" · ");
-  return line || item.code;
+function catalogLineLabel(
+  item: CatalogSearchItem,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): string {
+  return catalogSearchItemFullDisplayLine(item, language, t);
 }
 
 function buildPayload(
@@ -282,7 +272,7 @@ export function CreateOrderModal({
               isManual: false,
               catalogItemId: item.id,
               catalogItemType,
-              _label: catalogLineLabel(item, language),
+              _label: catalogLineLabel(item, language, t),
               _modality: item.metadata?.modality,
               _bodyRegion: item.metadata?.bodyRegion,
             },
@@ -306,7 +296,7 @@ export function CreateOrderModal({
             quantity: 30,
             notes: "",
             strength: item.metadata?.strength ?? undefined,
-            _label: catalogLineLabel(item, language),
+            _label: catalogLineLabel(item, language, t),
             _dosageForm: item.metadata?.dosageForm ?? undefined,
             _route: item.metadata?.route ?? undefined,
             refillCount: 0,

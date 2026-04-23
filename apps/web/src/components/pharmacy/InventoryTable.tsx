@@ -3,6 +3,7 @@
 import React from "react";
 import type { InventoryItemRow } from "@/lib/pharmacyApi";
 import { useI18n } from "@/lib/i18n";
+import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 
 const th: React.CSSProperties = {
   padding: 12,
@@ -27,7 +28,7 @@ export function InventoryTable({
   onReceive?: (id: string) => void;
   onAdjust?: (id: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString() : t("common.dash");
 
@@ -58,7 +59,11 @@ export function InventoryTable({
           ) : (
             items.map((row) => (
               <tr key={row.id}>
-                <td style={td}>{row.catalogMedication?.name ?? "—"}</td>
+                <td style={td}>
+                  {catalogMedicationNameForLocale(row.catalogMedication ?? null, language) ||
+                    row.catalogMedication?.code ||
+                    "—"}
+                </td>
                 <td style={td}>{row.catalogMedication?.code ?? "—"}</td>
                 <td style={td}>{row.sku}</td>
                 <td style={td}>{row.lotNumber ?? "—"}</td>

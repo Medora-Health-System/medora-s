@@ -23,7 +23,7 @@ export function QuickAddStockModal({
 }) {
   const { t, language } = useI18n();
   const [query, setQuery] = useState(
-    initialMedication ? medicationSearchLabel(initialMedication, language) : ""
+    initialMedication ? medicationSearchLabel(initialMedication, language, t) : ""
   );
   const [selected, setSelected] = useState<MedicationSearchItem | null>(initialMedication ?? null);
   const [quantityOnHand, setQuantityOnHand] = useState("");
@@ -38,13 +38,13 @@ export function QuickAddStockModal({
   useEffect(() => {
     if (initialMedication) {
       setSelected(initialMedication);
-      setQuery(medicationSearchLabel(initialMedication, language));
+      setQuery(medicationSearchLabel(initialMedication, language, t));
     }
-  }, [initialMedication, language]);
+  }, [initialMedication, language, t]);
 
   const handleSelect = (med: MedicationSearchItem) => {
     setSelected(med);
-    setQuery(medicationSearchLabel(med, language));
+    setQuery(medicationSearchLabel(med, language, t));
     setTimeout(() => qtyInputRef.current?.focus(), 100);
   };
 
@@ -96,7 +96,7 @@ export function QuickAddStockModal({
           onSelect={handleSelect}
           favoritesFirst
           autoFocus={!initialMedication}
-          value={selected ? medicationSearchLabel(selected, language) : query}
+          value={selected ? medicationSearchLabel(selected, language, t) : query}
           onChange={(val) => {
             setQuery(val ?? "");
             if (!val?.trim()) setSelected(null);

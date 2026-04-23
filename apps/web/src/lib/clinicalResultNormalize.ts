@@ -96,9 +96,10 @@ export function clinicalResultFromChartOrderItem(
       attachments?: ResultAttachmentRow[] | null;
     } | null;
   },
-  language: SupportedLanguage
+  language: SupportedLanguage,
+  t?: (key: string) => string
 ): ClinicalResultViewerInput {
-  const title = chartSummaryOrderItemLineLabel(item as ChartSummaryOrderItem, language);
+  const title = chartSummaryOrderItemLineLabel(item as ChartSummaryOrderItem, language, t);
   const r = item.result;
   return {
     title,

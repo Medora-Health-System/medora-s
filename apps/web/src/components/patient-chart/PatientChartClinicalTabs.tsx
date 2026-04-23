@@ -158,7 +158,7 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
             <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
               {(o.items || []).map((it) => (
                 <li key={it.id}>
-                  <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong> —{" "}
+                  <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong> —{" "}
                   {tOrderItemStatusForWorklist(t, it.status)}
                 </li>
               ))}
@@ -206,7 +206,8 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
               catalogItemType: it.catalogItemType,
               result: it.result,
             },
-            language
+            language,
+            t
           );
           return (
             <ClinicalResultViewer
@@ -249,7 +250,7 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
         <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
           {all.map((it) => (
             <li key={it.id}>
-              <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong> —{" "}
+              <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong> —{" "}
               {tOrderItemStatusForWorklist(t, it.status)}
             </li>
           ))}
@@ -281,7 +282,8 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
                     catalogItemType: it.catalogItemType,
                     result: it.result,
                   },
-                  language
+                  language,
+                  t
                 );
                 return (
                   <ClinicalResultViewer
@@ -332,7 +334,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {medLines.map((it) => (
                 <li key={it.id}>
-                  <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong> —{" "}
+                  <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong> —{" "}
                   {tOrderItemStatusForWorklist(t, it.status)}
                   {it.status === "CANCELLED" &&
                   (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
@@ -379,7 +381,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
               {administered.map((it) => (
                 <li key={`adm-${it.id}`}>
-                  <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
+                  <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong>
                   {it.completedAt && it.completedBy
                     ? t("encounterChrome.chartTabs.medicationAdministeredFull")
                         .replace("{firstName}", it.completedBy.firstName ?? "")
@@ -405,9 +407,7 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
               {encDisp.map((d) => {
                 const label =
                   catalogMedicationNameForLocale(d.catalogMedication, language) ||
-                  (language === "en"
-                    ? d.catalogMedication.name || d.catalogMedication.code
-                    : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
+                  d.catalogMedication.code ||
                   "—";
                 const by = d.dispensedBy
                   ? `${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim()
@@ -454,9 +454,7 @@ function wrapWithGlobalDispenseChart(
           {globalDisp.slice(0, 25).map((d) => {
             const label =
               catalogMedicationNameForLocale(d.catalogMedication, language) ||
-              (language === "en"
-                ? d.catalogMedication.name || d.catalogMedication.code
-                : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
+              d.catalogMedication.code ||
               "—";
             const by = d.dispensedBy
               ? `${d.dispensedBy.firstName} ${d.dispensedBy.lastName}`.trim()

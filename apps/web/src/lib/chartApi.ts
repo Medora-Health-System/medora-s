@@ -67,7 +67,12 @@ export type ChartEncounterMedicationDispense = {
   ndcDisplaySnapshot?: string | null;
   dosageInstructions: string | null;
   dispensedAt: string;
-  catalogMedication: { code: string; name: string; displayNameFr?: string | null };
+  catalogMedication: {
+    code: string;
+    name: string;
+    displayNameEn?: string | null;
+    displayNameFr?: string | null;
+  };
   dispensedBy?: { firstName: string; lastName: string } | null;
 };
 
@@ -170,7 +175,12 @@ export type ChartSummary = {
     ndcDisplaySnapshot?: string | null;
     dosageInstructions: string | null;
     dispensedAt: string;
-    catalogMedication: { code: string; name: string; displayNameFr?: string | null };
+    catalogMedication: {
+      code: string;
+      name: string;
+      displayNameEn?: string | null;
+      displayNameFr?: string | null;
+    };
     inventoryItem: { sku: string; lotNumber: string | null } | null;
     dispensedBy?: { firstName: string; lastName: string } | null;
   }>;

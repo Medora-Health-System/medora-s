@@ -6,6 +6,8 @@ export type CatalogSearchItem = {
   code: string;
   type: CatalogSearchItemType;
   displayNameFr: string;
+  /** English-primary display from API; optional / null until backfilled. */
+  displayNameEn?: string | null;
   /** API `name` (English / primary); optional for older cached payloads. */
   name?: string;
   secondaryText?: string;

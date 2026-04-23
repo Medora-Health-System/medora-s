@@ -30,7 +30,7 @@ export function MedicationChip({
   actionLabel?: string;
   compact?: boolean;
 }) {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   return (
     <button
       type="button"
@@ -48,7 +48,7 @@ export function MedicationChip({
       <span style={{ fontWeight: 500 }}>
         {compact
           ? catalogMedicationNameForLocale(med, language)
-          : medicationSearchLabel(med, language)}
+          : medicationSearchLabel(med, language, t)}
       </span>
       {actionLabel && (
         <span style={{ color: "#666", fontSize: 12 }}>{actionLabel}</span>

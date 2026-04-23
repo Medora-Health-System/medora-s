@@ -9,17 +9,15 @@ import {
 import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSearchOfflineAdapter";
 import type { SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
-import { medicationSearchLabel } from "@/lib/pharmacyApi";
+import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { useI18n } from "@/lib/i18n";
 
-function catalogListPrimaryLine(item: CatalogSearchItem, language: SupportedLanguage): string {
-  if (item.type === "MEDICATION") {
-    return medicationSearchLabel(item, language);
-  }
-  if (language === "en") {
-    return item.name?.trim() || item.code?.trim() || "";
-  }
-  return item.displayNameFr?.trim() || item.name?.trim() || item.code?.trim() || "";
+function catalogListPrimaryLine(
+  item: CatalogSearchItem,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): string {
+  return getCatalogSearchItemDisplayLabel(item, language, t);
 }
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
@@ -230,7 +228,7 @@ export function SharedCatalogAutocomplete({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>
-                    <HighlightMatch text={catalogListPrimaryLine(item, language)} needle={needle} />
+                    <HighlightMatch text={catalogListPrimaryLine(item, language, t)} needle={needle} />
                     {item.type === "MEDICATION" && item.isEssential && (
                       <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>Essentiel</span>
                     )}

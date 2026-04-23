@@ -12,8 +12,10 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import type { MarClinicalAction, MedicationAdministrationCreateDto } from "@medora/shared";
 import {
+  acceptableManualOrderLine,
   buildMedicationAdministrationCandidate,
   deriveMarClinicalActionFromNotes,
+  isInvalidTechnicalOrderDisplayLabel,
   normalizeNdc,
   resolveMedicationMarActionFromStorage,
 } from "@medora/shared";
@@ -146,7 +148,8 @@ export class MedicationAdministrationService {
   }
 
   /**
-   * Stable medication label for MAR / audit — prefers `displayNameEn` when set, then `name` / `displayNameFr` (Phase B additive).
+   * Stable medication label for MAR / audit — Phase C strict EN-neutral: `displayNameEn` → acceptable manual → `code`
+   * → strength/notes → typed EN fallback (never legacy `name` / `displayNameFr` as clinical display).
    */
   private medicationLabelSnapshotFromMedicationOrderItem(
     item: OrderItem,
@@ -155,27 +158,32 @@ export class MedicationAdministrationService {
       displayNameFr: string | null;
       name: string | null;
       strength: string | null;
+      code: string | null;
     } | null
   ): string {
-    const manual = item.manualLabel?.trim();
-    const manualSec = item.manualSecondaryText?.trim();
-    const manualLine = manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
+    const manualLine = acceptableManualOrderLine({
+      catalogItemType: "MEDICATION",
+      manualLabel: item.manualLabel,
+      manualSecondaryText: item.manualSecondaryText,
+      strength: item.strength,
+    });
 
-    const base =
-      catalogMedication?.displayNameEn?.trim() ||
-      catalogMedication?.name?.trim() ||
-      catalogMedication?.displayNameFr?.trim() ||
-      null;
-    if (base) {
+    const den = catalogMedication?.displayNameEn?.trim();
+    const denOk =
+      den && !isInvalidTechnicalOrderDisplayLabel(den, "MEDICATION") ? den : null;
+    const code = catalogMedication?.code?.trim();
+    const codeOk =
+      code && !isInvalidTechnicalOrderDisplayLabel(code, "MEDICATION") ? code : null;
+    const catPrimary = denOk || manualLine || codeOk || null;
+    if (catPrimary) {
       const str = (item.strength ?? catalogMedication?.strength)?.trim();
-      return str ? `${base} ${str}` : base;
+      return str ? `${catPrimary} ${str}` : catPrimary;
     }
-    if (manualLine) return manualLine;
     const fromRow = [item.strength, item.notes]
       .map((s) => (typeof s === "string" ? s.trim() : ""))
       .find((s) => s.length > 0);
     if (fromRow) return fromRow;
-    return "Médicament (libellé indisponible)";
+    return "Medication (label unavailable)";
   }
 
   async findByEncounter(encounterId: string, facilityId: string) {
@@ -228,6 +236,7 @@ export class MedicationAdministrationService {
       displayNameEn: string | null;
       displayNameFr: string | null;
       name: string | null;
+      code: string | null;
       strength: string | null;
       ndc11: string | null;
       ndcDisplay: string | null;
@@ -261,6 +270,7 @@ export class MedicationAdministrationService {
             displayNameEn: true,
             displayNameFr: true,
             name: true,
+            code: true,
             strength: true,
             ndc11: true,
             ndcDisplay: true,

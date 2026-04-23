@@ -2,7 +2,8 @@
  * Single source of truth for order-line display strings (FR vs EN catalog preference).
  * Used by API enrichment and chart; web mirrors logic in {@link orderItemDisplayFr.ts} for client-side rows.
  *
- * EN resolution: never uses `displayNameFr` or `displayLabelFr`; optional `displayNameEn` when present on catalog rows.
+ * Phase C EN: for lab / imaging / medication catalog lines, never `displayNameFr` and never legacy `name`
+ * (may be French data). Order: `displayNameEn` → acceptable manual → `code` → typed EN fallback.
  */
 
 export type OrderItemLabelInput = {
@@ -39,12 +40,16 @@ const FALLBACK_FR: Record<string, string> = {
   LAB_TEST: "Analyse (libellé indisponible)",
   IMAGING_STUDY: "Imagerie (libellé indisponible)",
   MEDICATION: "Médicament (libellé indisponible)",
+  CARE: "Soin (libellé indisponible)",
+  SUPPLY: "Article / fourniture (libellé indisponible)",
 };
 
 const FALLBACK_EN: Record<string, string> = {
   LAB_TEST: "Lab test (label unavailable)",
   IMAGING_STUDY: "Imaging (label unavailable)",
   MEDICATION: "Medication (label unavailable)",
+  CARE: "Care (label unavailable)",
+  SUPPLY: "Supply (label unavailable)",
 };
 
 /** Tokens that must never be shown as a human order line title in EN (or as FR primary). */
@@ -55,6 +60,7 @@ const TECHNICAL_DISPLAY_TOKENS = new Set([
   "CARE",
   "SUPPLY",
   "IVP",
+  "PROCEDURE",
 ]);
 
 /**
@@ -69,13 +75,28 @@ export function isInvalidTechnicalOrderDisplayLabel(raw: string, catalogItemType
   return false;
 }
 
-function manualLine(it: OrderItemLabelInput): string {
+/** User-entered manual line only when it is not a type token or other technical placeholder. */
+export function acceptableManualOrderLine(it: OrderItemLabelInput): string {
   const manual = it.manualLabel?.trim();
-  if (manual && manual === String(it.catalogItemType ?? "").trim()) {
-    return "";
-  }
+  if (!manual) return "";
+  const cat = String(it.catalogItemType ?? "");
+  if (manual === cat.trim()) return "";
+  if (isInvalidTechnicalOrderDisplayLabel(manual, cat)) return "";
   const manualSec = it.manualSecondaryText?.trim();
-  return manual ? (manualSec ? `${manual} — ${manualSec}` : manual) : "";
+  const line = manualSec ? `${manual} — ${manualSec}` : manual;
+  if (isInvalidTechnicalOrderDisplayLabel(line, cat)) return "";
+  return line;
+}
+
+/**
+ * Phase C strict EN primary for catalog-backed rows: `displayNameEn`, then `code` — never `name` / `displayNameFr`.
+ */
+export function pickStrictEnCatalogPrimaryLabel(
+  catalogItemType: string,
+  displayNameEn?: string | null,
+  code?: string | null
+): string | null {
+  return firstAcceptableLineLabel(catalogItemType, displayNameEn, code);
 }
 
 function typeFallback(catalogItemType: string, lang: "fr" | "en"): string {
@@ -104,20 +125,20 @@ export function buildOrderItemDisplayLabelFr(
   catalogImg: CatalogImagingLabel | null | undefined,
   catalogMed: CatalogMedicationLabel | null | undefined
 ): string {
-  const manualLineStr = manualLine(it);
+  const manualLineStr = acceptableManualOrderLine(it);
   if (it.catalogItemType === "LAB_TEST") {
     const fr = catalogLab?.displayNameFr?.trim();
-    const n = catalogLab?.name?.trim();
     const enOpt = catalogLab?.displayNameEn?.trim();
-    const line = firstAcceptableLineLabel(it.catalogItemType, fr, n, enOpt, manualLineStr, catalogLab?.code);
+    const n = catalogLab?.name?.trim();
+    const line = firstAcceptableLineLabel(it.catalogItemType, fr, enOpt, n, manualLineStr, catalogLab?.code);
     if (line) return line;
     return typeFallback(it.catalogItemType, "fr");
   }
   if (it.catalogItemType === "IMAGING_STUDY") {
     const fr = catalogImg?.displayNameFr?.trim();
-    const n = catalogImg?.name?.trim();
     const enOpt = catalogImg?.displayNameEn?.trim();
-    const base = firstAcceptableLineLabel(it.catalogItemType, fr, n, enOpt, manualLineStr, catalogImg?.code);
+    const n = catalogImg?.name?.trim();
+    const base = firstAcceptableLineLabel(it.catalogItemType, fr, enOpt, n, manualLineStr, catalogImg?.code);
     if (base) {
       const mod = catalogImg?.modality?.trim();
       return mod ? `${base} (${mod})` : base;
@@ -128,8 +149,8 @@ export function buildOrderItemDisplayLabelFr(
     const base = firstAcceptableLineLabel(
       it.catalogItemType,
       catalogMed?.displayNameFr,
-      catalogMed?.name,
       catalogMed?.displayNameEn,
+      catalogMed?.name,
       manualLineStr,
       catalogMed?.code
     );
@@ -145,8 +166,8 @@ export function buildOrderItemDisplayLabelFr(
 }
 
 /**
- * English UI: displayNameEn → name → manual → catalog code → typed EN fallback.
- * Never reads displayNameFr.
+ * English UI (Phase C strict): for lab / imaging / medication — `displayNameEn` → acceptable manual → `code`
+ * → typed EN fallback. Never `displayNameFr` or catalog `name` for those types.
  */
 export function buildOrderItemDisplayLabelEn(
   it: OrderItemLabelInput,
@@ -154,12 +175,11 @@ export function buildOrderItemDisplayLabelEn(
   catalogImg: CatalogImagingLabel | null | undefined,
   catalogMed: CatalogMedicationLabel | null | undefined
 ): string {
-  const manualLineStr = manualLine(it);
+  const manualLineStr = acceptableManualOrderLine(it);
   if (it.catalogItemType === "LAB_TEST") {
     const line = firstAcceptableLineLabel(
       it.catalogItemType,
       catalogLab?.displayNameEn,
-      catalogLab?.name,
       manualLineStr,
       catalogLab?.code
     );
@@ -170,7 +190,6 @@ export function buildOrderItemDisplayLabelEn(
     const base = firstAcceptableLineLabel(
       it.catalogItemType,
       catalogImg?.displayNameEn,
-      catalogImg?.name,
       manualLineStr,
       catalogImg?.code
     );
@@ -184,7 +203,6 @@ export function buildOrderItemDisplayLabelEn(
     const base = firstAcceptableLineLabel(
       it.catalogItemType,
       catalogMed?.displayNameEn,
-      catalogMed?.name,
       manualLineStr,
       catalogMed?.code
     );

@@ -136,7 +136,7 @@ function OrderItemLine({
     const body = txt ? `${crit}${txt}` : att ? `${crit}${att}` : `${crit}${statusLbl}`;
     return (
       <li>
-        <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
+        <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong>
         {` — ${body}`}
         {it.result?.verifiedAt ? ` (${formatShortDateTime(it.result.verifiedAt)})` : null}
       </li>
@@ -177,7 +177,7 @@ function OrderItemLine({
 
   return (
     <li>
-      <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
+      <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong>
       {extras.length ? ` — ${extras.join(" · ")}` : null}
       {cancelMeta}
     </li>
@@ -199,7 +199,7 @@ function NurseAdminLine({
   const who = physicianName(it.completedBy);
   return (
     <li>
-      <strong>{chartSummaryOrderItemLineLabel(it, language)}</strong>
+      <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong>
       {who ? (
         <>
           {" "}
@@ -581,9 +581,7 @@ export function EncounterClinicalTimeline({
                       {encDisp.map((d) => {
                         const label =
                           catalogMedicationNameForLocale(d.catalogMedication, language) ||
-                          (language === "en"
-                            ? d.catalogMedication.name || d.catalogMedication.code
-                            : d.catalogMedication.displayNameFr || d.catalogMedication.name) ||
+                          d.catalogMedication.code ||
                           "—";
                         const by = physicianName(d.dispensedBy);
                         return (
