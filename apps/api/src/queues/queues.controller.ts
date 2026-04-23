@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { QueuesService } from "./queues.service";
@@ -148,9 +148,24 @@ export class QueuesController {
 
   @Get("billing/clearinghouse/ack-dead-letters")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
-  async listAckDeadLetters(@Req() req: any) {
+  async listAckDeadLetters(
+    @Req() req: any,
+    @Query("replayed") replayed?: string,
+    @Query("source") source?: string,
+    @Query("failureCode") failureCode?: string,
+    @Query("take") take?: string
+  ) {
     const facilityId = req.facilityId;
-    return this.claimAcknowledgmentService.listInboundAckDeadLetters(facilityId, { openOnly: true, take: 50 });
+    const replayedFilter =
+      replayed === "all" ? ("all" as const) : replayed === "replayed" ? ("replayed" as const) : ("open" as const);
+    const takeRaw = take !== undefined ? Number(take) : 50;
+    const takeN = Number.isFinite(takeRaw) ? Math.min(200, Math.max(1, Math.floor(takeRaw))) : 50;
+    return this.claimAcknowledgmentService.listInboundAckDeadLetters(facilityId, {
+      replayed: replayedFilter,
+      source: source?.trim() || undefined,
+      failureCode: failureCode?.trim() || undefined,
+      take: takeN,
+    });
   }
 
   @Post("billing/clearinghouse/replay-ack/:deadLetterId")

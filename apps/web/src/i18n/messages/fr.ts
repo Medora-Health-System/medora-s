@@ -490,8 +490,38 @@ export default {
     clearinghouseRetryWorkerStatusLabel: "Statut",
     clearinghouseRetryWorkerDetailLabel: "Détail",
     clearinghouseOpsDeadLetterCount: "Accusés en file morte (ouverts)",
+    clearinghouseOpsDeadLetterReplayed24h: "Accusés file morte rejoués (24 h)",
     clearinghouseOpsTransportFailures: "Échecs transport (24 h)",
     clearinghouseOpsLastSftpPollStatus: "Dernier poll SFTP",
+    clearinghouseOpsLiveCircuitOpen: "Envoi production temporairement suspendu (circuit ouvert).",
+    clearinghouseOpsLiveCircuitUntil: "Reprise prévue vers",
+    clearinghouseOpsStabilizationTitle: "Activité de stabilisation (fenêtre glissante, ce processus API)",
+    clearinghouseOpsDuplicateAckRolling: "Accusés dupliqués ignorés",
+    clearinghouseOpsDuplicateSendRolling: "Envois dupliqués bloqués",
+    clearinghouseOpsRateLimitRolling: "Envois limités en débit",
+    clearinghouseOpsThrottleRolling: "Envois espacés (throttle)",
+    clearinghouseOpsRollingNote:
+      "Compteurs par processus pour ce serveur uniquement ; plusieurs instances API ont chacune leur fenêtre.",
+    clearinghouseOpsSftpPollTruncated:
+      "Le poll SFTP des accusés entrants a atteint la limite de fichiers par cycle ; le reste attend le prochain passage.",
+    clearinghouseStab_circuitOpen:
+      "Envoi production suspendu : le circuit est ouvert. Réessayez après la temporisation ou contactez le support.",
+    clearinghouseStab_sendingPaused: "Envoi temporairement suspendu pour le transport production.",
+    clearinghouseStab_rateLimited: "Envoi ignoré : limite de débit sortante atteinte. Attendez une minute puis réessayez.",
+    clearinghouseStab_throttled: "Envoi ignoré : espacement sortant (intervalle minimum). Réessayez sous peu.",
+    clearinghouseStab_concurrentLimited: "Envoi ignoré : trop d’envois sortants simultanés pour cet établissement.",
+    clearinghouseStab_duplicateSendBlocked: "Envoi ignoré : protection anti-doublon a bloqué un nouvel envoi réseau.",
+    clearinghouseStab_alreadySent:
+      "Envoi ignoré : cette soumission a déjà un envoi réseau réussi alors qu’elle est encore marquée prête.",
+    clearinghouseStab_inFlightBlocked: "Envoi ignoré : une tentative sortante est déjà en cours pour cette soumission.",
+    clearinghouseStab_recentSuccess:
+      "Envoi ignoré : envoi réseau réussi récent détecté (protection double clic).",
+    clearinghouseStab_duplicateLifecycle: "Envoi ignoré : la soumission est déjà envoyée ou en attente d’accusé.",
+    clearinghouseStab_duplicateAckIgnored: "Accusé dupliqué ignoré (pas de changement de cycle de vie).",
+    clearinghouseStab_deadLetterReplayed: "Rejeu de file morte terminé.",
+    clearinghouseStab_liveStabilityWarning:
+      "Le transport production a échoué plusieurs fois récemment ; l’envoi peut être limité ou suspendu.",
+    clearinghouseStab_clearinghouseUnavailable: "Le clearinghouse semble indisponible ; réessayez plus tard.",
     submissionRetryEligible: "Rééligible",
     submissionRetryScheduled: "Réessai planifié",
     submissionNextRetryAt: "Prochain essai à",

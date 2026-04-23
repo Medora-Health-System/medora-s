@@ -7,6 +7,7 @@ import {
   loadClearinghouseConfig,
 } from "./clearinghouse-config.util";
 import { ClaimAcknowledgmentService } from "./claim-acknowledgment.service";
+import { ClearinghouseStabilizationService } from "./clearinghouse-stabilization.service";
 
 const log = createStructuredLogger("AckSftpPoller");
 
@@ -37,6 +38,11 @@ export type AckSftpLastPollSnapshot = {
   skipped: string[];
   errors: { file: string; error: string; outcome?: AckSftpPollFileOutcome }[];
   fileOutcomes: Record<string, AckSftpPollFileOutcome>;
+  /** Phase 8.1 — pacing cap for this poll cycle (no secrets). */
+  ackPollMaxFilesPerCycle?: number;
+  ackPollFilesSeen?: number;
+  ackPollFilesProcessed?: number;
+  ackPollTruncated?: boolean;
 };
 
 /**
@@ -48,7 +54,10 @@ export class AckSftpPollerService implements OnModuleInit, OnModuleDestroy {
   private timer: ReturnType<typeof setInterval> | undefined;
   private lastPollSnapshot: AckSftpLastPollSnapshot | null = null;
 
-  constructor(private readonly claimAcknowledgmentService: ClaimAcknowledgmentService) {}
+  constructor(
+    private readonly claimAcknowledgmentService: ClaimAcknowledgmentService,
+    private readonly clearinghouseStabilization: ClearinghouseStabilizationService
+  ) {}
 
   /** Last completed poll (including connection failures) for ops/health — no secrets. */
   getLastPollSnapshot(): AckSftpLastPollSnapshot | null {
@@ -145,12 +154,22 @@ export class AckSftpPollerService implements OnModuleInit, OnModuleDestroy {
       });
 
       const list = await client.list(remotePath);
-      for (const ent of list) {
-        if (ent.type !== "-") continue;
-        const name = ent.name;
-        if (name.endsWith(processedSuffix)) continue;
-        if (errorSuffix && name.endsWith(errorSuffix)) continue;
+      const maxFiles = this.clearinghouseStabilization.getPacingConfigPublic().ackPollMaxFilesPerCycle;
+      const candidates = list
+        .filter((ent) => ent.type === "-")
+        .filter((ent) => {
+          const n = ent.name;
+          if (n.endsWith(processedSuffix)) return false;
+          if (errorSuffix && n.endsWith(errorSuffix)) return false;
+          return true;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const totalSeen = candidates.length;
+      const slice = candidates.slice(0, Math.max(1, maxFiles));
+      const pollTruncated = totalSeen > slice.length;
 
+      for (const ent of slice) {
+        const name = ent.name;
         const remoteFile = `${remotePath.replace(/\/$/, "")}/${name}`;
         try {
           const buf = await client.get(remoteFile);
@@ -240,6 +259,10 @@ export class AckSftpPollerService implements OnModuleInit, OnModuleDestroy {
         skipped,
         errors,
         fileOutcomes,
+        ackPollMaxFilesPerCycle: maxFiles,
+        ackPollFilesSeen: totalSeen,
+        ackPollFilesProcessed: slice.length,
+        ackPollTruncated: pollTruncated,
       };
 
       if (ingested.length > 0) {

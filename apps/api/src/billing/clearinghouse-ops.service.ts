@@ -5,6 +5,7 @@ import { getClearinghousePublicConfigStatus } from "./clearinghouse-config.util"
 import { AckSftpPollerService } from "./ack-sftp-poller.service";
 import { ClaimRetryWorkerService } from "./claim-retry-worker.service";
 import { isLatestAttemptDueForWorkerRetry } from "./clearinghouse-retry-policy.util";
+import { ClearinghouseStabilizationService } from "./clearinghouse-stabilization.service";
 
 /**
  * Facility-scoped operational snapshot for clearinghouse send/ACK (no secrets).
@@ -14,7 +15,8 @@ export class ClearinghouseOpsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ackSftpPollerService: AckSftpPollerService,
-    private readonly claimRetryWorkerService: ClaimRetryWorkerService
+    private readonly claimRetryWorkerService: ClaimRetryWorkerService,
+    private readonly clearinghouseStabilization: ClearinghouseStabilizationService
   ) {}
 
   async getOpsStatus(facilityId: string) {
@@ -23,8 +25,16 @@ export class ClearinghouseOpsService {
     const now = new Date();
     const workerSnap = this.claimRetryWorkerService.getLastSnapshot();
 
-    const [retryReadySubs, deadLetterOpen, recentTransportFailures, sftpSnap, recentWorkerRows, lastLiveAttempt, recentLiveTransportFailures] =
-      await Promise.all([
+    const [
+      retryReadySubs,
+      deadLetterOpen,
+      recentTransportFailures,
+      sftpSnap,
+      recentWorkerRows,
+      lastLiveAttempt,
+      recentLiveTransportFailures,
+      deadLetterReplayed24h,
+    ] = await Promise.all([
       this.prisma.claimSubmission.findMany({
         where: { facilityId, status: ClaimSubmissionStatus.READY_TO_SEND },
         select: {
@@ -73,6 +83,9 @@ export class ClearinghouseOpsService {
           submission: { facilityId },
         },
       }),
+      this.prisma.claimAcknowledgmentDeadLetter.count({
+        where: { facilityId, replayedAt: { gte: since } },
+      }),
     ]);
 
     let retryEligibleSubmissionCount = 0;
@@ -93,6 +106,10 @@ export class ClearinghouseOpsService {
     }
 
     const recentRetryAttemptCount = Number(recentWorkerRows[0]?.c ?? 0n);
+    const circuit = this.clearinghouseStabilization.getLiveCircuitState(facilityId);
+    const rolling = this.clearinghouseStabilization.getRollingSnapshotForFacility(facilityId);
+    const stabilizationProcessMetrics = this.clearinghouseStabilization.getMetricsSnapshot();
+    const liveSendPacingConfig = this.clearinghouseStabilization.getPacingConfigPublic();
 
     return {
       clearinghouseMode: cfg.mode,
@@ -114,6 +131,10 @@ export class ClearinghouseOpsService {
       lastSftpPollAt: sftpSnap?.at ?? null,
       lastSftpPollStatus: sftpSnap?.status ?? null,
       lastSftpPollDetail: sftpSnap?.detail ?? null,
+      lastSftpAckPollTruncated: sftpSnap?.ackPollTruncated ?? false,
+      lastSftpAckPollFilesSeen: sftpSnap?.ackPollFilesSeen ?? null,
+      lastSftpAckPollFilesProcessed: sftpSnap?.ackPollFilesProcessed ?? null,
+      lastSftpAckPollMaxFilesPerCycle: sftpSnap?.ackPollMaxFilesPerCycle ?? null,
       retryEligibleSubmissionCount,
       retryDueSubmissionCount,
       retryExhaustedCount,
@@ -123,7 +144,21 @@ export class ClearinghouseOpsService {
       lastRetryWorkerStatus: workerSnap?.status ?? null,
       lastRetryWorkerDetail: workerSnap?.detail ?? null,
       deadLetterAckCount: deadLetterOpen,
+      deadLetterReplayed24hCount: deadLetterReplayed24h,
       recentTransportFailureCount: recentTransportFailures,
+      liveCircuitOpen: circuit.liveCircuitOpen,
+      liveCircuitOpenedAt: circuit.liveCircuitOpenedAt,
+      liveCircuitReason: circuit.liveCircuitReason,
+      liveCircuitOpenUntil: circuit.liveCircuitOpenUntil,
+      recentDuplicateAckCount: rolling.recentDuplicateAckCount,
+      recentDuplicateSendBlockedCount: rolling.recentDuplicateSendBlockedCount,
+      recentRateLimitedSendCount: rolling.recentRateLimitedSendCount,
+      recentThrottleSkips: rolling.recentThrottleSkips,
+      recentCircuitBlockedSendCount: rolling.recentCircuitBlockedSendCount,
+      recentConcurrentLimitedSendCount: rolling.recentConcurrentLimitedSendCount,
+      recentDeadLetterReplays: rolling.recentDeadLetterReplays,
+      stabilizationProcessMetrics,
+      liveSendPacingConfig,
     };
   }
 }

@@ -19,6 +19,7 @@ import { ClearinghouseOpsService } from "../billing/clearinghouse-ops.service";
 import { ClaimRetryWorkerService } from "../billing/claim-retry-worker.service";
 import { BillingIdentityService } from "../billing/billing-identity.service";
 import { BillingIdentityController } from "../billing/billing-identity.controller";
+import { ClearinghouseStabilizationService } from "../billing/clearinghouse-stabilization.service";
 
 @Module({
   imports: [PrismaModule],
@@ -37,6 +38,7 @@ import { BillingIdentityController } from "../billing/billing-identity.controlle
     ClaimRetryWorkerService,
     ClaimAcknowledgmentService,
     AckSftpPollerService,
+    ClearinghouseStabilizationService,
     ClearinghouseOpsService,
     BillingIdentityService,
     ClearinghouseAckWebhookGuard,

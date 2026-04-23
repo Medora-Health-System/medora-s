@@ -320,7 +320,25 @@ type ClearinghouseOpsStatusPayload = {
   lastRetryWorkerStatus?: string | null;
   lastRetryWorkerDetail?: string | null;
   deadLetterAckCount: number;
+  deadLetterReplayed24hCount?: number;
   recentTransportFailureCount: number;
+  liveCircuitOpen?: boolean;
+  liveCircuitOpenedAt?: string | null;
+  liveCircuitReason?: string | null;
+  liveCircuitOpenUntil?: string | null;
+  recentDuplicateAckCount?: number;
+  recentDuplicateSendBlockedCount?: number;
+  recentRateLimitedSendCount?: number;
+  recentThrottleSkips?: number;
+  recentCircuitBlockedSendCount?: number;
+  recentConcurrentLimitedSendCount?: number;
+  recentDeadLetterReplays?: number;
+  stabilizationProcessMetrics?: Record<string, number>;
+  liveSendPacingConfig?: Record<string, unknown>;
+  lastSftpAckPollTruncated?: boolean;
+  lastSftpAckPollFilesSeen?: number | null;
+  lastSftpAckPollFilesProcessed?: number | null;
+  lastSftpAckPollMaxFilesPerCycle?: number | null;
 };
 
 type SummaryPayload = {
@@ -566,6 +584,38 @@ function sendSubmissionSideActionLabel(t: (k: string) => string, claimType: stri
     : t("billingPage.sendFacilityClaim");
 }
 
+type SubmissionSendResponsePayload = {
+  claimType?: string;
+  sideSent?: boolean;
+  sideSkipped?: boolean;
+  ok?: boolean;
+  skipped?: boolean;
+  blockedByCompleteness?: boolean;
+  circuitOpen?: boolean;
+  rateLimited?: boolean;
+  throttleDelayed?: boolean;
+  duplicateBlocked?: boolean;
+  concurrentLimited?: boolean;
+  stabilizationReasonCode?: string | null;
+};
+
+/** Phase 8.1 — operator-facing reason when a send was skipped by stabilization (not completeness). */
+function billingSendStabilizationMessage(t: (k: string) => string, res: SubmissionSendResponsePayload): string | null {
+  if (res.circuitOpen) return t("billingPage.clearinghouseStab_circuitOpen");
+  if (res.rateLimited) return t("billingPage.clearinghouseStab_rateLimited");
+  if (res.throttleDelayed) return t("billingPage.clearinghouseStab_throttled");
+  if (res.concurrentLimited) return t("billingPage.clearinghouseStab_concurrentLimited");
+  if (res.duplicateBlocked) {
+    const c = res.stabilizationReasonCode;
+    if (c === "SEND_BLOCKED_IN_FLIGHT") return t("billingPage.clearinghouseStab_inFlightBlocked");
+    if (c === "SEND_BLOCKED_ALREADY_SENT") return t("billingPage.clearinghouseStab_alreadySent");
+    if (c === "SEND_BLOCKED_RECENT_SUCCESS") return t("billingPage.clearinghouseStab_recentSuccess");
+    if (c === "DUPLICATE_SEND_BLOCKED") return t("billingPage.clearinghouseStab_duplicateLifecycle");
+    return t("billingPage.clearinghouseStab_duplicateSendBlocked");
+  }
+  return null;
+}
+
 function retrySubmissionSideActionLabel(t: (k: string) => string, claimType: string): string {
   return claimSubmissionIsProfessional837P(claimType)
     ? t("billingPage.professionalRetrySend")
@@ -794,6 +844,12 @@ export default function BillingEncounterLedgerPage() {
             blockedByCompleteness?: boolean;
             submissionGateReasonCode?: string | null;
             submissionGateBlockers?: string[];
+            circuitOpen?: boolean;
+            rateLimited?: boolean;
+            throttleDelayed?: boolean;
+            duplicateBlocked?: boolean;
+            concurrentLimited?: boolean;
+            stabilizationReasonCode?: string | null;
           }>;
         };
         const results = resp.results ?? [];
@@ -811,7 +867,9 @@ export default function BillingEncounterLedgerPage() {
             setToast(t("billingPage.submissionSendOk"));
           }
         } else if (results.length > 0 && sideSkippedCount === results.length) {
-          setActionError(t("billingPage.submissionSendAllSidesSkipped"));
+          const firstStab = results.find((r) => r.sideSkipped) ?? results[0];
+          const stabMsg = firstStab ? billingSendStabilizationMessage(t, firstStab) : null;
+          setActionError(stabMsg ?? t("billingPage.submissionSendAllSidesSkipped"));
         } else if (transportFailed > 0) {
           setActionError(t("billingPage.submissionSendTransportFailures"));
         } else {
@@ -840,12 +898,7 @@ export default function BillingEncounterLedgerPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transport: "MANUAL" }),
-        })) as {
-          claimType?: string;
-          sideSent?: boolean;
-          sideSkipped?: boolean;
-          ok?: boolean;
-        };
+        })) as SubmissionSendResponsePayload;
         const ct = typeof res.claimType === "string" ? res.claimType : claimType;
         if (res.sideSent === true) {
           setToast(
@@ -854,10 +907,12 @@ export default function BillingEncounterLedgerPage() {
               : t("billingPage.facilityClaimSent")
           );
         } else if (res.sideSkipped === true) {
+          const stab = billingSendStabilizationMessage(t, res);
           setActionError(
-            claimSubmissionIsProfessional837P(ct)
-              ? t("billingPage.professionalSubmissionSkipped")
-              : t("billingPage.facilitySubmissionSkipped")
+            stab ??
+              (claimSubmissionIsProfessional837P(ct)
+                ? t("billingPage.professionalSubmissionSkipped")
+                : t("billingPage.facilitySubmissionSkipped"))
           );
         } else if (res.ok === false) {
           setActionError(t("billingPage.submissionSendTransportFailures"));
@@ -889,7 +944,7 @@ export default function BillingEncounterLedgerPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transport: "MANUAL" }),
-        })) as { skipped?: boolean; blockedByCompleteness?: boolean; claimType?: string };
+        })) as SubmissionSendResponsePayload & { skipped?: boolean; blockedByCompleteness?: boolean };
         const ct = typeof res.claimType === "string" ? res.claimType : claimType;
         if (res.skipped || res.blockedByCompleteness) {
           setActionError(
@@ -897,6 +952,22 @@ export default function BillingEncounterLedgerPage() {
               ? t("billingPage.professionalRetrySkippedClaimNotReady")
               : t("billingPage.facilityRetrySkippedClaimNotReady")
           );
+        } else if (res.sideSent === true) {
+          setToast(
+            claimSubmissionIsProfessional837P(ct)
+              ? t("billingPage.professionalRetrySendOk")
+              : t("billingPage.facilityRetrySendOk")
+          );
+        } else if (res.sideSkipped === true) {
+          const stab = billingSendStabilizationMessage(t, res);
+          setActionError(
+            stab ??
+              (claimSubmissionIsProfessional837P(ct)
+                ? t("billingPage.professionalSubmissionSkipped")
+                : t("billingPage.facilitySubmissionSkipped"))
+          );
+        } else if (res.ok === false) {
+          setActionError(t("billingPage.submissionSendTransportFailures"));
         } else {
           setToast(
             claimSubmissionIsProfessional837P(ct)
@@ -2269,6 +2340,10 @@ export default function BillingEncounterLedgerPage() {
                     {t("billingPage.recentLiveTransportFailures")}: {clearinghouseOpsStatus.recentLiveTransportFailureCount}
                   </div>
                 ) : null}
+                {typeof clearinghouseOpsStatus.recentLiveTransportFailureCount === "number" &&
+                clearinghouseOpsStatus.recentLiveTransportFailureCount > 2 ? (
+                  <div style={{ marginBottom: 4, color: "#9a3412" }}>{t("billingPage.clearinghouseStab_liveStabilityWarning")}</div>
+                ) : null}
                 {clearinghouseOpsStatus.clearinghouseConfigWarningCodes &&
                 clearinghouseOpsStatus.clearinghouseConfigWarningCodes.length > 0 ? (
                   <div style={{ marginBottom: 4, color: "#9a3412", wordBreak: "break-word" }}>
@@ -2285,10 +2360,62 @@ export default function BillingEncounterLedgerPage() {
                   {" · "}
                   {t("billingPage.clearinghouseOpsDeadLetterCount")}: {clearinghouseOpsStatus.deadLetterAckCount}
                   {" · "}
+                  {t("billingPage.clearinghouseOpsDeadLetterReplayed24h")}:{" "}
+                  {clearinghouseOpsStatus.deadLetterReplayed24hCount ?? "—"}
+                  {" · "}
                   {t("billingPage.clearinghouseOpsTransportFailures")}: {clearinghouseOpsStatus.recentTransportFailureCount}
                   {" · "}
                   {t("billingPage.clearinghouseRecentWorkerRetries")}: {clearinghouseOpsStatus.recentRetryAttemptCount ?? "—"}
                 </div>
+                {clearinghouseOpsStatus.liveCircuitOpen ? (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: "6px 8px",
+                      borderRadius: 4,
+                      background: "#fff7ed",
+                      color: "#9a3412",
+                      fontSize: 11,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>{t("billingPage.clearinghouseOpsLiveCircuitOpen")}</div>
+                    {clearinghouseOpsStatus.liveCircuitOpenUntil ? (
+                      <div style={{ fontSize: 10, marginTop: 2 }}>
+                        {t("billingPage.clearinghouseOpsLiveCircuitUntil")}:{" "}
+                        {new Date(clearinghouseOpsStatus.liveCircuitOpenUntil).toLocaleString(locale)}
+                      </div>
+                    ) : null}
+                    {clearinghouseOpsStatus.liveCircuitReason ? (
+                      <div style={{ fontSize: 10, marginTop: 2 }}>{clearinghouseOpsStatus.liveCircuitReason}</div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {(clearinghouseOpsStatus.recentDuplicateAckCount ?? 0) > 0 ||
+                (clearinghouseOpsStatus.recentDuplicateSendBlockedCount ?? 0) > 0 ||
+                (clearinghouseOpsStatus.recentRateLimitedSendCount ?? 0) > 0 ||
+                (clearinghouseOpsStatus.recentThrottleSkips ?? 0) > 0 ? (
+                  <div style={{ marginTop: 6, fontSize: 10, color: "#64748b", lineHeight: 1.4 }}>
+                    <div style={{ fontWeight: 600 }}>{t("billingPage.clearinghouseOpsStabilizationTitle")}</div>
+                    <div>
+                      {t("billingPage.clearinghouseOpsDuplicateAckRolling")}: {clearinghouseOpsStatus.recentDuplicateAckCount ?? 0}
+                      {" · "}
+                      {t("billingPage.clearinghouseOpsDuplicateSendRolling")}:{" "}
+                      {clearinghouseOpsStatus.recentDuplicateSendBlockedCount ?? 0}
+                      {" · "}
+                      {t("billingPage.clearinghouseOpsRateLimitRolling")}: {clearinghouseOpsStatus.recentRateLimitedSendCount ?? 0}
+                      {" · "}
+                      {t("billingPage.clearinghouseOpsThrottleRolling")}: {clearinghouseOpsStatus.recentThrottleSkips ?? 0}
+                    </div>
+                    <div style={{ marginTop: 2 }}>{t("billingPage.clearinghouseOpsRollingNote")}</div>
+                  </div>
+                ) : null}
+                {clearinghouseOpsStatus.lastSftpAckPollTruncated ? (
+                  <div style={{ marginTop: 6, fontSize: 10, color: "#92400e" }}>
+                    {t("billingPage.clearinghouseOpsSftpPollTruncated")} (
+                    {clearinghouseOpsStatus.lastSftpAckPollFilesProcessed ?? "—"}/
+                    {clearinghouseOpsStatus.lastSftpAckPollFilesSeen ?? "—"}, cap {clearinghouseOpsStatus.lastSftpAckPollMaxFilesPerCycle ?? "—"})
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 4 }}>
                   {t("billingPage.clearinghouseRetryWorkerEnabledLabel")}:{" "}
                   {clearinghouseOpsStatus.clearinghouseRetryWorkerEnabled

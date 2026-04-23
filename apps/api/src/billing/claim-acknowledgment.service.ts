@@ -17,6 +17,7 @@ import {
   nextStatusFrom999Transport,
   SubmissionTransitionReasonCode,
 } from "./claim-submission-state-machine.util";
+import { ClearinghouseStabilizationService } from "./clearinghouse-stabilization.service";
 
 type AckKind = "999" | "277CA";
 
@@ -84,11 +85,42 @@ export type IngestAcknowledgmentResult = {
   /** False when identical payload was already ingested (idempotent replay). */
   ackStored: boolean;
   outOfSequence: boolean;
+  /** Phase 8.1 — explicit duplicate/replay outcome (omit when a new ACK row was stored). */
+  ackStabilization?: {
+    duplicateAckIgnored: true;
+    reasonCode: "ACK_DUPLICATE_SAME_DEDUPE_KEY";
+    priorAckId: string;
+    dedupeKey: string;
+  };
+};
+
+export type InboundAckDeadLetterListItem = {
+  id: string;
+  source: string;
+  failureCode: string;
+  failureDetail: string | null;
+  createdAt: Date;
+  replayedAt: Date | null;
+  replayedToAckId: string | null;
+  rawText: string;
+};
+
+export type InboundAckDeadLetterListResult = {
+  items: InboundAckDeadLetterListItem[];
+  summary: { openCount: number; replayedLast24hCount: number; returnedCount: number };
+  filtersApplied: { replayed: "open" | "all" | "replayed"; source: string | null; failureCode: string | null; take: number };
+};
+
+export type ReplayInboundAckDeadLetterResult = IngestAcknowledgmentResult & {
+  deadLetterReplay: { deadLetterId: string; replayedAt: string; replayedToAckId: string };
 };
 
 @Injectable()
 export class ClaimAcknowledgmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clearinghouseStabilization: ClearinghouseStabilizationService
+  ) {}
 
   async ingestAcknowledgment(input: {
     facilityId: string;
@@ -112,6 +144,7 @@ export class ClaimAcknowledgmentService {
       return (pj as Record<string, unknown>).dedupeKey === dedupeKey;
     });
     if (priorDup) {
+      this.clearinghouseStabilization.recordDuplicateAckIgnored(input.facilityId);
       const sub = priorDup.submissionId
         ? await this.prisma.claimSubmission.findUnique({
             where: { id: priorDup.submissionId },
@@ -126,6 +159,12 @@ export class ClaimAcknowledgmentService {
         reasonCode: "DUPLICATE_ACK_REPLAY_IGNORED",
         ackStored: false,
         outOfSequence: false,
+        ackStabilization: {
+          duplicateAckIgnored: true,
+          reasonCode: "ACK_DUPLICATE_SAME_DEDUPE_KEY",
+          priorAckId: priorDup.id,
+          dedupeKey,
+        },
       };
     }
 
@@ -475,29 +514,64 @@ export class ClaimAcknowledgmentService {
     });
   }
 
-  async listInboundAckDeadLetters(facilityId: string, opts?: { openOnly?: boolean; take?: number }) {
+  async listInboundAckDeadLetters(
+    facilityId: string,
+    opts?: {
+      openOnly?: boolean;
+      replayed?: "open" | "all" | "replayed";
+      source?: string;
+      failureCode?: string;
+      take?: number;
+    }
+  ): Promise<InboundAckDeadLetterListResult> {
     const take = Math.min(opts?.take ?? 50, 200);
-    return this.prisma.claimAcknowledgmentDeadLetter.findMany({
-      where: {
-        facilityId,
-        ...(opts?.openOnly ? { replayedAt: null } : {}),
+    const replayed = opts?.replayed ?? (opts?.openOnly === true ? "open" : "all");
+    const where: Prisma.ClaimAcknowledgmentDeadLetterWhereInput = { facilityId };
+    if (replayed === "open") where.replayedAt = null;
+    if (replayed === "replayed") where.replayedAt = { not: null };
+    if (opts?.source?.trim()) where.source = opts.source.trim();
+    if (opts?.failureCode?.trim()) where.failureCode = opts.failureCode.trim();
+
+    const since24 = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [items, openCount, replayedLast24hCount] = await Promise.all([
+      this.prisma.claimAcknowledgmentDeadLetter.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take,
+        select: {
+          id: true,
+          source: true,
+          failureCode: true,
+          failureDetail: true,
+          createdAt: true,
+          replayedAt: true,
+          replayedToAckId: true,
+          rawText: true,
+        },
+      }),
+      this.prisma.claimAcknowledgmentDeadLetter.count({ where: { facilityId, replayedAt: null } }),
+      this.prisma.claimAcknowledgmentDeadLetter.count({
+        where: { facilityId, replayedAt: { gte: since24 } },
+      }),
+    ]);
+
+    return {
+      items,
+      summary: {
+        openCount,
+        replayedLast24hCount,
+        returnedCount: items.length,
       },
-      orderBy: { createdAt: "desc" },
-      take,
-      select: {
-        id: true,
-        source: true,
-        failureCode: true,
-        failureDetail: true,
-        createdAt: true,
-        replayedAt: true,
-        replayedToAckId: true,
-        rawText: true,
+      filtersApplied: {
+        replayed,
+        source: opts?.source?.trim() ?? null,
+        failureCode: opts?.failureCode?.trim() ?? null,
+        take,
       },
-    });
+    };
   }
 
-  async replayInboundAckDeadLetter(facilityId: string, deadLetterId: string) {
+  async replayInboundAckDeadLetter(facilityId: string, deadLetterId: string): Promise<ReplayInboundAckDeadLetterResult> {
     const row = await this.prisma.claimAcknowledgmentDeadLetter.findFirst({
       where: { id: deadLetterId, facilityId, replayedAt: null },
     });
@@ -517,10 +591,19 @@ export class ClaimAcknowledgmentService {
         replayedAt: new Date().toISOString(),
       },
     });
+    const replayedAt = new Date();
     await this.prisma.claimAcknowledgmentDeadLetter.update({
       where: { id: row.id },
-      data: { replayedAt: new Date(), replayedToAckId: result.ack.id },
+      data: { replayedAt, replayedToAckId: result.ack.id },
     });
-    return result;
+    this.clearinghouseStabilization.recordDeadLetterReplayed(facilityId);
+    return {
+      ...result,
+      deadLetterReplay: {
+        deadLetterId: row.id,
+        replayedAt: replayedAt.toISOString(),
+        replayedToAckId: result.ack.id,
+      },
+    };
   }
 }

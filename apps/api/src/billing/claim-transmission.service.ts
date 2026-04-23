@@ -23,11 +23,19 @@ import {
   nextRetryAtForOutboundFailureOrdinal,
 } from "./clearinghouse-retry-policy.util";
 import { evaluateSubmissionGate, type SubmissionGateScope } from "./claim-submission-gate.util";
+import {
+  evaluateOutboundSendIdempotency,
+  stabilizationMetaFromBlock,
+  stabilizationOkFields,
+  stabilizationResponseFlagsForCode,
+} from "./claim-send-idempotency.util";
+import { ClearinghouseStabilizationService } from "./clearinghouse-stabilization.service";
 
 export type TransportKind = ClearinghouseTransportHint;
 
 function summarizeBatchSendResults(
-  results: Array<{ ok?: boolean; sideSkipped?: boolean }>
+  results: Array<{ ok?: boolean; sideSkipped?: boolean }>,
+  extras?: { batchTruncated?: boolean; batchTotalBeforeTruncation?: number; batchProcessedCount?: number }
 ) {
   let transportSucceeded = 0;
   let transportFailed = 0;
@@ -42,6 +50,9 @@ function summarizeBatchSendResults(
     transportSucceeded,
     transportFailed,
     sideSkipped: sideSkippedCount,
+    batchTruncated: extras?.batchTruncated ?? false,
+    batchTotalBeforeTruncation: extras?.batchTotalBeforeTruncation ?? results.length,
+    batchProcessedCount: extras?.batchProcessedCount ?? results.length,
   };
 }
 
@@ -69,7 +80,8 @@ export class ClaimTransmissionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clearinghouseTransportFactory: ClearinghouseTransportFactory,
-    private readonly claimExportService: ClaimExportService
+    private readonly claimExportService: ClaimExportService,
+    private readonly clearinghouseStabilization: ClearinghouseStabilizationService
   ) {}
 
   private submissionGateScopeForKind(claimType: ClaimSubmissionKind): SubmissionGateScope {
@@ -106,8 +118,11 @@ export class ClaimTransmissionService {
       include: { submissions: true },
     });
     if (!batch) throw new NotFoundException("Submission batch not found");
+    const limit = this.clearinghouseStabilization.getPacingConfigPublic().batchSendLimit;
+    const allSubs = batch.submissions;
+    const slice = allSubs.slice(0, Math.max(1, limit));
     const out = [];
-    for (const s of batch.submissions) {
+    for (const s of slice) {
       out.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false, attemptTrigger: "BATCH" }));
     }
     return {
@@ -115,7 +130,11 @@ export class ClaimTransmissionService {
       transport: transport.key,
       clearinghouse: getClearinghousePublicConfigStatus(),
       results: out,
-      batchSummary: summarizeBatchSendResults(out),
+      batchSummary: summarizeBatchSendResults(out, {
+        batchTruncated: allSubs.length > slice.length,
+        batchTotalBeforeTruncation: allSubs.length,
+        batchProcessedCount: slice.length,
+      }),
     };
   }
 
@@ -125,8 +144,10 @@ export class ClaimTransmissionService {
       where: { facilityId, encounterId },
       orderBy: { createdAt: "asc" },
     });
+    const limit = this.clearinghouseStabilization.getPacingConfigPublic().batchSendLimit;
+    const slice = submissions.slice(0, Math.max(1, limit));
     const results = [];
-    for (const s of submissions) {
+    for (const s of slice) {
       results.push(await this.sendOneSubmission(s.id, transport, { allowNonReady: false, attemptTrigger: "BATCH" }));
     }
     return {
@@ -135,7 +156,11 @@ export class ClaimTransmissionService {
       transport: transport.key,
       clearinghouse: getClearinghousePublicConfigStatus(),
       results,
-      batchSummary: summarizeBatchSendResults(results),
+      batchSummary: summarizeBatchSendResults(results, {
+        batchTruncated: submissions.length > slice.length,
+        batchTotalBeforeTruncation: submissions.length,
+        batchProcessedCount: slice.length,
+      }),
     };
   }
 
@@ -312,6 +337,7 @@ export class ClaimTransmissionService {
         sideSent: false,
         sideSkipped: true,
         sideRetryEligible: false,
+        ...stabilizationResponseFlagsForCode(skipReason),
       };
     }
 
@@ -365,103 +391,213 @@ export class ClaimTransmissionService {
         sideSent: false,
         sideSkipped: true,
         sideRetryEligible: false,
+        ...stabilizationOkFields(),
       };
     }
 
-    const priorRetryEligibleFailures = await this.prisma.claimSubmissionAttempt.count({
-      where: { submissionId, ok: false, retryEligible: true },
-    });
-
-    const result = await transport.send({
-      facilityId: submission.facilityId,
-      batchId: submission.batchId,
-      submissionId: submission.id,
-      x12Text: submission.x12Text,
-      claimType: submission.claimType,
-      transactionCtrl: submission.transactionCtrl,
-    });
-
-    const rawRequest = {
-      ...result.requestMeta,
-      clearinghouseMode: cfgSnapshot.mode,
-      integrationTier: clearinghouseIntegrationTier(cfgSnapshot.mode),
-      liveSendExplicitlyEnabled: clearinghouseLiveSendExplicitlyEnabled(),
-      transportHint: transport.key,
-      claimType: submission.claimType,
-      ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
-    };
-    const rawResponse = {
-      ...result.responseMeta,
-      ...(result.transportMeta ? { transportMeta: result.transportMeta } : {}),
-    };
-
-    const classified = classifyOutboundAttemptFailure({
-      ok: result.ok,
-      errorMessage: result.errorMessage,
-    });
-    let failureCode: string | null = classified.failureCode;
-    let retryEligible = classified.retryEligible;
-    let nextRetryAt: Date | null = null;
-    if (!result.ok && classified.failureClass === "retryable") {
-      const failureOrdinal = priorRetryEligibleFailures + 1;
-      nextRetryAt = nextRetryAtForOutboundFailureOrdinal(failureOrdinal);
-      if (!nextRetryAt) {
-        retryEligible = false;
-        failureCode = classified.failureCode ?? "RETRY_EXHAUSTED";
-      }
-    } else if (result.ok) {
-      failureCode = null;
-      retryEligible = false;
-      nextRetryAt = null;
-    }
-
-    const attempt = await this.prisma.claimSubmissionAttempt.create({
-      data: {
-        submissionId,
-        transport: transport.key,
-        ok: result.ok,
-        failureCode,
-        retryEligible,
-        nextRetryAt,
-        requestMetaJson: scrubRecordForPersistence(rawRequest) as Prisma.InputJsonValue,
-        responseMetaJson: scrubRecordForPersistence(rawResponse) as Prisma.InputJsonValue,
-        errorMessage: result.errorMessage ?? null,
-      },
-    });
-
-    let nextStatus = submission.status;
-    if (result.ok) {
-      const t = nextStatusAfterSuccessfulSend(submission.status);
-      if (t.next) {
-        nextStatus = t.next;
-      }
-    }
-
-    const updated = await this.prisma.claimSubmission.update({
-      where: { id: submissionId },
-      data: {
-        status: nextStatus,
-        externalReference: result.externalReference ?? submission.externalReference,
-      },
-    });
-
-    return {
+    const idemp = await evaluateOutboundSendIdempotency(this.prisma, {
       submissionId,
-      claimType: submission.claimType,
-      attemptId: attempt.id,
-      status: updated.status,
-      ok: result.ok,
-      blockedByCompleteness: false,
-      submissionGateReasonCode: submissionGate.reasonCode,
-      submissionGateBlockers: submissionGate.blockers,
-      claimReady: submissionGate.claimReady,
-      sideGateAllowed: submissionGate.allowed,
-      sideGateReasonCode: submissionGate.reasonCode,
-      sideGateBlockers: submissionGate.blockers,
-      sideSent: result.ok,
-      sideSkipped: false,
-      sideRetryEligible: !result.ok && retryEligible,
-    };
+      transportKey: transport.key,
+      now: new Date(),
+      retryFlow: opts.retryFlow === true,
+      submission: { status: submission.status, externalReference: submission.externalReference },
+    });
+    if (!idemp.allowed) {
+      const skipReason = idemp.code;
+      this.clearinghouseStabilization.recordOutboundDuplicateSendDbBlock(submission.facilityId);
+      const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
+      await this.prisma.claimSubmissionAttempt.create({
+        data: {
+          submissionId,
+          transport: transport.key,
+          ok: false,
+          failureCode: skipClass.failureCode,
+          retryEligible: false,
+          nextRetryAt: null,
+          requestMetaJson: scrubRecordForPersistence({
+            ...stabilizationMetaFromBlock(skipReason),
+            clearinghouseMode: cfgSnapshot.mode,
+            transportHint: transport.key,
+            ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
+          }) as Prisma.InputJsonValue,
+          responseMetaJson: scrubRecordForPersistence({ currentStatus: submission.status }) as Prisma.InputJsonValue,
+          errorMessage: skipReason,
+        },
+      });
+      return {
+        submissionId,
+        claimType: submission.claimType,
+        skipped: true,
+        status: submission.status,
+        skipReason,
+        blockedByCompleteness: false,
+        submissionGateReasonCode: submissionGate.reasonCode,
+        submissionGateBlockers: submissionGate.blockers,
+        claimReady: submissionGate.claimReady,
+        sideGateAllowed: submissionGate.allowed,
+        sideGateReasonCode: submissionGate.reasonCode,
+        sideGateBlockers: submissionGate.blockers,
+        sideSent: false,
+        sideSkipped: true,
+        sideRetryEligible: false,
+        ...stabilizationResponseFlagsForCode(skipReason),
+      };
+    }
+
+    const slot = this.clearinghouseStabilization.acquireOutboundSlot(
+      submission.facilityId,
+      submissionId,
+      transport.key
+    );
+    if (!slot.allowed) {
+      const skipReason = slot.code;
+      const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
+      await this.prisma.claimSubmissionAttempt.create({
+        data: {
+          submissionId,
+          transport: transport.key,
+          ok: false,
+          failureCode: skipClass.failureCode,
+          retryEligible: false,
+          nextRetryAt: null,
+          requestMetaJson: scrubRecordForPersistence({
+            ...stabilizationMetaFromBlock(skipReason),
+            clearinghouseMode: cfgSnapshot.mode,
+            transportHint: transport.key,
+            ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
+          }) as Prisma.InputJsonValue,
+          responseMetaJson: scrubRecordForPersistence({ currentStatus: submission.status }) as Prisma.InputJsonValue,
+          errorMessage: skipReason,
+        },
+      });
+      return {
+        submissionId,
+        claimType: submission.claimType,
+        skipped: true,
+        status: submission.status,
+        skipReason,
+        blockedByCompleteness: false,
+        submissionGateReasonCode: submissionGate.reasonCode,
+        submissionGateBlockers: submissionGate.blockers,
+        claimReady: submissionGate.claimReady,
+        sideGateAllowed: submissionGate.allowed,
+        sideGateReasonCode: submissionGate.reasonCode,
+        sideGateBlockers: submissionGate.blockers,
+        sideSent: false,
+        sideSkipped: true,
+        sideRetryEligible: false,
+        ...stabilizationResponseFlagsForCode(skipReason),
+      };
+    }
+
+    let releaseOutcome: "completed" | "aborted_before_transport" = "completed";
+    try {
+      const priorRetryEligibleFailures = await this.prisma.claimSubmissionAttempt.count({
+        where: { submissionId, ok: false, retryEligible: true },
+      });
+
+      const result = await transport.send({
+        facilityId: submission.facilityId,
+        batchId: submission.batchId,
+        submissionId: submission.id,
+        x12Text: submission.x12Text,
+        claimType: submission.claimType,
+        transactionCtrl: submission.transactionCtrl,
+      });
+
+      const rawRequest = {
+        ...result.requestMeta,
+        clearinghouseMode: cfgSnapshot.mode,
+        integrationTier: clearinghouseIntegrationTier(cfgSnapshot.mode),
+        liveSendExplicitlyEnabled: clearinghouseLiveSendExplicitlyEnabled(),
+        transportHint: transport.key,
+        claimType: submission.claimType,
+        ...(opts.attemptTrigger ? { attemptTrigger: opts.attemptTrigger } : {}),
+      };
+      const rawResponse = {
+        ...result.responseMeta,
+        ...(result.transportMeta ? { transportMeta: result.transportMeta } : {}),
+      };
+
+      const classified = classifyOutboundAttemptFailure({
+        ok: result.ok,
+        errorMessage: result.errorMessage,
+      });
+      let failureCode: string | null = classified.failureCode;
+      let retryEligible = classified.retryEligible;
+      let nextRetryAt: Date | null = null;
+      if (!result.ok && classified.failureClass === "retryable") {
+        const failureOrdinal = priorRetryEligibleFailures + 1;
+        nextRetryAt = nextRetryAtForOutboundFailureOrdinal(failureOrdinal);
+        if (!nextRetryAt) {
+          retryEligible = false;
+          failureCode = classified.failureCode ?? "RETRY_EXHAUSTED";
+        }
+      } else if (result.ok) {
+        failureCode = null;
+        retryEligible = false;
+        nextRetryAt = null;
+      }
+
+      if (transport.key === "LIVE_API" || transport.key === "LIVE_SFTP") {
+        if (result.ok) this.clearinghouseStabilization.recordLiveTransportSuccess(submission.facilityId);
+        else this.clearinghouseStabilization.recordLiveTransportFailure(submission.facilityId);
+      }
+
+      const attempt = await this.prisma.claimSubmissionAttempt.create({
+        data: {
+          submissionId,
+          transport: transport.key,
+          ok: result.ok,
+          failureCode,
+          retryEligible,
+          nextRetryAt,
+          requestMetaJson: scrubRecordForPersistence(rawRequest) as Prisma.InputJsonValue,
+          responseMetaJson: scrubRecordForPersistence(rawResponse) as Prisma.InputJsonValue,
+          errorMessage: result.errorMessage ?? null,
+        },
+      });
+
+      let nextStatus = submission.status;
+      if (result.ok) {
+        const t = nextStatusAfterSuccessfulSend(submission.status);
+        if (t.next) {
+          nextStatus = t.next;
+        }
+      }
+
+      const updated = await this.prisma.claimSubmission.update({
+        where: { id: submissionId },
+        data: {
+          status: nextStatus,
+          externalReference: result.externalReference ?? submission.externalReference,
+        },
+      });
+
+      return {
+        submissionId,
+        claimType: submission.claimType,
+        attemptId: attempt.id,
+        status: updated.status,
+        ok: result.ok,
+        blockedByCompleteness: false,
+        submissionGateReasonCode: submissionGate.reasonCode,
+        submissionGateBlockers: submissionGate.blockers,
+        claimReady: submissionGate.claimReady,
+        sideGateAllowed: submissionGate.allowed,
+        sideGateReasonCode: submissionGate.reasonCode,
+        sideGateBlockers: submissionGate.blockers,
+        sideSent: result.ok,
+        sideSkipped: false,
+        sideRetryEligible: !result.ok && retryEligible,
+        ...stabilizationOkFields(),
+      };
+    } catch (e) {
+      releaseOutcome = "aborted_before_transport";
+      throw e;
+    } finally {
+      slot.release(releaseOutcome);
+    }
   }
 
   /**
