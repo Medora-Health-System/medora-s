@@ -11,6 +11,7 @@ import {
   tryAutoImagingResultBillingAfterVerify,
   tryAutoLabResultBillingAfterVerify,
 } from "../billing/billing-auto-append.util";
+import { writeOrderEventForResultLineOutcome } from "../orders/order-lifecycle-event.util";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
@@ -204,6 +205,29 @@ export class ResultsService {
           await tx.orderItem.update({
             where: { id: orderItemId },
             data: { status: OrderStatus.RESULTED, lifecycleState: life },
+          });
+        }
+      }
+
+      if (shouldStampVerification && userId) {
+        const fresh = await tx.orderItem.findUnique({
+          where: { id: orderItemId },
+          select: { status: true, catalogItemType: true },
+        });
+        if (
+          fresh &&
+          (fresh.status === OrderStatus.RESULTED || fresh.status === OrderStatus.VERIFIED) &&
+          (fresh.catalogItemType === "LAB_TEST" || fresh.catalogItemType === "IMAGING_STUDY")
+        ) {
+          await writeOrderEventForResultLineOutcome(tx, {
+            facilityId,
+            encounterId: orderItem.order.encounterId,
+            orderId: orderItem.orderId,
+            orderType: orderItem.order.type,
+            orderItemId,
+            resultId: row.id,
+            lineStatus: fresh.status,
+            performedByUserId: userId,
           });
         }
       }

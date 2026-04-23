@@ -40,3 +40,32 @@ export function orderItemIdFromEventMetadata(metadata: unknown): string | null {
   const id = (metadata as { orderItemId?: unknown }).orderItemId;
   return typeof id === "string" && id.length > 0 ? id : null;
 }
+
+/**
+ * When an order is cancelled, some lines keep a terminal status (e.g. RESULTED) while others become
+ * `CANCELLED`. Drop synthetic “completed” stream rows for lines that are explicitly cancelled so
+ * the same line is not implied as both completed and cancelled.
+ */
+export function shouldIncludeCompletedOrderEventInErMerge(
+  event: { orderId: string; metadata?: unknown },
+  orders: Array<{ id: string; items: unknown[] }>
+): boolean {
+  const meta = event.metadata;
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    const m = meta as Record<string, unknown>;
+    if (typeof m.medicationAdministrationId === "string" && m.medicationAdministrationId.length > 0) {
+      return true;
+    }
+  }
+  const itemId = orderItemIdFromEventMetadata(meta);
+  if (!itemId) return true;
+  const order = orders.find((o) => o.id === event.orderId);
+  if (!order) return true;
+  const items = Array.isArray(order.items) ? order.items : [];
+  const row = items.find((it) => String((it as Record<string, unknown>).id ?? "") === itemId) as
+    | Record<string, unknown>
+    | undefined;
+  if (!row) return true;
+  if (orderItemStatus(row) === CANCELLED_STATUS) return false;
+  return true;
+}

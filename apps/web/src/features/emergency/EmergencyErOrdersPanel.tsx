@@ -16,7 +16,9 @@ import {
   isParentOrderCancelled,
   orderHasAnyActiveItemForEr,
   orderItemIdFromEventMetadata,
+  shouldIncludeCompletedOrderEventInErMerge,
 } from "@/features/emergency/erOrderLifecycleUi";
+import { ER_IV_LIFECYCLE_ORDER_TYPE } from "@/features/emergency/erIvOrderLifecycle";
 import { apiFetch } from "@/lib/apiClient";
 
 const btn: React.CSSProperties = {
@@ -113,8 +115,35 @@ type OrderEventRow = {
   order?: {
     displayName?: string | null;
     cancellationReason?: string | null;
+    type?: string | null;
   } | null;
 };
+
+function lifecycleOutcomeSubLabel(metadata: unknown, tr: (k: string) => string): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const lo = (metadata as { lifecycleOutcome?: unknown }).lifecycleOutcome;
+  if (lo === "VERIFIED") return tr("orderEvent.resultVerified");
+  if (lo === "RESULTED") return tr("orderEvent.resultAcknowledged");
+  return null;
+}
+
+function medicationCancellationSubLabel(e: OrderEventRow, tr: (k: string) => string): string | null {
+  if (e.eventType !== "CANCELLED") return null;
+  if (e.order?.type === "MEDICATION") return tr("orderEvent.medicationCancelled");
+  if (e.order?.type === ER_IV_LIFECYCLE_ORDER_TYPE) return tr("orderEvent.ivCancelled");
+  return null;
+}
+
+function careLineCompletedSubLabel(
+  e: OrderEventRow,
+  metadata: unknown,
+  tr: (k: string) => string
+): string | null {
+  if (e.eventType !== "COMPLETED") return null;
+  if (e.order?.type !== ER_IV_LIFECYCLE_ORDER_TYPE) return null;
+  if (lifecycleOutcomeSubLabel(metadata, tr)) return null;
+  return tr("orderEvent.ivCompleted");
+}
 
 export function EmergencyErOrdersPanel({
   encounterId,
@@ -222,7 +251,23 @@ export function EmergencyErOrdersPanel({
         roleSnapshot: typeof row.roleSnapshot === "string" ? row.roleSnapshot : null,
         note: typeof row.note === "string" ? row.note : null,
         metadata: row.metadata,
-        order: row.order && typeof row.order === "object" ? (row.order as OrderEventRow["order"]) : null,
+        order:
+          row.order && typeof row.order === "object"
+            ? ({
+                displayName:
+                  typeof (row.order as Record<string, unknown>).displayName === "string"
+                    ? ((row.order as Record<string, unknown>).displayName as string)
+                    : null,
+                cancellationReason:
+                  typeof (row.order as Record<string, unknown>).cancellationReason === "string"
+                    ? ((row.order as Record<string, unknown>).cancellationReason as string)
+                    : null,
+                type:
+                  typeof (row.order as Record<string, unknown>).type === "string"
+                    ? ((row.order as Record<string, unknown>).type as string)
+                    : null,
+              } satisfies OrderEventRow["order"])
+            : null,
       }))
       .filter((e) => e.id && e.orderId && e.performedAt);
   }, [orderEventsRaw]);
@@ -234,9 +279,14 @@ export function EmergencyErOrdersPanel({
     [parsedEvents]
   );
 
+  const completedFromEventsForMerge = useMemo(
+    () => completedFromEvents.filter((e) => shouldIncludeCompletedOrderEventInErMerge(e, parsedOrders)),
+    [completedFromEvents, parsedOrders]
+  );
+
   /** Completed lines: events plus item-level fallback when no COMPLETED event exists for that line (e.g. legacy lab/imaging paths). */
   const completedRows = useMemo((): OrderEventRow[] => {
-    const fromEvents = completedFromEvents;
+    const fromEvents = completedFromEventsForMerge;
     const coveredItemIds = new Set<string>();
     for (const e of fromEvents) {
       const oid = orderItemIdFromEventMetadata(e.metadata);
@@ -286,6 +336,7 @@ export function EmergencyErOrdersPanel({
               t
             ),
             cancellationReason: null,
+            type: o.type,
           },
         });
       }
@@ -294,7 +345,7 @@ export function EmergencyErOrdersPanel({
     return [...fromEvents, ...fallback].sort(
       (a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime()
     );
-  }, [completedFromEvents, parsedOrders, language, t]);
+  }, [completedFromEventsForMerge, parsedOrders, language, t]);
 
   const cancelledEvents = useMemo(
     () => parsedEvents.filter((e) => e.eventType === "CANCELLED"),
@@ -487,18 +538,28 @@ export function EmergencyErOrdersPanel({
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.completedOrdersEmpty")}</div>
               ) : (
                 <div style={{ display: "grid", gap: 6 }}>
-                  {completedRows.map((e) => (
+                  {completedRows.map((e) => {
+                    const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
+                    const careLine = careLineCompletedSubLabel(e, e.metadata, t);
+                    const secondaryLine = outcomeLine ?? careLine;
+                    return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
                         {e.order?.displayName || e.orderId}
                       </div>
+                      {secondaryLine ? (
+                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
+                          {secondaryLine}
+                        </div>
+                      ) : null}
                       <div style={{ fontSize: 11, color: "#475569" }}>
                         {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
                         {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
                         {e.roleSnapshot ?? "—"}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -513,21 +574,29 @@ export function EmergencyErOrdersPanel({
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.cancelledOrdersEmpty")}</div>
               ) : (
                 <div style={{ display: "grid", gap: 6 }}>
-                  {cancelledEvents.map((e) => (
+                  {cancelledEvents.map((e) => {
+                    const medCancelLine = medicationCancellationSubLabel(e, t);
+                    return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
                         {e.order?.displayName || e.orderId}
                       </div>
+                      {medCancelLine ? (
+                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
+                          {medCancelLine}
+                        </div>
+                      ) : null}
                       <div style={{ fontSize: 11, color: "#475569" }}>
                         {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
                         {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
-                        {e.roleSnapshot || "UNKNOWN"}
+                        {e.roleSnapshot ?? "—"}
                       </div>
                       <div style={{ fontSize: 11, color: "#475569" }}>
                         {t("orderEvent.cancelReason")}: {e.note || e.order?.cancellationReason || "—"}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

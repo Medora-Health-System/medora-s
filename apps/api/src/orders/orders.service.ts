@@ -776,6 +776,11 @@ export class OrdersService {
         eventType: OrderEventType.CANCELLED,
         performedByUserId: userId,
         note: reason,
+        metadata: {
+          cancellationReason: reason,
+          orderDomain: order.type,
+          orderItemCount: items.length,
+        },
         tx,
       });
       return row;

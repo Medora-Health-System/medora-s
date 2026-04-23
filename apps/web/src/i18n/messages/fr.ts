@@ -3374,6 +3374,11 @@ export default {
     cancelled: "Annulé",
     performedBy: "Effectué par",
     cancelReason: "Motif d'annulation",
+    resultAcknowledged: "Résultat enregistré (accusé)",
+    resultVerified: "Résultat vérifié",
+    medicationCancelled: "Ordonnance médicamenteuse annulée",
+    ivCompleted: "Ligne soins / voie IV terminée",
+    ivCancelled: "Ligne soins / voie IV annulée",
   },
   erTriageComplaintTemplates: {
     helper: "Modèles de motifs fréquents — cliquez pour préremplir le motif (et le récit triage si vide).",

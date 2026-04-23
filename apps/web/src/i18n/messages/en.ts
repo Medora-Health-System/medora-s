@@ -3403,6 +3403,11 @@ export default {
     cancelled: "Cancelled",
     performedBy: "Performed by",
     cancelReason: "Cancellation reason",
+    resultAcknowledged: "Result recorded (acknowledged)",
+    resultVerified: "Result verified",
+    medicationCancelled: "Medication order cancelled",
+    ivCompleted: "IV / care line completed",
+    ivCancelled: "IV / care line cancelled",
   },
   erTriageComplaintTemplates: {
     helper:
