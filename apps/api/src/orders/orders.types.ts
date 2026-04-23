@@ -7,6 +7,7 @@ export type CatalogMedicationEnrichment = Pick<
   | "id"
   | "code"
   | "name"
+  | "displayNameEn"
   | "displayNameFr"
   | "strength"
   | "dosageForm"
@@ -20,6 +21,7 @@ export type CatalogLabTestEnrichment = {
   id: string;
   code: string;
   name: string;
+  displayNameEn: string | null;
   displayNameFr: string | null;
   billingCodeDefault?: string | null;
 };
@@ -28,6 +30,7 @@ export type CatalogImagingStudyEnrichment = {
   id: string;
   code: string;
   name: string;
+  displayNameEn: string | null;
   displayNameFr: string | null;
   modality: string | null;
   bodyRegion: string | null;

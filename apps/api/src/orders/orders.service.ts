@@ -90,6 +90,7 @@ const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
   id: true,
   code: true,
   name: true,
+  displayNameEn: true,
   displayNameFr: true,
   strength: true,
   dosageForm: true,
@@ -103,6 +104,7 @@ const CATALOG_LAB_SELECT = {
   id: true,
   code: true,
   name: true,
+  displayNameEn: true,
   displayNameFr: true,
   billingCodeDefault: true,
 } as const;
@@ -111,6 +113,7 @@ const CATALOG_IMAGING_SELECT = {
   id: true,
   code: true,
   name: true,
+  displayNameEn: true,
   displayNameFr: true,
   modality: true,
   bodyRegion: true,

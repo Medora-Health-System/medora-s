@@ -1033,11 +1033,13 @@ model Result {
   @@index([criticalValue])
 }
 
-/// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
+/// Shared catalog row: stable `code`, human-readable labels, `searchText` for unified search, `updatedAt` for sync.
 model CatalogLabTest {
   id                 String   @id @default(uuid())
   code               String   @unique
   name               String
+  /// English-primary display label (US workflows). Nullable until backfilled; do not infer from `name` in resolvers.
+  displayNameEn      String?
   displayNameFr      String?
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
@@ -1066,11 +1068,13 @@ model LabTestAlias {
   @@index([alias])
 }
 
-/// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
+/// Shared catalog row: stable `code`, human-readable labels, `searchText` for unified search, `updatedAt` for sync.
 model CatalogImagingStudy {
   id                 String   @id @default(uuid())
   code               String   @unique
   name               String
+  /// English-primary display label (US workflows). Nullable until backfilled; do not infer from `name` in resolvers.
+  displayNameEn      String?
   displayNameFr      String?
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
@@ -1101,11 +1105,13 @@ model ImagingStudyAlias {
   @@index([alias])
 }
 
-/// Shared catalog row: stable `code`, French label, `searchText` for unified search, `updatedAt` for sync.
+/// Shared catalog row: stable `code`, human-readable labels, `searchText` for unified search, `updatedAt` for sync.
 model CatalogMedication {
   id                 String   @id @default(uuid())
   code               String   @unique
   name               String
+  /// English-primary display label (US workflows). Nullable until backfilled; do not infer from `name` in resolvers.
+  displayNameEn      String?
   /// Optional HCPCS/J-code-style suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
   /// ER-3: normalized National Drug Code (11 digits). Optional until local catalog quality is complete.
