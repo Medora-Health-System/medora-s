@@ -31,6 +31,11 @@ export async function seedUsErLabCatalog(
 ): Promise<void> {
   for (let i = 0; i < labs.length; i++) {
     const row = labs[i];
+    if (!row.displayNameEn?.trim()) {
+      throw new Error(
+        `[catalog] US ER lab seed ${row.code} must set displayNameEn (English-primary guard).`
+      );
+    }
     const searchText = labSearchTextStored(row);
     const description = `Catégorie : ${row.category}`;
     const created = await prisma.catalogLabTest.upsert({

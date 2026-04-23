@@ -3,6 +3,14 @@
  *
  * Usage (from repo root):
  *   pnpm --filter @medora/api catalog:report-display-en
+ *
+ * Phase G gates (exit 1 on failure unless relaxed):
+ * - Any `isEssential` row missing displayNameEn
+ * - Aggregate coverage below 90% when at least 30 catalog rows exist
+ * - US ER lab checklist codes present in DB missing displayNameEn
+ *
+ * Empty catalog (0 total rows): warn and exit 0 (no DB / not migrated).
+ * Set `CATALOG_EN_REPORT_RELAXED=1` to only fail on essential gaps (skip aggregate % gate).
  */
 import "reflect-metadata";
 import { PrismaClient } from "@prisma/client";
@@ -113,6 +121,41 @@ async function main() {
   console.log(
     "Note: Haiti seeds historically set `name` from French (`displayNameFr`); US ER seeds set `name` from English prose (`nameEn`). English UI must use `displayNameEn`, not `name`."
   );
+
+  const relaxed = process.env.CATALOG_EN_REPORT_RELAXED === "1" || process.env.CATALOG_EN_REPORT_RELAXED === "true";
+  const failures: string[] = [];
+
+  const allMissingEssential = [
+    ...labRows.filter((r) => r.isEssential && !hasEn(r.displayNameEn)).map((r) => `lab:${r.code}`),
+    ...imgRows.filter((r) => r.isEssential && !hasEn(r.displayNameEn)).map((r) => `imaging:${r.code}`),
+    ...medRows.filter((r) => r.isEssential && !hasEn(r.displayNameEn)).map((r) => `med:${r.code}`),
+  ];
+  if (allMissingEssential.length) {
+    failures.push(`Essential rows missing displayNameEn: ${allMissingEssential.join(", ")}`);
+  }
+  if (usErGaps.length) {
+    failures.push(`US ER lab checklist missing displayNameEn: ${usErGaps.join(", ")}`);
+  }
+
+  const minTotalPct = 0.9;
+  const minRowsForAgg = 30;
+  if (!relaxed && grandTotal >= minRowsForAgg && grandTotal > 0) {
+    const ratio = grandWith / grandTotal;
+    if (ratio < minTotalPct) {
+      failures.push(
+        `Aggregate displayNameEn coverage ${pct(grandWith, grandTotal)} is below required ${(100 * minTotalPct).toFixed(0)}% (rows ≥ ${minRowsForAgg}). Set CATALOG_EN_REPORT_RELAXED=1 to skip this gate.`
+      );
+    }
+  }
+
+  if (grandTotal === 0) {
+    console.warn("\n[catalog] No catalog rows in DB — skipping Phase G coverage gates (migrate + seed when ready).");
+  } else if (failures.length) {
+    console.error("\n=== Phase G — catalog:report-display-en FAILED ===\n" + failures.join("\n"));
+    process.exitCode = 1;
+  } else {
+    console.log("\n=== Phase G — catalog:report-display-en gates: OK ===");
+  }
 }
 
 main()

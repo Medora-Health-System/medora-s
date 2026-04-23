@@ -128,6 +128,9 @@ export async function seedHaitiMedicationCatalog(
 
     /** INN / US synonym map or ASCII `genericName` — never derived from `displayNameFr`. */
     const displayNameEn = resolveDisplayNameEn(row) ?? row.genericName.trim();
+    if (row.isEssential && !displayNameEn.trim()) {
+      throw new Error(`[catalog] Essential medication seed ${code} must resolve displayNameEn (English-primary guard).`);
+    }
 
     const upsertBody = {
       name: row.displayNameFr || row.genericName,

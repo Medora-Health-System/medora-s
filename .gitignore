@@ -26,10 +26,19 @@ apps/api/scripts/*.js
 apps/api/scripts/*.map
 apps/api/scripts/*.d.ts
 
-# Stale tsc output: Node resolves these before .ts and breaks prisma seeds (Phase F).
-apps/api/prisma/data/haiti-*.js
-apps/api/prisma/data/haiti-*.js.map
-apps/api/prisma/data/haiti-*.d.ts
-apps/api/prisma/helpers/seed-haiti-*.js
-apps/api/prisma/helpers/seed-haiti-*.js.map
-apps/api/prisma/helpers/seed-haiti-*.d.ts
+# Stale tsc output next to Haiti *catalog* sources (Phase F/G); do not ignore haiti-geo / haiti-seed-communes builds.
+apps/api/prisma/data/haiti-lab-tests.js
+apps/api/prisma/data/haiti-lab-tests.js.map
+apps/api/prisma/data/haiti-lab-tests.d.ts
+apps/api/prisma/data/haiti-imaging-studies.js
+apps/api/prisma/data/haiti-imaging-studies.js.map
+apps/api/prisma/data/haiti-imaging-studies.d.ts
+apps/api/prisma/data/haiti-medications.js
+apps/api/prisma/data/haiti-medications.js.map
+apps/api/prisma/data/haiti-medications.d.ts
+apps/api/prisma/helpers/seed-haiti-lab-imaging-catalog.js
+apps/api/prisma/helpers/seed-haiti-lab-imaging-catalog.js.map
+apps/api/prisma/helpers/seed-haiti-lab-imaging-catalog.d.ts
+apps/api/prisma/helpers/seed-haiti-medication-catalog.js
+apps/api/prisma/helpers/seed-haiti-medication-catalog.js.map
+apps/api/prisma/helpers/seed-haiti-medication-catalog.d.ts

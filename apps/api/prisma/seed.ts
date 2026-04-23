@@ -12,7 +12,9 @@ import {
   InventoryTransactionType,
 } from "@prisma/client";
 import { sexAtBirthToPatientSex } from "../src/utils/patient-sex-map";
+import { join } from "node:path";
 import * as argon2 from "argon2";
+import { assertNoStaleHaitiCatalogArtifacts } from "./helpers/assert-no-stale-haiti-catalog-artifacts";
 import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-catalog";
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
@@ -331,6 +333,7 @@ async function main() {
   });
 
   // Lab + imaging catalogs (French labels, searchText, aliases)
+  assertNoStaleHaitiCatalogArtifacts(join(__dirname, ".."));
   await seedHaitiLabImagingCatalog(prisma, HAITI_LAB_CATALOG, HAITI_IMAGING_CATALOG);
   await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
   await seedBillingCatalogCommonMappings(prisma);

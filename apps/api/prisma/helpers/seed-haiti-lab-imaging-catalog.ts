@@ -73,6 +73,11 @@ export async function seedHaitiLabImagingCatalog(
 ): Promise<void> {
   for (let i = 0; i < labs.length; i++) {
     const row = labs[i];
+    if (labIsEssential(row) && !row.displayNameEn?.trim()) {
+      throw new Error(
+        `[catalog] Essential lab seed ${row.code} must set displayNameEn (English-primary guard).`
+      );
+    }
     const searchText = labSearchTextStored(row);
     const description = `Catégorie : ${row.category}`;
     const displayNameEnLab = row.displayNameEn?.trim() ?? null;
@@ -122,6 +127,11 @@ export async function seedHaitiLabImagingCatalog(
 
   for (let i = 0; i < imaging.length; i++) {
     const row = imaging[i];
+    if (imagingIsEssential(row) && !row.displayNameEn?.trim()) {
+      throw new Error(
+        `[catalog] Essential imaging seed ${row.code} must set displayNameEn (English-primary guard).`
+      );
+    }
     const searchText = imagingSearchTextStored(row);
     const description = `${row.modality} · ${row.bodyRegion}`;
     const displayNameEnImg = row.displayNameEn?.trim() ?? null;
