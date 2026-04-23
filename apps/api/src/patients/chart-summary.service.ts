@@ -332,7 +332,7 @@ export class ChartSummaryService {
         }),
         this.prisma.diagnosis.findMany({
           where: { patientId, facilityId, status: "ACTIVE" },
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ encounter: { createdAt: "desc" } }, { sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
             id: true,
             code: true,
@@ -340,6 +340,8 @@ export class ChartSummaryService {
             onsetDate: true,
             notes: true,
             createdAt: true,
+            sortOrder: true,
+            codeSource: true,
             encounter: { select: { id: true, type: true, createdAt: true } },
           },
         }),
@@ -469,7 +471,7 @@ export class ChartSummaryService {
             }),
             this.prisma.diagnosis.findMany({
               where: { patientId, facilityId, encounterId: { in: encounterIds } },
-              orderBy: { createdAt: "asc" },
+              orderBy: [{ encounterId: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
               select: {
                 id: true,
                 code: true,
@@ -477,6 +479,8 @@ export class ChartSummaryService {
                 status: true,
                 encounterId: true,
                 createdAt: true,
+                sortOrder: true,
+                codeSource: true,
               },
             }),
             this.prisma.medicationDispense.findMany({

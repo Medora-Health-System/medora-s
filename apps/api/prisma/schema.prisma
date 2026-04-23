@@ -247,6 +247,16 @@ enum DiagnosisStatus {
   RESOLVED
 }
 
+/// How a clinical diagnosis row was coded (ER-1 — billing / export metadata).
+enum DiagnosisCodeSource {
+  /// Pre–ER-1 rows or API calls without explicit catalog or manual declaration.
+  LEGACY
+  /// Selected from `Icd10DiagnosisCode` reference table.
+  ICD10_CATALOG
+  /// User explicitly documented a non-catalog code (not validated as ICD-10-CM).
+  MANUAL_DECLARED
+}
+
 enum InventoryTransactionType {
   RECEIPT
   DISPENSE
@@ -1155,6 +1165,34 @@ model ProtocolOrderSetItem {
   @@map("ProtocolOrderSetItem")
 }
 
+/// ICD-10-CM reference rows (loaded from CMS-style files — not shipped as production-complete data).
+model Icd10DiagnosisCode {
+  id               String   @id @default(uuid())
+  /// Canonical display code (typically with dots, e.g. R50.9).
+  code             String   @unique
+  /// Uppercase, dotless form for deterministic matching and search.
+  normalizedCode   String
+  shortDescription String
+  longDescription  String?  @db.Text
+  chapter          String?
+  category         String?
+  isBillable       Boolean  @default(true)
+  isActive         Boolean  @default(true)
+  /// Optional calendar year this row was introduced or last verified in Medora.
+  effectiveYear    Int?
+  /// Optional CMS / vendor file label (e.g. FY2025).
+  codeSetVersion   String?  @db.VarChar(32)
+  /// Denormalized lowercase text for simple contains search (code + descriptions).
+  searchText       String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  diagnoses Diagnosis[]
+
+  @@index([normalizedCode])
+  @@index([isActive])
+}
+
 // --- Medora Core: continuity / diagnoses ---
 model Diagnosis {
   id           String          @id @default(uuid())
@@ -1167,18 +1205,25 @@ model Diagnosis {
   onsetDate    DateTime?
   resolvedDate DateTime?
   notes        String?
+  /// Encounter-scoped ordering: lower = earlier in claim / primary-first convention (0 = principal).
+  sortOrder          Int                 @default(0)
+  icd10CatalogId    String?
+  codeSource         DiagnosisCodeSource @default(LEGACY)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
-  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        Patient             @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter      Encounter           @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility       Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  icd10Catalog   Icd10DiagnosisCode? @relation(fields: [icd10CatalogId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([encounterId])
+  @@index([encounterId, sortOrder])
   @@index([facilityId])
   @@index([status])
   @@index([code])
+  @@index([icd10CatalogId])
 }
 
 // --- Medora Pharmacy: inventory + dispensing ---

@@ -47,6 +47,8 @@ export type ChartEncounterDiagnosis = {
   status: string;
   encounterId: string;
   createdAt: string;
+  sortOrder?: number;
+  codeSource?: string;
 };
 
 export type ChartEncounterMedicationDispense = {
@@ -212,15 +214,43 @@ export async function fetchEncounterAuditTimeline(
   });
 }
 
-export async function createDiagnosis(
-  facilityId: string,
-  encounterId: string,
-  body: { code: string; description?: string; onsetDate?: string; notes?: string }
-) {
+export type CreateDiagnosisBody = {
+  code?: string;
+  description?: string;
+  onsetDate?: string;
+  notes?: string;
+  icd10CatalogId?: string;
+  manualNonCatalog?: boolean;
+  sortOrder?: number;
+};
+
+export async function createDiagnosis(facilityId: string, encounterId: string, body: CreateDiagnosisBody) {
   return apiFetch(`/encounters/${encounterId}/diagnoses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    facilityId,
+  });
+}
+
+export type Icd10SearchHit = {
+  id: string;
+  code: string;
+  shortDescription: string;
+  longDescription: string | null;
+  isBillable: boolean;
+};
+
+export async function searchIcd10Catalog(facilityId: string, q: string, limit = 30): Promise<{ items: Icd10SearchHit[] }> {
+  const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
+  return apiFetch(`/diagnoses/icd10/search?${params.toString()}`, { facilityId }) as Promise<{ items: Icd10SearchHit[] }>;
+}
+
+export async function reorderEncounterDiagnoses(facilityId: string, encounterId: string, orderedIds: string[]) {
+  return apiFetch(`/encounters/${encounterId}/diagnoses/reorder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ orderedIds }),
     facilityId,
   });
 }

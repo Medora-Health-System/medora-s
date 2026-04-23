@@ -1,0 +1,4 @@
+code,short_description,long_description,is_billable,is_active,effective_year,code_set_version,chapter,category
+R50.9,"Fever, unspecified","MEDORA DEV SAMPLE ONLY — not a complete or authoritative ICD-10 extract. Do not use for production billing.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XVIII,
+J06.9,"Acute upper respiratory infection, unspecified","MEDORA DEV SAMPLE ONLY — illustrative row for local testing.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,X,
+S09.90,"Unspecified injury of head, unspecified severity","MEDORA DEV SAMPLE ONLY — illustrative injury code.",true,true,2026,FY2026-MEDORA-DEV-SAMPLE,XIX,

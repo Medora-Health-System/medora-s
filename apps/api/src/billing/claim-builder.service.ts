@@ -288,7 +288,10 @@ type AssemblyCtx = {
  * Deterministic claim assembly from billing ledger rows (Phase 5).
  * Does not modify BillingEvent rows or existing capture logic.
  */
-export function buildEncounterClaimsFromEvents(events: BillingEvent[]): EncounterClaimsResult {
+export function buildEncounterClaimsFromEvents(
+  events: BillingEvent[],
+  clinicalActiveDiagnosisCount = 0
+): EncounterClaimsResult {
   const active = events.filter(
     (e) => e.reviewStatus !== BillingReviewStatus.VOIDED && e.reviewStatus !== BillingReviewStatus.SKIPPED
   );
@@ -396,7 +399,8 @@ export function buildEncounterClaimsFromEvents(events: BillingEvent[]): Encounte
       })),
     },
     summaryMissing,
-    ctx
+    ctx,
+    clinicalActiveDiagnosisCount
   );
 
   return {
@@ -416,10 +420,15 @@ export class ClaimBuilderService {
   constructor(private readonly prisma: PrismaService) {}
 
   async buildEncounterClaims(facilityId: string, encounterId: string): Promise<EncounterClaimsResult> {
-    const events = await this.prisma.billingEvent.findMany({
-      where: { facilityId, encounterId },
-      orderBy: [{ sourceModule: "asc" }, { serviceDate: "desc" }, { createdAt: "desc" }],
-    });
-    return buildEncounterClaimsFromEvents(events);
+    const [events, clinicalDxCount] = await Promise.all([
+      this.prisma.billingEvent.findMany({
+        where: { facilityId, encounterId },
+        orderBy: [{ sourceModule: "asc" }, { serviceDate: "desc" }, { createdAt: "desc" }],
+      }),
+      this.prisma.diagnosis.count({
+        where: { facilityId, encounterId, status: "ACTIVE" },
+      }),
+    ]);
+    return buildEncounterClaimsFromEvents(events, clinicalDxCount);
   }
 }

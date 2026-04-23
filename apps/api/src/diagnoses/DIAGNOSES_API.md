@@ -5,8 +5,11 @@
 | Method | Path | Roles | Description |
 |--------|------|--------|-------------|
 | POST | `/encounters/:encounterId/diagnoses` | RN, PROVIDER, ADMIN | Create diagnosis for encounter |
+| POST | `/encounters/:encounterId/diagnoses/reorder` | RN, PROVIDER, ADMIN | Set encounter diagnosis order (`orderedIds`) |
 | GET | `/patients/:patientId/diagnoses` | RN, PROVIDER, ADMIN | List diagnoses for patient |
-| PATCH | `/diagnoses/:id` | RN, PROVIDER, ADMIN | Update diagnosis (code, description, onsetDate, notes) |
+| GET | `/diagnoses/icd10/search` | RN, PROVIDER, ADMIN, BILLING | ICD-10-CM catalog search (`q`, optional `limit`) |
+| GET | `/diagnoses/icd10/by-code` | RN, PROVIDER, ADMIN, BILLING | Lookup one active catalog row (`code` query) |
+| PATCH | `/diagnoses/:id` | RN, PROVIDER, ADMIN | Update diagnosis |
 | POST | `/diagnoses/:id/resolve` | RN, PROVIDER, ADMIN | Set status RESOLVED and resolvedDate |
 | GET | `/patients/:id/chart-summary` | RN, PROVIDER, ADMIN | Patient chart summary (demographics + recent data) |
 
@@ -17,98 +20,50 @@ All require JWT and `x-facility-id`.
 ## DTOs
 
 **Create (POST encounter diagnoses)**  
-Body: `code` (required), optional `description`, `onsetDate`, `notes`.  
-Patient and facility are taken from the encounter.
+- **Catalog path:** `icd10CatalogId` (UUID). Optional `description` overrides catalog short label.  
+- **Explicit manual path:** `manualNonCatalog: true` and required `code`; optional `description`, `onsetDate`, `notes`.  
+- **Legacy / API compatibility:** `code` required when neither catalog nor manual flag is used.  
+- Optional: `sortOrder`, `onsetDate`, `notes`.
+
+**Reorder (POST encounter diagnoses/reorder)**  
+Body: `{ "orderedIds": ["uuid", ...] }` — every id must belong to the encounter.
 
 **Update (PATCH diagnoses/:id)**  
-Body: optional `code`, `description`, `onsetDate`, `notes`.  
-Resolved diagnoses cannot be updated.
+Optional: `code`, `description`, `onsetDate`, `notes`, `sortOrder`, `icd10CatalogId` (UUID to link, or `null` to clear link and set legacy), `manualNonCatalog: true` with `code`.
 
 **List (GET patient diagnoses)**  
 Query: optional `status` (ACTIVE | RESOLVED), `limit`, `offset`.  
-Returns `{ items, total }`.
+Returns `{ items, total }` ordered by encounter, then `sortOrder`, then `createdAt`.
+
+---
+
+## ICD-10 catalog import (ER-1)
+
+Official CMS (or jurisdiction) ICD-10-CM files are **not** bundled in the repo. Use:
+
+```bash
+pnpm --filter @medora/api run import:icd10-catalog -- --file=/absolute/path/to/icd10.csv
+```
+
+Optional `--dry-run`.  
+CSV header (required columns **bold**): **code**, **short_description**, long_description, is_billable, is_active, effective_year, code_set_version, chapter, category.
+
+A **non-production** sample file for local dev only: `apps/api/prisma/data/icd10-cm-sample-dev.csv` (see file header comment).
 
 ---
 
 ## Chart summary response example
 
-```json
-{
-  "patient": {
-    "id": "uuid",
-    "mrn": "MRN001",
-    "globalMrn": "G-MRN001",
-    "firstName": "Jean",
-    "lastName": "Baptiste",
-    "dob": "1985-03-15T00:00:00.000Z",
-    "phone": "+509...",
-    "email": null,
-    "sexAtBirth": "M",
-    "address": null,
-    "city": null,
-    "country": null,
-    "language": null,
-    "createdAt": "2025-01-10T..."
-  },
-  "recentEncounters": [
-    {
-      "id": "uuid",
-      "type": "OUTPATIENT",
-      "status": "OPEN",
-      "chiefComplaint": "Fever",
-      "createdAt": "2025-03-18T...",
-      "dischargedAt": null,
-      "dischargeStatus": null
-    }
-  ],
-  "activeDiagnoses": [
-    {
-      "id": "uuid",
-      "code": "J06.9",
-      "description": "Acute upper respiratory infection",
-      "onsetDate": "2025-03-15T...",
-      "notes": null,
-      "createdAt": "2025-03-18T...",
-      "encounter": {
-        "id": "uuid",
-        "type": "OUTPATIENT",
-        "createdAt": "2025-03-18T..."
-      }
-    }
-  ],
-  "recentMedicationDispenses": [
-    {
-      "id": "uuid",
-      "quantityDispensed": 30,
-      "dosageInstructions": "1 tab twice daily",
-      "dispensedAt": "2025-03-18T...",
-      "catalogMedication": { "code": "PARA500", "name": "Paracetamol 500mg" },
-      "inventoryItem": { "sku": "PARA-001", "lotNumber": "L123" }
-    }
-  ],
-  "recentVaccinations": [
-    {
-      "id": "uuid",
-      "doseNumber": 1,
-      "lotNumber": "COVID-A1",
-      "administeredAt": "2025-02-01T...",
-      "nextDueAt": "2025-03-01T...",
-      "vaccineCatalog": { "code": "COVID-19", "name": "COVID-19 vaccine" }
-    }
-  ]
-}
-```
+(See previous versions of this doc for full JSON shape; encounter diagnoses now include `sortOrder` and `codeSource` when present.)
 
-- **recentEncounters:** last 10, newest first.  
-- **activeDiagnoses:** all with `status: ACTIVE`.  
-- **recentMedicationDispenses:** last 20, by `dispensedAt` desc.  
-- **recentVaccinations:** last 20, by `administeredAt` desc.
+- **recentEncounters[].encounterDiagnoses:** ordered by `sortOrder` then `createdAt`.
 
 ---
 
-## Backend files changed/added
+## Backend files (ER-1)
 
-- **diagnoses/** – New module: `dto/` (create, update, list), `diagnoses.service.ts`, `diagnoses.controller.ts`, `diagnoses.module.ts`, `DIAGNOSES_API.md`.
-- **encounters/** – `encounters.controller.ts`: added `POST encounters/:encounterId/diagnoses`; `encounters.module.ts`: imports `DiagnosesModule`.
-- **patients/** – `patients.controller.ts`: added `GET :id/diagnoses`, `GET :id/chart-summary`; `patients.module.ts`: imports `DiagnosesModule`, adds `ChartSummaryService`; new `chart-summary.service.ts`.
-- **app.module.ts** – Imports `DiagnosesModule`.
+- **diagnoses/** — `icd10-catalog.service.ts`, extended `diagnoses.service.ts`, `dto/reorder-diagnoses.dto.ts`, extended create/update DTOs, `diagnoses.controller.ts` (ICD routes before `:id`).
+- **billing/** — `claim-export.service.ts` (ordered DX from clinical rows + ledger extras), `claim-validation.util.ts` / `claim-builder.service.ts` (clinical dx count for diagnosis-linked validation).
+- **patients/chart-summary.service.ts** — diagnosis ordering for embedded encounter lists.
+- **prisma/** — `Icd10DiagnosisCode`, `Diagnosis.sortOrder`, `Diagnosis.icd10CatalogId`, `Diagnosis.codeSource`, migration `20260422120000_er1_icd10_catalog_diagnosis`.
+- **scripts/import-icd10-catalog.ts** — CSV loader.

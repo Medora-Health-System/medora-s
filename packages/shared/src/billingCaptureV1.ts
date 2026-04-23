@@ -223,6 +223,9 @@ export function newBillingCaptureItemId(): string {
   return `bc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
+/** Mirrors `DiagnosisCodeSource` in Prisma — kept string-union for shared package independence. */
+export type DiagnosisBillingCodeSource = "ICD10_CATALOG" | "MANUAL_DECLARED" | "LEGACY";
+
 export function buildDiagnosisCandidate(params: {
   diagnosisId: string;
   encounterId: string;
@@ -232,8 +235,17 @@ export function buildDiagnosisCandidate(params: {
   description?: string | null;
   createdAtIso: string;
   createdByUserId?: string | null;
+  /** How the code was chosen — appended to capture note for audit / biller review. */
+  codeSource?: DiagnosisBillingCodeSource;
 }): BillingCaptureItem {
-  const noteParts = [`ICD-10-CM linkage candidate`, params.code.trim()];
+  const reliability = params.codeSource ?? "LEGACY";
+  const relNote =
+    reliability === "ICD10_CATALOG"
+      ? "Catalog ICD-10-CM"
+      : reliability === "MANUAL_DECLARED"
+        ? "Manual non-catalog code (not ICD-validated)"
+        : "Legacy / unstructured code entry";
+  const noteParts = [`ICD-10-CM linkage candidate`, params.code.trim(), `— ${relNote}`];
   if (params.description?.trim()) noteParts.push(params.description.trim());
   return {
     id: newBillingCaptureItemId(),

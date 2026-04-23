@@ -251,6 +251,8 @@ export function EmergencyActiveWorkspaceView() {
 
   const canEditNursingDischarge = roles.includes("RN") || roles.includes("ADMIN");
   const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canDocumentEncounterDiagnoses =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
 
   useEffect(() => {
@@ -1069,7 +1071,7 @@ export function EmergencyActiveWorkspaceView() {
               encounterId={encounter.id}
               patientId={encounter.patient?.id ?? ""}
               facilityId={fid}
-              canPrescribe={canPrescribe}
+              canDocumentDiagnoses={canDocumentEncounterDiagnoses}
               isLocked={isLocked}
               onGoPatientChart={() => setShowCreateDx(true)}
             />

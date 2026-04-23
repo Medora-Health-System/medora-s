@@ -124,7 +124,8 @@ function profClaimLines(claimLines: ClaimValidationLineRef[] | undefined): Claim
   return claimLines ?? [];
 }
 
-function diagnosisPresentOnEncounter(active: BillingEvent[]): boolean {
+function diagnosisPresentOnEncounter(active: BillingEvent[], clinicalActiveDiagnosisCount: number): boolean {
+  if (clinicalActiveDiagnosisCount > 0) return true;
   for (const ev of active) {
     if (billingLedgerDiagnosisStringHasCode(ev.diagnosisCodes)) return true;
     if (billingLedgerRowIsDiagnosisLedgerLine(ev.sourceModule) && ev.code?.trim()) return true;
@@ -230,7 +231,9 @@ export function buildEncounterClaimValidation(
   professional: ClaimPackageInput,
   facility: ClaimPackageInput,
   summaryMissing: number,
-  ctx: ClaimAssemblyValidationContext
+  ctx: ClaimAssemblyValidationContext,
+  /** When >0, encounter has structured active diagnoses (aligns with claim export ordering path). */
+  clinicalActiveDiagnosisCount = 0
 ): ClaimEncounterValidation {
   const eligibleForAssembly = active.filter((ev) => !omitFromClaimAssembly(ev));
   const eligibleCount = eligibleForAssembly.length;
@@ -238,7 +241,7 @@ export function buildEncounterClaimValidation(
   const profRefs = profClaimLines(professional.claimLines);
   const facRefs = profClaimLines(facility.claimLines);
 
-  const diagnosisLinked = diagnosisPresentOnEncounter(active);
+  const diagnosisLinked = diagnosisPresentOnEncounter(active, clinicalActiveDiagnosisCount);
   const medAdminRouteMissingWhenMetadataPresent = countMedAdminProcedureCptWithMissingRouteWhenMetadataPresent(active);
   const emDistinctCodesLedger = countDistinctEncounterEmProcedureCodesOnLedger(active);
   const ledgerProfCodedRows = countLedgerCodedRowsInScope(active, omitFromClaimAssembly, inProfLedgerScope);

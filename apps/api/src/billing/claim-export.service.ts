@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { BillingEvent } from "@prisma/client";
 import {
-  billingLedgerDiagnosisStringHasCode,
-  billingLedgerRowIsDiagnosisLedgerLine,
+  buildOrderedDiagnosisCodesForClaimExport,
   type EncounterClaimExportResult,
   type ClaimExportHeader,
   type ClaimExportLine,
@@ -22,23 +21,6 @@ function issueCodes(issues: ClaimValidationIssue[]): string[] {
 function isExportableCode(code: string): boolean {
   const c = code.trim();
   return c.length > 0 && c.toUpperCase() !== "UNMAPPED";
-}
-
-function collectDiagnosisCodesForEncounter(events: BillingEvent[]): string[] {
-  const set = new Set<string>();
-  for (const ev of events) {
-    const raw = ev.diagnosisCodes?.trim();
-    if (raw && billingLedgerDiagnosisStringHasCode(raw)) {
-      for (const part of raw.split(";")) {
-        const p = part.trim();
-        if (p) set.add(p);
-      }
-    }
-    if (billingLedgerRowIsDiagnosisLedgerLine(ev.sourceModule) && ev.code?.trim()) {
-      set.add(ev.code.trim());
-    }
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
 function buildEventModifierMap(events: BillingEvent[]): Map<string, Pick<BillingEvent, "modifier1" | "modifier2" | "revenueCode">> {
@@ -125,13 +107,20 @@ export class ClaimExportService {
       throw new NotFoundException("Encounter not found");
     }
 
-    const claims = await this.claimBuilder.buildEncounterClaims(facilityId, encounterId);
-    const events = await this.prisma.billingEvent.findMany({
-      where: { facilityId, encounterId },
-      orderBy: [{ sourceModule: "asc" }, { serviceDate: "desc" }, { createdAt: "desc" }],
-    });
+    const [claims, events, dxRows] = await Promise.all([
+      this.claimBuilder.buildEncounterClaims(facilityId, encounterId),
+      this.prisma.billingEvent.findMany({
+        where: { facilityId, encounterId },
+        orderBy: [{ sourceModule: "asc" }, { serviceDate: "desc" }, { createdAt: "desc" }],
+      }),
+      this.prisma.diagnosis.findMany({
+        where: { facilityId, encounterId, status: "ACTIVE" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { code: true },
+      }),
+    ]);
 
-    const diagnosisCodes = collectDiagnosisCodesForEncounter(events);
+    const diagnosisCodes = buildOrderedDiagnosisCodesForClaimExport(dxRows, events);
     const eventMods = buildEventModifierMap(events);
     const svcDates = serviceDateRangeIso(events);
 

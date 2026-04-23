@@ -2,27 +2,60 @@ import {
   Controller,
   Patch,
   Post,
+  Get,
   Param,
   Body,
+  Query,
   Req,
   UseGuards,
   BadRequestException,
+  NotFoundException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { RoleCode } from "@prisma/client";
 import { DiagnosesService } from "./diagnoses.service";
+import { Icd10CatalogService } from "./icd10-catalog.service";
 import { updateDiagnosisDtoSchema } from "./dto";
 
 @Controller("diagnoses")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class DiagnosesController {
-  constructor(private readonly diagnosesService: DiagnosesService) {}
+  constructor(
+    private readonly diagnosesService: DiagnosesService,
+    private readonly icd10Catalog: Icd10CatalogService
+  ) {}
 
   private facilityId(req: any): string {
     const id = req.user?.facilityId || req.headers["x-facility-id"];
     if (!id) throw new BadRequestException("Facility ID required");
     return id;
+  }
+
+  /** ICD-10-CM catalog search (prefix / contains on code and descriptions). */
+  @Get("icd10/search")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
+  async searchIcd10(@Query("q") q: string, @Query("limit") limitRaw: string | undefined) {
+    const limit = limitRaw != null && limitRaw !== "" ? Number(limitRaw) : undefined;
+    if (limit != null && (!Number.isFinite(limit) || limit < 1)) {
+      throw new BadRequestException("Invalid limit");
+    }
+    return this.icd10Catalog.search(q ?? "", limit);
+  }
+
+  /** Resolve one active catalog row by code (with or without dots). */
+  @Get("icd10/by-code")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
+  async lookupIcd10ByCode(@Query("code") code: string) {
+    const c = code?.trim();
+    if (!c) {
+      throw new BadRequestException("Query parameter code is required");
+    }
+    const row = await this.icd10Catalog.findByCode(c);
+    if (!row) {
+      throw new NotFoundException("ICD-10 code not found in catalog");
+    }
+    return row;
   }
 
   @Patch(":id")

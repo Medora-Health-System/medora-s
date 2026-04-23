@@ -212,6 +212,9 @@ export default function EncounterDetailPage() {
   const canFetchEncounterOrders =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canFetchPatientDiagnosesList = canFetchEncounterTriage;
+  /** Matches POST /encounters/:id/diagnoses roles (RN, provider, admin). */
+  const canDocumentEncounterDiagnoses =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canFetchMarTab =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canManageEncounterClosure =
@@ -430,9 +433,22 @@ export default function EncounterDetailPage() {
       setQuickTriage(cachedTri?.data ?? null);
     }
     if (dx && typeof dx === "object" && Array.isArray((dx as any).items)) {
-      const items = (dx as { items: Array<{ encounterId?: string; description?: string | null; code: string }> }).items.filter(
-        (d) => d.encounterId === encounter.id
-      );
+      const items = (dx as {
+        items: Array<{
+          encounterId?: string;
+          description?: string | null;
+          code: string;
+          sortOrder?: number;
+          createdAt?: string;
+        }>;
+      }).items
+        .filter((d) => d.encounterId === encounter.id)
+        .sort((a, b) => {
+          const sa = typeof a.sortOrder === "number" ? a.sortOrder : 0;
+          const sb = typeof b.sortOrder === "number" ? b.sortOrder : 0;
+          if (sa !== sb) return sa - sb;
+          return String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""));
+        });
       setQuickDiagnosisCount(items.length);
       setQuickPrimaryDiagnosis(
         items.length > 0 ? diagnosisDisplayFr(items[0].description, items[0].code) : null
@@ -1546,7 +1562,7 @@ export default function EncounterDetailPage() {
               encounterId={encounter.id}
               patientId={patient.id}
               facilityId={facilityId}
-              canPrescribe={canPrescribe}
+              canDocumentDiagnoses={canDocumentEncounterDiagnoses}
               isLocked={isLocked}
               onGoPatientChart={() => router.push(`/app/patients/${patient.id}`)}
             />
