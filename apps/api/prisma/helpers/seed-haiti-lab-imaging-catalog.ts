@@ -58,6 +58,7 @@ function imagingIsEssential(row: ImagingCatalogSeed): boolean {
     "CT_HEAD",
     "CT_ABD",
     "CT_CHEST",
+    "CT_CHEST_CTA",
     "DOPPLER_VEIN",
     "XR_PELVIS",
     "US_FAST",
@@ -74,12 +75,14 @@ export async function seedHaitiLabImagingCatalog(
     const row = labs[i];
     const searchText = labSearchTextStored(row);
     const description = `Catégorie : ${row.category}`;
+    const displayNameEnLab = row.displayNameEn?.trim() ?? null;
+
     const created = await prisma.catalogLabTest.upsert({
       where: { code: row.code },
       update: {
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
-        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
+        displayNameEn: displayNameEnLab,
         description,
         searchText,
         sortPriority: i * 10,
@@ -90,7 +93,7 @@ export async function seedHaitiLabImagingCatalog(
         code: row.code,
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
-        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
+        displayNameEn: displayNameEnLab,
         description,
         searchText,
         sortPriority: i * 10,
@@ -121,12 +124,14 @@ export async function seedHaitiLabImagingCatalog(
     const row = imaging[i];
     const searchText = imagingSearchTextStored(row);
     const description = `${row.modality} · ${row.bodyRegion}`;
+    const displayNameEnImg = row.displayNameEn?.trim() ?? null;
+
     const created = await prisma.catalogImagingStudy.upsert({
       where: { code: row.code },
       update: {
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
-        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
+        displayNameEn: displayNameEnImg,
         description,
         modality: row.modality,
         bodyRegion: row.bodyRegion,
@@ -139,7 +144,7 @@ export async function seedHaitiLabImagingCatalog(
         code: row.code,
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
-        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
+        displayNameEn: displayNameEnImg,
         description,
         modality: row.modality,
         bodyRegion: row.bodyRegion,

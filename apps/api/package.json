@@ -27,7 +27,8 @@
     "import:billing-procedure-codes": "ts-node --transpile-only scripts/import-billing-procedure-codes.ts",
     "import:medication-billing-catalog": "ts-node --transpile-only scripts/import-medication-billing-catalog.ts",
     "catalog:import-display-en": "ts-node --transpile-only scripts/import-catalog-display-en.ts",
-    "catalog:report-display-en": "ts-node --transpile-only scripts/report-catalog-display-en-coverage.ts"
+    "catalog:report-display-en": "ts-node --transpile-only scripts/report-catalog-display-en-coverage.ts",
+    "catalog:gen-haiti-med-en-csv": "ts-node --transpile-only scripts/generate-phase-f-medication-display-en-csv.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

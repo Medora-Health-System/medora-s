@@ -50,7 +50,7 @@ export const HAITI_IMAGING_CATALOG: ImagingCatalogSeed[] = [
   {
     code: "US_ABD",
     displayNameFr: "Échographie abdominale",
-    displayNameEn: "Abdominal ultrasound",
+    displayNameEn: "Ultrasound abdomen",
     modality: "US",
     bodyRegion: "ABDOMEN",
     aliases: ["echo abdomen"],
@@ -92,7 +92,7 @@ export const HAITI_IMAGING_CATALOG: ImagingCatalogSeed[] = [
   {
     code: "CT_ABD",
     displayNameFr: "Scanner abdomen/pelvis",
-    displayNameEn: "CT abdomen/pelvis",
+    displayNameEn: "CT abdomen and pelvis",
     modality: "CT",
     bodyRegion: "ABDOMEN",
     aliases: ["ct abdomen"],
@@ -211,6 +211,16 @@ export const HAITI_IMAGING_CATALOG: ImagingCatalogSeed[] = [
     bodyRegion: "THORAX",
     aliases: ["ct thorax"],
     searchText: "scanner thorax embolie poumon pulmonary pe cta",
+    isActive: true,
+  },
+  {
+    code: "CT_CHEST_CTA",
+    displayNameFr: "Angioscanner thoracique (CTA thorax)",
+    displayNameEn: "CTA chest",
+    modality: "CT",
+    bodyRegion: "THORAX",
+    aliases: ["cta thorax", "ct angio chest", "pe protocol"],
+    searchText: "cta thorax angioscanner embolie pulmonaire pulmonary angiography",
     isActive: true,
   },
   {

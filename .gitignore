@@ -25,3 +25,11 @@ node_modules/
 apps/api/scripts/*.js
 apps/api/scripts/*.map
 apps/api/scripts/*.d.ts
+
+# Stale tsc output: Node resolves these before .ts and breaks prisma seeds (Phase F).
+apps/api/prisma/data/haiti-*.js
+apps/api/prisma/data/haiti-*.js.map
+apps/api/prisma/data/haiti-*.d.ts
+apps/api/prisma/helpers/seed-haiti-*.js
+apps/api/prisma/helpers/seed-haiti-*.js.map
+apps/api/prisma/helpers/seed-haiti-*.d.ts

@@ -2,11 +2,11 @@ code,display_name_en
 XR_CHEST,Chest X-ray
 XR_KNEE,Knee X-ray
 XR_FOOT,Foot X-ray
-US_ABD,Abdominal ultrasound
+US_ABD,Ultrasound abdomen
 US_OB,Obstetric ultrasound
 US_RENAL,Renal ultrasound
 CT_HEAD,CT head
-CT_ABD,CT abdomen/pelvis
+CT_ABD,CT abdomen and pelvis
 DOPPLER_VEIN,Lower extremity venous ultrasound (DVT)
 XR_CHEST_2V,Chest X-ray (2 views)
 XR_ABD_AP,Abdominal X-ray (KUB)
@@ -18,5 +18,6 @@ US_OB_FIRST,Obstetric ultrasound — first trimester
 US_OB_GROWTH,Obstetric ultrasound — growth / Doppler
 US_SOFT,Soft tissue ultrasound
 CT_CHEST,CT chest
+CT_CHEST_CTA,CTA chest
 CT_SPINE_LUMBAR,CT lumbar spine
 US_FAST,FAST exam

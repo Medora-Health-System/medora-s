@@ -91,10 +91,11 @@ function buildSearchText(row: HaitiMedicationSeed): string {
 }
 
 /**
- * Phase E: English-primary catalog — curated INN / US equivalents only (no `displayNameFr` copy).
+ * Phase E/F: English-primary catalog — curated INN / US equivalents only (no `displayNameFr` copy).
  * Explicit `row.displayNameEn` always wins. Otherwise map a few cross-market names, then safe ASCII `genericName`.
+ * Exported for CSV generators / audits; DB upsert uses `?? genericName.trim()` as final INN fallback.
  */
-function resolveDisplayNameEn(row: HaitiMedicationSeed): string | undefined {
+export function resolveDisplayNameEn(row: HaitiMedicationSeed): string | undefined {
   const explicit = row.displayNameEn?.trim();
   if (explicit) return explicit;
 
@@ -125,13 +126,14 @@ export async function seedHaitiMedicationCatalog(
     const code = row.code ?? deriveMedicationCode(row);
     const searchText = buildSearchText(row);
 
-    const displayNameEn = resolveDisplayNameEn(row);
+    /** INN / US synonym map or ASCII `genericName` — never derived from `displayNameFr`. */
+    const displayNameEn = resolveDisplayNameEn(row) ?? row.genericName.trim();
 
     const upsertBody = {
       name: row.displayNameFr || row.genericName,
       genericName: row.genericName,
       displayNameFr: row.displayNameFr,
-      ...(displayNameEn !== undefined ? { displayNameEn } : {}),
+      displayNameEn,
       strength: row.strength || null,
       dosageForm: row.dosageForm || null,
       route: row.route || null,
