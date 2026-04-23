@@ -20,6 +20,8 @@ import { ClaimRetryWorkerService } from "../billing/claim-retry-worker.service";
 import { BillingIdentityService } from "../billing/billing-identity.service";
 import { BillingIdentityController } from "../billing/billing-identity.controller";
 import { ClearinghouseStabilizationService } from "../billing/clearinghouse-stabilization.service";
+import { ClaimOperationalEventService } from "../billing/claim-operational-event.service";
+import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearinghouse-observability.service";
 
 @Module({
   imports: [PrismaModule],
@@ -32,13 +34,15 @@ import { ClearinghouseStabilizationService } from "../billing/clearinghouse-stab
     X12837GeneratorService,
     ClaimControlNumberService,
     X12EnvelopeBuilderService,
+    ClaimOperationalEventService,
+    ClaimClearinghouseObservabilityService,
+    ClearinghouseStabilizationService,
     ClaimSubmissionService,
     ClearinghouseTransportFactory,
     ClaimTransmissionService,
     ClaimRetryWorkerService,
     ClaimAcknowledgmentService,
     AckSftpPollerService,
-    ClearinghouseStabilizationService,
     ClearinghouseOpsService,
     BillingIdentityService,
     ClearinghouseAckWebhookGuard,

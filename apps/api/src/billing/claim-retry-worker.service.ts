@@ -6,6 +6,7 @@ import { ClaimTransmissionService } from "./claim-transmission.service";
 import type { ClearinghouseTransportHint } from "./clearinghouse-config.util";
 import { isLatestAttemptDueForWorkerRetry } from "./clearinghouse-retry-policy.util";
 import { isTerminalSubmissionStatus } from "./claim-submission-state-machine.util";
+import { ClaimOperationalEventService } from "./claim-operational-event.service";
 
 const log = createStructuredLogger("ClaimRetryWorker");
 
@@ -61,7 +62,8 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly claimTransmissionService: ClaimTransmissionService
+    private readonly claimTransmissionService: ClaimTransmissionService,
+    private readonly claimOperationalEventService: ClaimOperationalEventService
   ) {}
 
   getLastSnapshot(): ClaimRetryWorkerLastSnapshot | null {
@@ -177,12 +179,29 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
+        const emitSkip = (reasonCode: string) => {
+          void this.claimOperationalEventService.append({
+            facilityId: fresh.facilityId,
+            encounterId: fresh.encounterId,
+            submissionId: fresh.id,
+            batchId: fresh.batchId,
+            claimType: fresh.claimType,
+            eventType: "RETRY_SKIPPED",
+            statusBefore: fresh.status,
+            statusAfter: fresh.status,
+            reasonCode,
+            message: reasonCode,
+            metadata: { source: "retry_worker" },
+          });
+        };
+
         if (isTerminalSubmissionStatus(fresh.status)) {
           log.log("retry_attempt_skipped", {
             submissionId: fresh.id,
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_TERMINAL",
           });
+          emitSkip("RETRY_SKIPPED_TERMINAL");
           skipped += 1;
           continue;
         }
@@ -194,6 +213,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
             reason: "RETRY_SKIPPED_STATUS_CHANGED",
             status: fresh.status,
           });
+          emitSkip("RETRY_SKIPPED_STATUS_CHANGED");
           skipped += 1;
           continue;
         }
@@ -205,6 +225,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_NO_ATTEMPTS",
           });
+          emitSkip("RETRY_SKIPPED_NO_ATTEMPTS");
           skipped += 1;
           continue;
         }
@@ -215,6 +236,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_NEWER_ATTEMPT_EXISTS",
           });
+          emitSkip("RETRY_SKIPPED_NEWER_ATTEMPT_EXISTS");
           skipped += 1;
           continue;
         }
@@ -225,6 +247,7 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
             claimType: fresh.claimType,
             reason: "RETRY_SKIPPED_NOT_DUE",
           });
+          emitSkip("RETRY_SKIPPED_NOT_DUE");
           skipped += 1;
           continue;
         }
@@ -244,6 +267,19 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
             claimType: fresh.claimType,
             transport: hint,
           });
+          void this.claimOperationalEventService.append({
+            facilityId: fresh.facilityId,
+            encounterId: fresh.encounterId,
+            submissionId: fresh.id,
+            batchId: fresh.batchId,
+            claimType: fresh.claimType,
+            eventType: "RETRY_TRIGGERED",
+            metadata: {
+              transport: hint,
+              latestAttemptId: last.id,
+              source: "retry_worker",
+            },
+          });
           const res = await this.claimTransmissionService.retrySubmissionSend(fresh.facilityId, fresh.id, hint, {
             attemptTrigger: "WORKER",
           });
@@ -256,6 +292,17 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
               reason,
               sideGateReasonCode: gateReason ?? undefined,
             });
+            void this.claimOperationalEventService.append({
+              facilityId: fresh.facilityId,
+              encounterId: fresh.encounterId,
+              submissionId: fresh.id,
+              batchId: fresh.batchId,
+              claimType: fresh.claimType,
+              eventType: "RETRY_SKIPPED",
+              reasonCode: reason,
+              message: gateReason ? `${reason}:${gateReason}` : reason,
+              metadata: { source: "retry_worker", postRetrySend: true },
+            });
             skipped += 1;
           } else {
             log.log("retry_attempt_succeeded", { submissionId: fresh.id, claimType: fresh.claimType });
@@ -264,6 +311,17 @@ export class ClaimRetryWorkerService implements OnModuleInit, OnModuleDestroy {
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           log.log("retry_attempt_failed", { submissionId: fresh.id, claimType: fresh.claimType, error: msg });
+          void this.claimOperationalEventService.append({
+            facilityId: fresh.facilityId,
+            encounterId: fresh.encounterId,
+            submissionId: fresh.id,
+            batchId: fresh.batchId,
+            claimType: fresh.claimType,
+            eventType: "RETRY_SKIPPED",
+            reasonCode: "RETRY_WORKER_EXCEPTION",
+            message: msg.slice(0, 2_000),
+            metadata: { source: "retry_worker" },
+          });
           failed += 1;
         }
       }

@@ -7,6 +7,7 @@ import { ClaimExportService } from "./claim-export.service";
 import { X12837GeneratorService } from "./x12-837-generator.service";
 import { X12EnvelopeBuilderService, type EnvelopeTransactionInput } from "./x12-envelope-builder.service";
 import { evaluateSubmissionGate, type SubmissionGateScope } from "./claim-submission-gate.util";
+import { ClaimOperationalEventService } from "./claim-operational-event.service";
 
 /** Missing-field codes that block READY_TO_SEND until payer / identity modeling is complete. */
 const HARD_MISSING_FOR_READY = new Set([
@@ -110,7 +111,8 @@ export class ClaimSubmissionService {
     private readonly claimExport: ClaimExportService,
     private readonly x12837: X12837GeneratorService,
     private readonly envelope: X12EnvelopeBuilderService,
-    private readonly controlNumbers: ClaimControlNumberService
+    private readonly controlNumbers: ClaimControlNumberService,
+    private readonly claimOperationalEventService: ClaimOperationalEventService
   ) {}
 
   async buildEncounterSubmissionArtifacts(facilityId: string, encounterId: string): Promise<EncounterSubmissionArtifactsDto> {
@@ -157,6 +159,20 @@ export class ClaimSubmissionService {
         },
       });
       submissions.push(this.toSummaryDto(created));
+      void this.claimOperationalEventService.append({
+        facilityId,
+        encounterId,
+        submissionId: created.id,
+        batchId: batch.id,
+        eventType: "SUBMISSION_CREATED",
+        claimType: created.claimType,
+        statusBefore: null,
+        statusAfter: created.status,
+        metadata: {
+          transactionCtrl: created.transactionCtrl,
+          interchangeCtrl: batch.interchangeCtrl,
+        },
+      });
     }
 
     return {

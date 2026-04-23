@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { ClaimAcknowledgment, ClaimSubmissionStatus, Prisma } from "@prisma/client";
+import { ClaimAcknowledgment, ClaimSubmissionKind, ClaimSubmissionStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { scrubRecordForPersistence } from "./clearinghouse-audit.util";
 import {
@@ -18,6 +18,8 @@ import {
   SubmissionTransitionReasonCode,
 } from "./claim-submission-state-machine.util";
 import { ClearinghouseStabilizationService } from "./clearinghouse-stabilization.service";
+import type { ClaimOperationalEventType } from "./claim-operational-event.constants";
+import { ClaimOperationalEventService } from "./claim-operational-event.service";
 
 type AckKind = "999" | "277CA";
 
@@ -119,7 +121,8 @@ export type ReplayInboundAckDeadLetterResult = IngestAcknowledgmentResult & {
 export class ClaimAcknowledgmentService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly clearinghouseStabilization: ClearinghouseStabilizationService
+    private readonly clearinghouseStabilization: ClearinghouseStabilizationService,
+    private readonly claimOperationalEventService: ClaimOperationalEventService
   ) {}
 
   async ingestAcknowledgment(input: {
@@ -148,9 +151,26 @@ export class ClaimAcknowledgmentService {
       const sub = priorDup.submissionId
         ? await this.prisma.claimSubmission.findUnique({
             where: { id: priorDup.submissionId },
-            select: { status: true },
+            select: { status: true, encounterId: true },
           })
         : null;
+      void this.claimOperationalEventService.append({
+        facilityId: input.facilityId,
+        encounterId: sub?.encounterId ?? null,
+        submissionId: priorDup.submissionId,
+        batchId: priorDup.batchId,
+        eventType: "ACK_DUPLICATE_IGNORED",
+        claimType: null,
+        statusBefore: sub?.status ?? null,
+        statusAfter: sub?.status ?? null,
+        reasonCode: "ACK_DUPLICATE_SAME_DEDUPE_KEY",
+        message: "DUPLICATE_ACK_REPLAY_IGNORED",
+        metadata: {
+          priorAckId: priorDup.id,
+          dedupeKey,
+          kind: input.kind,
+        },
+      });
       return {
         ack: priorDup,
         previousStatus: sub?.status ?? null,
@@ -288,7 +308,7 @@ export class ClaimAcknowledgmentService {
     const existing = submissionId
       ? await this.prisma.claimSubmission.findUnique({
           where: { id: submissionId },
-          select: { status: true, facilityId: true },
+          select: { status: true, facilityId: true, encounterId: true, claimType: true },
         })
       : null;
 
@@ -427,6 +447,35 @@ export class ClaimAcknowledgmentService {
       });
     }
 
+    const ackEventType: ClaimOperationalEventType = (() => {
+      if (warn === "ACK_WEAK_CORRELATION") return "ACK_MATCH_WEAK";
+      if (input.kind === "999" && parsed999?.transportReject) return "ACK_REJECTED";
+      const o277 = parsed277 ? claimOutcomeFrom277(parsed277) : null;
+      if (input.kind === "277CA" && o277 === "REJECTED") return "ACK_REJECTED";
+      if (submissionId && existing) return "ACK_MATCHED";
+      return "ACK_RECEIVED";
+    })();
+
+    void this.claimOperationalEventService.append({
+      facilityId: input.facilityId,
+      encounterId: existing?.encounterId ?? null,
+      submissionId,
+      batchId: batchId ?? null,
+      eventType: ackEventType,
+      claimType: existing?.claimType ?? null,
+      statusBefore: previousStatus,
+      statusAfter: nextStatus,
+      reasonCode,
+      message: statusCodeStr,
+      metadata: scrubRecordForPersistence({
+        ackId: ack.id,
+        kind: input.kind,
+        warningCode: warn,
+        correlationMatchMethod,
+        unmatched: !submissionId,
+      }) as Record<string, unknown>,
+    });
+
     return {
       ack,
       previousStatus,
@@ -500,7 +549,7 @@ export class ClaimAcknowledgmentService {
     failureDetail?: string;
     vendorMeta?: Record<string, unknown>;
   }) {
-    return this.prisma.claimAcknowledgmentDeadLetter.create({
+    const row = await this.prisma.claimAcknowledgmentDeadLetter.create({
       data: {
         facilityId: input.facilityId,
         rawText: input.rawText,
@@ -512,6 +561,18 @@ export class ClaimAcknowledgmentService {
           : {}),
       },
     });
+    void this.claimOperationalEventService.append({
+      facilityId: input.facilityId,
+      eventType: "DEAD_LETTER_CREATED",
+      reasonCode: input.failureCode,
+      message: input.source,
+      metadata: {
+        deadLetterId: row.id,
+        source: input.source,
+        rawTextChars: input.rawText.length,
+      },
+    });
+    return row;
   }
 
   async listInboundAckDeadLetters(
@@ -597,6 +658,25 @@ export class ClaimAcknowledgmentService {
       data: { replayedAt, replayedToAckId: result.ack.id },
     });
     this.clearinghouseStabilization.recordDeadLetterReplayed(facilityId);
+    let encounterId: string | null = null;
+    let claimType: ClaimSubmissionKind | null = null;
+    if (result.ack.submissionId) {
+      const s = await this.prisma.claimSubmission.findUnique({
+        where: { id: result.ack.submissionId },
+        select: { encounterId: true, claimType: true },
+      });
+      encounterId = s?.encounterId ?? null;
+      claimType = s?.claimType ?? null;
+    }
+    void this.claimOperationalEventService.append({
+      facilityId,
+      encounterId,
+      submissionId: result.ack.submissionId,
+      batchId: result.ack.batchId,
+      claimType,
+      eventType: "DEAD_LETTER_REPLAYED",
+      metadata: { deadLetterId: row.id, ackId: result.ack.id },
+    });
     return {
       ...result,
       deadLetterReplay: {

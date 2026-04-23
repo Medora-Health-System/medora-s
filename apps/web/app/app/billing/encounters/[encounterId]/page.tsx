@@ -339,6 +339,19 @@ type ClearinghouseOpsStatusPayload = {
   lastSftpAckPollFilesSeen?: number | null;
   lastSftpAckPollFilesProcessed?: number | null;
   lastSftpAckPollMaxFilesPerCycle?: number | null;
+  durableClearinghouseMetrics?: {
+    sendAttemptSucceeded24h?: number;
+    operationalEventsByType24h?: Record<string, number>;
+    ackLatencySample7d?: { sampleCount?: number; avgAckLatencyMs?: number | null };
+  };
+};
+
+type OperationalTimelineItemPayload = {
+  at: string;
+  source: string;
+  kind: string;
+  summary: string;
+  detail: Record<string, unknown>;
 };
 
 type SummaryPayload = {
@@ -616,6 +629,12 @@ function billingSendStabilizationMessage(t: (k: string) => string, res: Submissi
   return null;
 }
 
+function timelineSourceLabel(t: (k: string) => string, source: string): string {
+  const k = `billingPage.timelineSource_${source}`;
+  const v = t(k);
+  return v === k ? source : v;
+}
+
 function retrySubmissionSideActionLabel(t: (k: string) => string, claimType: string): string {
   return claimSubmissionIsProfessional837P(claimType)
     ? t("billingPage.professionalRetrySend")
@@ -695,6 +714,9 @@ export default function BillingEncounterLedgerPage() {
   const [expandedSubmissionLoading, setExpandedSubmissionLoading] = useState<string | null>(null);
   const [submissionAttempts, setSubmissionAttempts] = useState<Record<string, SubmissionAttemptPayload[]>>({});
   const [submissionAcks, setSubmissionAcks] = useState<Record<string, SubmissionAckPayload[]>>({});
+  const [submissionOperationalTimeline, setSubmissionOperationalTimeline] = useState<
+    Record<string, OperationalTimelineItemPayload[]>
+  >({});
   const [submissionDebug, setSubmissionDebug] = useState<SubmissionDebugPayload | null>(null);
   const [clearinghouseConfigStatus, setClearinghouseConfigStatus] = useState<ClearinghouseConfigStatusPayload | null>(null);
   const [clearinghouseOpsStatus, setClearinghouseOpsStatus] = useState<ClearinghouseOpsStatusPayload | null>(null);
@@ -1002,15 +1024,26 @@ export default function BillingEncounterLedgerPage() {
       try {
         const res = (await apiFetch(`/billing/submissions/${submissionId}`, { facilityId })) as ClaimSubmissionDetailPayload;
         setExpandedSubmissionDetail(res);
-        const [attempts, acks] = await Promise.all([
+        const [attempts, acks, timelinePayload] = await Promise.all([
           apiFetch(`/billing/submissions/${submissionId}/attempts`, { facilityId }),
           apiFetch(`/billing/submissions/${submissionId}/acknowledgments`, { facilityId }),
+          apiFetch(`/billing/submissions/${submissionId}/timeline`, { facilityId }),
         ]);
         if (Array.isArray(attempts)) {
           setSubmissionAttempts((prev) => ({ ...prev, [submissionId]: attempts as SubmissionAttemptPayload[] }));
         }
         if (Array.isArray(acks)) {
           setSubmissionAcks((prev) => ({ ...prev, [submissionId]: acks as SubmissionAckPayload[] }));
+        }
+        if (
+          timelinePayload &&
+          typeof timelinePayload === "object" &&
+          Array.isArray((timelinePayload as { timeline?: unknown }).timeline)
+        ) {
+          setSubmissionOperationalTimeline((prev) => ({
+            ...prev,
+            [submissionId]: (timelinePayload as { timeline: OperationalTimelineItemPayload[] }).timeline,
+          }));
         }
       } catch (e: unknown) {
         const raw = e instanceof Error && e.message ? e.message : "";
@@ -2416,6 +2449,32 @@ export default function BillingEncounterLedgerPage() {
                     {clearinghouseOpsStatus.lastSftpAckPollFilesSeen ?? "—"}, cap {clearinghouseOpsStatus.lastSftpAckPollMaxFilesPerCycle ?? "—"})
                   </div>
                 ) : null}
+                {clearinghouseOpsStatus.durableClearinghouseMetrics ? (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      paddingTop: 8,
+                      borderTop: "1px solid #e2e8f0",
+                      fontSize: 10,
+                      color: "#475569",
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("billingPage.recentClearinghouseActivity")}</div>
+                    <div>
+                      {t("billingPage.durableMetricsSendSucceeded24h")}:{" "}
+                      {clearinghouseOpsStatus.durableClearinghouseMetrics.sendAttemptSucceeded24h ?? "—"}
+                    </div>
+                    {typeof clearinghouseOpsStatus.durableClearinghouseMetrics.ackLatencySample7d?.avgAckLatencyMs ===
+                    "number" ? (
+                      <div>
+                        {t("billingPage.durableMetricsAvgAckLatency7d")}:{" "}
+                        {Math.round(clearinghouseOpsStatus.durableClearinghouseMetrics.ackLatencySample7d.avgAckLatencyMs)}{" "}
+                        (n={clearinghouseOpsStatus.durableClearinghouseMetrics.ackLatencySample7d.sampleCount ?? 0})
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 4 }}>
                   {t("billingPage.clearinghouseRetryWorkerEnabledLabel")}:{" "}
                   {clearinghouseOpsStatus.clearinghouseRetryWorkerEnabled
@@ -2734,6 +2793,24 @@ export default function BillingEncounterLedgerPage() {
                                 </div>
                               ))
                             )}
+                            {expandedSubmissionDetail?.id === s.id ? (
+                              <div style={{ marginTop: 8 }}>
+                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("billingPage.operationalTimelineTitle")}</div>
+                                {(submissionOperationalTimeline[s.id]?.length ?? 0) === 0 ? (
+                                  <div style={{ fontSize: 10, color: "#94a3b8" }}>{t("billingPage.operationalTimelineEmpty")}</div>
+                                ) : (
+                                  <div style={{ maxHeight: 220, overflow: "auto", fontSize: 10, color: "#64748b" }}>
+                                    {submissionOperationalTimeline[s.id]!.map((row, idx) => (
+                                      <div key={`${row.at}-${idx}-${row.kind}`} style={{ marginBottom: 4 }}>
+                                        <span style={{ color: "#0f172a" }}>{new Date(row.at).toLocaleString(locale)}</span>
+                                        {" · "}
+                                        {timelineSourceLabel(t, row.source)} — {row.summary}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
                             <div style={{ fontWeight: 600, marginTop: 6, marginBottom: 4 }}>
                               {submissionAckSideSectionLabel(t, s.claimType)}
                             </div>

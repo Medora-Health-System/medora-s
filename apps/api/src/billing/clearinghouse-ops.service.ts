@@ -6,6 +6,7 @@ import { AckSftpPollerService } from "./ack-sftp-poller.service";
 import { ClaimRetryWorkerService } from "./claim-retry-worker.service";
 import { isLatestAttemptDueForWorkerRetry } from "./clearinghouse-retry-policy.util";
 import { ClearinghouseStabilizationService } from "./clearinghouse-stabilization.service";
+import { ClaimClearinghouseObservabilityService } from "./claim-clearinghouse-observability.service";
 
 /**
  * Facility-scoped operational snapshot for clearinghouse send/ACK (no secrets).
@@ -16,7 +17,8 @@ export class ClearinghouseOpsService {
     private readonly prisma: PrismaService,
     private readonly ackSftpPollerService: AckSftpPollerService,
     private readonly claimRetryWorkerService: ClaimRetryWorkerService,
-    private readonly clearinghouseStabilization: ClearinghouseStabilizationService
+    private readonly clearinghouseStabilization: ClearinghouseStabilizationService,
+    private readonly claimClearinghouseObservability: ClaimClearinghouseObservabilityService
   ) {}
 
   async getOpsStatus(facilityId: string) {
@@ -110,6 +112,7 @@ export class ClearinghouseOpsService {
     const rolling = this.clearinghouseStabilization.getRollingSnapshotForFacility(facilityId);
     const stabilizationProcessMetrics = this.clearinghouseStabilization.getMetricsSnapshot();
     const liveSendPacingConfig = this.clearinghouseStabilization.getPacingConfigPublic();
+    const durableClearinghouseMetrics = await this.claimClearinghouseObservability.getFacilityClearinghouseMetrics(facilityId);
 
     return {
       clearinghouseMode: cfg.mode,
@@ -159,6 +162,7 @@ export class ClearinghouseOpsService {
       recentDeadLetterReplays: rolling.recentDeadLetterReplays,
       stabilizationProcessMetrics,
       liveSendPacingConfig,
+      durableClearinghouseMetrics,
     };
   }
 }

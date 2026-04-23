@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { ClaimOperationalEventService } from "./claim-operational-event.service";
 
 function readEnvInt(key: string, defaultValue: number): number {
   try {
@@ -48,6 +49,8 @@ function rollingKindForOutboundBlockCode(code: string): RollingKind | null {
  */
 @Injectable()
 export class ClearinghouseStabilizationService {
+  constructor(private readonly claimOperationalEventService: ClaimOperationalEventService) {}
+
   private readonly facilitySendTimestamps = new Map<string, number[]>();
   private readonly facilityConcurrent = new Map<string, number>();
   private readonly submissionInFlight = new Set<string>();
@@ -168,6 +171,19 @@ export class ClearinghouseStabilizationService {
       this.circuitOpenUntil.set(facilityId, now + cooldown);
       this.circuitReason.set(facilityId, "LIVE_SEND_CIRCUIT_OPEN");
       this.circuitOpenedAt.set(facilityId, now);
+      if (arr.length === threshold) {
+        void this.claimOperationalEventService.append({
+          facilityId,
+          eventType: "LIVE_CIRCUIT_OPENED",
+          reasonCode: "LIVE_SEND_CIRCUIT_OPEN",
+          message: "Live outbound circuit opened",
+          metadata: {
+            failureCountInWindow: arr.length,
+            windowMs,
+            cooldownMs: cooldown,
+          },
+        });
+      }
     }
   }
 

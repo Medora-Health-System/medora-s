@@ -10,6 +10,7 @@ import { ClaimTransmissionService } from "../billing/claim-transmission.service"
 import { displayAckSourceFromParsedJson } from "../billing/ack-inbound-parse.util";
 import { ClaimAcknowledgmentService } from "../billing/claim-acknowledgment.service";
 import { ClearinghouseOpsService } from "../billing/clearinghouse-ops.service";
+import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearinghouse-observability.service";
 import type { ClearinghouseTransportHint } from "../billing/clearinghouse-config.util";
 import { RoleCode, OrderStatus } from "@prisma/client";
 
@@ -24,7 +25,8 @@ export class QueuesController {
     private readonly claimSubmissionService: ClaimSubmissionService,
     private readonly claimTransmissionService: ClaimTransmissionService,
     private readonly claimAcknowledgmentService: ClaimAcknowledgmentService,
-    private readonly clearinghouseOpsService: ClearinghouseOpsService
+    private readonly clearinghouseOpsService: ClearinghouseOpsService,
+    private readonly claimClearinghouseObservabilityService: ClaimClearinghouseObservabilityService
   ) {}
 
   @Get("radiology/queue")
@@ -111,6 +113,20 @@ export class QueuesController {
     return this.claimTransmissionService.getEncounterSubmissionDebug(facilityId, encounterId);
   }
 
+  @Get("billing/encounters/:encounterId/claim-ops")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getEncounterClaimOps(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimClearinghouseObservabilityService.getEncounterClaimOps(facilityId, encounterId);
+  }
+
+  @Get("billing/submissions/:submissionId/timeline")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getSubmissionOperationalTimeline(@Param("submissionId") submissionId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimClearinghouseObservabilityService.getSubmissionTimeline(facilityId, submissionId);
+  }
+
   @Get("billing/submissions/:submissionId/lifecycle-debug")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getSubmissionLifecycleDebug(@Param("submissionId") submissionId: string, @Req() req: any) {
@@ -144,6 +160,28 @@ export class QueuesController {
   async getClearinghouseHealth(@Req() req: any) {
     const facilityId = req.facilityId;
     return this.clearinghouseOpsService.getOpsStatus(facilityId);
+  }
+
+  @Get("billing/clearinghouse/metrics")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getClearinghouseDurableMetrics(@Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.claimClearinghouseObservabilityService.getFacilityClearinghouseMetrics(facilityId);
+  }
+
+  @Get("billing/clearinghouse/recent-events")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getClearinghouseRecentEvents(
+    @Req() req: any,
+    @Query("take") take?: string,
+    @Query("encounterId") encounterId?: string
+  ) {
+    const facilityId = req.facilityId;
+    const takeRaw = take !== undefined ? Number(take) : undefined;
+    return this.claimClearinghouseObservabilityService.getRecentOperationalEvents(facilityId, {
+      take: takeRaw !== undefined && Number.isFinite(takeRaw) ? takeRaw : undefined,
+      encounterId: encounterId?.trim() || undefined,
+    });
   }
 
   @Get("billing/clearinghouse/ack-dead-letters")

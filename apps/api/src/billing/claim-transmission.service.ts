@@ -30,6 +30,9 @@ import {
   stabilizationResponseFlagsForCode,
 } from "./claim-send-idempotency.util";
 import { ClearinghouseStabilizationService } from "./clearinghouse-stabilization.service";
+import { operationalEventTypeForOutboundBlockCode } from "./claim-operational-event.constants";
+import { ClaimOperationalEventService } from "./claim-operational-event.service";
+import type { AppendClaimOperationalEventInput } from "./claim-operational-event.service";
 
 export type TransportKind = ClearinghouseTransportHint;
 
@@ -81,7 +84,8 @@ export class ClaimTransmissionService {
     private readonly prisma: PrismaService,
     private readonly clearinghouseTransportFactory: ClearinghouseTransportFactory,
     private readonly claimExportService: ClaimExportService,
-    private readonly clearinghouseStabilization: ClearinghouseStabilizationService
+    private readonly clearinghouseStabilization: ClearinghouseStabilizationService,
+    private readonly claimOperationalEventService: ClaimOperationalEventService
   ) {}
 
   private submissionGateScopeForKind(claimType: ClaimSubmissionKind): SubmissionGateScope {
@@ -302,7 +306,7 @@ export class ClaimTransmissionService {
     if (!opts.allowNonReady && submission.status !== ClaimSubmissionStatus.READY_TO_SEND) {
       const skipReason = sendSkipReason(submission.status);
       const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
-      await this.prisma.claimSubmissionAttempt.create({
+      const att = await this.prisma.claimSubmissionAttempt.create({
         data: {
           submissionId,
           transport: transport.key,
@@ -319,6 +323,18 @@ export class ClaimTransmissionService {
           }) as Prisma.InputJsonValue,
           responseMetaJson: scrubRecordForPersistence({ currentStatus: submission.status }) as Prisma.InputJsonValue,
           errorMessage: skipReason,
+        },
+      });
+      this.emitSubmissionOperational(submission, {
+        eventType: skipReason === "DUPLICATE_SEND_BLOCKED" ? "SEND_BLOCKED_DUPLICATE" : "SEND_ATTEMPT_FAILED",
+        statusBefore: submission.status,
+        statusAfter: submission.status,
+        reasonCode: skipReason,
+        message: skipReason,
+        metadata: {
+          attemptId: att.id,
+          transport: transport.key,
+          attemptTrigger: opts.attemptTrigger ?? null,
         },
       });
       return {
@@ -349,7 +365,7 @@ export class ClaimTransmissionService {
     if (!submissionGate.allowed) {
       const skipReason = opts.retryFlow ? "RETRY_SKIPPED_CLAIM_NOT_READY" : "SEND_BLOCKED_CLAIM_NOT_READY";
       const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
-      await this.prisma.claimSubmissionAttempt.create({
+      const att = await this.prisma.claimSubmissionAttempt.create({
         data: {
           submissionId,
           transport: transport.key,
@@ -373,6 +389,19 @@ export class ClaimTransmissionService {
             gate: submissionGate,
           }) as Prisma.InputJsonValue,
           errorMessage: skipReason,
+        },
+      });
+      this.emitSubmissionOperational(submission, {
+        eventType: opts.retryFlow ? "RETRY_SKIPPED" : "SEND_ATTEMPT_FAILED",
+        statusBefore: submission.status,
+        statusAfter: submission.status,
+        reasonCode: skipReason,
+        message: skipReason,
+        metadata: {
+          attemptId: att.id,
+          transport: transport.key,
+          submissionGateReasonCode: submissionGate.reasonCode,
+          attemptTrigger: opts.attemptTrigger ?? null,
         },
       });
       return {
@@ -406,7 +435,7 @@ export class ClaimTransmissionService {
       const skipReason = idemp.code;
       this.clearinghouseStabilization.recordOutboundDuplicateSendDbBlock(submission.facilityId);
       const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
-      await this.prisma.claimSubmissionAttempt.create({
+      const att = await this.prisma.claimSubmissionAttempt.create({
         data: {
           submissionId,
           transport: transport.key,
@@ -423,6 +452,14 @@ export class ClaimTransmissionService {
           responseMetaJson: scrubRecordForPersistence({ currentStatus: submission.status }) as Prisma.InputJsonValue,
           errorMessage: skipReason,
         },
+      });
+      this.emitSubmissionOperational(submission, {
+        eventType: "SEND_BLOCKED_DUPLICATE",
+        statusBefore: submission.status,
+        statusAfter: submission.status,
+        reasonCode: skipReason,
+        message: skipReason,
+        metadata: { attemptId: att.id, transport: transport.key, blockSource: "idempotency" },
       });
       return {
         submissionId,
@@ -452,7 +489,7 @@ export class ClaimTransmissionService {
     if (!slot.allowed) {
       const skipReason = slot.code;
       const skipClass = classifyOutboundAttemptFailure({ ok: false, skipped: true, skipReason });
-      await this.prisma.claimSubmissionAttempt.create({
+      const att = await this.prisma.claimSubmissionAttempt.create({
         data: {
           submissionId,
           transport: transport.key,
@@ -469,6 +506,14 @@ export class ClaimTransmissionService {
           responseMetaJson: scrubRecordForPersistence({ currentStatus: submission.status }) as Prisma.InputJsonValue,
           errorMessage: skipReason,
         },
+      });
+      this.emitSubmissionOperational(submission, {
+        eventType: operationalEventTypeForOutboundBlockCode(skipReason),
+        statusBefore: submission.status,
+        statusAfter: submission.status,
+        reasonCode: skipReason,
+        message: skipReason,
+        metadata: { attemptId: att.id, transport: transport.key, blockSource: "pacing" },
       });
       return {
         submissionId,
@@ -494,6 +539,16 @@ export class ClaimTransmissionService {
     try {
       const priorRetryEligibleFailures = await this.prisma.claimSubmissionAttempt.count({
         where: { submissionId, ok: false, retryEligible: true },
+      });
+
+      this.emitSubmissionOperational(submission, {
+        eventType: "SEND_ATTEMPT_STARTED",
+        statusBefore: submission.status,
+        statusAfter: submission.status,
+        metadata: {
+          transport: transport.key,
+          attemptTrigger: opts.attemptTrigger ?? null,
+        },
       });
 
       const result = await transport.send({
@@ -574,6 +629,34 @@ export class ClaimTransmissionService {
         },
       });
 
+      this.emitSubmissionOperational(submission, {
+        eventType: result.ok ? "SEND_ATTEMPT_SUCCEEDED" : "SEND_ATTEMPT_FAILED",
+        statusBefore: submission.status,
+        statusAfter: updated.status,
+        reasonCode: failureCode,
+        message: result.errorMessage ?? (result.ok ? null : failureCode),
+        metadata: {
+          attemptId: attempt.id,
+          transport: transport.key,
+          retryEligible,
+          nextRetryAt: nextRetryAt?.toISOString() ?? null,
+          attemptTrigger: opts.attemptTrigger ?? null,
+        },
+      });
+      if (!result.ok && nextRetryAt) {
+        this.emitSubmissionOperational(submission, {
+          eventType: "RETRY_SCHEDULED",
+          statusBefore: updated.status,
+          statusAfter: updated.status,
+          reasonCode: failureCode,
+          metadata: {
+            attemptId: attempt.id,
+            nextRetryAt: nextRetryAt.toISOString(),
+            transport: transport.key,
+          },
+        });
+      }
+
       return {
         submissionId,
         claimType: submission.claimType,
@@ -633,6 +716,27 @@ export class ClaimTransmissionService {
       allowNonReady: false,
       attemptTrigger: opts?.attemptTrigger ?? "MANUAL",
       retryFlow: true,
+    });
+  }
+
+  private emitSubmissionOperational(
+    submission: {
+      id: string;
+      facilityId: string;
+      encounterId: string;
+      claimType: ClaimSubmissionKind;
+      batchId: string | null;
+      status: ClaimSubmissionStatus;
+    },
+    partial: Omit<AppendClaimOperationalEventInput, "facilityId" | "encounterId" | "submissionId" | "batchId" | "claimType">
+  ): void {
+    void this.claimOperationalEventService.append({
+      facilityId: submission.facilityId,
+      encounterId: submission.encounterId,
+      submissionId: submission.id,
+      batchId: submission.batchId,
+      claimType: submission.claimType,
+      ...partial,
     });
   }
 }
