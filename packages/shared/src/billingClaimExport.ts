@@ -50,6 +50,16 @@ export type ClaimExportLine = {
   modifier1?: string | null;
   modifier2?: string | null;
   revenueCode?: string | null;
+  /** ER-3: optional medication coding context retained for future claim formatting (no payer logic yet). */
+  medicationBillingDetails?: {
+    ndc11?: string | null;
+    ndcDisplay?: string | null;
+    doseValue?: number | null;
+    doseUnit?: string | null;
+    administeredQuantity?: number | null;
+    billingQuantity?: number | null;
+    quantityUnit?: string | null;
+  } | null;
 };
 
 export type ClaimExportPackage = {

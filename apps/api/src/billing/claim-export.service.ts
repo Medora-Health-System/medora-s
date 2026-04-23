@@ -72,6 +72,7 @@ function mapClaimLinesToExport(
       modifier1: mods?.modifier1?.trim() ? mods.modifier1 : null,
       modifier2: mods?.modifier2?.trim() ? mods.modifier2 : null,
       revenueCode: mods?.revenueCode?.trim() ? mods.revenueCode : null,
+      medicationBillingDetails: line.medicationBillingDetails ?? null,
     });
   }
   return out;

@@ -101,6 +101,10 @@ export default function DepartmentOrderDetail({
   const [dispenseQty, setDispenseQty] = useState("1");
   const [dispenseInstr, setDispenseInstr] = useState("");
   const [dispenseNotes, setDispenseNotes] = useState("");
+  const [dispenseDoseValue, setDispenseDoseValue] = useState("");
+  const [dispenseDoseUnit, setDispenseDoseUnit] = useState("");
+  const [dispenseBillingQty, setDispenseBillingQty] = useState("");
+  const [dispenseNdc, setDispenseNdc] = useState("");
   const [dispenseBusy, setDispenseBusy] = useState(false);
 
   const labels = useMemo(() => {
@@ -194,6 +198,10 @@ export default function DepartmentOrderDetail({
     setDispenseQty(String(item.quantity ?? 1));
     setDispenseInstr(((item.notes as string) || "").trim());
     setDispenseNotes("");
+    setDispenseDoseValue("");
+    setDispenseDoseUnit((item.catalogMedication?.billingUnitType as string) || "");
+    setDispenseBillingQty("");
+    setDispenseNdc((item.catalogMedication?.ndcDisplay as string) || (item.catalogMedication?.ndc11 as string) || "");
   };
 
   const submitDispense = async () => {
@@ -215,6 +223,11 @@ export default function DepartmentOrderDetail({
         body: JSON.stringify({
           orderItemId: dispenseItem.id,
           quantityDispensed: q,
+          doseValue: dispenseDoseValue.trim() ? Number(dispenseDoseValue) : undefined,
+          doseUnit: dispenseDoseUnit.trim() || undefined,
+          billingQuantity: dispenseBillingQty.trim() ? Number(dispenseBillingQty) : undefined,
+          quantityUnit: dispenseDoseUnit.trim() || undefined,
+          ndc: dispenseNdc.trim() || undefined,
           dosageInstructions: dispenseInstr.trim() || undefined,
           notes: dispenseNotes.trim() || undefined,
         }),
@@ -425,6 +438,47 @@ export default function DepartmentOrderDetail({
               />
             </label>
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
+              {t("orderDetail.ndcLabel")}
+              <input
+                type="text"
+                value={dispenseNdc}
+                onChange={(e) => setDispenseNdc(e.target.value)}
+                style={{ display: "block", marginTop: 4, padding: 8, width: "100%", boxSizing: "border-box" }}
+              />
+            </label>
+            <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
+              {t("orderDetail.doseFields")}
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.0001"
+                  value={dispenseDoseValue}
+                  onChange={(e) => setDispenseDoseValue(e.target.value)}
+                  placeholder={t("orderDetail.doseValuePlaceholder")}
+                  style={{ flex: 1, padding: 8, boxSizing: "border-box" }}
+                />
+                <input
+                  type="text"
+                  value={dispenseDoseUnit}
+                  onChange={(e) => setDispenseDoseUnit(e.target.value)}
+                  placeholder={t("orderDetail.doseUnitPlaceholder")}
+                  style={{ flex: 1, padding: 8, boxSizing: "border-box" }}
+                />
+              </div>
+            </label>
+            <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
+              {t("orderDetail.billingQuantity")}
+              <input
+                type="number"
+                min={0}
+                step="0.0001"
+                value={dispenseBillingQty}
+                onChange={(e) => setDispenseBillingQty(e.target.value)}
+                style={{ display: "block", marginTop: 4, padding: 8, width: "100%", boxSizing: "border-box" }}
+              />
+            </label>
+            <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
               {t("orderDetail.posologyReminder")}
               <textarea
                 value={dispenseInstr}
@@ -433,6 +487,9 @@ export default function DepartmentOrderDetail({
                 style={{ display: "block", marginTop: 4, padding: 8, width: "100%", boxSizing: "border-box" }}
               />
             </label>
+            {!dispenseItem.catalogMedication ? (
+              <p style={{ marginTop: 10, fontSize: 12, color: "#b71c1c" }}>{t("orderDetail.manualMedicationWarning")}</p>
+            ) : null}
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
               {t("orderDetail.pharmacyNotes")}
               <textarea

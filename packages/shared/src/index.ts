@@ -18,4 +18,5 @@ export * from "./icd10FormatGuardrail.js";
 export * from "./claimDiagnosisCodes.js";
 export * from "./diagnosisPointerIndex.js";
 export * from "./procedureCodeFormatGuardrail.js";
+export * from "./ndcNormalize.js";
 

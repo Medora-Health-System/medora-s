@@ -46,6 +46,8 @@ export function mapMedicationToCatalogSearchItem(
       strength: m.strength ?? undefined,
       dosageForm: m.dosageForm ?? undefined,
       route: m.route ?? undefined,
+      ndc11: m.ndc11 ?? undefined,
+      billingUnitType: m.billingUnitType ?? undefined,
     },
   };
 }

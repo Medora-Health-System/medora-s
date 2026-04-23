@@ -16,6 +16,8 @@ export type CatalogSearchItem = {
     strength?: string;
     dosageForm?: string;
     route?: string;
+    ndc11?: string;
+    billingUnitType?: string;
     category?: string;
     modality?: string;
     bodyRegion?: string;

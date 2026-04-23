@@ -1,0 +1,4 @@
+code,name,ndc,billing_unit_type,billing_code_default,route,strength,is_active
+CEFTRIAXONE_1G_INJECTABLE_INJECTION,ceftriaxone,60505012510,mg,J0696,injectable,1 g,true
+ONDANSETRON_4MG_2ML_INJECTABLE_INJECTION,ondansetron,55150011801,mg,J2405,injectable,4 mg/2 mL,true
+DEXAMETHASONE_4MG_1ML_INJECTABLE_INJECTION,dexamethasone,63323016511,mg,J1100,injectable,4 mg/1 mL,true

@@ -26,7 +26,12 @@ type OrderItemApi = {
   medicationFulfillmentIntent?: string | null;
   status?: string | null;
   intendedAdministrationAt?: string | null;
-  catalogMedication?: { route?: string | null } | null;
+  catalogMedication?: {
+    route?: string | null;
+    ndc11?: string | null;
+    ndcDisplay?: string | null;
+    billingUnitType?: string | null;
+  } | null;
 };
 
 const RECENT_MS = 24 * 60 * 60 * 1000;
@@ -140,10 +145,17 @@ export function MedicationAdministrationTab({
     orderItemId: string;
     label: string;
     routeHint: string;
+    ndcHint: string;
+    billingUnitHint: string;
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
   const [modalNotes, setModalNotes] = useState("");
+  const [modalDoseValue, setModalDoseValue] = useState("");
+  const [modalDoseUnit, setModalDoseUnit] = useState("");
+  const [modalAdminQty, setModalAdminQty] = useState("");
+  const [modalBillingQty, setModalBillingQty] = useState("");
+  const [modalNdc, setModalNdc] = useState("");
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -203,6 +215,8 @@ export function MedicationAdministrationTab({
       orderItemId: string;
       label: string;
       routeHint: string;
+      ndcHint: string;
+      billingUnitHint: string;
       intendedAt?: string | null;
     }[] = [];
     for (const order of orders) {
@@ -220,6 +234,8 @@ export function MedicationAdministrationTab({
             t
           ),
           routeHint: it.catalogMedication?.route?.trim() || "",
+          ndcHint: it.catalogMedication?.ndcDisplay?.trim() || it.catalogMedication?.ndc11?.trim() || "",
+          billingUnitHint: it.catalogMedication?.billingUnitType?.trim() || "",
           intendedAt: it.intendedAdministrationAt ?? null,
         });
       }
@@ -232,10 +248,17 @@ export function MedicationAdministrationTab({
       orderItemId: row.orderItemId,
       label: row.label,
       routeHint: row.routeHint,
+      ndcHint: row.ndcHint,
+      billingUnitHint: row.billingUnitHint,
     });
     setModalAction("administered");
     setModalRoute(row.routeHint);
     setModalNotes("");
+    setModalDoseValue("");
+    setModalDoseUnit(row.billingUnitHint);
+    setModalAdminQty("");
+    setModalBillingQty("");
+    setModalNdc(row.ndcHint);
   };
 
   const closeModal = () => {
@@ -259,6 +282,12 @@ export function MedicationAdministrationTab({
         orderItemId,
         administeredAt: new Date().toISOString(),
         ...(routeLine ? { route: routeLine } : {}),
+        ...(modalDoseValue.trim() ? { doseValue: Number(modalDoseValue) } : {}),
+        ...(modalDoseUnit.trim() ? { doseUnit: modalDoseUnit.trim() } : {}),
+        ...(modalAdminQty.trim() ? { administeredQuantity: Number(modalAdminQty) } : {}),
+        ...(modalBillingQty.trim() ? { billingQuantity: Number(modalBillingQty) } : {}),
+        ...(modalNdc.trim() ? { ndc: modalNdc.trim() } : {}),
+        ...(modalDoseUnit.trim() ? { quantityUnit: modalDoseUnit.trim() } : {}),
         notes: buildMarNotes(modalAction, routeLine, modalNotes, t),
       };
       const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
@@ -584,6 +613,70 @@ export function MedicationAdministrationTab({
                 boxSizing: "border-box",
               }}
             />
+
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+              {t("marTab.ndcLabel")}
+            </label>
+            <input
+              type="text"
+              value={modalNdc}
+              onChange={(e) => setModalNdc(e.target.value)}
+              placeholder={modalItem.ndcHint || t("marTab.ndcPlaceholder")}
+              disabled={submitting}
+              style={{
+                width: "100%",
+                padding: 12,
+                marginBottom: 14,
+                borderRadius: 8,
+                border: "1px solid #ccc",
+                fontSize: 16,
+                boxSizing: "border-box",
+              }}
+            />
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <input
+                type="number"
+                min={0}
+                step="0.0001"
+                value={modalDoseValue}
+                onChange={(e) => setModalDoseValue(e.target.value)}
+                placeholder={t("marTab.doseValuePlaceholder")}
+                disabled={submitting}
+                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
+              />
+              <input
+                type="text"
+                value={modalDoseUnit}
+                onChange={(e) => setModalDoseUnit(e.target.value)}
+                placeholder={modalItem.billingUnitHint || t("marTab.doseUnitPlaceholder")}
+                disabled={submitting}
+                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <input
+                type="number"
+                min={0}
+                step="0.0001"
+                value={modalAdminQty}
+                onChange={(e) => setModalAdminQty(e.target.value)}
+                placeholder={t("marTab.adminQuantityPlaceholder")}
+                disabled={submitting}
+                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
+              />
+              <input
+                type="number"
+                min={0}
+                step="0.0001"
+                value={modalBillingQty}
+                onChange={(e) => setModalBillingQty(e.target.value)}
+                placeholder={t("marTab.billingQuantityPlaceholder")}
+                disabled={submitting}
+                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
+              />
+            </div>
 
             <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.actionHeading")}

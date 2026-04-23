@@ -4,7 +4,16 @@ import type { OrderItemCreateDto, OrderCreateDto } from "@medora/shared";
 /** Catalog fields attached to MEDICATION order items after enrichment. */
 export type CatalogMedicationEnrichment = Pick<
   CatalogMedication,
-  "id" | "code" | "name" | "displayNameFr" | "strength" | "dosageForm" | "route"
+  | "id"
+  | "code"
+  | "name"
+  | "displayNameFr"
+  | "strength"
+  | "dosageForm"
+  | "route"
+  | "ndc11"
+  | "ndcDisplay"
+  | "billingUnitType"
 >;
 
 export type CatalogLabTestEnrichment = {

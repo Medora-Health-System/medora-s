@@ -91,6 +91,9 @@ const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
   strength: true,
   dosageForm: true,
   route: true,
+  ndc11: true,
+  ndcDisplay: true,
+  billingUnitType: true,
 } as const;
 
 const CATALOG_LAB_SELECT = {

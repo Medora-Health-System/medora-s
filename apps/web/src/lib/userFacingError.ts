@@ -188,6 +188,11 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     fr: "Cet acte est déjà enregistré pour cette consultation.",
     en: "This procedure is already recorded for this encounter.",
   },
+  {
+    test: (s) => /INVALID_NDC_FORMAT/i.test(s),
+    fr: "Le format NDC est invalide. Utilisez 11 chiffres ou un format avec tirets.",
+    en: "Invalid NDC format. Use 11 digits or a supported dashed format.",
+  },
 ];
 
 /**

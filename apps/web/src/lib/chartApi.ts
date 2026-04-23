@@ -55,6 +55,12 @@ export type ChartEncounterMedicationDispense = {
   id: string;
   encounterId: string;
   quantityDispensed: number;
+  doseValue?: number | null;
+  doseUnit?: string | null;
+  billingQuantity?: number | null;
+  quantityUnit?: string | null;
+  ndc11Snapshot?: string | null;
+  ndcDisplaySnapshot?: string | null;
   dosageInstructions: string | null;
   dispensedAt: string;
   catalogMedication: { code: string; name: string; displayNameFr?: string | null };
@@ -152,6 +158,12 @@ export type ChartSummary = {
     id: string;
     encounterId: string;
     quantityDispensed: number;
+    doseValue?: number | null;
+    doseUnit?: string | null;
+    billingQuantity?: number | null;
+    quantityUnit?: string | null;
+    ndc11Snapshot?: string | null;
+    ndcDisplaySnapshot?: string | null;
     dosageInstructions: string | null;
     dispensedAt: string;
     catalogMedication: { code: string; name: string; displayNameFr?: string | null };

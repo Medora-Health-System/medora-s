@@ -3,7 +3,7 @@ import { AuditAction, type OrderItem } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import type { MedicationAdministrationCreateDto } from "@medora/shared";
-import { buildMedicationAdministrationCandidate } from "@medora/shared";
+import { buildMedicationAdministrationCandidate, normalizeNdc } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
@@ -78,6 +78,14 @@ export class MedicationAdministrationService {
     let orderItemId: string | null = data.orderItemId ?? null;
     let medicationLabelSnapshot: string | null = null;
     let orderIdForAudit: string | undefined;
+    let catalogMedication: {
+      displayNameFr: string | null;
+      name: string | null;
+      strength: string | null;
+      ndc11: string | null;
+      ndcDisplay: string | null;
+      billingUnitType: string | null;
+    } | null = null;
     if (orderItemId) {
       const item = await this.prisma.orderItem.findFirst({
         where: { id: orderItemId },
@@ -96,17 +104,40 @@ export class MedicationAdministrationService {
         throw new BadRequestException("La ligne doit être un médicament.");
       }
       assertParentOrderNotCancelled(item.order.status);
-      let catalogMedication: { displayNameFr: string | null; name: string | null; strength: string | null } | null =
-        null;
       if (item.catalogItemId) {
         catalogMedication = await this.prisma.catalogMedication.findUnique({
           where: { id: item.catalogItemId },
-          select: { displayNameFr: true, name: true, strength: true },
+          select: {
+            displayNameFr: true,
+            name: true,
+            strength: true,
+            ndc11: true,
+            ndcDisplay: true,
+            billingUnitType: true,
+          },
         });
       }
       medicationLabelSnapshot = this.medicationLabelSnapshotFromMedicationOrderItem(item, catalogMedication);
       orderIdForAudit = item.order.id;
     }
+
+    const normalizedInputNdc = data.ndc?.trim() ? normalizeNdc(data.ndc) : null;
+    if (normalizedInputNdc && !normalizedInputNdc.ok) {
+      throw new BadRequestException("INVALID_NDC_FORMAT");
+    }
+
+    const doseValue = data.doseValue ?? null;
+    const doseUnit = data.doseUnit?.trim() || null;
+    const administeredQuantity = data.administeredQuantity ?? null;
+    const billingQuantity = data.billingQuantity ?? administeredQuantity ?? null;
+    const quantityUnit = data.quantityUnit?.trim() || null;
+    const ndc11Snapshot = normalizedInputNdc?.ok
+      ? normalizedInputNdc.ndc11
+      : catalogMedication?.ndc11?.trim() || null;
+    const ndcDisplaySnapshot = normalizedInputNdc?.ok
+      ? normalizedInputNdc.ndcDisplay
+      : catalogMedication?.ndcDisplay?.trim() || null;
+    const candidateQuantityUnit = quantityUnit || catalogMedication?.billingUnitType?.trim() || null;
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.medicationAdministration.create({
@@ -117,6 +148,13 @@ export class MedicationAdministrationService {
           orderItemId,
           medicationLabelSnapshot,
           route: data.route?.trim() ? data.route.trim() : null,
+          doseValue,
+          doseUnit,
+          administeredQuantity,
+          billingQuantity,
+          quantityUnit: candidateQuantityUnit,
+          ndc11Snapshot,
+          ndcDisplaySnapshot,
           administeredAt: data.administeredAt ?? new Date(),
           administeredByUserId,
           notes: data.notes?.trim() ? data.notes.trim() : null,
@@ -154,6 +192,14 @@ export class MedicationAdministrationService {
         facilityId,
         medicationLabel: medLabel,
         atIso,
+        ndc11: created.ndc11Snapshot,
+        ndcDisplay: created.ndcDisplaySnapshot,
+        doseValue: created.doseValue != null ? Number(created.doseValue) : null,
+        doseUnit: created.doseUnit,
+        administeredQuantity:
+          created.administeredQuantity != null ? Number(created.administeredQuantity) : null,
+        billingQuantity: created.billingQuantity != null ? Number(created.billingQuantity) : null,
+        quantityUnit: created.quantityUnit,
         createdByUserId: administeredByUserId,
       })
     );

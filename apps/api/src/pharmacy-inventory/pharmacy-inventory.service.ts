@@ -17,7 +17,7 @@ import type {
   ListInventoryFiltersDto,
   RecordOrderDispenseDto,
 } from "./dto";
-import { buildMedicationDispenseCandidate } from "@medora/shared";
+import { buildMedicationDispenseCandidate, normalizeNdc } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 
 const inventoryItemInclude = {
@@ -57,6 +57,9 @@ export class PharmacyInventoryService {
         strength: true,
         dosageForm: true,
         route: true,
+        ndc11: true,
+        ndcDisplay: true,
+        billingUnitType: true,
       },
     });
   }
@@ -275,6 +278,12 @@ export class PharmacyInventoryService {
     assertEncounterNotSigned(encounter);
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const normalizedInputNdc = dto.ndc?.trim() ? normalizeNdc(dto.ndc) : null;
+      if (normalizedInputNdc && !normalizedInputNdc.ok) {
+        throw new BadRequestException("INVALID_NDC_FORMAT");
+      }
+      const quantityUnit = dto.quantityUnit?.trim() || item.catalogMedication.billingUnitType?.trim() || null;
+      const billingQuantity = dto.billingQuantity ?? dto.quantityDispensed;
       const updated = await tx.inventoryItem.update({
         where: { id: dto.inventoryItemId },
         data: { quantityOnHand: { decrement: dto.quantityDispensed } },
@@ -308,6 +317,13 @@ export class PharmacyInventoryService {
           catalogMedicationId: item.catalogMedicationId,
           inventoryItemId: dto.inventoryItemId,
           quantityDispensed: dto.quantityDispensed,
+          doseValue: dto.doseValue ?? null,
+          doseUnit: dto.doseUnit?.trim() || null,
+          billingQuantity,
+          quantityUnit,
+          ndc11Snapshot: normalizedInputNdc?.ok ? normalizedInputNdc.ndc11 : item.catalogMedication.ndc11,
+          ndcDisplaySnapshot:
+            normalizedInputNdc?.ok ? normalizedInputNdc.ndcDisplay : item.catalogMedication.ndcDisplay,
           dosageInstructions: dto.dosageInstructions ?? undefined,
           dispensedByUserId: userId,
           notes: dto.notes ?? undefined,
@@ -362,6 +378,12 @@ export class PharmacyInventoryService {
         quantity: dto.quantityDispensed,
         medicationLabel: medName,
         atIso: dispAt,
+        ndc11: result.dispense.ndc11Snapshot,
+        ndcDisplay: result.dispense.ndcDisplaySnapshot,
+        doseValue: result.dispense.doseValue != null ? Number(result.dispense.doseValue) : null,
+        doseUnit: result.dispense.doseUnit,
+        billingQuantity: result.dispense.billingQuantity != null ? Number(result.dispense.billingQuantity) : null,
+        quantityUnit: result.dispense.quantityUnit,
         createdByUserId: userId ?? null,
       })
     );
@@ -413,6 +435,21 @@ export class PharmacyInventoryService {
       throw new BadRequestException("Ligne sans référence catalogue ni libellé manuel.");
     }
 
+    const normalizedInputNdc = dto.ndc?.trim() ? normalizeNdc(dto.ndc) : null;
+    if (normalizedInputNdc && !normalizedInputNdc.ok) {
+      throw new BadRequestException("INVALID_NDC_FORMAT");
+    }
+
+    let orderCatalogMedication: { ndc11: string | null; ndcDisplay: string | null; billingUnitType: string | null } | null = null;
+    if (orderItem.catalogItemId) {
+      orderCatalogMedication = await this.prisma.catalogMedication.findUnique({
+        where: { id: orderItem.catalogItemId },
+        select: { ndc11: true, ndcDisplay: true, billingUnitType: true },
+      });
+    }
+    const quantityUnit = dto.quantityUnit?.trim() || orderCatalogMedication?.billingUnitType?.trim() || null;
+    const billingQuantity = dto.billingQuantity ?? dto.quantityDispensed;
+
     const dispense = await this.prisma.$transaction(async (tx) => {
       const d = await tx.medicationDispense.create({
         data: {
@@ -424,6 +461,15 @@ export class PharmacyInventoryService {
           inventoryItemId: null,
           orderItemId: orderItem.id,
           quantityDispensed: dto.quantityDispensed,
+          doseValue: dto.doseValue ?? null,
+          doseUnit: dto.doseUnit?.trim() || null,
+          billingQuantity,
+          quantityUnit,
+          ndc11Snapshot: normalizedInputNdc?.ok ? normalizedInputNdc.ndc11 : orderCatalogMedication?.ndc11 || null,
+          ndcDisplaySnapshot:
+            normalizedInputNdc?.ok
+              ? normalizedInputNdc.ndcDisplay
+              : orderCatalogMedication?.ndcDisplay || null,
           dosageInstructions: dto.dosageInstructions ?? undefined,
           notes: dto.notes ?? undefined,
           dispensedByUserId: userId,
@@ -472,6 +518,12 @@ export class PharmacyInventoryService {
         quantity: dto.quantityDispensed,
         medicationLabel: medName,
         atIso: dispAt,
+        ndc11: dispense.ndc11Snapshot,
+        ndcDisplay: dispense.ndcDisplaySnapshot,
+        doseValue: dispense.doseValue != null ? Number(dispense.doseValue) : null,
+        doseUnit: dispense.doseUnit,
+        billingQuantity: dispense.billingQuantity != null ? Number(dispense.billingQuantity) : null,
+        quantityUnit: dispense.quantityUnit,
         createdByUserId: userId,
       })
     );

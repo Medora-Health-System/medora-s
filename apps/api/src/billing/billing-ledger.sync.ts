@@ -105,6 +105,13 @@ export async function upsertBillingEventFromCaptureItem(db: BillingDb, item: Bil
     catalogLabel: item.catalogLabel?.trim() ?? null,
     procedureCatalogId: item.procedureCatalogId?.trim() ?? null,
     procedureManualNonCatalog: item.procedureManualNonCatalog === true,
+    ndc11: item.ndc11?.trim() ?? null,
+    ndcDisplay: item.ndcDisplay?.trim() ?? null,
+    doseValue: item.doseValue ?? null,
+    doseUnit: item.doseUnit?.trim() ?? null,
+    administeredQuantity: item.administeredQuantity ?? null,
+    billingQuantity: item.billingQuantity ?? null,
+    quantityUnit: item.quantityUnit?.trim() ?? null,
   };
 
   try {

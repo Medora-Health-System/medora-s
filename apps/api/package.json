@@ -24,7 +24,8 @@
     "billing:recode-unmapped": "ts-node --transpile-only scripts/recode-unmapped-billing-events.ts",
     "backfill:mar-route-from-catalog": "ts-node --transpile-only scripts/backfill-mar-route-from-catalog.ts",
     "import:icd10-catalog": "ts-node --transpile-only scripts/import-icd10-catalog.ts",
-    "import:billing-procedure-codes": "ts-node --transpile-only scripts/import-billing-procedure-codes.ts"
+    "import:billing-procedure-codes": "ts-node --transpile-only scripts/import-billing-procedure-codes.ts",
+    "import:medication-billing-catalog": "ts-node --transpile-only scripts/import-medication-billing-catalog.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

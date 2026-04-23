@@ -64,6 +64,20 @@ export type BillingCaptureItem = {
   procedureCatalogId?: string | null;
   /** ER-2: explicit manual procedure path (not reference-validated). */
   procedureManualNonCatalog?: boolean;
+  /** ER-3: normalized medication NDC (11 digits) when available. */
+  ndc11?: string | null;
+  /** ER-3: display-form NDC snapshot as entered/shown at capture time. */
+  ndcDisplay?: string | null;
+  /** ER-3: administered/dispensed dose amount value (not payer-specific units). */
+  doseValue?: number | null;
+  /** ER-3: dose unit string (mg, mL, unit, each, etc.). */
+  doseUnit?: string | null;
+  /** ER-3: quantity administered at bedside (clinical quantity). */
+  administeredQuantity?: number | null;
+  /** ER-3: quantity captured for billing math (defaults may differ later by payer). */
+  billingQuantity?: number | null;
+  /** ER-3: quantity unit label (mL, tablet, vial, each). */
+  quantityUnit?: string | null;
   createdAt: string;
   createdByUserId?: string | null;
 };
@@ -197,6 +211,31 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
     const procCatId = trimStr(r.procedureCatalogId, 64);
     if (procCatId) item.procedureCatalogId = procCatId;
     if (r.procedureManualNonCatalog === true) item.procedureManualNonCatalog = true;
+    if (typeof r.ndc11 === "string") {
+      const ndc11 = trimStr(r.ndc11, 11);
+      item.ndc11 = ndc11 ?? null;
+    }
+    if (typeof r.ndcDisplay === "string") {
+      const ndcDisplay = trimStr(r.ndcDisplay, 32);
+      item.ndcDisplay = ndcDisplay ?? null;
+    }
+    if (typeof r.doseValue === "number" && Number.isFinite(r.doseValue) && r.doseValue >= 0) {
+      item.doseValue = Number(r.doseValue);
+    }
+    if (typeof r.doseUnit === "string") {
+      const doseUnit = trimStr(r.doseUnit, 32);
+      item.doseUnit = doseUnit ?? null;
+    }
+    if (typeof r.administeredQuantity === "number" && Number.isFinite(r.administeredQuantity) && r.administeredQuantity >= 0) {
+      item.administeredQuantity = Number(r.administeredQuantity);
+    }
+    if (typeof r.billingQuantity === "number" && Number.isFinite(r.billingQuantity) && r.billingQuantity >= 0) {
+      item.billingQuantity = Number(r.billingQuantity);
+    }
+    if (typeof r.quantityUnit === "string") {
+      const quantityUnit = trimStr(r.quantityUnit, 32);
+      item.quantityUnit = quantityUnit ?? null;
+    }
     items.push(item);
   }
   return { version: BILLING_CAPTURE_VERSION, items: items.slice(0, MAX_ITEMS) };
@@ -313,6 +352,12 @@ export function buildMedicationDispenseCandidate(params: {
   quantity: number;
   medicationLabel: string;
   atIso: string;
+  ndc11?: string | null;
+  ndcDisplay?: string | null;
+  doseValue?: number | null;
+  doseUnit?: string | null;
+  billingQuantity?: number | null;
+  quantityUnit?: string | null;
   createdByUserId?: string | null;
 }): BillingCaptureItem {
   return {
@@ -326,6 +371,12 @@ export function buildMedicationDispenseCandidate(params: {
     billClass: "facility",
     status: "needs_review",
     note: `Dispense candidate — ${params.medicationLabel}`.slice(0, MAX_NOTE),
+    ndc11: params.ndc11?.trim() || null,
+    ndcDisplay: params.ndcDisplay?.trim() || null,
+    doseValue: params.doseValue != null && params.doseValue >= 0 ? params.doseValue : null,
+    doseUnit: params.doseUnit?.trim() || null,
+    billingQuantity: params.billingQuantity != null && params.billingQuantity >= 0 ? params.billingQuantity : null,
+    quantityUnit: params.quantityUnit?.trim() || null,
     serviceDate: params.atIso,
     createdAt: params.atIso,
     createdByUserId: params.createdByUserId ?? undefined,
@@ -339,6 +390,13 @@ export function buildMedicationAdministrationCandidate(params: {
   facilityId: string;
   medicationLabel: string;
   atIso: string;
+  ndc11?: string | null;
+  ndcDisplay?: string | null;
+  doseValue?: number | null;
+  doseUnit?: string | null;
+  administeredQuantity?: number | null;
+  billingQuantity?: number | null;
+  quantityUnit?: string | null;
   createdByUserId?: string | null;
 }): BillingCaptureItem {
   return {
@@ -351,6 +409,16 @@ export function buildMedicationAdministrationCandidate(params: {
     billClass: "facility",
     status: "needs_review",
     note: `Administration candidate — ${params.medicationLabel}`.slice(0, MAX_NOTE),
+    ndc11: params.ndc11?.trim() || null,
+    ndcDisplay: params.ndcDisplay?.trim() || null,
+    doseValue: params.doseValue != null && params.doseValue >= 0 ? params.doseValue : null,
+    doseUnit: params.doseUnit?.trim() || null,
+    administeredQuantity:
+      params.administeredQuantity != null && params.administeredQuantity >= 0
+        ? params.administeredQuantity
+        : null,
+    billingQuantity: params.billingQuantity != null && params.billingQuantity >= 0 ? params.billingQuantity : null,
+    quantityUnit: params.quantityUnit?.trim() || null,
     serviceDate: params.atIso,
     createdAt: params.atIso,
     createdByUserId: params.createdByUserId ?? undefined,

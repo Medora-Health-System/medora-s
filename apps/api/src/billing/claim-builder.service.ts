@@ -47,6 +47,16 @@ export type ClaimLine = {
   /** For ENCOUNTER_EM dedup: newest row wins. */
   billingEventId?: string;
   eventCreatedAt?: string;
+  /** ER-3: optional medication billing context copied from BillingEvent.metadata. */
+  medicationBillingDetails?: {
+    ndc11?: string | null;
+    ndcDisplay?: string | null;
+    doseValue?: number | null;
+    doseUnit?: string | null;
+    administeredQuantity?: number | null;
+    billingQuantity?: number | null;
+    quantityUnit?: string | null;
+  };
 };
 
 export type ClaimPackage = {
@@ -189,6 +199,27 @@ function toClaimLine(ev: BillingEvent, part: CodePart, target: "professional" | 
   if (part.companionCode && part.companionCodeType) {
     line.companionCode = part.companionCode;
     line.companionCodeType = part.companionCodeType;
+  }
+  const md = (ev.metadata && typeof ev.metadata === "object" ? (ev.metadata as Record<string, unknown>) : null) ?? null;
+  const medDetails = {
+    ndc11: typeof md?.ndc11 === "string" ? md.ndc11 : null,
+    ndcDisplay: typeof md?.ndcDisplay === "string" ? md.ndcDisplay : null,
+    doseValue: typeof md?.doseValue === "number" ? md.doseValue : null,
+    doseUnit: typeof md?.doseUnit === "string" ? md.doseUnit : null,
+    administeredQuantity: typeof md?.administeredQuantity === "number" ? md.administeredQuantity : null,
+    billingQuantity: typeof md?.billingQuantity === "number" ? md.billingQuantity : null,
+    quantityUnit: typeof md?.quantityUnit === "string" ? md.quantityUnit : null,
+  };
+  if (
+    medDetails.ndc11 ||
+    medDetails.ndcDisplay ||
+    medDetails.doseValue != null ||
+    medDetails.doseUnit ||
+    medDetails.administeredQuantity != null ||
+    medDetails.billingQuantity != null ||
+    medDetails.quantityUnit
+  ) {
+    line.medicationBillingDetails = medDetails;
   }
   return line;
 }

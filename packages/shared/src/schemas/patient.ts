@@ -518,6 +518,27 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   administeredAt: z.coerce.date().optional(),
   /// Route at administration (IV, IM, SQ, PO, etc.); optional, preferred for billing CPT inference over catalog.
   route: z.preprocess(emptyStrToUndefined, z.string().trim().max(128).optional()),
+  /// ER-3: administration dose value.
+  doseValue: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().finite().nonnegative().optional()
+  ),
+  /// ER-3: administration dose unit (mg, mL, unit, each, etc.).
+  doseUnit: z.preprocess(emptyStrToUndefined, z.string().trim().max(32).optional()),
+  /// ER-3: administered quantity (clinical).
+  administeredQuantity: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().finite().nonnegative().optional()
+  ),
+  /// ER-3: explicit billing quantity if known at capture time.
+  billingQuantity: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().finite().nonnegative().optional()
+  ),
+  /// ER-3: quantity unit (tablet, mL, vial, each, etc.).
+  quantityUnit: z.preprocess(emptyStrToUndefined, z.string().trim().max(32).optional()),
+  /// ER-3: optional NDC string (accepted formats normalized server-side).
+  ndc: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
 });
 

@@ -18,6 +18,9 @@ export type CatalogMedication = {
   strength?: string | null;
   dosageForm?: string | null;
   route?: string | null;
+  ndc11?: string | null;
+  ndcDisplay?: string | null;
+  billingUnitType?: string | null;
 };
 
 export async function searchMedications(
@@ -191,6 +194,11 @@ export async function dispenseMedication(
     patientId: string;
     encounterId: string;
     quantityDispensed: number;
+    doseValue?: number;
+    doseUnit?: string;
+    billingQuantity?: number;
+    quantityUnit?: string;
+    ndc?: string;
     dosageInstructions?: string;
     notes?: string;
   }

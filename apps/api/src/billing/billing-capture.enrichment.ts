@@ -79,6 +79,9 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
             appliedCatalogCode = true;
           }
           catalogLabel = catalogLabel ?? cm.name;
+          if (!next.ndc11 && cm.ndc11?.trim()) next.ndc11 = cm.ndc11.trim();
+          if (!next.ndcDisplay && cm.ndcDisplay?.trim()) next.ndcDisplay = cm.ndcDisplay.trim();
+          if (!next.quantityUnit && cm.billingUnitType?.trim()) next.quantityUnit = cm.billingUnitType.trim();
         } else if (d.orderItem?.catalogItemId && d.orderItem.catalogItemType === "MEDICATION") {
           const med = await db.catalogMedication.findUnique({ where: { id: d.orderItem.catalogItemId } });
           if (med?.billingCodeDefault?.trim()) {
@@ -86,6 +89,9 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
             appliedCatalogCode = true;
           }
           if (med?.name) catalogLabel = catalogLabel ?? med.name;
+          if (!next.ndc11 && med?.ndc11?.trim()) next.ndc11 = med.ndc11.trim();
+          if (!next.ndcDisplay && med?.ndcDisplay?.trim()) next.ndcDisplay = med.ndcDisplay.trim();
+          if (!next.quantityUnit && med?.billingUnitType?.trim()) next.quantityUnit = med.billingUnitType.trim();
         }
         break;
       }
@@ -103,6 +109,9 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
           appliedCatalogCode = true;
         }
         if (med?.name) catalogLabel = catalogLabel ?? med.name;
+        if (!next.ndc11 && med?.ndc11?.trim()) next.ndc11 = med.ndc11.trim();
+        if (!next.ndcDisplay && med?.ndcDisplay?.trim()) next.ndcDisplay = med.ndcDisplay.trim();
+        if (!next.quantityUnit && med?.billingUnitType?.trim()) next.quantityUnit = med.billingUnitType.trim();
         break;
       }
       case "VACCINE_ADMINISTRATION": {
