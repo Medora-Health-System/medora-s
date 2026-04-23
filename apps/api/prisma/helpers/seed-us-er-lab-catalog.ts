@@ -7,7 +7,15 @@ function normalizeSearchText(raw: string): string {
 
 function labSearchTextStored(row: UsErLabCatalogRow): string {
   return normalizeSearchText(
-    [row.searchText, row.nameEn, row.displayNameFr, row.category, row.code, row.aliases.join(" ")].join(" ")
+    [
+      row.searchText,
+      row.displayNameEn,
+      row.nameEn,
+      row.displayNameFr,
+      row.category,
+      row.code,
+      row.aliases.join(" "),
+    ].join(" ")
   );
 }
 
@@ -29,6 +37,7 @@ export async function seedUsErLabCatalog(
       where: { code: row.code },
       update: {
         name: row.nameEn,
+        displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         description,
         searchText,
@@ -40,6 +49,7 @@ export async function seedUsErLabCatalog(
       create: {
         code: row.code,
         name: row.nameEn,
+        displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         description,
         searchText,

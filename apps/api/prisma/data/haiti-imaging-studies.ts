@@ -4,6 +4,8 @@
 export type ImagingCatalogSeed = {
   code: string;
   displayNameFr: string;
+  /** Optional English curated label (reviewed only; not copied from FR). */
+  displayNameEn?: string;
   modality: string;
   bodyRegion: string;
   aliases: string[];
@@ -16,6 +18,7 @@ export const HAITI_IMAGING_CATALOG: ImagingCatalogSeed[] = [
   {
     code: "XR_CHEST",
     displayNameFr: "Radiographie thorax",
+    displayNameEn: "Chest X-ray",
     modality: "XR",
     bodyRegion: "THORAX",
     aliases: ["radio thorax"],
@@ -74,6 +77,7 @@ export const HAITI_IMAGING_CATALOG: ImagingCatalogSeed[] = [
   {
     code: "CT_HEAD",
     displayNameFr: "Scanner cérébral",
+    displayNameEn: "CT head",
     modality: "CT",
     bodyRegion: "CERVEAU",
     aliases: ["ct head"],

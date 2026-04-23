@@ -9,7 +9,7 @@ function normalizeSearchText(raw: string): string {
 /** Index + category/modality enrich offline/API search beyond the authored searchText. */
 function labSearchTextStored(row: LabCatalogSeed): string {
   return normalizeSearchText(
-    [row.searchText, row.category, row.code, row.displayNameFr, row.aliases.join(" ")].join(" ")
+    [row.searchText, row.category, row.code, row.displayNameFr, row.displayNameEn, row.aliases.join(" ")].join(" ")
   );
 }
 
@@ -21,6 +21,7 @@ function imagingSearchTextStored(row: ImagingCatalogSeed): string {
       row.bodyRegion,
       row.code,
       row.displayNameFr,
+      row.displayNameEn,
       row.aliases.join(" "),
     ].join(" ")
   );
@@ -50,6 +51,7 @@ export async function seedHaitiLabImagingCatalog(
       update: {
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
+        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
         description,
         searchText,
         sortPriority: i * 10,
@@ -60,6 +62,7 @@ export async function seedHaitiLabImagingCatalog(
         code: row.code,
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
+        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
         description,
         searchText,
         sortPriority: i * 10,
@@ -95,6 +98,7 @@ export async function seedHaitiLabImagingCatalog(
       update: {
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
+        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
         description,
         modality: row.modality,
         bodyRegion: row.bodyRegion,
@@ -107,6 +111,7 @@ export async function seedHaitiLabImagingCatalog(
         code: row.code,
         name: row.displayNameFr,
         displayNameFr: row.displayNameFr,
+        ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
         description,
         modality: row.modality,
         bodyRegion: row.bodyRegion,

@@ -6,6 +6,8 @@
 export type UsErLabCatalogRow = {
   code: string;
   nameEn: string;
+  /** Curated short English UI label (same editorial source as `nameEn` in this dev catalog file). */
+  displayNameEn: string;
   displayNameFr: string;
   category: string;
   billingCodeDefault?: string;
@@ -19,6 +21,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_CBC",
     nameEn: "Complete blood count (CBC) with differential",
+    displayNameEn: "CBC",
     displayNameFr: "Numération formule sanguine (NFS) avec formule leucocytaire",
     category: "ER · LAB / HEMATOLOGIE",
     billingCodeDefault: "85025",
@@ -30,6 +33,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_BMP",
     nameEn: "Basic metabolic panel (7)",
+    displayNameEn: "BMP (7)",
     displayNameFr: "Bilan biochimique (7 électrolytes) — urea, creatinine, glucose, electrolytes",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "80048",
@@ -41,6 +45,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_CMP",
     nameEn: "Comprehensive metabolic panel (14)",
+    displayNameEn: "CMP",
     displayNameFr: "Bilan hépatique / métabolique étendu (14)",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "80053",
@@ -52,6 +57,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_LAC",
     nameEn: "Lactate, blood",
+    displayNameEn: "Lactate",
     displayNameFr: "Lactate sanguin",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "83605",
@@ -63,6 +69,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_TROP",
     nameEn: "Troponin, quantitative (hs-cTn or equivalent)",
+    displayNameEn: "Troponin",
     displayNameFr: "Troponine, dosage quantitatif (hautement sensible)",
     category: "ER · LAB / CARDIAQUE",
     billingCodeDefault: "84484",
@@ -74,6 +81,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_DDM",
     nameEn: "D-dimer, quantitative (plasma/whole blood, method-specific)",
+    displayNameEn: "D-dimer",
     displayNameFr: "D-dimères, quantitatif",
     category: "ER · LAB / HEMATASE",
     billingCodeDefault: "85379",
@@ -85,6 +93,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_PT_INR",
     nameEn: "Prothrombin time / INR (PT-INR)",
+    displayNameEn: "PT/INR",
     displayNameFr: "Taux de prothrombine / INR",
     category: "ER · LAB / HEMATASE",
     billingCodeDefault: "85610",
@@ -96,6 +105,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_APTT",
     nameEn: "aPTT (PTT, activated partial thromboplastin time)",
+    displayNameEn: "aPTT",
     displayNameFr: "TCA / temps de céphaline activé (TCA-CK)",
     category: "ER · LAB / HEMATASE",
     billingCodeDefault: "85730",
@@ -107,6 +117,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_UA",
     nameEn: "Urinalysis, automated, with microscopy when indicated",
+    displayNameEn: "Urinalysis",
     displayNameFr: "Examen d’urine, automatisé (microscopie si indiqué)",
     category: "ER · LAB / URINARY",
     billingCodeDefault: "81001",
@@ -118,6 +129,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_UHCG",
     nameEn: "Pregnancy test, urine, qualitative",
+    displayNameEn: "Urine pregnancy test",
     displayNameFr: "Test de grossesse urinaire (hCG) qualitatif",
     category: "ER · LAB / URINARY",
     billingCodeDefault: "81025",
@@ -129,6 +141,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_ABG",
     nameEn: "Arterial blood gas (pH, pO2, pCO2, calculated values)",
+    displayNameEn: "Arterial blood gas",
     displayNameFr: "Gazométrie artérielle (pH, pO2, pCO2, bicarbonate, lactate intégrable)",
     category: "ER · LAB / ABG",
     billingCodeDefault: "82800",
@@ -140,6 +153,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_VBG",
     nameEn: "Venous blood gas (or capillary), as ordered",
+    displayNameEn: "Venous blood gas",
     displayNameFr: "Gazométrie veineuse (ou capillaire) selon prescription",
     category: "ER · LAB / ABG",
     billingCodeDefault: "82800",
@@ -151,6 +165,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_GLU_POC",
     nameEn: "Glucose, capillary/POC or plasma (STAT)",
+    displayNameEn: "Glucose (POC)",
     displayNameFr: "Glycémie capillaire/POC ou plasmatique (urgent)",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "82947",
@@ -162,6 +177,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_BNP",
     nameEn: "BNP or NT-proBNP (as performed)",
+    displayNameEn: "BNP / NT-proBNP",
     displayNameFr: "Peptide natriurétique (BNP / NT-proBNP selon laboratoire)",
     category: "ER · LAB / CARDIAQUE",
     billingCodeDefault: "83880",
@@ -173,6 +189,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_CRP",
     nameEn: "C-reactive protein (CRP, quantitative or hs-CRP as performed)",
+    displayNameEn: "CRP",
     displayNameFr: "Proteine C réactive (CRP / hs-CRP selon méthode)",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "86140",
@@ -184,6 +201,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_LIP",
     nameEn: "Lipase, serum (pancreatitis workup)",
+    displayNameEn: "Lipase",
     displayNameFr: "Lipase (sang) — évaluation pancréatique",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "83525",
@@ -195,6 +213,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_AMY",
     nameEn: "Amylase, total (pancreatitis or abdominal pain)",
+    displayNameEn: "Amylase",
     displayNameFr: "Amylasémie (douleur abdominale / pancréatite)",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "82150",
@@ -206,6 +225,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_TSH",
     nameEn: "TSH, thyroid-stimulating hormone, serum (STAT if ordered)",
+    displayNameEn: "TSH",
     displayNameFr: "TSH, hormone thyréotrope (sérique, urgent si prescrit)",
     category: "ER · LAB / ENDOCRINIE",
     billingCodeDefault: "84436",
@@ -217,6 +237,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_PCT",
     nameEn: "Procalcitonin (PCT) when sepsis protocol in use",
+    displayNameEn: "Procalcitonin",
     displayNameFr: "Procalcitonine (protocole sepsis / infection sévère)",
     category: "ER · LAB / BIOCHEMIE",
     billingCodeDefault: "84145",
@@ -228,6 +249,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_ETOH",
     nameEn: "Ethanol (ethyl alcohol), blood, quantitative",
+    displayNameEn: "Ethanol level",
     displayNameFr: "Alcool éthylique, sang, quantitatif",
     category: "ER · LAB / TOXICO",
     billingCodeDefault: "80320",
@@ -239,6 +261,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_SAL",
     nameEn: "Salicylate, serum (aspirin toxicity, acute)",
+    displayNameEn: "Salicylate",
     displayNameFr: "Salicylates (sang) — intoxication aspirine aiguë",
     category: "ER · LAB / TOXICO",
     billingCodeDefault: "80201",
@@ -250,6 +273,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_APAP",
     nameEn: "Acetaminophen, serum, quantitative (APAP, paracetamol level)",
+    displayNameEn: "Acetaminophen level",
     displayNameFr: "Paracétamol (acétaminophène) sérique quantitatif",
     category: "ER · LAB / TOXICO",
     billingCodeDefault: "80202",
@@ -261,6 +285,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_BLOOD_TYPE",
     nameEn: "ABO and Rh, blood (type and screen, hold per protocol)",
+    displayNameEn: "Type & screen",
     displayNameFr: "Groupe sanguin ABO et Rh, sang (bilan d’hématologie transfusionnelle en urgence)",
     category: "ER · LAB / TRANSFUSION",
     billingCodeDefault: "86900",
@@ -272,6 +297,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_ANTIB_SC",
     nameEn: "Antibody screen, RBC (irregular antibodies) when indicated with type",
+    displayNameEn: "Antibody screen",
     displayNameFr: "Dépistage anticorps irréguliers (CATT / selon site)",
     category: "ER · LAB / TRANSFUSION",
     billingCodeDefault: "86850",
@@ -283,6 +309,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_BC",
     nameEn: "Blood culture, aerobic/anaerobic, set(s) per policy",
+    displayNameEn: "Blood culture",
     displayNameFr: "Hémoculture, set(s) selon protocole d’infection bactériémie",
     category: "ER · LAB / MICRO",
     billingCodeDefault: "87040",
@@ -294,6 +321,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_UA_DRUG",
     nameEn: "Urine drug screen, presumptive (clinic/IA/point-of-care, method-specific)",
+    displayNameEn: "Urine drug screen",
     displayNameFr: "Dépistage toxiques urines (clinique, méthode en unité) — aperçu",
     category: "ER · LAB / TOXICO",
     billingCodeDefault: "80305",
@@ -305,6 +333,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_COVID",
     nameEn: "SARS-CoV-2 antigen, rapid, nasopharyngeal (or authorized specimen)",
+    displayNameEn: "SARS-CoV-2 antigen (rapid)",
     displayNameFr: "SARS-CoV-2 — antigène, test rapide (règle locale)",
     category: "ER · LAB / RAPID",
     billingCodeDefault: "87635",
@@ -316,6 +345,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_FLU",
     nameEn: "Influenza A and B, rapid antigen, respiratory specimen",
+    displayNameEn: "Influenza A/B rapid",
     displayNameFr: "Influenzae A et B, antigène rapide, échantillon respiratoire",
     category: "ER · LAB / RAPID",
     billingCodeDefault: "87804",
@@ -327,6 +357,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_STREPA",
     nameEn: "Rapid Strep (group A), throat swab",
+    displayNameEn: "Rapid Strep A",
     displayNameFr: "Streptocoque A rapide, gorge",
     category: "ER · LAB / RAPID",
     billingCodeDefault: "87880",
@@ -338,6 +369,7 @@ export const US_ER_LAB_CATALOG: UsErLabCatalogRow[] = [
   {
     code: "ER_RSV",
     nameEn: "RSV, rapid antigen, respiratory specimen (pediatric / site use)",
+    displayNameEn: "RSV rapid",
     displayNameFr: "VRS, antigène rapide, voies respiratoires (pédiatrie selon local)",
     category: "ER · LAB / RAPID",
     billingCodeDefault: "87807",

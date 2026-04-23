@@ -1,0 +1,10 @@
+code,display_name_en,search_text_en,aliases_en,overwrite
+CBC,CBC,,,
+BMP,BMP,,,
+TROP,Troponin,,,
+UA,Urinalysis,,,
+ER_CBC,CBC,,,
+ER_CMP,CMP,,,
+ER_TROP,Troponin,,,
+ER_UA,Urinalysis,,,
+KETOROLAC_30MG_EXAMPLE,Ketorolac,,toradol;ketorolac,false

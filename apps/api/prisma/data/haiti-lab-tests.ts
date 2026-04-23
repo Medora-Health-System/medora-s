@@ -4,6 +4,8 @@
 export type LabCatalogSeed = {
   code: string;
   displayNameFr: string;
+  /** Optional English INN / curated label — set only from reviewed sources (not copied from FR). */
+  displayNameEn?: string;
   category: string;
   aliases: string[];
   searchText: string;
@@ -15,6 +17,7 @@ export const HAITI_LAB_CATALOG: LabCatalogSeed[] = [
   {
     code: "CBC",
     displayNameFr: "Numération formule sanguine (NFS)",
+    displayNameEn: "CBC",
     category: "HEMATOLOGIE",
     aliases: ["CBC", "NFS", "hémogramme"],
     searchText: "cbc nfs hemogramme globules hemoglobine",
@@ -175,6 +178,7 @@ export const HAITI_LAB_CATALOG: LabCatalogSeed[] = [
   {
     code: "UA",
     displayNameFr: "Analyse d'urines",
+    displayNameEn: "Urinalysis",
     category: "URINAIRE",
     aliases: ["urine"],
     searchText: "urine infection",
@@ -211,6 +215,7 @@ export const HAITI_LAB_CATALOG: LabCatalogSeed[] = [
   {
     code: "TROP",
     displayNameFr: "Troponine",
+    displayNameEn: "Troponin",
     category: "URGENCE",
     aliases: ["troponine"],
     searchText: "troponine infarctus",
@@ -237,6 +242,7 @@ export const HAITI_LAB_CATALOG: LabCatalogSeed[] = [
   {
     code: "BMP",
     displayNameFr: "Bilan métabolique (ionogramme + créatinine + glycémie)",
+    displayNameEn: "BMP",
     category: "BIOCHIMIE",
     aliases: ["bilan bio", "ionogramme"],
     searchText: "bilan metabolique ionogramme uree glucose creatinine",

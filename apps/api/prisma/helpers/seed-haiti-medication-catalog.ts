@@ -80,6 +80,7 @@ function buildSearchText(row: HaitiMedicationSeed): string {
   const parts = [
     row.genericName,
     row.displayNameFr,
+    row.displayNameEn,
     row.strength,
     row.dosageForm,
     row.route,
@@ -103,6 +104,7 @@ export async function seedHaitiMedicationCatalog(
       name: row.displayNameFr || row.genericName,
       genericName: row.genericName,
       displayNameFr: row.displayNameFr,
+      ...(row.displayNameEn?.trim() ? { displayNameEn: row.displayNameEn.trim() } : {}),
       strength: row.strength || null,
       dosageForm: row.dosageForm || null,
       route: row.route || null,
