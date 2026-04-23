@@ -40,16 +40,18 @@ export class OrdersController {
   @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
   async create(@Param("encounterId") encounterId: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const userId = req.user?.userId;
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
+    }
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise");
     }
 
     const data = assertZodBody(orderCreateDtoSchema.safeParse(body));
 
     const orderType = data.type as string;
     if (orderType === "MEDICATION" || orderType === "CARE") {
-      const userId = req.user?.userId;
-      if (!userId) throw new ForbiddenException("Authentification requise");
       const userRoles = await this.prisma.userRole.findMany({
         where: { userId, facilityId, isActive: true },
         include: { role: true },
@@ -68,7 +70,7 @@ export class OrdersController {
       encounterId,
       facilityId,
       data,
-      req.user?.userId,
+      userId,
       req.ip,
       req.headers["user-agent"]
     );

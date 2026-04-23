@@ -179,10 +179,6 @@ export class OrdersService {
   }
 
   async create(encounterId: string, facilityId: string, data: OrderCreateDto, userId?: string, ip?: string, userAgent?: string) {
-    if (!userId) {
-      throw new ForbiddenException("Authentification requise pour créer une commande.");
-    }
-
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       include: { patient: true },
@@ -248,15 +244,17 @@ export class OrdersService {
           critical: true,
           tx,
         });
-        await this.writeOrderEvent({
-          facilityId,
-          encounterId,
-          orderId: created.id,
-          orderType: created.type,
-          eventType: OrderEventType.CREATED,
-          performedByUserId: userId,
-          tx,
-        });
+        if (userId) {
+          await this.writeOrderEvent({
+            facilityId,
+            encounterId,
+            orderId: created.id,
+            orderType: created.type,
+            eventType: OrderEventType.CREATED,
+            performedByUserId: userId,
+            tx,
+          });
+        }
         return created;
       });
     } catch (err: unknown) {
