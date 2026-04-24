@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 import { sexAtBirthToPatientSex } from "../src/utils/patient-sex-map";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import * as argon2 from "argon2";
 import { assertNoStaleHaitiCatalogArtifacts } from "./helpers/assert-no-stale-haiti-catalog-artifacts";
 import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-catalog";
@@ -684,6 +685,17 @@ async function main() {
     ],
     skipDuplicates: true
   });
+
+  // ICD-10-CM dev sample (idempotent upserts via shared importer — not a full code set).
+  const icdCsvRel = "prisma/data/icd10-cm-sample-dev.csv";
+  const icdImport = spawnSync(
+    "pnpm",
+    ["exec", "ts-node", "--transpile-only", "scripts/import-icd10-catalog.ts", `--file=${icdCsvRel}`],
+    { cwd: join(__dirname, ".."), stdio: "inherit", env: process.env }
+  );
+  if (icdImport.status !== 0) {
+    throw new Error("ICD-10 dev catalog import failed (see logs above).");
+  }
 
   // --- Summary: Haiti MVP demo ---
   const encounterCount = await prisma.encounter.count({ where: { facilityId: facilityHT.id } });
