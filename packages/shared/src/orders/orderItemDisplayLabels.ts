@@ -191,13 +191,14 @@ export function buildOrderItemDisplayLabelEn(
   }
   if (it.catalogItemType === "IMAGING_STUDY") {
     if (catalogImg) {
-      return (
-        pickStrictEnCatalogPrimaryLabel(
-          it.catalogItemType,
-          catalogImg.displayNameEn,
-          catalogImg.code
-        ) || "Imaging study"
+      const base = firstAcceptableLineLabel(
+        it.catalogItemType,
+        catalogImg.displayNameEn,
+        manualLineStr,
+        catalogImg.code
       );
+      if (base) return base;
+      return "Imaging study";
     }
     const base = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
     if (base) return base;
