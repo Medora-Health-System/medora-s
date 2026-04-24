@@ -2641,7 +2641,7 @@ export default {
   },
   patientChartUi: {
     orderDisplayFallback: {
-      labTest: "Lab test (label not available)",
+      labTest: "Lab test",
       imaging: "Imaging study (label not available)",
       medication: "Medication (label not available)",
       care: "Care order (label not available)",
@@ -4202,7 +4202,7 @@ export default {
     icdSearching: "Searching…",
     icdNoResults: "No ICD-10 results",
     nonBillableCode: "Not billable as standalone (head-up)",
-    manualToggle: "Enter non-catalog code (explicit)",
+    manualToggle: "Enter non-catalog diagnosis manually",
     manualWarning:
       "This records a code that is not selected from the Medora ICD-10 catalog. It will be flagged for billing review.",
     manualCodePh: "Code (free text)",
@@ -4219,16 +4219,17 @@ export default {
   },
   diagnosisEntry: {
     primaryOrderHint:
-      "The first-listed diagnosis is the primary (principal) diagnosis for ordering and billing export. Reorder with the encounter list arrows after saving.",
+      "The first-listed diagnosis is the primary (principal) diagnosis for ordering and billing export. Reorder with the encounter list arrows after saving. Search the catalog by ICD-10 code or by diagnosis wording (for example “abd” for abdominal pain).",
     primaryBadge: "Primary",
     onsetLabel: "Onset date",
     notesLabel: "Notes",
-    icdSearchLabel: "Search ICD-10-CM",
-    icdSearchPlaceholder: "Code or description (min. 2 characters)",
+    icdSearchLabel: "Search ICD-10-CM (code or diagnosis text)",
+    icdSearchPlaceholder: "e.g. R10.9 or abdominal / abd (min. 2 characters)",
     icdSearching: "Searching…",
     icdNoResults: "No ICD-10 results",
+    icdSearchFailed: "No results found or search unavailable",
     nonBillableCode: "Not billable as standalone (head-up)",
-    manualToggle: "Enter non-catalog code (explicit)",
+    manualToggle: "Enter non-catalog diagnosis manually",
     manualWarning:
       "This records a code not selected from the Medora ICD-10 catalog. It is less reliable for billing and will be flagged for review.",
     manualFormatHint:
@@ -4981,6 +4982,8 @@ export default {
     errPrescriberRequired: "Prescriber is required.",
     errQuantityRequired: "Quantity is required.",
     errEncounterClosed: "Unable to create an order: the encounter must be open.",
+    errLabCatalogIdMissing:
+      "A lab line from the catalog is missing its catalog id. Remove the line and add it again from search, or use explicit manual entry.",
     sectionRxHeader: "Prescription (prescriber)",
     labelPrescriber: "Prescriber",
     prescriberLoadingPlaceholder: "Loading…",

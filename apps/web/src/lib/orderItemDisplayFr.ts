@@ -209,7 +209,11 @@ function catalogDisplayLabelEn(
 ): string | null {
   if (t === "LAB_TEST") {
     const c = item.catalogLabTest;
-    return pickStrictEnCatalogPrimaryLabel(catalogItemTypeForGuard, c?.displayNameEn, c?.code);
+    const en = (c?.displayNameEn ?? "").trim();
+    if (en && !isInvalidTechnicalOrderDisplayLabel(en, catalogItemTypeForGuard)) return en;
+    const code = (c?.code ?? "").trim();
+    if (code) return code;
+    return null;
   }
   if (t === "IMAGING_STUDY") {
     const c = item.catalogImagingStudy;

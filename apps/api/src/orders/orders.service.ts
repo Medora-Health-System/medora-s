@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
@@ -122,6 +123,8 @@ const CATALOG_IMAGING_SELECT = {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
@@ -353,6 +356,19 @@ export class OrdersService {
     }
 
     assertEncounterNotSigned(encounter);
+
+    if (data.type === "LAB") {
+      data.items.forEach((item, i) => {
+        if (item.catalogItemType !== "LAB_TEST") return;
+        const id = item.catalogItemId?.trim();
+        const manual = item.manualLabel?.trim();
+        if (!id && !manual) {
+          this.logger.warn(
+            `orders.create: LAB line index ${i} has neither catalogItemId nor manualLabel (encounterId=${encounterId})`
+          );
+        }
+      });
+    }
 
     const orderCreateDataRaw = {
       ...stripUndefinedKeys({

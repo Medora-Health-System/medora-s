@@ -844,6 +844,8 @@ function AddDiagnosisModal({
                 try {
                   await createDiagnosis(facilityId, encounterId, {
                     icd10CatalogId: hit.id,
+                    code: hit.code,
+                    description: hit.shortDescription,
                     onsetDate: extra?.onsetDate,
                     notes: extra?.notes,
                   });

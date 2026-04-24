@@ -48,7 +48,7 @@ const FALLBACK_FR: Record<string, string> = {
 };
 
 const FALLBACK_EN: Record<string, string> = {
-  LAB_TEST: "Lab test (label unavailable)",
+  LAB_TEST: "Lab test",
   IMAGING_STUDY: "Imaging study",
   MEDICATION: "Medication (label unavailable)",
   CARE: "Care (label unavailable)",
@@ -171,7 +171,8 @@ export function buildOrderItemDisplayLabelFr(
 /**
  * English UI (Phase C strict): for lab / imaging / medication — `displayNameEn` → acceptable manual → `code`
  * → typed EN fallback. Never `displayNameFr` or catalog `name` for those types.
- * Imaging: catalog `code` may be ALL_CAPS_SNAKE and is used as the last English catalog resort when EN/manual absent.
+ * Lab / imaging: catalog `code` may be ALL_CAPS_SNAKE; `firstAcceptableLineLabel` rejects that pattern, so those
+ * types use raw `code` after EN + manual when a catalog row is present.
  */
 export function buildOrderItemDisplayLabelEn(
   it: OrderItemLabelInput,
@@ -181,14 +182,20 @@ export function buildOrderItemDisplayLabelEn(
 ): string {
   const manualLineStr = acceptableManualOrderLine(it);
   if (it.catalogItemType === "LAB_TEST") {
-    const line = firstAcceptableLineLabel(
-      it.catalogItemType,
-      catalogLab?.displayNameEn,
-      manualLineStr,
-      catalogLab?.code
-    );
-    if (line) return line;
-    return typeFallback(it.catalogItemType, "en");
+    if (catalogLab) {
+      const fromEnOrManual = firstAcceptableLineLabel(
+        it.catalogItemType,
+        catalogLab.displayNameEn,
+        manualLineStr
+      );
+      if (fromEnOrManual) return fromEnOrManual;
+      const codeRaw = (catalogLab.code ?? "").trim();
+      if (codeRaw) return codeRaw;
+      return "Lab test";
+    }
+    const base = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
+    if (base) return base;
+    return "Lab test";
   }
   if (it.catalogItemType === "IMAGING_STUDY") {
     if (catalogImg) {

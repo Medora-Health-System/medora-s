@@ -56,7 +56,6 @@ import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyEr
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
-import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { isEncounterLocked } from "@/lib/encounterLock";
@@ -233,11 +232,6 @@ export function EmergencyActiveWorkspaceView() {
   const canEditMedicalDischarge = roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canDocumentEncounterDiagnoses =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
-  const canCaptureStructuredProcedures =
-    roles.includes("RN") ||
-    roles.includes("PROVIDER") ||
-    roles.includes("ADMIN") ||
-    roles.includes("BILLING");
   const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
 
   useEffect(() => {
@@ -1003,12 +997,6 @@ export function EmergencyActiveWorkspaceView() {
                 isLocked={isLocked}
                 onGoPatientChart={() => setShowCreateDx(true)}
               />
-              <EncounterProcedureCapturePanel
-                encounterId={encounter.id}
-                facilityId={fid}
-                canCapture={canCaptureStructuredProcedures}
-                isLocked={isLocked}
-              />
             </div>
           ) : null}
 
@@ -1266,6 +1254,8 @@ export function EmergencyActiveWorkspaceView() {
                   try {
                     await createDiagnosis(fid, encounter.id, {
                       icd10CatalogId: hit.id,
+                      code: hit.code,
+                      description: hit.shortDescription,
                       onsetDate: extra?.onsetDate,
                       notes: extra?.notes,
                     });

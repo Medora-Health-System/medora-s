@@ -342,6 +342,18 @@ export function CreateOrderModal({
       }
     }
 
+    if (formData.type === "LAB") {
+      const catalogLineMissingId = formData.items.some((it) => !it.isManual && !it.catalogItemId?.trim());
+      if (catalogLineMissingId) {
+        console.warn(
+          "[CreateOrderModal] Lab line marked as catalog (not manual) but catalogItemId is missing — submit blocked",
+          formData.items.filter((it) => !it.isManual && !it.catalogItemId?.trim())
+        );
+        setError(t("createOrderModal.errLabCatalogIdMissing"));
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
 

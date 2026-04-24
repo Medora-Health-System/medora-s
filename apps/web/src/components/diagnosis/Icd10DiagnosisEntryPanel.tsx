@@ -48,6 +48,8 @@ export function Icd10DiagnosisEntryPanel({
   const [searchQ, setSearchQ] = useState("");
   const [searchHits, setSearchHits] = useState<Icd10SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
+  /** True when the last ICD catalog request failed (network / 5xx), distinct from an empty successful result. */
+  const [searchFetchFailed, setSearchFetchFailed] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [manualDesc, setManualDesc] = useState("");
@@ -58,17 +60,26 @@ export function Icd10DiagnosisEntryPanel({
     const q = searchQ.trim();
     if (q.length < 2) {
       setSearchHits([]);
+      setSearchFetchFailed(false);
       return;
     }
     let cancelled = false;
     const tmr = window.setTimeout(() => {
       setSearching(true);
+      setSearchFetchFailed(false);
       void searchIcd10Catalog(facilityId, q, 25)
         .then((res) => {
-          if (!cancelled) setSearchHits(Array.isArray(res.items) ? res.items : []);
+          if (!cancelled) {
+            setSearchHits(Array.isArray(res.items) ? res.items : []);
+            setSearchFetchFailed(false);
+          }
         })
-        .catch(() => {
-          if (!cancelled) setSearchHits([]);
+        .catch((err: unknown) => {
+          console.error("ICD search failed", err);
+          if (!cancelled) {
+            setSearchHits([]);
+            setSearchFetchFailed(true);
+          }
         })
         .finally(() => {
           if (!cancelled) setSearching(false);
@@ -195,7 +206,9 @@ export function Icd10DiagnosisEntryPanel({
       </label>
       {searching ? <div style={{ fontSize: 13, color: "#64748b" }}>{t("diagnosisEntry.icdSearching")}</div> : null}
       {!searching && searchQ.trim().length >= 2 && searchHits.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#64748b" }}>{t("diagnosisEntry.icdNoResults")}</div>
+        <div style={{ fontSize: 13, color: searchFetchFailed ? "#b45309" : "#64748b" }}>
+          {searchFetchFailed ? t("diagnosisEntry.icdSearchFailed") : t("diagnosisEntry.icdNoResults")}
+        </div>
       ) : null}
       {searchHits.length > 0 ? (
         <ul
@@ -226,8 +239,8 @@ export function Icd10DiagnosisEntryPanel({
                   fontSize: 13,
                 }}
               >
-                <div style={{ fontWeight: 600, color: "#0f172a" }}>{h.code}</div>
-                <div style={{ color: "#475569", marginTop: 2 }}>{h.shortDescription}</div>
+                <div style={{ fontWeight: 600, color: "#0f172a" }}>{h.shortDescription}</div>
+                <div style={{ color: "#475569", marginTop: 2, fontSize: 12 }}>{h.code}</div>
                 {!h.isBillable ? (
                   <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>{t("diagnosisEntry.nonBillableCode")}</div>
                 ) : null}

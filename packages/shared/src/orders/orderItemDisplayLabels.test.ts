@@ -72,6 +72,38 @@ describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
     expect(pickStrictEnCatalogPrimaryLabel("LAB_TEST", "Glucose", "GLU")).toBe("Glucose");
   });
 
+  it("EN lab label uses ALL_CAPS_SNAKE catalog code when displayNameEn empty (e.g. CMP)", () => {
+    const s = buildOrderItemDisplayLabelEn(
+      itLab,
+      {
+        code: "CMP",
+        displayNameEn: null,
+        displayNameFr: "Bilan métabolique complet",
+        name: "Bilan métabolique complet",
+      },
+      null,
+      null
+    );
+    expect(s).toBe("CMP");
+    expect(s).not.toContain("Bilan");
+    expect(s).not.toContain("label unavailable");
+  });
+
+  it("EN lab label uses displayNameEn when set to CMP", () => {
+    const s = buildOrderItemDisplayLabelEn(
+      itLab,
+      {
+        code: "CMP_ALT",
+        displayNameEn: "CMP",
+        displayNameFr: "Autre",
+        name: "Autre",
+      },
+      null,
+      null
+    );
+    expect(s).toBe("CMP");
+  });
+
   it("EN imaging label uses ALL_CAPS_SNAKE catalog code when displayNameEn empty", () => {
     const s = buildOrderItemDisplayLabelEn(
       { catalogItemType: "IMAGING_STUDY", manualLabel: null, manualSecondaryText: null, strength: null },

@@ -4176,7 +4176,7 @@ export default {
     icdSearching: "Recherche…",
     icdNoResults: "Aucun résultat CIM-10",
     nonBillableCode: "Non facturable seul (à vérifier)",
-    manualToggle: "Saisir un code hors référentiel (explicite)",
+    manualToggle: "Saisir un diagnostic hors référentiel manuellement",
     manualWarning:
       "Ce code n’est pas choisi dans le référentiel ICD-10 Medora. Il sera marqué pour revue facturation.",
     manualCodePh: "Code (texte libre)",
@@ -4193,16 +4193,17 @@ export default {
   },
   diagnosisEntry: {
     primaryOrderHint:
-      "Le premier diagnostic listé est le diagnostic principal (premier listé) pour l’ordre et l’export facturation. Réordonnez avec les flèches du tableau après enregistrement.",
+      "Le premier diagnostic listé est le diagnostic principal (premier listé) pour l’ordre et l’export facturation. Réordonnez avec les flèches du tableau après enregistrement. Recherchez dans le référentiel par code CIM-10 ou par libellé clinique (par ex. « abd » pour douleur abdominale).",
     primaryBadge: "Principal",
     onsetLabel: "Date de début",
     notesLabel: "Notes",
-    icdSearchLabel: "Recherche CIM-10-CM",
-    icdSearchPlaceholder: "Code ou libellé (au moins 2 caractères)",
+    icdSearchLabel: "Recherche CIM-10-CM (code ou texte du diagnostic)",
+    icdSearchPlaceholder: "ex. R10.9 ou abdominal / abd (au moins 2 caractères)",
     icdSearching: "Recherche…",
     icdNoResults: "Aucun résultat CIM-10",
+    icdSearchFailed: "Aucun résultat ou recherche indisponible",
     nonBillableCode: "Non facturable seul (à vérifier)",
-    manualToggle: "Saisir un code hors référentiel (explicite)",
+    manualToggle: "Saisir un diagnostic hors référentiel manuellement",
     manualWarning:
       "Ce code n’est pas choisi dans le référentiel ICD-10 Medora. Il est moins fiable pour la facturation et sera marqué pour revue.",
     manualFormatHint:
@@ -4966,6 +4967,8 @@ export default {
     errPrescriberRequired: "Le prescripteur est requis",
     errQuantityRequired: "La quantité est requise",
     errEncounterClosed: "Impossible de créer un ordre : la consultation doit être ouverte.",
+    errLabCatalogIdMissing:
+      "Une ligne d’analyse issue du catalogue n’a pas d’identifiant catalogue. Retirez la ligne et rajoutez-la depuis la recherche, ou utilisez la saisie manuelle explicite.",
     sectionRxHeader: "Prescription (prescripteur)",
     labelPrescriber: "Prescripteur",
     prescriberLoadingPlaceholder: "Chargement…",

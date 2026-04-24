@@ -29,6 +29,7 @@ export class Icd10CatalogService {
     }
     if (pattern) {
       or.push({ shortDescription: { contains: raw, mode: "insensitive" } });
+      or.push({ longDescription: { contains: raw, mode: "insensitive" } });
       or.push({ searchText: { contains: raw.toLowerCase(), mode: "insensitive" } });
     }
     for (const t of tokens) {

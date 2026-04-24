@@ -79,7 +79,11 @@ export function EncounterDiagnosticsPanel({
     setSaving(true);
     setError(null);
     try {
-      await createDiagnosis(facilityId, encounterId, { icd10CatalogId: hit.id });
+      await createDiagnosis(facilityId, encounterId, {
+        icd10CatalogId: hit.id,
+        code: hit.code,
+        description: hit.shortDescription,
+      });
       await load();
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : (e as { message?: string })?.message;
