@@ -90,3 +90,61 @@ export async function writeOrderEventForResultLineOutcome(
     },
   });
 }
+
+/**
+ * Provider / RN acknowledgment of an existing lab or imaging result (line stays `RESULTED`).
+ * Uses `OrderEventType.COMPLETED` + `metadata.lifecycleOutcome: "ACKNOWLEDGED"` for ER merge / audit.
+ * Idempotent per order line via `metadata.dedupeKey`.
+ */
+export async function writeOrderEventForResultAcknowledgment(
+  tx: Prisma.TransactionClient,
+  input: {
+    facilityId: string;
+    encounterId: string;
+    orderId: string;
+    orderType: string;
+    orderItemId: string;
+    resultId: string;
+    performedByUserId: string;
+  }
+): Promise<void> {
+  const lifecycleOutcome = "ACKNOWLEDGED";
+  const dedupeKey = `result-lifecycle:${input.orderItemId}:${lifecycleOutcome}`;
+  const existing = await tx.orderEvent.findFirst({
+    where: {
+      orderId: input.orderId,
+      eventType: OrderEventType.COMPLETED,
+      metadata: {
+        path: ["dedupeKey"],
+        equals: dedupeKey,
+      } as Prisma.JsonFilter,
+    },
+  });
+  if (existing) {
+    return;
+  }
+  const roleSnapshot = await buildRoleSnapshotForOrderEvent(
+    tx,
+    input.facilityId,
+    input.performedByUserId
+  );
+  await tx.orderEvent.create({
+    data: {
+      facilityId: input.facilityId,
+      encounterId: input.encounterId,
+      orderId: input.orderId,
+      orderType: mapOrderTypeStringToOrderEventOrderType(input.orderType),
+      eventType: OrderEventType.COMPLETED,
+      performedByUserId: input.performedByUserId,
+      performedAt: new Date(),
+      roleSnapshot,
+      metadata: {
+        dedupeKey,
+        orderItemId: input.orderItemId,
+        resultId: input.resultId,
+        lifecycleOutcome,
+        source: "RESULT_SERVICE",
+      } as Prisma.InputJsonValue,
+    },
+  });
+}

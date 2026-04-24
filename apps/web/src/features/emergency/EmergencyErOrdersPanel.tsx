@@ -195,7 +195,8 @@ function lifecycleOutcomeSubLabel(metadata: unknown, tr: (k: string) => string):
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
   const lo = (metadata as { lifecycleOutcome?: unknown }).lifecycleOutcome;
   if (lo === "VERIFIED") return tr("orderEvent.resultVerified");
-  if (lo === "RESULTED") return tr("orderEvent.resultAcknowledged");
+  if (lo === "RESULTED") return tr("orderEvent.resultRecorded");
+  if (lo === "ACKNOWLEDGED") return tr("orderEvent.resultClinicianAcknowledged");
   return null;
 }
 
@@ -290,6 +291,7 @@ export function EmergencyErOrdersPanel({
   const [eventLoading, setEventLoading] = useState(true);
   const [cancelBusyOrderId, setCancelBusyOrderId] = useState<string | null>(null);
   const [lineActionBusy, setLineActionBusy] = useState<string | null>(null);
+  const [resultReviewBusy, setResultReviewBusy] = useState<string | null>(null);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
@@ -397,6 +399,24 @@ export function EmergencyErOrdersPanel({
       }));
   }, [parsedOrders]);
 
+  /** Lab/imaging lines with a department result (`RESULTED`) pending clinician acknowledgment / verification. */
+  const resultReviewLines = useMemo(() => {
+    const out: { orderId: string; orderType: string; item: Record<string, unknown> }[] = [];
+    for (const o of parsedOrders) {
+      if (o.status === "CANCELLED") continue;
+      if (o.type !== "LAB" && o.type !== "IMAGING") continue;
+      const items = Array.isArray(o.items) ? o.items : [];
+      for (const it of items) {
+        const row = it as Record<string, unknown>;
+        if (String(row.status ?? "") !== "RESULTED") continue;
+        const cat = String(row.catalogItemType ?? "");
+        if (cat !== "LAB_TEST" && cat !== "IMAGING_STUDY") continue;
+        out.push({ orderId: o.id, orderType: o.type, item: row });
+      }
+    }
+    return out;
+  }, [parsedOrders]);
+
   const completedFromEvents = useMemo(
     () => parsedEvents.filter((e) => e.eventType === "COMPLETED"),
     [parsedEvents]
@@ -501,6 +521,21 @@ export function EmergencyErOrdersPanel({
       setOrdersRefresh((x) => x + 1);
     } finally {
       setLineActionBusy(null);
+    }
+  };
+
+  const runResultClinicianAction = async (orderItemId: string, op: "acknowledge" | "verify") => {
+    const busyKey = `${orderItemId}:result-${op}`;
+    setResultReviewBusy(busyKey);
+    try {
+      const path =
+        op === "acknowledge"
+          ? `/orders/${orderItemId}/result/acknowledge`
+          : `/orders/${orderItemId}/result/verify`;
+      await apiFetch(path, { method: "POST", facilityId });
+      setOrdersRefresh((x) => x + 1);
+    } finally {
+      setResultReviewBusy(null);
     }
   };
 
@@ -749,6 +784,99 @@ export function EmergencyErOrdersPanel({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                {t("erEmergencyOrders.resultReviewTitle")}
+              </div>
+              {resultReviewLines.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.resultReviewEmpty")}</div>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {resultReviewLines.map(({ orderId, orderType, item }) => {
+                    const itemId = String(item.id ?? "");
+                    const res = item.result as Record<string, unknown> | null | undefined;
+                    const ackAt = res?.acknowledgedByProviderAt;
+                    const ackName =
+                      typeof res?.acknowledgedByDisplayFr === "string"
+                        ? (res.acknowledgedByDisplayFr as string).trim()
+                        : "";
+                    const enteredName =
+                      typeof res?.enteredByDisplayFr === "string"
+                        ? (res.enteredByDisplayFr as string).trim()
+                        : "";
+                    const label = getOrderItemDisplayLabelForLanguage(
+                      item as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+                      language,
+                      t
+                    );
+                    const busy = resultReviewBusy;
+                    const canAck = hasAnyRole(roles, "PROVIDER", "RN", "ADMIN");
+                    const canVerify = hasAnyRole(roles, "PROVIDER", "ADMIN");
+                    return (
+                      <div
+                        key={`${orderId}-${itemId}`}
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 10,
+                          padding: "8px 10px",
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 8,
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                          <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>{label}</div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                            {orderType} · {t("erEmergencyOrders.resultReviewDepartmentEntered")}
+                            {enteredName ? `: ${enteredName}` : ""}
+                          </div>
+                          {ackAt ? (
+                            <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
+                              {t("erEmergencyOrders.resultReviewClinicianAcknowledged")}
+                              {ackName ? `: ${ackName}` : ""} ·{" "}
+                              {new Date(String(ackAt)).toLocaleString(language === "fr" ? "fr-FR" : "en-US")}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 11, color: "#92400e", marginTop: 2 }}>
+                              {t("erEmergencyOrders.resultReviewPendingAck")}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {canAck && !ackAt ? (
+                            <button
+                              type="button"
+                              style={btn}
+                              disabled={busy === `${itemId}:result-acknowledge`}
+                              onClick={() => void runResultClinicianAction(itemId, "acknowledge")}
+                            >
+                              {busy === `${itemId}:result-acknowledge`
+                                ? t("erEmergencyOrders.lineActionBusy")
+                                : t("erEmergencyOrders.acknowledgeResult")}
+                            </button>
+                          ) : null}
+                          {canVerify ? (
+                            <button
+                              type="button"
+                              style={btn}
+                              disabled={busy === `${itemId}:result-verify`}
+                              onClick={() => void runResultClinicianAction(itemId, "verify")}
+                            >
+                              {busy === `${itemId}:result-verify`
+                                ? t("erEmergencyOrders.lineActionBusy")
+                                : t("erEmergencyOrders.verifyResult")}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -38,10 +38,19 @@ export type CatalogImagingStudyEnrichment = {
 
 export type OrderItemChartResult = Pick<
   Result,
-  "resultText" | "verifiedAt" | "criticalValue" | "resultData" | "verifiedByUserId"
+  | "id"
+  | "resultText"
+  | "verifiedAt"
+  | "criticalValue"
+  | "resultData"
+  | "verifiedByUserId"
+  | "acknowledgedByProviderAt"
+  | "acknowledgedByUserId"
 > & {
   /** Nom affichage du professionnel ayant saisi / validé (enrichi côté API). */
   enteredByDisplayFr?: string | null;
+  /** Clinicien ayant accusé réception du résultat (enrichi côté API). */
+  acknowledgedByDisplayFr?: string | null;
 };
 
 export type OrderItemWithCatalogMedication = OrderItem & {

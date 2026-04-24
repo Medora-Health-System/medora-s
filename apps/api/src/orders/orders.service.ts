@@ -256,6 +256,19 @@ export class OrdersService {
       if (row) return this.lineLabelsForOrderItemRow(row, labMap, imgMap, medMap);
     }
 
+    if (!itemId && itemsSorted.length > 0) {
+      const enParts: string[] = [];
+      const frParts: string[] = [];
+      for (const it of itemsSorted) {
+        const { en, fr } = this.lineLabelsForOrderItemRow(it, labMap, imgMap, medMap);
+        if (en.trim()) enParts.push(en.trim());
+        if (fr.trim()) frParts.push(fr.trim());
+      }
+      const en = [...new Set(enParts)].join(" · ");
+      const fr = [...new Set(frParts)].join(" · ");
+      if (en || fr) return { en: en || order.type, fr: fr || order.type };
+    }
+
     if (itemsSorted.length === 1) {
       return this.lineLabelsForOrderItemRow(itemsSorted[0], labMap, imgMap, medMap);
     }
@@ -415,7 +428,8 @@ export class OrdersService {
       throw err;
     }
 
-    return order;
+    const [enrichedCreated] = await this.enrichOrderItemsForDisplay([order as unknown as OrderWithItems]);
+    return enrichedCreated;
   }
 
   async findByEncounter(
@@ -586,13 +600,21 @@ export class OrdersService {
   }
 
   /**
-   * Ajoute `enteredByDisplayFr` sur chaque `result` à partir de `verifiedByUserId`.
+   * Ajoute `enteredByDisplayFr` / `acknowledgedByDisplayFr` sur chaque `result`
+   * (département : `verifiedByUserId` ; clinicien : `acknowledgedByUserId`).
    */
   async attachEnteredByDisplayOnOrders(orders: OrderWithEnrichedItems[]): Promise<OrderWithEnrichedItems[]> {
     const verifierIds = [
       ...new Set(
         orders.flatMap((o) =>
-          (o.items || []).map((i) => i.result?.verifiedByUserId).filter((x): x is string => Boolean(x))
+          (o.items || []).flatMap((i) => {
+            const r = i.result;
+            if (!r) return [];
+            const ids: string[] = [];
+            if (r.verifiedByUserId) ids.push(r.verifiedByUserId);
+            if (r.acknowledgedByUserId) ids.push(r.acknowledgedByUserId);
+            return ids;
+          })
         )
       ),
     ];
@@ -613,6 +635,9 @@ export class OrdersService {
               ...it.result,
               enteredByDisplayFr: it.result.verifiedByUserId
                 ? vmap.get(it.result.verifiedByUserId) ?? null
+                : null,
+              acknowledgedByDisplayFr: it.result.acknowledgedByUserId
+                ? vmap.get(it.result.acknowledgedByUserId) ?? null
                 : null,
             }
           : null,

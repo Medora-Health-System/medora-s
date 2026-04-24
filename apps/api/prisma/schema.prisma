@@ -1019,9 +1019,12 @@ model Result {
   resultData               Json?
   resultText               String?
   criticalValue            Boolean   @default(false)
+  /// Department user who last saved substantive result text/attachments (lab/radiology); not physician sign-off.
   verifiedByUserId         String?
   verifiedAt               DateTime?
   acknowledgedByProviderAt DateTime?
+  /// Receiving clinician who acknowledged the result in-chart (distinct from `verifiedByUserId`).
+  acknowledgedByUserId     String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
@@ -1031,6 +1034,7 @@ model Result {
   @@index([facilityId])
   @@index([orderItemId])
   @@index([criticalValue])
+  @@index([acknowledgedByUserId])
 }
 
 /// Shared catalog row: stable `code`, human-readable labels, `searchText` for unified search, `updatedAt` for sync.

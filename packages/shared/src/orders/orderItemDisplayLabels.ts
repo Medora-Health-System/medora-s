@@ -49,7 +49,7 @@ const FALLBACK_FR: Record<string, string> = {
 
 const FALLBACK_EN: Record<string, string> = {
   LAB_TEST: "Lab test (label unavailable)",
-  IMAGING_STUDY: "Imaging (label unavailable)",
+  IMAGING_STUDY: "Imaging study",
   MEDICATION: "Medication (label unavailable)",
   CARE: "Care (label unavailable)",
   SUPPLY: "Supply (label unavailable)",
@@ -190,16 +190,17 @@ export function buildOrderItemDisplayLabelEn(
     return typeFallback(it.catalogItemType, "en");
   }
   if (it.catalogItemType === "IMAGING_STUDY") {
-    const base = firstAcceptableLineLabel(
-      it.catalogItemType,
-      catalogImg?.displayNameEn,
-      manualLineStr,
-      catalogImg?.code
-    );
-    if (base) {
-      const mod = catalogImg?.modality?.trim();
-      return mod ? `${base} (${mod})` : base;
+    if (catalogImg) {
+      return (
+        pickStrictEnCatalogPrimaryLabel(
+          it.catalogItemType,
+          catalogImg.displayNameEn,
+          catalogImg.code
+        ) || "Imaging study"
+      );
     }
+    const base = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
+    if (base) return base;
     return typeFallback(it.catalogItemType, "en");
   }
   if (it.catalogItemType === "MEDICATION") {

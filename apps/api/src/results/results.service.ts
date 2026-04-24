@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -11,7 +11,10 @@ import {
   tryAutoImagingResultBillingAfterVerify,
   tryAutoLabResultBillingAfterVerify,
 } from "../billing/billing-auto-append.util";
-import { writeOrderEventForResultLineOutcome } from "../orders/order-lifecycle-event.util";
+import {
+  writeOrderEventForResultAcknowledgment,
+  writeOrderEventForResultLineOutcome,
+} from "../orders/order-lifecycle-event.util";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
@@ -263,6 +266,187 @@ export class ResultsService {
     }
 
     return result;
+  }
+
+  /**
+   * Receiving clinician acknowledges an existing lab/imaging result (does not change `OrderItem.status`).
+   */
+  async acknowledgeResultByClinician(
+    orderItemId: string,
+    facilityId: string,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new UnauthorizedException("Authentification requise.");
+    }
+
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { facilityId },
+        catalogItemType: { in: ["LAB_TEST", "IMAGING_STUDY"] },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: true,
+          },
+        },
+        result: true,
+      },
+    });
+
+    if (!orderItem || !orderItem.result) {
+      throw new NotFoundException("Résultat introuvable pour cette ligne.");
+    }
+
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+
+    if (orderItem.status !== OrderStatus.RESULTED) {
+      throw new BadRequestException(
+        "Seules les lignes en statut « Résultat disponible » peuvent être accusées réception côté clinicien."
+      );
+    }
+
+    if (!hasReportableContent(orderItem.result.resultText, orderItem.result.resultData)) {
+      throw new BadRequestException("Aucun résultat saisi à accuser réception.");
+    }
+
+    if (orderItem.result.acknowledgedByProviderAt) {
+      return orderItem.result;
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const row = await tx.result.update({
+        where: { orderItemId },
+        data: {
+          acknowledgedByProviderAt: now,
+          acknowledgedByUserId: userId,
+        },
+      });
+      await writeOrderEventForResultAcknowledgment(tx, {
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        orderItemId,
+        resultId: row.id,
+        performedByUserId: userId,
+      });
+    });
+
+    await this.audit.log(AuditAction.ORDER_UPDATE, "RESULT", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItem.result.id,
+      ip,
+      userAgent,
+      metadata: { orderItemId, action: "RESULT_CLINICIAN_ACK" },
+    });
+
+    return this.prisma.result.findUnique({ where: { orderItemId } });
+  }
+
+  /**
+   * Physician / authorized clinician final verification: `RESULTED` → `VERIFIED` (billing is unchanged).
+   */
+  async verifyResultByClinician(
+    orderItemId: string,
+    facilityId: string,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new UnauthorizedException("Authentification requise.");
+    }
+
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { facilityId },
+        catalogItemType: { in: ["LAB_TEST", "IMAGING_STUDY"] },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: true,
+          },
+        },
+        result: true,
+      },
+    });
+
+    if (!orderItem || !orderItem.result) {
+      throw new NotFoundException("Résultat introuvable pour cette ligne.");
+    }
+
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+
+    if (orderItem.status === OrderStatus.VERIFIED) {
+      return this.prisma.orderItem.findFirst({
+        where: { id: orderItemId },
+        include: { result: true },
+      });
+    }
+
+    if (orderItem.status !== OrderStatus.RESULTED) {
+      throw new BadRequestException(
+        "La ligne doit être en statut « Résultat disponible » avant vérification finale."
+      );
+    }
+
+    const resultRow = orderItem.result;
+
+    if (!hasReportableContent(resultRow.resultText, resultRow.resultData)) {
+      throw new BadRequestException("Aucun résultat à vérifier.");
+    }
+
+    assertCanTransition(orderItem.status, OrderStatus.VERIFIED);
+    const nextLife = applyLifecycleWithStatus(orderItem.lifecycleState, OrderStatus.VERIFIED);
+    const resultIdForEvent = resultRow.id;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orderItem.update({
+        where: { id: orderItemId },
+        data: { status: OrderStatus.VERIFIED, lifecycleState: nextLife },
+      });
+      await writeOrderEventForResultLineOutcome(tx, {
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        orderItemId,
+        resultId: resultIdForEvent,
+        lineStatus: OrderStatus.VERIFIED,
+        performedByUserId: userId,
+      });
+    });
+
+    await this.audit.log(AuditAction.ORDER_UPDATE, "RESULT", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: resultIdForEvent,
+      ip,
+      userAgent,
+      metadata: { orderItemId, action: "RESULT_CLINICIAN_VERIFY" },
+    });
+
+    return this.prisma.orderItem.findFirst({
+      where: { id: orderItemId },
+      include: { result: true },
+    });
   }
 
   async setCriticalFlag(

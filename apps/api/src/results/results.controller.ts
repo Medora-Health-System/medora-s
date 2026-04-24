@@ -31,6 +31,38 @@ export class ResultsController {
     );
   }
 
+  @Post(":id/result/acknowledge")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  async acknowledgeResult(@Param("id") orderItemId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    return this.resultsService.acknowledgeResultByClinician(
+      orderItemId,
+      facilityId,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post(":id/result/verify")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async verifyResult(@Param("id") orderItemId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    return this.resultsService.verifyResultByClinician(
+      orderItemId,
+      facilityId,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Post(":id/critical")
   @RequireRoles(RoleCode.LAB, RoleCode.ADMIN)
   async setCriticalFlag(
