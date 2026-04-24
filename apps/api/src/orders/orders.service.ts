@@ -38,6 +38,7 @@ import {
   type OrderWithEnrichedItems,
   type OrderWithItems,
 } from "./orders.types";
+import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 
 const ordersLog = createStructuredLogger("OrdersService");
@@ -428,7 +429,7 @@ export class OrdersService {
       throw err;
     }
 
-    const [enrichedCreated] = await this.enrichOrderItemsForDisplay([order as unknown as OrderWithItems]);
+    const [enrichedCreated] = await this.enrichOrderItemsForDisplaySafe([order as unknown as OrderWithItems]);
     return enrichedCreated;
   }
 
@@ -446,7 +447,7 @@ export class OrdersService {
         items: {
           include: {
             completedByNurse: { select: { firstName: true, lastName: true } },
-            result: true,
+            result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
             pharmacyDispenseRecord: {
               select: {
                 id: true,
@@ -475,7 +476,7 @@ export class OrdersService {
       userAgent,
     });
 
-    const enriched = await this.enrichOrderItemsForDisplay(orders);
+    const enriched = await this.enrichOrderItemsForDisplaySafe(orders);
     const withResultLabels = await this.attachEnteredByDisplayOnOrders(enriched);
     const withCancellation = await this.attachCancellationDisplayOnOrders(withResultLabels);
     return this.attachOrderedByDisplayOnOrders(withCancellation);
@@ -661,7 +662,7 @@ export class OrdersService {
         items: {
           include: {
             completedByNurse: { select: { firstName: true, lastName: true } },
-            result: true,
+            result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
             pharmacyDispenseRecord: {
               select: {
                 id: true,
@@ -697,7 +698,7 @@ export class OrdersService {
       userAgent,
     });
 
-    const [enriched] = await this.enrichOrderItemsForDisplay([row as unknown as OrderWithItems]);
+    const [enriched] = await this.enrichOrderItemsForDisplaySafe([row as unknown as OrderWithItems]);
     const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
     const [withCancel] = await this.attachCancellationDisplayOnOrders([withSig]);
     return withCancel;
@@ -706,6 +707,44 @@ export class OrdersService {
   /**
    * Attach catalog rows for LAB_TEST, IMAGING_STUDY, and MEDICATION lines (offline-safe labels).
    */
+  /**
+   * Same as {@link enrichOrderItemsForDisplay} but never throws: on catalog / DB mismatch, falls back to
+   * manual/type-based labels so `GET /encounters/:id/orders` stays 200.
+   */
+  async enrichOrderItemsForDisplaySafe(orders: OrderWithItems[]): Promise<OrderWithEnrichedItems[]> {
+    try {
+      return await this.enrichOrderItemsForDisplay(orders);
+    } catch (err) {
+      ordersLog.warn("enrich_order_items_failed_fallback_labels", {
+        error: err instanceof Error ? err.message : String(err),
+        orderCount: orders.length,
+      });
+      return this.enrichOrderItemsWithCatalogFallback(orders);
+    }
+  }
+
+  private enrichOrderItemsWithCatalogFallback(orders: OrderWithItems[]): OrderWithEnrichedItems[] {
+    return orders.map((order) => ({
+      ...order,
+      items: (order.items || []).map((it) => {
+        const labelIn = {
+          catalogItemType: String(it.catalogItemType),
+          manualLabel: it.manualLabel,
+          manualSecondaryText: it.manualSecondaryText,
+          strength: it.strength,
+        };
+        return {
+          ...it,
+          catalogLabTest: null,
+          catalogImagingStudy: null,
+          catalogMedication: null,
+          displayLabelFr: buildOrderItemDisplayLabelFr(labelIn, null, null, null),
+          displayLabelEn: buildOrderItemDisplayLabelEn(labelIn, null, null, null),
+        };
+      }),
+    })) as OrderWithEnrichedItems[];
+  }
+
   enrichOrderItemsForDisplay(orders: OrderWithItems[]): Promise<OrderWithEnrichedItems[]> {
     const labIds = new Set<string>();
     const imgIds = new Set<string>();
@@ -794,7 +833,7 @@ export class OrdersService {
 
   /** @deprecated use enrichOrderItemsForDisplay */
   enrichMedicationOrders(orders: OrderWithItems[]): Promise<OrderWithEnrichedItems[]> {
-    return this.enrichOrderItemsForDisplay(orders);
+    return this.enrichOrderItemsForDisplaySafe(orders);
   }
 
   async update(facilityId: string, id: string, data: OrderUpdateDto, userId?: string, ip?: string, userAgent?: string) {
@@ -947,7 +986,7 @@ export class OrdersService {
       metadata: { cancellationReason: reason },
     });
 
-    const [enriched] = await this.enrichOrderItemsForDisplay([updated as unknown as OrderWithItems]);
+    const [enriched] = await this.enrichOrderItemsForDisplaySafe([updated as unknown as OrderWithItems]);
     const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
     const [withCancelDisplay] = await this.attachCancellationDisplayOnOrders([withSig]);
     return withCancelDisplay;

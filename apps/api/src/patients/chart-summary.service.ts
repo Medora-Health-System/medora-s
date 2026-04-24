@@ -492,7 +492,7 @@ export class ChartSummaryService {
             }),
           ]);
 
-    const ordersEnriched = await this.ordersService.enrichOrderItemsForDisplay(
+    const ordersEnriched = await this.ordersService.enrichOrderItemsForDisplaySafe(
       ordersRaw as unknown as OrderWithItems[]
     );
     const ordersWithVerifierNames = await this.ordersService.attachEnteredByDisplayOnOrders(ordersEnriched);

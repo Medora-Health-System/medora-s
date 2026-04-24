@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { MedicationFulfillmentIntent, OrderStatus, Prisma } from "@prisma/client";
 import { OrdersService } from "../orders/orders.service";
+import { ORDER_ITEM_RESULT_LIST_SELECT } from "../orders/order-item-result.select";
 import type { OrderWithItems } from "../orders/orders.types";
 
 /** Inclut SIGNED / RESULTED pour ne pas masquer des ordres médecin encore hors flux « traité » par le labo. */
@@ -69,13 +70,13 @@ export class WorklistsService {
             catalogItemType: "LAB_TEST",
           },
           include: {
-            result: true,
+            result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
           },
         },
       },
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
-    return this.ordersService.enrichOrderItemsForDisplay(orders as unknown as OrderWithItems[]);
+    return this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
   }
 
   async getRadiologyWorklist(facilityId: string) {
@@ -118,13 +119,13 @@ export class WorklistsService {
             catalogItemType: "IMAGING_STUDY",
           },
           include: {
-            result: true,
+            result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
           },
         },
       },
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
-    return this.ordersService.enrichOrderItemsForDisplay(orders as unknown as OrderWithItems[]);
+    return this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
   }
 
   async getPharmacyWorklist(facilityId: string) {
@@ -172,7 +173,7 @@ export class WorklistsService {
       },
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
-    return this.ordersService.enrichOrderItemsForDisplay(orders as unknown as OrderWithItems[]);
+    return this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
   }
 
   async getBillingWorklist(facilityId: string) {

@@ -15,6 +15,7 @@ import {
   writeOrderEventForResultAcknowledgment,
   writeOrderEventForResultLineOutcome,
 } from "../orders/order-lifecycle-event.util";
+import { ORDER_ITEM_RESULT_LIST_SELECT } from "../orders/order-item-result.select";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
@@ -131,7 +132,10 @@ export class ResultsService {
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
 
-    const existingResult = await this.prisma.result.findUnique({ where: { orderItemId } });
+    const existingResult = await this.prisma.result.findUnique({
+      where: { orderItemId },
+      select: ORDER_ITEM_RESULT_LIST_SELECT,
+    });
 
     const mergedResultData =
       data.resultData !== undefined
@@ -294,7 +298,7 @@ export class ResultsService {
             encounter: true,
           },
         },
-        result: true,
+        result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
       },
     });
 
@@ -351,7 +355,10 @@ export class ResultsService {
       metadata: { orderItemId, action: "RESULT_CLINICIAN_ACK" },
     });
 
-    return this.prisma.result.findUnique({ where: { orderItemId } });
+    return this.prisma.result.findUnique({
+      where: { orderItemId },
+      select: ORDER_ITEM_RESULT_LIST_SELECT,
+    });
   }
 
   /**
@@ -380,7 +387,7 @@ export class ResultsService {
             encounter: true,
           },
         },
-        result: true,
+        result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
       },
     });
 
@@ -394,7 +401,7 @@ export class ResultsService {
     if (orderItem.status === OrderStatus.VERIFIED) {
       return this.prisma.orderItem.findFirst({
         where: { id: orderItemId },
-        include: { result: true },
+        include: { result: { select: ORDER_ITEM_RESULT_LIST_SELECT } },
       });
     }
 
@@ -445,7 +452,7 @@ export class ResultsService {
 
     return this.prisma.orderItem.findFirst({
       where: { id: orderItemId },
-      include: { result: true },
+      include: { result: { select: ORDER_ITEM_RESULT_LIST_SELECT } },
     });
   }
 
