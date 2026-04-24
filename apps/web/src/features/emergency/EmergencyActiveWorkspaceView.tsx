@@ -80,6 +80,19 @@ const STATUS_BADGE_SOFT: Record<string, PriorityBadgeSoft> = {
   CANCELLED: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
 };
 
+const DASHBOARD_LABELS: Record<string, string> = {
+  T: "Triage",
+  ME: "Medical Exam",
+  O: "Orders",
+  M: "Medications",
+  R: "Results",
+  Dx: "Diagnostics",
+  NA: "Nurse Assessment",
+  N: "Notes",
+  D: "Disposition",
+  S: "Summary",
+};
+
 type PatientLite = {
   id?: string;
   firstName?: string | null;
@@ -495,7 +508,7 @@ export function EmergencyActiveWorkspaceView() {
         kind: "section",
         id: "providerMse",
         accent: "#4f46e5",
-        initials: "EM",
+        initials: "ME",
         ariaLabel: t("emergencyWorkspace.tileAria.providerMse"),
         disabled: !showNursingTab,
       },
@@ -535,7 +548,7 @@ export function EmergencyActiveWorkspaceView() {
         kind: "section",
         id: "nursing",
         accent: "#0ea5e9",
-        initials: "SI",
+        initials: "NA",
         ariaLabel: t("emergencyWorkspace.tileAria.nursing"),
         disabled: !showNursingTab,
       },
@@ -958,6 +971,9 @@ export function EmergencyActiveWorkspaceView() {
                     <MedoraCard leftAccentColor={q.accent} variant="default">
                       <MedoraCardInner>
                         <MedoraCardIdentity initials={q.initials}>{null}</MedoraCardIdentity>
+                        <div className="mt-1 text-[10px] leading-none text-gray-500 text-center truncate">
+                          {DASHBOARD_LABELS[q.initials]}
+                        </div>
                       </MedoraCardInner>
                     </MedoraCard>
                   </button>
