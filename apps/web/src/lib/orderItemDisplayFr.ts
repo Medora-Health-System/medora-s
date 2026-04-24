@@ -213,7 +213,13 @@ function catalogDisplayLabelEn(
   }
   if (t === "IMAGING_STUDY") {
     const c = item.catalogImagingStudy;
-    const base = pickStrictEnCatalogPrimaryLabel(catalogItemTypeForGuard, c?.displayNameEn, c?.code);
+    const en = (c?.displayNameEn ?? "").trim();
+    let base: string | null = null;
+    if (en && !isInvalidTechnicalOrderDisplayLabel(en, catalogItemTypeForGuard)) base = en;
+    else {
+      const code = (c?.code ?? "").trim();
+      if (code) base = code;
+    }
     if (base) {
       const mod = c?.modality ? ` (${c.modality})` : "";
       const full = `${base}${mod}`;

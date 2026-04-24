@@ -71,4 +71,20 @@ describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
   it("pickStrictEnCatalogPrimaryLabel prefers displayNameEn over code when EN is set", () => {
     expect(pickStrictEnCatalogPrimaryLabel("LAB_TEST", "Glucose", "GLU")).toBe("Glucose");
   });
+
+  it("EN imaging label uses ALL_CAPS_SNAKE catalog code when displayNameEn empty", () => {
+    const s = buildOrderItemDisplayLabelEn(
+      { catalogItemType: "IMAGING_STUDY", manualLabel: null, manualSecondaryText: null, strength: null },
+      null,
+      {
+        code: "CHEST_XRAY",
+        displayNameEn: null,
+        displayNameFr: "Radiographie thorax",
+        name: "Radiographie thorax",
+      },
+      null
+    );
+    expect(s).toBe("CHEST_XRAY");
+    expect(s).not.toContain("Radiographie");
+  });
 });

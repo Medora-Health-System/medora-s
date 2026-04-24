@@ -171,6 +171,7 @@ export function buildOrderItemDisplayLabelFr(
 /**
  * English UI (Phase C strict): for lab / imaging / medication — `displayNameEn` → acceptable manual → `code`
  * → typed EN fallback. Never `displayNameFr` or catalog `name` for those types.
+ * Imaging: catalog `code` may be ALL_CAPS_SNAKE and is used as the last English catalog resort when EN/manual absent.
  */
 export function buildOrderItemDisplayLabelEn(
   it: OrderItemLabelInput,
@@ -191,13 +192,16 @@ export function buildOrderItemDisplayLabelEn(
   }
   if (it.catalogItemType === "IMAGING_STUDY") {
     if (catalogImg) {
-      const base = firstAcceptableLineLabel(
+      // Catalog imaging `code` is often ALL_CAPS_SNAKE; `firstAcceptableLineLabel` rejects that pattern
+      // so EN would wrongly fall through to "Imaging study". Prefer EN + manual via guards, then raw code.
+      const fromEnOrManual = firstAcceptableLineLabel(
         it.catalogItemType,
         catalogImg.displayNameEn,
-        manualLineStr,
-        catalogImg.code
+        manualLineStr
       );
-      if (base) return base;
+      if (fromEnOrManual) return fromEnOrManual;
+      const codeRaw = (catalogImg.code ?? "").trim();
+      if (codeRaw) return codeRaw;
       return "Imaging study";
     }
     const base = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
