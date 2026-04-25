@@ -44,6 +44,12 @@ import { createStructuredLogger } from "../common/logging/structured-logger";
 
 const ordersLog = createStructuredLogger("OrdersService");
 
+function prismaErrorCode(err: unknown): string | undefined {
+  return err && typeof err === "object" && "code" in err && typeof (err as { code?: unknown }).code === "string"
+    ? (err as { code: string }).code
+    : undefined;
+}
+
 /**
  * TEMPORARY — retirer ce repli une fois la migration appliquée en base
  * (`OrderItem.manualLabel`, `OrderItem.manualSecondaryText`, ex. `20260322120000_order_item_manual_entries`
@@ -463,7 +469,6 @@ export class OrdersService {
         items: {
           include: {
             completedByNurse: { select: { firstName: true, lastName: true } },
-            result: { select: ORDER_ITEM_RESULT_LIST_SELECT },
             pharmacyDispenseRecord: {
               select: {
                 id: true,
@@ -493,9 +498,10 @@ export class OrdersService {
     });
 
     const enriched = await this.enrichOrderItemsForDisplaySafe(orders);
-    const withResultLabels = await this.attachEnteredByDisplayOnOrders(enriched);
-    const withCancellation = await this.attachCancellationDisplayOnOrders(withResultLabels);
-    return this.attachOrderedByDisplayOnOrders(withCancellation);
+    const withResults = await this.attachResultsToOrderItemsSafe(enriched, { facilityId, encounterId });
+    const withResultLabels = await this.attachEnteredByDisplayOnOrdersSafe(withResults, { facilityId, encounterId });
+    const withCancellation = await this.attachCancellationDisplayOnOrdersSafe(withResultLabels, { facilityId, encounterId });
+    return this.attachOrderedByDisplayOnOrdersSafe(withCancellation, { facilityId, encounterId });
   }
 
   async findOrderEventsByEncounter(encounterId: string, facilityId: string) {
@@ -614,6 +620,117 @@ export class OrdersService {
       ...o,
       cancelledByDisplayFr: o.cancelledByUserId ? umap.get(o.cancelledByUserId) ?? null : null,
     })) as OrderWithEnrichedItems[];
+  }
+
+  private ordersWithNullResults(orders: OrderWithEnrichedItems[]): OrderWithEnrichedItems[] {
+    return orders.map((order) => ({
+      ...order,
+      items: (order.items || []).map((item) => ({
+        ...item,
+        result: null,
+      })),
+    })) as OrderWithEnrichedItems[];
+  }
+
+  private logReadEnrichmentWarning(
+    event: string,
+    err: unknown,
+    context: { facilityId: string; encounterId: string; orderCount: number; itemCount: number }
+  ) {
+    ordersLog.warn(event, {
+      facilityId: context.facilityId,
+      encounterId: context.encounterId,
+      orderCount: context.orderCount,
+      itemCount: context.itemCount,
+      errorName: err instanceof Error ? err.name : typeof err,
+      errorCode: prismaErrorCode(err),
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  private async attachResultsToOrderItemsSafe(
+    orders: OrderWithEnrichedItems[],
+    context: { facilityId: string; encounterId: string }
+  ): Promise<OrderWithEnrichedItems[]> {
+    const itemIds = [
+      ...new Set(orders.flatMap((order) => (order.items || []).map((item) => item.id)).filter(Boolean)),
+    ];
+    if (itemIds.length === 0) {
+      return orders;
+    }
+
+    try {
+      const results = await this.prisma.result.findMany({
+        where: {
+          facilityId: context.facilityId,
+          orderItemId: { in: itemIds },
+        },
+        select: ORDER_ITEM_RESULT_LIST_SELECT,
+      });
+      const resultByItemId = new Map(results.map((result) => [result.orderItemId, result]));
+      return orders.map((order) => ({
+        ...order,
+        items: (order.items || []).map((item) => ({
+          ...item,
+          result: resultByItemId.get(item.id) ?? null,
+        })),
+      })) as OrderWithEnrichedItems[];
+    } catch (err) {
+      this.logReadEnrichmentWarning("order_result_enrichment_failed_fallback", err, {
+        ...context,
+        orderCount: orders.length,
+        itemCount: itemIds.length,
+      });
+      return this.ordersWithNullResults(orders);
+    }
+  }
+
+  private async attachEnteredByDisplayOnOrdersSafe(
+    orders: OrderWithEnrichedItems[],
+    context: { facilityId: string; encounterId: string }
+  ): Promise<OrderWithEnrichedItems[]> {
+    try {
+      return await this.attachEnteredByDisplayOnOrders(orders);
+    } catch (err) {
+      this.logReadEnrichmentWarning("order_result_user_display_enrichment_failed_fallback", err, {
+        ...context,
+        orderCount: orders.length,
+        itemCount: orders.reduce((sum, order) => sum + (order.items || []).length, 0),
+      });
+      return orders;
+    }
+  }
+
+  private async attachCancellationDisplayOnOrdersSafe(
+    orders: OrderWithEnrichedItems[],
+    context: { facilityId: string; encounterId: string }
+  ): Promise<OrderWithEnrichedItems[]> {
+    try {
+      return await this.attachCancellationDisplayOnOrders(orders);
+    } catch (err) {
+      this.logReadEnrichmentWarning("order_cancellation_display_enrichment_failed_fallback", err, {
+        ...context,
+        orderCount: orders.length,
+        itemCount: orders.reduce((sum, order) => sum + (order.items || []).length, 0),
+      });
+      return orders;
+    }
+  }
+
+  private async attachOrderedByDisplayOnOrdersSafe(
+    orders: OrderWithEnrichedItems[],
+    context: { facilityId: string; encounterId: string }
+  ): Promise<OrderWithEnrichedItems[]> {
+    try {
+      return await this.attachOrderedByDisplayOnOrders(orders);
+    } catch (err) {
+      this.logReadEnrichmentWarning("order_ordered_by_display_enrichment_failed_fallback", err, {
+        ...context,
+        orderCount: orders.length,
+        itemCount: orders.reduce((sum, order) => sum + (order.items || []).length, 0),
+      });
+      return orders;
+    }
   }
 
   /**
