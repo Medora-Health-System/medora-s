@@ -267,9 +267,9 @@ export type Icd10SearchHit = {
   isBillable: boolean;
 };
 
-export async function searchIcd10Catalog(facilityId: string, q: string, limit = 30): Promise<{ items: Icd10SearchHit[] }> {
+export async function searchIcd10Catalog(q: string, limit = 30): Promise<{ items: Icd10SearchHit[] }> {
   const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
-  return apiFetch(`/diagnoses/icd10/search?${params.toString()}`, { facilityId }) as Promise<{ items: Icd10SearchHit[] }>;
+  return apiFetch(`/diagnoses/icd10/search?${params.toString()}`) as Promise<{ items: Icd10SearchHit[] }>;
 }
 
 export async function reorderEncounterDiagnoses(facilityId: string, encounterId: string, orderedIds: string[]) {

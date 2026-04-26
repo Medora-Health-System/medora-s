@@ -34,7 +34,6 @@ export type Icd10DiagnosisEntryPanelProps = {
  * Same DTO semantics as `POST /encounters/:id/diagnoses`.
  */
 export function Icd10DiagnosisEntryPanel({
-  facilityId,
   disabled,
   language,
   t,
@@ -56,10 +55,6 @@ export function Icd10DiagnosisEntryPanel({
   const [onsetDate, setOnsetDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  const handleSearchInput = (value: string) => {
-    setSearchQ(value);
-  };
-
   useEffect(() => {
     const q = searchQ.trim();
     if (q.length < 2) {
@@ -71,7 +66,8 @@ export function Icd10DiagnosisEntryPanel({
     const tmr = window.setTimeout(() => {
       setSearching(true);
       setSearchFetchFailed(false);
-      void searchIcd10Catalog(facilityId, q, 25)
+      console.log("[DxSearch] calling icd10", q);
+      void searchIcd10Catalog(q, 25)
         .then((res) => {
           if (!cancelled) {
             setSearchHits(Array.isArray(res.items) ? res.items : []);
@@ -93,7 +89,7 @@ export function Icd10DiagnosisEntryPanel({
       cancelled = true;
       window.clearTimeout(tmr);
     };
-  }, [searchQ, facilityId]);
+  }, [searchQ]);
 
   useEffect(() => {
     if (!manualPrefill?.code?.trim()) return;
@@ -193,8 +189,7 @@ export function Icd10DiagnosisEntryPanel({
         <input
           type="search"
           value={searchQ}
-          onInput={(e) => handleSearchInput(e.currentTarget.value)}
-          onChange={(e) => handleSearchInput(e.target.value)}
+          onChange={(e) => setSearchQ(e.target.value)}
           placeholder={t("diagnosisEntry.icdSearchPlaceholder")}
           autoComplete="off"
           disabled={busy}
