@@ -56,6 +56,10 @@ export function Icd10DiagnosisEntryPanel({
   const [onsetDate, setOnsetDate] = useState("");
   const [notes, setNotes] = useState("");
 
+  const handleSearchInput = (value: string) => {
+    setSearchQ(value);
+  };
+
   useEffect(() => {
     const q = searchQ.trim();
     if (q.length < 2) {
@@ -189,7 +193,8 @@ export function Icd10DiagnosisEntryPanel({
         <input
           type="search"
           value={searchQ}
-          onChange={(e) => setSearchQ(e.target.value)}
+          onInput={(e) => handleSearchInput(e.currentTarget.value)}
+          onChange={(e) => handleSearchInput(e.target.value)}
           placeholder={t("diagnosisEntry.icdSearchPlaceholder")}
           autoComplete="off"
           disabled={busy}
