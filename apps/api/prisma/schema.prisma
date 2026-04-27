@@ -1274,8 +1274,11 @@ model Icd10DiagnosisCode {
 
   diagnoses Diagnosis[]
 
+  @@index([code])
   @@index([normalizedCode])
   @@index([isActive])
+  @@index([shortDescription])
+  @@index([normalizedCode, isActive])
 }
 
 /// CPT / HCPCS Level I & Level II reference rows (imported from vendor/CMS-style files — sample CSV in repo is not production-complete).
