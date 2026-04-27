@@ -89,6 +89,18 @@ const btnVoir: React.CSSProperties = {
   textAlign: "center",
 };
 
+const ACTIVE_WORKLIST_STATUSES = new Set(["PLACED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING"]);
+const COMPLETED_WORKLIST_STATUSES = new Set(["COMPLETED", "RESULTED", "VERIFIED"]);
+
+function isCompletedWorklistStatus(status: unknown): boolean {
+  return COMPLETED_WORKLIST_STATUSES.has(String(status ?? ""));
+}
+
+function isActiveWorklistStatus(status: unknown): boolean {
+  const s = String(status ?? "");
+  return ACTIVE_WORKLIST_STATUSES.has(s) || !isCompletedWorklistStatus(s);
+}
+
 function PendingEncounterPatientBlock({
   facilityId,
   encounterId,
@@ -234,6 +246,16 @@ export default function RadWorklistPage() {
     });
   }, [pendingLocal, searchQuery, t]);
 
+  const activeQueuePairs = useMemo(
+    () => filteredQueuePairs.filter(({ item }) => isActiveWorklistStatus(item.status)),
+    [filteredQueuePairs]
+  );
+
+  const completedQueuePairs = useMemo(
+    () => filteredQueuePairs.filter(({ item }) => isCompletedWorklistStatus(item.status)),
+    [filteredQueuePairs]
+  );
+
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
     const item = (Array.isArray(queue) ? queue : [])
@@ -330,6 +352,79 @@ export default function RadWorklistPage() {
       </div>
     );
   };
+
+  const renderQueueList = (pairs: { order: any; item: any }[]) => (
+    <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+      {pairs.map(({ order, item }) => {
+        const patient = order.encounter?.patient;
+        const pc = String(order.priority ?? "ROUTINE");
+        const pSoft = getPriorityBadgeSoft(pc);
+        const borderLeft = getPriorityBorder(pc);
+        return (
+          <li key={item.id}>
+            <MedoraCard
+              className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
+              leftAccentColor={borderLeft}
+              variant="default"
+            >
+              <MedoraCardInner>
+                <MedoraCardIdentity initials={patientInitials(patient)}>
+                  <MedoraCardTitle
+                    title={fullPatientName(patient)}
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.nir")}</span>{" "}
+                        {(patient?.mrn ?? "").trim() || t("common.dash")}
+                      </p>
+                    }
+                  />
+                  <MedoraCardBadgeRow>
+                    <MedoraCardBadge preset="neutral">
+                      {t("common.imagingStudy")} · {getOrderItemDisplayLabelFromLocale(item, language)}
+                    </MedoraCardBadge>
+                    {orderIsCancelled(order) ? (
+                      <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>
+                        {t("worklistDepartments.shared.orderCancelledBadge")}
+                      </span>
+                    ) : (
+                      <MedoraCardBadge preset="neutral">
+                        {tOrderItemStatusForWorklist(t, String(item.status))}
+                      </MedoraCardBadge>
+                    )}
+                    {order.pathwaySession ? (
+                      <MedoraCardBadge preset="pathway">
+                        {tPathwayType(t, order.pathwaySession.type)}
+                      </MedoraCardBadge>
+                    ) : null}
+                  </MedoraCardBadgeRow>
+                </MedoraCardIdentity>
+
+                <MedoraCardActions railBorderTopColor="#f1f5f9">
+                  <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
+                  {renderActions(order, item)}
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  const renderSectionEmpty = (message: string) => (
+    <div
+      style={{
+        borderRadius: 16,
+        border: "1px dashed #cbd5e1",
+        backgroundColor: "rgba(255,255,255,0.9)",
+        padding: "20px 18px",
+        color: "#64748b",
+        fontSize: 14,
+      }}
+    >
+      {message}
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
@@ -447,66 +542,26 @@ export default function RadWorklistPage() {
               </div>
             ) : (
               <>
-                {filteredQueuePairs.length > 0 ? (
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-                {filteredQueuePairs.map(({ order, item }) => {
-                    const patient = order.encounter?.patient;
-                    const pc = String(order.priority ?? "ROUTINE");
-                    const pSoft = getPriorityBadgeSoft(pc);
-                    const borderLeft = getPriorityBorder(pc);
-                    return (
-                      <li key={item.id}>
-                        <MedoraCard
-                          className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
-                          leftAccentColor={borderLeft}
-                          variant="default"
-                        >
-                          <MedoraCardInner>
-                            <MedoraCardIdentity initials={patientInitials(patient)}>
-                              <MedoraCardTitle
-                                title={fullPatientName(patient)}
-                                subline={
-                                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                                    <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.nir")}</span>{" "}
-                                    {(patient?.mrn ?? "").trim() || t("common.dash")}
-                                  </p>
-                                }
-                              />
-                              <MedoraCardBadgeRow>
-                                <MedoraCardBadge preset="neutral">
-                                  {t("common.imagingStudy")} · {getOrderItemDisplayLabelFromLocale(item, language)}
-                                </MedoraCardBadge>
-                                {orderIsCancelled(order) ? (
-                                  <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>
-                                    {t("worklistDepartments.shared.orderCancelledBadge")}
-                                  </span>
-                                ) : (
-                                  <MedoraCardBadge preset="neutral">
-                                    {tOrderItemStatusForWorklist(t, String(item.status))}
-                                  </MedoraCardBadge>
-                                )}
-                                {order.pathwaySession ? (
-                                  <MedoraCardBadge preset="pathway">
-                                    {tPathwayType(t, order.pathwaySession.type)}
-                                  </MedoraCardBadge>
-                                ) : null}
-                              </MedoraCardBadgeRow>
-                            </MedoraCardIdentity>
+                <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                    {t("worklistDepartments.shared.activeSectionTitle")}
+                  </h2>
+                  {activeQueuePairs.length > 0
+                    ? renderQueueList(activeQueuePairs)
+                    : renderSectionEmpty(t("worklistDepartments.shared.activeSectionEmpty"))}
+                </section>
 
-                            <MedoraCardActions railBorderTopColor="#f1f5f9">
-                              <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
-                              {renderActions(order, item)}
-                            </MedoraCardActions>
-                          </MedoraCardInner>
-                        </MedoraCard>
-                      </li>
-                    );
-                  })}
-              </ul>
-                ) : null}
+                <section style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 28 }}>
+                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+                    {t("worklistDepartments.shared.completedSectionTitle")}
+                  </h2>
+                  {completedQueuePairs.length > 0
+                    ? renderQueueList(completedQueuePairs)
+                    : renderSectionEmpty(t("worklistDepartments.shared.completedSectionEmpty"))}
+                </section>
 
             {pendingLocal.length > 0 ? (
-              <div style={{ marginTop: filteredQueuePairs.length > 0 ? 32 : 0 }}>
+              <div style={{ marginTop: 32 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "#0f172a" }}>
                   {t("worklistDepartments.shared.syncPendingTitle")}
                 </h2>
