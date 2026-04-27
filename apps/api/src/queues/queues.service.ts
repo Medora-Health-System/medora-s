@@ -60,11 +60,11 @@ export class QueuesService {
       where: {
         facilityId,
         type: "IMAGING",
-        status: { in: [OrderStatus.PENDING, OrderStatus.IN_PROGRESS] },
+        status: { in: [OrderStatus.PLACED, OrderStatus.PENDING, OrderStatus.IN_PROGRESS] },
         items: {
           some: {
             catalogItemType: "IMAGING_STUDY",
-            status: { in: [OrderStatus.PENDING, OrderStatus.IN_PROGRESS] }
+            status: { in: [OrderStatus.PLACED, OrderStatus.PENDING, OrderStatus.IN_PROGRESS] }
           }
         }
       },
@@ -110,11 +110,11 @@ export class QueuesService {
       where: {
         facilityId,
         type: "LAB",
-        status: { in: [OrderStatus.PENDING, OrderStatus.IN_PROGRESS] },
+        status: { in: [OrderStatus.PLACED, OrderStatus.PENDING, OrderStatus.IN_PROGRESS] },
         items: {
           some: {
             catalogItemType: "LAB_TEST",
-            status: { in: [OrderStatus.PENDING, OrderStatus.IN_PROGRESS] }
+            status: { in: [OrderStatus.PLACED, OrderStatus.PENDING, OrderStatus.IN_PROGRESS] }
           }
         }
       },
