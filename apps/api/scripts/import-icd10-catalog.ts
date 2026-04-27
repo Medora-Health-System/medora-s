@@ -14,6 +14,7 @@
  * Usage (repo root, DATABASE_URL set):
  *   pnpm --filter @medora/api run import:icd10-catalog -- --file=./apps/api/prisma/data/icd10-cm-sample-dev.csv
  *   pnpm --filter @medora/api run import:icd10-catalog -- --file=/path/to/icd10.csv --dry-run
+ *   pnpm --filter @medora/api run import:icd10-catalog -- --file=/path/to/icd10.csv --limit=100 --dry-run
  */
 import "reflect-metadata";
 import { readFileSync } from "node:fs";
@@ -54,9 +55,25 @@ function parseCsvLine(line: string): string[] {
   return out.map((s) => s.trim());
 }
 
+function getArg(name: string): string | undefined {
+  return process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=", 2)[1]?.trim();
+}
+
+function parseLimit(): number | null {
+  const raw = getArg("limit");
+  if (raw == null || raw === "") return null;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1 || String(n) !== raw) {
+    console.error("--limit must be a positive integer.");
+    process.exit(1);
+  }
+  return n;
+}
+
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const fileArg = process.argv.find((a) => a.startsWith("--file="))?.split("=", 2)[1]?.trim();
+  const limit = parseLimit();
+  const fileArg = getArg("file");
   if (!fileArg) {
     console.error("Missing --file=/path/to/icd10.csv");
     process.exit(1);
@@ -84,15 +101,37 @@ async function main() {
   const iCh = idx("chapter");
   const iCat = idx("category");
 
-  const prisma = new PrismaClient();
+  const sourceRows = lines.slice(1);
+  const limitedRows = limit != null ? sourceRows.slice(0, limit) : sourceRows;
+  const seenCodes = new Set<string>();
+  const duplicateCodes = new Set<string>();
+  const previewRows: Array<{
+    code: string;
+    shortDescription: string;
+    longDescription: string | null;
+    isBillable: boolean;
+    isActive: boolean;
+    effectiveYear: number | null;
+    codeSetVersion: string | null;
+  }> = [];
   let upserted = 0;
+  let skipped = 0;
+  const prisma = dryRun ? null : new PrismaClient();
   try {
-    for (let r = 1; r < lines.length; r++) {
-      const cells = parseCsvLine(lines[r]!);
+    for (let r = 0; r < limitedRows.length; r++) {
+      const cells = parseCsvLine(limitedRows[r]!);
       const code = cells[iCode]?.trim();
-      if (!code) continue;
+      if (!code) {
+        skipped++;
+        continue;
+      }
       const shortDescription = cells[iShort]?.trim() ?? "";
-      if (!shortDescription) continue;
+      if (!shortDescription) {
+        skipped++;
+        continue;
+      }
+      if (seenCodes.has(code)) duplicateCodes.add(code);
+      seenCodes.add(code);
       const longDescription = iLong >= 0 ? cells[iLong]?.trim() || null : null;
       const isBillable = iBill >= 0 ? parseBool(cells[iBill], true) : true;
       const isActive = iAct >= 0 ? parseBool(cells[iAct], true) : true;
@@ -118,12 +157,24 @@ async function main() {
         searchText,
       };
 
+      if (previewRows.length < 5) {
+        previewRows.push({
+          code: row.code,
+          shortDescription: row.shortDescription,
+          longDescription: row.longDescription,
+          isBillable: row.isBillable,
+          isActive: row.isActive,
+          effectiveYear: row.effectiveYear,
+          codeSetVersion: row.codeSetVersion,
+        });
+      }
+
       if (dryRun) {
         upserted++;
         continue;
       }
 
-      await prisma.icd10DiagnosisCode.upsert({
+      await prisma!.icd10DiagnosisCode.upsert({
         where: { code },
         create: { id: randomUUID(), ...row },
         update: {
@@ -141,9 +192,37 @@ async function main() {
       });
       upserted++;
     }
-    console.log(dryRun ? `[dry-run] Would process ${upserted} data rows.` : `Upserted ${upserted} ICD-10 rows.`);
+
+    if (dryRun) {
+      console.log("[dry-run] ICD-10 import validation only; no DB writes performed.");
+      console.log(`Source data rows:       ${sourceRows.length}`);
+      if (limit != null) console.log(`Limit applied:          ${limit}`);
+      console.log(`Rows inspected:         ${limitedRows.length}`);
+      console.log(`Valid parsed rows:      ${upserted}`);
+      console.log(`Skipped invalid rows:   ${skipped}`);
+      console.log(`Duplicate codes:        ${duplicateCodes.size}`);
+      if (duplicateCodes.size > 0) {
+        console.log(`Duplicate code sample:  ${Array.from(duplicateCodes).slice(0, 25).join(", ")}`);
+      }
+      console.log("First parsed rows (max 5):");
+      if (previewRows.length === 0) {
+        console.log("  (none)");
+      } else {
+        for (const row of previewRows) {
+          console.log(`  ${JSON.stringify(row)}`);
+        }
+      }
+    } else {
+      console.log(
+        limit != null
+          ? `Upserted ${upserted} ICD-10 rows (limited to first ${limit} source rows).`
+          : `Upserted ${upserted} ICD-10 rows.`
+      );
+      if (skipped > 0) console.log(`Skipped ${skipped} rows missing code or short_description.`);
+      if (duplicateCodes.size > 0) console.warn(`Duplicate codes encountered: ${duplicateCodes.size}`);
+    }
   } finally {
-    await prisma.$disconnect();
+    await prisma?.$disconnect();
   }
 }
 
