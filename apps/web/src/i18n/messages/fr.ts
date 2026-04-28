@@ -5134,5 +5134,10 @@ export default {
     selectedMedQty: "Quantité",
     selectedMedRefills: "Renouvellements",
     selectedMedPlannedAdmin: "Administration prévue (optionnel)",
+    errDirectionsRequired: "La posologie est requise pour les ordonnances médicamenteuses",
+    confirmIvAdministration: "Je confirme que ce médicament est approprié pour une administration IV",
+    errIvConfirmationRequired: "La confirmation d'administration IV est requise",
+    confirmErQuantityOverride: "Je confirme que l'administration de plus d'une unité est appropriée",
+    errErQuantityConfirmationRequired: "La confirmation de dépassement de quantité est requise",
   },
 };

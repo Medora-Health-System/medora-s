@@ -21,16 +21,39 @@ const inputSm: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+const inlineWarningStyle: React.CSSProperties = {
+  margin: "6px 0 0",
+  fontSize: 12,
+  color: "#b45309",
+  lineHeight: 1.35,
+};
+
+const confirmationStyle: React.CSSProperties = {
+  display: "block",
+  marginTop: 8,
+  fontSize: 12,
+  color: "#334155",
+  lineHeight: 1.35,
+};
+
 export function SelectedMedicationItems({
   items,
   onPatch,
   onRemove,
   medicationOrderMode = "DEFAULT",
+  ivRouteConfirmations,
+  erQuantityConfirmations,
+  onIvRouteConfirmationChange,
+  onErQuantityConfirmationChange,
 }: {
   items: CreateOrderLineItem[];
   onPatch: (index: number, patch: Partial<CreateOrderLineItem>) => void;
   onRemove: (index: number) => void;
   medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY";
+  ivRouteConfirmations?: Record<string, boolean>;
+  erQuantityConfirmations?: Record<string, boolean>;
+  onIvRouteConfirmationChange?: (lineId: string, confirmed: boolean) => void;
+  onErQuantityConfirmationChange?: (lineId: string, confirmed: boolean) => void;
 }) {
   const { t } = useI18n();
   const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
@@ -43,14 +66,18 @@ export function SelectedMedicationItems({
         {t("createOrderModal.selectedRxHeading")}
       </div>
       <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
-        {items.map((item, idx) => (
-          <li
-            key={item._lineId}
-            style={{
-              padding: "10px 0 12px",
-              borderBottom: "1px solid #eee",
-            }}
-          >
+        {items.map((item, idx) => {
+          const missingDirections = !item.notes?.trim();
+          const needsIvConfirmation = item.route === "IVP" || item.route === "IVPB";
+          const needsErQuantityConfirmation = erAdministerOnly && (item.quantity ?? 0) > 1;
+          return (
+            <li
+              key={item._lineId}
+              style={{
+                padding: "10px 0 12px",
+                borderBottom: "1px solid #eee",
+              }}
+            >
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
               {item._label}
               {item.isManual && (
@@ -144,6 +171,9 @@ export function SelectedMedicationItems({
                   onChange={(e) => onPatch(idx, { notes: e.target.value })}
                   style={inputSm}
                 />
+                {missingDirections ? (
+                  <p style={inlineWarningStyle}>{t("createOrderModal.errDirectionsRequired")}</p>
+                ) : null}
               </div>
               <div>
                 <span style={labelSm}>{t("createOrderModal.selectedMedQty")}</span>
@@ -188,6 +218,32 @@ export function SelectedMedicationItems({
                 />
               </div>
             </div>
+            {needsIvConfirmation ? (
+              <label style={confirmationStyle}>
+                <input
+                  type="checkbox"
+                  checked={ivRouteConfirmations?.[item._lineId] === true}
+                  onChange={(e) => onIvRouteConfirmationChange?.(item._lineId, e.target.checked)}
+                />{" "}
+                {t("createOrderModal.confirmIvAdministration")}
+              </label>
+            ) : null}
+            {needsIvConfirmation && ivRouteConfirmations?.[item._lineId] !== true ? (
+              <p style={inlineWarningStyle}>{t("createOrderModal.errIvConfirmationRequired")}</p>
+            ) : null}
+            {needsErQuantityConfirmation ? (
+              <label style={confirmationStyle}>
+                <input
+                  type="checkbox"
+                  checked={erQuantityConfirmations?.[item._lineId] === true}
+                  onChange={(e) => onErQuantityConfirmationChange?.(item._lineId, e.target.checked)}
+                />{" "}
+                {t("createOrderModal.confirmErQuantityOverride")}
+              </label>
+            ) : null}
+            {needsErQuantityConfirmation && erQuantityConfirmations?.[item._lineId] !== true ? (
+              <p style={inlineWarningStyle}>{t("createOrderModal.errErQuantityConfirmationRequired")}</p>
+            ) : null}
             <button
               type="button"
               onClick={() => onRemove(idx)}
@@ -203,7 +259,8 @@ export function SelectedMedicationItems({
               {t("createOrderModal.selectedRowRemove")}
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );

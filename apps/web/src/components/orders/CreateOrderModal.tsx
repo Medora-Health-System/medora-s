@@ -577,6 +577,8 @@ export function CreateOrderModal({
   const [providerDirectory, setProviderDirectory] = useState<ProviderDirectoryItem[]>([]);
   const [providerDirectoryLoaded, setProviderDirectoryLoaded] = useState(false);
   const [providerDirectoryFailed, setProviderDirectoryFailed] = useState(false);
+  const [ivRouteConfirmations, setIvRouteConfirmations] = useState<Record<string, boolean>>({});
+  const [erQuantityConfirmations, setErQuantityConfirmations] = useState<Record<string, boolean>>({});
   const prescriberPrefilled = useRef(false);
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
@@ -945,6 +947,17 @@ export function CreateOrderModal({
   };
 
   const removeItem = (idx: number) => {
+    const lineId = formData.items[idx]?._lineId;
+    if (lineId) {
+      setIvRouteConfirmations((current) => {
+        const { [lineId]: _removed, ...rest } = current;
+        return rest;
+      });
+      setErQuantityConfirmations((current) => {
+        const { [lineId]: _removed, ...rest } = current;
+        return rest;
+      });
+    }
     setFormData((fd) => ({ ...fd, items: fd.items.filter((_, i) => i !== idx) }));
   };
 
@@ -986,6 +999,25 @@ export function CreateOrderModal({
       const missingQty = formData.items.some((it) => it.quantity == null || it.quantity < 1);
       if (missingQty) {
         setError(t("createOrderModal.errQuantityRequired"));
+        return;
+      }
+      const missingDirections = formData.items.some((it) => !it.notes?.trim());
+      if (missingDirections) {
+        setError(t("createOrderModal.errDirectionsRequired"));
+        return;
+      }
+      const missingIvConfirmation = formData.items.some(
+        (it) => (it.route === "IVP" || it.route === "IVPB") && ivRouteConfirmations[it._lineId] !== true
+      );
+      if (missingIvConfirmation) {
+        setError(t("createOrderModal.errIvConfirmationRequired"));
+        return;
+      }
+      const missingErQuantityConfirmation =
+        erAdministerOnlyMedication &&
+        formData.items.some((it) => (it.quantity ?? 0) > 1 && erQuantityConfirmations[it._lineId] !== true);
+      if (missingErQuantityConfirmation) {
+        setError(t("createOrderModal.errErQuantityConfirmationRequired"));
         return;
       }
     }
@@ -1593,6 +1625,14 @@ export function CreateOrderModal({
                       onPatch={patchMedItem}
                       onRemove={removeItem}
                       medicationOrderMode={medicationOrderMode}
+                      ivRouteConfirmations={ivRouteConfirmations}
+                      erQuantityConfirmations={erQuantityConfirmations}
+                      onIvRouteConfirmationChange={(lineId, confirmed) =>
+                        setIvRouteConfirmations((current) => ({ ...current, [lineId]: confirmed }))
+                      }
+                      onErQuantityConfirmationChange={(lineId, confirmed) =>
+                        setErQuantityConfirmations((current) => ({ ...current, [lineId]: confirmed }))
+                      }
                     />
                   )}
                   {activeTab === "CARE" && (

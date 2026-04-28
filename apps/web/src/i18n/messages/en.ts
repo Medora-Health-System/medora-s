@@ -5149,5 +5149,10 @@ export default {
     selectedMedQty: "Quantity",
     selectedMedRefills: "Refills",
     selectedMedPlannedAdmin: "Planned administration (optional)",
+    errDirectionsRequired: "Directions are required for medication orders",
+    confirmIvAdministration: "I confirm this medication is appropriate for IV administration",
+    errIvConfirmationRequired: "IV administration confirmation is required",
+    confirmErQuantityOverride: "I confirm administering more than one unit is appropriate",
+    errErQuantityConfirmationRequired: "Quantity override confirmation is required",
   },
 };
