@@ -4974,6 +4974,7 @@ export default {
       "Preview only for now. This avoids creating partial or mixed orders before safe multi-order apply is implemented.",
     orderSetsApply: "Apply order set",
     orderSetsApplying: "Applying…",
+    orderSetsApplyingBundle: "Applying: {bundle}",
     orderSetsSelectedCount: "Selected {selected} of {total}",
     orderSetsNoneSelectedWarning: "Select at least one item before applying in a future phase.",
     orderSetComingSoonBadge: "(coming soon)",

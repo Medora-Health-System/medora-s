@@ -4959,6 +4959,7 @@ export default {
       "Aperçu seulement pour l'instant. Cela évite de créer des ordres partiels ou mélangés avant une application multi-ordres sécurisée.",
     orderSetsApply: "Appliquer le protocole",
     orderSetsApplying: "Application…",
+    orderSetsApplyingBundle: "Application : {bundle}",
     orderSetsSelectedCount: "{selected} sur {total} sélectionné(s)",
     orderSetsNoneSelectedWarning: "Sélectionnez au moins un élément avant l'application dans une phase future.",
     orderSetComingSoonBadge: "(à venir)",

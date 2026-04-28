@@ -60,7 +60,13 @@ const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
     { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
     { key: "lipase", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LIPASE", catalogCodes: ["ER_LIP"] },
     { key: "urinalysis", type: "LAB", catalogType: "LAB_TEST", catalogCode: "UA", catalogCodes: ["ER_UA"] },
-    { key: "ctAbdomenPelvis", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_ABDOMEN_PELVIS" },
+    {
+      key: "ctAbdomenPelvis",
+      type: "IMAGING",
+      catalogType: "IMAGING_STUDY",
+      catalogCode: "CT_ABDOMEN_PELVIS",
+      catalogCodes: ["CT_ABD"],
+    },
   ],
   sepsis: [
     { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
@@ -116,6 +122,10 @@ function catalogLineLabel(
   t: (key: string) => string
 ): string {
   return catalogSearchItemFullDisplayLine(item, language, t);
+}
+
+function isApprovedCatalogMatch(item: CatalogSearchItem, catalogType: CatalogType, approvedCodes: Set<string>): boolean {
+  return item.type === catalogType && approvedCodes.has(item.code.toUpperCase());
 }
 
 function catalogItemToOrderLine(
@@ -191,6 +201,10 @@ function OrderSetPreview({
   const selectedCountLabel = t("createOrderModal.orderSetsSelectedCount")
     .replace("{selected}", String(checkedCount))
     .replace("{total}", String(totalCount));
+  const applyingBundleLabel = t("createOrderModal.orderSetsApplyingBundle").replace(
+    "{bundle}",
+    t(`createOrderModal.orderSets.${selected}.name`)
+  );
 
   return (
     <div>
@@ -293,6 +307,9 @@ function OrderSetPreview({
               {t("createOrderModal.orderSetsNoneSelectedWarning")}
             </p>
           ) : null}
+          <div style={{ margin: "0 0 8px", color: "#0f172a", fontSize: 12, fontWeight: 700 }}>
+            {applyingBundleLabel}
+          </div>
           <button
             type="button"
             disabled={!canApply || applying}
@@ -592,19 +609,20 @@ export function CreateOrderModal({
           q: orderSetItem.catalogCode,
           limit: 5,
         });
-        catalogItem = exactResults.find((item) => acceptableCodes.has(item.code.toUpperCase())) ?? null;
+        catalogItem =
+          exactResults.find((item) => isApprovedCatalogMatch(item, orderSetItem.catalogType!, acceptableCodes)) ?? null;
 
         if (!catalogItem && orderSetItem.fallbackSearchQuery) {
           const fallbackResults = await searchCatalog(facilityId, orderSetItem.catalogType, {
             q: orderSetItem.fallbackSearchQuery,
             limit: 5,
           });
-          const exactFallbackResults = fallbackResults.filter((item) => acceptableCodes.has(item.code.toUpperCase()));
+          const exactFallbackResults = fallbackResults.filter((item) =>
+            isApprovedCatalogMatch(item, orderSetItem.catalogType!, acceptableCodes)
+          );
 
           if (exactFallbackResults.length === 1) {
             catalogItem = exactFallbackResults[0];
-          } else if (fallbackResults.length === 1) {
-            catalogItem = fallbackResults[0];
           } else if (exactFallbackResults.length > 1 || fallbackResults.length > 1) {
             resolved.skipped.push({ key: orderSetItem.key, reason: "ambiguous" });
             continue;
