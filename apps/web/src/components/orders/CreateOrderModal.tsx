@@ -22,6 +22,7 @@ import type { SupportedLanguage } from "@/i18n/config";
 
 type OrderSetKey = "chestPain" | "abdominalPain" | "sepsis" | "trauma" | "respiratoryDistress";
 type OrderSetItemType = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
+type OrderTypeKey = OrderModalTab;
 type OrderSetItem = {
   key: string;
   type: OrderSetItemType;
@@ -76,6 +77,10 @@ const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
 
 function checkedOrderSetItemKeys(orderSet: OrderSetKey): string[] {
   return ORDER_SET_ITEMS[orderSet].map((item) => item.key);
+}
+
+function isOrderTypeKey(tab: CreateOrderModalTab): tab is OrderTypeKey {
+  return tab !== "ORDER_SET";
 }
 
 function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
@@ -371,7 +376,7 @@ export function CreateOrderModal({
   const firstTab: OrderModalTab =
     !canPrescribe && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE") ? "LAB" : initialOrderTab;
 
-  const carePresetItems = (): CreateOrderLineItem[] => {
+  const initialOrderItems = useMemo<CreateOrderLineItem[]>(() => {
     if (firstTab !== "CARE" || !initialCareManualLabel?.trim()) return [];
     const label = initialCareManualLabel.trim();
     return [
@@ -383,7 +388,7 @@ export function CreateOrderModal({
         _label: label,
       },
     ];
-  };
+  }, [firstTab, initialCareManualLabel]);
 
   const [activeTab, setActiveTab] = useState<CreateOrderModalTab>(firstTab);
   const [rxSuccess, setRxSuccess] = useState(false);
@@ -399,6 +404,12 @@ export function CreateOrderModal({
     prescriberLicense?: string;
     prescriberContact?: string;
   } | null>(null);
+  const [stagedItems, setStagedItems] = useState<Record<OrderTypeKey, CreateOrderLineItem[]>>(() => ({
+    LAB: [],
+    IMAGING: [],
+    MEDICATION: [],
+    CARE: firstTab === "CARE" ? initialOrderItems : [],
+  }));
 
   const [formData, setFormData] = useState({
     type: firstTab,
@@ -407,7 +418,7 @@ export function CreateOrderModal({
     prescriberName: "",
     prescriberLicense: "",
     prescriberContact: "",
-    items: carePresetItems(),
+    items: initialOrderItems,
   });
 
   const orderTypes: CreateOrderModalTab[] = canPrescribe
@@ -437,8 +448,15 @@ export function CreateOrderModal({
   }, [canPrescribe]);
 
   const changeTab = (tab: CreateOrderModalTab) => {
+    const nextStagedItems = isOrderTypeKey(activeTab)
+      ? { ...stagedItems, [activeTab]: formData.items }
+      : stagedItems;
+
+    setStagedItems(nextStagedItems);
     setActiveTab(tab);
-    setFormData((fd) => (tab === "ORDER_SET" ? { ...fd, items: [] } : { ...fd, type: tab, items: [] }));
+    setFormData((fd) =>
+      isOrderTypeKey(tab) ? { ...fd, type: tab, items: nextStagedItems[tab] } : { ...fd, items: [] }
+    );
     setError(null);
   };
 
