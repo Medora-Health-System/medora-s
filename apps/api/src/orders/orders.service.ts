@@ -376,6 +376,13 @@ export class OrdersService {
       });
     }
 
+    const orderSource = data.orderSource ?? "PROVIDER_ORDER";
+    const orderAuthorityMetadata = stripUndefinedKeys({
+      source: orderSource,
+      readbackConfirmed: data.readbackConfirmed,
+      protocolName: data.protocolName?.trim() || undefined,
+    });
+
     const orderCreateDataRaw = {
       ...stripUndefinedKeys({
         encounterId,
@@ -386,6 +393,7 @@ export class OrdersService {
         priority: data.priority || "ROUTINE",
         notes: data.notes?.trim() || undefined,
         orderedBy: userId,
+        source: orderSource,
         prescriberName: data.prescriberName?.trim() || undefined,
         prescriberLicense: data.prescriberLicense?.trim() || undefined,
         prescriberContact: data.prescriberContact?.trim() || undefined,
@@ -422,7 +430,7 @@ export class OrdersService {
           entityId: created.id,
           ip,
           userAgent,
-          metadata: { type: data.type, itemCount: data.items.length },
+          metadata: { type: data.type, itemCount: data.items.length, ...orderAuthorityMetadata },
           critical: true,
           tx,
         });
@@ -434,6 +442,7 @@ export class OrdersService {
             orderType: created.type,
             eventType: OrderEventType.CREATED,
             performedByUserId: userId,
+            metadata: orderAuthorityMetadata,
             tx,
           });
         }

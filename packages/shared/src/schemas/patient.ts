@@ -357,6 +357,8 @@ export type OrderPriority = z.infer<typeof orderPrioritySchema>;
 /** Single line item for POST /encounters/:id/orders — persisted fields depend on order `type` (service strips Rx-only fields for LAB/IMAGING). */
 export const medicationFulfillmentIntentSchema = z.enum(["ADMINISTER_CHART", "PHARMACY_DISPENSE"]);
 export type MedicationFulfillmentIntent = z.infer<typeof medicationFulfillmentIntentSchema>;
+export const orderSourceSchema = z.enum(["PROVIDER_ORDER", "VERBAL_ORDER", "NURSING_PROTOCOL"]);
+export type OrderSource = z.infer<typeof orderSourceSchema>;
 
 export const orderItemCreateDtoSchema = z.object({
   /** Absent ou null si saisie manuelle (`manualLabel` requis). */
@@ -392,6 +394,9 @@ export const orderCreateDtoSchema = z
     prescriberName: z.string().max(256).optional(),
     prescriberLicense: z.string().max(128).optional(),
     prescriberContact: z.string().max(256).optional(),
+    orderSource: orderSourceSchema.optional(),
+    readbackConfirmed: z.boolean().optional(),
+    protocolName: z.string().max(256).optional(),
     items: z.array(orderItemCreateDtoSchema).min(1),
   })
   .superRefine((data, ctx) => {
@@ -456,7 +461,7 @@ export const orderCreateDtoSchema = z
       });
       return;
     }
-    if (!data.prescriberName?.trim()) {
+    if (data.orderSource !== "NURSING_PROTOCOL" && !data.prescriberName?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Le prescripteur est requis pour une ordonnance.",

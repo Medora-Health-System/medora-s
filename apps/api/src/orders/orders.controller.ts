@@ -58,11 +58,34 @@ export class OrdersController {
       });
       const codes = userRoles.map((ur) => ur.role.code);
       if (!codes.includes(RoleCode.PROVIDER) && !codes.includes(RoleCode.ADMIN)) {
-        throw new ForbiddenException(
-          orderType === "MEDICATION"
-            ? "Seuls les médecins peuvent prescrire des médicaments."
-            : "Seuls les médecins peuvent créer des ordres de soins.",
-        );
+        if (!codes.includes(RoleCode.RN)) {
+          throw new ForbiddenException(
+            orderType === "MEDICATION"
+              ? "Seuls les médecins peuvent prescrire des médicaments."
+              : "Seuls les médecins peuvent créer des ordres de soins.",
+          );
+        }
+        if (!data.orderSource) {
+          throw new BadRequestException("Mode d'autorité requis pour un ordre infirmier.");
+        }
+        if (data.orderSource === "VERBAL_ORDER") {
+          if (!data.prescriberName?.trim()) {
+            throw new BadRequestException("Le médecin prescripteur est requis pour un ordre verbal.");
+          }
+          if (data.readbackConfirmed !== true) {
+            throw new BadRequestException("La relecture de l'ordre verbal doit être confirmée.");
+          }
+        } else if (data.orderSource === "NURSING_PROTOCOL") {
+          if (!data.protocolName?.trim()) {
+            throw new BadRequestException("Le protocole infirmier est requis.");
+          }
+        } else {
+          throw new ForbiddenException(
+            orderType === "MEDICATION"
+              ? "Seuls les médecins peuvent prescrire des médicaments."
+              : "Seuls les médecins peuvent créer des ordres de soins.",
+          );
+        }
       }
     }
 
