@@ -29,6 +29,7 @@ type OrderSetItem = {
   type: OrderSetItemType;
   catalogType?: CatalogType;
   catalogCode?: string;
+  catalogCodes?: string[];
   fallbackSearchQuery?: string;
   comingSoon?: boolean;
 };
@@ -48,41 +49,41 @@ const ORDER_SET_KEYS: OrderSetKey[] = [
 
 const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
   chestPain: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
-    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP" },
-    { key: "troponin", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TROPONIN" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
+    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
+    { key: "troponin", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TROPONIN", catalogCodes: ["TROP", "ER_TROP"] },
     { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
     { key: "ekgComingSoon", type: "CARE", comingSoon: true },
   ],
   abdominalPain: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
-    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP" },
-    { key: "lipase", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LIPASE" },
-    { key: "urinalysis", type: "LAB", catalogType: "LAB_TEST", catalogCode: "UA" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
+    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
+    { key: "lipase", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LIPASE", catalogCodes: ["ER_LIP"] },
+    { key: "urinalysis", type: "LAB", catalogType: "LAB_TEST", catalogCode: "UA", catalogCodes: ["ER_UA"] },
     { key: "ctAbdomenPelvis", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_ABDOMEN_PELVIS" },
   ],
   sepsis: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
-    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP" },
-    { key: "lactate", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LACTATE" },
-    { key: "bloodCulture", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BLOOD_CULTURE" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
+    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
+    { key: "lactate", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LACTATE", catalogCodes: ["ER_LAC"] },
+    { key: "bloodCulture", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BLOOD_CULTURE", catalogCodes: ["ER_BC"] },
     { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
   ],
   trauma: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
-    { key: "typeScreen", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TYPE_SCREEN" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
+    { key: "typeScreen", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TYPE_SCREEN", catalogCodes: ["ER_BLOOD_TYPE"] },
     { key: "ctHead", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_HEAD" },
     { key: "ctCervicalSpine", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_CERVICAL_SPINE" },
     { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
   ],
   respiratoryDistress: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
-    { key: "bmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BMP" },
-    { key: "bnp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BNP" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
+    { key: "bmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BMP", catalogCodes: ["ER_BMP"] },
+    { key: "bnp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BNP", catalogCodes: ["ER_BNP"] },
     { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
-    { key: "covid", type: "LAB", catalogType: "LAB_TEST", catalogCode: "COVID" },
-    { key: "influenzaAb", type: "LAB", catalogType: "LAB_TEST", catalogCode: "INFLUENZA_AB" },
-    { key: "rsv", type: "LAB", catalogType: "LAB_TEST", catalogCode: "RSV" },
+    { key: "covid", type: "LAB", catalogType: "LAB_TEST", catalogCode: "COVID", catalogCodes: ["ER_COVID"] },
+    { key: "influenzaAb", type: "LAB", catalogType: "LAB_TEST", catalogCode: "INFLUENZA_AB", catalogCodes: ["ER_FLU"] },
+    { key: "rsv", type: "LAB", catalogType: "LAB_TEST", catalogCode: "RSV", catalogCodes: ["ER_RSV"] },
   ],
 };
 
@@ -582,23 +583,29 @@ export function CreateOrderModal({
         continue;
       }
 
+      const acceptableCodes = new Set(
+        [orderSetItem.catalogCode, ...(orderSetItem.catalogCodes ?? [])].map((code) => code.toUpperCase())
+      );
       let catalogItem: CatalogSearchItem | null = null;
       try {
         const exactResults = await searchCatalog(facilityId, orderSetItem.catalogType, {
           q: orderSetItem.catalogCode,
           limit: 5,
         });
-        catalogItem = exactResults.find((item) => item.code === orderSetItem.catalogCode) ?? null;
+        catalogItem = exactResults.find((item) => acceptableCodes.has(item.code.toUpperCase())) ?? null;
 
         if (!catalogItem && orderSetItem.fallbackSearchQuery) {
           const fallbackResults = await searchCatalog(facilityId, orderSetItem.catalogType, {
             q: orderSetItem.fallbackSearchQuery,
             limit: 5,
           });
+          const exactFallbackResults = fallbackResults.filter((item) => acceptableCodes.has(item.code.toUpperCase()));
 
-          if (fallbackResults.length === 1) {
+          if (exactFallbackResults.length === 1) {
+            catalogItem = exactFallbackResults[0];
+          } else if (fallbackResults.length === 1) {
             catalogItem = fallbackResults[0];
-          } else if (fallbackResults.length > 1) {
+          } else if (exactFallbackResults.length > 1 || fallbackResults.length > 1) {
             resolved.skipped.push({ key: orderSetItem.key, reason: "ambiguous" });
             continue;
           }

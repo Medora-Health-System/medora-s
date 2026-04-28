@@ -600,7 +600,7 @@ export function EmergencyErOrdersPanel({
                     ) : (
                       <ul style={{ margin: 0, paddingLeft: 14, maxHeight: 120, overflow: "auto" }}>
                         {lines.slice(0, 12).map((line, i) => (
-                          <li key={`${d}-${i}`} style={{ marginBottom: 2 }}>
+                          <li key={`${d}-${i}`} style={{ marginBottom: 2, overflowWrap: "anywhere", whiteSpace: "normal" }}>
                             {line}
                           </li>
                         ))}
@@ -617,6 +617,7 @@ export function EmergencyErOrdersPanel({
                   </div>
                 );
               })}
+            </div>
             </div>
 
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
@@ -637,13 +638,14 @@ export function EmergencyErOrdersPanel({
                         display: "flex",
                         flexDirection: "column",
                         gap: 8,
+                        minWidth: 0,
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>{o.type}</span>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, flex: "1 1 auto", minWidth: 0 }}>{o.type}</span>
                         <button
                           type="button"
-                          style={btn}
+                          style={{ ...btn, flex: "0 0 auto" }}
                           disabled={cancelBusyOrderId === o.id}
                           onClick={() => void onCancelOrder(o.id)}
                         >
@@ -738,13 +740,28 @@ export function EmergencyErOrdersPanel({
                                 display: "flex",
                                 flexWrap: "wrap",
                                 gap: 8,
-                                alignItems: "center",
+                                alignItems: "flex-start",
                                 justifyContent: "space-between",
+                                borderTop: "1px solid #f1f5f9",
+                                paddingTop: 6,
+                                minWidth: 0,
                               }}
                             >
-                              <div style={{ fontSize: 12, color: "#0f172a", flex: "1 1 160px", minWidth: 0 }}>{label}</div>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: "#0f172a",
+                                  flex: "1 1 220px",
+                                  minWidth: 0,
+                                  overflowWrap: "anywhere",
+                                  whiteSpace: "normal",
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                {label}
+                              </div>
                               {lineBtns.length > 0 ? (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, flex: "0 0 auto", justifyContent: "flex-end" }}>{lineBtns}</div>
                               ) : null}
                             </div>
                           );
@@ -772,8 +789,8 @@ export function EmergencyErOrdersPanel({
                     const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
                     const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
                     return (
-                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
+                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {eventLinePrimaryTitle(e, language, t, parsedOrders)}
                       </div>
                       {secondaryLine ? (
@@ -781,7 +798,7 @@ export function EmergencyErOrdersPanel({
                           {secondaryLine}
                         </div>
                       ) : null}
-                      <div style={{ fontSize: 11, color: "#475569" }}>
+                      <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
                         {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
                         {e.roleSnapshot ?? "—"}
@@ -806,8 +823,8 @@ export function EmergencyErOrdersPanel({
                   {cancelledEvents.map((e) => {
                     const medCancelLine = medicationCancellationSubLabel(e, t);
                     return (
-                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>
+                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {eventLinePrimaryTitle(e, language, t, parsedOrders)}
                       </div>
                       {medCancelLine ? (
@@ -815,12 +832,12 @@ export function EmergencyErOrdersPanel({
                           {medCancelLine}
                         </div>
                       ) : null}
-                      <div style={{ fontSize: 11, color: "#475569" }}>
+                      <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
                         {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
                         {e.roleSnapshot ?? "—"}
                       </div>
-                      <div style={{ fontSize: 11, color: "#475569" }}>
+                      <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {t("orderEvent.cancelReason")}:{" "}
                         {formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t)}
                       </div>
@@ -829,7 +846,6 @@ export function EmergencyErOrdersPanel({
                   })}
                 </div>
               )}
-            </div>
             </div>
           </div>
         )}
