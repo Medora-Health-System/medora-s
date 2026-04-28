@@ -32,6 +32,20 @@ type LoincCandidate = {
   reason: string;
 };
 
+const PANEL_PHRASES_BY_MEDORA_CODE: Record<string, string[]> = {
+  BMP: ["basic metabolic panel"],
+  ER_BMP: ["basic metabolic panel"],
+  CMP: ["comprehensive metabolic panel"],
+  ER_CMP: ["comprehensive metabolic panel"],
+};
+
+const PREFERRED_PANEL_LOINCS_BY_MEDORA_CODE: Record<string, string[]> = {
+  BMP: ["51990-0"],
+  ER_BMP: ["51990-0"],
+  CMP: ["24323-8"],
+  ER_CMP: ["24323-8"],
+};
+
 function readText(filePath: string): string {
   return fs.readFileSync(filePath, "utf8");
 }
@@ -171,6 +185,17 @@ function isPanelLab(lab: MedoraLab): boolean {
   return /\b(panel|cbc|bmp|cmp|urinalysis|ua|abg|vbg|gas|lipid)\b/.test(text);
 }
 
+function isMetabolicPanelLab(lab: MedoraLab): boolean {
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(panel|cmp|bmp)\b/.test(medoraName);
+}
+
 function excluded(row: LoincRow, lab: MedoraLab): boolean {
   const status = normalize(row.status);
   if (status && status !== "active" && status !== "trial") return true;
@@ -178,6 +203,7 @@ function excluded(row: LoincRow, lab: MedoraLab): boolean {
   const text = ` ${normalize(combinedLoincText(row))} `;
   if (/\b(deprecated|discouraged)\b/.test(text)) return true;
   if (/\b(animal|mouse|mice|rat|canine|dog|feline|cat|bovine|equine|porcine|veterinary)\b/.test(text)) return true;
+  if (/\b(dialysis|hemodialysis|haemodialysis|peritoneal dialysis)\b/.test(text)) return true;
   if (!isMolecularLab(lab) && /\b(sequence|sequencing|gene|genetic|genotype|mutation|variant|allele)\b/.test(text)) return true;
   if (/\b(delta|change|trend|timing|interpretation|interpreted|interp|calculated|calculation|research)\b/.test(text)) return true;
   if (/\b(after|before|post|pre|challenge|baseline|peak|trough|random|fasting)\b/.test(text)) return true;
@@ -191,6 +217,7 @@ function scoreCandidate(lab: MedoraLab, row: LoincRow): { score: number; reasons
     ...tokens(lab.displayNameEn),
     ...tokens(lab.displayNameFr),
     ...lab.aliases.flatMap(tokens),
+    ...(PANEL_PHRASES_BY_MEDORA_CODE[lab.medoraCode] ?? []).flatMap(tokens),
   ]);
   const searchTerms = new Set(tokens(lab.searchText));
   const rowName = normalize(row.name);
@@ -202,6 +229,11 @@ function scoreCandidate(lab: MedoraLab, row: LoincRow): { score: number; reasons
 
   let score = 0;
   const reasons: string[] = [];
+
+  if ((PREFERRED_PANEL_LOINCS_BY_MEDORA_CODE[lab.medoraCode] ?? []).includes(row.loinc ?? "")) {
+    score += 200;
+    reasons.push("preferred panel LOINC candidate");
+  }
 
   for (const term of labTerms) {
     if (component === term || rowName === term || rowShort === term) {
@@ -223,6 +255,10 @@ function scoreCandidate(lab: MedoraLab, row: LoincRow): { score: number; reasons
   if (isPanelLab(lab) && rowClass.includes("panel")) {
     score += 35;
     reasons.push("panel preferred");
+  }
+  if (isMetabolicPanelLab(lab) && rowClass.startsWith("panel") && component.includes("metabolic panel")) {
+    score += 80;
+    reasons.push("metabolic panel PANEL-class preferred");
   }
   if (system.includes("ser plas") || system === "bld" || system.includes("blood")) {
     score += 20;
