@@ -4962,6 +4962,7 @@ export default {
       noMatch: "No selected order-set items could be matched safely in the catalog.",
       ambiguous: "Some items had more than one possible catalog match and were skipped: {items}.",
       nonPrescriber: "Some prescription-only items were skipped for your role: {items}.",
+      rnAuthorityRequired: "Some medication/care items require a valid RN authority mode first: {items}.",
     },
   },
   createOrderModal: {
@@ -5022,6 +5023,22 @@ export default {
     successOk: "The order was saved for this encounter.",
     successCreatedNext: "{createdType} order created. Next: {nextType}",
     orderSetStagedReviewBanner: "Order set staged. Review and create each tab separately.",
+    rnAuthority: {
+      title: "RN order authority",
+      modeLabel: "Authority mode",
+      verbalOrder: "Verbal order by physician",
+      nursingProtocol: "Nursing protocol",
+      physicianName: "Physician / prescriber name",
+      readbackConfirmed: "Read-back confirmed",
+      protocolName: "Protocol name",
+      orderSetSkipped: "Medication/care items require a valid RN authority mode before they can be staged.",
+      errors: {
+        sourceRequired: "Choose verbal order by physician or nursing protocol before submitting.",
+        physicianRequired: "Physician / prescriber name is required for a verbal order.",
+        readbackRequired: "Read-back confirmation is required for a verbal order.",
+        protocolRequired: "Protocol name is required for a nursing protocol order.",
+      },
+    },
     continue: "Continue",
     rxAllAdministerLine:
       "Prescription saved — administer to patient (chart medication administration).",

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
-import type { OrderCreateDto } from "@medora/shared";
+import type { OrderCreateDto, OrderSource } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog } from "@/lib/catalogSearchApi";
@@ -36,6 +36,12 @@ type OrderSetSkippedReason = "noMatch" | "ambiguous" | "nonPrescriber";
 type OrderSetSkippedItem = { key: string; reason: OrderSetSkippedReason };
 type ResolvedOrderSetItems = Record<OrderTypeKey, CreateOrderLineItem[]> & {
   skipped: OrderSetSkippedItem[];
+};
+type OrderAuthorityFormSource = OrderSource | "";
+type OrderAuthorityPayloadFields = {
+  orderSource?: OrderSource;
+  readbackConfirmed?: boolean;
+  protocolName?: string;
 };
 
 const ORDER_TYPE_REVIEW_ORDER: OrderTypeKey[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
@@ -344,9 +350,15 @@ function buildPayload(
   prescriberName: string,
   prescriberLicense: string,
   prescriberContact: string,
-  items: CreateOrderLineItem[]
+  items: CreateOrderLineItem[],
+  authority?: OrderAuthorityPayloadFields
 ): OrderCreateDto {
   const rootNotes = notes.trim() || undefined;
+  const authorityFields = {
+    ...(authority?.orderSource ? { orderSource: authority.orderSource } : {}),
+    ...(authority?.readbackConfirmed != null ? { readbackConfirmed: authority.readbackConfirmed } : {}),
+    ...(authority?.protocolName?.trim() ? { protocolName: authority.protocolName.trim() } : {}),
+  };
 
   if (type === "LAB") {
     return {
@@ -398,6 +410,10 @@ function buildPayload(
       type: "CARE",
       priority,
       notes: rootNotes,
+      ...(prescriberName.trim() ? { prescriberName: prescriberName.trim() } : {}),
+      ...(prescriberLicense.trim() ? { prescriberLicense: prescriberLicense.trim() } : {}),
+      ...(prescriberContact.trim() ? { prescriberContact: prescriberContact.trim() } : {}),
+      ...authorityFields,
       items: items.map((it) => ({
         catalogItemId: null,
         catalogItemType: "CARE" as const,
@@ -414,6 +430,7 @@ function buildPayload(
     prescriberName: prescriberName.trim(),
     prescriberLicense: prescriberLicense.trim() || undefined,
     prescriberContact: prescriberContact.trim() || undefined,
+    ...authorityFields,
     items: items.map((it) => {
       const raw = it.intendedAdministrationAt?.trim();
       const intendedDate = raw ? new Date(raw) : undefined;
@@ -447,6 +464,7 @@ export function CreateOrderModal({
   encounterId,
   facilityId,
   canPrescribe,
+  canUseRnOrderAuthority = false,
   encounter,
   initialOrderTab = "LAB",
   onClose,
@@ -459,6 +477,7 @@ export function CreateOrderModal({
   encounterId: string;
   facilityId: string;
   canPrescribe: boolean;
+  canUseRnOrderAuthority?: boolean;
   encounter?: { patient?: { firstName?: string; lastName?: string; mrn?: string } };
   initialOrderTab?: OrderModalTab;
   initialCareManualLabel?: string | null;
@@ -468,8 +487,11 @@ export function CreateOrderModal({
 }) {
   const { language, t } = useI18n();
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
+  const canUseMedicationCareTabs = canPrescribe || canUseRnOrderAuthority;
   const firstTab: OrderModalTab =
-    !canPrescribe && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE") ? "LAB" : initialOrderTab;
+    !canUseMedicationCareTabs && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE")
+      ? "LAB"
+      : initialOrderTab;
 
   const initialOrderItems = useMemo<CreateOrderLineItem[]>(() => {
     if (firstTab !== "CARE" || !initialCareManualLabel?.trim()) return [];
@@ -517,10 +539,13 @@ export function CreateOrderModal({
     prescriberName: "",
     prescriberLicense: "",
     prescriberContact: "",
+    orderSource: (canPrescribe ? "PROVIDER_ORDER" : "") as OrderAuthorityFormSource,
+    readbackConfirmed: false,
+    protocolName: "",
     items: initialOrderItems,
   });
 
-  const orderTypes: CreateOrderModalTab[] = canPrescribe
+  const orderTypes: CreateOrderModalTab[] = canUseMedicationCareTabs
     ? ["ORDER_SET", "LAB", "IMAGING", "MEDICATION", "CARE"]
     : ["ORDER_SET", "LAB", "IMAGING"];
   const [loading, setLoading] = useState(false);
@@ -601,6 +626,44 @@ export function CreateOrderModal({
     selectedOrderSetItemKeys.includes(item.key)
   );
   const canApplyOrderSet = selectedOrderSetItems.some((item) => !item.comingSoon);
+  const isRnAuthorityTab =
+    canUseRnOrderAuthority && (activeTab === "MEDICATION" || activeTab === "CARE");
+  const rnAuthorityModeValid =
+    (formData.orderSource === "VERBAL_ORDER" &&
+      formData.prescriberName.trim().length > 0 &&
+      formData.readbackConfirmed === true) ||
+    (formData.orderSource === "NURSING_PROTOCOL" && formData.protocolName.trim().length > 0);
+  const authorityPayloadFields = (): OrderAuthorityPayloadFields | undefined => {
+    if (canPrescribe && (formData.type === "MEDICATION" || formData.type === "CARE")) {
+      return { orderSource: "PROVIDER_ORDER" };
+    }
+    if (canUseRnOrderAuthority && (formData.type === "MEDICATION" || formData.type === "CARE")) {
+      if (formData.orderSource === "VERBAL_ORDER") {
+        return { orderSource: "VERBAL_ORDER", readbackConfirmed: formData.readbackConfirmed };
+      }
+      if (formData.orderSource === "NURSING_PROTOCOL") {
+        return { orderSource: "NURSING_PROTOCOL", protocolName: formData.protocolName };
+      }
+    }
+    return undefined;
+  };
+
+  const validateRnAuthorityForSubmit = (): string | null => {
+    if (!isRnAuthorityTab) return null;
+    if (!formData.orderSource || formData.orderSource === "PROVIDER_ORDER") {
+      return t("createOrderModal.rnAuthority.errors.sourceRequired");
+    }
+    if (formData.orderSource === "VERBAL_ORDER") {
+      if (!formData.prescriberName.trim()) return t("createOrderModal.rnAuthority.errors.physicianRequired");
+      if (formData.readbackConfirmed !== true) return t("createOrderModal.rnAuthority.errors.readbackRequired");
+      return null;
+    }
+    if (formData.orderSource === "NURSING_PROTOCOL") {
+      if (!formData.protocolName.trim()) return t("createOrderModal.rnAuthority.errors.protocolRequired");
+      return null;
+    }
+    return t("createOrderModal.rnAuthority.errors.sourceRequired");
+  };
 
   const resolveOrderSetItems = async (items: OrderSetItem[]): Promise<ResolvedOrderSetItems> => {
     const resolved = emptyResolvedOrderSetItems();
@@ -608,7 +671,11 @@ export function CreateOrderModal({
     for (const orderSetItem of items) {
       if (orderSetItem.comingSoon) continue;
 
-      if ((orderSetItem.type === "MEDICATION" || orderSetItem.type === "CARE") && !canPrescribe) {
+      if (
+        (orderSetItem.type === "MEDICATION" || orderSetItem.type === "CARE") &&
+        !canPrescribe &&
+        !(canUseRnOrderAuthority && rnAuthorityModeValid)
+      ) {
         resolved.skipped.push({ key: orderSetItem.key, reason: "nonPrescriber" });
         continue;
       }
@@ -718,7 +785,9 @@ export function CreateOrderModal({
         const hasNonPrescriber = resolved.skipped.some((item) => item.reason === "nonPrescriber");
         const hasAmbiguous = resolved.skipped.some((item) => item.reason === "ambiguous");
         const messageKey = hasNonPrescriber
-          ? "ordersets.apply.nonPrescriber"
+          ? canUseRnOrderAuthority
+            ? "ordersets.apply.rnAuthorityRequired"
+            : "ordersets.apply.nonPrescriber"
           : hasAmbiguous
             ? "ordersets.apply.ambiguous"
             : "ordersets.apply.skipped";
@@ -843,8 +912,15 @@ export function CreateOrderModal({
       return;
     }
 
+    const rnAuthorityError = validateRnAuthorityForSubmit();
+    if (rnAuthorityError) {
+      setError(rnAuthorityError);
+      return;
+    }
+
     if (formData.type === "MEDICATION") {
-      if (!formData.prescriberName.trim()) {
+      const rnNursingProtocol = canUseRnOrderAuthority && formData.orderSource === "NURSING_PROTOCOL";
+      if (!rnNursingProtocol && !formData.prescriberName.trim()) {
         setError(t("createOrderModal.errPrescriberRequired"));
         return;
       }
@@ -877,7 +953,8 @@ export function CreateOrderModal({
       formData.prescriberName,
       formData.prescriberLicense,
       formData.prescriberContact,
-      formData.items
+      formData.items,
+      authorityPayloadFields()
     );
 
     try {
@@ -1210,6 +1287,104 @@ export function CreateOrderModal({
                 onChange={(priority) => setFormData((fd) => ({ ...fd, priority }))}
               />
 
+              {isRnAuthorityTab ? (
+                <div
+                  style={{
+                    border: "1px solid #bfdbfe",
+                    background: "#eff6ff",
+                    borderRadius: 6,
+                    padding: "10px 12px",
+                    marginBottom: 12,
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#1e3a8a", marginBottom: 8 }}>
+                    {t("createOrderModal.rnAuthority.title")}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", marginBottom: 6 }}>
+                    {t("createOrderModal.rnAuthority.modeLabel")}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "#0f172a" }}>
+                      <input
+                        type="radio"
+                        name="rn-order-authority"
+                        checked={formData.orderSource === "VERBAL_ORDER"}
+                        onChange={() =>
+                          setFormData((fd) => ({ ...fd, orderSource: "VERBAL_ORDER", protocolName: "" }))
+                        }
+                      />
+                      {t("createOrderModal.rnAuthority.verbalOrder")}
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "#0f172a" }}>
+                      <input
+                        type="radio"
+                        name="rn-order-authority"
+                        checked={formData.orderSource === "NURSING_PROTOCOL"}
+                        onChange={() =>
+                          setFormData((fd) => ({
+                            ...fd,
+                            orderSource: "NURSING_PROTOCOL",
+                            prescriberName: "",
+                            readbackConfirmed: false,
+                          }))
+                        }
+                      />
+                      {t("createOrderModal.rnAuthority.nursingProtocol")}
+                    </label>
+                  </div>
+
+                  {formData.orderSource === "VERBAL_ORDER" ? (
+                    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#1e293b" }}>
+                        {t("createOrderModal.rnAuthority.physicianName")}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.prescriberName}
+                        onChange={(e) => setFormData((fd) => ({ ...fd, prescriberName: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          fontSize: 14,
+                        }}
+                      />
+                      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "#0f172a" }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.readbackConfirmed}
+                          onChange={(e) =>
+                            setFormData((fd) => ({ ...fd, readbackConfirmed: e.target.checked }))
+                          }
+                        />
+                        {t("createOrderModal.rnAuthority.readbackConfirmed")}
+                      </label>
+                    </div>
+                  ) : null}
+
+                  {formData.orderSource === "NURSING_PROTOCOL" ? (
+                    <div style={{ marginTop: 10 }}>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>
+                        {t("createOrderModal.rnAuthority.protocolName")}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.protocolName}
+                        onChange={(e) => setFormData((fd) => ({ ...fd, protocolName: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          fontSize: 14,
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div style={{ marginBottom: 12 }}>
                 <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12, color: "#333" }}>
                   {t("createOrderModal.clinicalNotesLabel")}{" "}
@@ -1338,7 +1513,7 @@ export function CreateOrderModal({
                 </div>
               )}
 
-              {activeTab === "MEDICATION" && (
+              {activeTab === "MEDICATION" && canPrescribe && (
                 <div
                   style={{
                     marginBottom: 14,

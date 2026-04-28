@@ -4947,6 +4947,7 @@ export default {
       noMatch: "Aucun élément sélectionné du protocole n'a pu être associé au catalogue de façon sûre.",
       ambiguous: "Certains éléments avaient plusieurs correspondances possibles au catalogue et ont été ignorés : {items}.",
       nonPrescriber: "Certains éléments réservés aux prescripteurs ont été ignorés pour votre rôle : {items}.",
+      rnAuthorityRequired: "Certains médicaments/soins exigent d'abord une autorisation infirmière valide : {items}.",
     },
   },
   createOrderModal: {
@@ -5007,6 +5008,22 @@ export default {
     successOk: "L'ordre a été enregistré pour cette visite.",
     successCreatedNext: "Ordre {createdType} créé. Ensuite : {nextType}",
     orderSetStagedReviewBanner: "Protocole préparé. Vérifiez et créez chaque onglet séparément.",
+    rnAuthority: {
+      title: "Autorisation d'ordre infirmier",
+      modeLabel: "Mode d'autorisation",
+      verbalOrder: "Ordre verbal du médecin",
+      nursingProtocol: "Protocole infirmier",
+      physicianName: "Nom du médecin / prescripteur",
+      readbackConfirmed: "Relecture confirmée",
+      protocolName: "Nom du protocole",
+      orderSetSkipped: "Les médicaments/soins exigent une autorisation infirmière valide avant préparation.",
+      errors: {
+        sourceRequired: "Choisissez un ordre verbal du médecin ou un protocole infirmier avant d'envoyer.",
+        physicianRequired: "Le nom du médecin / prescripteur est requis pour un ordre verbal.",
+        readbackRequired: "La confirmation de relecture est requise pour un ordre verbal.",
+        protocolRequired: "Le nom du protocole est requis pour un ordre sous protocole infirmier.",
+      },
+    },
     continue: "Continuer",
     rxAllAdministerLine:
       "Ordonnance enregistrée — à administrer au patient (dossier de soins).",

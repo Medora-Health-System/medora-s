@@ -285,6 +285,7 @@ export function EmergencyErOrdersPanel({
   onConsumeIntent?: () => void;
 }) {
   const { t, language } = useI18n();
+  const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !canPrescribe;
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [orderEventsRaw, setOrderEventsRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -857,6 +858,7 @@ export function EmergencyErOrdersPanel({
           encounterId={encounterId}
           facilityId={facilityId}
           canPrescribe={canPrescribe}
+          canUseRnOrderAuthority={canUseRnOrderAuthority}
           encounter={
             encounterForOrderModal?.patient
               ? {

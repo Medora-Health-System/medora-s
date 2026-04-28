@@ -4089,6 +4089,8 @@ function OrdersTab({
   /** Libellé CARE à injecter uniquement à l’ouverture via action rapide (évite de réutiliser un ancien preset avec une ordonnance). */
   const [carePresetForOpenModal, setCarePresetForOpenModal] = useState<string | null>(null);
   const isRn = roles.includes("RN") || roles.includes("ADMIN");
+  const canUseRnOrderAuthority = roles.includes("RN") && !canPrescribe;
+  const canCreateOrders = canPrescribe || canUseRnOrderAuthority;
   const canCancelWholeOrder =
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
   const encounterOpen = encounter?.status === "OPEN";
@@ -4165,18 +4167,18 @@ function OrdersTab({
   };
 
   useEffect(() => {
-    if (medicationModalRequestTick <= 0 || !canPrescribe) return;
+    if (medicationModalRequestTick <= 0 || !canCreateOrders) return;
     setCreateModalInitialTab("MEDICATION");
     setCarePresetForOpenModal(null);
     setShowCreateModal(true);
-  }, [medicationModalRequestTick, canPrescribe]);
+  }, [medicationModalRequestTick, canCreateOrders]);
 
   useEffect(() => {
-    if (careModalRequestTick <= 0 || !canPrescribe) return;
+    if (careModalRequestTick <= 0 || !canCreateOrders) return;
     setCreateModalInitialTab("CARE");
     setCarePresetForOpenModal(careModalPresetLabel?.trim() ?? null);
     setShowCreateModal(true);
-  }, [careModalRequestTick, canPrescribe, careModalPresetLabel]);
+  }, [careModalRequestTick, canCreateOrders, careModalPresetLabel]);
 
   if (loading) {
     return (
@@ -4224,7 +4226,7 @@ function OrdersTab({
             {t("encounterChrome.ordersTab.subtitle")}
           </p>
         </div>
-        {canPrescribe ? (
+        {canCreateOrders ? (
           <button
             onClick={() => {
               setCreateModalInitialTab("LAB");
@@ -4654,6 +4656,7 @@ function OrdersTab({
           encounterId={encounterId}
           facilityId={facilityId}
           canPrescribe={canPrescribe}
+          canUseRnOrderAuthority={canUseRnOrderAuthority}
           encounter={encounter}
           initialOrderTab={createModalInitialTab}
           initialCareManualLabel={carePresetForOpenModal}
