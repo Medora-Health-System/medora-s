@@ -126,6 +126,17 @@ export class OrdersController {
     return this.ordersService.findOrderEventsByEncounter(encounterId, facilityId);
   }
 
+  @Get("orders/provider-directory")
+  @Roles("RN", "PROVIDER", "ADMIN")
+  async providerDirectory(@Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+
+    return this.ordersService.listProviderDirectory(facilityId);
+  }
+
   @Get("orders/:id")
   @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
   async findOne(@Param("id") orderId: string, @Req() req: any) {

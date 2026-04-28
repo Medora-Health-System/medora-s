@@ -498,16 +498,19 @@ export class ChartSummaryService {
     const ordersWithVerifierNames = await this.ordersService.attachEnteredByDisplayOnOrders(ordersEnriched);
     const ordersWithCancellation = await this.ordersService.attachCancellationDisplayOnOrders(ordersWithVerifierNames);
     const ordersWithAuthority = await this.ordersService.attachAuthorityToOrders(ordersWithCancellation);
+    const ordersWithAttribution = await this.ordersService.attachAttributionToOrders(ordersWithAuthority);
 
     const ordersByEncounter = new Map<
       string,
       Array<
         OrderWithEnrichedItems & {
           authority?: { source: string | null; readbackConfirmed?: boolean; protocolName?: string };
+          createdByDisplay?: { userId: string; name: string; role: string | null; at: Date | string } | null;
+          lastActionDisplay?: { action: string; name: string; role: string | null; at: Date | string } | null;
         }
       >
     >();
-    for (const o of ordersWithAuthority) {
+    for (const o of ordersWithAttribution) {
       const list = ordersByEncounter.get(o.encounterId) ?? [];
       list.push(o);
       ordersByEncounter.set(o.encounterId, list);
@@ -549,6 +552,8 @@ export class ChartSummaryService {
         cancellationReason: o.cancellationReason ?? null,
         cancelledByDisplayFr: o.cancelledByDisplayFr ?? null,
         authority: o.authority,
+        createdByDisplay: o.createdByDisplay ?? null,
+        lastActionDisplay: o.lastActionDisplay ?? null,
         items: toChartOrderItems(o),
       }));
 

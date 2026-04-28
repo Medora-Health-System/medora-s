@@ -55,6 +55,27 @@ type OrderAuthorityOrder = {
   source?: string | null;
 };
 
+type OrderCreatedByDisplay = {
+  userId: string;
+  name: string;
+  role: string | null;
+  at: Date | string;
+};
+
+type OrderLastActionDisplay = {
+  action: string;
+  name: string;
+  role: string | null;
+  at: Date | string;
+};
+
+type OrderAttributionOrder = {
+  id: string;
+  facilityId: string;
+  orderedBy?: string | null;
+  createdAt: Date | string;
+};
+
 function prismaErrorCode(err: unknown): string | undefined {
   return err && typeof err === "object" && "code" in err && typeof (err as { code?: unknown }).code === "string"
     ? (err as { code: string }).code
@@ -191,6 +212,166 @@ export class OrdersService {
     return orders.map((order) => ({
       ...order,
       authority: this.authorityFromCreatedEvent(order, metadataByOrderId.get(order.id)),
+    }));
+  }
+
+  private roleKey(facilityId: string, userId: string): string {
+    return `${facilityId}:${userId}`;
+  }
+
+  private actionFromOrderEvent(event: {
+    eventType: OrderEventType;
+    metadata: Prisma.JsonValue | null;
+  }): string | null {
+    if (event.eventType === OrderEventType.CANCELLED) return "CANCELLED";
+
+    const metadata =
+      event.metadata && typeof event.metadata === "object" && !Array.isArray(event.metadata)
+        ? (event.metadata as Record<string, unknown>)
+        : {};
+
+    if (event.eventType === OrderEventType.STARTED) {
+      return metadata.lifecycleOutcome === "ACKNOWLEDGED" ? "ACKNOWLEDGED" : null;
+    }
+
+    if (event.eventType !== OrderEventType.COMPLETED) return null;
+
+    if (metadata.lifecycleOutcome === "ACKNOWLEDGED") return "ACKNOWLEDGED";
+    if (metadata.lifecycleOutcome === "RESULTED") return "RESULTED";
+    if (metadata.lifecycleOutcome === "VERIFIED") return "RESULTED";
+    if (metadata.marAction === "administered" || typeof metadata.medicationAdministrationId === "string") {
+      return "ADMINISTERED";
+    }
+
+    return "COMPLETED";
+  }
+
+  async attachAttributionToOrders<T extends OrderAttributionOrder>(
+    orders: T[]
+  ): Promise<Array<T & { createdByDisplay: OrderCreatedByDisplay | null; lastActionDisplay: OrderLastActionDisplay | null }>> {
+    if (orders.length === 0) {
+      return [] as Array<T & { createdByDisplay: OrderCreatedByDisplay | null; lastActionDisplay: OrderLastActionDisplay | null }>;
+    }
+
+    const orderIds = [...new Set(orders.map((o) => o.id).filter(Boolean))];
+    const creatorIds = [...new Set(orders.map((o) => o.orderedBy).filter((id): id is string => Boolean(id)))];
+    const facilityIds = [...new Set(orders.map((o) => o.facilityId).filter(Boolean))];
+
+    const [creatorRows, creatorRoleRows, actionEvents] = await Promise.all([
+      creatorIds.length
+        ? this.prisma.user.findMany({
+            where: { id: { in: creatorIds } },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : Promise.resolve([]),
+      creatorIds.length && facilityIds.length
+        ? this.prisma.userRole.findMany({
+            where: {
+              userId: { in: creatorIds },
+              facilityId: { in: facilityIds },
+              isActive: true,
+            },
+            include: { role: { select: { code: true } } },
+            orderBy: { createdAt: "asc" },
+          })
+        : Promise.resolve([]),
+      orderIds.length
+        ? this.prisma.orderEvent.findMany({
+            where: {
+              orderId: { in: orderIds },
+              eventType: { in: [OrderEventType.CANCELLED, OrderEventType.COMPLETED, OrderEventType.STARTED] },
+            },
+            orderBy: { performedAt: "desc" },
+            select: {
+              orderId: true,
+              eventType: true,
+              performedAt: true,
+              roleSnapshot: true,
+              metadata: true,
+              performedBy: { select: { firstName: true, lastName: true } },
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const creatorById = new Map(creatorRows.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()]));
+    const roleByUserFacility = new Map<string, string>();
+    for (const row of creatorRoleRows) {
+      const key = this.roleKey(row.facilityId, row.userId);
+      const current = roleByUserFacility.get(key);
+      const next = row.role.code;
+      roleByUserFacility.set(key, current ? `${current}|${next}` : next);
+    }
+
+    const lastActionByOrderId = new Map<string, OrderLastActionDisplay>();
+    for (const event of actionEvents) {
+      if (lastActionByOrderId.has(event.orderId)) continue;
+      const action = this.actionFromOrderEvent(event);
+      if (!action) continue;
+      const name = `${event.performedBy.firstName ?? ""} ${event.performedBy.lastName ?? ""}`.trim();
+      lastActionByOrderId.set(event.orderId, {
+        action,
+        name,
+        role: event.roleSnapshot ?? null,
+        at: event.performedAt,
+      });
+    }
+
+    return orders.map((order) => {
+      const creatorName = order.orderedBy ? creatorById.get(order.orderedBy) : null;
+      const createdByDisplay =
+        order.orderedBy && creatorName
+          ? {
+              userId: order.orderedBy,
+              name: creatorName,
+              role: roleByUserFacility.get(this.roleKey(order.facilityId, order.orderedBy)) ?? null,
+              at: order.createdAt,
+            }
+          : null;
+      const lastActionDisplay =
+        lastActionByOrderId.get(order.id) ??
+        (createdByDisplay
+          ? {
+              action: "CREATED",
+              name: createdByDisplay.name,
+              role: createdByDisplay.role,
+              at: createdByDisplay.at,
+            }
+          : null);
+
+      return {
+        ...order,
+        createdByDisplay,
+        lastActionDisplay,
+      };
+    });
+  }
+
+  async listProviderDirectory(facilityId: string): Promise<Array<{ id: string; name: string; email: string }>> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        userRoles: {
+          some: {
+            facilityId,
+            isActive: true,
+            role: { code: { in: [RoleCode.PROVIDER, RoleCode.ADMIN] } },
+          },
+        },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+      email: user.email,
     }));
   }
 
@@ -519,7 +700,9 @@ export class OrdersService {
     }
 
     const [enrichedCreated] = await this.enrichOrderItemsForDisplaySafe([order as unknown as OrderWithItems]);
-    return enrichedCreated;
+    const [withAuthority] = await this.attachAuthorityToOrders([enrichedCreated]);
+    const [withAttribution] = await this.attachAttributionToOrders([withAuthority]);
+    return withAttribution;
   }
 
   async findByEncounter(
@@ -569,7 +752,8 @@ export class OrdersService {
     const withResultLabels = await this.attachEnteredByDisplayOnOrdersSafe(withResults, { facilityId, encounterId });
     const withCancellation = await this.attachCancellationDisplayOnOrdersSafe(withResultLabels, { facilityId, encounterId });
     const withOrderedBy = await this.attachOrderedByDisplayOnOrdersSafe(withCancellation, { facilityId, encounterId });
-    return this.attachAuthorityToOrders(withOrderedBy);
+    const withAuthority = await this.attachAuthorityToOrders(withOrderedBy);
+    return this.attachAttributionToOrders(withAuthority);
   }
 
   async findOrderEventsByEncounter(encounterId: string, facilityId: string) {
@@ -903,7 +1087,8 @@ export class OrdersService {
     const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
     const [withCancel] = await this.attachCancellationDisplayOnOrders([withSig]);
     const [withAuthority] = await this.attachAuthorityToOrders([withCancel]);
-    return withAuthority;
+    const [withAttribution] = await this.attachAttributionToOrders([withAuthority]);
+    return withAttribution;
   }
 
   /**
@@ -1191,7 +1376,9 @@ export class OrdersService {
     const [enriched] = await this.enrichOrderItemsForDisplaySafe([updated as unknown as OrderWithItems]);
     const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
     const [withCancelDisplay] = await this.attachCancellationDisplayOnOrders([withSig]);
-    return withCancelDisplay;
+    const [withAuthority] = await this.attachAuthorityToOrders([withCancelDisplay]);
+    const [withAttribution] = await this.attachAttributionToOrders([withAuthority]);
+    return withAttribution;
   }
 
   async cancelOrder(
@@ -1241,9 +1428,26 @@ export class OrdersService {
       OrderStatus.ACKNOWLEDGED
     );
 
-    const updated = await this.prisma.orderItem.update({
-      where: { id: orderItemId },
-      data: { status: OrderStatus.ACKNOWLEDGED, lifecycleState },
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour accuser réception d'une ligne.");
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.orderItem.update({
+        where: { id: orderItemId },
+        data: { status: OrderStatus.ACKNOWLEDGED, lifecycleState },
+      });
+      await this.writeOrderEvent({
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        eventType: OrderEventType.STARTED,
+        performedByUserId: userId,
+        metadata: { orderItemId, lifecycleOutcome: "ACKNOWLEDGED" },
+        tx,
+      });
+      return row;
     });
 
     await this.audit.log(AuditAction.ORDER_ACK, "ORDER_ITEM", {

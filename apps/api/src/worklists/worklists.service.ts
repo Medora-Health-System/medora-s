@@ -138,7 +138,8 @@ export class WorklistsService {
       });
     }
     const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
-    return this.ordersService.attachAuthorityToOrders(enriched);
+    const withAuthority = await this.ordersService.attachAuthorityToOrders(enriched);
+    return this.ordersService.attachAttributionToOrders(withAuthority);
   }
 
   async getRadiologyWorklist(facilityId: string) {
@@ -240,7 +241,8 @@ export class WorklistsService {
       });
     }
     const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
-    return this.ordersService.attachAuthorityToOrders(enriched);
+    const withAuthority = await this.ordersService.attachAuthorityToOrders(enriched);
+    return this.ordersService.attachAttributionToOrders(withAuthority);
   }
 
   async getPharmacyWorklist(facilityId: string) {
@@ -289,7 +291,8 @@ export class WorklistsService {
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
     const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
-    return this.ordersService.attachAuthorityToOrders(enriched);
+    const withAuthority = await this.ordersService.attachAuthorityToOrders(enriched);
+    return this.ordersService.attachAttributionToOrders(withAuthority);
   }
 
   async getBillingWorklist(facilityId: string) {
@@ -325,12 +328,17 @@ export class WorklistsService {
     });
     const flatOrders = rows.flatMap((row) => row.orders);
     const withAuthority = await this.ordersService.attachAuthorityToOrders(flatOrders);
+    const withAttribution = await this.ordersService.attachAttributionToOrders(withAuthority);
     const authorityByOrderId = new Map(withAuthority.map((order) => [order.id, order.authority]));
+    const createdByDisplayByOrderId = new Map(withAttribution.map((order) => [order.id, order.createdByDisplay]));
+    const lastActionDisplayByOrderId = new Map(withAttribution.map((order) => [order.id, order.lastActionDisplay]));
     return rows.map((row) => ({
       ...row,
       orders: row.orders.map((order) => ({
         ...order,
         authority: authorityByOrderId.get(order.id) ?? { source: order.source ?? null },
+        createdByDisplay: createdByDisplayByOrderId.get(order.id) ?? null,
+        lastActionDisplay: lastActionDisplayByOrderId.get(order.id) ?? null,
       })),
     }));
   }
