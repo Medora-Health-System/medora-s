@@ -2,12 +2,17 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { CatalogSearchItemDto } from "./dto/catalog-search-item.dto";
 import {
-  compareCatalogRows,
-  matchTierForQuery,
+  compareOrderCatalogRows,
+  orderCatalogMatchTierForQuery,
   truncateSearchText,
-  type CatalogRankableRow,
+  type OrderCatalogRankableRow,
 } from "./catalog-search-rank.util";
 import { mapImagingRowToCatalogSearchItem } from "./catalog-search.mapper";
+
+const IMAGING_ALIAS_CODE_MAP: Record<string, string[]> = {
+  cxr: ["XR_CHEST"],
+  "ct head": ["CT_HEAD"],
+};
 
 @Injectable()
 export class ImagingCatalogService {
@@ -35,12 +40,19 @@ export class ImagingCatalogService {
       take: limit * 3,
     });
 
+    const aliasCodes = IMAGING_ALIAS_CODE_MAP[q] ?? [];
+    const byKnownAliasCatalog =
+      aliasCodes.length > 0
+        ? await this.prisma.catalogImagingStudy.findMany({
+            where: { code: { in: aliasCodes }, isActive: true },
+          })
+        : [];
+
     const byAlias = await this.prisma.imagingStudyAlias.findMany({
       where: { alias: { contains: q, mode: "insensitive" } },
-      select: { catalogImagingStudyId: true },
-      distinct: ["catalogImagingStudyId"],
+      select: { catalogImagingStudyId: true, alias: true },
     });
-    const aliasIds = byAlias.map((a) => a.catalogImagingStudyId);
+    const aliasIds = [...new Set(byAlias.map((a) => a.catalogImagingStudyId))];
     const byAliasCatalog =
       aliasIds.length > 0
         ? await this.prisma.catalogImagingStudy.findMany({
@@ -49,42 +61,45 @@ export class ImagingCatalogService {
           })
         : [];
 
-    const directIds = new Set(byCatalog.map((r) => r.id));
     type Row = (typeof byCatalog)[number];
-    const scored: Array<{ row: Row; tier: number }> = [];
+    const rowsById = new Map<string, Row>();
+    const aliasesById = new Map<string, string[]>();
 
-    for (const row of byCatalog) {
-      const rankable: CatalogRankableRow = {
-        code: row.code,
-        name: row.name,
-        displayNameEn: row.displayNameEn,
-        displayNameFr: row.displayNameFr,
-        searchText: row.searchText,
-        isEssential: row.isEssential,
-        sortPriority: row.sortPriority,
-      };
-      const tier = matchTierForQuery(q, rankable, { aliasOnlyMatch: false });
-      scored.push({ row, tier });
+    for (const row of [...byCatalog, ...byKnownAliasCatalog, ...byAliasCatalog]) {
+      rowsById.set(row.id, row);
     }
-    for (const row of byAliasCatalog) {
-      if (directIds.has(row.id)) continue;
-      const rankable: CatalogRankableRow = {
+
+    for (const alias of byAlias) {
+      const aliases = aliasesById.get(alias.catalogImagingStudyId) ?? [];
+      aliases.push(alias.alias);
+      aliasesById.set(alias.catalogImagingStudyId, aliases);
+    }
+    for (const row of byKnownAliasCatalog) {
+      const aliases = aliasesById.get(row.id) ?? [];
+      aliases.push(q);
+      aliasesById.set(row.id, aliases);
+    }
+
+    const scored: Array<{ row: Row; tier: number }> = [];
+    for (const row of rowsById.values()) {
+      const rankable: OrderCatalogRankableRow = {
         code: row.code,
         name: row.name,
         displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         searchText: row.searchText,
-        isEssential: row.isEssential,
-        sortPriority: row.sortPriority,
+        isActive: row.isActive,
       };
-      const tier = matchTierForQuery(q, rankable, { aliasOnlyMatch: true });
+      const tier = orderCatalogMatchTierForQuery(q, rankable, {
+        aliases: aliasesById.get(row.id),
+      });
       scored.push({ row, tier });
     }
 
     scored.sort((a, b) =>
-      compareCatalogRows(
-        { row: a.row as CatalogRankableRow, tier: a.tier },
-        { row: b.row as CatalogRankableRow, tier: b.tier }
+      compareOrderCatalogRows(
+        { row: a.row as OrderCatalogRankableRow, tier: a.tier },
+        { row: b.row as OrderCatalogRankableRow, tier: b.tier }
       )
     );
 

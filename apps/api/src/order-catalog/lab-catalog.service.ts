@@ -2,12 +2,19 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { CatalogSearchItemDto } from "./dto/catalog-search-item.dto";
 import {
-  compareCatalogRows,
-  matchTierForQuery,
+  compareOrderCatalogRows,
+  orderCatalogMatchTierForQuery,
   truncateSearchText,
-  type CatalogRankableRow,
+  type OrderCatalogRankableRow,
 } from "./catalog-search-rank.util";
 import { mapLabRowToCatalogSearchItem } from "./catalog-search.mapper";
+
+const LAB_ALIAS_CODE_MAP: Record<string, string[]> = {
+  cbc: ["CBC", "ER_CBC"],
+  cmp: ["ER_CMP"],
+  bmp: ["BMP", "ER_BMP"],
+  trop: ["TROP", "ER_TROP"],
+};
 
 @Injectable()
 export class LabCatalogService {
@@ -33,12 +40,19 @@ export class LabCatalogService {
       take: limit * 3,
     });
 
+    const aliasCodes = LAB_ALIAS_CODE_MAP[q] ?? [];
+    const byKnownAliasCatalog =
+      aliasCodes.length > 0
+        ? await this.prisma.catalogLabTest.findMany({
+            where: { code: { in: aliasCodes }, isActive: true },
+          })
+        : [];
+
     const byAlias = await this.prisma.labTestAlias.findMany({
       where: { alias: { contains: q, mode: "insensitive" } },
-      select: { catalogLabTestId: true },
-      distinct: ["catalogLabTestId"],
+      select: { catalogLabTestId: true, alias: true },
     });
-    const aliasIds = byAlias.map((a) => a.catalogLabTestId);
+    const aliasIds = [...new Set(byAlias.map((a) => a.catalogLabTestId))];
     const byAliasCatalog =
       aliasIds.length > 0
         ? await this.prisma.catalogLabTest.findMany({
@@ -47,42 +61,45 @@ export class LabCatalogService {
           })
         : [];
 
-    const directIds = new Set(byCatalog.map((r) => r.id));
     type Row = (typeof byCatalog)[number];
-    const scored: Array<{ row: Row; tier: number }> = [];
+    const rowsById = new Map<string, Row>();
+    const aliasesById = new Map<string, string[]>();
 
-    for (const row of byCatalog) {
-      const rankable: CatalogRankableRow = {
-        code: row.code,
-        name: row.name,
-        displayNameEn: row.displayNameEn,
-        displayNameFr: row.displayNameFr,
-        searchText: row.searchText,
-        isEssential: row.isEssential,
-        sortPriority: row.sortPriority,
-      };
-      const tier = matchTierForQuery(q, rankable, { aliasOnlyMatch: false });
-      scored.push({ row, tier });
+    for (const row of [...byCatalog, ...byKnownAliasCatalog, ...byAliasCatalog]) {
+      rowsById.set(row.id, row);
     }
-    for (const row of byAliasCatalog) {
-      if (directIds.has(row.id)) continue;
-      const rankable: CatalogRankableRow = {
+
+    for (const alias of byAlias) {
+      const aliases = aliasesById.get(alias.catalogLabTestId) ?? [];
+      aliases.push(alias.alias);
+      aliasesById.set(alias.catalogLabTestId, aliases);
+    }
+    for (const row of byKnownAliasCatalog) {
+      const aliases = aliasesById.get(row.id) ?? [];
+      aliases.push(q);
+      aliasesById.set(row.id, aliases);
+    }
+
+    const scored: Array<{ row: Row; tier: number }> = [];
+    for (const row of rowsById.values()) {
+      const rankable: OrderCatalogRankableRow = {
         code: row.code,
         name: row.name,
         displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
         searchText: row.searchText,
-        isEssential: row.isEssential,
-        sortPriority: row.sortPriority,
+        isActive: row.isActive,
       };
-      const tier = matchTierForQuery(q, rankable, { aliasOnlyMatch: true });
+      const tier = orderCatalogMatchTierForQuery(q, rankable, {
+        aliases: aliasesById.get(row.id),
+      });
       scored.push({ row, tier });
     }
 
     scored.sort((a, b) =>
-      compareCatalogRows(
-        { row: a.row as CatalogRankableRow, tier: a.tier },
-        { row: b.row as CatalogRankableRow, tier: b.tier }
+      compareOrderCatalogRows(
+        { row: a.row as OrderCatalogRankableRow, tier: a.tier },
+        { row: b.row as OrderCatalogRankableRow, tier: b.tier }
       )
     );
 
