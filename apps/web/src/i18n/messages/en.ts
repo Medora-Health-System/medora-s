@@ -4964,6 +4964,15 @@ export default {
     orderSetsApplyComingNext: "Order set apply coming next",
     orderSetsApplyDisabledHelp:
       "Preview only for now. This avoids creating partial or mixed orders before safe multi-order apply is implemented.",
+    orderSetsSelectedCount: "Selected {selected} of {total}",
+    orderSetsNoneSelectedWarning: "Select at least one item before applying in a future phase.",
+    orderSetComingSoonBadge: "(coming soon)",
+    orderSetType: {
+      LAB: "LAB",
+      IMAGING: "IMAGING",
+      MEDICATION: "MED",
+      CARE: "CARE",
+    },
     orderSets: {
       chestPain: { name: "Chest Pain" },
       abdominalPain: { name: "Abdominal Pain" },

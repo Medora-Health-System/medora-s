@@ -4949,6 +4949,15 @@ export default {
     orderSetsApplyComingNext: "Application du protocole à venir",
     orderSetsApplyDisabledHelp:
       "Aperçu seulement pour l'instant. Cela évite de créer des ordres partiels ou mélangés avant une application multi-ordres sécurisée.",
+    orderSetsSelectedCount: "{selected} sur {total} sélectionné(s)",
+    orderSetsNoneSelectedWarning: "Sélectionnez au moins un élément avant l'application dans une phase future.",
+    orderSetComingSoonBadge: "(à venir)",
+    orderSetType: {
+      LAB: "LAB",
+      IMAGING: "IMAGERIE",
+      MEDICATION: "MÉD",
+      CARE: "SOINS",
+    },
     orderSets: {
       chestPain: { name: "Douleur thoracique" },
       abdominalPain: { name: "Douleur abdominale" },

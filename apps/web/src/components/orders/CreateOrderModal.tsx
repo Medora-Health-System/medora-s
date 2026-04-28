@@ -21,6 +21,12 @@ import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 
 type OrderSetKey = "chestPain" | "abdominalPain" | "sepsis" | "trauma" | "respiratoryDistress";
+type OrderSetItemType = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
+type OrderSetItem = {
+  key: string;
+  type: OrderSetItemType;
+  comingSoon?: boolean;
+};
 
 const ORDER_SET_KEYS: OrderSetKey[] = [
   "chestPain",
@@ -30,13 +36,47 @@ const ORDER_SET_KEYS: OrderSetKey[] = [
   "respiratoryDistress",
 ];
 
-const ORDER_SET_ITEM_KEYS: Record<OrderSetKey, string[]> = {
-  chestPain: ["cbc", "cmp", "troponin", "chestXray", "ekgComingSoon"],
-  abdominalPain: ["cbc", "cmp", "lipase", "urinalysis", "ctAbdomenPelvis"],
-  sepsis: ["cbc", "cmp", "lactate", "bloodCulture", "chestXray"],
-  trauma: ["cbc", "typeScreen", "ctHead", "ctCervicalSpine", "chestXray"],
-  respiratoryDistress: ["cbc", "bmp", "bnp", "chestXray", "covidInfluenzaRsv"],
+const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
+  chestPain: [
+    { key: "cbc", type: "LAB" },
+    { key: "cmp", type: "LAB" },
+    { key: "troponin", type: "LAB" },
+    { key: "chestXray", type: "IMAGING" },
+    { key: "ekgComingSoon", type: "CARE", comingSoon: true },
+  ],
+  abdominalPain: [
+    { key: "cbc", type: "LAB" },
+    { key: "cmp", type: "LAB" },
+    { key: "lipase", type: "LAB" },
+    { key: "urinalysis", type: "LAB" },
+    { key: "ctAbdomenPelvis", type: "IMAGING" },
+  ],
+  sepsis: [
+    { key: "cbc", type: "LAB" },
+    { key: "cmp", type: "LAB" },
+    { key: "lactate", type: "LAB" },
+    { key: "bloodCulture", type: "LAB" },
+    { key: "chestXray", type: "IMAGING" },
+  ],
+  trauma: [
+    { key: "cbc", type: "LAB" },
+    { key: "typeScreen", type: "LAB" },
+    { key: "ctHead", type: "IMAGING" },
+    { key: "ctCervicalSpine", type: "IMAGING" },
+    { key: "chestXray", type: "IMAGING" },
+  ],
+  respiratoryDistress: [
+    { key: "cbc", type: "LAB" },
+    { key: "bmp", type: "LAB" },
+    { key: "bnp", type: "LAB" },
+    { key: "chestXray", type: "IMAGING" },
+    { key: "covidInfluenzaRsv", type: "LAB" },
+  ],
 };
+
+function checkedOrderSetItemKeys(orderSet: OrderSetKey): string[] {
+  return ORDER_SET_ITEMS[orderSet].map((item) => item.key);
+}
 
 function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
   const msg = err instanceof Error ? err.message : "";
@@ -53,13 +93,25 @@ function catalogLineLabel(
 
 function OrderSetPreview({
   selected,
+  checkedItemKeys,
   onSelect,
+  onToggleItem,
   t,
 }: {
   selected: OrderSetKey;
+  checkedItemKeys: string[];
   onSelect: (key: OrderSetKey) => void;
+  onToggleItem: (itemKey: string) => void;
   t: (key: string) => string;
 }) {
+  const items = ORDER_SET_ITEMS[selected];
+  const checkedCount = checkedItemKeys.length;
+  const totalCount = items.length;
+  const checkedSet = new Set(checkedItemKeys);
+  const selectedCountLabel = t("createOrderModal.orderSetsSelectedCount")
+    .replace("{selected}", String(checkedCount))
+    .replace("{total}", String(totalCount));
+
   return (
     <div>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
@@ -102,14 +154,65 @@ function OrderSetPreview({
             padding: 12,
           }}
         >
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>
-            {t(`createOrderModal.orderSets.${selected}.name`)}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", marginBottom: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>
+              {t(`createOrderModal.orderSets.${selected}.name`)}
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{selectedCountLabel}</div>
           </div>
-          <ul style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
-            {ORDER_SET_ITEM_KEYS[selected].map((itemKey) => (
-              <li key={itemKey}>{t(`createOrderModal.orderSetItems.${itemKey}`)}</li>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            {items.map((item) => (
+              <label
+                key={item.key}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "18px auto 1fr",
+                  gap: 8,
+                  alignItems: "center",
+                  padding: "7px 8px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                  background: checkedSet.has(item.key) ? "#f8fafc" : "#fff",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  color: "#334155",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checkedSet.has(item.key)}
+                  onChange={() => onToggleItem(item.key)}
+                  style={{ width: 14, height: 14, margin: 0 }}
+                />
+                <span
+                  style={{
+                    padding: "2px 6px",
+                    borderRadius: 999,
+                    background: item.type === "LAB" ? "#e3f2fd" : item.type === "IMAGING" ? "#e0f7fa" : "#f3e5f5",
+                    color: item.type === "LAB" ? "#0d47a1" : item.type === "IMAGING" ? "#006064" : "#6a1b9a",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  {t(`createOrderModal.orderSetType.${item.type}`)}
+                </span>
+                <span>
+                  {t(`createOrderModal.orderSetItems.${item.key}`)}
+                  {item.comingSoon ? (
+                    <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 12, fontWeight: 700 }}>
+                      {t("createOrderModal.orderSetComingSoonBadge")}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
             ))}
-          </ul>
+          </div>
+          {checkedCount === 0 ? (
+            <p style={{ margin: "0 0 12px", color: "#b45309", fontSize: 12, fontWeight: 600 }}>
+              {t("createOrderModal.orderSetsNoneSelectedWarning")}
+            </p>
+          ) : null}
           <button
             type="button"
             disabled
@@ -286,6 +389,9 @@ export function CreateOrderModal({
   const [rxSuccess, setRxSuccess] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [selectedOrderSet, setSelectedOrderSet] = useState<OrderSetKey>("chestPain");
+  const [selectedOrderSetItemKeys, setSelectedOrderSetItemKeys] = useState<string[]>(() =>
+    checkedOrderSetItemKeys("chestPain")
+  );
   const [createdOrder, setCreatedOrder] = useState<{
     id: string;
     createdAt: string;
@@ -334,6 +440,18 @@ export function CreateOrderModal({
     setActiveTab(tab);
     setFormData((fd) => (tab === "ORDER_SET" ? { ...fd, items: [] } : { ...fd, type: tab, items: [] }));
     setError(null);
+  };
+
+  const selectOrderSet = (key: OrderSetKey) => {
+    setSelectedOrderSet(key);
+    setSelectedOrderSetItemKeys(checkedOrderSetItemKeys(key));
+    setError(null);
+  };
+
+  const toggleOrderSetItem = (itemKey: string) => {
+    setSelectedOrderSetItemKeys((current) =>
+      current.includes(itemKey) ? current.filter((key) => key !== itemKey) : [...current, itemKey]
+    );
   };
 
   const catalogTypeForTab = (tab: OrderModalTab): "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" => {
@@ -750,7 +868,13 @@ export function CreateOrderModal({
                 }}
               >
                 {activeTab === "ORDER_SET" ? (
-                  <OrderSetPreview selected={selectedOrderSet} onSelect={setSelectedOrderSet} t={t} />
+                  <OrderSetPreview
+                    selected={selectedOrderSet}
+                    checkedItemKeys={selectedOrderSetItemKeys}
+                    onSelect={selectOrderSet}
+                    onToggleItem={toggleOrderSetItem}
+                    t={t}
+                  />
                 ) : activeTab === "CARE" ? (
                   <>
                     <div
