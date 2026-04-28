@@ -20,6 +20,95 @@ function catalogListPrimaryLine(
   return getCatalogSearchItemDisplayLabel(item, language, t);
 }
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function catalogSearchHaystack(
+  item: CatalogSearchItem,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): string {
+  return [
+    item.code,
+    item.name,
+    item.displayNameEn,
+    item.displayNameFr,
+    item.secondaryText,
+    item.searchText,
+    item.metadata?.strength,
+    item.metadata?.dosageForm,
+    item.metadata?.route,
+    catalogListPrimaryLine(item, language, t),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function rankCatalogSearchItem(
+  item: CatalogSearchItem,
+  query: string,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): number {
+  const needle = normalizeSearchText(query);
+  if (!needle) return 3;
+
+  const primary = normalizeSearchText(catalogListPrimaryLine(item, language, t));
+  const code = normalizeSearchText(item.code);
+  const haystack = normalizeSearchText(catalogSearchHaystack(item, language, t));
+
+  if (primary === needle || code === needle) return 0;
+  if (primary.startsWith(needle) || code.startsWith(needle)) return 1;
+  if (haystack.includes(needle)) return 2;
+
+  const tokens = needle.split(" ").filter(Boolean);
+  return tokens.length > 0 && tokens.every((token) => haystack.includes(token)) ? 2 : 3;
+}
+
+function typeBadgeForCatalogItem(item: CatalogSearchItem): string {
+  switch (item.type) {
+    case "MEDICATION":
+      return "💊";
+    case "LAB_TEST":
+      return "🧪";
+    case "IMAGING_STUDY":
+      return "🖼";
+    default:
+      return "📦";
+  }
+}
+
+function compactMedicationRoute(route: string | undefined): string {
+  const trimmed = route?.trim() ?? "";
+  const normalized = trimmed.toLowerCase();
+  if (!normalized) return "";
+  if (normalized === "intraveineuse" || normalized === "intravenous" || normalized === "iv") return "IV";
+  if (normalized === "injectable") return "IV";
+  if (normalized === "intramusculaire" || normalized === "intramuscular" || normalized === "im") return "IM";
+  if (normalized === "sous-cutanée" || normalized === "sous-cutanee" || normalized === "subcutaneous" || normalized === "sc") {
+    return "SC";
+  }
+  if (normalized === "orale" || normalized === "oral" || normalized === "po") return "PO";
+  return trimmed;
+}
+
+function catalogListDisplayLine(
+  item: CatalogSearchItem,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): string {
+  const badge = typeBadgeForCatalogItem(item);
+  const primary = catalogListPrimaryLine(item, language, t);
+  const route = item.type === "MEDICATION" ? compactMedicationRoute(item.metadata?.route) : "";
+  return route ? `${badge} ${primary} — ${route}` : `${badge} ${primary}`;
+}
+
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
   for (const [k, v] of Object.entries(vars)) {
@@ -123,7 +212,7 @@ export function SharedCatalogAutocomplete({
   }, [search.close]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!search.isOpen || search.results.length === 0) {
+    if (!search.isOpen || displayResults.length === 0) {
       if (e.key === "Escape") {
         e.preventDefault();
         search.close();
@@ -132,17 +221,18 @@ export function SharedCatalogAutocomplete({
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      search.moveSelection(1);
+      search.setSelectedIndex((idx) => Math.min(idx + 1, displayResults.length - 1));
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      search.moveSelection(-1);
+      search.setSelectedIndex((idx) => Math.max(idx - 1, 0));
       return;
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      const selected = search.selectCurrent();
+      const idx = search.selectedIndex >= 0 && search.selectedIndex < displayResults.length ? search.selectedIndex : 0;
+      const selected = displayResults[idx] ?? null;
       if (selected) {
         onSelect(selected);
         search.setQuery("");
@@ -162,10 +252,24 @@ export function SharedCatalogAutocomplete({
     search.close();
   };
 
-  const showList =
-    search.isOpen && (search.results.length > 0 || search.loading || search.noResults);
   const needle = search.query.trim();
-  const activeIdx = search.selectedIndex >= 0 ? search.selectedIndex : 0;
+  const displayResults = useMemo(
+    () =>
+      search.results
+        .filter((item) => item.type === catalogType)
+        .map((item, originalIndex) => ({
+          item,
+          originalIndex,
+          rank: rankCatalogSearchItem(item, needle, language, t),
+        }))
+        .sort((a, b) => a.rank - b.rank || a.originalIndex - b.originalIndex)
+        .map((entry) => entry.item),
+    [catalogType, language, needle, search.results, t]
+  );
+  const noDisplayResults = !search.loading && search.query.trim().length >= minChars && displayResults.length === 0;
+  const showList = search.isOpen && (displayResults.length > 0 || search.loading || noDisplayResults);
+  const activeIdx =
+    search.selectedIndex >= 0 && search.selectedIndex < displayResults.length ? search.selectedIndex : 0;
 
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
@@ -198,16 +302,17 @@ export function SharedCatalogAutocomplete({
               {t("sharedCatalogAutocomplete.searching")}
             </div>
           )}
-          {!search.loading && search.noResults && (
+          {!search.loading && noDisplayResults && (
             <div style={{ padding: 12, fontSize: 13, color: "#666" }}>
               {t("sharedCatalogAutocomplete.noResults")}
             </div>
           )}
           {!search.loading &&
             search.query.trim().length >= minChars &&
-            search.results.map((item, idx) => {
+            displayResults.map((item, idx) => {
               const isActive = idx === activeIdx;
               const badge = catalogType === "MEDICATION" ? stockBadge?.(item) : null;
+              const displayLine = catalogListDisplayLine(item, language, t);
               return (
                 <button
                   key={`${item.type}-${item.id}`}
@@ -228,7 +333,7 @@ export function SharedCatalogAutocomplete({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>
-                    <HighlightMatch text={catalogListPrimaryLine(item, language, t)} needle={needle} />
+                    <HighlightMatch text={displayLine} needle={needle} />
                     {item.type === "MEDICATION" && item.isEssential && (
                       <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>Essentiel</span>
                     )}
