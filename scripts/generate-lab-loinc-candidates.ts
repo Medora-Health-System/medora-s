@@ -46,6 +46,14 @@ const PREFERRED_PANEL_LOINCS_BY_MEDORA_CODE: Record<string, string[]> = {
   ER_CMP: ["24323-8"],
 };
 
+const PREFERRED_LOINCS_BY_MEDORA_CODE: Record<string, string[]> = {
+  ER_DDM: ["48065-7", "22457-8"],
+};
+
+const CBC_CODES = new Set(["CBC", "ER_CBC", "CBC_DIFF", "NFS_DIFF"]);
+const TROPONIN_CODES = new Set(["TROP", "TROPONIN", "ER_TROP"]);
+const D_DIMER_CODES = new Set(["D_DIMER", "DDIMER", "ER_DDM"]);
+
 function readText(filePath: string): string {
   return fs.readFileSync(filePath, "utf8");
 }
@@ -196,6 +204,42 @@ function isMetabolicPanelLab(lab: MedoraLab): boolean {
   return /\b(panel|cmp|bmp)\b/.test(medoraName);
 }
 
+function isCbcLab(lab: MedoraLab): boolean {
+  if (CBC_CODES.has(lab.medoraCode)) return true;
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(cbc|nfs|complete blood count|hemogramme)\b/.test(medoraName);
+}
+
+function isTroponinLab(lab: MedoraLab): boolean {
+  if (TROPONIN_CODES.has(lab.medoraCode)) return true;
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(troponin|troponine|trop)\b/.test(medoraName);
+}
+
+function isDimerLab(lab: MedoraLab): boolean {
+  if (D_DIMER_CODES.has(lab.medoraCode)) return true;
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(d dimer|dimeres|ddimer)\b/.test(medoraName);
+}
+
 function excluded(row: LoincRow, lab: MedoraLab): boolean {
   const status = normalize(row.status);
   if (status && status !== "active" && status !== "trial") return true;
@@ -204,6 +248,7 @@ function excluded(row: LoincRow, lab: MedoraLab): boolean {
   if (/\b(deprecated|discouraged)\b/.test(text)) return true;
   if (/\b(animal|mouse|mice|rat|canine|dog|feline|cat|bovine|equine|porcine|veterinary)\b/.test(text)) return true;
   if (/\b(dialysis|hemodialysis|haemodialysis|peritoneal dialysis)\b/.test(text)) return true;
+  if (isDimerLab(lab) && !/\b(fibrin d dimer|d dimer)\b/.test(text)) return true;
   if (!isMolecularLab(lab) && /\b(sequence|sequencing|gene|genetic|genotype|mutation|variant|allele)\b/.test(text)) return true;
   if (/\b(delta|change|trend|timing|interpretation|interpreted|interp|calculated|calculation|research)\b/.test(text)) return true;
   if (/\b(after|before|post|pre|challenge|baseline|peak|trough|random|fasting)\b/.test(text)) return true;
@@ -234,6 +279,10 @@ function scoreCandidate(lab: MedoraLab, row: LoincRow): { score: number; reasons
     score += 200;
     reasons.push("preferred panel LOINC candidate");
   }
+  if ((PREFERRED_LOINCS_BY_MEDORA_CODE[lab.medoraCode] ?? []).includes(row.loinc ?? "")) {
+    score += 120;
+    reasons.push("preferred reviewed LOINC candidate");
+  }
 
   for (const term of labTerms) {
     if (component === term || rowName === term || rowShort === term) {
@@ -259,6 +308,58 @@ function scoreCandidate(lab: MedoraLab, row: LoincRow): { score: number; reasons
   if (isMetabolicPanelLab(lab) && rowClass.startsWith("panel") && component.includes("metabolic panel")) {
     score += 80;
     reasons.push("metabolic panel PANEL-class preferred");
+  }
+  if (isMetabolicPanelLab(lab) && rowClass.startsWith("panel chem")) {
+    score += 45;
+    reasons.push("PANEL.CHEM preferred");
+  }
+  if (isMetabolicPanelLab(lab) && /\b(basic metabolic panel|comprehensive metabolic panel)\b/.test(component)) {
+    score += 70;
+    reasons.push("metabolic panel component preferred");
+  }
+  if (isMetabolicPanelLab(lab) && /\b(creatinine clearance|gfr|glomerular filtration|urine|urinary)\b/.test(rowText)) {
+    score -= 90;
+    reasons.push("deprioritized nonstandard metabolic panel context");
+  }
+  if (isCbcLab(lab) && rowClass.startsWith("panel") && /\b(bld|blood)\b/.test(system)) {
+    score += 70;
+    reasons.push("CBC panel Blood preferred");
+  }
+  if (isCbcLab(lab) && /\b(complete blood count|cbc|hemogram)\b/.test(component)) {
+    score += 55;
+    reasons.push("CBC component preferred");
+  }
+  if (isCbcLab(lab) && /\b(auto|automated|differential|diff)\b/.test(rowText)) {
+    score += 35;
+    reasons.push("CBC auto differential preferred");
+  }
+  if (isTroponinLab(lab) && /\btroponin i\b/.test(component)) {
+    score += 90;
+    reasons.push("Troponin I preferred");
+  }
+  if (isTroponinLab(lab) && /\b(ser plas|serum plasma|blood|bld)\b/.test(system)) {
+    score += 45;
+    reasons.push("Troponin serum/plasma/blood preferred");
+  }
+  if (isTroponinLab(lab) && /\b(high sensitivity|high sensitive|hs)\b/.test(rowText)) {
+    score += 35;
+    reasons.push("high-sensitivity Troponin preferred");
+  }
+  if (isTroponinLab(lab) && /\b(qn|mass|mc nc|mcnc)\b/.test(rowText)) {
+    score += 20;
+    reasons.push("quantitative Troponin preferred");
+  }
+  if (isDimerLab(lab) && /\b(fibrin d dimer|d dimer)\b/.test(rowText)) {
+    score += 85;
+    reasons.push("D-dimer analyte preferred");
+  }
+  if (isDimerLab(lab) && /\b(bld|blood|ser plas|serum plasma|plasma)\b/.test(system)) {
+    score += 35;
+    reasons.push("D-dimer blood/plasma preferred");
+  }
+  if (isDimerLab(lab) && rowClass.includes("coag")) {
+    score += 25;
+    reasons.push("D-dimer coagulation class preferred");
   }
   if (system.includes("ser plas") || system === "bld" || system.includes("blood")) {
     score += 20;
