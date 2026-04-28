@@ -21,6 +21,7 @@ import {
   tPathwayType,
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { formatOrderAuthority } from "@/lib/orderAuthority";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -339,6 +340,9 @@ export default function DepartmentOrderDetail({
           <div>
             <strong>{t("orderDetail.prescriberLabel")}</strong> {(order.prescriberName as string) || t("common.dash")}
           </div>
+          <div style={{ color: "#64748b", overflowWrap: "anywhere" }}>
+            {formatOrderAuthority(order, t)}
+          </div>
           <div>
             <strong>{t("orderDetail.prescriberContactLabel")}</strong> {(order.prescriberContact as string) || t("common.dash")}
           </div>
@@ -387,6 +391,7 @@ export default function DepartmentOrderDetail({
                   prescriberName: order.prescriberName,
                   prescriberLicense: order.prescriberLicense,
                   prescriberContact: order.prescriberContact,
+                  authority: order.authority ?? { source: order.source },
                   items: order.items || [],
                 },
                 patient: patient ?? {},
@@ -426,6 +431,9 @@ export default function DepartmentOrderDetail({
               {fillTemplate(t("orderDetail.qtyPrescribedLine"), {
                 qty: String(dispenseItem.quantity ?? t("common.dash")),
               })}
+            </p>
+            <p style={{ fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>
+              {formatOrderAuthority(order, t)}
             </p>
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
               {t("orderDetail.qtyDelivered")}

@@ -79,6 +79,7 @@ import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landing
 import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { isEncounterLocked } from "@/lib/encounterLock";
+import { formatOrderAuthority } from "@/lib/orderAuthority";
 
 /** Presentation-only: admission / discharge / close / documentation-deficiency modals on this page. */
 function encounterWorkflowModalOverlay(zIndex: number): React.CSSProperties {
@@ -4107,6 +4108,7 @@ function OrdersTab({
         prescriberName: order.prescriberName,
         prescriberLicense: order.prescriberLicense,
         prescriberContact: order.prescriberContact,
+        authority: order.authority ?? { source: order.source },
         items: order.items || [],
       },
       patient: encounter?.patient ?? {},
@@ -4490,6 +4492,9 @@ function OrdersTab({
                           .replace("{name}", order.orderedByDisplayFr.trim())
                           .replace("{datetime}", formatEncounterChromeDateTime(order.createdAt, language))
                       : formatEncounterChromeDateTime(order.createdAt, language)}
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
+                      {formatOrderAuthority(order, t)}
+                    </div>
                   </td>
                   {(canPrescribe || isRn) && (
                     <td style={{ padding: 12, verticalAlign: "top" }}>

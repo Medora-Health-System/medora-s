@@ -171,6 +171,11 @@ export type PharmacyDispenseContext = {
     prescriberName?: string | null;
     prescriberLicense?: string | null;
     prescriberContact?: string | null;
+    authority?: {
+      source?: string | null;
+      readbackConfirmed?: boolean | null;
+      protocolName?: string | null;
+    } | null;
     items: Array<{
       id: string;
       catalogItemId: string;

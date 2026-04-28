@@ -4950,6 +4950,13 @@ export default {
       rnAuthorityRequired: "Certains médicaments/soins exigent d'abord une autorisation infirmière valide : {items}.",
     },
   },
+  orderAuthority: {
+    providerOrder: "Ordre du médecin",
+    verbalOrder: "Ordre verbal du médecin",
+    nursingProtocol: "Protocole infirmier",
+    readbackConfirmed: "Relecture confirmée",
+    protocolName: "Protocole : {protocolName}",
+  },
   createOrderModal: {
     tabOrderSets: "Protocoles",
     orderSetsSectionTitle: "Protocoles d'ordres",

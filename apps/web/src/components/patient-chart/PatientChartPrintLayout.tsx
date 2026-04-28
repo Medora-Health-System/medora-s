@@ -24,6 +24,7 @@ import {
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
+import { formatOrderAuthorityLines } from "@/lib/orderAuthority";
 
 function esc(s: string): string {
   return String(s)
@@ -205,6 +206,9 @@ export function getPatientChartPrintHtml(params: {
 
       const ordersHtml = (enc.orders ?? [])
         .map((o) => {
+          const authorityHtml = formatOrderAuthorityLines(o, (key) => printT(lang, key))
+            .map((line) => esc(line))
+            .join(" · ");
           const cancelNote =
             o.status === "CANCELLED" && (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason)
               ? `<div style="font-size:11px;color:#b71c1c;margin:4px 0 6px 0;line-height:1.4;">${
@@ -224,7 +228,7 @@ export function getPatientChartPrintHtml(params: {
               return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
             })
             .join("");
-          return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeading(lang, o.type))}</strong>${cancelNote}<ul style="margin:4px 0 0 16px;">${items || `<li>${esc(pc("emptyDash"))}</li>`}</ul></div>`;
+          return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeading(lang, o.type))}</strong><div style="font-size:11px;color:#555;margin-top:2px;overflow-wrap:anywhere;">${authorityHtml}</div>${cancelNote}<ul style="margin:4px 0 0 16px;">${items || `<li>${esc(pc("emptyDash"))}</li>`}</ul></div>`;
         })
         .join("");
 

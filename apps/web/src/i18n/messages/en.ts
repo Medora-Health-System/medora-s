@@ -4965,6 +4965,13 @@ export default {
       rnAuthorityRequired: "Some medication/care items require a valid RN authority mode first: {items}.",
     },
   },
+  orderAuthority: {
+    providerOrder: "Provider order",
+    verbalOrder: "Verbal order by physician",
+    nursingProtocol: "Nursing protocol",
+    readbackConfirmed: "Read-back confirmed",
+    protocolName: "Protocol: {protocolName}",
+  },
   createOrderModal: {
     tabOrderSets: "Order Sets",
     orderSetsSectionTitle: "Order sets",

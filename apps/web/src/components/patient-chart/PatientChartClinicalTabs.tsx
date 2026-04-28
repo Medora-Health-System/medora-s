@@ -17,6 +17,7 @@ import { nursingAssessmentDisplayLines, nursingAssessmentSignatureForLocale } fr
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { clinicalResultFromChartOrderItem } from "@/lib/clinicalResultNormalize";
 import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
+import { formatOrderAuthority } from "@/lib/orderAuthority";
 
 const emptyBox: React.CSSProperties = {
   padding: "16px 14px",
@@ -131,6 +132,9 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
         {orders.map((o) => (
           <div key={o.id} style={{ marginBottom: 12, fontSize: 14 }}>
             <div style={{ fontWeight: 600, color: "#455a64" }}>{chartOrderTypeLabel(t, o.type)}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 3, overflowWrap: "anywhere" }}>
+              {formatOrderAuthority(o, t)}
+            </div>
             {o.status === "CANCELLED" &&
             (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason) ? (
               <div style={{ fontSize: 12, color: "#b71c1c", marginTop: 4, marginBottom: 6, lineHeight: 1.45 }}>
@@ -321,6 +325,10 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
   const blocks: React.ReactNode[] = [];
   for (const enc of chartSummary.recentEncounters) {
     const medLines = flattenItems(enc).filter((it) => it.catalogItemType === "MEDICATION");
+    const orderByItemId = new Map<string, NonNullable<ChartSummaryEncounter["orders"]>[number]>();
+    for (const order of enc.orders ?? []) {
+      for (const item of order.items ?? []) orderByItemId.set(item.id, order);
+    }
     const encDisp = enc.encounterMedicationDispenses ?? [];
     const administered = medLines.filter((it) => it.completedAt);
     if (medLines.length === 0 && encDisp.length === 0) continue;
@@ -336,6 +344,9 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                 <li key={it.id}>
                   <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong> —{" "}
                   {tOrderItemStatusForWorklist(t, it.status)}
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
+                    {formatOrderAuthority(orderByItemId.get(it.id), t)}
+                  </div>
                   {it.status === "CANCELLED" &&
                   (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
                     <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>

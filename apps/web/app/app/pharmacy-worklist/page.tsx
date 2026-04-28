@@ -19,6 +19,7 @@ import {
 } from "@/lib/offline/pendingEncounterOrders";
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 import { useI18n } from "@/lib/i18n";
+import { formatOrderAuthority } from "@/lib/orderAuthority";
 
 function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
   return !!item.pharmacyDispenseRecord;
@@ -58,6 +59,7 @@ export default function PharmacyWorklistPage() {
     orderItemId: string;
     medicationLine: string;
     prescriber?: string;
+    authorityLine?: string;
   } | null>(null);
   const [recordQty, setRecordQty] = useState("1");
   const [recordInstr, setRecordInstr] = useState("");
@@ -160,6 +162,7 @@ export default function PharmacyWorklistPage() {
         prescriberName: order.prescriberName,
         prescriberLicense: order.prescriberLicense,
         prescriberContact: order.prescriberContact,
+        authority: order.authority ?? { source: order.source },
         items: order.items || [],
       },
       patient: order.encounter?.patient ?? {},
@@ -176,6 +179,7 @@ export default function PharmacyWorklistPage() {
       orderItemId: item.id,
       medicationLine: `${medicationLabel(item)} · ${t("pharmacyWorklistPage.recordLineQty")} ${item.quantity ?? t("common.dash")} · ${t("pharmacyWorklistPage.recordLineDirections")}: ${(item.notes as string) || t("common.dash")}`,
       prescriber: order.prescriberName as string | undefined,
+      authorityLine: formatOrderAuthority(order, t),
     });
     setRecordQty(String(item.quantity ?? 1));
     setRecordInstr(((item.notes as string) || "").trim());
@@ -281,7 +285,12 @@ export default function PharmacyWorklistPage() {
                     <td style={{ padding: 12 }}>{item.quantity ?? "—"}</td>
                     <td style={{ padding: 12 }}>{item.refillCount ?? 0}</td>
                     <td style={{ padding: 12 }}>{(item.notes as string) || "—"}</td>
-                    <td style={{ padding: 12 }}>{(order.prescriberName as string) || "—"}</td>
+                    <td style={{ padding: 12 }}>
+                      <div>{(order.prescriberName as string) || "—"}</div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
+                        {formatOrderAuthority(order, t)}
+                      </div>
+                    </td>
                     <td style={{ padding: 12 }}>{(order.prescriberContact as string) || "—"}</td>
                     <td style={{ padding: 12 }}>
                       {order.createdAt ? formatEncounterChromeDateTime(order.createdAt, language) : t("common.dash")}
@@ -457,6 +466,11 @@ export default function PharmacyWorklistPage() {
             {recordModal.prescriber ? (
               <p style={{ fontSize: 13, color: "#555" }}>
                 {t("pharmacyWorklistPage.modalPrescriberPrefix")} {recordModal.prescriber}
+              </p>
+            ) : null}
+            {recordModal.authorityLine ? (
+              <p style={{ fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>
+                {recordModal.authorityLine}
               </p>
             ) : null}
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>

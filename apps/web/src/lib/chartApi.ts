@@ -38,6 +38,11 @@ export type ChartSummaryOrder = {
   type: string;
   status: string;
   createdAt: string;
+  authority?: {
+    source?: string | null;
+    readbackConfirmed?: boolean | null;
+    protocolName?: string | null;
+  } | null;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
   cancelledByDisplayFr?: string | null;

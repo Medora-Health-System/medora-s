@@ -23,6 +23,7 @@ import {
   formatCancellationReasonForDisplay,
   ORDER_CANCEL_API_REASON_PATIENT_REQUEST,
 } from "@/lib/orderCancelReasonDisplay";
+import { formatOrderAuthority } from "@/lib/orderAuthority";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -102,6 +103,7 @@ type OrderRow = {
   id: string;
   type: ErOrderDomain;
   status: string;
+  authority?: unknown;
   cancellationReason?: string | null;
   items: unknown[];
 };
@@ -345,6 +347,7 @@ export function EmergencyErOrdersPanel({
         id: String(row.id ?? ""),
         type: (row.type as ErOrderDomain) ?? "CARE",
         status: String(row.status ?? ""),
+        authority: row.authority ?? { source: row.source },
         cancellationReason: typeof row.cancellationReason === "string" ? row.cancellationReason : null,
         items: Array.isArray(row.items) ? row.items : [],
       }))
@@ -629,7 +632,9 @@ export function EmergencyErOrdersPanel({
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.openOrdersEmpty")}</div>
               ) : (
                 <div style={{ display: "grid", gap: 8 }}>
-                  {activeOrderGroups.map(({ order: o, lines }) => (
+                  {activeOrderGroups.map(({ order: o, lines }) => {
+                    const authorityLine = formatOrderAuthority(o, t);
+                    return (
                     <div
                       key={o.id}
                       style={{
@@ -654,6 +659,9 @@ export function EmergencyErOrdersPanel({
                             ? t("erEmergencyOrders.cancelOrderBusy")
                             : t("erEmergencyOrders.cancelOrder")}
                         </button>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
+                        {authorityLine}
                       </div>
                       <div style={{ display: "grid", gap: 6 }}>
                         {lines.map((raw) => {
@@ -769,7 +777,8 @@ export function EmergencyErOrdersPanel({
                         })}
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </div>
@@ -789,6 +798,8 @@ export function EmergencyErOrdersPanel({
                     const marLine = marActionOutcomeSubLabel(e.metadata, t);
                     const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
                     const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
+                    const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
+                    const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
@@ -797,6 +808,11 @@ export function EmergencyErOrdersPanel({
                       {secondaryLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
                           {secondaryLine}
+                        </div>
+                      ) : null}
+                      {authorityLine ? (
+                        <div style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
+                          {authorityLine}
                         </div>
                       ) : null}
                       <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
@@ -823,6 +839,8 @@ export function EmergencyErOrdersPanel({
                 <div style={{ display: "grid", gap: 6 }}>
                   {cancelledEvents.map((e) => {
                     const medCancelLine = medicationCancellationSubLabel(e, t);
+                    const cancelledOrder = parsedOrders.find((order) => order.id === e.orderId);
+                    const authorityLine = cancelledOrder ? formatOrderAuthority(cancelledOrder, t) : null;
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
@@ -831,6 +849,11 @@ export function EmergencyErOrdersPanel({
                       {medCancelLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
                           {medCancelLine}
+                        </div>
+                      ) : null}
+                      {authorityLine ? (
+                        <div style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
+                          {authorityLine}
                         </div>
                       ) : null}
                       <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>

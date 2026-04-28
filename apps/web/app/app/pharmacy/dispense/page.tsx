@@ -27,6 +27,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
+import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
 type Patient = {
@@ -371,6 +372,11 @@ function PharmacyDispensePageContent() {
                       .filter(Boolean)[0] ?? t("common.dash")}
                   </p>
                 )}
+                {dispenseContext.medicationOrders.length > 0 ? (
+                  <p style={{ margin: "0 0 8px 0", color: "#64748b", overflowWrap: "anywhere" }}>
+                    {formatOrderAuthority(dispenseContext.medicationOrders[0], t)}
+                  </p>
+                ) : null}
               </>
             )}
             {pharmacySummary.recentDispenses.length > 0 && (
