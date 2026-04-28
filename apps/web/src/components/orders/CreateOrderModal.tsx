@@ -56,6 +56,13 @@ const ORDER_SET_KEYS: OrderSetKey[] = [
   "respiratoryDistress",
 ];
 
+const ORDER_TYPE_REVIEW_ICON: Record<OrderTypeKey, string> = {
+  LAB: "🧪",
+  IMAGING: "🖼",
+  MEDICATION: "💊",
+  CARE: "🏥",
+};
+
 const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
   chestPain: [
     { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
@@ -624,6 +631,14 @@ export function CreateOrderModal({
         : domainLabel(tab);
     return orderSetReviewActive && isOrderTypeKey(tab) ? `${base} (${stagedCounts[tab]})` : base;
   };
+  const orderSetReviewSections = ORDER_TYPE_REVIEW_ORDER.map((tab) => ({
+    tab,
+    icon: ORDER_TYPE_REVIEW_ICON[tab],
+    label: domainLabel(tab),
+    items: currentStagedItems[tab],
+  })).filter((section) => section.items.length > 0);
+  const stagedLineLabel = (item: CreateOrderLineItem): string =>
+    item._label?.trim() || item.manualLabel?.trim() || t("common.dash");
 
   const changeTab = (tab: CreateOrderModalTab) => {
     const nextStagedItems = isOrderTypeKey(activeTab)
@@ -1365,19 +1380,58 @@ export function CreateOrderModal({
             </div>
 
             {orderSetReviewActive && hasStagedOrderSetItems ? (
-              <div
-                style={{
-                  border: "1px solid #bfdbfe",
-                  background: "#eff6ff",
-                  color: "#1e3a8a",
-                  borderRadius: 6,
-                  padding: "8px 10px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  marginBottom: 12,
-                }}
-              >
-                {t("createOrderModal.orderSetStagedReviewBanner")}
+              <div style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    border: "1px solid #bfdbfe",
+                    background: "#eff6ff",
+                    color: "#1e3a8a",
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    marginBottom: 8,
+                  }}
+                >
+                  {t("createOrderModal.orderSetStagedReviewBanner")}
+                </div>
+                <div
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 8,
+                    background: "#f8fafc",
+                    padding: "10px 12px",
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 8 }}>
+                    {t("createOrderModal.orderSetsApplyingBundle").replace(
+                      "{bundle}",
+                      t(`createOrderModal.orderSets.${selectedOrderSet}.name`)
+                    )}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {orderSetReviewSections.map((section) => (
+                      <div
+                        key={section.tab}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 7,
+                          background: "#fff",
+                          padding: "8px 10px",
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 800, color: "#111827", marginBottom: 6 }}>
+                          {section.icon} {section.label} ({section.items.length})
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 18, color: "#475569", fontSize: 13, lineHeight: 1.5 }}>
+                          {section.items.map((item) => (
+                            <li key={item._lineId}>{stagedLineLabel(item)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : null}
 
