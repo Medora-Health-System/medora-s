@@ -7,6 +7,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { tOrderItemStatusForWorklist, tOrderPriority, tPathwayType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { worklistItemIsTerminal, worklistItemNeedsAcknowledge } from "@/lib/worklistLabRadUi";
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
@@ -397,6 +398,11 @@ export default function RadWorklistPage() {
                       </MedoraCardBadge>
                     ) : null}
                   </MedoraCardBadgeRow>
+                  {formatOrderAttributionLines(order, t, language).map((line) => (
+                    <p key={line} style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                      {line}
+                    </p>
+                  ))}
                 </MedoraCardIdentity>
 
                 <MedoraCardActions railBorderTopColor="#f1f5f9">

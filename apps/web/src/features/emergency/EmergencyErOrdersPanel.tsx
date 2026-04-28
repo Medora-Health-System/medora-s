@@ -24,6 +24,7 @@ import {
   ORDER_CANCEL_API_REASON_PATIENT_REQUEST,
 } from "@/lib/orderCancelReasonDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -103,7 +104,10 @@ type OrderRow = {
   id: string;
   type: ErOrderDomain;
   status: string;
+  createdAt?: string | null;
   authority?: unknown;
+  createdByDisplay?: unknown;
+  lastActionDisplay?: unknown;
   cancellationReason?: string | null;
   items: unknown[];
 };
@@ -347,7 +351,10 @@ export function EmergencyErOrdersPanel({
         id: String(row.id ?? ""),
         type: (row.type as ErOrderDomain) ?? "CARE",
         status: String(row.status ?? ""),
+        createdAt: typeof row.createdAt === "string" ? row.createdAt : null,
         authority: row.authority ?? { source: row.source },
+        createdByDisplay: row.createdByDisplay,
+        lastActionDisplay: row.lastActionDisplay,
         cancellationReason: typeof row.cancellationReason === "string" ? row.cancellationReason : null,
         items: Array.isArray(row.items) ? row.items : [],
       }))
@@ -634,6 +641,7 @@ export function EmergencyErOrdersPanel({
                 <div style={{ display: "grid", gap: 8 }}>
                   {activeOrderGroups.map(({ order: o, lines }) => {
                     const authorityLine = formatOrderAuthority(o, t);
+                    const attributionLines = formatOrderAttributionLines(o, t, language);
                     return (
                     <div
                       key={o.id}
@@ -663,6 +671,11 @@ export function EmergencyErOrdersPanel({
                       <div style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {authorityLine}
                       </div>
+                      {attributionLines.map((line) => (
+                        <div key={line} style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
+                          {line}
+                        </div>
+                      ))}
                       <div style={{ display: "grid", gap: 6 }}>
                         {lines.map((raw) => {
                           const item = raw as Record<string, unknown>;
@@ -800,6 +813,7 @@ export function EmergencyErOrdersPanel({
                     const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
                     const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
                     const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
+                    const attributionLines = completedOrder ? formatOrderAttributionLines(completedOrder, t, language) : [];
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
@@ -815,6 +829,11 @@ export function EmergencyErOrdersPanel({
                           {authorityLine}
                         </div>
                       ) : null}
+                      {attributionLines.map((line) => (
+                        <div key={line} style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
+                          {line}
+                        </div>
+                      ))}
                       <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
                         {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
@@ -841,6 +860,7 @@ export function EmergencyErOrdersPanel({
                     const medCancelLine = medicationCancellationSubLabel(e, t);
                     const cancelledOrder = parsedOrders.find((order) => order.id === e.orderId);
                     const authorityLine = cancelledOrder ? formatOrderAuthority(cancelledOrder, t) : null;
+                    const attributionLines = cancelledOrder ? formatOrderAttributionLines(cancelledOrder, t, language) : [];
                     return (
                     <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
                       <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
@@ -856,6 +876,11 @@ export function EmergencyErOrdersPanel({
                           {authorityLine}
                         </div>
                       ) : null}
+                      {attributionLines.map((line) => (
+                        <div key={line} style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
+                          {line}
+                        </div>
+                      ))}
                       <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
                         {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
                         {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}

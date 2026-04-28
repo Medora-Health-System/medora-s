@@ -18,6 +18,7 @@ import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer
 import { clinicalResultFromChartOrderItem } from "@/lib/clinicalResultNormalize";
 import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 
 const emptyBox: React.CSSProperties = {
   padding: "16px 14px",
@@ -135,6 +136,11 @@ export function PatientOrdersTabContent({ chartSummary }: { chartSummary: ChartS
             <div style={{ fontSize: 12, color: "#64748b", marginTop: 3, overflowWrap: "anywhere" }}>
               {formatOrderAuthority(o, t)}
             </div>
+            {formatOrderAttributionLines(o, t, language).map((line) => (
+              <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 3, overflowWrap: "anywhere" }}>
+                {line}
+              </div>
+            ))}
             {o.status === "CANCELLED" &&
             (o.cancelledByDisplayFr || o.cancelledAt || o.cancellationReason) ? (
               <div style={{ fontSize: 12, color: "#b71c1c", marginTop: 4, marginBottom: 6, lineHeight: 1.45 }}>
@@ -347,6 +353,11 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                   <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
                     {formatOrderAuthority(orderByItemId.get(it.id), t)}
                   </div>
+                  {formatOrderAttributionLines(orderByItemId.get(it.id), t, language).map((line) => (
+                    <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
+                      {line}
+                    </div>
+                  ))}
                   {it.status === "CANCELLED" &&
                   (it.cancelledByDisplayFr || it.cancelledAt || it.cancellationReason) ? (
                     <div style={{ fontSize: 11, color: "#b71c1c", marginTop: 4, lineHeight: 1.45 }}>

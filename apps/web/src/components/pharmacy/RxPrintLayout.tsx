@@ -8,6 +8,7 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAuthorityLines, type OrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines, type OrderAttributionDisplay, type OrderLastActionDisplay } from "@/lib/orderAttribution";
 import { printDateLocale, printT } from "@/lib/printI18n";
 
 export type RxOrderItem = {
@@ -34,6 +35,8 @@ export type RxOrder = {
   prescriberLicense?: string | null;
   prescriberContact?: string | null;
   authority?: OrderAuthority | null;
+  createdByDisplay?: OrderAttributionDisplay | null;
+  lastActionDisplay?: OrderLastActionDisplay | null;
   items: RxOrderItem[];
 };
 
@@ -83,6 +86,9 @@ export function getRxPrintHtml(params: {
   const htmlLang = language === "en" ? "en" : "fr";
   const authorityLines = formatOrderAuthorityLines(order, (key) => printT(language, key));
   const authorityHtml = authorityLines.map((line) => esc(line)).join(" · ");
+  const attributionHtml = formatOrderAttributionLines(order, (key) => printT(language, key), language)
+    .map((line) => esc(line))
+    .join("<br/>");
 
   const rows = order.items
     .map(
@@ -132,6 +138,7 @@ export function getRxPrintHtml(params: {
     <p><strong>${esc(pt)} :</strong> ${esc(patientName)}${patient.mrn ? ` — ${esc(nir)} : ${esc(patient.mrn)}` : ""}</p>
     <p><strong>${esc(prescDate)} :</strong> ${esc(dateStr)}</p>
     <p style="color:#555;">${authorityHtml}</p>
+    ${attributionHtml ? `<p style="color:#555;">${attributionHtml}</p>` : ""}
     ${order.prescriberName ? `<p><strong>${esc(prescriber)} :</strong> ${esc(order.prescriberName)}</p>` : ""}
     ${order.prescriberLicense ? `<p><strong>${esc(license)} :</strong> ${esc(order.prescriberLicense)}</p>` : ""}
     ${order.prescriberContact ? `<p><strong>${esc(contact)} :</strong> ${esc(order.prescriberContact)}</p>` : ""}

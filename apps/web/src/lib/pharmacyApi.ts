@@ -176,6 +176,8 @@ export type PharmacyDispenseContext = {
       readbackConfirmed?: boolean | null;
       protocolName?: string | null;
     } | null;
+    createdByDisplay?: { userId?: string | null; name?: string | null; role?: string | null; at?: string | null } | null;
+    lastActionDisplay?: { action?: string | null; name?: string | null; role?: string | null; at?: string | null } | null;
     items: Array<{
       id: string;
       catalogItemId: string;

@@ -10,6 +10,7 @@ import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog } from "@/lib/catalogSearchApi";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { catalogSearchItemFullDisplayLine } from "@/lib/catalogDisplayLabel";
+import { fetchProviderDirectory, type ProviderDirectoryItem } from "@/lib/ordersApi";
 import { OrderPriorityField } from "./createOrderModal/OrderPriorityField";
 import { SelectedLabItems } from "./createOrderModal/SelectedLabItems";
 import { SelectedImagingItems } from "./createOrderModal/SelectedImagingItems";
@@ -524,6 +525,9 @@ export function CreateOrderModal({
     prescriberName?: string;
     prescriberLicense?: string;
     prescriberContact?: string;
+    authority?: unknown;
+    createdByDisplay?: unknown;
+    lastActionDisplay?: unknown;
   } | null>(null);
   const [stagedItems, setStagedItems] = useState<Record<OrderTypeKey, CreateOrderLineItem[]>>(() => ({
     LAB: [],
@@ -551,6 +555,9 @@ export function CreateOrderModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queuedSync, setQueuedSync] = useState(false);
+  const [providerDirectory, setProviderDirectory] = useState<ProviderDirectoryItem[]>([]);
+  const [providerDirectoryLoaded, setProviderDirectoryLoaded] = useState(false);
+  const [providerDirectoryFailed, setProviderDirectoryFailed] = useState(false);
   const prescriberPrefilled = useRef(false);
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
@@ -633,6 +640,29 @@ export function CreateOrderModal({
       formData.prescriberName.trim().length > 0 &&
       formData.readbackConfirmed === true) ||
     (formData.orderSource === "NURSING_PROTOCOL" && formData.protocolName.trim().length > 0);
+  const providerDirectoryDatalistId = `provider-directory-${encounterId}`;
+
+  useEffect(() => {
+    if (!isRnAuthorityTab || formData.orderSource !== "VERBAL_ORDER" || providerDirectoryLoaded) return;
+    let cancelled = false;
+    setProviderDirectoryFailed(false);
+    fetchProviderDirectory(facilityId)
+      .then((items) => {
+        if (cancelled) return;
+        setProviderDirectory(items);
+        setProviderDirectoryLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProviderDirectory([]);
+        setProviderDirectoryLoaded(true);
+        setProviderDirectoryFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId, formData.orderSource, isRnAuthorityTab, providerDirectoryLoaded]);
+
   const authorityPayloadFields = (): OrderAuthorityPayloadFields | undefined => {
     if (canPrescribe && (formData.type === "MEDICATION" || formData.type === "CARE")) {
       return { orderSource: "PROVIDER_ORDER" };
@@ -987,6 +1017,9 @@ export function CreateOrderModal({
         prescriberName?: string;
         prescriberLicense?: string;
         prescriberContact?: string;
+        authority?: unknown;
+        createdByDisplay?: unknown;
+        lastActionDisplay?: unknown;
       };
 
       const submittedType = formData.type;
@@ -1140,6 +1173,9 @@ export function CreateOrderModal({
                       prescriberName: formData.prescriberName || createdOrder.prescriberName,
                       prescriberLicense: formData.prescriberLicense || createdOrder.prescriberLicense,
                       prescriberContact: formData.prescriberContact || createdOrder.prescriberContact,
+                      authority: createdOrder.authority as any,
+                      createdByDisplay: createdOrder.createdByDisplay as any,
+                      lastActionDisplay: createdOrder.lastActionDisplay as any,
                       items: formData.items.map((it) => ({
                         catalogItemId: it.catalogItemId,
                         manualLabel: it.isManual ? it.manualLabel ?? it._label : undefined,
@@ -1336,12 +1372,22 @@ export function CreateOrderModal({
                   {formData.orderSource === "VERBAL_ORDER" ? (
                     <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#1e293b" }}>
-                        {t("createOrderModal.rnAuthority.physicianName")}
+                        {t("createOrderModal.rnAuthority.providerPickerLabel")}
                       </label>
                       <input
                         type="text"
+                        list={providerDirectory.length > 0 ? providerDirectoryDatalistId : undefined}
                         value={formData.prescriberName}
-                        onChange={(e) => setFormData((fd) => ({ ...fd, prescriberName: e.target.value }))}
+                        placeholder={t("createOrderModal.rnAuthority.providerPickerPlaceholder")}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          const matchedProvider = providerDirectory.find((provider) => provider.name === name);
+                          setFormData((fd) => ({
+                            ...fd,
+                            prescriberName: name,
+                            prescriberContact: matchedProvider?.email ?? fd.prescriberContact,
+                          }));
+                        }}
                         style={{
                           width: "100%",
                           padding: "8px 10px",
@@ -1350,6 +1396,18 @@ export function CreateOrderModal({
                           fontSize: 14,
                         }}
                       />
+                      {providerDirectory.length > 0 ? (
+                        <datalist id={providerDirectoryDatalistId}>
+                          {providerDirectory.map((provider) => (
+                            <option key={provider.id} value={provider.name}>
+                              {provider.email}
+                            </option>
+                          ))}
+                        </datalist>
+                      ) : null}
+                      <div style={{ fontSize: 12, color: providerDirectoryFailed ? "#b45309" : "#64748b" }}>
+                        {t("createOrderModal.rnAuthority.providerPickerManualFallback")}
+                      </div>
                       <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "#0f172a" }}>
                         <input
                           type="checkbox"

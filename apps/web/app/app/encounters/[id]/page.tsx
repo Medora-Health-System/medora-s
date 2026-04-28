@@ -80,6 +80,7 @@ import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 
 /** Presentation-only: admission / discharge / close / documentation-deficiency modals on this page. */
 function encounterWorkflowModalOverlay(zIndex: number): React.CSSProperties {
@@ -4109,6 +4110,8 @@ function OrdersTab({
         prescriberLicense: order.prescriberLicense,
         prescriberContact: order.prescriberContact,
         authority: order.authority ?? { source: order.source },
+        createdByDisplay: order.createdByDisplay,
+        lastActionDisplay: order.lastActionDisplay,
         items: order.items || [],
       },
       patient: encounter?.patient ?? {},
@@ -4487,14 +4490,24 @@ function OrdersTab({
                     </ul>
                   </td>
                   <td style={{ padding: 12, verticalAlign: "top", whiteSpace: "normal", fontSize: 13 }}>
-                    {order.orderedByDisplayFr?.trim()
-                      ? t("encounterChrome.ordersTab.orderedByLine")
-                          .replace("{name}", order.orderedByDisplayFr.trim())
-                          .replace("{datetime}", formatEncounterChromeDateTime(order.createdAt, language))
-                      : formatEncounterChromeDateTime(order.createdAt, language)}
+                    {(() => {
+                      const attributionLines = formatOrderAttributionLines(order, t, language);
+                      return attributionLines[0] ?? (order.orderedByDisplayFr?.trim()
+                        ? t("encounterChrome.ordersTab.orderedByLine")
+                            .replace("{name}", order.orderedByDisplayFr.trim())
+                            .replace("{datetime}", formatEncounterChromeDateTime(order.createdAt, language))
+                        : formatEncounterChromeDateTime(order.createdAt, language));
+                    })()}
                     <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
                       {formatOrderAuthority(order, t)}
                     </div>
+                    {formatOrderAttributionLines(order, t, language)
+                      .slice(1)
+                      .map((line) => (
+                        <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
+                          {line}
+                        </div>
+                      ))}
                   </td>
                   {(canPrescribe || isRn) && (
                     <td style={{ padding: 12, verticalAlign: "top" }}>

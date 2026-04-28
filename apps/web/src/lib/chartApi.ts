@@ -43,6 +43,8 @@ export type ChartSummaryOrder = {
     readbackConfirmed?: boolean | null;
     protocolName?: string | null;
   } | null;
+  createdByDisplay?: { userId?: string | null; name?: string | null; role?: string | null; at?: string | null } | null;
+  lastActionDisplay?: { action?: string | null; name?: string | null; role?: string | null; at?: string | null } | null;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
   cancelledByDisplayFr?: string | null;

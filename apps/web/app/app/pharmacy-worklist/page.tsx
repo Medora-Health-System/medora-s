@@ -20,6 +20,7 @@ import {
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 import { useI18n } from "@/lib/i18n";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 
 function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
   return !!item.pharmacyDispenseRecord;
@@ -60,6 +61,7 @@ export default function PharmacyWorklistPage() {
     medicationLine: string;
     prescriber?: string;
     authorityLine?: string;
+    attributionLines?: string[];
   } | null>(null);
   const [recordQty, setRecordQty] = useState("1");
   const [recordInstr, setRecordInstr] = useState("");
@@ -163,6 +165,8 @@ export default function PharmacyWorklistPage() {
         prescriberLicense: order.prescriberLicense,
         prescriberContact: order.prescriberContact,
         authority: order.authority ?? { source: order.source },
+        createdByDisplay: order.createdByDisplay,
+        lastActionDisplay: order.lastActionDisplay,
         items: order.items || [],
       },
       patient: order.encounter?.patient ?? {},
@@ -180,6 +184,7 @@ export default function PharmacyWorklistPage() {
       medicationLine: `${medicationLabel(item)} · ${t("pharmacyWorklistPage.recordLineQty")} ${item.quantity ?? t("common.dash")} · ${t("pharmacyWorklistPage.recordLineDirections")}: ${(item.notes as string) || t("common.dash")}`,
       prescriber: order.prescriberName as string | undefined,
       authorityLine: formatOrderAuthority(order, t),
+      attributionLines: formatOrderAttributionLines(order, t, language),
     });
     setRecordQty(String(item.quantity ?? 1));
     setRecordInstr(((item.notes as string) || "").trim());
@@ -290,6 +295,11 @@ export default function PharmacyWorklistPage() {
                       <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
                         {formatOrderAuthority(order, t)}
                       </div>
+                      {formatOrderAttributionLines(order, t, language).map((line) => (
+                        <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
+                          {line}
+                        </div>
+                      ))}
                     </td>
                     <td style={{ padding: 12 }}>{(order.prescriberContact as string) || "—"}</td>
                     <td style={{ padding: 12 }}>
@@ -473,6 +483,11 @@ export default function PharmacyWorklistPage() {
                 {recordModal.authorityLine}
               </p>
             ) : null}
+            {recordModal.attributionLines?.map((line) => (
+              <p key={line} style={{ fontSize: 13, color: "#64748b", overflowWrap: "anywhere", margin: "4px 0" }}>
+                {line}
+              </p>
+            ))}
             <label style={{ display: "block", marginTop: 12, fontSize: 13 }}>
               {t("pharmacyWorklistPage.modalQtyLabel")}
               <input

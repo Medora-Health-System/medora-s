@@ -22,6 +22,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -343,6 +344,11 @@ export default function DepartmentOrderDetail({
           <div style={{ color: "#64748b", overflowWrap: "anywhere" }}>
             {formatOrderAuthority(order, t)}
           </div>
+          {formatOrderAttributionLines(order, t, language).map((line) => (
+            <div key={line} style={{ color: "#64748b", overflowWrap: "anywhere" }}>
+              {line}
+            </div>
+          ))}
           <div>
             <strong>{t("orderDetail.prescriberContactLabel")}</strong> {(order.prescriberContact as string) || t("common.dash")}
           </div>
@@ -392,6 +398,8 @@ export default function DepartmentOrderDetail({
                   prescriberLicense: order.prescriberLicense,
                   prescriberContact: order.prescriberContact,
                   authority: order.authority ?? { source: order.source },
+                  createdByDisplay: order.createdByDisplay,
+                  lastActionDisplay: order.lastActionDisplay,
                   items: order.items || [],
                 },
                 patient: patient ?? {},

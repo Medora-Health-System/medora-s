@@ -28,6 +28,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
 type Patient = {
@@ -377,6 +378,13 @@ function PharmacyDispensePageContent() {
                     {formatOrderAuthority(dispenseContext.medicationOrders[0], t)}
                   </p>
                 ) : null}
+                {dispenseContext.medicationOrders[0]
+                  ? formatOrderAttributionLines(dispenseContext.medicationOrders[0], t, language).map((line) => (
+                      <p key={line} style={{ margin: "0 0 4px 0", color: "#64748b", overflowWrap: "anywhere" }}>
+                        {line}
+                      </p>
+                    ))
+                  : null}
               </>
             )}
             {pharmacySummary.recentDispenses.length > 0 && (

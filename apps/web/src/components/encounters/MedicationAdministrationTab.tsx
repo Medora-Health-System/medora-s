@@ -10,6 +10,7 @@ import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
+import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { resolveMedicationMarActionFromStorage } from "@medora/shared";
 
 type AdminRow = {
@@ -149,6 +150,7 @@ export function MedicationAdministrationTab({
     orderItemId: string;
     label: string;
     authorityLine: string;
+    attributionLines: string[];
     routeHint: string;
     ndcHint: string;
     billingUnitHint: string;
@@ -224,6 +226,7 @@ export function MedicationAdministrationTab({
       billingUnitHint: string;
       intendedAt?: string | null;
       authorityLine: string;
+      attributionLines: string[];
     }[] = [];
     for (const order of orders) {
       if ((order as { status?: string }).status === "CANCELLED") continue;
@@ -240,6 +243,7 @@ export function MedicationAdministrationTab({
             t
           ),
           authorityLine: formatOrderAuthority(order as Record<string, unknown>, t),
+          attributionLines: formatOrderAttributionLines(order as Record<string, unknown>, t, language),
           routeHint: it.catalogMedication?.route?.trim() || "",
           ndcHint: it.catalogMedication?.ndcDisplay?.trim() || it.catalogMedication?.ndc11?.trim() || "",
           billingUnitHint: it.catalogMedication?.billingUnitType?.trim() || "",
@@ -255,6 +259,7 @@ export function MedicationAdministrationTab({
       orderItemId: row.orderItemId,
       label: row.label,
       authorityLine: row.authorityLine,
+      attributionLines: row.attributionLines,
       routeHint: row.routeHint,
       ndcHint: row.ndcHint,
       billingUnitHint: row.billingUnitHint,
@@ -470,6 +475,11 @@ export function MedicationAdministrationTab({
                       <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
                         {row.authorityLine}
                       </div>
+                      {row.attributionLines.map((line) => (
+                        <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
+                          {line}
+                        </div>
+                      ))}
                       {intendedLine ? (
                         <div
                           style={intendedLineStyle}
@@ -614,6 +624,11 @@ export function MedicationAdministrationTab({
             <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>
               {modalItem.authorityLine}
             </p>
+            {modalItem.attributionLines.map((line) => (
+              <p key={line} style={{ margin: "0 0 6px 0", fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>
+                {line}
+              </p>
+            ))}
 
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.routeOptional")}
