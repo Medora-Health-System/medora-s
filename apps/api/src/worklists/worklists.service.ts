@@ -137,7 +137,8 @@ export class WorklistsService {
         orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
       });
     }
-    return this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
+    const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
+    return this.ordersService.attachAuthorityToOrders(enriched);
   }
 
   async getRadiologyWorklist(facilityId: string) {
@@ -238,7 +239,8 @@ export class WorklistsService {
         orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
       });
     }
-    return this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
+    const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
+    return this.ordersService.attachAuthorityToOrders(enriched);
   }
 
   async getPharmacyWorklist(facilityId: string) {
@@ -286,11 +288,12 @@ export class WorklistsService {
       },
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     });
-    return this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
+    const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
+    return this.ordersService.attachAuthorityToOrders(enriched);
   }
 
   async getBillingWorklist(facilityId: string) {
-    return this.prisma.encounter.findMany({
+    const rows = await this.prisma.encounter.findMany({
       where: {
         facilityId,
         status: "CLOSED",
@@ -320,5 +323,15 @@ export class WorklistsService {
         dischargedAt: "desc",
       },
     });
+    const flatOrders = rows.flatMap((row) => row.orders);
+    const withAuthority = await this.ordersService.attachAuthorityToOrders(flatOrders);
+    const authorityByOrderId = new Map(withAuthority.map((order) => [order.id, order.authority]));
+    return rows.map((row) => ({
+      ...row,
+      orders: row.orders.map((order) => ({
+        ...order,
+        authority: authorityByOrderId.get(order.id) ?? { source: order.source ?? null },
+      })),
+    }));
   }
 }

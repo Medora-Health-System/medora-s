@@ -497,9 +497,17 @@ export class ChartSummaryService {
     );
     const ordersWithVerifierNames = await this.ordersService.attachEnteredByDisplayOnOrders(ordersEnriched);
     const ordersWithCancellation = await this.ordersService.attachCancellationDisplayOnOrders(ordersWithVerifierNames);
+    const ordersWithAuthority = await this.ordersService.attachAuthorityToOrders(ordersWithCancellation);
 
-    const ordersByEncounter = new Map<string, OrderWithEnrichedItems[]>();
-    for (const o of ordersWithCancellation) {
+    const ordersByEncounter = new Map<
+      string,
+      Array<
+        OrderWithEnrichedItems & {
+          authority?: { source: string | null; readbackConfirmed?: boolean; protocolName?: string };
+        }
+      >
+    >();
+    for (const o of ordersWithAuthority) {
       const list = ordersByEncounter.get(o.encounterId) ?? [];
       list.push(o);
       ordersByEncounter.set(o.encounterId, list);
@@ -540,6 +548,7 @@ export class ChartSummaryService {
           : null,
         cancellationReason: o.cancellationReason ?? null,
         cancelledByDisplayFr: o.cancelledByDisplayFr ?? null,
+        authority: o.authority,
         items: toChartOrderItems(o),
       }));
 

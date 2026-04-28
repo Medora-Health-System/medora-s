@@ -44,6 +44,17 @@ import { createStructuredLogger } from "../common/logging/structured-logger";
 
 const ordersLog = createStructuredLogger("OrdersService");
 
+type OrderAuthority = {
+  source: string | null;
+  readbackConfirmed?: boolean;
+  protocolName?: string;
+};
+
+type OrderAuthorityOrder = {
+  id: string;
+  source?: string | null;
+};
+
 function prismaErrorCode(err: unknown): string | undefined {
   return err && typeof err === "object" && "code" in err && typeof (err as { code?: unknown }).code === "string"
     ? (err as { code: string }).code
@@ -135,6 +146,53 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
+
+  private authorityFromCreatedEvent(
+    order: OrderAuthorityOrder,
+    metadata: Prisma.JsonValue | null | undefined
+  ): OrderAuthority {
+    const authority: OrderAuthority = { source: order.source ?? null };
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+      return authority;
+    }
+
+    const meta = metadata as Record<string, unknown>;
+    if (typeof meta.readbackConfirmed === "boolean") {
+      authority.readbackConfirmed = meta.readbackConfirmed;
+    }
+    if (typeof meta.protocolName === "string" && meta.protocolName.trim()) {
+      authority.protocolName = meta.protocolName.trim();
+    }
+    return authority;
+  }
+
+  async attachAuthorityToOrders<T extends OrderAuthorityOrder>(orders: T[]): Promise<Array<T & { authority: OrderAuthority }>> {
+    if (orders.length === 0) return [] as Array<T & { authority: OrderAuthority }>;
+
+    const ids = [...new Set(orders.map((o) => o.id).filter(Boolean))];
+    const events = await this.prisma.orderEvent.findMany({
+      where: {
+        orderId: { in: ids },
+        eventType: OrderEventType.CREATED,
+      },
+      orderBy: { performedAt: "asc" },
+      select: {
+        orderId: true,
+        metadata: true,
+      },
+    });
+    const metadataByOrderId = new Map<string, Prisma.JsonValue | null>();
+    for (const event of events) {
+      if (!metadataByOrderId.has(event.orderId)) {
+        metadataByOrderId.set(event.orderId, event.metadata);
+      }
+    }
+
+    return orders.map((order) => ({
+      ...order,
+      authority: this.authorityFromCreatedEvent(order, metadataByOrderId.get(order.id)),
+    }));
+  }
 
   private mapOrderTypeToEventOrderType(orderType: string): OrderEventOrderType {
     if (orderType === "LAB") return OrderEventOrderType.LAB;
@@ -510,7 +568,8 @@ export class OrdersService {
     const withResults = await this.attachResultsToOrderItemsSafe(enriched, { facilityId, encounterId });
     const withResultLabels = await this.attachEnteredByDisplayOnOrdersSafe(withResults, { facilityId, encounterId });
     const withCancellation = await this.attachCancellationDisplayOnOrdersSafe(withResultLabels, { facilityId, encounterId });
-    return this.attachOrderedByDisplayOnOrdersSafe(withCancellation, { facilityId, encounterId });
+    const withOrderedBy = await this.attachOrderedByDisplayOnOrdersSafe(withCancellation, { facilityId, encounterId });
+    return this.attachAuthorityToOrders(withOrderedBy);
   }
 
   async findOrderEventsByEncounter(encounterId: string, facilityId: string) {
@@ -843,7 +902,8 @@ export class OrdersService {
     const [enriched] = await this.enrichOrderItemsForDisplaySafe([row as unknown as OrderWithItems]);
     const [withSig] = await this.attachEnteredByDisplayOnOrders([enriched]);
     const [withCancel] = await this.attachCancellationDisplayOnOrders([withSig]);
-    return withCancel;
+    const [withAuthority] = await this.attachAuthorityToOrders([withCancel]);
+    return withAuthority;
   }
 
   /**
