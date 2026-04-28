@@ -5005,6 +5005,8 @@ export default {
     titleCreate: "Créer un ordre",
     successQueued: "Ordre enregistré localement. En attente de synchronisation.",
     successOk: "L'ordre a été enregistré pour cette visite.",
+    successCreatedNext: "Ordre {createdType} créé. Ensuite : {nextType}",
+    orderSetStagedReviewBanner: "Protocole préparé. Vérifiez et créez chaque onglet séparément.",
     continue: "Continuer",
     rxAllAdministerLine:
       "Ordonnance enregistrée — à administrer au patient (dossier de soins).",

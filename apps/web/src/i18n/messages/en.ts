@@ -5020,6 +5020,8 @@ export default {
     titleCreate: "Create order",
     successQueued: "Order saved on this device — pending sync.",
     successOk: "The order was saved for this encounter.",
+    successCreatedNext: "{createdType} order created. Next: {nextType}",
+    orderSetStagedReviewBanner: "Order set staged. Review and create each tab separately.",
     continue: "Continue",
     rxAllAdministerLine:
       "Prescription saved — administer to patient (chart medication administration).",

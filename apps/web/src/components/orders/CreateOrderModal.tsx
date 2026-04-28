@@ -10,7 +10,6 @@ import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog } from "@/lib/catalogSearchApi";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { catalogSearchItemFullDisplayLine } from "@/lib/catalogDisplayLabel";
-import { OrderTypeTabs } from "./createOrderModal/OrderTypeTabs";
 import { OrderPriorityField } from "./createOrderModal/OrderPriorityField";
 import { SelectedLabItems } from "./createOrderModal/SelectedLabItems";
 import { SelectedImagingItems } from "./createOrderModal/SelectedImagingItems";
@@ -38,6 +37,8 @@ type OrderSetSkippedItem = { key: string; reason: OrderSetSkippedReason };
 type ResolvedOrderSetItems = Record<OrderTypeKey, CreateOrderLineItem[]> & {
   skipped: OrderSetSkippedItem[];
 };
+
+const ORDER_TYPE_REVIEW_ORDER: OrderTypeKey[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
 
 const ORDER_SET_KEYS: OrderSetKey[] = [
   "chestPain",
@@ -492,6 +493,9 @@ export function CreateOrderModal({
     checkedOrderSetItemKeys("chestPain")
   );
   const [orderSetApplying, setOrderSetApplying] = useState(false);
+  const [orderSetReviewActive, setOrderSetReviewActive] = useState(false);
+  const [nextStagedTabAfterSuccess, setNextStagedTabAfterSuccess] = useState<OrderTypeKey | null>(null);
+  const [submittedOrderType, setSubmittedOrderType] = useState<OrderTypeKey | null>(null);
   const [createdOrder, setCreatedOrder] = useState<{
     id: string;
     createdAt: string;
@@ -541,6 +545,32 @@ export function CreateOrderModal({
       })
       .catch(() => {});
   }, [canPrescribe]);
+
+  const currentStagedItems = isOrderTypeKey(activeTab)
+    ? { ...stagedItems, [activeTab]: formData.items }
+    : stagedItems;
+  const stagedCounts = {
+    LAB: currentStagedItems.LAB.length,
+    IMAGING: currentStagedItems.IMAGING.length,
+    MEDICATION: currentStagedItems.MEDICATION.length,
+    CARE: currentStagedItems.CARE.length,
+  };
+  const hasStagedOrderSetItems = ORDER_TYPE_REVIEW_ORDER.some((tab) => stagedCounts[tab] > 0);
+  const domainLabel = (tab: OrderTypeKey): string =>
+    tab === "LAB"
+      ? t("encounterChrome.chartTabs.orderTypeLAB")
+      : tab === "IMAGING"
+        ? t("encounterChrome.chartTabs.orderTypeIMAGING")
+        : tab === "MEDICATION"
+          ? t("encounterChrome.chartTabs.orderTypeMEDICATION")
+          : t("encounterChrome.chartTabs.orderTypeCARE");
+  const tabLabel = (tab: CreateOrderModalTab): string => {
+    const base =
+      tab === "ORDER_SET"
+        ? t("createOrderModal.tabOrderSets")
+        : domainLabel(tab);
+    return orderSetReviewActive && isOrderTypeKey(tab) ? `${base} (${stagedCounts[tab]})` : base;
+  };
 
   const changeTab = (tab: CreateOrderModalTab) => {
     const nextStagedItems = isOrderTypeKey(activeTab)
@@ -671,6 +701,7 @@ export function CreateOrderModal({
       );
 
       setStagedItems(nextStagedItems);
+      setOrderSetReviewActive(true);
 
       if (!nextTab) {
         setError(t("ordersets.apply.noMatch"));
@@ -698,6 +729,18 @@ export function CreateOrderModal({
     } finally {
       setOrderSetApplying(false);
     }
+  };
+
+  const goToStagedTabAfterSuccess = (tab: OrderTypeKey) => {
+    setOrderSuccess(false);
+    setRxSuccess(false);
+    setQueuedSync(false);
+    setCreatedOrder(null);
+    setNextStagedTabAfterSuccess(null);
+    setSubmittedOrderType(null);
+    setActiveTab(tab);
+    setFormData((fd) => ({ ...fd, type: tab, items: stagedItems[tab] }));
+    setError(null);
   };
 
   const catalogTypeForTab = (tab: OrderModalTab): "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" => {
@@ -869,6 +912,21 @@ export function CreateOrderModal({
         prescriberContact?: string;
       };
 
+      const submittedType = formData.type;
+      const nextStagedItems = { ...stagedItems, [submittedType]: [] };
+      const nextReviewTab =
+        orderSetReviewActive
+          ? ORDER_TYPE_REVIEW_ORDER.find(
+              (tab) => tab !== submittedType && orderTypes.includes(tab) && nextStagedItems[tab].length > 0
+            ) ?? null
+          : null;
+      setStagedItems(nextStagedItems);
+      setSubmittedOrderType(submittedType);
+      setNextStagedTabAfterSuccess(nextReviewTab);
+      if (!nextReviewTab) {
+        setOrderSetReviewActive(false);
+      }
+
       if ((res as any)?.queued) {
         setQueuedSync(true);
         setOrderSuccess(true);
@@ -905,6 +963,14 @@ export function CreateOrderModal({
         : activeTab === "CARE"
           ? ""
           : t("createOrderModal.searchPlaceholderMed");
+  const successMessage =
+    submittedOrderType && nextStagedTabAfterSuccess
+      ? t("createOrderModal.successCreatedNext")
+          .replace("{createdType}", domainLabel(submittedOrderType))
+          .replace("{nextType}", domainLabel(nextStagedTabAfterSuccess))
+      : queuedSync
+        ? t("createOrderModal.successQueued")
+        : t("createOrderModal.successOk");
 
   return (
     <div
@@ -937,13 +1003,18 @@ export function CreateOrderModal({
         {orderSuccess && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ fontSize: 14, color: "#444", margin: "0 0 16px", lineHeight: 1.5 }}>
-              {queuedSync ? t("createOrderModal.successQueued") : t("createOrderModal.successOk")}
+              {successMessage}
             </p>
             <button
               type="button"
               onClick={() => {
+                if (nextStagedTabAfterSuccess) {
+                  goToStagedTabAfterSuccess(nextStagedTabAfterSuccess);
+                  return;
+                }
                 setOrderSuccess(false);
                 setQueuedSync(false);
+                setSubmittedOrderType(null);
                 onSuccess();
               }}
               style={{
@@ -1044,8 +1115,13 @@ export function CreateOrderModal({
               <button
                 type="button"
                 onClick={() => {
+                  if (nextStagedTabAfterSuccess) {
+                    goToStagedTabAfterSuccess(nextStagedTabAfterSuccess);
+                    return;
+                  }
                   setRxSuccess(false);
                   setCreatedOrder(null);
+                  setSubmittedOrderType(null);
                   onSuccess();
                 }}
                 style={{
@@ -1074,7 +1150,59 @@ export function CreateOrderModal({
 
         {!rxSuccess && !orderSuccess && (
           <>
-            <OrderTypeTabs orderTypes={orderTypes} activeTab={activeTab} onChange={changeTab} />
+            <div
+              role="tablist"
+              style={{
+                display: "flex",
+                gap: 6,
+                marginBottom: 14,
+                paddingBottom: 10,
+                borderBottom: "1px solid #e5e5e5",
+                flexWrap: "wrap",
+              }}
+            >
+              {orderTypes.map((tab) => {
+                const active = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => changeTab(tab)}
+                    style={{
+                      padding: "8px 14px",
+                      border: "none",
+                      backgroundColor: active ? "#1a1a1a" : "transparent",
+                      color: active ? "white" : "#555",
+                      cursor: "pointer",
+                      borderRadius: 4,
+                      fontSize: 13,
+                      fontWeight: active ? 600 : 500,
+                    }}
+                  >
+                    {tabLabel(tab)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {orderSetReviewActive && hasStagedOrderSetItems ? (
+              <div
+                style={{
+                  border: "1px solid #bfdbfe",
+                  background: "#eff6ff",
+                  color: "#1e3a8a",
+                  borderRadius: 6,
+                  padding: "8px 10px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 12,
+                }}
+              >
+                {t("createOrderModal.orderSetStagedReviewBanner")}
+              </div>
+            ) : null}
 
             <form onSubmit={handleSubmit}>
               <OrderPriorityField
