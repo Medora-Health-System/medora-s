@@ -12,6 +12,13 @@ import { mapImagingRowToCatalogSearchItem } from "./catalog-search.mapper";
 const IMAGING_ALIAS_CODE_MAP: Record<string, string[]> = {
   cxr: ["XR_CHEST"],
   "ct head": ["CT_HEAD"],
+  "ct cervical": ["CT_CERVICAL_SPINE"],
+  "ct abdomen": ["CT_ABDOMEN_PELVIS", "CT_ABD"],
+  "cta chest": ["CTA_CHEST", "CT_CHEST_CTA"],
+  "ultrasound abdomen": ["US_ABDOMEN", "US_ABD"],
+  "doppler leg": ["US_VENOUS_DOPPLER_LE", "DOPPLER_VEIN"],
+  "xray ankle": ["XR_ANKLE"],
+  "mri brain": ["MRI_BRAIN"],
 };
 
 @Injectable()

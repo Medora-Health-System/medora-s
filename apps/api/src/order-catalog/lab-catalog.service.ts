@@ -11,9 +11,11 @@ import { mapLabRowToCatalogSearchItem } from "./catalog-search.mapper";
 
 const LAB_ALIAS_CODE_MAP: Record<string, string[]> = {
   cbc: ["CBC", "ER_CBC"],
-  cmp: ["ER_CMP"],
+  cmp: ["CMP", "ER_CMP"],
   bmp: ["BMP", "ER_BMP"],
-  trop: ["TROP", "ER_TROP"],
+  trop: ["TROPONIN", "TROP", "ER_TROP"],
+  hcg: ["URINE_HCG", "SERUM_HCG", "HCG_URINE", "HCG_BETA", "ER_UHCG"],
+  "type screen": ["TYPE_SCREEN", "ER_BLOOD_TYPE"],
 };
 
 @Injectable()
