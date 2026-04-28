@@ -183,6 +183,7 @@ export type PharmacyDispenseContext = {
       catalogItemId: string;
       quantity: number | null;
       strength?: string | null;
+      route?: string | null;
       notes?: string | null;
       status: string;
       catalogMedication?: {
@@ -190,6 +191,7 @@ export type PharmacyDispenseContext = {
         name: string;
         displayNameEn?: string | null;
         displayNameFr?: string | null;
+        route?: string | null;
       };
     }>;
   }>;
