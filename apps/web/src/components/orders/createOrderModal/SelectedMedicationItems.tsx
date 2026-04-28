@@ -25,12 +25,15 @@ export function SelectedMedicationItems({
   items,
   onPatch,
   onRemove,
+  medicationOrderMode = "DEFAULT",
 }: {
   items: CreateOrderLineItem[];
   onPatch: (index: number, patch: Partial<CreateOrderLineItem>) => void;
   onRemove: (index: number) => void;
+  medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY";
 }) {
   const { t } = useI18n();
+  const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
 
   if (items.length === 0) return null;
 
@@ -56,27 +59,34 @@ export function SelectedMedicationItems({
                 </span>
               )}
             </div>
-            <div style={{ marginBottom: 10, fontSize: 13 }}>
-              <span style={{ marginRight: 12, fontWeight: 500 }}>{t("createOrderModal.selectedMedDestination")}</span>
-              <label style={{ marginRight: 12, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name={`intent-${idx}`}
-                  checked={(item.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE") === "ADMINISTER_CHART"}
-                  onChange={() => onPatch(idx, { medicationFulfillmentIntent: "ADMINISTER_CHART" })}
-                />{" "}
+            {erAdministerOnly ? (
+              <div style={{ marginBottom: 10, fontSize: 13, color: "#475569" }}>
+                <span style={{ marginRight: 12, fontWeight: 500 }}>{t("createOrderModal.selectedMedDestination")}</span>
                 {t("createOrderModal.selectedMedIntentAdminister")}
-              </label>
-              <label style={{ cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name={`intent-${idx}`}
-                  checked={(item.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE") === "PHARMACY_DISPENSE"}
-                  onChange={() => onPatch(idx, { medicationFulfillmentIntent: "PHARMACY_DISPENSE" })}
-                />{" "}
-                {t("createOrderModal.selectedMedIntentPharmacy")}
-              </label>
-            </div>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 10, fontSize: 13 }}>
+                <span style={{ marginRight: 12, fontWeight: 500 }}>{t("createOrderModal.selectedMedDestination")}</span>
+                <label style={{ marginRight: 12, cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name={`intent-${idx}`}
+                    checked={(item.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE") === "ADMINISTER_CHART"}
+                    onChange={() => onPatch(idx, { medicationFulfillmentIntent: "ADMINISTER_CHART" })}
+                  />{" "}
+                  {t("createOrderModal.selectedMedIntentAdminister")}
+                </label>
+                <label style={{ cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name={`intent-${idx}`}
+                    checked={(item.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE") === "PHARMACY_DISPENSE"}
+                    onChange={() => onPatch(idx, { medicationFulfillmentIntent: "PHARMACY_DISPENSE" })}
+                  />{" "}
+                  {t("createOrderModal.selectedMedIntentPharmacy")}
+                </label>
+              </div>
+            )}
             <div
               style={{
                 display: "grid",

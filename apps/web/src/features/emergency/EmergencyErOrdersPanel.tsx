@@ -132,6 +132,33 @@ type OrderEventRow = {
   } | null;
 };
 
+function medicationDirectionsLine(notes: unknown, tr: (key: string) => string): string | null {
+  const directions = typeof notes === "string" ? notes.trim() : "";
+  if (!directions) return null;
+  return tr("erEmergencyOrders.medicationDirections").replace("{directions}", directions);
+}
+
+function medicationDirectionsForEvent(
+  event: OrderEventRow,
+  orders: OrderRow[],
+  tr: (key: string) => string
+): string | null {
+  const order = orders.find((row) => row.id === event.orderId);
+  if (!order || order.type !== "MEDICATION") return null;
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemId = orderItemIdFromEventMetadata(event.metadata);
+  if (itemId) {
+    const item = items.find((it) => String((it as Record<string, unknown>).id ?? "") === itemId) as
+      | Record<string, unknown>
+      | undefined;
+    return medicationDirectionsLine(item?.notes, tr);
+  }
+  const directions = items
+    .map((it) => medicationDirectionsLine((it as Record<string, unknown>).notes, tr))
+    .filter((line): line is string => Boolean(line));
+  return directions.length > 0 ? [...new Set(directions)].join(" · ") : null;
+}
+
 /** Tokens that must never beat a recoverable encounter-order line label. */
 const GENERIC_ORDER_LINE_TITLE_TOKENS = new Set([
   "LAB_TEST",
@@ -687,6 +714,8 @@ export function EmergencyErOrdersPanel({
                             language,
                             t
                           );
+                          const directionsLine =
+                            o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
                           const busy = lineActionBusy;
                           const lineBtns: React.ReactNode[] = [];
                           if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
@@ -781,6 +810,11 @@ export function EmergencyErOrdersPanel({
                                 }}
                               >
                                 {label}
+                                {directionsLine ? (
+                                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
+                                    {directionsLine}
+                                  </div>
+                                ) : null}
                               </div>
                               {lineBtns.length > 0 ? (
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, flex: "0 0 auto", justifyContent: "flex-end" }}>{lineBtns}</div>
@@ -811,6 +845,7 @@ export function EmergencyErOrdersPanel({
                     const marLine = marActionOutcomeSubLabel(e.metadata, t);
                     const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
                     const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
+                    const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
                     const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
                     const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
                     const attributionLines = completedOrder ? formatOrderAttributionLines(completedOrder, t, language) : [];
@@ -822,6 +857,11 @@ export function EmergencyErOrdersPanel({
                       {secondaryLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
                           {secondaryLine}
+                        </div>
+                      ) : null}
+                      {directionsLine ? (
+                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
+                          {directionsLine}
                         </div>
                       ) : null}
                       {authorityLine ? (
@@ -858,6 +898,7 @@ export function EmergencyErOrdersPanel({
                 <div style={{ display: "grid", gap: 6 }}>
                   {cancelledEvents.map((e) => {
                     const medCancelLine = medicationCancellationSubLabel(e, t);
+                    const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
                     const cancelledOrder = parsedOrders.find((order) => order.id === e.orderId);
                     const authorityLine = cancelledOrder ? formatOrderAuthority(cancelledOrder, t) : null;
                     const attributionLines = cancelledOrder ? formatOrderAttributionLines(cancelledOrder, t, language) : [];
@@ -869,6 +910,11 @@ export function EmergencyErOrdersPanel({
                       {medCancelLine ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
                           {medCancelLine}
+                        </div>
+                      ) : null}
+                      {directionsLine ? (
+                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
+                          {directionsLine}
                         </div>
                       ) : null}
                       {authorityLine ? (
@@ -919,6 +965,7 @@ export function EmergencyErOrdersPanel({
               : undefined
           }
           initialOrderTab={createModalInitialTab}
+          medicationOrderMode="ER_ADMINISTER_ONLY"
           onClose={() => setShowCreateModal(false)}
           onRefetchEncounter={onRefetchEncounter}
           onSuccess={async () => {

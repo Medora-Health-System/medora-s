@@ -44,6 +44,7 @@ type OrderAuthorityPayloadFields = {
   readbackConfirmed?: boolean;
   protocolName?: string;
 };
+type MedicationOrderMode = "DEFAULT" | "ER_ADMINISTER_ONLY";
 
 const ORDER_TYPE_REVIEW_ORDER: OrderTypeKey[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
 
@@ -139,7 +140,8 @@ function isApprovedCatalogMatch(item: CatalogSearchItem, catalogType: CatalogTyp
 function catalogItemToOrderLine(
   item: CatalogSearchItem,
   language: SupportedLanguage,
-  t: (key: string) => string
+  t: (key: string) => string,
+  medicationOrderMode: MedicationOrderMode = "DEFAULT"
 ): CreateOrderLineItem | null {
   if (item.type === "LAB_TEST") {
     return {
@@ -164,19 +166,20 @@ function catalogItemToOrderLine(
   }
 
   if (item.type === "MEDICATION") {
+    const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
     return {
       _lineId: newOrderLineId(),
       isManual: false,
       catalogItemId: item.id,
       catalogItemType: "MEDICATION",
-      quantity: 30,
+      quantity: erAdministerOnly ? 1 : 30,
       notes: "",
       strength: item.metadata?.strength ?? undefined,
       _label: catalogLineLabel(item, language, t),
       _dosageForm: item.metadata?.dosageForm ?? undefined,
       _route: item.metadata?.route ?? undefined,
       refillCount: 0,
-      medicationFulfillmentIntent: "PHARMACY_DISPENSE",
+      medicationFulfillmentIntent: erAdministerOnly ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE",
     };
   }
 
@@ -474,6 +477,7 @@ export function CreateOrderModal({
   onRefetchEncounter,
   /** Si onglet initial CARE : préremplit une ligne manuelle (ex. action rapide). */
   initialCareManualLabel,
+  medicationOrderMode = "DEFAULT",
 }: {
   encounterId: string;
   facilityId: string;
@@ -482,6 +486,7 @@ export function CreateOrderModal({
   encounter?: { patient?: { firstName?: string; lastName?: string; mrn?: string } };
   initialOrderTab?: OrderModalTab;
   initialCareManualLabel?: string | null;
+  medicationOrderMode?: MedicationOrderMode;
   onClose: () => void;
   onSuccess: () => void;
   onRefetchEncounter?: () => Promise<void>;
@@ -489,6 +494,7 @@ export function CreateOrderModal({
   const { language, t } = useI18n();
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
   const canUseMedicationCareTabs = canPrescribe || canUseRnOrderAuthority;
+  const erAdministerOnlyMedication = medicationOrderMode === "ER_ADMINISTER_ONLY";
   const firstTab: OrderModalTab =
     !canUseMedicationCareTabs && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE")
       ? "LAB"
@@ -765,7 +771,7 @@ export function CreateOrderModal({
         continue;
       }
 
-      const line = catalogItemToOrderLine(catalogItem, language, t);
+        const line = catalogItemToOrderLine(catalogItem, language, t, medicationOrderMode);
       if (!line) {
         resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
         continue;
@@ -892,6 +898,7 @@ export function CreateOrderModal({
 
     setFormData((fd) => {
       if (fd.items.some((x) => x.catalogItemId && x.catalogItemId === item.id)) return fd;
+      const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
       return {
         ...fd,
         items: [
@@ -901,14 +908,14 @@ export function CreateOrderModal({
             isManual: false,
             catalogItemId: item.id,
             catalogItemType: "MEDICATION",
-            quantity: 30,
+            quantity: erAdministerOnly ? 1 : 30,
             notes: "",
             strength: item.metadata?.strength ?? undefined,
             _label: catalogLineLabel(item, language, t),
             _dosageForm: item.metadata?.dosageForm ?? undefined,
             _route: item.metadata?.route ?? undefined,
             refillCount: 0,
-            medicationFulfillmentIntent: "PHARMACY_DISPENSE",
+            medicationFulfillmentIntent: erAdministerOnly ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE",
           },
         ],
       };
@@ -916,7 +923,11 @@ export function CreateOrderModal({
   };
 
   const handleAddManualLine = (line: CreateOrderLineItem) => {
-    setFormData((fd) => ({ ...fd, items: [...fd.items, line] }));
+    const nextLine =
+      erAdministerOnlyMedication && line.catalogItemType === "MEDICATION"
+        ? { ...line, quantity: line.quantity ?? 1, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }
+        : line;
+    setFormData((fd) => ({ ...fd, items: [...fd.items, nextLine] }));
   };
 
   const removeItem = (idx: number) => {
@@ -926,7 +937,11 @@ export function CreateOrderModal({
   const patchMedItem = (idx: number, patch: Partial<CreateOrderLineItem>) => {
     setFormData((fd) => {
       const next = [...fd.items];
-      next[idx] = { ...next[idx], ...patch };
+      next[idx] = {
+        ...next[idx],
+        ...patch,
+        ...(erAdministerOnlyMedication ? { medicationFulfillmentIntent: "ADMINISTER_CHART" as const } : {}),
+      };
       return { ...fd, items: next };
     });
   };
@@ -983,7 +998,9 @@ export function CreateOrderModal({
       formData.prescriberName,
       formData.prescriberLicense,
       formData.prescriberContact,
-      formData.items,
+      erAdministerOnlyMedication && formData.type === "MEDICATION"
+        ? formData.items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
+        : formData.items,
       authorityPayloadFields()
     );
 
@@ -1535,7 +1552,9 @@ export function CreateOrderModal({
                       favoritesFirst={activeTab === "MEDICATION"}
                       minChars={activeTab === "MEDICATION" ? 2 : 2}
                     />
-                    <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />
+                    {!(erAdministerOnlyMedication && activeTab === "MEDICATION") ? (
+                      <ManualOrderEntry tab={activeTab} onAdd={handleAddManualLine} />
+                    ) : null}
                   </>
                 )}
               </div>
@@ -1554,7 +1573,12 @@ export function CreateOrderModal({
                   {activeTab === "LAB" && <SelectedLabItems items={formData.items} onRemove={removeItem} />}
                   {activeTab === "IMAGING" && <SelectedImagingItems items={formData.items} onRemove={removeItem} />}
                   {activeTab === "MEDICATION" && (
-                    <SelectedMedicationItems items={formData.items} onPatch={patchMedItem} onRemove={removeItem} />
+                    <SelectedMedicationItems
+                      items={formData.items}
+                      onPatch={patchMedItem}
+                      onRemove={removeItem}
+                      medicationOrderMode={medicationOrderMode}
+                    />
                   )}
                   {activeTab === "CARE" && (
                     <SelectedLabItems
@@ -1675,7 +1699,7 @@ export function CreateOrderModal({
                         ? t("createOrderModal.submitSavingMed")
                         : t("createOrderModal.submitSending")
                       : activeTab === "MEDICATION"
-                        ? t("createOrderModal.submitSaveRx")
+                        ? t("createOrderModal.submitMedicationOrder")
                         : activeTab === "CARE"
                           ? t("createOrderModal.submitCreateCare")
                           : t("createOrderModal.submitCreateOrder")}
