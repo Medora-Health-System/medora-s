@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useI18n } from "@/lib/i18n";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -70,6 +71,7 @@ export function SelectedMedicationItems({
           const missingDirections = !item.notes?.trim();
           const needsIvConfirmation = item.route === "IVP" || item.route === "IVPB";
           const needsErQuantityConfirmation = erAdministerOnly && (item.quantity ?? 0) > 1;
+          const highRiskWarning = highRiskMedicationWarning(item, t);
           return (
             <li
               key={item._lineId}
@@ -85,6 +87,9 @@ export function SelectedMedicationItems({
                   {t("createOrderModal.selectedManualBadge")}
                 </span>
               )}
+              {highRiskWarning ? (
+                <p style={{ ...inlineWarningStyle, marginBottom: 0 }}>{highRiskWarning}</p>
+              ) : null}
             </div>
             {erAdministerOnly ? (
               <div style={{ marginBottom: 10, fontSize: 13, color: "#475569" }}>

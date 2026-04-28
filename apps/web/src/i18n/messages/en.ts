@@ -4987,6 +4987,9 @@ export default {
     actionBy: "Action by {name}{role} · {datetime}",
     unknownUser: "unknown user",
   },
+  medicationSafety: {
+    highRiskWarning: "High-risk medication — verify dose, route, and directions.",
+  },
   createOrderModal: {
     tabOrderSets: "Order Sets",
     orderSetsSectionTitle: "Order sets",

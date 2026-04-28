@@ -21,6 +21,7 @@ import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/wo
 import { useI18n } from "@/lib/i18n";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 
 function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
   return !!item.pharmacyDispenseRecord;
@@ -59,6 +60,7 @@ export default function PharmacyWorklistPage() {
   const [recordModal, setRecordModal] = useState<{
     orderItemId: string;
     medicationLine: string;
+    highRiskWarning?: string | null;
     prescriber?: string;
     authorityLine?: string;
     attributionLines?: string[];
@@ -183,6 +185,7 @@ export default function PharmacyWorklistPage() {
     setRecordModal({
       orderItemId: item.id,
       medicationLine: `${medicationLabel(item)} · ${t("pharmacyWorklistPage.recordLineQty")} ${item.quantity ?? t("common.dash")} · ${t("pharmacyWorklistPage.recordLineRoute")}: ${medicationRoute(item) || t("common.dash")} · ${t("pharmacyWorklistPage.recordLineDirections")}: ${(item.notes as string) || t("common.dash")}`,
+      highRiskWarning: highRiskMedicationWarning(item, t),
       prescriber: order.prescriberName as string | undefined,
       authorityLine: formatOrderAuthority(order, t),
       attributionLines: formatOrderAttributionLines(order, t, language),
@@ -291,6 +294,11 @@ export default function PharmacyWorklistPage() {
                       {medicationRoute(item) ? (
                         <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
                           {t("pharmacyWorklistPage.recordLineRoute")}: {medicationRoute(item)}
+                        </div>
+                      ) : null}
+                      {highRiskMedicationWarning(item, t) ? (
+                        <div style={{ fontSize: 12, color: "#b45309", marginTop: 4 }}>
+                          {highRiskMedicationWarning(item, t)}
                         </div>
                       ) : null}
                     </td>
@@ -481,6 +489,9 @@ export default function PharmacyWorklistPage() {
           >
             <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("pharmacyWorklistPage.modalTitle")}</h2>
             <p style={{ fontSize: 14, color: "#333" }}>{recordModal.medicationLine}</p>
+            {recordModal.highRiskWarning ? (
+              <p style={{ fontSize: 13, color: "#b45309", margin: "4px 0" }}>{recordModal.highRiskWarning}</p>
+            ) : null}
             {recordModal.prescriber ? (
               <p style={{ fontSize: 13, color: "#555" }}>
                 {t("pharmacyWorklistPage.modalPrescriberPrefix")} {recordModal.prescriber}

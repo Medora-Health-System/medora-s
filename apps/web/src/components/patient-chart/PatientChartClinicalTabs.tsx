@@ -19,6 +19,7 @@ import { clinicalResultFromChartOrderItem } from "@/lib/clinicalResultNormalize"
 import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 
 const emptyBox: React.CSSProperties = {
   padding: "16px 14px",
@@ -346,13 +347,20 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
               {t("encounterChrome.chartTabs.sectionPrescriptions")}
             </div>
             <ul style={{ margin: "0 0 12px 0", paddingLeft: 18, fontSize: 14 }}>
-              {medLines.map((it) => (
+              {medLines.map((it) => {
+                const label = chartSummaryOrderItemLineLabel(it, language, t);
+                const highRiskWarning = highRiskMedicationWarning({ ...it, label }, t);
+                return (
                 <li key={it.id}>
-                  <strong>{chartSummaryOrderItemLineLabel(it, language, t)}</strong> —{" "}
-                  {tOrderItemStatusForWorklist(t, it.status)}
+                  <strong>{label}</strong> — {tOrderItemStatusForWorklist(t, it.status)}
                   <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
                     {formatOrderAuthority(orderByItemId.get(it.id), t)}
                   </div>
+                  {highRiskWarning ? (
+                    <div style={{ fontSize: 12, color: "#b45309", marginTop: 4, fontWeight: 600 }}>
+                      {highRiskWarning}
+                    </div>
+                  ) : null}
                   {formatOrderAttributionLines(orderByItemId.get(it.id), t, language).map((line) => (
                     <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
                       {line}
@@ -391,7 +399,8 @@ export function PatientMedicationsTabContent({ chartSummary }: { chartSummary: C
                     </div>
                   ) : null}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </>
         ) : null}

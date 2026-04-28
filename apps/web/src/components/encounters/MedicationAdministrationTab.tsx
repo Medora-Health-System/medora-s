@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import { resolveMedicationMarActionFromStorage } from "@medora/shared";
 
 type AdminRow = {
@@ -152,6 +153,7 @@ export function MedicationAdministrationTab({
     label: string;
     authorityLine: string;
     attributionLines: string[];
+    highRiskWarning: string | null;
     routeHint: string;
     ndcHint: string;
     billingUnitHint: string;
@@ -228,6 +230,7 @@ export function MedicationAdministrationTab({
       intendedAt?: string | null;
       authorityLine: string;
       attributionLines: string[];
+      highRiskWarning: string | null;
     }[] = [];
     for (const order of orders) {
       if ((order as { status?: string }).status === "CANCELLED") continue;
@@ -236,15 +239,17 @@ export function MedicationAdministrationTab({
         if (!it.id) continue;
         if (String(it.id).startsWith("local:")) continue;
         if (!isOrderItemPendingNurseMedication(it)) continue;
+        const label = getOrderItemDisplayLabelForLanguage(
+          it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+          language as SupportedLanguage,
+          t
+        );
         rows.push({
           orderItemId: it.id,
-          label: getOrderItemDisplayLabelForLanguage(
-            it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
-            language as SupportedLanguage,
-            t
-          ),
+          label,
           authorityLine: formatOrderAuthority(order as Record<string, unknown>, t),
           attributionLines: formatOrderAttributionLines(order as Record<string, unknown>, t, language),
+          highRiskWarning: highRiskMedicationWarning({ ...it, label }, t),
           routeHint: it.route?.trim() || it.catalogMedication?.route?.trim() || "",
           ndcHint: it.catalogMedication?.ndcDisplay?.trim() || it.catalogMedication?.ndc11?.trim() || "",
           billingUnitHint: it.catalogMedication?.billingUnitType?.trim() || "",
@@ -261,6 +266,7 @@ export function MedicationAdministrationTab({
       label: row.label,
       authorityLine: row.authorityLine,
       attributionLines: row.attributionLines,
+      highRiskWarning: row.highRiskWarning,
       routeHint: row.routeHint,
       ndcHint: row.ndcHint,
       billingUnitHint: row.billingUnitHint,
@@ -500,6 +506,11 @@ export function MedicationAdministrationTab({
                           {t("marTab.routePrefix")} {row.routeHint}
                         </div>
                       ) : null}
+                      {row.highRiskWarning ? (
+                        <div style={{ fontSize: 12, color: "#b45309", marginTop: 4, fontWeight: 600 }}>
+                          {row.highRiskWarning}
+                        </div>
+                      ) : null}
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 14 }}>{statusCell}</td>
                     <td style={{ padding: "12px 8px", fontSize: 14, whiteSpace: "nowrap" }}>{timeCell}</td>
@@ -630,6 +641,11 @@ export function MedicationAdministrationTab({
                 {line}
               </p>
             ))}
+            {modalItem.highRiskWarning ? (
+              <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#b45309", fontWeight: 600 }}>
+                {modalItem.highRiskWarning}
+              </p>
+            ) : null}
 
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.routeOptional")}

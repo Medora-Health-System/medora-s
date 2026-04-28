@@ -29,6 +29,7 @@ import { useI18n } from "@/lib/i18n";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import { CommonSuspenseFallback } from "@/components/i18n/CommonSuspenseFallback";
 
 type Patient = {
@@ -165,6 +166,9 @@ function PharmacyDispensePageContent() {
   }, [facilityId, encounterId]);
 
   const selectedInventoryItem = inventoryItems.find((i) => i.id === inventoryItemId);
+  const selectedInventoryHighRiskWarning = selectedInventoryItem
+    ? highRiskMedicationWarning(selectedInventoryItem.catalogMedication, t)
+    : null;
   const isLowStock =
     selectedInventoryItem &&
     selectedInventoryItem.reorderLevel > 0 &&
@@ -193,6 +197,10 @@ function PharmacyDispensePageContent() {
         .filter(Boolean)
     )
   );
+  const highRiskOrderWarning = (dispenseContext?.medicationOrders ?? [])
+    .flatMap((order) => order.items ?? [])
+    .map((item) => highRiskMedicationWarning(item, t))
+    .find((warning): warning is string => Boolean(warning)) ?? null;
 
   const submit = async () => {
     if (!facilityId) return;
@@ -379,6 +387,11 @@ function PharmacyDispensePageContent() {
                     <strong>{t("pharmacyDispense.orderRoutes")}</strong> — {orderRoutes.join(", ")}
                   </p>
                 ) : null}
+                {highRiskOrderWarning ? (
+                  <p style={{ margin: "0 0 8px 0", color: "#b45309", fontWeight: 600 }}>
+                    {highRiskOrderWarning}
+                  </p>
+                ) : null}
                 {(dispenseContext.medicationOrders.some((o) => o.prescriberName || o.prescriberLicense) || dispenseContext.medicationOrders.some((o) => o.prescriberContact)) && (
                   <p style={{ margin: "0 0 8px 0" }}>
                     <strong>{t("pharmacyDispense.prescriber")}</strong> —{" "}
@@ -464,6 +477,11 @@ function PharmacyDispensePageContent() {
                 ))}
               </select>
             </div>
+            {selectedInventoryHighRiskWarning ? (
+              <p style={{ marginTop: 8, color: "#b45309", fontSize: 13, fontWeight: 600 }}>
+                {selectedInventoryHighRiskWarning}
+              </p>
+            ) : null}
             {isLowStock && selectedInventoryItem && (
               <p
                 style={{

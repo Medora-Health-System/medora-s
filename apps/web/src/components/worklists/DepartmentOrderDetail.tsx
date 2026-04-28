@@ -23,6 +23,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -745,6 +746,7 @@ function LineCard({
       : null;
   const medicationRoute =
     kind === "pharmacy" ? (item.route as string | undefined)?.trim() || item.catalogMedication?.route?.trim() || "" : "";
+  const highRiskWarning = kind === "pharmacy" ? highRiskMedicationWarning(item, t) : null;
 
   return (
     <section
@@ -783,6 +785,9 @@ function LineCard({
             <strong>{t("orderDetail.quantityLabel")}</strong> {item.quantity ?? t("common.dash")} ·{" "}
             <strong>{t("orderDetail.refillsLabel")}</strong> {item.refillCount ?? 0}
           </div>
+          {highRiskWarning ? (
+            <div style={{ color: "#b45309", fontWeight: 600 }}>{highRiskWarning}</div>
+          ) : null}
         </div>
       ) : null}
       {item.notes && kind !== "pharmacy" ? (

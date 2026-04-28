@@ -9,6 +9,7 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAuthorityLines, type OrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines, type OrderAttributionDisplay, type OrderLastActionDisplay } from "@/lib/orderAttribution";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import { printDateLocale, printT } from "@/lib/printI18n";
 
 export type RxOrderItem = {
@@ -96,17 +97,22 @@ export function getRxPrintHtml(params: {
     .join("<br/>");
 
   const rows = order.items
-    .map(
-      (it) =>
-        `<tr>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(medicationLabel(it, language))}</td>
+    .map((it) => {
+      const label = medicationLabel(it, language);
+      const highRiskWarning = highRiskMedicationWarning({ ...it, label }, (key) => printT(language, key));
+      return `<tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(label)}${
+            highRiskWarning
+              ? `<div style="font-size: 11px; color: #b45309; margin-top: 4px; font-weight: 600;">${esc(highRiskWarning)}</div>`
+              : ""
+          }</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.strength ?? it.catalogMedication?.strength ?? "—"))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(medicationRoute(it))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.notes ?? "—"))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.quantity ?? "—"))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.refillCount ?? 0))}</td>
-        </tr>`
-    )
+        </tr>`;
+    })
     .join("");
 
   const pt = printT(language, "printOutput.rx.patient");

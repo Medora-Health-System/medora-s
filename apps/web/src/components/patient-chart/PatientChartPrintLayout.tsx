@@ -26,6 +26,7 @@ import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { chartSummaryAttachmentSummary, chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 import { formatOrderAuthorityLines } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 
 function esc(s: string): string {
   return String(s)
@@ -227,9 +228,18 @@ export function getPatientChartPrintHtml(params: {
               : "";
           const items = (o.items ?? [])
             .map((it) => {
-              const label = esc(chartSummaryOrderItemLineLabel(it, lang, chartOrderLineT(lang)) || "—");
+              const rawLabel = chartSummaryOrderItemLineLabel(it, lang, chartOrderLineT(lang)) || "—";
+              const label = esc(rawLabel);
+              const highRiskWarning =
+                it.catalogItemType === "MEDICATION"
+                  ? highRiskMedicationWarning({ ...it, label: rawLabel }, (key) => printT(lang, key))
+                  : null;
               const st = esc(printOrderItemChartLabel(lang, it.status));
-              return `<li>${label} <span style="color:#333;">(${st})</span></li>`;
+              return `<li>${label} <span style="color:#333;">(${st})</span>${
+                highRiskWarning
+                  ? `<div style="font-size:11px;color:#b45309;margin-top:2px;font-weight:600;">${esc(highRiskWarning)}</div>`
+                  : ""
+              }</li>`;
             })
             .join("");
           return `<div style="margin:6px 0;"><strong>${esc(orderTypeHeading(lang, o.type))}</strong><div style="font-size:11px;color:#555;margin-top:2px;overflow-wrap:anywhere;">${authorityHtml}</div>${attributionHtml ? `<div style="font-size:11px;color:#555;margin-top:2px;overflow-wrap:anywhere;">${attributionHtml}</div>` : ""}${cancelNote}<ul style="margin:4px 0 0 16px;">${items || `<li>${esc(pc("emptyDash"))}</li>`}</ul></div>`;
