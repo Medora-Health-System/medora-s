@@ -48,11 +48,19 @@ const PREFERRED_PANEL_LOINCS_BY_MEDORA_CODE: Record<string, string[]> = {
 
 const PREFERRED_LOINCS_BY_MEDORA_CODE: Record<string, string[]> = {
   ER_DDM: ["48065-7", "22457-8"],
+  ER_PT_INR: ["5902-2", "6301-6"],
+  ER_APTT: ["3173-2"],
+  ER_UA: ["24356-8"],
+  ER_BC: ["600-7"],
 };
 
 const CBC_CODES = new Set(["CBC", "ER_CBC", "CBC_DIFF", "NFS_DIFF"]);
 const TROPONIN_CODES = new Set(["TROP", "TROPONIN", "ER_TROP"]);
 const D_DIMER_CODES = new Set(["D_DIMER", "DDIMER", "ER_DDM"]);
+const PT_INR_CODES = new Set(["PT_INR", "INR", "ER_PT_INR"]);
+const APTT_CODES = new Set(["APTT", "TCA", "ER_APTT"]);
+const URINALYSIS_CODES = new Set(["UA", "ER_UA"]);
+const BLOOD_CULTURE_CODES = new Set(["BLOOD_CULTURE", "ER_BC"]);
 
 function readText(filePath: string): string {
   return fs.readFileSync(filePath, "utf8");
@@ -240,15 +248,82 @@ function isDimerLab(lab: MedoraLab): boolean {
   return /\b(d dimer|dimeres|ddimer)\b/.test(medoraName);
 }
 
+function isPtInrLab(lab: MedoraLab): boolean {
+  if (PT_INR_CODES.has(lab.medoraCode)) return true;
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(pt inr|prothrombin|taux de prothrombine)\b/.test(medoraName);
+}
+
+function isApttLab(lab: MedoraLab): boolean {
+  if (APTT_CODES.has(lab.medoraCode)) return true;
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(aptt|ptt|thromboplastin|cephaline|tca)\b/.test(medoraName);
+}
+
+function isUrinalysisLab(lab: MedoraLab): boolean {
+  if (URINALYSIS_CODES.has(lab.medoraCode)) return true;
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(urinalysis|analyse d urine|urine)\b/.test(medoraName);
+}
+
+function isBloodCultureLab(lab: MedoraLab): boolean {
+  if (BLOOD_CULTURE_CODES.has(lab.medoraCode)) return true;
+  const medoraName = normalize([
+    lab.medoraCode,
+    lab.displayNameEn,
+    lab.displayNameFr,
+    lab.aliases.join(" "),
+    lab.searchText,
+  ].join(" "));
+  return /\b(blood culture|hemoculture|bacteremia|sepsis culture)\b/.test(medoraName);
+}
+
 function excluded(row: LoincRow, lab: MedoraLab): boolean {
   const status = normalize(row.status);
   if (status && status !== "active" && status !== "trial") return true;
 
   const text = ` ${normalize(combinedLoincText(row))} `;
+  const component = ` ${normalize(row.component)} `;
+  const preferredCodes = PREFERRED_LOINCS_BY_MEDORA_CODE[lab.medoraCode] ?? [];
   if (/\b(deprecated|discouraged)\b/.test(text)) return true;
   if (/\b(animal|mouse|mice|rat|canine|dog|feline|cat|bovine|equine|porcine|veterinary)\b/.test(text)) return true;
   if (/\b(dialysis|hemodialysis|haemodialysis|peritoneal dialysis)\b/.test(text)) return true;
+  if (/\b(parathyrin|parathyroid)\b/.test(component)) return true;
   if (isDimerLab(lab) && !/\b(fibrin d dimer|d dimer)\b/.test(text)) return true;
+  if (
+    isPtInrLab(lab) &&
+    !preferredCodes.includes(row.loinc ?? "") &&
+    !/\b(prothrombin time|inr|international normalized ratio)\b/.test(` ${normalize(row.name)} ${component} `)
+  ) return true;
+  if (
+    isPtInrLab(lab) &&
+    /\b(parathyrin|parathyroid|phosphatidylserine|fragment|antibody|ab|antigen|ag|factor substitution)\b/.test(text)
+  ) return true;
+  if (isApttLab(lab) && !preferredCodes.includes(row.loinc ?? "") && !/\b(thromboplastin|aptt|ptt)\b/.test(text)) return true;
+  if (isUrinalysisLab(lab) && !preferredCodes.includes(row.loinc ?? "") && !/\b(urinalysis|urine)\b/.test(text)) return true;
+  if (
+    isBloodCultureLab(lab) &&
+    !preferredCodes.includes(row.loinc ?? "") &&
+    !(/\bblood\b|\bbld\b/.test(text) && /\bculture\b/.test(text))
+  ) return true;
   if (!isMolecularLab(lab) && /\b(sequence|sequencing|gene|genetic|genotype|mutation|variant|allele)\b/.test(text)) return true;
   if (/\b(delta|change|trend|timing|interpretation|interpreted|interp|calculated|calculation|research)\b/.test(text)) return true;
   if (/\b(after|before|post|pre|challenge|baseline|peak|trough|random|fasting)\b/.test(text)) return true;
@@ -360,6 +435,42 @@ function scoreCandidate(lab: MedoraLab, row: LoincRow): { score: number; reasons
   if (isDimerLab(lab) && rowClass.includes("coag")) {
     score += 25;
     reasons.push("D-dimer coagulation class preferred");
+  }
+  if (isPtInrLab(lab) && /\bprothrombin\b/.test(rowText)) {
+    score += 110;
+    reasons.push("PT/INR prothrombin meaning preferred");
+  }
+  if (isPtInrLab(lab) && /\b(inr|international normalized ratio)\b/.test(rowText)) {
+    score += 90;
+    reasons.push("PT/INR INR meaning preferred");
+  }
+  if (isPtInrLab(lab) && rowClass.includes("coag")) {
+    score += 35;
+    reasons.push("PT/INR coagulation class preferred");
+  }
+  if (isApttLab(lab) && /\b(activated partial thromboplastin|aptt|ptt)\b/.test(rowText)) {
+    score += 120;
+    reasons.push("aPTT thromboplastin meaning preferred");
+  }
+  if (isApttLab(lab) && rowClass.includes("coag")) {
+    score += 35;
+    reasons.push("aPTT coagulation class preferred");
+  }
+  if (isUrinalysisLab(lab) && component.includes("urinalysis complete panel")) {
+    score += 120;
+    reasons.push("urinalysis complete panel preferred");
+  }
+  if (isUrinalysisLab(lab) && rowClass.includes("panel ua")) {
+    score += 45;
+    reasons.push("urinalysis panel class preferred");
+  }
+  if (isBloodCultureLab(lab) && component === "bacteria" && /\bbld\b|\bblood\b/.test(system) && rowText.includes("culture")) {
+    score += 130;
+    reasons.push("blood culture bacteria preferred");
+  }
+  if (isBloodCultureLab(lab) && rowClass.includes("micro")) {
+    score += 35;
+    reasons.push("blood culture microbiology class preferred");
   }
   if (system.includes("ser plas") || system === "bld" || system.includes("blood")) {
     score += 20;
