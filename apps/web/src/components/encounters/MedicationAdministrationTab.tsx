@@ -30,6 +30,7 @@ type OrderItemApi = {
   catalogItemType?: string | null;
   medicationFulfillmentIntent?: string | null;
   status?: string | null;
+  route?: string | null;
   intendedAdministrationAt?: string | null;
   catalogMedication?: {
     route?: string | null;
@@ -244,7 +245,7 @@ export function MedicationAdministrationTab({
           ),
           authorityLine: formatOrderAuthority(order as Record<string, unknown>, t),
           attributionLines: formatOrderAttributionLines(order as Record<string, unknown>, t, language),
-          routeHint: it.catalogMedication?.route?.trim() || "",
+          routeHint: it.route?.trim() || it.catalogMedication?.route?.trim() || "",
           ndcHint: it.catalogMedication?.ndcDisplay?.trim() || it.catalogMedication?.ndc11?.trim() || "",
           billingUnitHint: it.catalogMedication?.billingUnitType?.trim() || "",
           intendedAt: it.intendedAdministrationAt ?? null,

@@ -89,6 +89,7 @@ export type OrderItemNestedCreate = {
   notes?: string;
   quantity?: number;
   strength?: string;
+  route?: "PO" | "IM" | "IVP" | "IVPB";
   refillCount?: number;
   medicationFulfillmentIntent?: MedicationFulfillmentIntent;
   intendedAdministrationAt?: Date;
@@ -159,6 +160,7 @@ export function buildOrderItemCreateInput(item: OrderItemCreateDto, orderType: O
   const med: Record<string, unknown> = {
     ...base,
     strength: optionalTrimmedString(item.strength ?? undefined),
+    route: item.route,
     refillCount: refill,
     medicationFulfillmentIntent: intent,
     intendedAdministrationAt:

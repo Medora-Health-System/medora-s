@@ -106,29 +106,35 @@ export function SelectedMedicationItems({
                 />
               </div>
               {!item.isManual && (
-                <>
-                  <div>
-                    <span style={labelSm}>{t("createOrderModal.selectedMedDosageForm")}</span>
-                    <input
-                      type="text"
-                      readOnly
-                      value={item._dosageForm ?? ""}
-                      placeholder="—"
-                      style={{ ...inputSm, backgroundColor: "#f7f7f7", color: "#444" }}
-                    />
-                  </div>
-                  <div>
-                    <span style={labelSm}>{t("createOrderModal.selectedMedRoute")}</span>
-                    <input
-                      type="text"
-                      readOnly
-                      value={item._route ?? ""}
-                      placeholder="—"
-                      style={{ ...inputSm, backgroundColor: "#f7f7f7", color: "#444" }}
-                    />
-                  </div>
-                </>
+                <div>
+                  <span style={labelSm}>{t("createOrderModal.selectedMedDosageForm")}</span>
+                  <input
+                    type="text"
+                    readOnly
+                    value={item._dosageForm ?? ""}
+                    placeholder="—"
+                    style={{ ...inputSm, backgroundColor: "#f7f7f7", color: "#444" }}
+                  />
+                </div>
               )}
+              <div>
+                <span style={labelSm}>{t("createOrderModal.selectedMedRoute")}</span>
+                <select
+                  value={item.route ?? ""}
+                  onChange={(e) =>
+                    onPatch(idx, {
+                      route: e.target.value ? (e.target.value as CreateOrderLineItem["route"]) : undefined,
+                    })
+                  }
+                  style={inputSm}
+                >
+                  <option value="">{t("common.dash")}</option>
+                  <option value="PO">PO</option>
+                  <option value="IM">IM</option>
+                  <option value="IVP">IVP</option>
+                  <option value="IVPB">IVPB</option>
+                </select>
+              </div>
               <div>
                 <span style={labelSm}>{t("createOrderModal.selectedMedSig")}</span>
                 <input

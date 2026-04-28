@@ -16,6 +16,7 @@ export type RxOrderItem = {
   /** Manual entry (off-catalog). */
   manualLabel?: string | null;
   strength?: string | null;
+  route?: string | null;
   notes?: string | null;
   quantity?: number | null;
   refillCount?: number | null;
@@ -72,6 +73,10 @@ function medicationLabel(item: RxOrderItem, language: SupportedLanguage): string
   return printT(language, "printOutput.rx.medicationFallback");
 }
 
+function medicationRoute(item: RxOrderItem): string {
+  return item.route?.trim() || item.catalogMedication?.route?.trim() || "—";
+}
+
 export function getRxPrintHtml(params: {
   order: RxOrder;
   patient: RxPatient;
@@ -96,6 +101,7 @@ export function getRxPrintHtml(params: {
         `<tr>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(medicationLabel(it, language))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.strength ?? it.catalogMedication?.strength ?? "—"))}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(medicationRoute(it))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.notes ?? "—"))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.quantity ?? "—"))}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(String(it.refillCount ?? 0))}</td>
@@ -112,6 +118,7 @@ export function getRxPrintHtml(params: {
   const facility = printT(language, "printOutput.rx.facility");
   const colMed = printT(language, "printOutput.rx.colMedication");
   const colStr = printT(language, "printOutput.rx.colStrength");
+  const colRoute = printT(language, "printOutput.rx.colRoute");
   const colDir = printT(language, "printOutput.rx.colDirections");
   const colQty = printT(language, "printOutput.rx.colQuantity");
   const colRef = printT(language, "printOutput.rx.colRefills");
@@ -149,6 +156,7 @@ export function getRxPrintHtml(params: {
       <tr>
         <th>${esc(colMed)}</th>
         <th>${esc(colStr)}</th>
+          <th>${esc(colRoute)}</th>
         <th>${esc(colDir)}</th>
         <th>${esc(colQty)}</th>
         <th>${esc(colRef)}</th>

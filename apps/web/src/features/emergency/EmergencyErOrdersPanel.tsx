@@ -138,6 +138,17 @@ function medicationDirectionsLine(notes: unknown, tr: (key: string) => string): 
   return tr("erEmergencyOrders.medicationDirections").replace("{directions}", directions);
 }
 
+function medicationRouteLine(item: Record<string, unknown>, tr: (key: string) => string): string | null {
+  const catalogMedication = item.catalogMedication;
+  const catalogRoute =
+    catalogMedication && typeof catalogMedication === "object"
+      ? String((catalogMedication as Record<string, unknown>).route ?? "").trim()
+      : "";
+  const route = typeof item.route === "string" ? item.route.trim() : catalogRoute;
+  if (!route) return null;
+  return tr("erEmergencyOrders.medicationRoute").replace("{route}", route);
+}
+
 function medicationDirectionsForEvent(
   event: OrderEventRow,
   orders: OrderRow[],
@@ -716,6 +727,7 @@ export function EmergencyErOrdersPanel({
                           );
                           const directionsLine =
                             o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
+                          const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
                           const busy = lineActionBusy;
                           const lineBtns: React.ReactNode[] = [];
                           if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
@@ -810,6 +822,11 @@ export function EmergencyErOrdersPanel({
                                 }}
                               >
                                 {label}
+                                {routeLine ? (
+                                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
+                                    {routeLine}
+                                  </div>
+                                ) : null}
                                 {directionsLine ? (
                                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
                                     {directionsLine}

@@ -743,6 +743,8 @@ function LineCard({
     kind === "radiology" && item.catalogImagingStudy
       ? [item.catalogImagingStudy.modality, item.catalogImagingStudy.bodyRegion].filter(Boolean).join(" · ")
       : null;
+  const medicationRoute =
+    kind === "pharmacy" ? (item.route as string | undefined)?.trim() || item.catalogMedication?.route?.trim() || "" : "";
 
   return (
     <section
@@ -770,6 +772,9 @@ function LineCard({
         <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
           <div>
             <strong>{t("orderDetail.dosageLabel")}</strong> {item.strength ?? item.catalogMedication?.strength ?? t("common.dash")}
+          </div>
+          <div>
+            <strong>{t("orderDetail.routeLabel")}</strong> {medicationRoute || t("common.dash")}
           </div>
           <div>
             <strong>{t("orderDetail.linePosology")}</strong> {(item.notes as string) || t("common.dash")}

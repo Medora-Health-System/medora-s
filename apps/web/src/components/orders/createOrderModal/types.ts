@@ -2,6 +2,7 @@ export type OrderModalTab = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 export type CreateOrderModalTab = "ORDER_SET" | OrderModalTab;
 
 export type OrderLineCatalogType = "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" | "CARE";
+export type MedicationRoute = "PO" | "IM" | "IVP" | "IVPB";
 
 export function newOrderLineId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -26,6 +27,8 @@ export type CreateOrderLineItem = {
   quantity?: number;
   /** Dosage / force → API `strength` */
   strength?: string;
+  /** MEDICATION: structured route snapshot. */
+  route?: MedicationRoute;
   refillCount?: number;
   /** MEDICATION: intent for routing (nursing vs pharmacy). */
   medicationFulfillmentIntent?: "ADMINISTER_CHART" | "PHARMACY_DISPENSE";

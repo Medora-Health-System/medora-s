@@ -16,7 +16,7 @@ import { SelectedLabItems } from "./createOrderModal/SelectedLabItems";
 import { SelectedImagingItems } from "./createOrderModal/SelectedImagingItems";
 import { SelectedMedicationItems } from "./createOrderModal/SelectedMedicationItems";
 import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
-import type { CreateOrderLineItem, CreateOrderModalTab, OrderModalTab } from "./createOrderModal/types";
+import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
@@ -137,6 +137,16 @@ function isApprovedCatalogMatch(item: CatalogSearchItem, catalogType: CatalogTyp
   return item.type === catalogType && approvedCodes.has(item.code.toUpperCase());
 }
 
+function normalizeMedicationRoute(raw: string | null | undefined): MedicationRoute | undefined {
+  const normalized = raw?.trim().toUpperCase().replace(/[._-]/g, " ").replace(/\s+/g, " ");
+  if (!normalized) return undefined;
+  if (normalized === "PO" || normalized === "ORAL" || normalized === "BY MOUTH") return "PO";
+  if (normalized === "IM" || normalized === "INTRAMUSCULAR") return "IM";
+  if (normalized === "IVP" || normalized === "IV PUSH") return "IVP";
+  if (normalized === "IVPB" || normalized === "IV PIGGYBACK" || normalized === "IV PIGGY BACK") return "IVPB";
+  return undefined;
+}
+
 function catalogItemToOrderLine(
   item: CatalogSearchItem,
   language: SupportedLanguage,
@@ -175,6 +185,7 @@ function catalogItemToOrderLine(
       quantity: erAdministerOnly ? 1 : 30,
       notes: "",
       strength: item.metadata?.strength ?? undefined,
+      route: normalizeMedicationRoute(item.metadata?.route),
       _label: catalogLineLabel(item, language, t),
       _dosageForm: item.metadata?.dosageForm ?? undefined,
       _route: item.metadata?.route ?? undefined,
@@ -445,6 +456,7 @@ function buildPayload(
         quantity: it.quantity!,
         notes: it.notes?.trim() || undefined,
         strength: it.strength?.trim() || undefined,
+        route: it.route,
         refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
         medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
         ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
@@ -455,6 +467,7 @@ function buildPayload(
         quantity: it.quantity!,
         notes: it.notes?.trim() || undefined,
         strength: it.strength?.trim() || undefined,
+        route: it.route,
         refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
         medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
         ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
@@ -911,6 +924,7 @@ export function CreateOrderModal({
             quantity: erAdministerOnly ? 1 : 30,
             notes: "",
             strength: item.metadata?.strength ?? undefined,
+            route: normalizeMedicationRoute(item.metadata?.route),
             _label: catalogLineLabel(item, language, t),
             _dosageForm: item.metadata?.dosageForm ?? undefined,
             _route: item.metadata?.route ?? undefined,
@@ -1197,6 +1211,7 @@ export function CreateOrderModal({
                         catalogItemId: it.catalogItemId,
                         manualLabel: it.isManual ? it.manualLabel ?? it._label : undefined,
                         strength: it.strength ?? null,
+                        route: it.route ?? null,
                         notes: it.notes ?? null,
                         quantity: it.quantity ?? null,
                         refillCount: it.refillCount ?? 0,

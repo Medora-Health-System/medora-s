@@ -175,13 +175,14 @@ export default function PharmacyWorklistPage() {
   };
 
   const medicationLabel = (it: any) => getOrderItemDisplayLabelForLanguage(it, language, t);
+  const medicationRoute = (it: any) => (it.route as string | undefined)?.trim() || it.catalogMedication?.route?.trim() || "";
 
   const openRecordModal = (order: any, item: any) => {
     if (orderIsCancelled(order)) return;
     if (isAlreadyDispensed(item)) return;
     setRecordModal({
       orderItemId: item.id,
-      medicationLine: `${medicationLabel(item)} · ${t("pharmacyWorklistPage.recordLineQty")} ${item.quantity ?? t("common.dash")} · ${t("pharmacyWorklistPage.recordLineDirections")}: ${(item.notes as string) || t("common.dash")}`,
+      medicationLine: `${medicationLabel(item)} · ${t("pharmacyWorklistPage.recordLineQty")} ${item.quantity ?? t("common.dash")} · ${t("pharmacyWorklistPage.recordLineRoute")}: ${medicationRoute(item) || t("common.dash")} · ${t("pharmacyWorklistPage.recordLineDirections")}: ${(item.notes as string) || t("common.dash")}`,
       prescriber: order.prescriberName as string | undefined,
       authorityLine: formatOrderAuthority(order, t),
       attributionLines: formatOrderAttributionLines(order, t, language),
@@ -285,7 +286,14 @@ export default function PharmacyWorklistPage() {
                       {order.encounter?.patient?.firstName} {order.encounter?.patient?.lastName}
                     </td>
                     <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? "—"}</td>
-                    <td style={{ padding: 12 }}>{medicationLabel(item)}</td>
+                    <td style={{ padding: 12 }}>
+                      <div>{medicationLabel(item)}</div>
+                      {medicationRoute(item) ? (
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                          {t("pharmacyWorklistPage.recordLineRoute")}: {medicationRoute(item)}
+                        </div>
+                      ) : null}
+                    </td>
                     <td style={{ padding: 12 }}>{item.strength ?? item.catalogMedication?.strength ?? "—"}</td>
                     <td style={{ padding: 12 }}>{item.quantity ?? "—"}</td>
                     <td style={{ padding: 12 }}>{item.refillCount ?? 0}</td>

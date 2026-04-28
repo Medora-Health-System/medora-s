@@ -913,6 +913,7 @@ model OrderItem {
   quantity                    Int?
   notes                       String?
   strength                    String? // e.g. "500 mg" for medication
+  route                       String? // medication route snapshot, e.g. PO / IM / IVP / IVPB
   refillCount                 Int? // number of refills for Rx
   medicationFulfillmentIntent MedicationFulfillmentIntent?
   /// Administration prévue (information clinique, pas planification récurrente).

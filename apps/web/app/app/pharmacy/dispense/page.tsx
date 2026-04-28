@@ -185,6 +185,15 @@ function PharmacyDispensePageContent() {
     if (matching.length > 0) setInventoryItemId(matching[0].id);
   };
 
+  const orderRoutes = Array.from(
+    new Set(
+      (dispenseContext?.medicationOrders ?? [])
+        .flatMap((order) => order.items ?? [])
+        .map((item) => item.route?.trim() || item.catalogMedication?.route?.trim() || "")
+        .filter(Boolean)
+    )
+  );
+
   const submit = async () => {
     if (!facilityId) return;
     setStatus(null);
@@ -365,6 +374,11 @@ function PharmacyDispensePageContent() {
                     {t("pharmacyDispense.activeMedicationOrderCount")}
                   </p>
                 )}
+                {orderRoutes.length > 0 ? (
+                  <p style={{ margin: "0 0 8px 0" }}>
+                    <strong>{t("pharmacyDispense.orderRoutes")}</strong> — {orderRoutes.join(", ")}
+                  </p>
+                ) : null}
                 {(dispenseContext.medicationOrders.some((o) => o.prescriberName || o.prescriberLicense) || dispenseContext.medicationOrders.some((o) => o.prescriberContact)) && (
                   <p style={{ margin: "0 0 8px 0" }}>
                     <strong>{t("pharmacyDispense.prescriber")}</strong> —{" "}

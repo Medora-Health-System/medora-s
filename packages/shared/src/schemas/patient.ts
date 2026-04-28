@@ -357,6 +357,8 @@ export type OrderPriority = z.infer<typeof orderPrioritySchema>;
 /** Single line item for POST /encounters/:id/orders — persisted fields depend on order `type` (service strips Rx-only fields for LAB/IMAGING). */
 export const medicationFulfillmentIntentSchema = z.enum(["ADMINISTER_CHART", "PHARMACY_DISPENSE"]);
 export type MedicationFulfillmentIntent = z.infer<typeof medicationFulfillmentIntentSchema>;
+export const medicationRouteSchema = z.enum(["PO", "IM", "IVP", "IVPB"]);
+export type MedicationRoute = z.infer<typeof medicationRouteSchema>;
 export const orderSourceSchema = z.enum(["PROVIDER_ORDER", "VERBAL_ORDER", "NURSING_PROTOCOL"]);
 export type OrderSource = z.infer<typeof orderSourceSchema>;
 
@@ -376,6 +378,8 @@ export const orderItemCreateDtoSchema = z.object({
   notes: z.string().max(8000).optional(),
   /** Prescription-only: ignored for LAB / IMAGING at persistence. */
   strength: z.string().max(512).optional(),
+  /** MEDICATION only: structured route snapshot. */
+  route: medicationRouteSchema.optional(),
   /** Prescription-only: ignored for LAB / IMAGING at persistence. */
   refillCount: z.number().int().min(0).max(99).optional(),
   /** MEDICATION only: default PHARMACY_DISPENSE when omitted (server). */
@@ -427,6 +431,13 @@ export const orderCreateDtoSchema = z
             path: ["items", i, "catalogItemType"],
           });
         }
+        if (it.route) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "La voie est réservée aux lignes médicament.",
+            path: ["items", i, "route"],
+          });
+        }
       });
       return;
     }
@@ -437,6 +448,13 @@ export const orderCreateDtoSchema = z
             code: z.ZodIssueCode.custom,
             message: "Chaque ligne doit être un examen d'imagerie (IMAGING_STUDY).",
             path: ["items", i, "catalogItemType"],
+          });
+        }
+        if (it.route) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "La voie est réservée aux lignes médicament.",
+            path: ["items", i, "route"],
           });
         }
       });
@@ -456,6 +474,13 @@ export const orderCreateDtoSchema = z
             code: z.ZodIssueCode.custom,
             message: "Libellé requis pour chaque ligne de soin.",
             path: ["items", i, "manualLabel"],
+          });
+        }
+        if (it.route) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "La voie est réservée aux lignes médicament.",
+            path: ["items", i, "route"],
           });
         }
       });
