@@ -1,4 +1,5 @@
 export type OrderModalTab = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
+export type CreateOrderModalTab = "ORDER_SET" | OrderModalTab;
 
 export type OrderLineCatalogType = "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" | "CARE";
 

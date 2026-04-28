@@ -4942,6 +4942,38 @@ export default {
     pendingSyncLastName: "de synchronisation",
   },
   createOrderModal: {
+    tabOrderSets: "Protocoles",
+    orderSetsSectionTitle: "Protocoles d'ordres",
+    orderSetsIntro:
+      "Aperçu des ensembles courants aux urgences. L'application de plusieurs ordres sera activée quand la création multi-ordres sera sécurisée.",
+    orderSetsApplyComingNext: "Application du protocole à venir",
+    orderSetsApplyDisabledHelp:
+      "Aperçu seulement pour l'instant. Cela évite de créer des ordres partiels ou mélangés avant une application multi-ordres sécurisée.",
+    orderSets: {
+      chestPain: { name: "Douleur thoracique" },
+      abdominalPain: { name: "Douleur abdominale" },
+      sepsis: { name: "Sepsis" },
+      trauma: { name: "Traumatisme" },
+      respiratoryDistress: { name: "Détresse respiratoire" },
+    },
+    orderSetItems: {
+      cbc: "NFS",
+      cmp: "Bilan métabolique complet",
+      troponin: "Troponine",
+      chestXray: "Radiographie thorax",
+      ekgComingSoon: "ECG (à venir)",
+      lipase: "Lipase",
+      urinalysis: "Analyse d'urines",
+      ctAbdomenPelvis: "Scanner abdomen/pelvis",
+      lactate: "Lactate",
+      bloodCulture: "Hémoculture",
+      typeScreen: "Groupage et recherche d'anticorps",
+      ctHead: "Scanner cérébral",
+      ctCervicalSpine: "Scanner rachis cervical",
+      bmp: "Bilan métabolique de base",
+      bnp: "BNP",
+      covidInfluenzaRsv: "COVID / Influenza / VRS",
+    },
     carePresets:
       "Pose de voie IV\nAdministration d'oxygène\nPansement / soin de plaie\nNébulisation\nPose de sonde urinaire\nAspiration\nSurveillance\nAutre soin infirmier",
     mapOrderCreateError: "Impossible de créer l'ordre.",

@@ -15,10 +15,28 @@ import { SelectedLabItems } from "./createOrderModal/SelectedLabItems";
 import { SelectedImagingItems } from "./createOrderModal/SelectedImagingItems";
 import { SelectedMedicationItems } from "./createOrderModal/SelectedMedicationItems";
 import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
-import type { CreateOrderLineItem, OrderModalTab } from "./createOrderModal/types";
+import type { CreateOrderLineItem, CreateOrderModalTab, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
+
+type OrderSetKey = "chestPain" | "abdominalPain" | "sepsis" | "trauma" | "respiratoryDistress";
+
+const ORDER_SET_KEYS: OrderSetKey[] = [
+  "chestPain",
+  "abdominalPain",
+  "sepsis",
+  "trauma",
+  "respiratoryDistress",
+];
+
+const ORDER_SET_ITEM_KEYS: Record<OrderSetKey, string[]> = {
+  chestPain: ["cbc", "cmp", "troponin", "chestXray", "ekgComingSoon"],
+  abdominalPain: ["cbc", "cmp", "lipase", "urinalysis", "ctAbdomenPelvis"],
+  sepsis: ["cbc", "cmp", "lactate", "bloodCulture", "chestXray"],
+  trauma: ["cbc", "typeScreen", "ctHead", "ctCervicalSpine", "chestXray"],
+  respiratoryDistress: ["cbc", "bmp", "bnp", "chestXray", "covidInfluenzaRsv"],
+};
 
 function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
   const msg = err instanceof Error ? err.message : "";
@@ -31,6 +49,89 @@ function catalogLineLabel(
   t: (key: string) => string
 ): string {
   return catalogSearchItemFullDisplayLine(item, language, t);
+}
+
+function OrderSetPreview({
+  selected,
+  onSelect,
+  t,
+}: {
+  selected: OrderSetKey;
+  onSelect: (key: OrderSetKey) => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
+        {t("createOrderModal.orderSetsSectionTitle")}
+      </div>
+      <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64", lineHeight: 1.4 }}>
+        {t("createOrderModal.orderSetsIntro")}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(160px, 0.8fr) minmax(220px, 1fr)", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {ORDER_SET_KEYS.map((key) => {
+            const active = key === selected;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onSelect(key)}
+                style={{
+                  padding: "9px 10px",
+                  border: active ? "1px solid #1a1a1a" : "1px solid #d6d6d6",
+                  borderRadius: 6,
+                  background: active ? "#fff" : "#f8fafc",
+                  color: "#1f2937",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontSize: 13,
+                  fontWeight: active ? 700 : 600,
+                }}
+              >
+                {t(`createOrderModal.orderSets.${key}.name`)}
+              </button>
+            );
+          })}
+        </div>
+        <div
+          style={{
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+            background: "#fff",
+            padding: 12,
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>
+            {t(`createOrderModal.orderSets.${selected}.name`)}
+          </div>
+          <ul style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
+            {ORDER_SET_ITEM_KEYS[selected].map((itemKey) => (
+              <li key={itemKey}>{t(`createOrderModal.orderSetItems.${itemKey}`)}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            disabled
+            title={t("createOrderModal.orderSetsApplyDisabledHelp")}
+            style={{
+              width: "100%",
+              padding: "9px 12px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              background: "#eef2f7",
+              color: "#64748b",
+              cursor: "not-allowed",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            {t("createOrderModal.orderSetsApplyComingNext")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function buildPayload(
@@ -181,9 +282,10 @@ export function CreateOrderModal({
     ];
   };
 
-  const [activeTab, setActiveTab] = useState<OrderModalTab>(firstTab);
+  const [activeTab, setActiveTab] = useState<CreateOrderModalTab>(firstTab);
   const [rxSuccess, setRxSuccess] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [selectedOrderSet, setSelectedOrderSet] = useState<OrderSetKey>("chestPain");
   const [createdOrder, setCreatedOrder] = useState<{
     id: string;
     createdAt: string;
@@ -202,9 +304,9 @@ export function CreateOrderModal({
     items: carePresetItems(),
   });
 
-  const orderTypes: OrderModalTab[] = canPrescribe
-    ? ["LAB", "IMAGING", "MEDICATION", "CARE"]
-    : ["LAB", "IMAGING"];
+  const orderTypes: CreateOrderModalTab[] = canPrescribe
+    ? ["ORDER_SET", "LAB", "IMAGING", "MEDICATION", "CARE"]
+    : ["ORDER_SET", "LAB", "IMAGING"];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [queuedSync, setQueuedSync] = useState(false);
@@ -228,9 +330,9 @@ export function CreateOrderModal({
       .catch(() => {});
   }, [canPrescribe]);
 
-  const changeTab = (tab: OrderModalTab) => {
+  const changeTab = (tab: CreateOrderModalTab) => {
     setActiveTab(tab);
-    setFormData((fd) => ({ ...fd, type: tab, items: [] }));
+    setFormData((fd) => (tab === "ORDER_SET" ? { ...fd, items: [] } : { ...fd, type: tab, items: [] }));
     setError(null);
   };
 
@@ -325,6 +427,10 @@ export function CreateOrderModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeTab === "ORDER_SET") {
+      setError(t("createOrderModal.orderSetsApplyDisabledHelp"));
+      return;
+    }
     if (formData.items.length === 0) {
       setError(t("createOrderModal.errSelectOne"));
       return;
@@ -643,7 +749,9 @@ export function CreateOrderModal({
                   backgroundColor: "#fafafa",
                 }}
               >
-                {activeTab === "CARE" ? (
+                {activeTab === "ORDER_SET" ? (
+                  <OrderSetPreview selected={selectedOrderSet} onSelect={setSelectedOrderSet} t={t} />
+                ) : activeTab === "CARE" ? (
                   <>
                     <div
                       style={{
@@ -698,34 +806,36 @@ export function CreateOrderModal({
                 )}
               </div>
 
-              <div
-                style={{
-                  border: "1px solid #e8e8e8",
-                  borderRadius: 6,
-                  padding: "10px 12px 4px",
-                  minHeight: 56,
-                  marginBottom: 14,
-                  backgroundColor: "#fff",
-                }}
-              >
-                {activeTab === "LAB" && <SelectedLabItems items={formData.items} onRemove={removeItem} />}
-                {activeTab === "IMAGING" && <SelectedImagingItems items={formData.items} onRemove={removeItem} />}
-                {activeTab === "MEDICATION" && (
-                  <SelectedMedicationItems items={formData.items} onPatch={patchMedItem} onRemove={removeItem} />
-                )}
-                {activeTab === "CARE" && (
-                  <SelectedLabItems
-                    listHeading={t("createOrderModal.selectedCareHeading")}
-                    items={formData.items}
-                    onRemove={removeItem}
-                  />
-                )}
-                {formData.items.length === 0 && (
-                  <p style={{ margin: "8px 0 12px", fontSize: 13, color: "#999" }}>
-                    {activeTab === "CARE" ? t("createOrderModal.emptyCare") : t("createOrderModal.emptyOther")}
-                  </p>
-                )}
-              </div>
+              {activeTab !== "ORDER_SET" && (
+                <div
+                  style={{
+                    border: "1px solid #e8e8e8",
+                    borderRadius: 6,
+                    padding: "10px 12px 4px",
+                    minHeight: 56,
+                    marginBottom: 14,
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  {activeTab === "LAB" && <SelectedLabItems items={formData.items} onRemove={removeItem} />}
+                  {activeTab === "IMAGING" && <SelectedImagingItems items={formData.items} onRemove={removeItem} />}
+                  {activeTab === "MEDICATION" && (
+                    <SelectedMedicationItems items={formData.items} onPatch={patchMedItem} onRemove={removeItem} />
+                  )}
+                  {activeTab === "CARE" && (
+                    <SelectedLabItems
+                      listHeading={t("createOrderModal.selectedCareHeading")}
+                      items={formData.items}
+                      onRemove={removeItem}
+                    />
+                  )}
+                  {formData.items.length === 0 && (
+                    <p style={{ margin: "8px 0 12px", fontSize: 13, color: "#999" }}>
+                      {activeTab === "CARE" ? t("createOrderModal.emptyCare") : t("createOrderModal.emptyOther")}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {activeTab === "MEDICATION" && (
                 <div
@@ -811,9 +921,10 @@ export function CreateOrderModal({
                 >
                   {t("createOrderModal.cancel")}
                 </button>
-                <button
-                  type="submit"
-                  disabled={loading}
+                {activeTab !== "ORDER_SET" && (
+                  <button
+                    type="submit"
+                    disabled={loading}
                   style={{
                     padding: "10px 18px",
                     backgroundColor: "#1a1a1a",
@@ -824,17 +935,18 @@ export function CreateOrderModal({
                     opacity: loading ? 0.65 : 1,
                     fontSize: 14,
                   }}
-                >
-                  {loading
-                    ? activeTab === "MEDICATION"
-                      ? t("createOrderModal.submitSavingMed")
-                      : t("createOrderModal.submitSending")
-                    : activeTab === "MEDICATION"
-                      ? t("createOrderModal.submitSaveRx")
-                      : activeTab === "CARE"
-                        ? t("createOrderModal.submitCreateCare")
-                        : t("createOrderModal.submitCreateOrder")}
-                </button>
+                  >
+                    {loading
+                      ? activeTab === "MEDICATION"
+                        ? t("createOrderModal.submitSavingMed")
+                        : t("createOrderModal.submitSending")
+                      : activeTab === "MEDICATION"
+                        ? t("createOrderModal.submitSaveRx")
+                        : activeTab === "CARE"
+                          ? t("createOrderModal.submitCreateCare")
+                          : t("createOrderModal.submitCreateOrder")}
+                  </button>
+                )}
               </div>
             </form>
           </>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { OrderModalTab } from "./types";
+import type { CreateOrderModalTab } from "./types";
 import { useI18n } from "@/lib/i18n";
 
 const tabBtn = (active: boolean): React.CSSProperties => ({
@@ -20,13 +20,15 @@ export function OrderTypeTabs({
   activeTab,
   onChange,
 }: {
-  orderTypes: OrderModalTab[];
-  activeTab: OrderModalTab;
-  onChange: (tab: OrderModalTab) => void;
+  orderTypes: CreateOrderModalTab[];
+  activeTab: CreateOrderModalTab;
+  onChange: (tab: CreateOrderModalTab) => void;
 }) {
   const { t } = useI18n();
-  const label = (tab: OrderModalTab) =>
-    tab === "LAB"
+  const label = (tab: CreateOrderModalTab) =>
+    tab === "ORDER_SET"
+      ? t("createOrderModal.tabOrderSets")
+      : tab === "LAB"
       ? t("encounterChrome.chartTabs.orderTypeLAB")
       : tab === "IMAGING"
         ? t("encounterChrome.chartTabs.orderTypeIMAGING")

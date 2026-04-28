@@ -4957,6 +4957,38 @@ export default {
     pendingSyncLastName: "sync",
   },
   createOrderModal: {
+    tabOrderSets: "Order Sets",
+    orderSetsSectionTitle: "Order sets",
+    orderSetsIntro:
+      "Preview common ED bundles. Applying multiple orders will be enabled after catalog-backed multi-order creation is safe.",
+    orderSetsApplyComingNext: "Order set apply coming next",
+    orderSetsApplyDisabledHelp:
+      "Preview only for now. This avoids creating partial or mixed orders before safe multi-order apply is implemented.",
+    orderSets: {
+      chestPain: { name: "Chest Pain" },
+      abdominalPain: { name: "Abdominal Pain" },
+      sepsis: { name: "Sepsis" },
+      trauma: { name: "Trauma" },
+      respiratoryDistress: { name: "Respiratory Distress" },
+    },
+    orderSetItems: {
+      cbc: "CBC",
+      cmp: "CMP",
+      troponin: "Troponin",
+      chestXray: "Chest X-ray",
+      ekgComingSoon: "EKG / ECG (coming soon)",
+      lipase: "Lipase",
+      urinalysis: "Urinalysis",
+      ctAbdomenPelvis: "CT abdomen/pelvis",
+      lactate: "Lactate",
+      bloodCulture: "Blood culture",
+      typeScreen: "Type and screen",
+      ctHead: "CT head",
+      ctCervicalSpine: "CT cervical spine",
+      bmp: "BMP",
+      bnp: "BNP",
+      covidInfluenzaRsv: "COVID / Influenza / RSV",
+    },
     carePresets:
       "Peripheral IV placement\nOxygen therapy\nDressing / wound care\nNebulizer treatment\nUrinary catheter insertion\nSuctioning\nMonitoring\nOther nursing care",
     mapOrderCreateError: "Unable to create the order.",
