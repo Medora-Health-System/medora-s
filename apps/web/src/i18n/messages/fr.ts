@@ -4941,6 +4941,14 @@ export default {
     pendingSyncFirstName: "En attente",
     pendingSyncLastName: "de synchronisation",
   },
+  ordersets: {
+    apply: {
+      skipped: "Certains éléments n'ont pas pu être appliqués : {items}. Ajoutez-les manuellement si nécessaire.",
+      noMatch: "Aucun élément sélectionné du protocole n'a pu être associé au catalogue de façon sûre.",
+      ambiguous: "Certains éléments avaient plusieurs correspondances possibles au catalogue et ont été ignorés : {items}.",
+      nonPrescriber: "Certains éléments réservés aux prescripteurs ont été ignorés pour votre rôle : {items}.",
+    },
+  },
   createOrderModal: {
     tabOrderSets: "Protocoles",
     orderSetsSectionTitle: "Protocoles d'ordres",
@@ -4949,6 +4957,8 @@ export default {
     orderSetsApplyComingNext: "Application du protocole à venir",
     orderSetsApplyDisabledHelp:
       "Aperçu seulement pour l'instant. Cela évite de créer des ordres partiels ou mélangés avant une application multi-ordres sécurisée.",
+    orderSetsApply: "Appliquer le protocole",
+    orderSetsApplying: "Application…",
     orderSetsSelectedCount: "{selected} sur {total} sélectionné(s)",
     orderSetsNoneSelectedWarning: "Sélectionnez au moins un élément avant l'application dans une phase future.",
     orderSetComingSoonBadge: "(à venir)",
@@ -4982,6 +4992,9 @@ export default {
       bmp: "Bilan métabolique de base",
       bnp: "BNP",
       covidInfluenzaRsv: "COVID / Influenza / VRS",
+      covid: "COVID",
+      influenzaAb: "Influenza A/B",
+      rsv: "VRS",
     },
     carePresets:
       "Pose de voie IV\nAdministration d'oxygène\nPansement / soin de plaie\nNébulisation\nPose de sonde urinaire\nAspiration\nSurveillance\nAutre soin infirmier",

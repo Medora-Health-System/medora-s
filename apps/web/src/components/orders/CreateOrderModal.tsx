@@ -7,7 +7,8 @@ import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/
 import type { OrderCreateDto } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
-import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
+import { searchCatalog } from "@/lib/catalogSearchApi";
+import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { catalogSearchItemFullDisplayLine } from "@/lib/catalogDisplayLabel";
 import { OrderTypeTabs } from "./createOrderModal/OrderTypeTabs";
 import { OrderPriorityField } from "./createOrderModal/OrderPriorityField";
@@ -26,7 +27,15 @@ type OrderTypeKey = OrderModalTab;
 type OrderSetItem = {
   key: string;
   type: OrderSetItemType;
+  catalogType?: CatalogType;
+  catalogCode?: string;
+  fallbackSearchQuery?: string;
   comingSoon?: boolean;
+};
+type OrderSetSkippedReason = "noMatch" | "ambiguous" | "nonPrescriber";
+type OrderSetSkippedItem = { key: string; reason: OrderSetSkippedReason };
+type ResolvedOrderSetItems = Record<OrderTypeKey, CreateOrderLineItem[]> & {
+  skipped: OrderSetSkippedItem[];
 };
 
 const ORDER_SET_KEYS: OrderSetKey[] = [
@@ -39,39 +48,41 @@ const ORDER_SET_KEYS: OrderSetKey[] = [
 
 const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
   chestPain: [
-    { key: "cbc", type: "LAB" },
-    { key: "cmp", type: "LAB" },
-    { key: "troponin", type: "LAB" },
-    { key: "chestXray", type: "IMAGING" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
+    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP" },
+    { key: "troponin", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TROPONIN" },
+    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
     { key: "ekgComingSoon", type: "CARE", comingSoon: true },
   ],
   abdominalPain: [
-    { key: "cbc", type: "LAB" },
-    { key: "cmp", type: "LAB" },
-    { key: "lipase", type: "LAB" },
-    { key: "urinalysis", type: "LAB" },
-    { key: "ctAbdomenPelvis", type: "IMAGING" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
+    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP" },
+    { key: "lipase", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LIPASE" },
+    { key: "urinalysis", type: "LAB", catalogType: "LAB_TEST", catalogCode: "UA" },
+    { key: "ctAbdomenPelvis", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_ABDOMEN_PELVIS" },
   ],
   sepsis: [
-    { key: "cbc", type: "LAB" },
-    { key: "cmp", type: "LAB" },
-    { key: "lactate", type: "LAB" },
-    { key: "bloodCulture", type: "LAB" },
-    { key: "chestXray", type: "IMAGING" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
+    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP" },
+    { key: "lactate", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LACTATE" },
+    { key: "bloodCulture", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BLOOD_CULTURE" },
+    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
   ],
   trauma: [
-    { key: "cbc", type: "LAB" },
-    { key: "typeScreen", type: "LAB" },
-    { key: "ctHead", type: "IMAGING" },
-    { key: "ctCervicalSpine", type: "IMAGING" },
-    { key: "chestXray", type: "IMAGING" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
+    { key: "typeScreen", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TYPE_SCREEN" },
+    { key: "ctHead", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_HEAD" },
+    { key: "ctCervicalSpine", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_CERVICAL_SPINE" },
+    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
   ],
   respiratoryDistress: [
-    { key: "cbc", type: "LAB" },
-    { key: "bmp", type: "LAB" },
-    { key: "bnp", type: "LAB" },
-    { key: "chestXray", type: "IMAGING" },
-    { key: "covidInfluenzaRsv", type: "LAB" },
+    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC" },
+    { key: "bmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BMP" },
+    { key: "bnp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BNP" },
+    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
+    { key: "covid", type: "LAB", catalogType: "LAB_TEST", catalogCode: "COVID" },
+    { key: "influenzaAb", type: "LAB", catalogType: "LAB_TEST", catalogCode: "INFLUENZA_AB" },
+    { key: "rsv", type: "LAB", catalogType: "LAB_TEST", catalogCode: "RSV" },
   ],
 };
 
@@ -81,6 +92,16 @@ function checkedOrderSetItemKeys(orderSet: OrderSetKey): string[] {
 
 function isOrderTypeKey(tab: CreateOrderModalTab): tab is OrderTypeKey {
   return tab !== "ORDER_SET";
+}
+
+function emptyResolvedOrderSetItems(): ResolvedOrderSetItems {
+  return {
+    LAB: [],
+    IMAGING: [],
+    MEDICATION: [],
+    CARE: [],
+    skipped: [],
+  };
 }
 
 function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
@@ -96,17 +117,70 @@ function catalogLineLabel(
   return catalogSearchItemFullDisplayLine(item, language, t);
 }
 
+function catalogItemToOrderLine(
+  item: CatalogSearchItem,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): CreateOrderLineItem | null {
+  if (item.type === "LAB_TEST") {
+    return {
+      _lineId: newOrderLineId(),
+      isManual: false,
+      catalogItemId: item.id,
+      catalogItemType: "LAB_TEST",
+      _label: catalogLineLabel(item, language, t),
+    };
+  }
+
+  if (item.type === "IMAGING_STUDY") {
+    return {
+      _lineId: newOrderLineId(),
+      isManual: false,
+      catalogItemId: item.id,
+      catalogItemType: "IMAGING_STUDY",
+      _label: catalogLineLabel(item, language, t),
+      _modality: item.metadata?.modality,
+      _bodyRegion: item.metadata?.bodyRegion,
+    };
+  }
+
+  if (item.type === "MEDICATION") {
+    return {
+      _lineId: newOrderLineId(),
+      isManual: false,
+      catalogItemId: item.id,
+      catalogItemType: "MEDICATION",
+      quantity: 30,
+      notes: "",
+      strength: item.metadata?.strength ?? undefined,
+      _label: catalogLineLabel(item, language, t),
+      _dosageForm: item.metadata?.dosageForm ?? undefined,
+      _route: item.metadata?.route ?? undefined,
+      refillCount: 0,
+      medicationFulfillmentIntent: "PHARMACY_DISPENSE",
+    };
+  }
+
+  return null;
+}
+
 function OrderSetPreview({
   selected,
   checkedItemKeys,
   onSelect,
   onToggleItem,
+  onApply,
+  canApply,
+  applying,
   t,
 }: {
   selected: OrderSetKey;
   checkedItemKeys: string[];
   onSelect: (key: OrderSetKey) => void;
   onToggleItem: (itemKey: string) => void;
+  onApply: () => void;
+  canApply: boolean;
+  applying: boolean;
   t: (key: string) => string;
 }) {
   const items = ORDER_SET_ITEMS[selected];
@@ -220,21 +294,23 @@ function OrderSetPreview({
           ) : null}
           <button
             type="button"
-            disabled
-            title={t("createOrderModal.orderSetsApplyDisabledHelp")}
+            disabled={!canApply || applying}
+            onClick={onApply}
+            title={!canApply ? t("createOrderModal.orderSetsApplyDisabledHelp") : undefined}
             style={{
               width: "100%",
               padding: "9px 12px",
-              border: "1px solid #cbd5e1",
+              border: canApply ? "1px solid #1a1a1a" : "1px solid #cbd5e1",
               borderRadius: 6,
-              background: "#eef2f7",
-              color: "#64748b",
-              cursor: "not-allowed",
+              background: canApply ? "#1a1a1a" : "#eef2f7",
+              color: canApply ? "#fff" : "#64748b",
+              cursor: canApply && !applying ? "pointer" : "not-allowed",
               fontSize: 13,
               fontWeight: 700,
+              opacity: applying ? 0.7 : 1,
             }}
           >
-            {t("createOrderModal.orderSetsApplyComingNext")}
+            {applying ? t("createOrderModal.orderSetsApplying") : t("createOrderModal.orderSetsApply")}
           </button>
         </div>
       </div>
@@ -397,6 +473,7 @@ export function CreateOrderModal({
   const [selectedOrderSetItemKeys, setSelectedOrderSetItemKeys] = useState<string[]>(() =>
     checkedOrderSetItemKeys("chestPain")
   );
+  const [orderSetApplying, setOrderSetApplying] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<{
     id: string;
     createdAt: string;
@@ -470,6 +547,132 @@ export function CreateOrderModal({
     setSelectedOrderSetItemKeys((current) =>
       current.includes(itemKey) ? current.filter((key) => key !== itemKey) : [...current, itemKey]
     );
+  };
+
+  const selectedOrderSetItems = ORDER_SET_ITEMS[selectedOrderSet].filter((item) =>
+    selectedOrderSetItemKeys.includes(item.key)
+  );
+  const canApplyOrderSet = selectedOrderSetItems.some((item) => !item.comingSoon);
+
+  const resolveOrderSetItems = async (items: OrderSetItem[]): Promise<ResolvedOrderSetItems> => {
+    const resolved = emptyResolvedOrderSetItems();
+
+    for (const orderSetItem of items) {
+      if (orderSetItem.comingSoon) continue;
+
+      if ((orderSetItem.type === "MEDICATION" || orderSetItem.type === "CARE") && !canPrescribe) {
+        resolved.skipped.push({ key: orderSetItem.key, reason: "nonPrescriber" });
+        continue;
+      }
+
+      if (orderSetItem.type === "CARE") {
+        const label = t(`createOrderModal.orderSetItems.${orderSetItem.key}`);
+        resolved.CARE.push({
+          _lineId: newOrderLineId(),
+          isManual: true,
+          catalogItemType: "CARE",
+          manualLabel: label,
+          _label: label,
+        });
+        continue;
+      }
+
+      if (!orderSetItem.catalogType || !orderSetItem.catalogCode) {
+        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+        continue;
+      }
+
+      let catalogItem: CatalogSearchItem | null = null;
+      try {
+        const exactResults = await searchCatalog(facilityId, orderSetItem.catalogType, {
+          q: orderSetItem.catalogCode,
+          limit: 5,
+        });
+        catalogItem = exactResults.find((item) => item.code === orderSetItem.catalogCode) ?? null;
+
+        if (!catalogItem && orderSetItem.fallbackSearchQuery) {
+          const fallbackResults = await searchCatalog(facilityId, orderSetItem.catalogType, {
+            q: orderSetItem.fallbackSearchQuery,
+            limit: 5,
+          });
+
+          if (fallbackResults.length === 1) {
+            catalogItem = fallbackResults[0];
+          } else if (fallbackResults.length > 1) {
+            resolved.skipped.push({ key: orderSetItem.key, reason: "ambiguous" });
+            continue;
+          }
+        }
+      } catch {
+        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+        continue;
+      }
+
+      if (!catalogItem) {
+        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+        continue;
+      }
+
+      const line = catalogItemToOrderLine(catalogItem, language, t);
+      if (!line) {
+        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+        continue;
+      }
+
+      if (orderSetItem.type === "LAB" && line.catalogItemType === "LAB_TEST") resolved.LAB.push(line);
+      if (orderSetItem.type === "IMAGING" && line.catalogItemType === "IMAGING_STUDY") resolved.IMAGING.push(line);
+      if (orderSetItem.type === "MEDICATION" && line.catalogItemType === "MEDICATION") resolved.MEDICATION.push(line);
+    }
+
+    return resolved;
+  };
+
+  const applyOrderSet = async () => {
+    if (!canApplyOrderSet || orderSetApplying) return;
+
+    setOrderSetApplying(true);
+    setError(null);
+
+    try {
+      const resolved = await resolveOrderSetItems(selectedOrderSetItems);
+      const nextStagedItems: Record<OrderTypeKey, CreateOrderLineItem[]> = {
+        LAB: resolved.LAB,
+        IMAGING: resolved.IMAGING,
+        MEDICATION: resolved.MEDICATION,
+        CARE: resolved.CARE,
+      };
+      const nextTab = (["LAB", "IMAGING", "MEDICATION", "CARE"] as OrderTypeKey[]).find(
+        (tab) => nextStagedItems[tab].length > 0
+      );
+
+      setStagedItems(nextStagedItems);
+
+      if (!nextTab) {
+        setError(t("ordersets.apply.noMatch"));
+        return;
+      }
+
+      setActiveTab(nextTab);
+      setFormData((fd) => ({ ...fd, type: nextTab, items: nextStagedItems[nextTab] }));
+
+      if (resolved.skipped.length > 0) {
+        const skippedLabels = resolved.skipped
+          .map((item) => t(`createOrderModal.orderSetItems.${item.key}`))
+          .join(", ");
+        const hasNonPrescriber = resolved.skipped.some((item) => item.reason === "nonPrescriber");
+        const hasAmbiguous = resolved.skipped.some((item) => item.reason === "ambiguous");
+        const messageKey = hasNonPrescriber
+          ? "ordersets.apply.nonPrescriber"
+          : hasAmbiguous
+            ? "ordersets.apply.ambiguous"
+            : "ordersets.apply.skipped";
+        setError(t(messageKey).replace("{items}", skippedLabels));
+      }
+    } catch {
+      setError(t("ordersets.apply.noMatch"));
+    } finally {
+      setOrderSetApplying(false);
+    }
   };
 
   const catalogTypeForTab = (tab: OrderModalTab): "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" => {
@@ -891,6 +1094,9 @@ export function CreateOrderModal({
                     checkedItemKeys={selectedOrderSetItemKeys}
                     onSelect={selectOrderSet}
                     onToggleItem={toggleOrderSetItem}
+                    onApply={applyOrderSet}
+                    canApply={canApplyOrderSet}
+                    applying={orderSetApplying}
                     t={t}
                   />
                 ) : activeTab === "CARE" ? (

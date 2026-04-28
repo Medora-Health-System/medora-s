@@ -4956,6 +4956,14 @@ export default {
     pendingSyncFirstName: "Pending",
     pendingSyncLastName: "sync",
   },
+  ordersets: {
+    apply: {
+      skipped: "Some items could not be applied: {items}. Add them manually if still needed.",
+      noMatch: "No selected order-set items could be matched safely in the catalog.",
+      ambiguous: "Some items had more than one possible catalog match and were skipped: {items}.",
+      nonPrescriber: "Some prescription-only items were skipped for your role: {items}.",
+    },
+  },
   createOrderModal: {
     tabOrderSets: "Order Sets",
     orderSetsSectionTitle: "Order sets",
@@ -4964,6 +4972,8 @@ export default {
     orderSetsApplyComingNext: "Order set apply coming next",
     orderSetsApplyDisabledHelp:
       "Preview only for now. This avoids creating partial or mixed orders before safe multi-order apply is implemented.",
+    orderSetsApply: "Apply order set",
+    orderSetsApplying: "Applying…",
     orderSetsSelectedCount: "Selected {selected} of {total}",
     orderSetsNoneSelectedWarning: "Select at least one item before applying in a future phase.",
     orderSetComingSoonBadge: "(coming soon)",
@@ -4997,6 +5007,9 @@ export default {
       bmp: "BMP",
       bnp: "BNP",
       covidInfluenzaRsv: "COVID / Influenza / RSV",
+      covid: "COVID",
+      influenzaAb: "Influenza A/B",
+      rsv: "RSV",
     },
     carePresets:
       "Peripheral IV placement\nOxygen therapy\nDressing / wound care\nNebulizer treatment\nUrinary catheter insertion\nSuctioning\nMonitoring\nOther nursing care",
