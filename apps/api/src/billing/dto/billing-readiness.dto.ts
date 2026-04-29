@@ -20,3 +20,13 @@ export type BillingExportRowDto = BillingReadinessItemDto & {
   quantity: number | null;
   unit: string | null;
 };
+
+export type BillingAutoBillDecisionDto = {
+  orderItemId: string;
+  medoraCode: string;
+  category: BillingReadinessCategory;
+  billingStatus: BillingReadinessStatus;
+  canAutoBill: boolean;
+  requiredReview: boolean;
+  reason: string;
+};

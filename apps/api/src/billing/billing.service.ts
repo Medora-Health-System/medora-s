@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type {
+  BillingAutoBillDecisionDto,
   BillingExportRowDto,
   BillingReadinessCategory,
   BillingReadinessItemDto,
@@ -32,6 +33,68 @@ export function getBillingReadinessStatus(
   }
 
   return item.medoraCode?.trim() ? "pending_license" : "missing";
+}
+
+export function getAutoBillDecision(row: BillingExportRowDto): BillingAutoBillDecisionDto {
+  const medoraCode = row.medoraCode?.trim() ?? "";
+
+  if (row.category === "LAB" && row.billingStatus === "official_validated" && row.billingCodeDefault?.trim()) {
+    return {
+      orderItemId: row.orderItemId,
+      medoraCode,
+      category: row.category,
+      billingStatus: row.billingStatus,
+      canAutoBill: true,
+      requiredReview: false,
+      reason: "Officially validated lab billing code is present.",
+    };
+  }
+
+  if (row.category === "MEDICATION") {
+    return {
+      orderItemId: row.orderItemId,
+      medoraCode,
+      category: row.category,
+      billingStatus: row.billingStatus,
+      canAutoBill: false,
+      requiredReview: true,
+      reason: "Medication auto-billing is disabled until dose/unit conversion and payer policy are implemented.",
+    };
+  }
+
+  if (row.category === "IMAGING") {
+    return {
+      orderItemId: row.orderItemId,
+      medoraCode,
+      category: row.category,
+      billingStatus: row.billingStatus,
+      canAutoBill: false,
+      requiredReview: true,
+      reason: "Imaging auto-billing is disabled until licensed CPT/facility chargemaster integration is complete.",
+    };
+  }
+
+  if (row.category === "CARE") {
+    return {
+      orderItemId: row.orderItemId,
+      medoraCode,
+      category: row.category,
+      billingStatus: row.billingStatus,
+      canAutoBill: false,
+      requiredReview: true,
+      reason: "Care/procedure auto-billing is disabled until licensed CPT/facility chargemaster integration is complete.",
+    };
+  }
+
+  return {
+    orderItemId: row.orderItemId,
+    medoraCode,
+    category: row.category,
+    billingStatus: row.billingStatus,
+    canAutoBill: false,
+    requiredReview: true,
+    reason: reasonForNonAutoBillStatus(row.billingStatus),
+  };
 }
 
 @Injectable()
@@ -168,6 +231,14 @@ export class BillingService {
     });
   }
 
+  async getEncounterAutoBillDecisions(
+    facilityId: string,
+    encounterId: string
+  ): Promise<BillingAutoBillDecisionDto[]> {
+    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId);
+    return rows.map(getAutoBillDecision);
+  }
+
   toBillingExportCsv(rows: BillingExportRowDto[]): string {
     const headers = [
       "orderItemId",
@@ -236,6 +307,13 @@ function notesForReadiness(input: {
   return input.billingStatus === "pending_license"
     ? `${input.displayName}: care/procedure billing requires licensed CPT/facility chargemaster review.`
     : `${input.displayName}: no safe care/procedure billing mapping found.`;
+}
+
+function reasonForNonAutoBillStatus(status: BillingReadinessStatus): string {
+  if (status === "candidate_only") return "Candidate-only billing evidence requires manual review.";
+  if (status === "pending_license") return "Licensed billing source or facility chargemaster review is required.";
+  if (status === "missing") return "No safe billing code is available for auto-billing.";
+  return "Auto-billing requires a validated lab billing code.";
 }
 
 function csvCell(value: string | number | null | undefined): string {
