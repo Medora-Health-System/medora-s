@@ -6,9 +6,17 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { MedicationCatalogService } from "../medication-catalog/medication-catalog.service";
-import { AuditAction, MedicationFulfillmentIntent } from "@prisma/client";
+import {
+  AuditAction,
+  MedicationFulfillmentIntent,
+  OrderEventOrderType,
+  OrderEventType,
+  OrderStatus,
+  type Prisma,
+} from "@prisma/client";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import type {
   CreateInventoryItemDto,
   ReceiveStockDto,
@@ -43,6 +51,19 @@ export class PharmacyInventoryService {
     private readonly audit: AuditService,
     private readonly catalogUsage: MedicationCatalogService
   ) {}
+
+  private async buildRoleSnapshotTx(
+    tx: Prisma.TransactionClient,
+    facilityId: string,
+    userId: string
+  ): Promise<string> {
+    const roles = await tx.userRole.findMany({
+      where: { facilityId, userId, isActive: true },
+      include: { role: { select: { code: true } } },
+    });
+    const unique = [...new Set(roles.map((r) => r.role.code))];
+    return unique.length > 0 ? unique.join("|") : "UNKNOWN";
+  }
 
   async listCatalogMedications() {
     return this.prisma.catalogMedication.findMany({
@@ -480,11 +501,43 @@ export class PharmacyInventoryService {
           catalogMedication: { select: { id: true, code: true, name: true, displayNameFr: true } },
         },
       });
+      if (orderItem.status !== OrderStatus.COMPLETED && orderItem.status !== OrderStatus.CANCELLED) {
+        const lifecycleState = applyLifecycleWithStatus(orderItem.lifecycleState, OrderStatus.COMPLETED);
+        await tx.orderItem.update({
+          where: { id: orderItem.id },
+          data: {
+            status: OrderStatus.COMPLETED,
+            lifecycleState,
+            completedAt: new Date(),
+            completedByUserId: userId,
+          },
+        });
+      }
+      const roleSnapshot = await this.buildRoleSnapshotTx(tx, facilityId, userId);
+      await tx.orderEvent.create({
+        data: {
+          facilityId,
+          encounterId: orderItem.order.encounterId,
+          orderId: orderItem.orderId,
+          orderType: OrderEventOrderType.MEDICATION,
+          eventType: OrderEventType.COMPLETED,
+          performedByUserId: userId,
+          performedAt: new Date(),
+          roleSnapshot,
+          metadata: {
+            orderItemId: orderItem.id,
+            medicationDispenseId: d.id,
+            lifecycleOutcome: "DISPENSED",
+            source: "PHARMACY_DISPENSE",
+          } as Prisma.InputJsonValue,
+        },
+      });
       await this.audit.log(AuditAction.MEDICATION_DISPENSED, "MEDICATION_DISPENSE", {
         userId,
         facilityId,
         patientId: orderItem.order.patientId,
         encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
         entityId: d.id,
         ip,
         userAgent,

@@ -1555,6 +1555,7 @@ export class OrdersService {
             encounter: { include: { patient: true } },
           },
         },
+        pharmacyDispenseRecord: { select: { id: true } },
       },
     });
 
@@ -1567,6 +1568,15 @@ export class OrdersService {
     if (isMedicationAdministerChart(orderItem)) {
       throw new BadRequestException(
         "Cette ligne est destinée à l'administration infirmière ; utilisez la fin d'administration au lit."
+      );
+    }
+    if (
+      orderItem.catalogItemType === "MEDICATION" &&
+      orderItem.medicationFulfillmentIntent === "PHARMACY_DISPENSE" &&
+      !orderItem.pharmacyDispenseRecord
+    ) {
+      throw new BadRequestException(
+        "Cette ligne doit être dispensée par la pharmacie avant d'être terminée."
       );
     }
     assertDepartmentRoleForItem(orderItem.catalogItemType, requestorRoleCodes);

@@ -607,7 +607,7 @@ function LineCard({
           {t("orderDetail.startExam")}
         </button>
       )}
-      {item.status === "IN_PROGRESS" && (
+      {item.status === "IN_PROGRESS" && !(kind === "pharmacy" && !isAlreadyDispensed(item)) && (
         <button type="button" onClick={() => onComplete(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
           {t("orderDetail.completeExam")}
         </button>
