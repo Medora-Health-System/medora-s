@@ -190,6 +190,23 @@ export default {
     queueFilterUnmappedOnly: "With UNMAPPED lines only",
     queueFilteredEmpty: "No encounters match this filter.",
     colUnmappedLines: "Unmapped",
+    manualReviewOpen: "Manual billing review queue",
+    manualReviewBack: "Back to billing queue",
+    manualReviewTitle: "Manual billing review",
+    manualReviewSubtitle:
+      "Read-only list of encounter order items that require billing staff review before any billing action.",
+    manualReviewLoadError: "Unable to load the manual billing review queue.",
+    manualReviewEmpty: "No order items currently require manual billing review.",
+    manualReviewTableOrder: "Order item",
+    manualReviewTableCode: "Medora code",
+    manualReviewTableStatus: "Billing status",
+    manualReviewTableCategory: "Category",
+    manualReviewTableReason: "Reason",
+    manualReviewTableCreatedAt: "Created",
+    billingCategory_LAB: "Laboratory",
+    billingCategory_IMAGING: "Imaging",
+    billingCategory_MEDICATION: "Medication",
+    billingCategory_CARE: "Care / procedure",
     billingSummaryMarkReviewed: "Mark reviewed",
     billingSummaryReviewedOk: "Line marked reviewed.",
     billingCodeType_UNKNOWN: "Unknown",
@@ -1147,8 +1164,6 @@ export default {
   },
   auth: {
     login: {
-      brandTagline:
-        "Integrated electronic health record and public health surveillance platform.",
       title: "Sign in",
       subtitle: "Enter your credentials to access the chart.",
       usernameLabel: "Username",

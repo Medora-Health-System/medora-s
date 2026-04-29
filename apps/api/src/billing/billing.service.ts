@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import type {
   BillingAutoBillDecisionDto,
   BillingExportRowDto,
+  BillingManualReviewRowDto,
   BillingReadinessCategory,
   BillingReadinessItemDto,
   BillingReadinessStatus,
@@ -97,6 +98,14 @@ export function getAutoBillDecision(row: BillingExportRowDto): BillingAutoBillDe
   };
 }
 
+type BillingExportOrderItem = {
+  id: string;
+  catalogItemId: string | null;
+  catalogItemType: string;
+  manualLabel: string | null;
+  quantity: number | null;
+};
+
 @Injectable()
 export class BillingService {
   constructor(private readonly prisma: PrismaService) {}
@@ -135,6 +144,87 @@ export class BillingService {
       },
     });
 
+    return this.buildBillingExportRowsFromOrderItems(orderItems);
+  }
+
+  async getEncounterAutoBillDecisions(
+    facilityId: string,
+    encounterId: string
+  ): Promise<BillingAutoBillDecisionDto[]> {
+    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId);
+    return rows.map(getAutoBillDecision);
+  }
+
+  async getManualBillingReviewQueue(facilityId: string): Promise<BillingManualReviewRowDto[]> {
+    const orderItems = await this.prisma.orderItem.findMany({
+      where: {
+        order: {
+          facilityId,
+          encounter: {
+            facilityId,
+            status: "CLOSED",
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        catalogItemId: true,
+        catalogItemType: true,
+        manualLabel: true,
+        quantity: true,
+        createdAt: true,
+        order: {
+          select: {
+            encounterId: true,
+            patientId: true,
+            encounter: {
+              select: {
+                patient: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const exportRows = await this.buildBillingExportRowsFromOrderItems(orderItems);
+    const itemById = new Map(orderItems.map((item) => [item.id, item]));
+    const manualReviewStatuses: BillingReadinessStatus[] = ["candidate_only", "pending_license", "missing"];
+
+    return exportRows
+      .map((row) => {
+        const source = itemById.get(row.orderItemId);
+        const decision = getAutoBillDecision(row);
+        if (!source || !decision.requiredReview || !manualReviewStatuses.includes(decision.billingStatus)) {
+          return null;
+        }
+
+        const patientName = `${source.order.encounter.patient.firstName} ${source.order.encounter.patient.lastName}`.trim();
+        return {
+          encounterId: source.order.encounterId,
+          patientId: source.order.patientId,
+          patientName,
+          orderItemId: row.orderItemId,
+          medoraCode: decision.medoraCode,
+          category: row.category,
+          displayName: row.displayName,
+          billingStatus: decision.billingStatus,
+          reason: decision.reason,
+          createdAt: source.createdAt.toISOString(),
+        };
+      })
+      .filter((row): row is BillingManualReviewRowDto => row !== null);
+  }
+
+  private async buildBillingExportRowsFromOrderItems(
+    orderItems: BillingExportOrderItem[]
+  ): Promise<BillingExportRowDto[]> {
     const labIds = orderItems
       .filter((item) => item.catalogItemType === "LAB_TEST" && item.catalogItemId)
       .map((item) => item.catalogItemId!);
@@ -229,14 +319,6 @@ export class BillingService {
         }),
       };
     });
-  }
-
-  async getEncounterAutoBillDecisions(
-    facilityId: string,
-    encounterId: string
-  ): Promise<BillingAutoBillDecisionDto[]> {
-    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId);
-    return rows.map(getAutoBillDecision);
   }
 
   toBillingExportCsv(rows: BillingExportRowDto[]): string {

@@ -24,6 +24,13 @@ export class BillingController {
     return this.billingService.getEncounterAutoBillDecisions(facilityId, encounterId);
   }
 
+  @Get("billing/manual-review")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getManualBillingReviewQueue(@Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.billingService.getManualBillingReviewQueue(facilityId);
+  }
+
   @Get("billing/encounters/:encounterId/export")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async exportEncounterBillingItems(

@@ -114,6 +114,23 @@ export default {
     queueFilterUnmappedOnly: "Avec lignes non mappées (UNMAPPED)",
     queueFilteredEmpty: "Aucune consultation ne correspond à ce filtre.",
     colUnmappedLines: "Non mappés",
+    manualReviewOpen: "File de revue facturation manuelle",
+    manualReviewBack: "Retour à la file facturation",
+    manualReviewTitle: "Revue facturation manuelle",
+    manualReviewSubtitle:
+      "Liste en lecture seule des lignes d’ordonnance à vérifier par l’équipe facturation avant toute action de facturation.",
+    manualReviewLoadError: "Impossible de charger la file de revue facturation manuelle.",
+    manualReviewEmpty: "Aucune ligne d’ordonnance ne nécessite une revue facturation manuelle.",
+    manualReviewTableOrder: "Ligne d’ordonnance",
+    manualReviewTableCode: "Code Medora",
+    manualReviewTableStatus: "Statut facturation",
+    manualReviewTableCategory: "Catégorie",
+    manualReviewTableReason: "Raison",
+    manualReviewTableCreatedAt: "Créée le",
+    billingCategory_LAB: "Laboratoire",
+    billingCategory_IMAGING: "Imagerie",
+    billingCategory_MEDICATION: "Médicament",
+    billingCategory_CARE: "Soin / acte",
     billingSummaryMarkReviewed: "Marquer revu",
     billingSummaryReviewedOk: "Ligne marquée comme revue.",
     billingCodeType_UNKNOWN: "Indéterminé",
@@ -1113,8 +1130,6 @@ export default {
   },
   auth: {
     login: {
-      brandTagline:
-        "Plateforme intégrée de dossier patient électronique et de surveillance de santé publique.",
       title: "Connexion",
       subtitle: "Saisissez vos identifiants pour accéder au dossier.",
       usernameLabel: "Identifiant",

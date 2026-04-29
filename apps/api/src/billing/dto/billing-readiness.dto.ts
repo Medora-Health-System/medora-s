@@ -30,3 +30,16 @@ export type BillingAutoBillDecisionDto = {
   requiredReview: boolean;
   reason: string;
 };
+
+export type BillingManualReviewRowDto = {
+  encounterId: string;
+  patientId: string;
+  patientName: string;
+  orderItemId: string;
+  medoraCode: string;
+  category: BillingReadinessCategory;
+  displayName: string;
+  billingStatus: BillingReadinessStatus;
+  reason: string;
+  createdAt: string;
+};
