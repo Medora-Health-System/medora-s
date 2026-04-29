@@ -9,17 +9,28 @@ import { parseApiResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import styles from "./page.module.css";
 
+const loginCopy = {
+  suspenseLoading: "Loading...",
+  title: "Sign in",
+  subtitle: "Enter your credentials to access the chart.",
+  usernameLabel: "Email or username",
+  usernamePlaceholder: "Email or username",
+  passwordLabel: "Password",
+  forgotPasswordLink: "Forgot password?",
+  submit: "Login",
+  submitting: "Signing in...",
+  errorFallback: "Unable to sign in. Please try again.",
+  errorNetwork: "Unable to sign in. Check your connection and try again.",
+};
+
 function LoginSuspenseFallback() {
-  const { t } = useI18n();
-  return (
-    <div style={{ padding: 48, textAlign: "center" }}>{t("auth.login.suspenseLoading")}</div>
-  );
+  return <div style={{ padding: 48, textAlign: "center" }}>{loginCopy.suspenseLoading}</div>;
 }
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t, language } = useI18n();
+  const { language } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +62,7 @@ function LoginForm() {
               ? data.message
               : "";
         setError(
-          normalizeUserFacingError(errorMessage, language) || t("auth.login.errorFallback")
+          normalizeUserFacingError(errorMessage, language) || loginCopy.errorFallback
         );
         setLoading(false);
         return;
@@ -70,7 +81,7 @@ function LoginForm() {
       router.push(dest);
       router.refresh();
     } catch (err) {
-      setError(t("auth.login.errorNetwork"));
+      setError(loginCopy.errorNetwork);
       setLoading(false);
     }
   };
@@ -82,25 +93,15 @@ function LoginForm() {
           <h1
             style={{
               margin: 0,
-              fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-              fontWeight: 600,
+              fontSize: "clamp(3rem, 8vw, 5.25rem)",
+              fontWeight: 800,
               letterSpacing: "-0.02em",
-              lineHeight: 1.2,
+              lineHeight: 1,
             }}
           >
-            Medora-S
+            <span style={{ color: "#60a5fa" }}>Medora</span>
+            <span style={{ color: "#2dd4bf" }}>-S</span>
           </h1>
-          <p
-            style={{
-              marginTop: 16,
-              marginBottom: 0,
-              fontSize: "clamp(0.9375rem, 2vw, 1rem)",
-              color: "rgba(255,255,255,0.85)",
-              lineHeight: 1.5,
-            }}
-          >
-            {t("auth.login.brandTagline")}
-          </p>
         </div>
       </div>
 
@@ -124,7 +125,7 @@ function LoginForm() {
               letterSpacing: "-0.01em",
             }}
           >
-            {t("auth.login.title")}
+            {loginCopy.title}
           </h2>
           <p
             style={{
@@ -133,7 +134,7 @@ function LoginForm() {
               color: "#64748b",
             }}
           >
-            {t("auth.login.subtitle")}
+            {loginCopy.subtitle}
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -148,7 +149,7 @@ function LoginForm() {
                   color: "#334155",
                 }}
               >
-                {t("auth.login.usernameLabel")}
+                {loginCopy.usernameLabel}
               </label>
               <input
                 id="username"
@@ -157,7 +158,7 @@ function LoginForm() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={loading}
-                placeholder={t("auth.login.usernamePlaceholder")}
+                placeholder={loginCopy.usernamePlaceholder}
                 autoComplete="username"
                 style={{
                   width: "100%",
@@ -183,7 +184,7 @@ function LoginForm() {
                   color: "#334155",
                 }}
               >
-                {t("auth.login.passwordLabel")}
+                {loginCopy.passwordLabel}
               </label>
               <input
                 id="password"
@@ -216,7 +217,7 @@ function LoginForm() {
                   textDecoration: "none",
                 }}
               >
-                {t("auth.login.forgotPasswordLink")}
+                {loginCopy.forgotPasswordLink}
               </Link>
             </div>
 
@@ -252,7 +253,7 @@ function LoginForm() {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? t("auth.login.submitting") : t("auth.login.submit")}
+              {loading ? loginCopy.submitting : loginCopy.submit}
             </button>
           </form>
         </div>
