@@ -70,10 +70,11 @@ export class MedicationAdministrationService {
     }
   ): Promise<void> {
     const dedupeKey = `mar-lifecycle:${input.medicationAdministrationId}`;
+    const clinicallyAdministered = input.marAction === "administered";
+    const eventType = clinicallyAdministered ? OrderEventType.COMPLETED : OrderEventType.STARTED;
     const existingByDedupe = await tx.orderEvent.findFirst({
       where: {
         orderId: input.orderId,
-        eventType: OrderEventType.COMPLETED,
         metadata: {
           path: ["dedupeKey"],
           equals: dedupeKey,
@@ -84,7 +85,6 @@ export class MedicationAdministrationService {
     const existingByAdminId = await tx.orderEvent.findFirst({
       where: {
         orderId: input.orderId,
-        eventType: OrderEventType.COMPLETED,
         metadata: {
           path: ["medicationAdministrationId"],
           equals: input.medicationAdministrationId,
@@ -103,7 +103,7 @@ export class MedicationAdministrationService {
         encounterId: input.encounterId,
         orderId: input.orderId,
         orderType: this.mapOrderTypeToOrderEventType(input.orderType),
-        eventType: OrderEventType.COMPLETED,
+        eventType,
         performedByUserId: input.performedByUserId,
         performedAt: new Date(),
         roleSnapshot,
@@ -112,6 +112,7 @@ export class MedicationAdministrationService {
           orderItemId: input.orderItemId,
           medicationAdministrationId: input.medicationAdministrationId,
           marAction: input.marAction,
+          lifecycleOutcome: clinicallyAdministered ? "ADMINISTERED" : "NON_ADMINISTERED",
           source: "MEDICATION_ADMINISTRATION_SERVICE",
         } as Prisma.InputJsonValue,
       },
@@ -341,11 +342,7 @@ export class MedicationAdministrationService {
 
       const line = linkedMedicationLine;
       if (line && line.catalogItemType === "MEDICATION") {
-        /**
-         * Orders dashboard: `OrderItem.status === COMPLETED` means “terminal / not open” for all MAR outcomes.
-         * Clinical outcome (administered vs refused, etc.) is `MedicationAdministration.marAction` + OrderEvent metadata.
-         */
-        if (line.status !== OrderStatus.COMPLETED && line.status !== OrderStatus.CANCELLED) {
+        if (marActionResolved === "administered" && line.status !== OrderStatus.COMPLETED && line.status !== OrderStatus.CANCELLED) {
           this.assertMedicationLineCloseableViaMar(line.status);
           const lifecycleState = applyLifecycleWithStatus(line.lifecycleState, OrderStatus.COMPLETED);
           await tx.orderItem.update({

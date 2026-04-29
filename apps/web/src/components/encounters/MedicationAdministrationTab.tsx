@@ -397,7 +397,7 @@ export function MedicationAdministrationTab({
                 const latestTime = latest ? new Date(latest.administeredAt).getTime() : 0;
                 const marActionResolved = latestMarClinicalActionForRow(latest);
                 const marSaysAdministered = marActionResolved === "administered";
-                const marRowLocked = Boolean(latest);
+                const marRowLocked = Boolean(latest?.pendingSync || marSaysAdministered);
                 const recentWindow = latestTime > 0 && nowMs - latestTime < RECENT_MS;
 
                 let statusCell: React.ReactNode;
