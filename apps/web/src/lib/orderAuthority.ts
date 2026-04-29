@@ -1,4 +1,4 @@
-export type OrderAuthoritySource = "PROVIDER_ORDER" | "VERBAL_ORDER" | "NURSING_PROTOCOL";
+export type OrderAuthoritySource = "PROVIDER_ORDER" | "VERBAL_ORDER" | "NURSING_PROTOCOL" | "PROTOCOL" | "PATHWAY";
 
 export type OrderAuthority = {
   source?: OrderAuthoritySource | string | null;
@@ -35,6 +35,15 @@ export function formatOrderAuthorityLines(
 
   if (source === "NURSING_PROTOCOL") {
     const lines = [t("orderAuthority.nursingProtocol")];
+    const protocolName = authority.protocolName?.trim();
+    if (protocolName) {
+      lines.push(t("orderAuthority.protocolName").replace("{protocolName}", protocolName));
+    }
+    return lines;
+  }
+
+  if (source === "PROTOCOL" || source === "PATHWAY") {
+    const lines = [t("orderAuthority.pathwayProtocol")];
     const protocolName = authority.protocolName?.trim();
     if (protocolName) {
       lines.push(t("orderAuthority.protocolName").replace("{protocolName}", protocolName));

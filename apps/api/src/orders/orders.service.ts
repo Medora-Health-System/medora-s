@@ -180,6 +180,9 @@ export class OrdersService {
     }
 
     const meta = metadata as Record<string, unknown>;
+    if (typeof meta.source === "string" && meta.source.trim()) {
+      authority.source = meta.source.trim();
+    }
     if (typeof meta.readbackConfirmed === "boolean") {
       authority.readbackConfirmed = meta.readbackConfirmed;
     }

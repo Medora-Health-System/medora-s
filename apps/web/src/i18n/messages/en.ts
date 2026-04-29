@@ -4976,6 +4976,7 @@ export default {
     providerOrder: "Provider order",
     verbalOrder: "Verbal order by physician",
     nursingProtocol: "Nursing protocol",
+    pathwayProtocol: "Pathway/protocol order",
     readbackConfirmed: "Read-back confirmed",
     protocolName: "Protocol: {protocolName}",
   },

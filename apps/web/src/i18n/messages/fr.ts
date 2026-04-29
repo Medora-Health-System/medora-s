@@ -4961,6 +4961,7 @@ export default {
     providerOrder: "Ordre du médecin",
     verbalOrder: "Ordre verbal du médecin",
     nursingProtocol: "Protocole infirmier",
+    pathwayProtocol: "Ordre de protocole/parcours",
     readbackConfirmed: "Relecture confirmée",
     protocolName: "Protocole : {protocolName}",
   },
