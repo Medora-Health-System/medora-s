@@ -275,12 +275,12 @@ function buildCareRows(): ReportRow[] {
     medoraCode: item.medoraCode,
     category: "CARE",
     displayName: item.displayName,
-    billingStatus: item.medoraCode === "EKG" ? "pending_license" : "missing",
-    evidenceSource: item.medoraCode === "EKG" ? "CPT_PENDING_LICENSE" : "NONE",
+    billingStatus: "pending_license",
+    evidenceSource: "CPT_PENDING_LICENSE",
     notes:
       item.medoraCode === "EKG"
         ? "Existing billing seed has an EKG/ECG example, but CPT requires licensed/site billing policy review before production use."
-        : "No reviewed procedure billing mapping exists.",
+        : "Requires licensed CPT/facility chargemaster review.",
   }));
 }
 
