@@ -144,6 +144,10 @@ export async function seedHaitiMedicationCatalog(
       sortPriority: row.sortPriority ?? 0,
       isEssential: row.isEssential ?? false,
       isActive: row.isActive !== false,
+      isControlled: row.isControlled ?? false,
+      controlledSchedule: row.controlledSchedule ?? null,
+      requiresWitness: row.requiresWitness ?? false,
+      requiresDoubleSign: row.requiresDoubleSign ?? false,
       searchText,
     };
 

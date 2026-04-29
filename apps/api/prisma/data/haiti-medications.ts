@@ -19,7 +19,7 @@ export type HaitiMedicationSeed = {
   isActive: boolean;
   sortPriority: number;
   isControlled?: boolean;
-  controlledSchedule?: "II" | "III" | "IV";
+  controlledSchedule?: string | null;
   requiresWitness?: boolean;
   requiresDoubleSign?: boolean;
 };
