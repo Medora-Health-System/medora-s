@@ -37,6 +37,10 @@ export type CreateOrderLineItem = {
   _label: string;
   _dosageForm?: string;
   _route?: string;
+  _isControlled?: boolean;
+  _controlledSchedule?: string;
+  _requiresWitness?: boolean;
+  _requiresDoubleSign?: boolean;
   _modality?: string;
   _bodyRegion?: string;
 };

@@ -51,6 +51,10 @@ export function mapMedicationToCatalogSearchItem(
       route: m.route ?? undefined,
       ndc11: m.ndc11 ?? undefined,
       billingUnitType: m.billingUnitType ?? undefined,
+      isControlled: m.isControlled || undefined,
+      controlledSchedule: m.controlledSchedule ?? undefined,
+      requiresWitness: m.requiresWitness || undefined,
+      requiresDoubleSign: m.requiresDoubleSign || undefined,
     },
   };
 }

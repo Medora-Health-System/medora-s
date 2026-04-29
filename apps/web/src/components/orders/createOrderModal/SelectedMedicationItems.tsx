@@ -29,6 +29,20 @@ const inlineWarningStyle: React.CSSProperties = {
   lineHeight: 1.35,
 };
 
+const safetyBadgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  padding: "2px 7px",
+  marginRight: 6,
+  marginTop: 6,
+  fontSize: 11,
+  fontWeight: 700,
+  backgroundColor: "#fff7ed",
+  color: "#9a3412",
+  border: "1px solid #fed7aa",
+};
+
 const confirmationStyle: React.CSSProperties = {
   display: "block",
   marginTop: 8,
@@ -72,6 +86,9 @@ export function SelectedMedicationItems({
           const needsIvConfirmation = item.route === "IVP" || item.route === "IVPB";
           const needsErQuantityConfirmation = erAdministerOnly && (item.quantity ?? 0) > 1;
           const highRiskWarning = highRiskMedicationWarning(item, t);
+          const scheduleLabel = item._controlledSchedule?.trim()
+            ? `${t("createOrderModal.controlledScheduleBadge")} ${item._controlledSchedule.trim()}`
+            : null;
           return (
             <li
               key={item._lineId}
@@ -89,6 +106,21 @@ export function SelectedMedicationItems({
               )}
               {highRiskWarning ? (
                 <p style={{ ...inlineWarningStyle, marginBottom: 0 }}>{highRiskWarning}</p>
+              ) : null}
+              {item._isControlled ? (
+                <div style={{ marginTop: 2 }}>
+                  <span style={safetyBadgeStyle}>{t("createOrderModal.controlledMedicationBadge")}</span>
+                  {scheduleLabel ? <span style={safetyBadgeStyle}>{scheduleLabel}</span> : null}
+                  {item._requiresDoubleSign ? (
+                    <span style={safetyBadgeStyle}>{t("createOrderModal.controlledDoubleSignBadge")}</span>
+                  ) : null}
+                  {item._requiresWitness ? (
+                    <span style={safetyBadgeStyle}>{t("createOrderModal.controlledWitnessBadge")}</span>
+                  ) : null}
+                  <p style={{ ...inlineWarningStyle, marginBottom: 0 }}>
+                    {t("createOrderModal.controlledMedicationWarning")}
+                  </p>
+                </div>
               ) : null}
             </div>
             {erAdministerOnly ? (

@@ -25,6 +25,10 @@ export type CatalogSearchItemDto = {
     route?: string;
     ndc11?: string;
     billingUnitType?: string;
+    isControlled?: boolean;
+    controlledSchedule?: string;
+    requiresWitness?: boolean;
+    requiresDoubleSign?: boolean;
     category?: string;
     modality?: string;
     bodyRegion?: string;
