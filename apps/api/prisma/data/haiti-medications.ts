@@ -18,6 +18,10 @@ export type HaitiMedicationSeed = {
   isEssential: boolean;
   isActive: boolean;
   sortPriority: number;
+  isControlled?: boolean;
+  controlledSchedule?: "II" | "III" | "IV";
+  requiresWitness?: boolean;
+  requiresDoubleSign?: boolean;
 };
 
 /** Codes already referenced by seed inventory/demo data — preserve exactly. */
@@ -47,6 +51,12 @@ export const HAITI_DEFAULT_FAVORITE_CODES: string[] = [
 const A = (s: string[]) => s;
 const essential = (n: number) => ({ isEssential: true, isActive: true, sortPriority: n });
 const nonEssential = (n: number) => ({ isEssential: false, isActive: true, sortPriority: n });
+const controlled = (schedule: "II" | "III" | "IV", requiresDoubleSign = false) => ({
+  isControlled: true,
+  controlledSchedule: schedule,
+  requiresWitness: false,
+  requiresDoubleSign,
+});
 
 export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
   // 1) Analgésiques / antipyrétiques
@@ -320,7 +330,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
   { genericName: "Ceftriaxone", displayNameFr: "Ceftriaxone", strength: "1 g", dosageForm: "injectable", route: "injectable", therapeuticClass: "Antibiotique", commonAliases: A(["antibiotic urgence"]), ...essential(188) },
   { genericName: "Gentamicin", displayNameFr: "Gentamicine", strength: "80 mg/2 mL", dosageForm: "injectable", route: "injectable", therapeuticClass: "Antibiotique", commonAliases: A(["Garamycin"]), ...essential(189) },
   { genericName: "Ampicillin", displayNameFr: "Ampicilline", strength: "1 g", dosageForm: "injectable", route: "injectable", therapeuticClass: "Antibiotique", commonAliases: A(["antibio injectable"]), ...essential(190) },
-  { genericName: "Morphine", displayNameFr: "Morphine", strength: "10 mg/mL", dosageForm: "injectable", route: "injectable", therapeuticClass: "Antalgique", commonAliases: A(["morphine injectable"]), ...essential(191) },
+  { genericName: "Morphine", displayNameFr: "Morphine", strength: "10 mg/mL", dosageForm: "injectable", route: "injectable", therapeuticClass: "Antalgique", commonAliases: A(["morphine injectable"]), ...controlled("II", true), ...essential(191) },
   { genericName: "Furosemide", displayNameFr: "Furosémide", strength: "20 mg/2 mL", dosageForm: "injectable", route: "injectable", therapeuticClass: "Diurétique", commonAliases: A(["diurétique injectable"]), ...essential(192) },
   { genericName: "Oxytocin", displayNameFr: "Oxytocine", strength: "10 UI/mL", dosageForm: "injectable", route: "injectable", therapeuticClass: "Obstétrique", commonAliases: A(["PPH"]), ...essential(193) },
   { genericName: "Magnesium Sulfate", displayNameFr: "Sulfate de magnésium", strength: "500 mg/mL", dosageForm: "injectable", route: "injectable", therapeuticClass: "Obstétrique", commonAliases: A(["éclampsie"]), ...essential(194) },
@@ -490,6 +500,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     route: "injectable",
     therapeuticClass: "Antalgique opioïde",
     commonAliases: A(["Dilaudid", "douleur sévère", "opioïde urgence"]),
+    ...controlled("II", true),
     ...essential(242),
   },
   // HCPCS candidates reviewed: J1630, J1631.
@@ -529,6 +540,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     route: "injectable",
     therapeuticClass: "Antalgique opioïde",
     commonAliases: A(["douleur sévère", "opioïde urgence", "sédation"]),
+    ...controlled("II", true),
     ...essential(245),
   },
   // HCPCS candidates reviewed: J1920, J1921.
@@ -568,6 +580,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     route: "injectable",
     therapeuticClass: "Benzodiazépine",
     commonAliases: A(["Versed", "sédation", "convulsion", "benzodiazépine urgence"]),
+    ...controlled("IV"),
     ...essential(248),
   },
   // HCPCS candidate reviewed: J2704.
@@ -646,6 +659,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     route: "injectable",
     therapeuticClass: "Benzodiazépine",
     commonAliases: A(["Ativan", "convulsion", "status epilepticus", "benzodiazépine urgence"]),
+    ...controlled("IV"),
     ...essential(254),
   },
   // ED critical-care batch 1 — clinically necessary concepts; no NDC identity stored.
@@ -699,6 +713,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     route: "injectable",
     therapeuticClass: "Anesthésique",
     commonAliases: A(["Ketalar", "sédation", "analgésie", "intubation", "RSI"]),
+    ...controlled("III", true),
     ...essential(258),
   },
   // Billing/NDC pending: no local HCPCS/NDC evidence found in processed candidate files.
