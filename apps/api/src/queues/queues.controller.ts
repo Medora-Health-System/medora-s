@@ -64,13 +64,6 @@ export class QueuesController {
     return this.queuesService.getBillingEncounterSummary(facilityId, encounterId);
   }
 
-  @Get("billing/encounters/:encounterId/readiness")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
-  async getEncounterBillingReadiness(@Param("encounterId") encounterId: string, @Req() req: any) {
-    const facilityId = req.facilityId;
-    return this.queuesService.getEncounterBillingReadiness(facilityId, encounterId);
-  }
-
   @Get("billing/encounters/:encounterId/claims")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getEncounterClaimAssembly(@Param("encounterId") encounterId: string, @Req() req: any) {

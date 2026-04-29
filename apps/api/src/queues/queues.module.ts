@@ -19,16 +19,19 @@ import { ClearinghouseOpsService } from "../billing/clearinghouse-ops.service";
 import { ClaimRetryWorkerService } from "../billing/claim-retry-worker.service";
 import { BillingIdentityService } from "../billing/billing-identity.service";
 import { BillingIdentityController } from "../billing/billing-identity.controller";
+import { BillingController } from "../billing/billing.controller";
+import { BillingService } from "../billing/billing.service";
 import { ClearinghouseStabilizationService } from "../billing/clearinghouse-stabilization.service";
 import { ClaimOperationalEventService } from "../billing/claim-operational-event.service";
 import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearinghouse-observability.service";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [QueuesController, ClearinghouseAckWebhookController, BillingIdentityController],
+  controllers: [QueuesController, ClearinghouseAckWebhookController, BillingIdentityController, BillingController],
   providers: [
     QueuesService,
     AuditService,
+    BillingService,
     ClaimBuilderService,
     ClaimExportService,
     X12837GeneratorService,
@@ -47,7 +50,7 @@ import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearin
     BillingIdentityService,
     ClearinghouseAckWebhookGuard,
   ],
-  exports: [QueuesService, BillingIdentityService],
+  exports: [QueuesService, BillingIdentityService, BillingService],
 })
 export class QueuesModule {}
 
