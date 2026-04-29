@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type {
+  BillingExportRowDto,
   BillingReadinessCategory,
   BillingReadinessItemDto,
   BillingReadinessStatus,
@@ -41,6 +42,14 @@ export class BillingService {
     facilityId: string,
     encounterId: string
   ): Promise<BillingReadinessItemDto[]> {
+    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId);
+    return rows.map(({ displayName: _displayName, quantity: _quantity, unit: _unit, ...row }) => row);
+  }
+
+  async getEncounterBillingExportRows(
+    facilityId: string,
+    encounterId: string
+  ): Promise<BillingExportRowDto[]> {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: { id: true },
@@ -59,6 +68,7 @@ export class BillingService {
         catalogItemId: true,
         catalogItemType: true,
         manualLabel: true,
+        quantity: true,
       },
     });
 
@@ -88,7 +98,7 @@ export class BillingService {
       medicationIds.length
         ? this.prisma.catalogMedication.findMany({
             where: { id: { in: medicationIds } },
-            select: { id: true, code: true, displayNameEn: true, displayNameFr: true, name: true, billingCodeDefault: true },
+            select: { id: true, code: true, displayNameEn: true, displayNameFr: true, name: true, billingCodeDefault: true, billingUnitType: true },
           })
         : Promise.resolve([]),
     ]);
@@ -124,6 +134,7 @@ export class BillingService {
               : null;
       const medoraCode = catalog?.code ?? item.manualLabel?.trim() ?? null;
       const billingCodeDefault = catalog?.billingCodeDefault?.trim() || null;
+      const displayName = displayNameForCatalog(catalog, item.manualLabel);
       const officialLabBillingCodeMatched =
         category === "LAB" &&
         Boolean(
@@ -142,16 +153,49 @@ export class BillingService {
         orderItemId: item.id,
         medoraCode,
         category,
+        displayName,
         billingStatus,
         billingCodeDefault,
+        quantity: item.quantity ?? null,
+        unit: category === "MEDICATION" ? medicationById.get(item.catalogItemId ?? "")?.billingUnitType?.trim() || null : null,
         notes: notesForReadiness({
           category,
           billingStatus,
-          displayName: displayNameForCatalog(catalog, item.manualLabel),
+          displayName,
           officialLabBillingCodeMatched,
         }),
       };
     });
+  }
+
+  toBillingExportCsv(rows: BillingExportRowDto[]): string {
+    const headers = [
+      "orderItemId",
+      "medoraCode",
+      "category",
+      "displayName",
+      "billingStatus",
+      "billingCodeDefault",
+      "quantity",
+      "unit",
+      "notes",
+    ];
+    const lines = rows.map((row) =>
+      [
+        row.orderItemId,
+        row.medoraCode,
+        row.category,
+        row.displayName,
+        row.billingStatus,
+        row.billingCodeDefault,
+        row.quantity,
+        row.unit,
+        row.notes,
+      ]
+        .map(csvCell)
+        .join(",")
+    );
+    return [headers.join(","), ...lines].join("\n");
   }
 }
 
@@ -192,4 +236,10 @@ function notesForReadiness(input: {
   return input.billingStatus === "pending_license"
     ? `${input.displayName}: care/procedure billing requires licensed CPT/facility chargemaster review.`
     : `${input.displayName}: no safe care/procedure billing mapping found.`;
+}
+
+function csvCell(value: string | number | null | undefined): string {
+  const text = value == null ? "" : String(value);
+  if (!/[",\n\r]/.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
 }

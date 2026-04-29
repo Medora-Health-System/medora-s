@@ -14,3 +14,9 @@ export type BillingReadinessItemDto = {
   billingCodeDefault: string | null;
   notes: string;
 };
+
+export type BillingExportRowDto = BillingReadinessItemDto & {
+  displayName: string;
+  quantity: number | null;
+  unit: string | null;
+};
