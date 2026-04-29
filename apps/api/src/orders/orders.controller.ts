@@ -177,11 +177,13 @@ export class OrdersController {
     }
 
     const dto = assertZodBody(orderCancelDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
 
     return this.ordersService.cancelOrder(
       facilityId,
       id,
       dto,
+      codes,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]

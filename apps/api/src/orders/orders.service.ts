@@ -44,6 +44,8 @@ import { createStructuredLogger } from "../common/logging/structured-logger";
 
 const ordersLog = createStructuredLogger("OrdersService");
 
+type CancelPolicyActor = "ADMIN" | "PROVIDER" | "RN" | "LAB" | "RADIOLOGY";
+
 type OrderAuthority = {
   source: string | null;
   readbackConfirmed?: boolean;
@@ -1267,10 +1269,53 @@ export class OrdersService {
     return updated;
   }
 
+  private assertCanCancelOrder(
+    order: {
+      type: string;
+      orderedBy: string | null;
+      source: string | null;
+      items: Array<{ catalogItemType: string }>;
+    },
+    requestorRoleCodes: RoleCode[],
+    userId: string
+  ): CancelPolicyActor {
+    if (requestorRoleCodes.includes(RoleCode.ADMIN)) {
+      return "ADMIN";
+    }
+
+    const allItemsAre = (catalogItemType: string) =>
+      order.items.length > 0 && order.items.every((item) => item.catalogItemType === catalogItemType);
+
+    if (requestorRoleCodes.includes(RoleCode.PROVIDER)) {
+      if (order.type === "MEDICATION" || order.type === "CARE" || order.orderedBy === userId) {
+        return "PROVIDER";
+      }
+    }
+
+    if (
+      requestorRoleCodes.includes(RoleCode.RN) &&
+      order.orderedBy === userId &&
+      (order.source === "VERBAL_ORDER" || order.source === "NURSING_PROTOCOL")
+    ) {
+      return "RN";
+    }
+
+    if (requestorRoleCodes.includes(RoleCode.LAB) && allItemsAre("LAB_TEST")) {
+      return "LAB";
+    }
+
+    if (requestorRoleCodes.includes(RoleCode.RADIOLOGY) && allItemsAre("IMAGING_STUDY")) {
+      return "RADIOLOGY";
+    }
+
+    throw new ForbiddenException("Droits insuffisants pour annuler cette commande.");
+  }
+
   async cancel(
     facilityId: string,
     id: string,
     dto: OrderCancelDto,
+    requestorRoleCodes: RoleCode[],
     userId?: string,
     ip?: string,
     userAgent?: string
@@ -1281,7 +1326,10 @@ export class OrdersService {
 
     const order = await this.prisma.order.findFirst({
       where: { id, facilityId },
-      include: { encounter: true },
+      include: {
+        encounter: true,
+        items: { select: { catalogItemType: true } },
+      },
     });
 
     if (!order) {
@@ -1291,6 +1339,8 @@ export class OrdersService {
     assertEncounterNotSigned(order.encounter);
 
     assertCanTransition(order.status, "CANCELLED");
+
+    const cancelPolicyActor = this.assertCanCancelOrder(order, requestorRoleCodes, userId);
 
     const reason = dto.cancellationReason.trim();
     if (!reason) {
@@ -1353,6 +1403,9 @@ export class OrdersService {
         note: reason,
         metadata: {
           cancellationReason: reason,
+          cancelPolicyActor,
+          requestorRoles: requestorRoleCodes,
+          orderSource: order.source,
           orderDomain: order.type,
           orderItemCount: items.length,
         },
@@ -1370,7 +1423,12 @@ export class OrdersService {
       entityId: order.id,
       ip,
       userAgent,
-      metadata: { cancellationReason: reason },
+      metadata: {
+        cancellationReason: reason,
+        cancelPolicyActor,
+        requestorRoles: requestorRoleCodes,
+        orderSource: order.source,
+      },
     });
 
     const [enriched] = await this.enrichOrderItemsForDisplaySafe([updated as unknown as OrderWithItems]);
@@ -1385,11 +1443,12 @@ export class OrdersService {
     facilityId: string,
     orderId: string,
     dto: OrderCancelDto,
+    requestorRoleCodes: RoleCode[],
     userId?: string,
     ip?: string,
     userAgent?: string
   ) {
-    return this.cancel(facilityId, orderId, dto, userId, ip, userAgent);
+    return this.cancel(facilityId, orderId, dto, requestorRoleCodes, userId, ip, userAgent);
   }
 
   async acknowledgeOrderItem(
