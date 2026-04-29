@@ -33,6 +33,39 @@ type LedgerEventRow = {
   modifier2: string | null;
 };
 
+type BillingReadinessStatus = "official_validated" | "candidate_only" | "pending_license" | "missing";
+
+const OFFICIAL_CLFS_BILLING_CODES = new Set([
+  "80048",
+  "80053",
+  "80143",
+  "80179",
+  "80305",
+  "81001",
+  "81025",
+  "82150",
+  "82800",
+  "82947",
+  "83605",
+  "83690",
+  "83880",
+  "84145",
+  "84443",
+  "84484",
+  "85025",
+  "85379",
+  "85610",
+  "85730",
+  "86140",
+  "86850",
+  "86900",
+  "87040",
+  "87635",
+  "87804",
+  "87807",
+  "87880",
+]);
+
 type ClaimPackageSummaryT = {
   totalLines: number;
   uncodedLines: number;
@@ -408,6 +441,96 @@ function billingPageKey(t: (k: string) => string, suffix: string): string {
   const k = `billingPage.${suffix}`;
   const v = t(k);
   return v === k ? suffix : v;
+}
+
+function billingReadinessStatusForLedgerRow(ev: LedgerEventRow): BillingReadinessStatus | null {
+  if (billingLedgerRowIsInformationalNonBillable(ev)) return null;
+  if (billingLedgerRowIsUnmapped(ev) || !billingLedgerRowHasUsableCode(ev)) return "missing";
+
+  const sourceModule = ev.sourceModule;
+  const primaryCode = ev.code?.trim() ?? "";
+  const procedureCode = ev.procedureCode?.trim() ?? "";
+  const hcpcsCode = ev.hcpcsCode?.trim() ?? "";
+
+  if (sourceModule === "LAB_RESULT" && OFFICIAL_CLFS_BILLING_CODES.has(primaryCode)) {
+    return "official_validated";
+  }
+
+  if (sourceModule === "ORDER_ITEM" && OFFICIAL_CLFS_BILLING_CODES.has(primaryCode)) {
+    return "official_validated";
+  }
+
+  if (
+    sourceModule === "IMAGING_RESULT" ||
+    sourceModule === "PROCEDURE" ||
+    sourceModule === "SUPPLY" ||
+    sourceModule === "ENCOUNTER_EM"
+  ) {
+    return "pending_license";
+  }
+
+  if (
+    sourceModule === "MEDICATION_DISPENSE" ||
+    sourceModule === "MEDICATION_ADMINISTRATION" ||
+    sourceModule === "MED_ADMIN" ||
+    ev.codeType === "HCPCS" ||
+    Boolean(hcpcsCode)
+  ) {
+    return "candidate_only";
+  }
+
+  if (procedureCode) return "pending_license";
+  if (ev.codeType === "CPT" && OFFICIAL_CLFS_BILLING_CODES.has(primaryCode)) return "official_validated";
+  if (ev.codeType === "CPT") return "pending_license";
+
+  return "candidate_only";
+}
+
+function billingReadinessBadgeTone(status: BillingReadinessStatus): {
+  background: string;
+  color: string;
+  border: string;
+} {
+  if (status === "official_validated") {
+    return { background: "#ecfdf5", color: "#047857", border: "#a7f3d0" };
+  }
+  if (status === "candidate_only") {
+    return { background: "#fffbeb", color: "#92400e", border: "#fde68a" };
+  }
+  if (status === "pending_license") {
+    return { background: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" };
+  }
+  return { background: "#fef2f2", color: "#b91c1c", border: "#fecaca" };
+}
+
+function BillingReadinessBadge({
+  status,
+  t,
+}: {
+  status: BillingReadinessStatus;
+  t: (key: string) => string;
+}) {
+  const tone = billingReadinessBadgeTone(status);
+  return (
+    <span
+      title={t(`billingPage.billingReadinessHelp_${status}`)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: 999,
+        border: `1px solid ${tone.border}`,
+        background: tone.background,
+        color: tone.color,
+        padding: "3px 8px",
+        fontSize: 11,
+        fontWeight: 700,
+        lineHeight: 1.2,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {t(`billingPage.billingReadiness_${status}`)}
+    </span>
+  );
 }
 
 function billingUnmappedHintText(t: (k: string) => string, sourceModule: string): string {
@@ -2972,6 +3095,23 @@ export default function BillingEncounterLedgerPage() {
             {t("billingPage.colNeedsReview")}: {data.summary.needsReview} · {t("billingPage.colMissingCode")}:{" "}
             {data.summary.missingCode}
           </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              alignItems: "center",
+              marginBottom: 12,
+              fontSize: 12,
+              color: "#475569",
+            }}
+          >
+            <strong>{t("billingPage.billingReadinessLegend")}:</strong>
+            <BillingReadinessBadge status="official_validated" t={t} />
+            <BillingReadinessBadge status="candidate_only" t={t} />
+            <BillingReadinessBadge status="pending_license" t={t} />
+            <BillingReadinessBadge status="missing" t={t} />
+          </div>
           {data.events.length === 0 ? (
             <p style={{ color: "#64748b" }}>{t("billingPage.billingSummaryEmpty")}</p>
           ) : (
@@ -2986,6 +3126,7 @@ export default function BillingEncounterLedgerPage() {
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableProcedure")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableHcpcs")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableDiagnosis")}</th>
+                    <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableReadiness")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableStatus")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableServiceDate")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableDescription")}</th>
@@ -2999,6 +3140,7 @@ export default function BillingEncounterLedgerPage() {
                     const informationalNonBillable = billingLedgerRowIsInformationalNonBillable(ev);
                     const medDrugOnlyNoProcedure = billingLedgerRowIsMedAdminDrugOnlyWithoutProcedureCpt(ev);
                     const showUncodedWarning = !isUnmapped && !informationalNonBillable && !coded;
+                    const billingReadinessStatus = billingReadinessStatusForLedgerRow(ev);
                     const rowBg = isUnmapped
                       ? "#fef2f2"
                       : informationalNonBillable
@@ -3100,6 +3242,13 @@ export default function BillingEncounterLedgerPage() {
                           </td>
                           <td style={{ padding: 10, fontSize: 12, maxWidth: 140, wordBreak: "break-word" }}>
                             {ev.diagnosisCodes?.trim() ? ev.diagnosisCodes : t("common.dash")}
+                          </td>
+                          <td style={{ padding: 10 }}>
+                            {billingReadinessStatus ? (
+                              <BillingReadinessBadge status={billingReadinessStatus} t={t} />
+                            ) : (
+                              t("common.dash")
+                            )}
                           </td>
                           <td style={{ padding: 10 }}>
                             {billingPageKey(t, `billingReviewStatus_${ev.reviewStatus}`)}

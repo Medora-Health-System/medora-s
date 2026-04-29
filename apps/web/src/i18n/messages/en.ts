@@ -178,6 +178,7 @@ export default {
     billingSummaryTableProcedure: "CPT",
     billingSummaryTableHcpcs: "HCPCS",
     billingSummaryTableDiagnosis: "Diagnoses (ledger)",
+    billingSummaryTableReadiness: "Billing readiness",
     billingSummaryUncodedBadge: "Billable code (CPT/HCPCS/ICD) still needed",
     billingSummaryNonBillableLine: "Not a billable line",
     billingSummaryMedAdminRecordedNoProcedure:
@@ -234,6 +235,15 @@ export default {
     billingReviewStatus_REVIEWED: "Reviewed",
     billingReviewStatus_VOIDED: "Voided",
     billingReviewStatus_SKIPPED: "Skipped",
+    billingReadinessLegend: "Billing readiness",
+    billingReadiness_official_validated: "Ready for billing review / autobill candidate",
+    billingReadiness_candidate_only: "Manual billing review required",
+    billingReadiness_pending_license: "CPT / chargemaster pending",
+    billingReadiness_missing: "Do not bill automatically",
+    billingReadinessHelp_official_validated: "Exact official source match. Eligible for billing review and possible auto-billing.",
+    billingReadinessHelp_candidate_only: "Supporting evidence only. Requires manual billing review before billing.",
+    billingReadinessHelp_pending_license: "Requires licensed CPT source or facility chargemaster review.",
+    billingReadinessHelp_missing: "No safe billing code found. Must not be billed automatically.",
     editBillingCapture: "Edit billing capture",
     billingCaptureModalTitle: "Billing capture (advanced)",
     billingCaptureGuidance:

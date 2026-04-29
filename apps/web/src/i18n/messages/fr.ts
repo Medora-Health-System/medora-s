@@ -102,6 +102,7 @@ export default {
     billingSummaryTableProcedure: "CPT",
     billingSummaryTableHcpcs: "HCPCS",
     billingSummaryTableDiagnosis: "Diagnostics (registre)",
+    billingSummaryTableReadiness: "Préparation facturation",
     billingSummaryUncodedBadge: "Code facturable (CPT/HCPCS/CIM) à compléter",
     billingSummaryNonBillableLine: "Ligne non facturable",
     billingSummaryMedAdminRecordedNoProcedure:
@@ -158,6 +159,15 @@ export default {
     billingReviewStatus_REVIEWED: "Revu",
     billingReviewStatus_VOIDED: "Annulé",
     billingReviewStatus_SKIPPED: "Ignoré",
+    billingReadinessLegend: "Préparation facturation",
+    billingReadiness_official_validated: "Prêt pour revue facturation / candidat auto",
+    billingReadiness_candidate_only: "Revue facturation manuelle requise",
+    billingReadiness_pending_license: "CPT / grille tarifaire en attente",
+    billingReadiness_missing: "Ne pas facturer automatiquement",
+    billingReadinessHelp_official_validated: "Correspondance exacte avec une source officielle. Éligible à la revue facturation et à une éventuelle facturation automatique.",
+    billingReadinessHelp_candidate_only: "Preuve de soutien seulement. Revue facturation manuelle requise avant facturation.",
+    billingReadinessHelp_pending_license: "Nécessite une source CPT sous licence ou une revue de la grille tarifaire de l'établissement.",
+    billingReadinessHelp_missing: "Aucun code de facturation sûr trouvé. Ne doit pas être facturé automatiquement.",
     editBillingCapture: "Modifier la saisie facturation",
     billingCaptureModalTitle: "Saisie facturation (avancé)",
     billingCaptureGuidance:
