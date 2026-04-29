@@ -1130,6 +1130,10 @@ model CatalogMedication {
   ndcDisplay         String?  @db.VarChar(32)
   /// ER-3: preferred quantity basis for billing math (e.g. mg, mL, each, unit).
   billingUnitType    String?  @db.VarChar(32)
+  isControlled       Boolean  @default(false)
+  controlledSchedule String?
+  requiresWitness    Boolean  @default(false)
+  requiresDoubleSign Boolean  @default(false)
   description        String?
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
