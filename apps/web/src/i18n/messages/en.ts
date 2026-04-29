@@ -179,6 +179,7 @@ export default {
     billingSummaryTableHcpcs: "HCPCS",
     billingSummaryTableDiagnosis: "Diagnoses (ledger)",
     billingSummaryTableReadiness: "Billing readiness",
+    billingSummaryTableAutoBillDecision: "Auto-billing decision",
     billingSummaryUncodedBadge: "Billable code (CPT/HCPCS/ICD) still needed",
     billingSummaryNonBillableLine: "Not a billable line",
     billingSummaryMedAdminRecordedNoProcedure:
@@ -245,6 +246,20 @@ export default {
     billingReadinessHelp_candidate_only: "Supporting evidence only. Requires manual billing review before billing.",
     billingReadinessHelp_pending_license: "Requires licensed CPT source or facility chargemaster review.",
     billingReadinessHelp_missing: "No safe billing code found. Must not be billed automatically.",
+    autoBillEligible: "Auto-bill eligible",
+    autoBillManualReviewRequired: "Manual review required",
+    autoBillDecisionUnavailable: "Auto-bill decision unavailable — manual review required.",
+    autoBillDecisionReasonOfficialLab: "Officially validated lab billing code is present.",
+    autoBillDecisionReasonMedicationDisabled:
+      "Medication auto-billing is disabled until dose/unit conversion and payer policy are implemented.",
+    autoBillDecisionReasonImagingDisabled:
+      "Imaging auto-billing is disabled until licensed CPT/facility chargemaster integration is complete.",
+    autoBillDecisionReasonCareDisabled:
+      "Care/procedure auto-billing is disabled until licensed CPT/facility chargemaster integration is complete.",
+    autoBillDecisionReasonCandidateOnly: "Candidate-only billing evidence requires manual review.",
+    autoBillDecisionReasonPendingLicense: "Licensed billing source or facility chargemaster review is required.",
+    autoBillDecisionReasonMissing: "No safe billing code is available for auto-billing.",
+    autoBillDecisionReasonValidatedLabRequired: "Auto-billing requires a validated lab billing code.",
     editBillingCapture: "Edit billing capture",
     billingCaptureModalTitle: "Billing capture (advanced)",
     billingCaptureGuidance:

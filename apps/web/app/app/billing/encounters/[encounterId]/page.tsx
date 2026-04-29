@@ -47,6 +47,16 @@ type BillingReadinessRow = {
   notes?: string | null;
 };
 
+type AutoBillDecisionRow = {
+  orderItemId: string;
+  medoraCode: string;
+  category: BillingReadinessCategory;
+  billingStatus: BillingReadinessStatus;
+  canAutoBill: boolean;
+  requiredReview: boolean;
+  reason: string;
+};
+
 type ClaimPackageSummaryT = {
   totalLines: number;
   uncodedLines: number;
@@ -488,6 +498,25 @@ function billingUnmappedHintText(t: (k: string) => string, sourceModule: string)
   return v === k ? t("billingPage.billingUnmappedHint_FALLBACK") : v;
 }
 
+function autoBillDecisionReasonText(t: (k: string) => string, reason: string): string {
+  const normalized = reason.trim();
+  const knownReasonKeyByText: Record<string, string> = {
+    "Officially validated lab billing code is present.": "autoBillDecisionReasonOfficialLab",
+    "Medication auto-billing is disabled until dose/unit conversion and payer policy are implemented.":
+      "autoBillDecisionReasonMedicationDisabled",
+    "Imaging auto-billing is disabled until licensed CPT/facility chargemaster integration is complete.":
+      "autoBillDecisionReasonImagingDisabled",
+    "Care/procedure auto-billing is disabled until licensed CPT/facility chargemaster integration is complete.":
+      "autoBillDecisionReasonCareDisabled",
+    "Candidate-only billing evidence requires manual review.": "autoBillDecisionReasonCandidateOnly",
+    "Licensed billing source or facility chargemaster review is required.": "autoBillDecisionReasonPendingLicense",
+    "No safe billing code is available for auto-billing.": "autoBillDecisionReasonMissing",
+    "Auto-billing requires a validated lab billing code.": "autoBillDecisionReasonValidatedLabRequired",
+  };
+  const key = knownReasonKeyByText[normalized];
+  return key ? t(`billingPage.${key}`) : normalized;
+}
+
 function claimValidationLabel(t: (k: string) => string, code: string): string {
   const k = `billingPage.claimValidation_${code}`;
   const v = t(k);
@@ -795,6 +824,8 @@ export default function BillingEncounterLedgerPage() {
   const [retrySendBusyId, setRetrySendBusyId] = useState<string | null>(null);
   const [billingReadinessRows, setBillingReadinessRows] = useState<BillingReadinessRow[]>([]);
   const [billingReadinessWarning, setBillingReadinessWarning] = useState<string | null>(null);
+  const [autoBillDecisionRows, setAutoBillDecisionRows] = useState<AutoBillDecisionRow[]>([]);
+  const [autoBillDecisionWarning, setAutoBillDecisionWarning] = useState<string | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -816,6 +847,10 @@ export default function BillingEncounterLedgerPage() {
     () => new Map(billingReadinessRows.map((row) => [row.orderItemId, row])),
     [billingReadinessRows]
   );
+  const autoBillDecisionByOrderItemId = useMemo(
+    () => new Map(autoBillDecisionRows.map((row) => [row.orderItemId, row])),
+    [autoBillDecisionRows]
+  );
 
   const load = useCallback(async () => {
     if (!ready || !facilityId) return;
@@ -831,6 +866,7 @@ export default function BillingEncounterLedgerPage() {
         submissionsOutcome,
         clearinghouseOutcome,
         clearinghouseOpsOutcome,
+        autoBillDecisionsOutcome,
       ] = await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/readiness`, { facilityId }),
@@ -840,6 +876,7 @@ export default function BillingEncounterLedgerPage() {
           apiFetch(`/billing/encounters/${encounterId}/submissions`, { facilityId }),
           apiFetch(`/billing/clearinghouse/config-status`, { facilityId }),
           apiFetch(`/billing/clearinghouse/ops-status`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/autobill-decisions`, { facilityId }),
         ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
@@ -852,6 +889,8 @@ export default function BillingEncounterLedgerPage() {
         setClearinghouseOpsStatus(null);
         setBillingReadinessRows([]);
         setBillingReadinessWarning(null);
+        setAutoBillDecisionRows([]);
+        setAutoBillDecisionWarning(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -862,6 +901,13 @@ export default function BillingEncounterLedgerPage() {
       } else {
         setBillingReadinessRows([]);
         setBillingReadinessWarning(t("billingPage.billingReadinessUnavailable"));
+      }
+      if (autoBillDecisionsOutcome.status === "fulfilled" && Array.isArray(autoBillDecisionsOutcome.value)) {
+        setAutoBillDecisionRows(autoBillDecisionsOutcome.value as AutoBillDecisionRow[]);
+        setAutoBillDecisionWarning(null);
+      } else {
+        setAutoBillDecisionRows([]);
+        setAutoBillDecisionWarning(t("billingPage.autoBillDecisionUnavailable"));
       }
       if (clearinghouseOutcome.status === "fulfilled" && clearinghouseOutcome.value && typeof clearinghouseOutcome.value === "object") {
         setClearinghouseConfigStatus(clearinghouseOutcome.value as ClearinghouseConfigStatusPayload);
@@ -910,6 +956,8 @@ export default function BillingEncounterLedgerPage() {
       setClearinghouseOpsStatus(null);
       setBillingReadinessRows([]);
       setBillingReadinessWarning(null);
+      setAutoBillDecisionRows([]);
+      setAutoBillDecisionWarning(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -3102,6 +3150,21 @@ export default function BillingEncounterLedgerPage() {
               {billingReadinessWarning}
             </div>
           ) : null}
+          {autoBillDecisionWarning ? (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid #fde68a",
+                background: "#fffbeb",
+                color: "#92400e",
+                fontSize: 13,
+              }}
+            >
+              {autoBillDecisionWarning}
+            </div>
+          ) : null}
           {data.events.length === 0 ? (
             <p style={{ color: "#64748b" }}>{t("billingPage.billingSummaryEmpty")}</p>
           ) : (
@@ -3117,6 +3180,7 @@ export default function BillingEncounterLedgerPage() {
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableHcpcs")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableDiagnosis")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableReadiness")}</th>
+                    <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableAutoBillDecision")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableStatus")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableServiceDate")}</th>
                     <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableDescription")}</th>
@@ -3131,6 +3195,7 @@ export default function BillingEncounterLedgerPage() {
                     const medDrugOnlyNoProcedure = billingLedgerRowIsMedAdminDrugOnlyWithoutProcedureCpt(ev);
                     const showUncodedWarning = !isUnmapped && !informationalNonBillable && !coded;
                     const billingReadinessStatus = billingReadinessStatusForLedgerRow(ev, billingReadinessByOrderItemId);
+                    const autoBillDecision = autoBillDecisionByOrderItemId.get(ev.sourceRecordId);
                     const rowBg = isUnmapped
                       ? "#fef2f2"
                       : informationalNonBillable
@@ -3240,6 +3305,38 @@ export default function BillingEncounterLedgerPage() {
                               t("common.dash")
                             )}
                           </td>
+                          <td style={{ padding: 10, minWidth: 190 }}>
+                            {autoBillDecision ? (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    width: "fit-content",
+                                    alignItems: "center",
+                                    borderRadius: 999,
+                                    border: autoBillDecision.canAutoBill ? "1px solid #99f6e4" : "1px solid #fde68a",
+                                    background: autoBillDecision.canAutoBill ? "#f0fdfa" : "#fffbeb",
+                                    color: autoBillDecision.canAutoBill ? "#0f766e" : "#92400e",
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: "2px 8px",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {autoBillDecision.canAutoBill
+                                    ? t("billingPage.autoBillEligible")
+                                    : t("billingPage.autoBillManualReviewRequired")}
+                                </span>
+                                {autoBillDecision.reason.trim() ? (
+                                  <span style={{ color: "#64748b", fontSize: 11, lineHeight: 1.35, maxWidth: 220 }}>
+                                    {autoBillDecisionReasonText(t, autoBillDecision.reason)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              t("common.dash")
+                            )}
+                          </td>
                           <td style={{ padding: 10 }}>
                             {billingPageKey(t, `billingReviewStatus_${ev.reviewStatus}`)}
                           </td>
@@ -3295,7 +3392,7 @@ export default function BillingEncounterLedgerPage() {
                         </tr>
                         {isEditing && draft ? (
                           <tr style={{ background: "#f8fafc" }}>
-                            <td colSpan={11} style={{ padding: 14, borderBottom: "1px solid #e2e8f0" }}>
+                            <td colSpan={12} style={{ padding: 14, borderBottom: "1px solid #e2e8f0" }}>
                               <div
                                 style={{
                                   display: "grid",

@@ -103,6 +103,7 @@ export default {
     billingSummaryTableHcpcs: "HCPCS",
     billingSummaryTableDiagnosis: "Diagnostics (registre)",
     billingSummaryTableReadiness: "Préparation facturation",
+    billingSummaryTableAutoBillDecision: "Décision auto-facturation",
     billingSummaryUncodedBadge: "Code facturable (CPT/HCPCS/CIM) à compléter",
     billingSummaryNonBillableLine: "Ligne non facturable",
     billingSummaryMedAdminRecordedNoProcedure:
@@ -169,6 +170,21 @@ export default {
     billingReadinessHelp_candidate_only: "Preuve de soutien seulement. Revue facturation manuelle requise avant facturation.",
     billingReadinessHelp_pending_license: "Nécessite une source CPT sous licence ou une revue de la grille tarifaire de l'établissement.",
     billingReadinessHelp_missing: "Aucun code de facturation sûr trouvé. Ne doit pas être facturé automatiquement.",
+    autoBillEligible: "Éligible à l’auto-facturation",
+    autoBillManualReviewRequired: "Revue manuelle requise",
+    autoBillDecisionUnavailable: "Décision d’auto-facturation indisponible — revue manuelle requise.",
+    autoBillDecisionReasonOfficialLab: "Code de facturation laboratoire officiellement validé présent.",
+    autoBillDecisionReasonMedicationDisabled:
+      "L’auto-facturation des médicaments est désactivée jusqu’à la conversion dose/unité et la politique payeur.",
+    autoBillDecisionReasonImagingDisabled:
+      "L’auto-facturation de l’imagerie est désactivée jusqu’à l’intégration CPT sous licence ou grille tarifaire.",
+    autoBillDecisionReasonCareDisabled:
+      "L’auto-facturation des soins/actes est désactivée jusqu’à l’intégration CPT sous licence ou grille tarifaire.",
+    autoBillDecisionReasonCandidateOnly: "Preuve candidate seulement : revue manuelle requise.",
+    autoBillDecisionReasonPendingLicense: "Source de facturation sous licence ou revue de grille tarifaire requise.",
+    autoBillDecisionReasonMissing: "Aucun code sûr disponible pour l’auto-facturation.",
+    autoBillDecisionReasonValidatedLabRequired:
+      "L’auto-facturation nécessite un code laboratoire validé.",
     editBillingCapture: "Modifier la saisie facturation",
     billingCaptureModalTitle: "Saisie facturation (avancé)",
     billingCaptureGuidance:
