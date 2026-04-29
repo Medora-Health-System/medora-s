@@ -164,6 +164,7 @@ export default {
     billingReadiness_candidate_only: "Revue facturation manuelle requise",
     billingReadiness_pending_license: "CPT / grille tarifaire en attente",
     billingReadiness_missing: "Ne pas facturer automatiquement",
+    billingReadinessUnavailable: "Préparation facturation indisponible — revue manuelle requise.",
     billingReadinessHelp_official_validated: "Correspondance exacte avec une source officielle. Éligible à la revue facturation et à une éventuelle facturation automatique.",
     billingReadinessHelp_candidate_only: "Preuve de soutien seulement. Revue facturation manuelle requise avant facturation.",
     billingReadinessHelp_pending_license: "Nécessite une source CPT sous licence ou une revue de la grille tarifaire de l'établissement.",

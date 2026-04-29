@@ -240,6 +240,7 @@ export default {
     billingReadiness_candidate_only: "Manual billing review required",
     billingReadiness_pending_license: "CPT / chargemaster pending",
     billingReadiness_missing: "Do not bill automatically",
+    billingReadinessUnavailable: "Billing readiness unavailable — manual review required.",
     billingReadinessHelp_official_validated: "Exact official source match. Eligible for billing review and possible auto-billing.",
     billingReadinessHelp_candidate_only: "Supporting evidence only. Requires manual billing review before billing.",
     billingReadinessHelp_pending_license: "Requires licensed CPT source or facility chargemaster review.",

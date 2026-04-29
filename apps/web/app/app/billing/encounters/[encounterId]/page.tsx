@@ -19,6 +19,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 type LedgerEventRow = {
   id: string;
   sourceModule: string;
+  sourceRecordId: string;
   reviewStatus: string;
   codeType: string | null;
   code: string | null;
@@ -35,36 +36,16 @@ type LedgerEventRow = {
 
 type BillingReadinessStatus = "official_validated" | "candidate_only" | "pending_license" | "missing";
 
-const OFFICIAL_CLFS_BILLING_CODES = new Set([
-  "80048",
-  "80053",
-  "80143",
-  "80179",
-  "80305",
-  "81001",
-  "81025",
-  "82150",
-  "82800",
-  "82947",
-  "83605",
-  "83690",
-  "83880",
-  "84145",
-  "84443",
-  "84484",
-  "85025",
-  "85379",
-  "85610",
-  "85730",
-  "86140",
-  "86850",
-  "86900",
-  "87040",
-  "87635",
-  "87804",
-  "87807",
-  "87880",
-]);
+type BillingReadinessCategory = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
+
+type BillingReadinessRow = {
+  orderItemId: string;
+  medoraCode: string | null;
+  category: BillingReadinessCategory;
+  billingStatus: BillingReadinessStatus;
+  billingCodeDefault?: string | null;
+  notes?: string | null;
+};
 
 type ClaimPackageSummaryT = {
   totalLines: number;
@@ -443,47 +424,15 @@ function billingPageKey(t: (k: string) => string, suffix: string): string {
   return v === k ? suffix : v;
 }
 
-function billingReadinessStatusForLedgerRow(ev: LedgerEventRow): BillingReadinessStatus | null {
+function billingReadinessStatusForLedgerRow(
+  ev: LedgerEventRow,
+  readinessByOrderItemId: Map<string, BillingReadinessRow>
+): BillingReadinessStatus | null {
   if (billingLedgerRowIsInformationalNonBillable(ev)) return null;
-  if (billingLedgerRowIsUnmapped(ev) || !billingLedgerRowHasUsableCode(ev)) return "missing";
+  const backendStatus = readinessByOrderItemId.get(ev.sourceRecordId)?.billingStatus;
+  if (backendStatus) return backendStatus;
 
-  const sourceModule = ev.sourceModule;
-  const primaryCode = ev.code?.trim() ?? "";
-  const procedureCode = ev.procedureCode?.trim() ?? "";
-  const hcpcsCode = ev.hcpcsCode?.trim() ?? "";
-
-  if (sourceModule === "LAB_RESULT" && OFFICIAL_CLFS_BILLING_CODES.has(primaryCode)) {
-    return "official_validated";
-  }
-
-  if (sourceModule === "ORDER_ITEM" && OFFICIAL_CLFS_BILLING_CODES.has(primaryCode)) {
-    return "official_validated";
-  }
-
-  if (
-    sourceModule === "IMAGING_RESULT" ||
-    sourceModule === "PROCEDURE" ||
-    sourceModule === "SUPPLY" ||
-    sourceModule === "ENCOUNTER_EM"
-  ) {
-    return "pending_license";
-  }
-
-  if (
-    sourceModule === "MEDICATION_DISPENSE" ||
-    sourceModule === "MEDICATION_ADMINISTRATION" ||
-    sourceModule === "MED_ADMIN" ||
-    ev.codeType === "HCPCS" ||
-    Boolean(hcpcsCode)
-  ) {
-    return "candidate_only";
-  }
-
-  if (procedureCode) return "pending_license";
-  if (ev.codeType === "CPT" && OFFICIAL_CLFS_BILLING_CODES.has(primaryCode)) return "official_validated";
-  if (ev.codeType === "CPT") return "pending_license";
-
-  return "candidate_only";
+  return "missing";
 }
 
 function billingReadinessBadgeTone(status: BillingReadinessStatus): {
@@ -844,6 +793,8 @@ export default function BillingEncounterLedgerPage() {
   const [clearinghouseConfigStatus, setClearinghouseConfigStatus] = useState<ClearinghouseConfigStatusPayload | null>(null);
   const [clearinghouseOpsStatus, setClearinghouseOpsStatus] = useState<ClearinghouseOpsStatusPayload | null>(null);
   const [retrySendBusyId, setRetrySendBusyId] = useState<string | null>(null);
+  const [billingReadinessRows, setBillingReadinessRows] = useState<BillingReadinessRow[]>([]);
+  const [billingReadinessWarning, setBillingReadinessWarning] = useState<string | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -861,15 +812,28 @@ export default function BillingEncounterLedgerPage() {
       typeof claimExport.summary.facilityClaimReady === "boolean" &&
       claimExport.summary.professionalClaimReady !== claimExport.summary.facilityClaimReady
   );
+  const billingReadinessByOrderItemId = useMemo(
+    () => new Map(billingReadinessRows.map((row) => [row.orderItemId, row])),
+    [billingReadinessRows]
+  );
 
   const load = useCallback(async () => {
     if (!ready || !facilityId) return;
     setLoading(true);
     setError(null);
     try {
-      const [summaryOutcome, claimsOutcome, exportOutcome, x12Outcome, submissionsOutcome, clearinghouseOutcome, clearinghouseOpsOutcome] =
-        await Promise.allSettled([
+      const [
+        summaryOutcome,
+        readinessOutcome,
+        claimsOutcome,
+        exportOutcome,
+        x12Outcome,
+        submissionsOutcome,
+        clearinghouseOutcome,
+        clearinghouseOpsOutcome,
+      ] = await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/readiness`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/claims`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/claim-export`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/x12-preview`, { facilityId }),
@@ -886,10 +850,19 @@ export default function BillingEncounterLedgerPage() {
         setSubmissionListErr(null);
         setClearinghouseConfigStatus(null);
         setClearinghouseOpsStatus(null);
+        setBillingReadinessRows([]);
+        setBillingReadinessWarning(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
       setData(summaryOutcome.value as SummaryPayload);
+      if (readinessOutcome.status === "fulfilled" && Array.isArray(readinessOutcome.value)) {
+        setBillingReadinessRows(readinessOutcome.value as BillingReadinessRow[]);
+        setBillingReadinessWarning(null);
+      } else {
+        setBillingReadinessRows([]);
+        setBillingReadinessWarning(t("billingPage.billingReadinessUnavailable"));
+      }
       if (clearinghouseOutcome.status === "fulfilled" && clearinghouseOutcome.value && typeof clearinghouseOutcome.value === "object") {
         setClearinghouseConfigStatus(clearinghouseOutcome.value as ClearinghouseConfigStatusPayload);
       } else {
@@ -935,6 +908,8 @@ export default function BillingEncounterLedgerPage() {
       setSubmissionDebug(null);
       setClearinghouseConfigStatus(null);
       setClearinghouseOpsStatus(null);
+      setBillingReadinessRows([]);
+      setBillingReadinessWarning(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -3112,6 +3087,21 @@ export default function BillingEncounterLedgerPage() {
             <BillingReadinessBadge status="pending_license" t={t} />
             <BillingReadinessBadge status="missing" t={t} />
           </div>
+          {billingReadinessWarning ? (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid #fde68a",
+                background: "#fffbeb",
+                color: "#92400e",
+                fontSize: 13,
+              }}
+            >
+              {billingReadinessWarning}
+            </div>
+          ) : null}
           {data.events.length === 0 ? (
             <p style={{ color: "#64748b" }}>{t("billingPage.billingSummaryEmpty")}</p>
           ) : (
@@ -3140,7 +3130,7 @@ export default function BillingEncounterLedgerPage() {
                     const informationalNonBillable = billingLedgerRowIsInformationalNonBillable(ev);
                     const medDrugOnlyNoProcedure = billingLedgerRowIsMedAdminDrugOnlyWithoutProcedureCpt(ev);
                     const showUncodedWarning = !isUnmapped && !informationalNonBillable && !coded;
-                    const billingReadinessStatus = billingReadinessStatusForLedgerRow(ev);
+                    const billingReadinessStatus = billingReadinessStatusForLedgerRow(ev, billingReadinessByOrderItemId);
                     const rowBg = isUnmapped
                       ? "#fef2f2"
                       : informationalNonBillable
