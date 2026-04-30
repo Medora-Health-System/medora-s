@@ -5057,6 +5057,15 @@ export default {
       "I confirm I reviewed documented allergies or intolerances before recording this administration.",
     errAllergyAckRequired:
       "Confirm documented allergies before recording this administration.",
+    allergyTopBannerLead:
+      "Allergies or intolerances are documented on the chart — review them before any administration.",
+    safetyPreviewTitle: "Safety preview",
+    safetyPreviewLastAdmin: "Last administration: {when}",
+    safetyPreviewToday: "Today (administered): {count}",
+    safetyPreviewTodayQty: "Documented quantities today: {qty}",
+    safetyPreviewOrdered: "Ordered quantity: {qty}",
+    safetyPreviewCumulative: "Total administered (cumulative documented qty): {qty}",
+    safetyPreviewCumulativeEvents: "“Administered” events (cumulative): {count}",
   },
   ordersets: {
     apply: {
@@ -5085,6 +5094,14 @@ export default {
   },
   medicationSafety: {
     highRiskWarning: "High-risk medication — verify dose, route, and directions.",
+  },
+  clinicalSafetyGuardrails: {
+    latestVitalsTitle: "Latest vitals",
+    latestVitalsRecorded: "Recorded: {datetime}",
+    latestVitalsEmpty: "No structured vitals in history.",
+    vitalsAbnormalHint: "Review values",
+    duplicateActiveCatalogWarning:
+      "This catalog order is already active for this patient (this encounter). Review open orders before adding a duplicate line.",
   },
   createOrderModal: {
     tabOrderSets: "Order Sets",

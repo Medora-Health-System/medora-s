@@ -21,6 +21,8 @@ import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderMo
 import { newOrderLineId } from "./createOrderModal/types";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
+import { buildActiveCatalogDedupKeySetFromOrders } from "@/lib/encounterClinicalSafetyUi";
+import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
 
 type OrderSetKey = "chestPain" | "abdominalPain" | "sepsis" | "trauma" | "respiratoryDistress";
 type OrderSetItemType = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
@@ -602,9 +604,25 @@ export function CreateOrderModal({
   const [erQuantityConfirmations, setErQuantityConfirmations] = useState<Record<string, boolean>>({});
   const [medicationAllergyDocSummary, setMedicationAllergyDocSummary] = useState<string | null>(null);
   const [medicationAllergySafetyAck, setMedicationAllergySafetyAck] = useState(false);
+  const [activeCatalogKeys, setActiveCatalogKeys] = useState<Set<string>>(() => new Set());
   const prescriberPrefilled = useRef(false);
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
+  useEffect(() => {
+    let cancelled = false;
+    void apiFetch(`/encounters/${encounterId}/orders`, { facilityId })
+      .then((o) => {
+        if (cancelled) return;
+        setActiveCatalogKeys(buildActiveCatalogDedupKeySetFromOrders(Array.isArray(o) ? o : []));
+      })
+      .catch(() => {
+        if (!cancelled) setActiveCatalogKeys(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, facilityId]);
+
   useEffect(() => {
     if (!canPrescribe || prescriberPrefilled.current) return;
     fetch("/api/auth/me")
@@ -655,6 +673,18 @@ export function CreateOrderModal({
   })).filter((section) => section.items.length > 0);
   const stagedLineLabel = (item: CreateOrderLineItem): string =>
     item._label?.trim() || item.manualLabel?.trim() || t("common.dash");
+
+  const stagedCatalogDuplicateActive = useMemo(() => {
+    if (activeTab !== "LAB" && activeTab !== "IMAGING" && activeTab !== "MEDICATION") return false;
+    for (const item of formData.items) {
+      const cid = typeof item.catalogItemId === "string" ? item.catalogItemId.trim() : "";
+      const ct = item.catalogItemType;
+      if (!cid || !ct) continue;
+      if (ct !== "LAB_TEST" && ct !== "IMAGING_STUDY" && ct !== "MEDICATION") continue;
+      if (activeCatalogKeys.has(`${ct}:${cid}`)) return true;
+    }
+    return false;
+  }, [activeTab, formData.items, activeCatalogKeys]);
 
   const changeTab = (tab: CreateOrderModalTab) => {
     const nextStagedItems = isOrderTypeKey(activeTab)
@@ -1525,10 +1555,71 @@ export function CreateOrderModal({
             ) : null}
 
             <form onSubmit={handleSubmit}>
+              {error ? (
+                <div
+                  role="alert"
+                  style={{
+                    padding: "10px 12px",
+                    backgroundColor: "#ffebee",
+                    color: "#b71c1c",
+                    borderRadius: 4,
+                    marginBottom: 12,
+                    fontSize: 14,
+                  }}
+                >
+                  {error}
+                </div>
+              ) : null}
+
               <OrderPriorityField
                 value={formData.priority}
                 onChange={(priority) => setFormData((fd) => ({ ...fd, priority }))}
               />
+
+              {(activeTab === "LAB" || activeTab === "IMAGING" || activeTab === "MEDICATION") ? (
+                <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
+              ) : null}
+
+              {activeTab === "MEDICATION" && medicationAllergyDocSummary ? (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #fecaca",
+                        backgroundColor: "#fef2f2",
+                        fontSize: 13,
+                        color: "#991b1b",
+                        lineHeight: 1.45,
+                      }}
+                      role="status"
+                    >
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                        {t("createOrderModal.medicationAllergySafetyTitle")}
+                      </div>
+                      <div style={{ marginBottom: 10, overflowWrap: "anywhere" }}>
+                        {medicationAllergyDocSummary.length > 220
+                          ? `${medicationAllergyDocSummary.slice(0, 220)}…`
+                          : medicationAllergyDocSummary}
+                      </div>
+                      <label
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "flex-start",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={medicationAllergySafetyAck}
+                          onChange={(e) => setMedicationAllergySafetyAck(e.target.checked)}
+                        />
+                        <span>{t("createOrderModal.medicationAllergySafetyAckLabel")}</span>
+                      </label>
+                    </div>
+                  ) : null}
 
               {isRnAuthorityTab ? (
                 <div
@@ -1749,6 +1840,24 @@ export function CreateOrderModal({
                 )}
               </div>
 
+              {stagedCatalogDuplicateActive ? (
+                <div
+                  role="alert"
+                  style={{
+                    marginBottom: 10,
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #fbbf24",
+                    backgroundColor: "#fffbeb",
+                    fontSize: 13,
+                    color: "#92400e",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {t("clinicalSafetyGuardrails.duplicateActiveCatalogWarning")}
+                </div>
+              ) : null}
+
               {activeTab !== "ORDER_SET" && (
                 <div
                   style={{
@@ -1778,45 +1887,6 @@ export function CreateOrderModal({
                       }
                     />
                   )}
-                  {activeTab === "MEDICATION" && medicationAllergyDocSummary ? (
-                    <div
-                      style={{
-                        marginTop: 12,
-                        padding: "10px 12px",
-                        borderRadius: 8,
-                        border: "1px solid #fecaca",
-                        backgroundColor: "#fef2f2",
-                        fontSize: 13,
-                        color: "#991b1b",
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                        {t("createOrderModal.medicationAllergySafetyTitle")}
-                      </div>
-                      <div style={{ marginBottom: 10, overflowWrap: "anywhere" }}>
-                        {medicationAllergyDocSummary.length > 220
-                          ? `${medicationAllergyDocSummary.slice(0, 220)}…`
-                          : medicationAllergyDocSummary}
-                      </div>
-                      <label
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "flex-start",
-                          cursor: "pointer",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={medicationAllergySafetyAck}
-                          onChange={(e) => setMedicationAllergySafetyAck(e.target.checked)}
-                        />
-                        <span>{t("createOrderModal.medicationAllergySafetyAckLabel")}</span>
-                      </label>
-                    </div>
-                  ) : null}
                   {activeTab === "CARE" && (
                     <SelectedLabItems
                       listHeading={t("createOrderModal.selectedCareHeading")}
@@ -1890,21 +1960,6 @@ export function CreateOrderModal({
                       />
                     </div>
                   </div>
-                </div>
-              )}
-
-              {error && (
-                <div
-                  style={{
-                    padding: "10px 12px",
-                    backgroundColor: "#ffebee",
-                    color: "#b71c1c",
-                    borderRadius: 4,
-                    marginBottom: 12,
-                    fontSize: 14,
-                  }}
-                >
-                  {error}
                 </div>
               )}
 

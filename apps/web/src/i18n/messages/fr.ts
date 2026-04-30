@@ -5045,6 +5045,15 @@ export default {
       "Je confirme avoir revu les allergies ou intolérances documentées avant d’enregistrer l’administration.",
     errAllergyAckRequired:
       "Cochez la confirmation concernant les allergies documentées avant d’enregistrer l’administration.",
+    allergyTopBannerLead:
+      "Des allergies ou intolérances sont documentées dans le dossier — vérifiez-les avant toute administration.",
+    safetyPreviewTitle: "Aperçu sécurité",
+    safetyPreviewLastAdmin: "Dernière administration : {when}",
+    safetyPreviewToday: "Aujourd’hui (administré) : {count}",
+    safetyPreviewTodayQty: "Quantités documentées aujourd’hui : {qty}",
+    safetyPreviewOrdered: "Quantité ordonnée : {qty}",
+    safetyPreviewCumulative: "Total administré (cumul, quantités documentées) : {qty}",
+    safetyPreviewCumulativeEvents: "Événements « administré » (cumul) : {count}",
   },
   ordersets: {
     apply: {
@@ -5073,6 +5082,14 @@ export default {
   },
   medicationSafety: {
     highRiskWarning: "Médicament à haut risque — vérifiez la dose, la voie et la posologie.",
+  },
+  clinicalSafetyGuardrails: {
+    latestVitalsTitle: "Derniers signes vitaux",
+    latestVitalsRecorded: "Relevé : {datetime}",
+    latestVitalsEmpty: "Aucun relevé structuré dans l’historique.",
+    vitalsAbnormalHint: "Valeurs à surveiller",
+    duplicateActiveCatalogWarning:
+      "Cet ordre est déjà actif pour ce patient (cette consultation). Vérifiez les commandes en cours avant d’ajouter une ligne identique.",
   },
   createOrderModal: {
     tabOrderSets: "Protocoles",

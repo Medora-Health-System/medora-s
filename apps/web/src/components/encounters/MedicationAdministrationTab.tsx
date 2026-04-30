@@ -13,6 +13,8 @@ import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import { resolveMedicationMarActionFromStorage, getEncounterAllergyDocumentationSummary } from "@medora/shared";
+import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 type AdminRow = {
   id: string;
@@ -24,10 +26,12 @@ type AdminRow = {
   marAction?: string | null;
   administeredBy: { id: string; firstName: string; lastName: string };
   pendingSync?: boolean;
+  administeredQuantity?: number | null;
 };
 
 type OrderItemApi = {
   id?: string;
+  quantity?: number | null;
   catalogItemType?: string | null;
   medicationFulfillmentIntent?: string | null;
   status?: string | null;
@@ -45,6 +49,16 @@ const RECENT_MS = 24 * 60 * 60 * 1000;
 
 /** Fenêtre avant l’heure prévue : affichage « bientôt dû » (jaune), sans logique de planification. */
 const INTENDED_DUE_SOON_BEFORE_MS = 60 * 60 * 1000;
+
+function isSameLocalCalendarDay(iso: string, ref: Date): boolean {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  return (
+    d.getFullYear() === ref.getFullYear() &&
+    d.getMonth() === ref.getMonth() &&
+    d.getDate() === ref.getDate()
+  );
+}
 
 type IntendedUrgency = "overdue" | "dueSoon";
 
@@ -115,6 +129,11 @@ async function getPendingMedicationAdminsFromQueue(
       typeof payload.administeredAt === "string" ? payload.administeredAt : item.createdAt;
     const notes = typeof payload.notes === "string" ? payload.notes : null;
     const marAction = typeof payload.marAction === "string" ? payload.marAction : null;
+    const administeredQuantityRaw = payload.administeredQuantity;
+    const administeredQuantity =
+      typeof administeredQuantityRaw === "number" && Number.isFinite(administeredQuantityRaw)
+        ? administeredQuantityRaw
+        : null;
     out.push({
       id: `local:${item.id}`,
       orderItemId,
@@ -124,6 +143,7 @@ async function getPendingMedicationAdminsFromQueue(
       marAction,
       administeredBy: { id: "pending-sync", firstName: pendingSyncFirstName, lastName: pendingSyncLastName },
       pendingSync: true,
+      administeredQuantity,
     });
   }
   return out;
@@ -157,6 +177,7 @@ export function MedicationAdministrationTab({
     routeHint: string;
     ndcHint: string;
     billingUnitHint: string;
+    orderedQuantity: number | null;
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
@@ -168,6 +189,7 @@ export function MedicationAdministrationTab({
   const [modalNdc, setModalNdc] = useState("");
   const [marAllergyDocSummary, setMarAllergyDocSummary] = useState<string | null>(null);
   const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
+  const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -243,6 +265,7 @@ export function MedicationAdministrationTab({
       routeHint: string;
       ndcHint: string;
       billingUnitHint: string;
+      orderedQuantity: number | null;
       intendedAt?: string | null;
       authorityLine: string;
       attributionLines: string[];
@@ -260,6 +283,16 @@ export function MedicationAdministrationTab({
           language as SupportedLanguage,
           t
         );
+        const rawQ = it.quantity;
+        const orderedQuantity =
+          typeof rawQ === "number" && Number.isFinite(rawQ)
+            ? rawQ
+            : rawQ != null && String(rawQ).trim() !== ""
+              ? (() => {
+                  const n = Number(rawQ);
+                  return Number.isFinite(n) ? n : null;
+                })()
+              : null;
         rows.push({
           orderItemId: it.id,
           label,
@@ -269,6 +302,7 @@ export function MedicationAdministrationTab({
           routeHint: it.route?.trim() || it.catalogMedication?.route?.trim() || "",
           ndcHint: it.catalogMedication?.ndcDisplay?.trim() || it.catalogMedication?.ndc11?.trim() || "",
           billingUnitHint: it.catalogMedication?.billingUnitType?.trim() || "",
+          orderedQuantity,
           intendedAt: it.intendedAdministrationAt ?? null,
         });
       }
@@ -286,7 +320,9 @@ export function MedicationAdministrationTab({
       routeHint: row.routeHint,
       ndcHint: row.ndcHint,
       billingUnitHint: row.billingUnitHint,
+      orderedQuantity: row.orderedQuantity,
     });
+    setModalSubmitError(null);
     setModalAction("administered");
     setModalRoute(row.routeHint);
     setModalNotes("");
@@ -301,6 +337,7 @@ export function MedicationAdministrationTab({
   const closeModal = () => {
     if (submitting) return;
     setModalItem(null);
+    setModalSubmitError(null);
   };
 
   const submitModal = async () => {
@@ -316,10 +353,11 @@ export function MedicationAdministrationTab({
       marAllergyDocSummary &&
       !marAllergySafetyAck
     ) {
-      setError(t("marTab.errAllergyAckRequired"));
+      setModalSubmitError(t("marTab.errAllergyAckRequired"));
       return;
     }
     setSubmitting(true);
+    setModalSubmitError(null);
     setError(null);
     try {
       const routeLine = modalRoute.trim() || modalItem.routeHint;
@@ -355,7 +393,8 @@ export function MedicationAdministrationTab({
       setModalItem(null);
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("marTab.saveFailed"));
+      const raw = err instanceof Error ? err.message : "";
+      setModalSubmitError(normalizeUserFacingError(raw.trim() || null, language) || t("marTab.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -390,6 +429,31 @@ export function MedicationAdministrationTab({
           {t("marTab.offlineNotice")}
         </div>
       ) : null}
+
+      {marAllergyDocSummary ? (
+        <div
+          role="status"
+          style={{
+            marginBottom: 12,
+            marginTop: error || marQueuedOfflineNotice ? 8 : 0,
+            padding: "12px 14px",
+            borderRadius: 8,
+            border: "1px solid #fecaca",
+            backgroundColor: "#fef2f2",
+            fontSize: 13,
+            color: "#7f1d1d",
+            lineHeight: 1.45,
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t("marTab.allergyDocTitle")}</div>
+          <div style={{ marginBottom: 8, fontWeight: 600 }}>{t("marTab.allergyTopBannerLead")}</div>
+          <div style={{ overflowWrap: "anywhere" }}>
+            {marAllergyDocSummary.length > 320 ? `${marAllergyDocSummary.slice(0, 320)}…` : marAllergyDocSummary}
+          </div>
+        </div>
+      ) : null}
+
+      <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
 
       <h3 style={{ margin: "0 0 8px 0", fontSize: 16 }}>{t("marTab.title")}</h3>
       {!isOpen ? <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{t("marTab.closedHint")}</p> : null}
@@ -673,6 +737,92 @@ export function MedicationAdministrationTab({
               <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#b45309", fontWeight: 600 }}>
                 {modalItem.highRiskWarning}
               </p>
+            ) : null}
+
+            {(() => {
+              const list = adminsByOrderItemId.get(modalItem.orderItemId) ?? [];
+              const latest = list[0];
+              const lastWhen = latest
+                ? new Date(latest.administeredAt).toLocaleString(dateLocale)
+                : t("common.dash");
+              const now = new Date();
+              let todayCount = 0;
+              let todayQty = 0;
+              let todayHasQty = false;
+              let cumQty = 0;
+              let cumHasQty = false;
+              let cumEvents = 0;
+              for (const r of list) {
+                const act = resolveMedicationMarActionFromStorage({
+                  marAction: r.marAction ?? null,
+                  notes: r.notes,
+                });
+                if (act !== "administered") continue;
+                cumEvents += 1;
+                const q = r.administeredQuantity;
+                if (typeof q === "number" && Number.isFinite(q)) {
+                  cumQty += q;
+                  cumHasQty = true;
+                }
+                if (isSameLocalCalendarDay(r.administeredAt, now)) {
+                  todayCount += 1;
+                  if (typeof q === "number" && Number.isFinite(q)) {
+                    todayQty += q;
+                    todayHasQty = true;
+                  }
+                }
+              }
+              const orderedLabel =
+                modalItem.orderedQuantity != null ? String(modalItem.orderedQuantity) : t("common.dash");
+              const cumulativeLabel = cumHasQty
+                ? t("marTab.safetyPreviewCumulative").replace("{qty}", String(cumQty))
+                : t("marTab.safetyPreviewCumulativeEvents").replace("{count}", String(cumEvents));
+              return (
+                <div
+                  style={{
+                    marginBottom: 14,
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "#f8fafc",
+                    fontSize: 12,
+                    color: "#334155",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <div style={{ fontWeight: 800, marginBottom: 6, color: "#0f172a" }}>
+                    {t("marTab.safetyPreviewTitle")}
+                  </div>
+                  <div>{t("marTab.safetyPreviewLastAdmin").replace("{when}", lastWhen)}</div>
+                  <div>{t("marTab.safetyPreviewToday").replace("{count}", String(todayCount))}</div>
+                  {todayHasQty ? (
+                    <div>{t("marTab.safetyPreviewTodayQty").replace("{qty}", String(todayQty))}</div>
+                  ) : null}
+                  <div style={{ marginTop: 6, fontWeight: 600 }}>
+                    {t("marTab.safetyPreviewOrdered").replace("{qty}", orderedLabel)}
+                    <span style={{ color: "#94a3b8" }}> · </span>
+                    {cumulativeLabel}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {modalSubmitError ? (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #ef9a9a",
+                  backgroundColor: "#ffebee",
+                  fontSize: 13,
+                  color: "#b71c1c",
+                  fontWeight: 600,
+                }}
+              >
+                {modalSubmitError}
+              </div>
             ) : null}
 
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
