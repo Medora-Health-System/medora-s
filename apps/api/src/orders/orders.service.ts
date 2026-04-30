@@ -39,6 +39,7 @@ import {
   type OrderWithEnrichedItems,
   type OrderWithItems,
 } from "./orders.types";
+import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 
@@ -594,7 +595,7 @@ export class OrdersService {
   async create(encounterId: string, facilityId: string, data: OrderCreateDto, userId?: string, ip?: string, userAgent?: string) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
-      include: { patient: true },
+      include: { patient: true, triage: { select: { vitalsJson: true } } },
     });
 
     if (!encounter) {
@@ -606,6 +607,15 @@ export class OrdersService {
     }
 
     assertEncounterNotSigned(encounter);
+
+    await assertOrderCreateClinicalSafety(this.prisma, {
+      encounterId,
+      facilityId,
+      data,
+      encounterVitals: encounter.vitals,
+      encounterNursingAssessment: encounter.nursingAssessment,
+      triageVitalsJson: encounter.triage?.vitalsJson ?? null,
+    });
 
     if (data.type === "LAB") {
       data.items.forEach((item, i) => {
@@ -625,6 +635,9 @@ export class OrdersService {
       source: orderSource,
       readbackConfirmed: data.readbackConfirmed,
       protocolName: data.protocolName?.trim() || undefined,
+      ...(data.type === "MEDICATION" && data.safetyAcknowledgedMedicationAllergies === true
+        ? { safetyAcknowledgedMedicationAllergies: true as const }
+        : {}),
     });
 
     const orderCreateDataRaw = {

@@ -15,6 +15,7 @@ import {
   acceptableManualOrderLine,
   buildMedicationAdministrationCandidate,
   deriveMarClinicalActionFromNotes,
+  getEncounterAllergyDocumentationSummary,
   isInvalidTechnicalOrderDisplayLabel,
   normalizeNdc,
   resolveMedicationMarActionFromStorage,
@@ -32,6 +33,19 @@ const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
   OrderStatus.ACKNOWLEDGED,
   OrderStatus.IN_PROGRESS,
 ];
+
+/** Blocks accidental double-submit of the same MAR within this window (same user + line). */
+const MAR_REPEAT_ADMINISTER_WINDOW_MS = 120_000;
+
+function utcDayBoundsForMar(at: Date): { start: Date; end: Date } {
+  const y = at.getUTCFullYear();
+  const m = at.getUTCMonth();
+  const day = at.getUTCDate();
+  return {
+    start: new Date(Date.UTC(y, m, day, 0, 0, 0, 0)),
+    end: new Date(Date.UTC(y, m, day + 1, 0, 0, 0, 0)),
+  };
+}
 
 @Injectable()
 export class MedicationAdministrationService {
@@ -219,6 +233,7 @@ export class MedicationAdministrationService {
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
+      include: { triage: { select: { vitalsJson: true } } },
     });
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
@@ -304,6 +319,79 @@ export class MedicationAdministrationService {
     const marActionResolved: MarClinicalAction =
       data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
 
+    const administeredAtEffective = data.administeredAt ?? new Date();
+    const allergySummaryForGate = getEncounterAllergyDocumentationSummary({
+      vitals: encounter.vitals,
+      nursingAssessment: encounter.nursingAssessment,
+      triageVitalsJson: encounter.triage?.vitalsJson ?? null,
+    });
+    if (
+      marActionResolved === "administered" &&
+      allergySummaryForGate &&
+      data.safetyAcknowledgedMedicationAllergies !== true
+    ) {
+      throw new BadRequestException(
+        "Des allergies ou intolérances sont documentées pour cette visite. Confirmez avant d’enregistrer l’administration."
+      );
+    }
+
+    if (orderItemId && marActionResolved === "administered") {
+      const winStart = new Date(Date.now() - MAR_REPEAT_ADMINISTER_WINDOW_MS);
+      const dup = await this.prisma.medicationAdministration.findFirst({
+        where: {
+          facilityId,
+          encounterId,
+          orderItemId,
+          administeredByUserId,
+          marAction: MedicationMarAction.administered,
+          administeredAt: { gte: winStart },
+        },
+        select: { id: true },
+      });
+      if (dup) {
+        throw new BadRequestException(
+          "Une administration vient d’être enregistrée pour cette ligne. Vérifiez qu’il ne s’agit pas d’un doublon."
+        );
+      }
+    }
+
+    if (
+      orderItemId &&
+      marActionResolved === "administered" &&
+      linkedMedicationLine &&
+      linkedMedicationLine.quantity != null &&
+      linkedMedicationLine.quantity >= 1
+    ) {
+      const prescribed = Number(linkedMedicationLine.quantity);
+      const increment =
+        administeredQuantity != null
+          ? Number(administeredQuantity)
+          : doseValue != null
+            ? Number(doseValue)
+            : NaN;
+      if (Number.isFinite(increment) && increment > 0) {
+        const at = administeredAtEffective instanceof Date ? administeredAtEffective : new Date(administeredAtEffective);
+        const { start, end } = utcDayBoundsForMar(at);
+        const agg = await this.prisma.medicationAdministration.aggregate({
+          where: {
+            orderItemId,
+            facilityId,
+            encounterId,
+            marAction: MedicationMarAction.administered,
+            administeredAt: { gte: start, lt: end },
+          },
+          _sum: { administeredQuantity: true },
+        });
+        const prev = Number(agg._sum.administeredQuantity ?? 0);
+        const allowed = Math.max(prescribed, Math.ceil(prescribed * 1.5));
+        if (prev + increment > allowed + 1e-9) {
+          throw new BadRequestException(
+            `Quantité cumulée élevée par rapport à l’ordonnance (${linkedMedicationLine.quantity} prescrite). Vérifiez la dose ou complétez la quantité administrée.`
+          );
+        }
+      }
+    }
+
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.medicationAdministration.create({
         data: {
@@ -338,6 +426,9 @@ export class MedicationAdministrationService {
         ...(orderIdForAudit ? { orderId: orderIdForAudit } : {}),
         critical: true,
         tx,
+        ...(data.safetyAcknowledgedMedicationAllergies === true
+          ? { metadata: { safetyAcknowledgedMedicationAllergies: true } }
+          : {}),
       });
 
       const line = linkedMedicationLine;

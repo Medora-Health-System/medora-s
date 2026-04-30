@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
 import type { OrderCreateDto, OrderSource } from "@medora/shared";
+import { getEncounterAllergyDocumentationSummary } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog } from "@/lib/catalogSearchApi";
@@ -377,7 +378,8 @@ function buildPayload(
   prescriberLicense: string,
   prescriberContact: string,
   items: CreateOrderLineItem[],
-  authority?: OrderAuthorityPayloadFields
+  authority?: OrderAuthorityPayloadFields,
+  safetyAcknowledgedMedicationAllergies?: boolean
 ): OrderCreateDto {
   const rootNotes = notes.trim() || undefined;
   const authorityFields = {
@@ -457,6 +459,9 @@ function buildPayload(
     prescriberLicense: prescriberLicense.trim() || undefined,
     prescriberContact: prescriberContact.trim() || undefined,
     ...authorityFields,
+    ...(safetyAcknowledgedMedicationAllergies === true
+      ? { safetyAcknowledgedMedicationAllergies: true }
+      : {}),
     items: items.map((it) => {
       const raw = it.intendedAdministrationAt?.trim();
       const intendedDate = raw ? new Date(raw) : undefined;
@@ -507,7 +512,12 @@ export function CreateOrderModal({
   facilityId: string;
   canPrescribe: boolean;
   canUseRnOrderAuthority?: boolean;
-  encounter?: { patient?: { firstName?: string; lastName?: string; mrn?: string } };
+  encounter?: {
+    patient?: { firstName?: string; lastName?: string; mrn?: string };
+    vitals?: unknown;
+    nursingAssessment?: unknown;
+    triage?: { vitalsJson?: unknown } | null;
+  };
   initialOrderTab?: OrderModalTab;
   initialCareManualLabel?: string | null;
   medicationOrderMode?: MedicationOrderMode;
@@ -590,6 +600,8 @@ export function CreateOrderModal({
   const [providerDirectoryFailed, setProviderDirectoryFailed] = useState(false);
   const [ivRouteConfirmations, setIvRouteConfirmations] = useState<Record<string, boolean>>({});
   const [erQuantityConfirmations, setErQuantityConfirmations] = useState<Record<string, boolean>>({});
+  const [medicationAllergyDocSummary, setMedicationAllergyDocSummary] = useState<string | null>(null);
+  const [medicationAllergySafetyAck, setMedicationAllergySafetyAck] = useState(false);
   const prescriberPrefilled = useRef(false);
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
@@ -702,6 +714,52 @@ export function CreateOrderModal({
       cancelled = true;
     };
   }, [facilityId, formData.orderSource, isRnAuthorityTab, providerDirectoryLoaded]);
+
+  useEffect(() => {
+    if (!isOrderTypeKey(activeTab) || activeTab !== "MEDICATION") {
+      setMedicationAllergyDocSummary(null);
+      setMedicationAllergySafetyAck(false);
+      return;
+    }
+    const fromProps = getEncounterAllergyDocumentationSummary({
+      vitals: encounter?.vitals,
+      nursingAssessment: encounter?.nursingAssessment,
+      triageVitalsJson: encounter?.triage?.vitalsJson ?? null,
+    });
+    if (fromProps) {
+      setMedicationAllergyDocSummary(fromProps);
+      return;
+    }
+    let cancelled = false;
+    void apiFetch(`/encounters/${encounterId}`, { facilityId })
+      .then((raw) => {
+        if (cancelled) return;
+        const latest = asApiObject(raw) as {
+          vitals?: unknown;
+          nursingAssessment?: unknown;
+          triage?: { vitalsJson?: unknown } | null;
+        } | null;
+        const s = getEncounterAllergyDocumentationSummary({
+          vitals: latest?.vitals,
+          nursingAssessment: latest?.nursingAssessment,
+          triageVitalsJson: latest?.triage?.vitalsJson ?? null,
+        });
+        setMedicationAllergyDocSummary(s);
+      })
+      .catch(() => {
+        if (!cancelled) setMedicationAllergyDocSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeTab,
+    encounterId,
+    facilityId,
+    encounter?.vitals,
+    encounter?.nursingAssessment,
+    encounter?.triage,
+  ]);
 
   const authorityPayloadFields = (): OrderAuthorityPayloadFields | undefined => {
     if (canPrescribe && (formData.type === "MEDICATION" || formData.type === "CARE")) {
@@ -1060,37 +1118,60 @@ export function CreateOrderModal({
     setLoading(true);
     setError(null);
 
-    const payload = buildPayload(
-      formData.type,
-      formData.priority,
-      formData.notes,
-      formData.prescriberName,
-      formData.prescriberLicense,
-      formData.prescriberContact,
-      erAdministerOnlyMedication && formData.type === "MEDICATION"
-        ? formData.items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
-        : formData.items,
-      authorityPayloadFields()
-    );
-
     try {
-      /**
-       * Cause du décalage UI / API : l’en-tête peut afficher « Ouverte » depuis un cache offline
-       * (`encounter_summaries`) ou un état React non rafraîchi alors que le serveur a déjà clôturé.
-       * Re-vérification synchrone avec la source de vérité avant POST (même règle que l’API).
-       */
+      type EncounterLatestForOrderSafety = {
+        status?: string;
+        vitals?: unknown;
+        nursingAssessment?: unknown;
+        triage?: { vitalsJson?: unknown } | null;
+      };
+      let latestForSafety: EncounterLatestForOrderSafety | null = null;
       try {
         const latestRaw = await apiFetch(`/encounters/${encounterId}`, { facilityId });
-        const latest = asApiObject(latestRaw) as { status?: string } | null;
-        // Ne bloquer que si la source de vérité indique explicitement un statut autre qu’OPEN.
-        if (latest && typeof latest.status === "string" && latest.status !== "OPEN") {
+        latestForSafety = asApiObject(latestRaw) as EncounterLatestForOrderSafety;
+        if (
+          latestForSafety &&
+          typeof latestForSafety.status === "string" &&
+          latestForSafety.status !== "OPEN"
+        ) {
           await onRefetchEncounter?.();
           setError(t("createOrderModal.errEncounterClosed"));
           return;
         }
       } catch {
-        /* re-vérification indisponible : l’API tranchera au POST */
+        latestForSafety = null;
       }
+
+      const summaryAtSubmit =
+        latestForSafety != null
+          ? getEncounterAllergyDocumentationSummary({
+              vitals: latestForSafety.vitals,
+              nursingAssessment: latestForSafety.nursingAssessment,
+              triageVitalsJson: latestForSafety.triage?.vitalsJson ?? null,
+            })
+          : medicationAllergyDocSummary;
+
+      if (formData.type === "MEDICATION" && summaryAtSubmit && !medicationAllergySafetyAck) {
+        setError(t("createOrderModal.errMedicationAllergyAckRequired"));
+        return;
+      }
+
+      const allergyAckForApi =
+        formData.type === "MEDICATION" && Boolean(summaryAtSubmit) && medicationAllergySafetyAck;
+
+      const payload = buildPayload(
+        formData.type,
+        formData.priority,
+        formData.notes,
+        formData.prescriberName,
+        formData.prescriberLicense,
+        formData.prescriberContact,
+        erAdministerOnlyMedication && formData.type === "MEDICATION"
+          ? formData.items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
+          : formData.items,
+        authorityPayloadFields(),
+        allergyAckForApi ? true : undefined
+      );
 
       const res = (await apiFetch(`/encounters/${encounterId}/orders`, {
         method: "POST",
@@ -1697,6 +1778,45 @@ export function CreateOrderModal({
                       }
                     />
                   )}
+                  {activeTab === "MEDICATION" && medicationAllergyDocSummary ? (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #fecaca",
+                        backgroundColor: "#fef2f2",
+                        fontSize: 13,
+                        color: "#991b1b",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                        {t("createOrderModal.medicationAllergySafetyTitle")}
+                      </div>
+                      <div style={{ marginBottom: 10, overflowWrap: "anywhere" }}>
+                        {medicationAllergyDocSummary.length > 220
+                          ? `${medicationAllergyDocSummary.slice(0, 220)}…`
+                          : medicationAllergyDocSummary}
+                      </div>
+                      <label
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "flex-start",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={medicationAllergySafetyAck}
+                          onChange={(e) => setMedicationAllergySafetyAck(e.target.checked)}
+                        />
+                        <span>{t("createOrderModal.medicationAllergySafetyAckLabel")}</span>
+                      </label>
+                    </div>
+                  ) : null}
                   {activeTab === "CARE" && (
                     <SelectedLabItems
                       listHeading={t("createOrderModal.selectedCareHeading")}

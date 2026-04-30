@@ -5010,6 +5010,11 @@ export default {
     saveFailed: "Enregistrement impossible.",
     pendingSyncFirstName: "En attente",
     pendingSyncLastName: "de synchronisation",
+    allergyDocTitle: "Allergies documentées",
+    allergyAckLabel:
+      "Je confirme avoir revu les allergies ou intolérances documentées avant d’enregistrer l’administration.",
+    errAllergyAckRequired:
+      "Cochez la confirmation concernant les allergies documentées avant d’enregistrer l’administration.",
   },
   ordersets: {
     apply: {
@@ -5211,5 +5216,10 @@ export default {
     errIvConfirmationRequired: "La confirmation d'administration IV est requise",
     confirmErQuantityOverride: "Je confirme que l'administration de plus d'une unité est appropriée",
     errErQuantityConfirmationRequired: "La confirmation de dépassement de quantité est requise",
+    medicationAllergySafetyTitle: "Allergies documentées pour cette visite",
+    medicationAllergySafetyAckLabel:
+      "Je confirme avoir revu les allergies ou intolérances documentées avant de prescrire.",
+    errMedicationAllergyAckRequired:
+      "Cochez la confirmation concernant les allergies documentées avant d’envoyer l’ordonnance.",
   },
 };

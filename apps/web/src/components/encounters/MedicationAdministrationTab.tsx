@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/apiClient";
+import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { listQueueItems } from "@/lib/offline/offlineQueue";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
@@ -12,7 +12,7 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
-import { resolveMedicationMarActionFromStorage } from "@medora/shared";
+import { resolveMedicationMarActionFromStorage, getEncounterAllergyDocumentationSummary } from "@medora/shared";
 
 type AdminRow = {
   id: string;
@@ -166,6 +166,8 @@ export function MedicationAdministrationTab({
   const [modalAdminQty, setModalAdminQty] = useState("");
   const [modalBillingQty, setModalBillingQty] = useState("");
   const [modalNdc, setModalNdc] = useState("");
+  const [marAllergyDocSummary, setMarAllergyDocSummary] = useState<string | null>(null);
+  const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -182,13 +184,26 @@ export function MedicationAdministrationTab({
     ]);
 
     try {
-      const [o, a] = await Promise.all([
+      const [o, a, encRaw] = await Promise.all([
         apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
+        apiFetch(`/encounters/${encounterId}`, { facilityId }),
       ]);
 
       const serverOrders = Array.isArray(o) ? o : [];
       const serverAdmins = Array.isArray(a) ? (a as AdminRow[]) : [];
+      const encObj = asApiObject(encRaw) as {
+        vitals?: unknown;
+        nursingAssessment?: unknown;
+        triage?: { vitalsJson?: unknown } | null;
+      } | null;
+      setMarAllergyDocSummary(
+        getEncounterAllergyDocumentationSummary({
+          vitals: encObj?.vitals,
+          nursingAssessment: encObj?.nursingAssessment,
+          triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
+        })
+      );
 
       setOrders(mergeOrders(serverOrders, pendingOrders));
       setAdmins([...serverAdmins, ...pendingAdmins]);
@@ -196,6 +211,7 @@ export function MedicationAdministrationTab({
       setError(e instanceof Error ? e.message : t("marTab.loadFailed"));
       setOrders(mergeOrders([], pendingOrders));
       setAdmins(pendingAdmins);
+      setMarAllergyDocSummary(null);
     } finally {
       setLoading(false);
     }
@@ -279,6 +295,7 @@ export function MedicationAdministrationTab({
     setModalAdminQty("");
     setModalBillingQty("");
     setModalNdc(row.ndcHint);
+    setMarAllergySafetyAck(false);
   };
 
   const closeModal = () => {
@@ -292,6 +309,14 @@ export function MedicationAdministrationTab({
       typeof modalItem.orderItemId === "string" ? modalItem.orderItemId.trim() : "";
     if (!isOrderItemIdUuid(orderItemId)) {
       console.warn("MAR blocked: invalid orderItemId", modalItem.orderItemId);
+      return;
+    }
+    if (
+      modalAction === "administered" &&
+      marAllergyDocSummary &&
+      !marAllergySafetyAck
+    ) {
+      setError(t("marTab.errAllergyAckRequired"));
       return;
     }
     setSubmitting(true);
@@ -310,6 +335,9 @@ export function MedicationAdministrationTab({
         ...(modalNdc.trim() ? { ndc: modalNdc.trim() } : {}),
         ...(modalDoseUnit.trim() ? { quantityUnit: modalDoseUnit.trim() } : {}),
         notes: buildMarNotes(modalAction, routeLine, modalNotes, t),
+        ...(modalAction === "administered" && marAllergyDocSummary && marAllergySafetyAck
+          ? { safetyAcknowledgedMedicationAllergies: true }
+          : {}),
       };
       const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
         method: "POST",
@@ -760,13 +788,47 @@ export function MedicationAdministrationTab({
                     type="radio"
                     name="mar-action"
                     checked={modalAction === a}
-                    onChange={() => setModalAction(a)}
+                    onChange={() => {
+                      setModalAction(a);
+                      if (a !== "administered") setMarAllergySafetyAck(false);
+                    }}
                     disabled={submitting}
                   />
                   {actionLabel(a, t)}
                 </label>
               ))}
             </div>
+
+            {modalAction === "administered" && marAllergyDocSummary ? (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #fecaca",
+                  backgroundColor: "#fef2f2",
+                  fontSize: 13,
+                  color: "#991b1b",
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("marTab.allergyDocTitle")}</div>
+                <div style={{ marginBottom: 10, overflowWrap: "anywhere" }}>
+                  {marAllergyDocSummary.length > 220
+                    ? `${marAllergyDocSummary.slice(0, 220)}…`
+                    : marAllergyDocSummary}
+                </div>
+                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={marAllergySafetyAck}
+                    disabled={submitting}
+                    onChange={(e) => setMarAllergySafetyAck(e.target.checked)}
+                  />
+                  <span>{t("marTab.allergyAckLabel")}</span>
+                </label>
+              </div>
+            ) : null}
 
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>{t("marTab.notesLabel")}</label>
             <textarea

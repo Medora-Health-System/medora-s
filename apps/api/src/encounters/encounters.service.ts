@@ -348,6 +348,7 @@ export class EncountersService {
         patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
         providerDocumentationSignedBy: { select: { id: true, firstName: true, lastName: true } },
+        triage: { select: { vitalsJson: true } },
         providerAddenda: {
           orderBy: { createdAt: "asc" },
           include: {

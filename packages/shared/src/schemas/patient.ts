@@ -401,6 +401,8 @@ export const orderCreateDtoSchema = z
     orderSource: orderSourceSchema.optional(),
     readbackConfirmed: z.boolean().optional(),
     protocolName: z.string().max(256).optional(),
+    /** Explicit clinician acknowledgment when allergy-related documentation exists (server-enforced for MEDICATION orders). */
+    safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
     items: z.array(orderItemCreateDtoSchema).min(1),
   })
   .superRefine((data, ctx) => {
@@ -573,6 +575,8 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   /// ER-3: optional NDC string (accepted formats normalized server-side).
   ndc: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  /** Required when documented allergies exist on the visit and MAR outcome is administered (server-enforced). */
+  safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
