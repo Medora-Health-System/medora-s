@@ -119,6 +119,37 @@ export function formatVitalsHeaderLine(vitals: Record<string, number | string | 
   return formatVitalsHeaderLineForLocale(vitals, "fr");
 }
 
+const VITALS_NUMERIC_KEYS = ["tempC", "hr", "rr", "bpSys", "bpDia", "spo2", "weightKg", "heightCm"] as const;
+
+/**
+ * Compact one-line vitals for timelines (coerces JSON vitals; optional pain / painScore).
+ */
+export function formatEncounterVitalsHistoryCompactLine(
+  vitals: Record<string, unknown>,
+  language: SupportedLanguage
+): string {
+  const n: Record<string, number | string | null | undefined> = {};
+  for (const k of VITALS_NUMERIC_KEYS) {
+    const v = vitals[k];
+    if (v == null) continue;
+    if (typeof v === "number") n[k] = v;
+    else if (typeof v === "string" && v.trim()) {
+      const num = Number(v);
+      n[k] = Number.isFinite(num) ? num : v.trim();
+    }
+  }
+  let line = formatVitalsHeaderLineForLocale(n, language);
+  const pain = vitals.pain ?? vitals.painScore;
+  if (pain != null && pain !== "") {
+    const p = typeof pain === "number" ? String(pain) : String(pain).trim();
+    if (p) {
+      const painLabel = language === "en" ? `Pain ${p}` : `Douleur : ${p}`;
+      line = line ? `${line} · ${painLabel}` : painLabel;
+    }
+  }
+  return line;
+}
+
 /** True when the GET /patients/:id/triage payload already carries at least one row (latest ou historique). */
 export function hasServerVitalsTimelineData(vitalsTimeline: PatientTriageVitalsResponse | null): boolean {
   if (vitalsTimeline == null) return false;

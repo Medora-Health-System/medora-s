@@ -270,6 +270,22 @@ export class EncountersController {
     );
   }
 
+  @Get("encounters/:id/vitals-history")
+  @RequireRoles(
+    RoleCode.FRONT_DESK,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.BILLING,
+    RoleCode.ADMIN
+  )
+  async getVitalsHistory(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.getVitalsHistory(facilityId, id);
+  }
+
   @Get("encounters/:id")
   @RequireRoles(
     RoleCode.FRONT_DESK,

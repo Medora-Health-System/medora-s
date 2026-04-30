@@ -1291,6 +1291,81 @@ export class EncountersService {
     return forEncounter.map((row) => mapAuditLogRowToTimelineItem(row));
   }
 
+  /**
+   * Append-only vitals timeline for one encounter: triage readings + EncounterClinicalEvent VITALS_RECORDED.
+   */
+  async getVitalsHistory(facilityId: string, encounterId: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const readings = await this.prisma.triageVitalsReading.findMany({
+      where: { encounterId, facilityId },
+      orderBy: { recordedAt: "asc" },
+    });
+
+    const events = await this.prisma.encounterClinicalEvent.findMany({
+      where: {
+        encounterId,
+        facilityId,
+        eventType: EncounterClinicalEventType.VITALS_RECORDED,
+      },
+      orderBy: { createdAt: "asc" },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    type Entry = {
+      recordedAt: string;
+      recordedBy: { userId: string | null; displayName: string | null };
+      source: string;
+      vitals: Record<string, unknown>;
+    };
+
+    const entries: Entry[] = [];
+
+    for (const r of readings) {
+      const vj = r.vitalsJson;
+      if (!hasNonEmptyVitalsJson(vj)) continue;
+      entries.push({
+        recordedAt: r.recordedAt.toISOString(),
+        recordedBy: { userId: null, displayName: null },
+        source: "TRIAGE",
+        vitals: vj,
+      });
+    }
+
+    for (const e of events) {
+      const raw = e.payloadJson;
+      const payload =
+        raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+      const vitalsRaw = payload.vitals;
+      const vitals =
+        vitalsRaw && typeof vitalsRaw === "object" && !Array.isArray(vitalsRaw)
+          ? (vitalsRaw as Record<string, unknown>)
+          : {};
+      if (!hasNonEmptyVitalsJson(vitals)) continue;
+      const src = typeof payload.source === "string" && payload.source.trim() ? payload.source.trim() : "ENCOUNTER_CHART";
+      /** Triage path persists `TriageVitalsReading` + duplicate `VITALS_RECORDED`; keep readings as canonical. */
+      if (src === "TRIAGE") continue;
+      const displayName = `${e.createdBy.firstName} ${e.createdBy.lastName}`.trim();
+      entries.push({
+        recordedAt: e.createdAt.toISOString(),
+        recordedBy: { userId: e.createdByUserId, displayName: displayName || null },
+        source: src,
+        vitals,
+      });
+    }
+
+    entries.sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+    return { entries };
+  }
+
   private async assertProviderAtFacility(facilityId: string, userId: string | null | undefined) {
     if (userId === undefined || userId === null) return;
     const ok = await this.prisma.userRole.findFirst({

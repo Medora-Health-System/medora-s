@@ -425,9 +425,12 @@ export function EncounterOperationalPanel({
       {showConfirmInpatientTransfer ? (
         <>
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a", marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a", marginBottom: 6 }}>
               {t("encounterOperational.handoffSectionTitle")}
             </div>
+            <p style={{ margin: "0 0 10px 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+              {t("encounterOperational.handoffRecipientSearchHint")}
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 480 }}>
               <div>
                 <label style={fieldLabel}>{t("encounterOperational.receivingNurseLabel")}</label>
@@ -456,9 +459,6 @@ export function EncounterOperationalPanel({
                     }))
                   }
                 />
-                <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#94a3b8" }}>
-                  {t("clinicalUserRoleAutocomplete.minCharsHint")}
-                </p>
               </div>
               <label style={checkboxRow}>
                 <input

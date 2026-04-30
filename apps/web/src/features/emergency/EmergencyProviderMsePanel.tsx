@@ -136,6 +136,7 @@ export function EmergencyProviderMsePanel({
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
+  const handoffLockedReason: "closed" | "signed" | null = isReadOnly ? "closed" : isLocked ? "signed" : null;
 
   useEffect(() => {
     setForm(erProviderMseFormFromEncounter(encounter.nursingAssessment));
@@ -637,6 +638,21 @@ export function EmergencyProviderMsePanel({
               }}
             >
               <p style={sectionHeading}>{t("erMseProviderPanel.sectionProviderHandoff")}</p>
+              {handoffLockedReason ? (
+                <p
+                  style={{
+                    margin: "0 0 10px 0",
+                    fontSize: 12,
+                    color: "#92400e",
+                    lineHeight: 1.45,
+                    fontWeight: 600,
+                  }}
+                >
+                  {handoffLockedReason === "closed"
+                    ? t("erMseProviderPanel.handoffLockedClosed")
+                    : t("erMseProviderPanel.handoffLockedSigned")}
+                </p>
+              ) : null}
               <div style={{ maxWidth: 480, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div>
                   <label style={labelStyle}>{t("erMseProviderPanel.labelHandoffRecipient")}</label>

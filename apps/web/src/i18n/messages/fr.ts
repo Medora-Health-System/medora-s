@@ -2983,6 +2983,13 @@ export default {
     timelineSep: " : ",
     emptyState:
       "Aucune documentation urgences structurée ou résultat à afficher pour l'instant. Complétez le triage, les zones Soins / Évaluation / Disposition, ou ouvrez le dossier complet.",
+    vitalsHistoryTitle: "Signes vitaux (historique)",
+    vitalsHistoryEmpty: "Aucun relevé horodaté pour cette consultation.",
+    vitalsHistoryLoadError: "Historique des signes vitaux indisponible.",
+    vitalsHistoryActorTriage: "Triage",
+    vitalsHistorySourceTriage: "Triage",
+    vitalsHistorySourceEncounterChart: "Dossier consultation",
+    vitalsHistorySourceUnknown: "Autre",
   },
   emergencyTriageIntake: {
     pageTitle: "Accueil urgences",
@@ -3230,6 +3237,10 @@ export default {
     handoffRecipientRequired: "Sélectionnez un médecin destinataire dans la liste.",
     handoffRecipientPlaceholder: "Rechercher un médecin (prénom ou nom)…",
     handoffInvalidDate: "Date ou heure invalide.",
+    handoffLockedClosed:
+      "Passation médecin désactivée : la consultation est fermée (lecture seule).",
+    handoffLockedSigned:
+      "Passation médecin désactivée : la documentation est signée. Déverrouiller pour enregistrer une nouvelle passation.",
   },
   erEmtalaPanel: {
     title: "Journal EMTALA (conformité)",
@@ -4461,6 +4472,8 @@ export default {
     saveFailed: "Enregistrement impossible.",
     providerNameFallback: "Médecin attribué",
     handoffSectionTitle: "Transmission (urgences)",
+    handoffRecipientSearchHint:
+      "Saisir au moins 3 caractères pour rechercher un infirmier ou une infirmière actif(ve) à l'établissement.",
     receivingNurseLabel: "Infirmier(ère) réceptionnaire",
     receivingNurseAutocompletePlaceholder: "Rechercher un infirmier ou une infirmière (prénom ou nom)…",
     reportGivenLabel: "Compte rendu donné",

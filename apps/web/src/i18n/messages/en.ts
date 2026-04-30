@@ -3013,6 +3013,13 @@ export default {
     timelineSep: ": ",
     emptyState:
       "No structured ED documentation or results to display yet. Complete triage, Nursing / Assessment / Disposition areas, or open the full chart.",
+    vitalsHistoryTitle: "Vitals history",
+    vitalsHistoryEmpty: "No timestamped vitals rows for this encounter yet.",
+    vitalsHistoryLoadError: "Vitals history unavailable.",
+    vitalsHistoryActorTriage: "Triage",
+    vitalsHistorySourceTriage: "Triage",
+    vitalsHistorySourceEncounterChart: "Encounter chart",
+    vitalsHistorySourceUnknown: "Other",
   },
   emergencyTriageIntake: {
     pageTitle: "ED intake",
@@ -3258,6 +3265,9 @@ export default {
     handoffRecipientRequired: "Pick a receiving provider from the list.",
     handoffRecipientPlaceholder: "Search provider by first or last name…",
     handoffInvalidDate: "Invalid date or time.",
+    handoffLockedClosed: "Provider handoff is disabled while the encounter is closed (read-only).",
+    handoffLockedSigned:
+      "Provider handoff is disabled while documentation is signed. Unlock to record a new handoff.",
   },
   erEmtalaPanel: {
     title: "EMTALA (compliance log)",
@@ -4484,6 +4494,7 @@ export default {
     saveFailed: "Unable to save.",
     providerNameFallback: "Assigned provider",
     handoffSectionTitle: "Handoff",
+    handoffRecipientSearchHint: "Type at least 3 characters to search an active RN at this facility.",
     receivingNurseLabel: "Receiving nurse",
     receivingNurseAutocompletePlaceholder: "Search nurse by first or last name…",
     reportGivenLabel: "Report given",
