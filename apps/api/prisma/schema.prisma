@@ -248,6 +248,17 @@ enum OrderEventType {
   CANCELLED
 }
 
+/// Append-only clinical documentation / workflow events (S8A — INSERT only; no updates or deletes).
+enum EncounterClinicalEventType {
+  VITALS_RECORDED
+  NURSING_ASSESSMENT_SAVED
+  PROVIDER_MSE_SAVED
+  PROVIDER_SIGNED
+  PROVIDER_UNLOCKED
+  HANDOFF_PROVIDER
+  HANDOFF_NURSING
+}
+
 /// Closed-loop line-item lifecycle (distinct from legacy `OrderStatus` values like RESULTED / VERIFIED).
 enum OrderItemLifecycleState {
   ORDERED
@@ -395,6 +406,7 @@ model Facility {
   claimOperationalEvents         ClaimOperationalEvent[]
   orderEvents                    OrderEvent[]
   billingReviewDecisions         BillingReviewDecision[]
+  encounterClinicalEvents        EncounterClinicalEvent[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -517,6 +529,7 @@ model User {
   breakGlassSessions                         BreakGlassSession[]
   performedOrderEvents                       OrderEvent[]
   billingReviewDecisionsReviewed             BillingReviewDecision[]        @relation("BillingReviewDecisionReviewer")
+  encounterClinicalEventsCreated             EncounterClinicalEvent[]       @relation("EncounterClinicalEventCreatedBy")
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -626,6 +639,7 @@ model Patient {
   insuranceCoverages        PatientInsuranceCoverage[]
   billingEvents             BillingEvent[]
   billingReviewDecisions    BillingReviewDecision[]
+  encounterClinicalEvents     EncounterClinicalEvent[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -740,6 +754,7 @@ model Encounter {
   claimSubmissions          ClaimSubmission[]
   orderEvents               OrderEvent[]
   billingReviewDecisions    BillingReviewDecision[]
+  encounterClinicalEvents   EncounterClinicalEvent[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -1005,6 +1020,29 @@ model OrderEvent {
   @@index([orderId])
   @@index([performedAt])
   @@index([facilityId, encounterId, performedAt])
+}
+
+/// Append-only encounter-level clinical events (vitals saves, documentation, signatures, handoffs).
+/// Application rule: INSERT only — never UPDATE or DELETE.
+model EncounterClinicalEvent {
+  id              String                     @id @default(uuid())
+  facilityId      String
+  encounterId     String
+  patientId       String
+  eventType       EncounterClinicalEventType
+  payloadJson     Json
+  createdByUserId String
+  createdAt       DateTime                   @default(now())
+
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  createdBy User      @relation("EncounterClinicalEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, encounterId, createdAt])
+  @@index([encounterId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([createdByUserId])
 }
 
 model Triage {
