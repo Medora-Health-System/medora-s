@@ -7,12 +7,14 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { AuditService } from "../common/services/audit.service";
 import {
   AuditAction,
   EncounterBillingFinalizationStatus,
+  EncounterClinicalEventType,
   EncounterStatus,
   EncounterType,
   EncounterWorkflowState,
@@ -848,6 +850,18 @@ export class EncountersService {
           latestVitalsAt: new Date(),
         },
       });
+      if (userId) {
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.VITALS_RECORDED,
+            payloadJson: buildVitalsRecordedPayloadJson(data.vitals, "ENCOUNTER_CHART"),
+            createdByUserId: userId,
+          },
+        });
+      }
     }
 
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {

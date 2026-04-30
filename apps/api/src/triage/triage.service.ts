@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, type Triage } from "@prisma/client";
+import { AuditAction, EncounterClinicalEventType, type Triage } from "@prisma/client";
+import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 
@@ -117,6 +118,21 @@ export class TriageService {
           latestVitalsAt: new Date(),
         },
       });
+      if (userId) {
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.VITALS_RECORDED,
+            payloadJson: buildVitalsRecordedPayloadJson(
+              data.vitalsJson as Record<string, unknown>,
+              "TRIAGE"
+            ),
+            createdByUserId: userId,
+          },
+        });
+      }
     }
 
     await this.audit.log(AuditAction.TRIAGE_SAVE, "TRIAGE", {
