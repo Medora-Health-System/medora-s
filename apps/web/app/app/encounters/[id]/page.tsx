@@ -38,7 +38,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError, USER_FACING_ENCOUNTER_NOT_FOUND_FR } from "@/lib/userFacingError";
-import { ORDER_CANCELLATION_REASON_VALUES } from "@medora/shared";
+import { ORDER_CANCELLATION_REASON_VALUES, type DispositionSafetyReadinessResponse } from "@medora/shared";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
@@ -46,6 +46,7 @@ import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/p
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import {
   diagnosisDisplayFr,
@@ -194,6 +195,8 @@ export default function EncounterDetailPage() {
   const [showDischargeModal, setShowDischargeModal] = useState(false);
   /** Objet fusionné enregistré avant la modale de confirmation finale (ou null si clôture sans étape dossier). */
   const [pendingDischarge, setPendingDischarge] = useState<Record<string, string> | null>(null);
+  const [dispositionReadiness, setDispositionReadiness] = useState<DispositionSafetyReadinessResponse | null>(null);
+  const [ackDispositionSafety, setAckDispositionSafety] = useState(false);
   const [dischargeForm, setDischargeForm] = useState<DischargeFormState>(() => emptyDischargeForm());
   const [showAdmissionModal, setShowAdmissionModal] = useState(false);
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
@@ -584,6 +587,7 @@ export default function EncounterDetailPage() {
 
   const openCloseConfirmModal = () => {
     setPendingDischarge(null);
+    setAckDispositionSafety(false);
     setShowCloseConfirmModal(true);
   };
 
@@ -665,13 +669,18 @@ export default function EncounterDetailPage() {
     return dischargePayload;
   };
 
-  const executeCloseEncounter = async (acknowledgeDeficiencies: boolean) => {
+  const handleDispositionReadiness = useCallback((r: DispositionSafetyReadinessResponse | null) => {
+    setDispositionReadiness(r);
+  }, []);
+
+  const executeCloseEncounter = async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {
     setClosingEncounter(true);
     try {
       const dischargePayload = buildDischargePayloadFromPending();
       const body: Record<string, unknown> = {};
       if (Object.keys(dischargePayload).length > 0) body.discharge = dischargePayload;
       if (acknowledgeDeficiencies) body.acknowledgeDeficiencies = true;
+      if (acknowledgeDispositionSafetyOverride) body.acknowledgeDispositionSafety = true;
       const derivedStatus = dischargeModeFrToDischargeStatus(pendingDischarge?.dischargeMode);
       if (derivedStatus) body.dischargeStatus = derivedStatus;
       const res = await apiFetch(`/encounters/${encounterId}/close`, {
@@ -686,6 +695,7 @@ export default function EncounterDetailPage() {
       setShowCloseConfirmModal(false);
       setShowDocumentationDeficiencyModal(false);
       setDocumentationDeficiencies([]);
+      setAckDispositionSafety(false);
 
       if (queued) {
         setQueuedClosePendingSync(true);
@@ -737,7 +747,7 @@ export default function EncounterDetailPage() {
         setShowDocumentationDeficiencyModal(true);
         return;
       }
-      await executeCloseEncounter(false);
+      await executeCloseEncounter(false, ackDispositionSafety);
     } catch (e) {
       alert(
         normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
@@ -1287,6 +1297,17 @@ export default function EncounterDetailPage() {
                 )}
               </div>
             </div>
+
+            {encounter.status === "OPEN" && canManageEncounterClosure ? (
+              <div style={{ marginTop: 14 }}>
+                <DispositionReadinessBanner
+                  encounterId={encounterId}
+                  facilityId={facilityId}
+                  refreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${encounterResultsRefresh}`}
+                  onReadinessChange={handleDispositionReadiness}
+                />
+              </div>
+            ) : null}
 
             <div style={{ marginTop: 16 }}>
               <div
@@ -2018,6 +2039,28 @@ export default function EncounterDetailPage() {
             <p style={{ margin: "0 0 20px 0", fontSize: 14, color: "#475569", lineHeight: 1.55 }}>
               {t("encounterChrome.modals.closeEncounterBody")}
             </p>
+            {dispositionReadiness && !dispositionReadiness.canClose ? (
+              <label
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "#0f172a",
+                  fontWeight: 600,
+                  cursor: closingEncounter ? "default" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={ackDispositionSafety}
+                  disabled={closingEncounter}
+                  onChange={(e) => setAckDispositionSafety(e.target.checked)}
+                />
+                <span>{t("dispositionReadiness.overrideCheckbox")}</span>
+              </label>
+            ) : null}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button
                 type="button"
@@ -2025,6 +2068,7 @@ export default function EncounterDetailPage() {
                 onClick={() => {
                   setShowCloseConfirmModal(false);
                   setPendingDischarge(null);
+                  setAckDispositionSafety(false);
                 }}
                 style={encounterWorkflowModalBtnSecondary(closingEncounter)}
               >
@@ -2032,7 +2076,10 @@ export default function EncounterDetailPage() {
               </button>
               <button
                 type="button"
-                disabled={closingEncounter}
+                disabled={
+                  closingEncounter ||
+                  Boolean(dispositionReadiness && !dispositionReadiness.canClose && !ackDispositionSafety)
+                }
                 onClick={() => void runCloseDocumentationCheckAndProceed()}
                 style={{
                   padding: "10px 18px",
@@ -2061,6 +2108,7 @@ export default function EncounterDetailPage() {
             if (!closingEncounter) {
               setShowDocumentationDeficiencyModal(false);
               setDocumentationDeficiencies([]);
+              setAckDispositionSafety(false);
             }
           }}
           role="presentation"
@@ -2119,6 +2167,28 @@ export default function EncounterDetailPage() {
                 );
               })}
             </ul>
+            {dispositionReadiness && !dispositionReadiness.canClose ? (
+              <label
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "#0f172a",
+                  fontWeight: 600,
+                  cursor: closingEncounter ? "default" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={ackDispositionSafety}
+                  disabled={closingEncounter}
+                  onChange={(e) => setAckDispositionSafety(e.target.checked)}
+                />
+                <span>{t("dispositionReadiness.overrideCheckbox")}</span>
+              </label>
+            ) : null}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button
                 type="button"
@@ -2126,6 +2196,7 @@ export default function EncounterDetailPage() {
                 onClick={() => {
                   setShowDocumentationDeficiencyModal(false);
                   setDocumentationDeficiencies([]);
+                  setAckDispositionSafety(false);
                 }}
                 style={encounterWorkflowModalBtnSecondary(closingEncounter)}
               >
@@ -2133,8 +2204,11 @@ export default function EncounterDetailPage() {
               </button>
               <button
                 type="button"
-                disabled={closingEncounter}
-                onClick={() => void executeCloseEncounter(true)}
+                disabled={
+                  closingEncounter ||
+                  Boolean(dispositionReadiness && !dispositionReadiness.canClose && !ackDispositionSafety)
+                }
+                onClick={() => void executeCloseEncounter(true, ackDispositionSafety)}
                 style={{
                   padding: "10px 18px",
                   fontSize: 14,

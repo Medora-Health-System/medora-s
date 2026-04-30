@@ -170,6 +170,7 @@ import {
   metadataEncounterId,
 } from "../patients/chart-audit-timeline.util";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
+import { computeDispositionSafetyReadiness } from "./disposition-safety-readiness.util";
 
 /** Aligné sur GET /encounters/:id — évite d’écraser le dossier patient côté client après PATCH. */
 const encounterDetailPatientSelect = {
@@ -1517,6 +1518,86 @@ export class EncountersService {
     return this.evaluateEncounterDocumentationDeficiencies(encounter, discharge);
   }
 
+  async getDispositionSafetyReadiness(
+    facilityId: string,
+    encounterId: string,
+    incomingDischarge?: EncounterCloseDto["discharge"]
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      include: {
+        patient: { select: { latestVitalsAt: true } },
+      },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const mergedSummary = mergeDischargeSummaryJson(encounter.dischargeSummaryJson, incomingDischarge);
+
+    const [orders, triageAgg, vitalsEventAgg] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { encounterId, facilityId },
+        include: {
+          items: {
+            include: {
+              result: { select: { verifiedAt: true } },
+              pharmacyDispenseRecord: { select: { id: true } },
+              medicationAdministrations: {
+                orderBy: { administeredAt: "desc" },
+                take: 1,
+                select: { marAction: true, notes: true },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.triageVitalsReading.aggregate({
+        where: { encounterId, facilityId },
+        _max: { recordedAt: true },
+      }),
+      this.prisma.encounterClinicalEvent.aggregate({
+        where: {
+          encounterId,
+          facilityId,
+          eventType: EncounterClinicalEventType.VITALS_RECORDED,
+        },
+        _max: { createdAt: true },
+      }),
+    ]);
+
+    return computeDispositionSafetyReadiness({
+      encounter: {
+        type: encounter.type,
+        status: encounter.status,
+        nursingAssessment: encounter.nursingAssessment,
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+        providerDocumentationStatus: encounter.providerDocumentationStatus,
+        providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
+        providerNote: encounter.providerNote,
+        treatmentPlan: encounter.treatmentPlan,
+      },
+      effectiveDischargeSummary: mergedSummary,
+      patientLatestVitalsAt: encounter.patient?.latestVitalsAt ?? null,
+      latestTriageVitalsRecordedAt: triageAgg._max.recordedAt ?? null,
+      latestVitalsClinicalEventAt: vitalsEventAgg._max.createdAt ?? null,
+      orders: orders.map((o) => ({
+        status: o.status,
+        type: o.type,
+        items: o.items.map((it) => ({
+          status: it.status,
+          catalogItemType: it.catalogItemType,
+          medicationFulfillmentIntent: it.medicationFulfillmentIntent,
+          result: it.result,
+          pharmacyDispenseRecord: it.pharmacyDispenseRecord,
+          medicationAdministrations: it.medicationAdministrations,
+        })),
+      })),
+    });
+  }
+
   async close(
     facilityId: string,
     id: string,
@@ -1545,6 +1626,23 @@ export class EncountersService {
             "La documentation est incomplète. Indiquez acknowledgeDeficiencies: true pour clôturer malgré les lacunes, ou complétez la documentation.",
           deficiencies: docCheck.deficiencies,
           code: "ENCOUNTER_CLOSE_DEFICIENCIES_NOT_ACKNOWLEDGED",
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const safetyReadiness = await this.getDispositionSafetyReadiness(facilityId, id, data?.discharge);
+    if (!safetyReadiness.canClose && !data?.acknowledgeDispositionSafety) {
+      const detail =
+        safetyReadiness.blockers.map((b) => b.message).join(" ") ||
+        "Clôture bloquée par les contrôles de sécurité disposition.";
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: detail,
+          code: "ENCOUNTER_CLOSE_DISPOSITION_SAFETY_BLOCKED",
+          readiness: safetyReadiness,
+          blockers: safetyReadiness.blockers,
         },
         HttpStatus.BAD_REQUEST
       );
@@ -1630,6 +1728,10 @@ export class EncountersService {
         closeMetadata.deficienciesAcknowledged = true;
         closeMetadata.deficiencyCodes = docCheck.deficiencies.map((d) => d.code);
         closeMetadata.missingItems = docCheck.deficiencies.map((d) => d.code);
+      }
+      if (!safetyReadiness.canClose && data?.acknowledgeDispositionSafety) {
+        closeMetadata.dispositionSafetyOverride = true;
+        closeMetadata.dispositionSafetyBlockerCodes = safetyReadiness.blockers.map((b) => b.code);
       }
 
       await this.audit.log(AuditAction.ENCOUNTER_CLOSE, "ENCOUNTER", {

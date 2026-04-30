@@ -303,6 +303,22 @@ export class EncountersController {
     return this.encountersService.getClinicalTimeline(facilityId, id, parsed);
   }
 
+  @Get("encounters/:id/disposition-readiness")
+  @RequireRoles(
+    RoleCode.FRONT_DESK,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.BILLING,
+    RoleCode.ADMIN
+  )
+  async getDispositionReadiness(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.getDispositionSafetyReadiness(facilityId, id, undefined);
+  }
+
   @Get("encounters/:id")
   @RequireRoles(
     RoleCode.FRONT_DESK,

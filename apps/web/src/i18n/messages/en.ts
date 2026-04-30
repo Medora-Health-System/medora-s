@@ -5119,6 +5119,19 @@ export default {
     duplicateActiveCatalogWarning:
       "This catalog order is already active for this patient (this encounter). Review open orders before adding a duplicate line.",
   },
+  dispositionReadiness: {
+    title: "Closure readiness",
+    loadError: "Unable to load safety checks.",
+    statusOk: "Checks OK",
+    statusBlocked: "Blocked",
+    lastVitalsLabel: "Latest vitals:",
+    noVitalsRecorded: "No timestamped vitals found.",
+    orderCountsLine: "Unresolved orders — Lab: {lab}, Imaging: {imaging}, Medication: {medication}, Care: {care}",
+    overrideHint:
+      "If your protocol allows it, use the checkbox in the close dialog to proceed despite these items.",
+    overrideCheckbox:
+      "I confirm I accept the risks and request closure despite the safety blockers listed above.",
+  },
   createOrderModal: {
     tabOrderSets: "Order Sets",
     orderSetsSectionTitle: "Order sets",

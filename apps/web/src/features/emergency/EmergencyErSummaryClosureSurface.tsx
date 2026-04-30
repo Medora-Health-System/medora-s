@@ -6,9 +6,11 @@
  */
 
 import React, { useCallback, useState, type ComponentProps } from "react";
+import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import {
   formatEncounterChromeDateTime,
   formatPatientAgeSexLine,
@@ -94,6 +96,14 @@ export function EmergencyErSummaryClosureSurface({
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
   const [deficiencies, setDeficiencies] = useState<Array<{ code: string; labelFr: string }>>([]);
   const [closing, setClosing] = useState(false);
+  const [dispositionReadiness, setDispositionReadiness] = useState<DispositionSafetyReadinessResponse | null>(
+    null
+  );
+  const [ackDispositionSafety, setAckDispositionSafety] = useState(false);
+
+  const handleDispositionReadiness = useCallback((r: DispositionSafetyReadinessResponse | null) => {
+    setDispositionReadiness(r);
+  }, []);
 
   const patient = encounter.patient;
   const dash = t("common.dash");
@@ -147,7 +157,7 @@ export function EmergencyErSummaryClosureSurface({
   }, [encounter, facilityName, language, triageSnapshot]);
 
   const executeClose = useCallback(
-    async (acknowledgeDeficiencies: boolean) => {
+    async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {
       setClosing(true);
       try {
         const dischargePayload = dischargePayloadForClose(
@@ -162,6 +172,7 @@ export function EmergencyErSummaryClosureSurface({
         const body: Record<string, unknown> = {};
         if (Object.keys(dischargePayload).length > 0) body.discharge = dischargePayload;
         if (acknowledgeDeficiencies) body.acknowledgeDeficiencies = true;
+        if (acknowledgeDispositionSafetyOverride) body.acknowledgeDispositionSafety = true;
         if (derivedStatus) body.dischargeStatus = derivedStatus;
 
         const res = await apiFetch(`/encounters/${encounterId}/close`, {
@@ -175,6 +186,7 @@ export function EmergencyErSummaryClosureSurface({
         setShowCloseModal(false);
         setShowDeficiencyModal(false);
         setDeficiencies([]);
+        setAckDispositionSafety(false);
         if (queued) {
           alert(t("emergencyErClosure.closeQueuedNotice"));
         }
@@ -232,7 +244,7 @@ export function EmergencyErSummaryClosureSurface({
         setShowDeficiencyModal(true);
         return;
       }
-      await executeClose(false);
+      await executeClose(false, ackDispositionSafety);
     } catch (e) {
       alert(
         normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
@@ -248,6 +260,7 @@ export function EmergencyErSummaryClosureSurface({
     encounterId,
     executeClose,
     facilityId,
+    ackDispositionSafety,
     language,
     t,
   ]);
@@ -317,6 +330,17 @@ export function EmergencyErSummaryClosureSurface({
       />
 
       {open ? (
+        <div style={{ marginTop: 2 }}>
+          <DispositionReadinessBanner
+            encounterId={encounterId}
+            facilityId={facilityId}
+            refreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${resultsRefresh}`}
+            onReadinessChange={handleDispositionReadiness}
+          />
+        </div>
+      ) : null}
+
+      {open ? (
         <div
           style={{
             display: "flex",
@@ -348,7 +372,10 @@ export function EmergencyErSummaryClosureSurface({
           </button>
           <button
             type="button"
-            onClick={() => setShowCloseModal(true)}
+            onClick={() => {
+              setAckDispositionSafety(false);
+              setShowCloseModal(true);
+            }}
             disabled={closing}
             style={{
               padding: "10px 16px",
@@ -399,11 +426,36 @@ export function EmergencyErSummaryClosureSurface({
             <p style={{ margin: "10px 0 0 0", fontSize: 14, color: "#475569", lineHeight: 1.5 }}>
               {t("emergencyErClosure.modalBody")}
             </p>
+            {dispositionReadiness && !dispositionReadiness.canClose ? (
+              <label
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  marginTop: 14,
+                  fontSize: 13,
+                  color: "#0f172a",
+                  fontWeight: 600,
+                  cursor: closing ? "default" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={ackDispositionSafety}
+                  disabled={closing}
+                  onChange={(e) => setAckDispositionSafety(e.target.checked)}
+                />
+                <span>{t("dispositionReadiness.overrideCheckbox")}</span>
+              </label>
+            ) : null}
             <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
               <button
                 type="button"
                 disabled={closing}
-                onClick={() => setShowCloseModal(false)}
+                onClick={() => {
+                  setAckDispositionSafety(false);
+                  setShowCloseModal(false);
+                }}
                 style={{
                   padding: "8px 14px",
                   borderRadius: 10,
@@ -418,7 +470,10 @@ export function EmergencyErSummaryClosureSurface({
               </button>
               <button
                 type="button"
-                disabled={closing}
+                disabled={
+                  closing ||
+                  Boolean(dispositionReadiness && !dispositionReadiness.canClose && !ackDispositionSafety)
+                }
                 onClick={() => void runCloseCheck()}
                 style={{
                   padding: "8px 14px",
@@ -482,6 +537,28 @@ export function EmergencyErSummaryClosureSurface({
                 );
               })}
             </ul>
+            {dispositionReadiness && !dispositionReadiness.canClose ? (
+              <label
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  marginTop: 12,
+                  fontSize: 13,
+                  color: "#0f172a",
+                  fontWeight: 600,
+                  cursor: closing ? "default" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={ackDispositionSafety}
+                  disabled={closing}
+                  onChange={(e) => setAckDispositionSafety(e.target.checked)}
+                />
+                <span>{t("dispositionReadiness.overrideCheckbox")}</span>
+              </label>
+            ) : null}
             <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -489,6 +566,7 @@ export function EmergencyErSummaryClosureSurface({
                 onClick={() => {
                   setShowDeficiencyModal(false);
                   setDeficiencies([]);
+                  setAckDispositionSafety(false);
                 }}
                 style={{
                   padding: "8px 14px",
@@ -504,8 +582,11 @@ export function EmergencyErSummaryClosureSurface({
               </button>
               <button
                 type="button"
-                disabled={closing}
-                onClick={() => void executeClose(true)}
+                disabled={
+                  closing ||
+                  Boolean(dispositionReadiness && !dispositionReadiness.canClose && !ackDispositionSafety)
+                }
+                onClick={() => void executeClose(true, ackDispositionSafety)}
                 style={{
                   padding: "8px 14px",
                   borderRadius: 10,

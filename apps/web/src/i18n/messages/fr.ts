@@ -5107,6 +5107,19 @@ export default {
     duplicateActiveCatalogWarning:
       "Cet ordre est déjà actif pour ce patient (cette consultation). Vérifiez les commandes en cours avant d’ajouter une ligne identique.",
   },
+  dispositionReadiness: {
+    title: "Préparation à la clôture",
+    loadError: "Impossible de charger les contrôles de sécurité.",
+    statusOk: "Prêt (contrôles)",
+    statusBlocked: "Bloqué",
+    lastVitalsLabel: "Derniers signes vitaux :",
+    noVitalsRecorded: "Aucun signe vital horodaté trouvé.",
+    orderCountsLine: "Ordres non terminés — Labo : {lab}, Imagerie : {imaging}, Médicaments : {medication}, Soins : {care}",
+    overrideHint:
+      "Si votre protocole l’autorise, cochez la case d’attestation dans la fenêtre de clôture pour poursuivre malgré ces points.",
+    overrideCheckbox:
+      "Je confirme assumer les risques et demander la clôture malgré les blocages de sécurité listés ci-dessus.",
+  },
   createOrderModal: {
     tabOrderSets: "Protocoles",
     orderSetsSectionTitle: "Protocoles d'ordres",

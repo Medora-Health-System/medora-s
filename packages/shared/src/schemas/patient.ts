@@ -330,6 +330,8 @@ export const encounterCloseDtoSchema = z.object({
   discharge: encounterDischargeFieldsSchema.optional(),
   /** Si la documentation est incomplète, doit être true pour autoriser la clôture (V1 — pas d’arrêt dur). */
   acknowledgeDeficiencies: z.boolean().optional(),
+  /** S11 — forcer la clôture malgré les blocages sécurité disposition (contrôle explicite côté client). */
+  acknowledgeDispositionSafety: z.boolean().optional(),
   dischargeStatus: encounterDischargeStatusSchema.optional(),
 });
 
@@ -346,6 +348,21 @@ export type EncounterCloseCheckDto = z.infer<typeof encounterCloseCheckDtoSchema
 export type EncounterCloseDocumentationCheckResult = {
   hasDeficiencies: boolean;
   deficiencies: Array<{ code: string; labelFr: string }>;
+};
+
+/** GET /encounters/:id/disposition-readiness (S11). */
+export type DispositionSafetyIssue = {
+  code: string;
+  severity: "error" | "warning";
+  message: string;
+};
+
+export type DispositionSafetyReadinessResponse = {
+  canClose: boolean;
+  blockers: DispositionSafetyIssue[];
+  warnings: DispositionSafetyIssue[];
+  lastVitalsAt?: string;
+  activeOrderCounts: { lab: number; imaging: number; medication: number; care: number };
 };
 
 export const orderStatusSchema = z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
