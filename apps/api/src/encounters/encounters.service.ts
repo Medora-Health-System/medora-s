@@ -9,6 +9,13 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
 import {
+  getNursingAssessmentNamespace,
+  NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1,
+  NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1,
+  nursingAssessmentJsonSnapshotPayload,
+  nursingAssessmentNamespaceChanged,
+} from "../utils/clinical-event-nursing-assessment-json.util";
+import {
   providerDocumentationSignedPayloadJson,
   providerDocumentationUnlockedPayloadJson,
 } from "../utils/clinical-event-provider-docs.util";
@@ -902,6 +909,41 @@ export class EncountersService {
             patientId: encounter.patientId,
             eventType: EncounterClinicalEventType.VITALS_RECORDED,
             payloadJson: buildVitalsRecordedPayloadJson(data.vitals, "ENCOUNTER_CHART"),
+            createdByUserId: userId,
+          },
+        });
+      }
+    }
+
+    if (data.nursingAssessment !== undefined && userId) {
+      const prevFull = encounter.nursingAssessment;
+      const nextFull = data.nursingAssessment;
+      if (nursingAssessmentNamespaceChanged(prevFull, nextFull, NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1)) {
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.PROVIDER_MSE_SAVED,
+            payloadJson: nursingAssessmentJsonSnapshotPayload(
+              NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1,
+              getNursingAssessmentNamespace(nextFull, NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1)
+            ),
+            createdByUserId: userId,
+          },
+        });
+      }
+      if (nursingAssessmentNamespaceChanged(prevFull, nextFull, NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1)) {
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+            payloadJson: nursingAssessmentJsonSnapshotPayload(
+              NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1,
+              getNursingAssessmentNamespace(nextFull, NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1)
+            ),
             createdByUserId: userId,
           },
         });
