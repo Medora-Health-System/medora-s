@@ -1366,6 +1366,44 @@ export class EncountersService {
     return { entries };
   }
 
+  /**
+   * Append-only clinical events for one encounter (newest first).
+   * Reuses `EncounterClinicalEvent` — no separate migration.
+   */
+  async getClinicalTimeline(facilityId: string, encounterId: string, limit = 30) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const rawTake = Number(limit);
+    const take = Number.isFinite(rawTake) ? Math.min(Math.max(Math.trunc(rawTake), 1), 100) : 30;
+
+    const rows = await this.prisma.encounterClinicalEvent.findMany({
+      where: { encounterId, facilityId },
+      orderBy: { createdAt: "desc" },
+      take,
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      eventType: r.eventType,
+      createdAt: r.createdAt.toISOString(),
+      createdBy: {
+        userId: r.createdByUserId,
+        firstName: r.createdBy.firstName,
+        lastName: r.createdBy.lastName,
+      },
+      payloadJson: r.payloadJson,
+    }));
+  }
+
   private async assertProviderAtFacility(facilityId: string, userId: string | null | undefined) {
     if (userId === undefined || userId === null) return;
     const ok = await this.prisma.userRole.findFirst({

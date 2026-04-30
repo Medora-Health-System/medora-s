@@ -286,6 +286,23 @@ export class EncountersController {
     return this.encountersService.getVitalsHistory(facilityId, id);
   }
 
+  @Get("encounters/:id/clinical-timeline")
+  @RequireRoles(
+    RoleCode.FRONT_DESK,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.BILLING,
+    RoleCode.ADMIN
+  )
+  async getClinicalTimeline(@Param("id") id: string, @Query("limit") limit: string | undefined, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = limit != null && String(limit).trim() !== "" ? Number.parseInt(String(limit), 10) : undefined;
+    return this.encountersService.getClinicalTimeline(facilityId, id, parsed);
+  }
+
   @Get("encounters/:id")
   @RequireRoles(
     RoleCode.FRONT_DESK,

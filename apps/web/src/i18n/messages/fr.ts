@@ -2990,6 +2990,22 @@ export default {
     vitalsHistorySourceTriage: "Triage",
     vitalsHistorySourceEncounterChart: "Dossier consultation",
     vitalsHistorySourceUnknown: "Autre",
+    clinicalTimeline: {
+      title: "Chronologie clinique",
+      loadError: "Impossible de charger la chronologie clinique.",
+      empty: "Aucun événement clinique enregistré pour cette consultation.",
+      noVitalsDetail: "—",
+      handoffUnknown: "—",
+      event: {
+        vitalsRecorded: "Signes vitaux enregistrés",
+        providerSigned: "Documentation signée par le médecin",
+        providerUnlocked: "Documentation déverrouillée par le médecin",
+        providerMseSaved: "Examen médical mis à jour",
+        nursingAssessmentSaved: "Évaluation infirmière mise à jour",
+        handoffProvider: "Passation médecin → {name}",
+        handoffNursing: "Passation infirmière → {name}",
+      },
+    },
   },
   emergencyTriageIntake: {
     pageTitle: "Accueil urgences",

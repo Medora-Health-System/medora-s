@@ -3020,6 +3020,22 @@ export default {
     vitalsHistorySourceTriage: "Triage",
     vitalsHistorySourceEncounterChart: "Encounter chart",
     vitalsHistorySourceUnknown: "Other",
+    clinicalTimeline: {
+      title: "Clinical timeline",
+      loadError: "Unable to load clinical timeline.",
+      empty: "No clinical events recorded for this encounter yet.",
+      noVitalsDetail: "—",
+      handoffUnknown: "—",
+      event: {
+        vitalsRecorded: "Vitals recorded",
+        providerSigned: "Provider signed documentation",
+        providerUnlocked: "Provider unlocked documentation",
+        providerMseSaved: "Provider updated medical exam",
+        nursingAssessmentSaved: "Nursing assessment updated",
+        handoffProvider: "Provider handoff → {name}",
+        handoffNursing: "Nursing handoff → {name}",
+      },
+    },
   },
   emergencyTriageIntake: {
     pageTitle: "ED intake",

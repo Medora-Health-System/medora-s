@@ -15,6 +15,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { formatEncounterVitalsHistoryCompactLine } from "@/lib/patientVitals";
 import { buildEmergencyVisitSummaryModel, type VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
+import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
 
 type VitalsHistoryEntry = {
   recordedAt: string;
@@ -206,6 +207,8 @@ export function EmergencyVisitSummaryPanel({
         embeddedDetailList={false}
         hideIntroNote
       />
+
+      <ClinicalTimeline encounterId={encounterId} facilityId={facilityId} refreshToken={resultsRefresh} />
 
       <div style={gridStyle}>
         {model.motifPresentation ? (
