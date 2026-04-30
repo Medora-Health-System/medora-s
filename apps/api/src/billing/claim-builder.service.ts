@@ -15,6 +15,7 @@ import {
   buildEncounterClaimValidation,
   type ClaimEncounterValidation,
 } from "./claim-validation.util";
+import { BillingService } from "./billing.service";
 
 export type {
   ClaimEncounterValidation,
@@ -448,9 +449,13 @@ export function buildEncounterClaimsFromEvents(
 
 @Injectable()
 export class ClaimBuilderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billingService: BillingService
+  ) {}
 
   async buildEncounterClaims(facilityId: string, encounterId: string): Promise<EncounterClaimsResult> {
+    const manualReviewGate = await this.billingService.assertEncounterManualReviewResolved(facilityId, encounterId);
     const [events, clinicalDxCount] = await Promise.all([
       this.prisma.billingEvent.findMany({
         where: { facilityId, encounterId },
@@ -460,6 +465,11 @@ export class ClaimBuilderService {
         where: { facilityId, encounterId, status: "ACTIVE" },
       }),
     ]);
-    return buildEncounterClaimsFromEvents(events, clinicalDxCount);
+    const doNotBillEventIds =
+      manualReviewGate.doNotBillOrderItemIds.length > 0
+        ? await this.billingService.getDoNotBillBillingEventIdsForEncounter(facilityId, encounterId)
+        : new Set<string>();
+    const billableEvents = doNotBillEventIds.size > 0 ? events.filter((event) => !doNotBillEventIds.has(event.id)) : events;
+    return buildEncounterClaimsFromEvents(billableEvents, clinicalDxCount);
   }
 }

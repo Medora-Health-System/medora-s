@@ -57,6 +57,30 @@ type AutoBillDecisionRow = {
   reason: string;
 };
 
+type BillingReviewDecision = {
+  id: string;
+  decision: "APPROVED" | "NEEDS_INFO" | "DO_NOT_BILL";
+  notes: string | null;
+  reviewerId: string;
+  reviewedAt: string;
+  billingEventId: string | null;
+};
+
+type ManualReviewGatePayload = {
+  encounterId: string;
+  unresolvedCount: number;
+  unresolvedItems: {
+    orderItemId: string;
+    medoraCode: string;
+    category: BillingReadinessCategory;
+    displayName: string;
+    billingStatus: BillingReadinessStatus;
+    reason: string;
+    latestDecision: BillingReviewDecision | null;
+  }[];
+  doNotBillOrderItemIds: string[];
+};
+
 type ClaimPackageSummaryT = {
   totalLines: number;
   uncodedLines: number;
@@ -826,6 +850,7 @@ export default function BillingEncounterLedgerPage() {
   const [billingReadinessWarning, setBillingReadinessWarning] = useState<string | null>(null);
   const [autoBillDecisionRows, setAutoBillDecisionRows] = useState<AutoBillDecisionRow[]>([]);
   const [autoBillDecisionWarning, setAutoBillDecisionWarning] = useState<string | null>(null);
+  const [manualReviewGate, setManualReviewGate] = useState<ManualReviewGatePayload | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -867,6 +892,7 @@ export default function BillingEncounterLedgerPage() {
         clearinghouseOutcome,
         clearinghouseOpsOutcome,
         autoBillDecisionsOutcome,
+        manualReviewGateOutcome,
       ] = await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/readiness`, { facilityId }),
@@ -877,6 +903,7 @@ export default function BillingEncounterLedgerPage() {
           apiFetch(`/billing/clearinghouse/config-status`, { facilityId }),
           apiFetch(`/billing/clearinghouse/ops-status`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/autobill-decisions`, { facilityId }),
+          apiFetch(`/billing/encounters/${encounterId}/manual-review-gate`, { facilityId }),
         ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
@@ -891,6 +918,7 @@ export default function BillingEncounterLedgerPage() {
         setBillingReadinessWarning(null);
         setAutoBillDecisionRows([]);
         setAutoBillDecisionWarning(null);
+        setManualReviewGate(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -908,6 +936,15 @@ export default function BillingEncounterLedgerPage() {
       } else {
         setAutoBillDecisionRows([]);
         setAutoBillDecisionWarning(t("billingPage.autoBillDecisionUnavailable"));
+      }
+      if (
+        manualReviewGateOutcome.status === "fulfilled" &&
+        manualReviewGateOutcome.value &&
+        typeof manualReviewGateOutcome.value === "object"
+      ) {
+        setManualReviewGate(manualReviewGateOutcome.value as ManualReviewGatePayload);
+      } else {
+        setManualReviewGate(null);
       }
       if (clearinghouseOutcome.status === "fulfilled" && clearinghouseOutcome.value && typeof clearinghouseOutcome.value === "object") {
         setClearinghouseConfigStatus(clearinghouseOutcome.value as ClearinghouseConfigStatusPayload);
@@ -958,6 +995,7 @@ export default function BillingEncounterLedgerPage() {
       setBillingReadinessWarning(null);
       setAutoBillDecisionRows([]);
       setAutoBillDecisionWarning(null);
+      setManualReviewGate(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -1432,6 +1470,33 @@ export default function BillingEncounterLedgerPage() {
           {actionError}
         </div>
       )}
+      {manualReviewGate && manualReviewGate.unresolvedCount > 0 ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 12,
+            background: "#fffbeb",
+            color: "#92400e",
+            border: "1px solid #fde68a",
+            borderRadius: 8,
+            fontSize: 13,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            {t("billingPage.manualReviewGateBlockedTitle")}
+          </div>
+          <div>
+            {t("billingPage.manualReviewGateBlockedBody")}{" "}
+            <strong>
+              {manualReviewGate.unresolvedCount} {t("billingPage.manualReviewGateBlockedCount")}
+            </strong>
+            .
+          </div>
+          <Link href="/app/billing/manual-review" style={{ display: "inline-block", marginTop: 8, color: "#92400e", fontWeight: 700 }}>
+            {t("billingPage.manualReviewGateOpenQueue")}
+          </Link>
+        </div>
+      ) : null}
 
       {!loading && !error && data && readiness && claimPackages && (
         <>

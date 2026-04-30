@@ -5,12 +5,16 @@ import { AuditService } from "../common/services/audit.service";
 import type {
   BillingAutoBillDecisionDto,
   BillingExportRowDto,
+  BillingManualReviewGateDto,
+  BillingManualReviewGateItemDto,
   BillingManualReviewRowDto,
   BillingReviewDecisionDto,
   BillingReadinessCategory,
   BillingReadinessItemDto,
   BillingReadinessStatus,
 } from "./dto/billing-readiness.dto";
+
+export const MANUAL_BILLING_REVIEW_UNRESOLVED_MESSAGE = "Manual billing review unresolved for this encounter.";
 
 export type BillingReadinessClassifierInput = {
   category: BillingReadinessCategory;
@@ -233,6 +237,89 @@ export class BillingService {
         };
       })
       .filter((row): row is BillingManualReviewRowDto => row !== null);
+  }
+
+  async getEncounterManualReviewGate(facilityId: string, encounterId: string): Promise<BillingManualReviewGateDto> {
+    const rows = await this.getEncounterBillingExportRows(facilityId, encounterId);
+    const manualReviewStatuses: BillingReadinessStatus[] = ["candidate_only", "pending_license", "missing"];
+    const decisions = rows.length
+      ? await this.prisma.billingReviewDecision.findMany({
+          where: { facilityId, encounterId, orderItemId: { in: rows.map((row) => row.orderItemId) } },
+        })
+      : [];
+    const decisionByOrderItemId = new Map(decisions.map((decision) => [decision.orderItemId, decision]));
+    const unresolvedItems: BillingManualReviewGateItemDto[] = [];
+    const doNotBillOrderItemIds: string[] = [];
+
+    for (const row of rows) {
+      const autoBillDecision = getAutoBillDecision(row);
+      if (!autoBillDecision.requiredReview || !manualReviewStatuses.includes(autoBillDecision.billingStatus)) continue;
+
+      const latestDecision = decisionByOrderItemId.get(row.orderItemId);
+      if (latestDecision?.decision === BillingReviewDecisionStatus.DO_NOT_BILL) {
+        doNotBillOrderItemIds.push(row.orderItemId);
+        continue;
+      }
+      if (latestDecision?.decision === BillingReviewDecisionStatus.APPROVED) continue;
+
+      unresolvedItems.push({
+        orderItemId: row.orderItemId,
+        medoraCode: autoBillDecision.medoraCode,
+        category: row.category,
+        displayName: row.displayName,
+        billingStatus: row.billingStatus,
+        reason: autoBillDecision.reason,
+        latestDecision: toBillingReviewDecisionDto(latestDecision),
+      });
+    }
+
+    return {
+      encounterId,
+      unresolvedCount: unresolvedItems.length,
+      unresolvedItems,
+      doNotBillOrderItemIds,
+    };
+  }
+
+  async assertEncounterManualReviewResolved(facilityId: string, encounterId: string): Promise<BillingManualReviewGateDto> {
+    const gate = await this.getEncounterManualReviewGate(facilityId, encounterId);
+    if (gate.unresolvedCount > 0) {
+      throw new BadRequestException(MANUAL_BILLING_REVIEW_UNRESOLVED_MESSAGE);
+    }
+    return gate;
+  }
+
+  async getDoNotBillBillingEventIdsForEncounter(facilityId: string, encounterId: string): Promise<Set<string>> {
+    const gate = await this.getEncounterManualReviewGate(facilityId, encounterId);
+    if (gate.doNotBillOrderItemIds.length === 0) return new Set();
+
+    const orderItemIds = gate.doNotBillOrderItemIds;
+    const [results, medicationAdministrations, medicationDispenses] = await Promise.all([
+      this.prisma.result.findMany({
+        where: { facilityId, orderItemId: { in: orderItemIds } },
+        select: { id: true },
+      }),
+      this.prisma.medicationAdministration.findMany({
+        where: { facilityId, encounterId, orderItemId: { in: orderItemIds } },
+        select: { id: true },
+      }),
+      this.prisma.medicationDispense.findMany({
+        where: { facilityId, encounterId, orderItemId: { in: orderItemIds } },
+        select: { id: true },
+      }),
+    ]);
+
+    const sourceRecordIds = new Set<string>([
+      ...orderItemIds,
+      ...results.map((row) => row.id),
+      ...medicationAdministrations.map((row) => row.id),
+      ...medicationDispenses.map((row) => row.id),
+    ]);
+    const events = await this.prisma.billingEvent.findMany({
+      where: { facilityId, encounterId, sourceRecordId: { in: [...sourceRecordIds] } },
+      select: { id: true },
+    });
+    return new Set(events.map((event) => event.id));
   }
 
   async upsertManualBillingReviewDecision(

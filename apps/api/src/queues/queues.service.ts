@@ -38,12 +38,14 @@ import {
 } from "../billing/billing-auto-append.util";
 import { syncBillingCaptureItemFromLedgerRow } from "../billing/billing-capture-sync-from-ledger.util";
 import { mergeBillingEventPatch } from "../billing/billing-event-patch.helper";
+import { BillingService } from "../billing/billing.service";
 
 @Injectable()
 export class QueuesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly billingService: BillingService
   ) {}
 
   private async roleCodesForFacility(userId: string | undefined, facilityId: string): Promise<RoleCode[]> {
@@ -459,6 +461,7 @@ export class QueuesService {
         `Encounter is not ready for billing finalization${codes ? `: ${codes}` : ""}`
       );
     }
+    await this.billingService.assertEncounterManualReviewResolved(facilityId, encounterId);
     const snapshot = { ...readiness, at: new Date().toISOString(), action: "finalize" as const };
     const updated = await this.prisma.encounter.update({
       where: { id: encounterId },

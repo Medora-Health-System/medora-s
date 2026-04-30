@@ -31,6 +31,13 @@ export class BillingController {
     return this.billingService.getManualBillingReviewQueue(facilityId);
   }
 
+  @Get("billing/encounters/:encounterId/manual-review-gate")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getEncounterManualReviewGate(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.billingService.getEncounterManualReviewGate(facilityId, encounterId);
+  }
+
   @Post("billing/manual-review/:orderItemId/decision")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async upsertManualBillingReviewDecision(

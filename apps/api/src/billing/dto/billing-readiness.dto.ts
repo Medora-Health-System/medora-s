@@ -61,3 +61,20 @@ export type BillingReviewDecisionRequestDto = {
   notes?: string;
   billingEventId?: string;
 };
+
+export type BillingManualReviewGateItemDto = {
+  orderItemId: string;
+  medoraCode: string;
+  category: BillingReadinessCategory;
+  displayName: string;
+  billingStatus: BillingReadinessStatus;
+  reason: string;
+  latestDecision: BillingReviewDecisionDto | null;
+};
+
+export type BillingManualReviewGateDto = {
+  encounterId: string;
+  unresolvedCount: number;
+  unresolvedItems: BillingManualReviewGateItemDto[];
+  doNotBillOrderItemIds: string[];
+};
