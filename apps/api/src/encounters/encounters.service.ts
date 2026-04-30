@@ -42,6 +42,7 @@ import {
 } from "./encounter-sign-lock.util";
 import {
   admissionSummaryFieldsSchema,
+  ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
   type EncounterCloseDto,
   type EncounterCreateDto,
@@ -61,6 +62,7 @@ import {
   readBillingCaptureV1,
   upsertBillingCaptureItem,
 } from "@medora/shared";
+import { handoffNursingEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
 import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment";
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
@@ -943,6 +945,20 @@ export class EncountersService {
             payloadJson: nursingAssessmentJsonSnapshotPayload(
               NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1,
               getNursingAssessmentNamespace(nextFull, NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1)
+            ),
+            createdByUserId: userId,
+          },
+        });
+      }
+      if (nursingAssessmentNamespaceChanged(prevFull, nextFull, ER_HANDOFF_V1_KEY)) {
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.HANDOFF_NURSING,
+            payloadJson: handoffNursingEncounterPayload(
+              getNursingAssessmentNamespace(nextFull, ER_HANDOFF_V1_KEY)
             ),
             createdByUserId: userId,
           },
