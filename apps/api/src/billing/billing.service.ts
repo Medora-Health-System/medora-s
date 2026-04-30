@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { AuditAction, BillingReviewDecisionStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { AuditService } from "../common/services/audit.service";
 import type {
   BillingAutoBillDecisionDto,
   BillingExportRowDto,
   BillingManualReviewRowDto,
+  BillingReviewDecisionDto,
   BillingReadinessCategory,
   BillingReadinessItemDto,
   BillingReadinessStatus,
@@ -108,7 +111,10 @@ type BillingExportOrderItem = {
 
 @Injectable()
 export class BillingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   async getEncounterOrderItemReadiness(
     facilityId: string,
@@ -196,6 +202,12 @@ export class BillingService {
     const exportRows = await this.buildBillingExportRowsFromOrderItems(orderItems);
     const itemById = new Map(orderItems.map((item) => [item.id, item]));
     const manualReviewStatuses: BillingReadinessStatus[] = ["candidate_only", "pending_license", "missing"];
+    const decisions = orderItems.length
+      ? await this.prisma.billingReviewDecision.findMany({
+          where: { facilityId, orderItemId: { in: orderItems.map((item) => item.id) } },
+        })
+      : [];
+    const decisionByOrderItemId = new Map(decisions.map((decision) => [decision.orderItemId, decision]));
 
     return exportRows
       .map((row) => {
@@ -217,9 +229,110 @@ export class BillingService {
           billingStatus: decision.billingStatus,
           reason: decision.reason,
           createdAt: source.createdAt.toISOString(),
+          latestDecision: toBillingReviewDecisionDto(decisionByOrderItemId.get(row.orderItemId)),
         };
       })
       .filter((row): row is BillingManualReviewRowDto => row !== null);
+  }
+
+  async upsertManualBillingReviewDecision(
+    facilityId: string,
+    orderItemId: string,
+    body: Record<string, unknown>,
+    reviewerId?: string
+  ): Promise<BillingReviewDecisionDto> {
+    if (!reviewerId) {
+      throw new ForbiddenException("Authentication required");
+    }
+
+    const decision = parseBillingReviewDecisionStatus(body?.decision);
+    const notes = typeof body?.notes === "string" ? body.notes.trim() : "";
+    if ((decision === BillingReviewDecisionStatus.NEEDS_INFO || decision === BillingReviewDecisionStatus.DO_NOT_BILL) && !notes) {
+      throw new BadRequestException("notes are required for this decision");
+    }
+
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      select: {
+        id: true,
+        order: {
+          select: {
+            id: true,
+            encounterId: true,
+            patientId: true,
+          },
+        },
+      },
+    });
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+
+    let billingEventId: string | null = null;
+    const billingEventIdRaw = typeof body?.billingEventId === "string" ? body.billingEventId.trim() : "";
+    if (billingEventIdRaw) {
+      const billingEvent = await this.prisma.billingEvent.findFirst({
+        where: {
+          id: billingEventIdRaw,
+          facilityId,
+          encounterId: orderItem.order.encounterId,
+          patientId: orderItem.order.patientId,
+        },
+        select: { id: true },
+      });
+      if (!billingEvent) {
+        throw new BadRequestException("billingEventId does not match this manual review item");
+      }
+      billingEventId = billingEvent.id;
+    }
+
+    const reviewedAt = new Date();
+    const saved = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.billingReviewDecision.upsert({
+        where: { facilityId_orderItemId: { facilityId, orderItemId } },
+        create: {
+          facilityId,
+          encounterId: orderItem.order.encounterId,
+          patientId: orderItem.order.patientId,
+          orderItemId,
+          billingEventId,
+          decision,
+          notes: notes || null,
+          reviewerId,
+          reviewedAt,
+        },
+        update: {
+          encounterId: orderItem.order.encounterId,
+          patientId: orderItem.order.patientId,
+          billingEventId,
+          decision,
+          notes: notes || null,
+          reviewerId,
+          reviewedAt,
+        },
+      });
+
+      await this.audit.log(AuditAction.UPDATE, "BILLING_REVIEW_DECISION", {
+        tx,
+        userId: reviewerId,
+        facilityId,
+        patientId: orderItem.order.patientId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.order.id,
+        entityId: row.id,
+        metadata: {
+          orderItemId,
+          billingEventId,
+          decision,
+          hasNotes: Boolean(notes),
+        },
+        critical: true,
+      });
+
+      return row;
+    });
+
+    return toBillingReviewDecisionDto(saved)!;
   }
 
   private async buildBillingExportRowsFromOrderItems(
@@ -350,6 +463,37 @@ export class BillingService {
     );
     return [headers.join(","), ...lines].join("\n");
   }
+}
+
+function parseBillingReviewDecisionStatus(value: unknown): BillingReviewDecisionStatus {
+  if (typeof value === "string" && Object.values(BillingReviewDecisionStatus).includes(value as BillingReviewDecisionStatus)) {
+    return value as BillingReviewDecisionStatus;
+  }
+  throw new BadRequestException("Invalid decision");
+}
+
+function toBillingReviewDecisionDto(
+  row:
+    | {
+        id: string;
+        decision: BillingReviewDecisionStatus;
+        notes: string | null;
+        reviewerId: string;
+        reviewedAt: Date;
+        billingEventId: string | null;
+      }
+    | null
+    | undefined
+): BillingReviewDecisionDto | null {
+  if (!row) return null;
+  return {
+    id: row.id,
+    decision: row.decision,
+    notes: row.notes,
+    reviewerId: row.reviewerId,
+    reviewedAt: row.reviewedAt.toISOString(),
+    billingEventId: row.billingEventId,
+  };
 }
 
 function categoryForCatalogItemType(catalogItemType: string): BillingReadinessCategory {

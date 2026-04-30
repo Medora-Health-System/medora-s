@@ -6,6 +6,17 @@ export type BillingReadinessStatus =
 
 export type BillingReadinessCategory = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 
+export type BillingReviewDecisionStatus = "APPROVED" | "NEEDS_INFO" | "DO_NOT_BILL";
+
+export type BillingReviewDecisionDto = {
+  id: string;
+  decision: BillingReviewDecisionStatus;
+  notes: string | null;
+  reviewerId: string;
+  reviewedAt: string;
+  billingEventId: string | null;
+};
+
 export type BillingReadinessItemDto = {
   orderItemId: string;
   medoraCode: string | null;
@@ -42,4 +53,11 @@ export type BillingManualReviewRowDto = {
   billingStatus: BillingReadinessStatus;
   reason: string;
   createdAt: string;
+  latestDecision: BillingReviewDecisionDto | null;
+};
+
+export type BillingReviewDecisionRequestDto = {
+  decision: BillingReviewDecisionStatus;
+  notes?: string;
+  billingEventId?: string;
 };

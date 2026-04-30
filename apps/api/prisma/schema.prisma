@@ -134,6 +134,12 @@ enum BillingReviewStatus {
   SKIPPED
 }
 
+enum BillingReviewDecisionStatus {
+  APPROVED
+  NEEDS_INFO
+  DO_NOT_BILL
+}
+
 enum BillingCodeType {
   UNKNOWN
   INTERNAL
@@ -388,6 +394,7 @@ model Facility {
   claimAcknowledgmentDeadLetters ClaimAcknowledgmentDeadLetter[]
   claimOperationalEvents         ClaimOperationalEvent[]
   orderEvents                    OrderEvent[]
+  billingReviewDecisions         BillingReviewDecision[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -509,6 +516,7 @@ model User {
   authSessions                               AuthSession[]
   breakGlassSessions                         BreakGlassSession[]
   performedOrderEvents                       OrderEvent[]
+  billingReviewDecisionsReviewed             BillingReviewDecision[]        @relation("BillingReviewDecisionReviewer")
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -617,6 +625,7 @@ model Patient {
   breakGlassSessions        BreakGlassSession[]
   insuranceCoverages        PatientInsuranceCoverage[]
   billingEvents             BillingEvent[]
+  billingReviewDecisions    BillingReviewDecision[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -730,6 +739,7 @@ model Encounter {
   billingEvents             BillingEvent[]
   claimSubmissions          ClaimSubmission[]
   orderEvents               OrderEvent[]
+  billingReviewDecisions    BillingReviewDecision[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -793,11 +803,40 @@ model BillingEvent {
   facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  billingReviewDecisions BillingReviewDecision[]
 
   @@unique([facilityId, sourceModule, sourceRecordId])
   @@index([encounterId])
   @@index([facilityId, reviewStatus])
   @@index([patientId])
+}
+
+model BillingReviewDecision {
+  id             String                      @id @default(uuid())
+  facilityId     String
+  encounterId    String
+  patientId      String
+  orderItemId    String
+  billingEventId String?
+  decision       BillingReviewDecisionStatus
+  notes          String?
+  reviewerId     String
+  reviewedAt     DateTime
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  facility     Facility      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter    Encounter     @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  orderItem    OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  billingEvent BillingEvent? @relation(fields: [billingEventId], references: [id], onDelete: SetNull)
+  reviewer     User          @relation("BillingReviewDecisionReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@unique([facilityId, orderItemId])
+  @@index([facilityId, decision])
+  @@index([encounterId])
+  @@index([orderItemId])
+  @@index([reviewerId])
 }
 
 /// Métadonnées d’accueil / arrivée liées à une visite — ne remplace pas le motif clinique sur Encounter.
@@ -931,6 +970,7 @@ model OrderItem {
   result                    Result?
   pharmacyDispenseRecord    MedicationDispense?
   medicationAdministrations MedicationAdministration[]
+  billingReviewDecisions    BillingReviewDecision[]
 
   @@index([orderId])
   @@index([status])

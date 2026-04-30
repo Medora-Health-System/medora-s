@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Param, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import type { Response } from "express";
@@ -29,6 +29,19 @@ export class BillingController {
   async getManualBillingReviewQueue(@Req() req: any) {
     const facilityId = req.facilityId;
     return this.billingService.getManualBillingReviewQueue(facilityId);
+  }
+
+  @Post("billing/manual-review/:orderItemId/decision")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async upsertManualBillingReviewDecision(
+    @Param("orderItemId") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    const payload =
+      body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+    return this.billingService.upsertManualBillingReviewDecision(facilityId, orderItemId, payload, req.user?.userId);
   }
 
   @Get("billing/encounters/:encounterId/export")
