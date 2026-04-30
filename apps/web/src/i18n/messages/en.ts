@@ -3998,6 +3998,8 @@ export default {
     introBold: "Nursing assessment",
     introRest:
       " by system — quick options (chips) and free text. Saved to this encounter; visible on the encounter summary and patient chart.",
+    erHandoffIntro:
+      "Report given and care transferred to the receiving nurse (ER — inpatient). Same record as under operational settings (summary).",
     proceduresLegend: "Nursing procedures",
     proceduresHelp1:
       "Quick entry at the bedside — IV placement for now; additional procedures may be added later.",
@@ -4530,6 +4532,9 @@ export default {
     confirmInpatientTransferHint:
       "When the ER team has completed handoff, confirm transfer so the patient appears on the Hospitalization board. Select the accepting physician above first.",
     confirmInpatientTransferButton: "Confirm transfer to hospitalization",
+    handoffEmptyReadonly: "No handoff recorded yet.",
+    handoffEditInNursingTabHint:
+      "Detailed entry: Nursing Assessment section below (this page) or Nursing tile (ER workspace). Summary:",
   },
   encounters: {
     assignedProvider: "Assigned provider",

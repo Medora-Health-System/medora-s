@@ -1,0 +1,465 @@
+"use client";
+
+/**
+ * ER admission nursing handoff (erHandoffV1) — shared UI for Nursing Assessment and related flows.
+ * Persists via PATCH /encounters/:id { nursingAssessment: merged } (unchanged contract).
+ */
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/apiClient";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { useI18n } from "@/lib/i18n";
+import {
+  erHandoffV1HasPersistedBlob,
+  mergeErHandoffV1IntoNursingAssessment,
+  readErHandoffV1FromNursingAssessment,
+  type ErHandoffV1Stored,
+} from "@medora/shared";
+import { ClinicalUserRoleAutocomplete } from "@/components/clinical/ClinicalUserRoleAutocomplete";
+import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
+
+const EMERGENCY_TYPE = "EMERGENCY";
+
+export function shouldShowErHandoffV1InNursing(encounter: {
+  type?: string | null;
+  status?: string | null;
+  admissionSummaryJson?: unknown;
+  nursingAssessment?: unknown;
+}): boolean {
+  if ((encounter.type ?? "").trim() !== EMERGENCY_TYPE) return false;
+  if (erHandoffV1HasPersistedBlob(encounter.nursingAssessment)) return true;
+  return parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null;
+}
+
+/** Operational panel (read-only): show handoff subsection when any persisted handoff info exists. */
+export function erHandoffV1ShouldShowReadonlyOperationalBlock(nursingAssessment: unknown): boolean {
+  if (erHandoffV1HasPersistedBlob(nursingAssessment)) return true;
+  const r = readErHandoffV1FromNursingAssessment(nursingAssessment);
+  if (r.receivingNurseName?.trim()) return true;
+  if (r.reportGiven === true || r.reportGiven === false) return true;
+  if (r.reportGivenAt?.trim()) return true;
+  if (r.handoffNote?.trim()) return true;
+  if (r.readyForInpatientTransfer === true || r.readyForInpatientTransfer === false) return true;
+  if (r.handoffLastSavedByDisplayName?.trim() && r.handoffLastSavedAt?.trim()) return true;
+  return false;
+}
+
+function isoToDatetimeLocalValue(iso: string | undefined): string {
+  if (!iso?.trim()) return "";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return "";
+  }
+}
+
+function datetimeLocalToIso(local: string): string | undefined {
+  if (!local.trim()) return undefined;
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
+function defaultHandoffForm(read: ErHandoffV1Stored): ErHandoffV1Stored {
+  return {
+    reportGiven: read.reportGiven ?? false,
+    reportGivenAt: read.reportGivenAt,
+    receivingNurseName: read.receivingNurseName ?? "",
+    receivingNurseUserId: read.receivingNurseUserId,
+    handoffNote: read.handoffNote ?? "",
+    readyForInpatientTransfer: read.readyForInpatientTransfer ?? false,
+    providerDispositionCompleted: read.providerDispositionCompleted ?? false,
+    nurseDocumentationCompleted: read.nurseDocumentationCompleted ?? false,
+    acceptingPhysicianSelected: read.acceptingPhysicianSelected ?? false,
+    reportGivenToReceivingUnit: read.reportGivenToReceivingUnit ?? false,
+  };
+}
+
+export function ErHandoffV1ReadonlySummary({ nursingAssessment }: { nursingAssessment: unknown }) {
+  const { t } = useI18n();
+  const readHandoff = useMemo(() => readErHandoffV1FromNursingAssessment(nursingAssessment), [nursingAssessment]);
+
+  const handoffLastSavedCaption = useMemo(() => {
+    if (!readHandoff.handoffLastSavedByDisplayName?.trim() || !readHandoff.handoffLastSavedAt?.trim()) return null;
+    try {
+      const d = new Date(readHandoff.handoffLastSavedAt);
+      const when = Number.isNaN(d.getTime()) ? readHandoff.handoffLastSavedAt.trim() : d.toLocaleString();
+      return t("encounterOperational.handoffLastSavedLine")
+        .replace("{name}", readHandoff.handoffLastSavedByDisplayName.trim())
+        .replace("{when}", when);
+    } catch {
+      return null;
+    }
+  }, [readHandoff.handoffLastSavedAt, readHandoff.handoffLastSavedByDisplayName, t]);
+
+  const handoffReadonlyLines = useMemo(() => {
+    const lines: string[] = [];
+    if (readHandoff.receivingNurseName) {
+      lines.push(`${t("encounterOperational.receivingNurseLabel")}: ${readHandoff.receivingNurseName}`);
+    }
+    if (readHandoff.reportGiven === true || readHandoff.reportGiven === false) {
+      lines.push(
+        `${t("encounterOperational.reportGivenLabel")}: ${readHandoff.reportGiven ? t("common.yes") : t("common.no")}`
+      );
+    }
+    if (readHandoff.reportGivenAt) {
+      try {
+        const d = new Date(readHandoff.reportGivenAt);
+        if (!Number.isNaN(d.getTime())) {
+          lines.push(`${t("encounterOperational.reportGivenAtLabel")}: ${d.toLocaleString()}`);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (readHandoff.handoffNote) {
+      lines.push(`${t("encounterOperational.handoffNoteLabel")}: ${readHandoff.handoffNote}`);
+    }
+    if (handoffLastSavedCaption) {
+      lines.push(handoffLastSavedCaption);
+    }
+    if (readHandoff.readyForInpatientTransfer === true || readHandoff.readyForInpatientTransfer === false) {
+      lines.push(
+        `${t("encounterOperational.readyForTransferLabel")}: ${
+          readHandoff.readyForInpatientTransfer ? t("common.yes") : t("common.no")
+        }`
+      );
+    }
+    return lines;
+  }, [handoffLastSavedCaption, readHandoff, t]);
+
+  if (!handoffReadonlyLines.length) {
+    return <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("encounterOperational.handoffEmptyReadonly")}</p>;
+  }
+
+  return (
+    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#475569", lineHeight: 1.45 }}>
+      {handoffReadonlyLines.map((ln, i) => (
+        <li key={i} style={{ marginBottom: 4 }}>
+          {ln}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function ErHandoffV1Editor({
+  encounterId,
+  facilityId,
+  nursingAssessment,
+  onUpdated,
+  onSaved,
+}: {
+  encounterId: string;
+  facilityId: string;
+  nursingAssessment: unknown;
+  onUpdated: () => void | Promise<void>;
+  onSaved?: (patch: Record<string, unknown>) => void;
+}) {
+  const { t } = useI18n();
+  const [handoffSaving, setHandoffSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [handoffForm, setHandoffForm] = useState<ErHandoffV1Stored>(() =>
+    defaultHandoffForm(readErHandoffV1FromNursingAssessment(undefined))
+  );
+
+  useEffect(() => {
+    setHandoffForm(defaultHandoffForm(readErHandoffV1FromNursingAssessment(nursingAssessment)));
+  }, [nursingAssessment]);
+
+  const readHandoff = useMemo(() => readErHandoffV1FromNursingAssessment(nursingAssessment), [nursingAssessment]);
+
+  const handoffLastSavedCaption = useMemo(() => {
+    if (!readHandoff.handoffLastSavedByDisplayName?.trim() || !readHandoff.handoffLastSavedAt?.trim()) return null;
+    try {
+      const d = new Date(readHandoff.handoffLastSavedAt);
+      const when = Number.isNaN(d.getTime()) ? readHandoff.handoffLastSavedAt.trim() : d.toLocaleString();
+      return t("encounterOperational.handoffLastSavedLine")
+        .replace("{name}", readHandoff.handoffLastSavedByDisplayName.trim())
+        .replace("{when}", when);
+    } catch {
+      return null;
+    }
+  }, [readHandoff.handoffLastSavedAt, readHandoff.handoffLastSavedByDisplayName, t]);
+
+  const fieldLabel: React.CSSProperties = {
+    display: "block",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#64748b",
+    marginBottom: 6,
+    letterSpacing: "0.02em",
+  };
+
+  const selectStyle: React.CSSProperties = {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid #e2e8f0",
+    minWidth: 160,
+    fontSize: 14,
+    color: "#0f172a",
+    backgroundColor: "#fff",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    ...selectStyle,
+    width: "100%",
+    boxSizing: "border-box",
+  };
+
+  const checkboxRow: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 13,
+    color: "#334155",
+  };
+
+  const saveHandoff = useCallback(async () => {
+    setHandoffSaving(true);
+    setError(null);
+    try {
+      let handoffLastSavedByDisplayName = t("emergencyDisposition.signerFallback");
+      try {
+        const me = await apiFetch("/auth/me");
+        if (me && typeof me === "object" && !Array.isArray(me)) {
+          const fn = (me as { fullName?: string }).fullName?.trim();
+          if (fn) handoffLastSavedByDisplayName = fn;
+        }
+      } catch {
+        /* fallback label */
+      }
+      const handoffLastSavedAt = new Date().toISOString();
+      const payload: ErHandoffV1Stored = {
+        ...handoffForm,
+        receivingNurseName: handoffForm.receivingNurseName?.trim() || undefined,
+        handoffNote: handoffForm.handoffNote?.trim() || undefined,
+        reportGivenAt: handoffForm.reportGivenAt?.trim() || undefined,
+        handoffLastSavedAt,
+        handoffLastSavedByDisplayName,
+      };
+      const merged = mergeErHandoffV1IntoNursingAssessment(nursingAssessment, payload);
+      const res = await apiFetch(`/encounters/${encounterId}`, {
+        method: "PATCH",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nursingAssessment: merged }),
+      });
+      if (res && typeof res === "object" && !Array.isArray(res) && !(res as { queued?: boolean }).queued) {
+        onSaved?.(res as Record<string, unknown>);
+      }
+      await Promise.resolve(onUpdated());
+    } catch (e) {
+      setError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterOperational.handoffSaveFailed")
+      );
+    } finally {
+      setHandoffSaving(false);
+    }
+  }, [encounterId, facilityId, handoffForm, nursingAssessment, onSaved, onUpdated, t]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 520 }}>
+      <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+        {t("encounterOperational.handoffRecipientSearchHint")}
+      </p>
+      <div>
+        <label style={fieldLabel}>{t("encounterOperational.receivingNurseLabel")}</label>
+        <ClinicalUserRoleAutocomplete
+          facilityId={facilityId}
+          role="RN"
+          disabled={handoffSaving}
+          placeholder={t("encounterOperational.receivingNurseAutocompletePlaceholder")}
+          ariaLabel={t("encounterOperational.receivingNurseLabel")}
+          displayValue={handoffForm.receivingNurseName ?? ""}
+          onChangeDisplay={(v) =>
+            setHandoffForm((f) => ({
+              ...f,
+              receivingNurseName: v,
+              receivingNurseUserId: undefined,
+            }))
+          }
+          selectedUserId={handoffForm.receivingNurseUserId ?? null}
+          onSelectUser={(u) =>
+            setHandoffForm((f) => ({
+              ...f,
+              receivingNurseUserId: u?.id,
+              ...(u ? { receivingNurseName: `${u.firstName} ${u.lastName}`.trim() } : {}),
+            }))
+          }
+        />
+      </div>
+      <label style={checkboxRow}>
+        <input
+          type="checkbox"
+          checked={handoffForm.reportGiven ?? false}
+          onChange={(e) => setHandoffForm((f) => ({ ...f, reportGiven: e.target.checked }))}
+        />
+        {t("encounterOperational.reportGivenLabel")}
+      </label>
+      <div>
+        <label style={fieldLabel}>{t("encounterOperational.reportGivenAtLabel")}</label>
+        <input
+          type="datetime-local"
+          value={isoToDatetimeLocalValue(handoffForm.reportGivenAt)}
+          onChange={(e) =>
+            setHandoffForm((f) => ({
+              ...f,
+              reportGivenAt: datetimeLocalToIso(e.target.value),
+            }))
+          }
+          style={{ ...inputStyle, maxWidth: 280 }}
+        />
+      </div>
+      <div>
+        <label style={fieldLabel}>{t("encounterOperational.handoffNoteLabel")}</label>
+        <textarea
+          value={handoffForm.handoffNote ?? ""}
+          onChange={(e) => setHandoffForm((f) => ({ ...f, handoffNote: e.target.value }))}
+          rows={3}
+          placeholder={t("encounterOperational.handoffNotePlaceholder")}
+          style={{ ...inputStyle, minHeight: 72, resize: "vertical" as const }}
+        />
+      </div>
+      <label style={checkboxRow}>
+        <input
+          type="checkbox"
+          checked={handoffForm.readyForInpatientTransfer ?? false}
+          onChange={(e) => setHandoffForm((f) => ({ ...f, readyForInpatientTransfer: e.target.checked }))}
+        />
+        {t("encounterOperational.readyForTransferLabel")}
+      </label>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr)",
+          gap: 6,
+          padding: "10px 0 0 0",
+          borderTop: "1px dashed #e2e8f0",
+        }}
+      >
+        <label style={checkboxRow}>
+          <input
+            type="checkbox"
+            checked={handoffForm.providerDispositionCompleted ?? false}
+            onChange={(e) => setHandoffForm((f) => ({ ...f, providerDispositionCompleted: e.target.checked }))}
+          />
+          {t("encounterOperational.checklistProviderDisposition")}
+        </label>
+        <label style={checkboxRow}>
+          <input
+            type="checkbox"
+            checked={handoffForm.nurseDocumentationCompleted ?? false}
+            onChange={(e) => setHandoffForm((f) => ({ ...f, nurseDocumentationCompleted: e.target.checked }))}
+          />
+          {t("encounterOperational.checklistNurseDocumentation")}
+        </label>
+        <label style={checkboxRow}>
+          <input
+            type="checkbox"
+            checked={handoffForm.acceptingPhysicianSelected ?? false}
+            onChange={(e) => setHandoffForm((f) => ({ ...f, acceptingPhysicianSelected: e.target.checked }))}
+          />
+          {t("encounterOperational.checklistAcceptingPhysician")}
+        </label>
+        <label style={checkboxRow}>
+          <input
+            type="checkbox"
+            checked={handoffForm.reportGivenToReceivingUnit ?? false}
+            onChange={(e) => setHandoffForm((f) => ({ ...f, reportGivenToReceivingUnit: e.target.checked }))}
+          />
+          {t("encounterOperational.checklistReportToUnit")}
+        </label>
+      </div>
+      <button
+        type="button"
+        disabled={handoffSaving}
+        onClick={() => void saveHandoff()}
+        style={{
+          alignSelf: "flex-start",
+          marginTop: 4,
+          padding: "8px 16px",
+          backgroundColor: "#475569",
+          color: "#fff",
+          border: "none",
+          borderRadius: 10,
+          cursor: handoffSaving ? "wait" : "pointer",
+          fontWeight: 600,
+          fontSize: 13,
+        }}
+      >
+        {handoffSaving ? t("common.saving") : t("encounterOperational.saveHandoffButton")}
+      </button>
+      {handoffLastSavedCaption ? (
+        <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>{handoffLastSavedCaption}</p>
+      ) : null}
+      {error ? (
+        <p style={{ color: "#b91c1c", fontSize: 13, margin: 0, lineHeight: 1.45 }} role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const handoffFieldsetShell: React.CSSProperties = {
+  border: "1px solid #bae6fd",
+  borderRadius: 12,
+  margin: 0,
+  padding: "16px 18px",
+  backgroundColor: "#f0f9ff",
+};
+
+export function ErHandoffV1NursingSection({
+  encounter,
+  encounterId,
+  facilityId,
+  isLocked,
+  canEditErHandoff,
+  onUpdated,
+  onSaved,
+}: {
+  encounter: {
+    type?: string | null;
+    status?: string | null;
+    admissionSummaryJson?: unknown;
+    nursingAssessment?: unknown;
+  };
+  encounterId: string;
+  facilityId: string;
+  isLocked: boolean;
+  canEditErHandoff: boolean;
+  onUpdated: () => void | Promise<void>;
+  onSaved?: (patch: Record<string, unknown>) => void;
+}) {
+  const { t } = useI18n();
+  const show = shouldShowErHandoffV1InNursing(encounter);
+  if (!show) return null;
+  const allowEdit = canEditErHandoff && (encounter.status ?? "").trim() === "OPEN" && !isLocked;
+
+  return (
+    <fieldset style={handoffFieldsetShell}>
+      <legend style={{ fontWeight: 700, padding: "0 10px", fontSize: 14, color: "#0f172a" }}>
+        {t("encounterOperational.handoffSectionTitle")}
+      </legend>
+      <p style={{ margin: "0 0 12px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+        {t("nursingAssessmentTab.erHandoffIntro")}
+      </p>
+      {allowEdit ? (
+        <ErHandoffV1Editor
+          encounterId={encounterId}
+          facilityId={facilityId}
+          nursingAssessment={encounter.nursingAssessment}
+          onUpdated={onUpdated}
+          onSaved={onSaved}
+        />
+      ) : (
+        <ErHandoffV1ReadonlySummary nursingAssessment={encounter.nursingAssessment} />
+      )}
+    </fieldset>
+  );
+}

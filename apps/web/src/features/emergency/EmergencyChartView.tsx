@@ -60,6 +60,7 @@ import {
 } from "@/features/emergency/emergencyRoutes";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
 import { isEncounterLocked } from "@/lib/encounterLock";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
@@ -828,14 +829,24 @@ export function EmergencyChartView() {
               {t("emergencyChartView.sectionNursingCare")}
             </h2>
             {showNursingTab ? (
-              <EmergencyNursingReassessmentPanel
-                encounterId={encounterId}
-                facilityId={fid}
-                encounter={encounter}
-                isLocked={isLocked}
-                onSaved={onEmbeddedEncounterUpdate}
-                nursingTabHref={tabHref("nursing")}
-              />
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <ErHandoffV1NursingSection
+                  encounter={encounter}
+                  encounterId={encounterId}
+                  facilityId={fid}
+                  isLocked={isLocked}
+                  canEditErHandoff={canEditOperationalEncounter && encounter.status === "OPEN"}
+                  onUpdated={onEmbeddedEncounterUpdate}
+                />
+                <EmergencyNursingReassessmentPanel
+                  encounterId={encounterId}
+                  facilityId={fid}
+                  encounter={encounter}
+                  isLocked={isLocked}
+                  onSaved={onEmbeddedEncounterUpdate}
+                  nursingTabHref={tabHref("nursing")}
+                />
+              </div>
             ) : (
               <MedoraCard leftAccentColor="#0ea5e9" variant="default">
                 <MedoraCardInner>

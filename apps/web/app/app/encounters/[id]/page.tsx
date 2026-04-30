@@ -1585,6 +1585,8 @@ export default function EncounterDetailPage() {
               encounter={encounter}
               onUpdate={loadEncounter}
               isLocked={isLocked}
+              canEditErInpatientHandoff={canEditOperational && encounter.status === "OPEN"}
+              onHandoffSaved={mergeEncounterFromOperationalPatch}
             />
           )}
           {activeTab === "diagnostics" && (

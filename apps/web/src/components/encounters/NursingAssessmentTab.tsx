@@ -11,6 +11,7 @@ import {
   type IvInsertionProcedureV1,
 } from "@/lib/nursingProcedures";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
 
 type SectionDef = { id: string; label: string; chips: string[] };
 
@@ -168,6 +169,8 @@ export function NursingAssessmentTab({
   encounter,
   onUpdate,
   isLocked = false,
+  canEditErInpatientHandoff = false,
+  onHandoffSaved,
 }: {
   encounterId: string;
   facilityId: string;
@@ -175,6 +178,9 @@ export function NursingAssessmentTab({
   onUpdate: () => void;
   /** Dossier médical signé — saisie verrouillée. */
   isLocked?: boolean;
+  /** RN/ADMIN sur consultation ouverte — édition transmission urgences. */
+  canEditErInpatientHandoff?: boolean;
+  onHandoffSaved?: (patch: Record<string, unknown>) => void;
 }) {
   const { t } = useI18n();
   const sectionDefs = useMemo(() => buildSectionDefs(t), [t]);
@@ -287,6 +293,16 @@ export function NursingAssessmentTab({
           {t("nursingAssessmentTab.introRest")}
         </p>
       </div>
+
+      <ErHandoffV1NursingSection
+        encounter={encounter}
+        encounterId={encounterId}
+        facilityId={facilityId}
+        isLocked={formLocked}
+        canEditErHandoff={canEditErInpatientHandoff}
+        onUpdated={onUpdate}
+        onSaved={onHandoffSaved}
+      />
 
       <fieldset
         style={{

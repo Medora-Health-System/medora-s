@@ -3969,6 +3969,8 @@ export default {
     introBold: "Évaluation infirmière",
     introRest:
       " par systèmes — options rapides (puces) et complément libre. Enregistrement dans le dossier de la consultation ; synthèse visible au résumé et dans le dossier patient.",
+    erHandoffIntro:
+      "Compte rendu donné et transfert des soins vers l’infirmier ou l’infirmière réceptionnaire (urgences — hospitalisation). Même enregistrement que sous Paramètres opérationnels (synthèse).",
     proceduresLegend: "Procédures infirmières",
     proceduresHelp1:
       "Saisie rapide au lit — pose de voie IV pour l'instant ; d'autres procédures pourront s'ajouter.",
@@ -4509,6 +4511,9 @@ export default {
     confirmInpatientTransferHint:
       "Lorsque l'équipe des urgences a terminé la transmission, confirmez le transfert pour que le patient apparaisse au tableau d'hospitalisation. Sélectionnez d'abord le médecin accepteur ci-dessus.",
     confirmInpatientTransferButton: "Confirmer le transfert vers l'hospitalisation",
+    handoffEmptyReadonly: "Aucune transmission enregistrée pour le moment.",
+    handoffEditInNursingTabHint:
+      "Saisie détaillée : section ci-dessous sous « Évaluation infirmière » (cette page) ou tuile « Soins infirmiers » (urgences). Synthèse :",
   },
   encounters: {
     assignedProvider: "Médecin attribué",

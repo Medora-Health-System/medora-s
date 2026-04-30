@@ -58,6 +58,7 @@ import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/e
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import {
   MEDORA_CARD_SHELL,
@@ -1136,6 +1137,14 @@ export function EmergencyActiveWorkspaceView() {
                 canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
                 onSummaryClosureClick={goToErSummaryClosure}
                 facilityName={facilityName}
+              />
+              <ErHandoffV1NursingSection
+                encounter={encounter}
+                encounterId={encounterId}
+                facilityId={fid}
+                isLocked={isLocked}
+                canEditErHandoff={canEditOperationalEncounter && encounter.status === "OPEN"}
+                onUpdated={onEmbeddedEncounterUpdate}
               />
               <EmergencyNursingReassessmentPanel
                 encounterId={encounterId}
