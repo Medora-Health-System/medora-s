@@ -10,10 +10,27 @@ export type BillingReviewDecisionStatus = "APPROVED" | "NEEDS_INFO" | "DO_NOT_BI
 
 export type BillingReviewDecisionDto = {
   id: string;
+  orderItemId: string;
   decision: BillingReviewDecisionStatus;
   notes: string | null;
   reviewerId: string;
+  /** Derived from reviewer user record when available. */
+  reviewerName: string | null;
   reviewedAt: string;
+  billingEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Audit log rows for manual billing review decisions (`entityType` BILLING_REVIEW_DECISION). */
+export type BillingReviewDecisionAuditEntryDto = {
+  id: string;
+  createdAt: string;
+  action: string;
+  userId: string | null;
+  actorDisplayName: string | null;
+  decision: BillingReviewDecisionStatus | null;
+  hasNotes: boolean | null;
   billingEventId: string | null;
 };
 
@@ -54,6 +71,8 @@ export type BillingManualReviewRowDto = {
   reason: string;
   createdAt: string;
   latestDecision: BillingReviewDecisionDto | null;
+  /** Newest-first audit events for this order item (from AuditLog). */
+  decisionAuditTrail: BillingReviewDecisionAuditEntryDto[];
 };
 
 export type BillingReviewDecisionRequestDto = {

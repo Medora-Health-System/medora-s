@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { AuditAction, BillingReviewDecisionStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -8,6 +9,7 @@ import type {
   BillingManualReviewGateDto,
   BillingManualReviewGateItemDto,
   BillingManualReviewRowDto,
+  BillingReviewDecisionAuditEntryDto,
   BillingReviewDecisionDto,
   BillingReadinessCategory,
   BillingReadinessItemDto,
@@ -15,6 +17,8 @@ import type {
 } from "./dto/billing-readiness.dto";
 
 export const MANUAL_BILLING_REVIEW_UNRESOLVED_MESSAGE = "Manual billing review unresolved for this encounter.";
+
+const BILLING_REVIEW_DECISION_AUDIT_ENTITY = "BILLING_REVIEW_DECISION";
 
 export type BillingReadinessClassifierInput = {
   category: BillingReadinessCategory;
@@ -206,37 +210,92 @@ export class BillingService {
     const exportRows = await this.buildBillingExportRowsFromOrderItems(orderItems);
     const itemById = new Map(orderItems.map((item) => [item.id, item]));
     const manualReviewStatuses: BillingReadinessStatus[] = ["candidate_only", "pending_license", "missing"];
-    const decisions = orderItems.length
-      ? await this.prisma.billingReviewDecision.findMany({
-          where: { facilityId, orderItemId: { in: orderItems.map((item) => item.id) } },
-        })
-      : [];
-    const decisionByOrderItemId = new Map(decisions.map((decision) => [decision.orderItemId, decision]));
 
-    return exportRows
-      .map((row) => {
-        const source = itemById.get(row.orderItemId);
-        const decision = getAutoBillDecision(row);
-        if (!source || !decision.requiredReview || !manualReviewStatuses.includes(decision.billingStatus)) {
-          return null;
-        }
+    type QueueCandidate = Omit<BillingManualReviewRowDto, "latestDecision" | "decisionAuditTrail">;
 
-        const patientName = `${source.order.encounter.patient.firstName} ${source.order.encounter.patient.lastName}`.trim();
-        return {
-          encounterId: source.order.encounterId,
-          patientId: source.order.patientId,
-          patientName,
-          orderItemId: row.orderItemId,
-          medoraCode: decision.medoraCode,
-          category: row.category,
-          displayName: row.displayName,
-          billingStatus: decision.billingStatus,
-          reason: decision.reason,
-          createdAt: source.createdAt.toISOString(),
-          latestDecision: toBillingReviewDecisionDto(decisionByOrderItemId.get(row.orderItemId)),
-        };
-      })
-      .filter((row): row is BillingManualReviewRowDto => row !== null);
+    const candidates: QueueCandidate[] = [];
+    for (const row of exportRows) {
+      const source = itemById.get(row.orderItemId);
+      const autoDecision = getAutoBillDecision(row);
+      if (!source || !autoDecision.requiredReview || !manualReviewStatuses.includes(autoDecision.billingStatus)) {
+        continue;
+      }
+
+      const patientName = `${source.order.encounter.patient.firstName} ${source.order.encounter.patient.lastName}`.trim();
+      candidates.push({
+        encounterId: source.order.encounterId,
+        patientId: source.order.patientId,
+        patientName,
+        orderItemId: row.orderItemId,
+        medoraCode: autoDecision.medoraCode,
+        category: row.category,
+        displayName: row.displayName,
+        billingStatus: autoDecision.billingStatus,
+        reason: autoDecision.reason,
+        createdAt: source.createdAt.toISOString(),
+      });
+    }
+
+    if (candidates.length === 0) return [];
+
+    const queueOrderItemIds = [...new Set(candidates.map((c) => c.orderItemId))];
+    const queueIdSet = new Set(queueOrderItemIds);
+
+    const [decisions, auditLogs] = await Promise.all([
+      this.prisma.billingReviewDecision.findMany({
+        where: { facilityId, orderItemId: { in: queueOrderItemIds } },
+        include: { reviewer: { select: { firstName: true, lastName: true, email: true } } },
+      }),
+      queueOrderItemIds.length
+        ? this.prisma.auditLog.findMany({
+            where: {
+              facilityId,
+              entityType: BILLING_REVIEW_DECISION_AUDIT_ENTITY,
+              OR: queueOrderItemIds.map((id) => ({ metadata: { path: ["orderItemId"], equals: id } })),
+            },
+            orderBy: { createdAt: "desc" },
+            take: 600,
+            include: { user: { select: { firstName: true, lastName: true, email: true } } },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const decisionByOrderItemId = new Map(decisions.map((d) => [d.orderItemId, d]));
+    const auditByOrderItemId = new Map<string, BillingReviewDecisionAuditEntryDto[]>();
+    for (const log of auditLogs) {
+      const parsed = parseBillingReviewAuditMetadata(log.metadata);
+      if (!parsed.orderItemId || !queueIdSet.has(parsed.orderItemId)) continue;
+      const entry = billingReviewAuditEntryFromLog(log);
+      const list = auditByOrderItemId.get(parsed.orderItemId) ?? [];
+      if (list.length < 35) {
+        list.push(entry);
+        auditByOrderItemId.set(parsed.orderItemId, list);
+      }
+    }
+
+    return candidates.map((c) => ({
+      ...c,
+      latestDecision: toBillingReviewDecisionDto(decisionByOrderItemId.get(c.orderItemId)),
+      decisionAuditTrail: auditByOrderItemId.get(c.orderItemId) ?? [],
+    }));
+  }
+
+  async getEncounterBillingReviewDecisions(facilityId: string, encounterId: string): Promise<BillingReviewDecisionDto[]> {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const rows = await this.prisma.billingReviewDecision.findMany({
+      where: { facilityId, encounterId },
+      include: { reviewer: { select: { firstName: true, lastName: true, email: true } } },
+      orderBy: { reviewedAt: "desc" },
+    });
+
+    return rows.map((r) => toBillingReviewDecisionDto(r)!);
   }
 
   async getEncounterManualReviewGate(facilityId: string, encounterId: string): Promise<BillingManualReviewGateDto> {
@@ -245,6 +304,7 @@ export class BillingService {
     const decisions = rows.length
       ? await this.prisma.billingReviewDecision.findMany({
           where: { facilityId, encounterId, orderItemId: { in: rows.map((row) => row.orderItemId) } },
+          include: { reviewer: { select: { firstName: true, lastName: true, email: true } } },
         })
       : [];
     const decisionByOrderItemId = new Map(decisions.map((decision) => [decision.orderItemId, decision]));
@@ -419,7 +479,11 @@ export class BillingService {
       return row;
     });
 
-    return toBillingReviewDecisionDto(saved)!;
+    const withReviewer = await this.prisma.billingReviewDecision.findUnique({
+      where: { id: saved.id },
+      include: { reviewer: { select: { firstName: true, lastName: true, email: true } } },
+    });
+    return toBillingReviewDecisionDto(withReviewer)!;
   }
 
   private async buildBillingExportRowsFromOrderItems(
@@ -559,27 +623,87 @@ function parseBillingReviewDecisionStatus(value: unknown): BillingReviewDecision
   throw new BadRequestException("Invalid decision");
 }
 
+type ReviewerNameFields = { firstName: string; lastName: string; email: string };
+
+function formatReviewerDisplayName(user: ReviewerNameFields | null | undefined): string | null {
+  if (!user) return null;
+  const n = `${user.firstName} ${user.lastName}`.trim();
+  return n || user.email;
+}
+
+function parseBillingReviewAuditMetadata(metadata: Prisma.JsonValue | null | undefined): {
+  orderItemId: string | null;
+  decision: BillingReviewDecisionStatus | null;
+  hasNotes: boolean | null;
+  billingEventId: string | null;
+} {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return { orderItemId: null, decision: null, hasNotes: null, billingEventId: null };
+  }
+  const m = metadata as Record<string, unknown>;
+  const orderItemId = typeof m.orderItemId === "string" ? m.orderItemId : null;
+  let decision: BillingReviewDecisionStatus | null = null;
+  if (
+    typeof m.decision === "string" &&
+    Object.values(BillingReviewDecisionStatus).includes(m.decision as BillingReviewDecisionStatus)
+  ) {
+    decision = m.decision as BillingReviewDecisionStatus;
+  }
+  const hasNotes = typeof m.hasNotes === "boolean" ? m.hasNotes : null;
+  const billingEventId = typeof m.billingEventId === "string" ? m.billingEventId : null;
+  return { orderItemId, decision, hasNotes, billingEventId };
+}
+
+function billingReviewAuditEntryFromLog(log: {
+  id: string;
+  createdAt: Date;
+  action: AuditAction;
+  userId: string | null;
+  metadata: Prisma.JsonValue | null;
+  user: ReviewerNameFields | null;
+}): BillingReviewDecisionAuditEntryDto {
+  const meta = parseBillingReviewAuditMetadata(log.metadata);
+  return {
+    id: log.id,
+    createdAt: log.createdAt.toISOString(),
+    action: String(log.action),
+    userId: log.userId,
+    actorDisplayName: formatReviewerDisplayName(log.user),
+    decision: meta.decision,
+    hasNotes: meta.hasNotes,
+    billingEventId: meta.billingEventId,
+  };
+}
+
 function toBillingReviewDecisionDto(
   row:
-    | {
+    | ({
         id: string;
+        orderItemId: string;
         decision: BillingReviewDecisionStatus;
         notes: string | null;
         reviewerId: string;
         reviewedAt: Date;
         billingEventId: string | null;
-      }
+        createdAt: Date;
+        updatedAt: Date;
+        reviewer?: ReviewerNameFields | null;
+      })
     | null
     | undefined
 ): BillingReviewDecisionDto | null {
   if (!row) return null;
   return {
     id: row.id,
+    orderItemId: row.orderItemId,
     decision: row.decision,
     notes: row.notes,
     reviewerId: row.reviewerId,
+    reviewerName: formatReviewerDisplayName(row.reviewer ?? null),
     reviewedAt: row.reviewedAt.toISOString(),
     billingEventId: row.billingEventId,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 

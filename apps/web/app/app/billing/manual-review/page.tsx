@@ -13,10 +13,25 @@ type BillingReviewDecisionStatus = "APPROVED" | "NEEDS_INFO" | "DO_NOT_BILL";
 
 type BillingReviewDecision = {
   id: string;
+  orderItemId: string;
   decision: BillingReviewDecisionStatus;
   notes: string | null;
   reviewerId: string;
+  reviewerName: string | null;
   reviewedAt: string;
+  billingEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type BillingReviewDecisionAuditEntry = {
+  id: string;
+  createdAt: string;
+  action: string;
+  userId: string | null;
+  actorDisplayName: string | null;
+  decision: BillingReviewDecisionStatus | null;
+  hasNotes: boolean | null;
   billingEventId: string | null;
 };
 
@@ -32,6 +47,7 @@ type ManualReviewRow = {
   reason: string;
   createdAt: string;
   latestDecision: BillingReviewDecision | null;
+  decisionAuditTrail: BillingReviewDecisionAuditEntry[];
 };
 
 const billingStatusOrder: BillingReadinessStatus[] = ["candidate_only", "pending_license", "missing"];
@@ -81,7 +97,14 @@ export default function ManualBillingReviewPage() {
     setError(null);
     try {
       const res = await apiFetch("/billing/manual-review", { facilityId });
-      setRows(Array.isArray(res) ? (res as ManualReviewRow[]) : []);
+      setRows(
+        Array.isArray(res)
+          ? (res as ManualReviewRow[]).map((r) => ({
+              ...r,
+              decisionAuditTrail: Array.isArray(r.decisionAuditTrail) ? r.decisionAuditTrail : [],
+            }))
+          : []
+      );
     } catch {
       setRows([]);
       setError(t("billingPage.manualReviewLoadError"));
@@ -229,11 +252,84 @@ export default function ManualBillingReviewPage() {
                             <div style={{ color: "#64748b", fontSize: 11, marginTop: 3 }}>
                               {new Date(row.latestDecision.reviewedAt).toLocaleString(locale)}
                             </div>
+                            <div style={{ color: "#475569", fontSize: 11, marginTop: 3 }}>
+                              {t("billingPage.manualReviewTableReviewer")}:{" "}
+                              {row.latestDecision.reviewerName?.trim()
+                                ? row.latestDecision.reviewerName
+                                : row.latestDecision.reviewerId}
+                            </div>
                             {row.latestDecision.notes ? (
                               <div style={{ color: "#475569", fontSize: 11, marginTop: 4, lineHeight: 1.35 }}>
                                 {row.latestDecision.notes}
                               </div>
                             ) : null}
+                            <div
+                              style={{
+                                marginTop: 8,
+                                paddingTop: 8,
+                                borderTop: "1px solid #e2e8f0",
+                                fontSize: 11,
+                                color: "#64748b",
+                              }}
+                            >
+                              <span style={{ fontWeight: 600, color: "#334155" }}>
+                                {t("billingPage.manualReviewRecordUpdatedShort")}:{" "}
+                              </span>
+                              {new Date(row.latestDecision.updatedAt).toLocaleString(locale)}
+                            </div>
+                            {row.decisionAuditTrail.length > 0 ? (
+                              <details style={{ marginTop: 8 }}>
+                                <summary
+                                  style={{
+                                    cursor: "pointer",
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    color: "#334155",
+                                  }}
+                                >
+                                  {t("billingPage.manualReviewAuditTrail")} ({row.decisionAuditTrail.length})
+                                </summary>
+                                <ul
+                                  style={{
+                                    margin: "8px 0 0",
+                                    paddingLeft: 14,
+                                    listStyle: "disc",
+                                    color: "#475569",
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  {row.decisionAuditTrail.map((entry) => (
+                                    <li key={entry.id} style={{ marginBottom: 8 }}>
+                                      <div>{new Date(entry.createdAt).toLocaleString(locale)}</div>
+                                      <div>
+                                        <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10 }}>{entry.action}</span>
+                                        {entry.decision ? (
+                                          <span>
+                                            {" "}
+                                            · {billingPageKey(t, `billingReviewDecision_${entry.decision}`)}
+                                          </span>
+                                        ) : null}
+                                        {entry.hasNotes === true ? (
+                                          <span style={{ color: "#92400e" }}>
+                                            {" "}
+                                            · {t("billingPage.manualReviewAuditNotesRecorded")}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div>
+                                        {entry.actorDisplayName?.trim()
+                                          ? entry.actorDisplayName
+                                          : entry.userId ?? t("common.dash")}
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </details>
+                            ) : (
+                              <div style={{ marginTop: 8, fontSize: 11, color: "#94a3b8" }}>
+                                {t("billingPage.manualReviewAuditEmpty")}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           t("billingPage.manualReviewNoDecision")
