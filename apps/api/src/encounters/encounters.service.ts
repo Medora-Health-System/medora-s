@@ -50,6 +50,7 @@ import {
   type EncounterOutpatientCreateDto,
   type EncounterProviderAddendumCreateDto,
   type EncounterProviderDocumentationUnlockDto,
+  type EncounterProviderHandoffCreateDto,
   type EncounterUpdateDto,
   type EncounterCloseDocumentationCheckResult,
   type EncounterIntakeUpsertDto,
@@ -59,10 +60,11 @@ import {
   isProcedureCodeLikeForSystem,
   PROCEDURE_DUPLICATE_BLOCKED,
   PROCEDURE_INVALID_CODE_FORMAT,
+  readErHandoffV1FromNursingAssessment,
   readBillingCaptureV1,
   upsertBillingCaptureItem,
 } from "@medora/shared";
-import { handoffNursingEncounterPayload } from "../utils/clinical-event-handoff.util";
+import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
 import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment";
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
@@ -723,6 +725,10 @@ export class EncountersService {
       }
     }
 
+    if (data.nursingAssessment !== undefined) {
+      await this.validateErHandoffReceivingNurseUserId(facilityId, data.nursingAssessment);
+    }
+
     const allowedWhenSigned: (keyof EncounterUpdateDto)[] = [
       "roomLabel",
       "physicianAssignedUserId",
@@ -1109,6 +1115,45 @@ export class EncountersService {
     return toEncounterClinicResponse(updated);
   }
 
+  /**
+   * Typeahead search for active PROVIDER or RN users at the facility (`q` must be ≥ 3 chars).
+   */
+  async searchClinicalUsers(facilityId: string, q: string, role: RoleCode) {
+    const term = q.trim();
+    if (term.length < 3) return [];
+    const rows = await this.prisma.userRole.findMany({
+      where: {
+        facilityId,
+        isActive: true,
+        role: { code: role },
+        user: {
+          isActive: true,
+          OR: [
+            { firstName: { contains: term, mode: "insensitive" } },
+            { lastName: { contains: term, mode: "insensitive" } },
+          ],
+        },
+      },
+      take: 25,
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    const seen = new Set<string>();
+    const out: { id: string; firstName: string; lastName: string }[] = [];
+    for (const r of rows) {
+      if (seen.has(r.userId)) continue;
+      seen.add(r.userId);
+      out.push({
+        id: r.user.id,
+        firstName: r.user.firstName,
+        lastName: r.user.lastName,
+      });
+    }
+    out.sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "fr"));
+    return out;
+  }
+
   async listProviders(facilityId: string) {
     const rows = await this.prisma.userRole.findMany({
       where: {
@@ -1134,6 +1179,67 @@ export class EncountersService {
     }
     out.sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "fr"));
     return out;
+  }
+
+  /** Append-only HANDOFF_PROVIDER clinical event (no encounter JSON mutation). */
+  async recordProviderHandoff(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterProviderHandoffCreateDto,
+    userId?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentication required.");
+    }
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("La consultation doit être ouverte pour enregistrer une passation.");
+    }
+    assertEncounterNotSigned(encounter);
+    await this.assertProviderAtFacility(facilityId, dto.toUserId);
+    const toUser = await this.prisma.user.findFirst({
+      where: { id: dto.toUserId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!toUser) {
+      throw new BadRequestException("Utilisateur destinataire introuvable.");
+    }
+    const toDisplayName = `${toUser.firstName} ${toUser.lastName}`.trim();
+    let reportGivenAtIso: string | null = null;
+    if (dto.reportGivenAt != null && String(dto.reportGivenAt).trim()) {
+      const d = new Date(String(dto.reportGivenAt));
+      if (Number.isNaN(d.getTime())) {
+        throw new BadRequestException("Date ou heure du compte rendu invalide.");
+      }
+      reportGivenAtIso = d.toISOString();
+    }
+    const notesTrim =
+      dto.notes != null && String(dto.notes).trim()
+        ? String(dto.notes).trim().slice(0, 4000)
+        : null;
+
+    await this.prisma.encounterClinicalEvent.create({
+      data: {
+        facilityId,
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        eventType: EncounterClinicalEventType.HANDOFF_PROVIDER,
+        payloadJson: handoffProviderEncounterPayload({
+          fromUserId: userId,
+          toUserId: dto.toUserId,
+          toDisplayName,
+          reportGivenAt: reportGivenAtIso,
+          notes: notesTrim,
+        }),
+        createdByUserId: userId,
+      },
+    });
+    return { ok: true as const };
   }
 
   /**
@@ -1198,6 +1304,29 @@ export class EncountersService {
     if (!ok) {
       throw new BadRequestException("L'utilisateur sélectionné n'est pas un médecin de cet établissement.");
     }
+  }
+
+  private async assertRnAtFacility(facilityId: string, userId: string) {
+    const ok = await this.prisma.userRole.findFirst({
+      where: {
+        facilityId,
+        userId,
+        isActive: true,
+        role: { code: RoleCode.RN },
+      },
+    });
+    if (!ok) {
+      throw new BadRequestException(
+        "L'infirmier ou l'infirmière sélectionné(e) n'est pas actif(ve) dans cet établissement."
+      );
+    }
+  }
+
+  private async validateErHandoffReceivingNurseUserId(facilityId: string, nursingAssessment: unknown) {
+    const read = readErHandoffV1FromNursingAssessment(nursingAssessment);
+    const id = read.receivingNurseUserId?.trim();
+    if (!id) return;
+    await this.assertRnAtFacility(facilityId, id);
   }
 
   private evaluateEncounterDocumentationDeficiencies(

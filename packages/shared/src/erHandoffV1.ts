@@ -10,6 +10,8 @@ export type ErHandoffV1Stored = {
   /** ISO 8601 timestamp string */
   reportGivenAt?: string;
   receivingNurseName?: string;
+  /** When set, must reference an active RN at the facility (server-validated on save). */
+  receivingNurseUserId?: string;
   handoffNote?: string;
   readyForInpatientTransfer?: boolean;
   providerDispositionCompleted?: boolean;
@@ -25,6 +27,16 @@ const MAX_NOTE = 2000;
 const MAX_NAME = 256;
 const MAX_DISPLAY = 256;
 const MAX_ISO = 40;
+
+function trimUuid(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  if (!t) return undefined;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)) {
+    return undefined;
+  }
+  return t;
+}
 
 function trimStr(v: unknown, max: number): string | undefined {
   if (typeof v !== "string") return undefined;
@@ -57,6 +69,8 @@ export function readErHandoffV1FromNursingAssessment(nursingAssessment: unknown)
   if (rga) out.reportGivenAt = rga;
   const rn = trimStr(o.receivingNurseName, MAX_NAME);
   if (rn) out.receivingNurseName = rn;
+  const rnu = trimUuid(o.receivingNurseUserId);
+  if (rnu) out.receivingNurseUserId = rnu;
   const hn = trimStr(o.handoffNote, MAX_NOTE);
   if (hn) out.handoffNote = hn;
   const rft = readBool(o.readyForInpatientTransfer);
@@ -84,6 +98,8 @@ function sanitizeForPersist(form: ErHandoffV1Stored): Record<string, unknown> {
   if (rga) out.reportGivenAt = rga;
   const rn = trimStr(form.receivingNurseName, MAX_NAME);
   if (rn) out.receivingNurseName = rn;
+  const rnu = trimUuid(form.receivingNurseUserId);
+  if (rnu) out.receivingNurseUserId = rnu;
   const hn = trimStr(form.handoffNote, MAX_NOTE);
   if (hn) out.handoffNote = hn;
   if (form.readyForInpatientTransfer === true || form.readyForInpatientTransfer === false) {

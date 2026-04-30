@@ -12,6 +12,7 @@ import {
   readErHandoffV1FromNursingAssessment,
   type ErHandoffV1Stored,
 } from "@medora/shared";
+import { ClinicalUserRoleAutocomplete } from "@/components/clinical/ClinicalUserRoleAutocomplete";
 
 const ROOM_VALUES = ["Salle d'attente", ...Array.from({ length: 30 }, (_, i) => String(i + 1))];
 
@@ -41,6 +42,7 @@ function defaultHandoffForm(read: ErHandoffV1Stored): ErHandoffV1Stored {
     reportGiven: read.reportGiven ?? false,
     reportGivenAt: read.reportGivenAt,
     receivingNurseName: read.receivingNurseName ?? "",
+    receivingNurseUserId: read.receivingNurseUserId,
     handoffNote: read.handoffNote ?? "",
     readyForInpatientTransfer: read.readyForInpatientTransfer ?? false,
     providerDispositionCompleted: read.providerDispositionCompleted ?? false,
@@ -429,13 +431,34 @@ export function EncounterOperationalPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 480 }}>
               <div>
                 <label style={fieldLabel}>{t("encounterOperational.receivingNurseLabel")}</label>
-                <input
-                  type="text"
-                  value={handoffForm.receivingNurseName ?? ""}
-                  onChange={(e) => setHandoffForm((f) => ({ ...f, receivingNurseName: e.target.value }))}
-                  style={inputStyle}
-                  autoComplete="off"
+                <ClinicalUserRoleAutocomplete
+                  facilityId={facilityId}
+                  role="RN"
+                  disabled={!canEdit || handoffSaving}
+                  placeholder={t("encounterOperational.receivingNurseAutocompletePlaceholder")}
+                  ariaLabel={t("encounterOperational.receivingNurseLabel")}
+                  displayValue={handoffForm.receivingNurseName ?? ""}
+                  onChangeDisplay={(v) =>
+                    setHandoffForm((f) => ({
+                      ...f,
+                      receivingNurseName: v,
+                      receivingNurseUserId: undefined,
+                    }))
+                  }
+                  selectedUserId={handoffForm.receivingNurseUserId ?? null}
+                  onSelectUser={(u) =>
+                    setHandoffForm((f) => ({
+                      ...f,
+                      receivingNurseUserId: u?.id,
+                      ...(u
+                        ? { receivingNurseName: `${u.firstName} ${u.lastName}`.trim() }
+                        : {}),
+                    }))
+                  }
                 />
+                <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#94a3b8" }}>
+                  {t("clinicalUserRoleAutocomplete.minCharsHint")}
+                </p>
               </div>
               <label style={checkboxRow}>
                 <input

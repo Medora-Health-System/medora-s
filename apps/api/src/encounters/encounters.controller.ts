@@ -26,7 +26,9 @@ import {
   encounterOutpatientCreateDtoSchema,
   encounterProviderAddendumCreateDtoSchema,
   encounterProviderDocumentationUnlockDtoSchema,
+  encounterProviderHandoffCreateDtoSchema,
   encounterUpdateDtoSchema,
+  rosterClinicalUserRoleQuerySchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
 import { RoleCode } from "@prisma/client";
@@ -214,6 +216,27 @@ export class EncountersController {
     );
   }
 
+  @Get("roster/clinical-users")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async searchClinicalUsers(
+    @Query("q") q: string | undefined,
+    @Query("role") roleRaw: string | undefined,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const roleParsed = rosterClinicalUserRoleQuerySchema.safeParse(roleRaw);
+    if (!roleParsed.success) {
+      throw new BadRequestException("Rôle de recherche invalide (PROVIDER ou RN).", {
+        cause: roleParsed.error,
+      });
+    }
+    const roleCode = roleParsed.data === "PROVIDER" ? RoleCode.PROVIDER : RoleCode.RN;
+    return this.encountersService.searchClinicalUsers(facilityId, q ?? "", roleCode);
+  }
+
   @Get("roster/providers")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async listProviders(@Req() req: any) {
@@ -349,6 +372,24 @@ export class EncountersController {
       req.ip,
       req.headers["user-agent"]
     );
+  }
+
+  @Post("encounters/:id/provider-handoff")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async recordProviderHandoff(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterProviderHandoffCreateDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.recordProviderHandoff(facilityId, id, parsed.data, req.user?.userId);
   }
 
   @Patch("encounters/:id")

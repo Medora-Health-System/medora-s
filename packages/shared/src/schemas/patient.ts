@@ -597,6 +597,20 @@ export type EncounterProviderDocumentationUnlockDto = z.infer<
   typeof encounterProviderDocumentationUnlockDtoSchema
 >;
 
+/** POST /encounters/:id/provider-handoff — append-only EncounterClinicalEvent HANDOFF_PROVIDER. */
+export const encounterProviderHandoffCreateDtoSchema = z.object({
+  toUserId: z.string().uuid(),
+  reportGivenAt: z.union([z.string().max(48), z.null()]).optional(),
+  notes: z.union([z.string().max(4000), z.null()]).optional(),
+});
+
+export type EncounterProviderHandoffCreateDto = z.infer<typeof encounterProviderHandoffCreateDtoSchema>;
+
+/** GET /roster/clinical-users — role filter for PROVIDER vs RN search. */
+export const rosterClinicalUserRoleQuerySchema = z.enum(["PROVIDER", "RN"]);
+
+export type RosterClinicalUserRoleQuery = z.infer<typeof rosterClinicalUserRoleQuerySchema>;
+
 /** POST /patients/:id/break-glass/start — emergency chart access (audited, time-limited). */
 export const breakGlassStartDtoSchema = z.object({
   reason: z.string().trim().min(10).max(4000),

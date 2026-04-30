@@ -16,3 +16,22 @@ export function handoffNursingEncounterPayload(snapshot: unknown): Prisma.InputJ
   }
   return JSON.parse(JSON.stringify(base)) as Prisma.InputJsonValue;
 }
+
+/** HANDOFF_PROVIDER — explicit provider-to-provider passation (append-only). */
+export function handoffProviderEncounterPayload(args: {
+  fromUserId: string;
+  toUserId: string;
+  toDisplayName: string;
+  reportGivenAt: string | null;
+  notes: string | null;
+}): Prisma.InputJsonValue {
+  return JSON.parse(
+    JSON.stringify({
+      fromUserId: args.fromUserId,
+      toUserId: args.toUserId,
+      toDisplayName: args.toDisplayName,
+      reportGivenAt: args.reportGivenAt,
+      notes: args.notes,
+    })
+  ) as Prisma.InputJsonValue;
+}
