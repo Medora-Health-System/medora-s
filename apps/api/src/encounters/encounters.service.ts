@@ -8,6 +8,10 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
+import {
+  providerDocumentationSignedPayloadJson,
+  providerDocumentationUnlockedPayloadJson,
+} from "../utils/clinical-event-provider-docs.util";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { AuditService } from "../common/services/audit.service";
@@ -509,12 +513,16 @@ export class EncountersService {
       );
     }
 
+    const previousSignedByUserId = encounter.providerDocumentationSignedByUserId;
+    const previousSignedAt = encounter.providerDocumentationSignedAt;
+
+    const signedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
       const u = await tx.encounter.updateMany({
         where: { id: encounterId, facilityId, version: encounter.version },
         data: {
           providerDocumentationStatus: "SIGNED",
-          providerDocumentationSignedAt: new Date(),
+          providerDocumentationSignedAt: signedAt,
           providerDocumentationSignedByUserId: userId,
           version: { increment: 1 },
         },
@@ -530,6 +538,21 @@ export class EncountersService {
         userAgent,
         critical: true,
         tx,
+      });
+      await tx.encounterClinicalEvent.create({
+        data: {
+          facilityId,
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          eventType: EncounterClinicalEventType.PROVIDER_SIGNED,
+          payloadJson: providerDocumentationSignedPayloadJson({
+            signedAt: signedAt.toISOString(),
+            providerDocumentationStatus: "SIGNED",
+            previousSignedByUserId,
+            previousSignedAt: previousSignedAt?.toISOString() ?? null,
+          }),
+          createdByUserId: userId,
+        },
       });
       const row = await tx.encounter.findFirst({
         where: { id: encounterId, facilityId },
@@ -584,6 +607,11 @@ export class EncountersService {
 
     const reasonTrim = dto.reason?.trim() || undefined;
 
+    const previousSignedByUserId = encounter.providerDocumentationSignedByUserId;
+    const previousSignedAt = encounter.providerDocumentationSignedAt;
+    const previousStatus = encounter.providerDocumentationStatus;
+
+    const unlockedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
       const u = await tx.encounter.updateMany({
         where: { id: encounterId, facilityId, version: encounter.version },
@@ -609,6 +637,22 @@ export class EncountersService {
         },
         critical: true,
         tx,
+      });
+      await tx.encounterClinicalEvent.create({
+        data: {
+          facilityId,
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          eventType: EncounterClinicalEventType.PROVIDER_UNLOCKED,
+          payloadJson: providerDocumentationUnlockedPayloadJson({
+            unlockedAt: unlockedAt.toISOString(),
+            previousSignedByUserId,
+            previousSignedAt: previousSignedAt?.toISOString() ?? null,
+            previousStatus,
+            reason: reasonTrim ?? null,
+          }),
+          createdByUserId: userId,
+        },
       });
       const row = await tx.encounter.findFirst({
         where: { id: encounterId, facilityId },
