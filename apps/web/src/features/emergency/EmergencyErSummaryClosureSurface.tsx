@@ -63,21 +63,7 @@ function dischargePayloadForClose(encounter: ErClosureEncounter, canEditNursing:
   return out;
 }
 
-export function EmergencyErSummaryClosureSurface({
-  encounterId,
-  facilityId,
-  facilityName,
-  encounter,
-  triageSnapshot,
-  resultsRefresh,
-  resultsTabHref,
-  diagnosticsTabHref,
-  canEditNursingDischarge,
-  canEditMedicalDischarge,
-  onReload,
-  sectionId,
-  ivAccessFetchEnabled = false,
-}: {
+export type EmergencyErSummaryClosureSurfaceProps = {
   encounterId: string;
   facilityId: string;
   facilityName: string | null;
@@ -92,7 +78,24 @@ export function EmergencyErSummaryClosureSurface({
   /** Anchor for scroll-into-view from disposition panel (chart view). */
   sectionId?: string;
   ivAccessFetchEnabled?: boolean;
-}) {
+};
+
+export function EmergencyErSummaryClosureSurface({
+  encounterId,
+  facilityId,
+  facilityName,
+  encounter,
+  triageSnapshot,
+  resultsRefresh,
+  resultsTabHref,
+  diagnosticsTabHref,
+  canEditNursingDischarge,
+  canEditMedicalDischarge,
+  onReload,
+  sectionId,
+  ivAccessFetchEnabled,
+}: EmergencyErSummaryClosureSurfaceProps) {
+  const canFetchIvAccess = ivAccessFetchEnabled ?? false;
   const { t, language } = useI18n();
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
@@ -322,7 +325,7 @@ export function EmergencyErSummaryClosureSurface({
         resultsRefresh={resultsRefresh}
         resultsTabHref={resultsTabHref}
         diagnosticsTabHref={diagnosticsTabHref}
-        ivAccessFetchEnabled={ivAccessFetchEnabled}
+        ivAccessFetchEnabled={canFetchIvAccess}
       />
 
       {open ? (
