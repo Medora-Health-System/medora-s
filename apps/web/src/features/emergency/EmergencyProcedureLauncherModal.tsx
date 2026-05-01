@@ -12,8 +12,13 @@ import {
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import {
+  NonLacerationProcedureForm,
+  NON_LACERATION_FORM_TITLE_I18N_KEYS,
+  type NonLacerationProcedureType,
+} from "@/features/emergency/ProcedureDocumentBatch2Forms";
 
-type LauncherStep = "menu" | "laceration";
+type LauncherStep = "menu" | "laceration" | NonLacerationProcedureType;
 
 function toDatetimeLocalValue(d: Date): string {
   const x = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
@@ -312,7 +317,11 @@ export function EmergencyProcedureLauncherModal({
           }}
         >
           <h2 id="er-procedure-launcher-title" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
-            {step === "menu" ? t("erProcedureLauncher.modalTitle") : t("erProcedureLauncher.lacerationTitle")}
+            {step === "menu"
+              ? t("erProcedureLauncher.modalTitle")
+              : step === "laceration"
+                ? t("erProcedureLauncher.lacerationTitle")
+                : t(NON_LACERATION_FORM_TITLE_I18N_KEYS[step])}
           </h2>
           <button
             type="button"
@@ -333,7 +342,7 @@ export function EmergencyProcedureLauncherModal({
         </div>
 
         <div style={{ padding: "14px 16px 18px" }}>
-          {submitErr ? (
+          {step === "laceration" && submitErr ? (
             <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#b45309", fontWeight: 600 }}>{submitErr}</p>
           ) : null}
 
@@ -362,39 +371,86 @@ export function EmergencyProcedureLauncherModal({
                 >
                   {t("erProcedureLauncher.tileLaceration")}
                 </button>
+                {(
+                  [
+                    ["WOUND_CARE", "erProcedureLauncher.tileWoundCare"],
+                    ["INCISION_AND_DRAINAGE", "erProcedureLauncher.tileIAndD"],
+                    ["SPLINT_APPLICATION", "erProcedureLauncher.tileSplint"],
+                    ["FOLEY_CATHETER", "erProcedureLauncher.tileFoley"],
+                    ["EKG", "erProcedureLauncher.tileEkg"],
+                    ["GLUCOSE_CHECK", "erProcedureLauncher.tileGlucose"],
+                    ["URINE_COLLECTION", "erProcedureLauncher.tileUrine"],
+                    ["PREGNANCY_TEST", "erProcedureLauncher.tilePregnancy"],
+                  ] as const
+                ).map(([proc, labelKey]) => (
+                  <button
+                    key={proc}
+                    type="button"
+                    onClick={() => {
+                      setStep(proc);
+                      setSubmitErr(null);
+                    }}
+                    style={{
+                      ...tileBase,
+                      background: "#eff6ff",
+                      borderColor: "#93c5fd",
+                      color: "#1e40af",
+                    }}
+                  >
+                    {t(labelKey)}
+                  </button>
+                ))}
                 <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileIAndD")}</span>
+                  <span>{t("erProcedureLauncher.tileChestTube")}</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
                     {t("erProcedureLauncher.comingSoon")}
                   </span>
                 </div>
                 <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileSplint")}</span>
+                  <span>{t("erProcedureLauncher.tileIntubation")}</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
                     {t("erProcedureLauncher.comingSoon")}
                   </span>
                 </div>
                 <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileWoundCare")}</span>
+                  <span>{t("erProcedureLauncher.tileCentralLine")}</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
                     {t("erProcedureLauncher.comingSoon")}
                   </span>
                 </div>
                 <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileEkg")}</span>
+                  <span>{t("erProcedureLauncher.tileProceduralSedation")}</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
                     {t("erProcedureLauncher.comingSoon")}
                   </span>
                 </div>
                 <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileGlucose")}</span>
+                  <span>{t("erProcedureLauncher.tileReduction")}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
+                    {t("erProcedureLauncher.comingSoon")}
+                  </span>
+                </div>
+                <div style={comingSoonTile}>
+                  <span>{t("erProcedureLauncher.tileThoracentesis")}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
+                    {t("erProcedureLauncher.comingSoon")}
+                  </span>
+                </div>
+                <div style={comingSoonTile}>
+                  <span>{t("erProcedureLauncher.tilePelvicExam")}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
+                    {t("erProcedureLauncher.comingSoon")}
+                  </span>
+                </div>
+                <div style={comingSoonTile}>
+                  <span>{t("erProcedureLauncher.tileLumbarPuncture")}</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
                     {t("erProcedureLauncher.comingSoon")}
                   </span>
                 </div>
               </div>
             </>
-          ) : (
+          ) : step === "laceration" ? (
             <form onSubmit={onSaveLaceration}>
               <button
                 type="button"
@@ -598,6 +654,17 @@ export function EmergencyProcedureLauncherModal({
                 {t("erProcedureLauncher.save")}
               </button>
             </form>
+          ) : (
+            <NonLacerationProcedureForm
+              procedureType={step}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              onRecorded={onRecorded}
+              onBack={() => {
+                setStep("menu");
+                setSubmitErr(null);
+              }}
+            />
           )}
         </div>
       </div>
