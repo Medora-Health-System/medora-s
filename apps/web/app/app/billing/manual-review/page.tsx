@@ -46,6 +46,9 @@ type ManualReviewRow = {
   billingStatus: BillingReadinessStatus;
   reason: string;
   createdAt: string;
+  evidenceSource?: string | null;
+  reviewAnchorType?: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED";
+  procedureClinicalEventId?: string | null;
   latestDecision: BillingReviewDecision | null;
   decisionAuditTrail: BillingReviewDecisionAuditEntry[];
 };
@@ -72,6 +75,7 @@ function autoBillDecisionReasonText(t: (key: string) => string, reason: string):
     "Licensed billing source or facility chargemaster review is required.": "autoBillDecisionReasonPendingLicense",
     "No safe billing code is available for auto-billing.": "autoBillDecisionReasonMissing",
     "Auto-billing requires a validated lab billing code.": "autoBillDecisionReasonValidatedLabRequired",
+    "Procedure documented; CPT/chargemaster review required.": "autoBillDecisionReasonDocumentedProcedureReview",
   };
   const key = knownReasonKeyByText[normalized];
   return key ? t(`billingPage.${key}`) : normalized;
@@ -219,7 +223,13 @@ export default function ManualBillingReviewPage() {
                     </td>
                   </tr>
                   {group.rows.map((row) => (
-                    <tr key={row.orderItemId} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <tr
+                      key={row.orderItemId}
+                      style={{
+                        borderBottom: "1px solid #f1f5f9",
+                        background: row.reviewAnchorType === "PROCEDURE_DOCUMENTED" ? "#fafafa" : undefined,
+                      }}
+                    >
                       <td style={{ padding: 10 }}>
                         <div style={{ fontWeight: 600 }}>{row.patientName}</div>
                         <div style={{ color: "#64748b", fontSize: 11, fontFamily: "ui-monospace, monospace" }}>
@@ -336,32 +346,38 @@ export default function ManualBillingReviewPage() {
                         )}
                       </td>
                       <td style={{ padding: 10, minWidth: 220 }}>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                          <button
-                            type="button"
-                            disabled={savingOrderItemId === row.orderItemId}
-                            onClick={() => void saveDecision(row, "APPROVED")}
-                            style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #99f6e4", background: "#f0fdfa", color: "#0f766e", fontSize: 12 }}
-                          >
-                            {t("billingPage.manualReviewApprove")}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={savingOrderItemId === row.orderItemId}
-                            onClick={() => setDecisionDraft({ row, decision: "NEEDS_INFO", notes: row.latestDecision?.notes ?? "" })}
-                            style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #fde68a", background: "#fffbeb", color: "#92400e", fontSize: 12 }}
-                          >
-                            {t("billingPage.manualReviewNeedsInfo")}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={savingOrderItemId === row.orderItemId}
-                            onClick={() => setDecisionDraft({ row, decision: "DO_NOT_BILL", notes: row.latestDecision?.notes ?? "" })}
-                            style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", fontSize: 12 }}
-                          >
-                            {t("billingPage.manualReviewDoNotBill")}
-                          </button>
-                        </div>
+                        {row.reviewAnchorType === "PROCEDURE_DOCUMENTED" ? (
+                          <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.4, maxWidth: 260 }}>
+                            {t("billingPage.manualReviewProcedureRowHint")}
+                          </p>
+                        ) : (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            <button
+                              type="button"
+                              disabled={savingOrderItemId === row.orderItemId}
+                              onClick={() => void saveDecision(row, "APPROVED")}
+                              style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #99f6e4", background: "#f0fdfa", color: "#0f766e", fontSize: 12 }}
+                            >
+                              {t("billingPage.manualReviewApprove")}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={savingOrderItemId === row.orderItemId}
+                              onClick={() => setDecisionDraft({ row, decision: "NEEDS_INFO", notes: row.latestDecision?.notes ?? "" })}
+                              style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #fde68a", background: "#fffbeb", color: "#92400e", fontSize: 12 }}
+                            >
+                              {t("billingPage.manualReviewNeedsInfo")}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={savingOrderItemId === row.orderItemId}
+                              onClick={() => setDecisionDraft({ row, decision: "DO_NOT_BILL", notes: row.latestDecision?.notes ?? "" })}
+                              style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", fontSize: 12 }}
+                            >
+                              {t("billingPage.manualReviewDoNotBill")}
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

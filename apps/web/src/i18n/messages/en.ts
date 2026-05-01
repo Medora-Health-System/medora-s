@@ -298,6 +298,15 @@ export default {
     autoBillDecisionReasonPendingLicense: "Licensed billing source or facility chargemaster review is required.",
     autoBillDecisionReasonMissing: "No safe billing code is available for auto-billing.",
     autoBillDecisionReasonValidatedLabRequired: "Auto-billing requires a validated lab billing code.",
+    autoBillDecisionReasonDocumentedProcedureReview:
+      "Procedure documented; CPT/chargemaster review required.",
+    documentedProcedureReviewSectionTitle: "Documented procedures (billing review)",
+    documentedProcedureReviewSectionHint:
+      "Rows come from clinical procedure documentation only. No CPT/HCPCS is assigned. Review-only — not auto-bill ready and not part of the manual-review finalize gate.",
+    documentedProcedureReviewColLabel: "Procedure",
+    documentedProcedureReviewColMedora: "Medora code",
+    documentedProcedureReviewColEvidence: "Evidence",
+    manualReviewProcedureRowHint: "Review-only in this phase — no billing decision is saved for this row.",
     editBillingCapture: "Edit billing capture",
     billingCaptureModalTitle: "Billing capture (advanced)",
     billingCaptureGuidance:

@@ -1,6 +1,17 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
-import { AuditAction, BillingReviewDecisionStatus } from "@prisma/client";
+import {
+  AuditAction,
+  BillingReviewDecisionStatus,
+  EncounterClinicalEventType,
+  EncounterStatus,
+} from "@prisma/client";
+import {
+  DOCUMENTED_PROCEDURE_CPT_PENDING_EVIDENCE,
+  DOCUMENTED_PROCEDURE_REVIEW_REASON,
+  displayNameFrForDocumentedProcedureType,
+  medoraCodeForDocumentedProcedureType,
+} from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import type {
@@ -9,6 +20,7 @@ import type {
   BillingManualReviewGateDto,
   BillingManualReviewGateItemDto,
   BillingManualReviewRowDto,
+  BillingReviewAnchorType,
   BillingReviewDecisionAuditEntryDto,
   BillingReviewDecisionDto,
   BillingReadinessCategory,
@@ -49,6 +61,21 @@ export function getBillingReadinessStatus(
 
 export function getAutoBillDecision(row: BillingExportRowDto): BillingAutoBillDecisionDto {
   const medoraCode = row.medoraCode?.trim() ?? "";
+
+  if (row.reviewAnchorType === "PROCEDURE_DOCUMENTED") {
+    return {
+      orderItemId: row.orderItemId,
+      medoraCode,
+      category: "CARE",
+      billingStatus: row.billingStatus,
+      canAutoBill: false,
+      requiredReview: true,
+      reason: DOCUMENTED_PROCEDURE_REVIEW_REASON,
+      displayName: row.displayName,
+      evidenceSource: row.evidenceSource ?? DOCUMENTED_PROCEDURE_CPT_PENDING_EVIDENCE,
+      reviewAnchorType: "PROCEDURE_DOCUMENTED",
+    };
+  }
 
   if (row.category === "LAB" && row.billingStatus === "official_validated" && row.billingCodeDefault?.trim()) {
     return {
@@ -106,6 +133,9 @@ export function getAutoBillDecision(row: BillingExportRowDto): BillingAutoBillDe
     canAutoBill: false,
     requiredReview: true,
     reason: reasonForNonAutoBillStatus(row.billingStatus),
+    displayName: row.displayName,
+    evidenceSource: row.evidenceSource ?? null,
+    reviewAnchorType: (row.reviewAnchorType ?? "ORDER_ITEM") as BillingReviewAnchorType,
   };
 }
 
@@ -158,7 +188,13 @@ export class BillingService {
       },
     });
 
-    return this.buildBillingExportRowsFromOrderItems(orderItems);
+    const orderRows = await this.buildBillingExportRowsFromOrderItems(orderItems);
+    const procRows = await this.loadDocumentedProcedureBillingExportRows(facilityId, {
+      encounterId,
+      onlyClosedEncounters: false,
+      orderBy: "asc",
+    });
+    return [...orderRows, ...procRows];
   }
 
   async getEncounterAutoBillDecisions(
@@ -233,8 +269,57 @@ export class BillingService {
         billingStatus: autoDecision.billingStatus,
         reason: autoDecision.reason,
         createdAt: source.createdAt.toISOString(),
+        evidenceSource: row.evidenceSource ?? null,
+        reviewAnchorType: row.reviewAnchorType ?? "ORDER_ITEM",
+        procedureClinicalEventId: row.procedureClinicalEventId ?? null,
       });
     }
+
+    const procedureEvents = await this.prisma.encounterClinicalEvent.findMany({
+      where: {
+        facilityId,
+        eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
+        encounter: { facilityId, status: EncounterStatus.CLOSED },
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        createdAt: true,
+        encounterId: true,
+        patientId: true,
+        payloadJson: true,
+        encounter: {
+          select: {
+            patient: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+    for (const ev of procedureEvents) {
+      const row = this.procedureClinicalEventToBillingExportRow(ev);
+      if (!row) continue;
+      const autoDecision = getAutoBillDecision(row);
+      if (!autoDecision.requiredReview || !manualReviewStatuses.includes(autoDecision.billingStatus)) continue;
+      const patientName =
+        `${ev.encounter.patient.firstName ?? ""} ${ev.encounter.patient.lastName ?? ""}`.trim() || "—";
+      candidates.push({
+        encounterId: ev.encounterId,
+        patientId: ev.patientId,
+        patientName,
+        orderItemId: row.orderItemId,
+        medoraCode: autoDecision.medoraCode,
+        category: row.category,
+        displayName: row.displayName,
+        billingStatus: autoDecision.billingStatus,
+        reason: autoDecision.reason,
+        createdAt: ev.createdAt.toISOString(),
+        evidenceSource: row.evidenceSource ?? null,
+        reviewAnchorType: "PROCEDURE_DOCUMENTED",
+        procedureClinicalEventId: row.procedureClinicalEventId ?? null,
+      });
+    }
+
+    candidates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (candidates.length === 0) return [];
 
@@ -312,6 +397,9 @@ export class BillingService {
     const doNotBillOrderItemIds: string[] = [];
 
     for (const row of rows) {
+      if (row.reviewAnchorType === "PROCEDURE_DOCUMENTED") {
+        continue;
+      }
       const autoBillDecision = getAutoBillDecision(row);
       if (!autoBillDecision.requiredReview || !manualReviewStatuses.includes(autoBillDecision.billingStatus)) continue;
 
@@ -390,6 +478,12 @@ export class BillingService {
   ): Promise<BillingReviewDecisionDto> {
     if (!reviewerId) {
       throw new ForbiddenException("Authentication required");
+    }
+
+    if (orderItemId.startsWith("proc-doc_")) {
+      throw new BadRequestException(
+        "Les procédures documentées sont listées en revue facturation seulement ; aucune décision n'est enregistrée sur cet identifiant pour l'instant."
+      );
     }
 
     const decision = parseBillingReviewDecisionStatus(body?.decision);
@@ -484,6 +578,67 @@ export class BillingService {
       include: { reviewer: { select: { firstName: true, lastName: true, email: true } } },
     });
     return toBillingReviewDecisionDto(withReviewer)!;
+  }
+
+  private procedureClinicalEventToBillingExportRow(ev: {
+    id: string;
+    payloadJson: unknown;
+  }): BillingExportRowDto | null {
+    const procedureType = readProcedureTypeFromClinicalEventPayload(ev.payloadJson);
+    const medoraCode = medoraCodeForDocumentedProcedureType(procedureType);
+    if (!procedureType || !medoraCode) return null;
+    const displayName = displayNameFrForDocumentedProcedureType(procedureType);
+    const billingStatus = getBillingReadinessStatus({
+      category: "CARE",
+      medoraCode,
+      billingCodeDefault: null,
+    });
+    return {
+      orderItemId: `proc-doc_${ev.id}`,
+      medoraCode,
+      category: "CARE",
+      displayName,
+      billingStatus,
+      billingCodeDefault: null,
+      quantity: null,
+      unit: null,
+      notes: `[${DOCUMENTED_PROCEDURE_CPT_PENDING_EVIDENCE}] ${displayName}: revue CPT / grille tarifaire requise (procédure documentée).`,
+      evidenceSource: DOCUMENTED_PROCEDURE_CPT_PENDING_EVIDENCE,
+      reviewAnchorType: "PROCEDURE_DOCUMENTED",
+      procedureClinicalEventId: ev.id,
+    };
+  }
+
+  private async loadDocumentedProcedureBillingExportRows(
+    facilityId: string,
+    options: {
+      encounterId?: string;
+      onlyClosedEncounters: boolean;
+      orderBy: "asc" | "desc";
+    }
+  ): Promise<BillingExportRowDto[]> {
+    const events = await this.prisma.encounterClinicalEvent.findMany({
+      where: {
+        facilityId,
+        eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
+        ...(options.encounterId ? { encounterId: options.encounterId } : {}),
+        encounter: {
+          facilityId,
+          ...(options.onlyClosedEncounters ? { status: EncounterStatus.CLOSED } : {}),
+        },
+      },
+      orderBy: { createdAt: options.orderBy },
+      select: {
+        id: true,
+        payloadJson: true,
+      },
+    });
+    const out: BillingExportRowDto[] = [];
+    for (const ev of events) {
+      const row = this.procedureClinicalEventToBillingExportRow(ev);
+      if (row) out.push(row);
+    }
+    return out;
   }
 
   private async buildBillingExportRowsFromOrderItems(
@@ -757,4 +912,10 @@ function csvCell(value: string | number | null | undefined): string {
   const text = value == null ? "" : String(value);
   if (!/[",\n\r]/.test(text)) return text;
   return `"${text.replace(/"/g, '""')}"`;
+}
+
+function readProcedureTypeFromClinicalEventPayload(payloadJson: unknown): string | null {
+  if (!payloadJson || typeof payloadJson !== "object" || Array.isArray(payloadJson)) return null;
+  const pt = (payloadJson as Record<string, unknown>).procedureType;
+  return typeof pt === "string" && pt.trim() ? pt.trim() : null;
 }

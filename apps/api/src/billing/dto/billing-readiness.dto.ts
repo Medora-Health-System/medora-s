@@ -6,6 +6,9 @@ export type BillingReadinessStatus =
 
 export type BillingReadinessCategory = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 
+/** Synthetic billing-review anchor for PROCEDURE_DOCUMENTED clinical events (S14D). */
+export type BillingReviewAnchorType = "ORDER_ITEM" | "PROCEDURE_DOCUMENTED";
+
 export type BillingReviewDecisionStatus = "APPROVED" | "NEEDS_INFO" | "DO_NOT_BILL";
 
 export type BillingReviewDecisionDto = {
@@ -41,6 +44,10 @@ export type BillingReadinessItemDto = {
   billingStatus: BillingReadinessStatus;
   billingCodeDefault: string | null;
   notes: string;
+  /** When set, documents a clinical procedure event bridge row (review-only; not an OrderItem). */
+  evidenceSource?: string | null;
+  reviewAnchorType?: BillingReviewAnchorType;
+  procedureClinicalEventId?: string | null;
 };
 
 export type BillingExportRowDto = BillingReadinessItemDto & {
@@ -57,6 +64,9 @@ export type BillingAutoBillDecisionDto = {
   canAutoBill: boolean;
   requiredReview: boolean;
   reason: string;
+  displayName?: string | null;
+  evidenceSource?: string | null;
+  reviewAnchorType?: BillingReviewAnchorType;
 };
 
 export type BillingManualReviewRowDto = {
@@ -70,6 +80,9 @@ export type BillingManualReviewRowDto = {
   billingStatus: BillingReadinessStatus;
   reason: string;
   createdAt: string;
+  evidenceSource?: string | null;
+  reviewAnchorType?: BillingReviewAnchorType;
+  procedureClinicalEventId?: string | null;
   latestDecision: BillingReviewDecisionDto | null;
   /** Newest-first audit events for this order item (from AuditLog). */
   decisionAuditTrail: BillingReviewDecisionAuditEntryDto[];

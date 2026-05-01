@@ -55,6 +55,9 @@ type AutoBillDecisionRow = {
   canAutoBill: boolean;
   requiredReview: boolean;
   reason: string;
+  displayName?: string | null;
+  evidenceSource?: string | null;
+  reviewAnchorType?: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED";
 };
 
 type BillingReviewDecision = {
@@ -540,6 +543,7 @@ function autoBillDecisionReasonText(t: (k: string) => string, reason: string): s
     "Licensed billing source or facility chargemaster review is required.": "autoBillDecisionReasonPendingLicense",
     "No safe billing code is available for auto-billing.": "autoBillDecisionReasonMissing",
     "Auto-billing requires a validated lab billing code.": "autoBillDecisionReasonValidatedLabRequired",
+    "Procedure documented; CPT/chargemaster review required.": "autoBillDecisionReasonDocumentedProcedureReview",
   };
   const key = knownReasonKeyByText[normalized];
   return key ? t(`billingPage.${key}`) : normalized;
@@ -879,6 +883,10 @@ export default function BillingEncounterLedgerPage() {
   );
   const autoBillDecisionByOrderItemId = useMemo(
     () => new Map(autoBillDecisionRows.map((row) => [row.orderItemId, row])),
+    [autoBillDecisionRows]
+  );
+  const procedureDocumentedAutoBillRows = useMemo(
+    () => autoBillDecisionRows.filter((r) => r.reviewAnchorType === "PROCEDURE_DOCUMENTED"),
     [autoBillDecisionRows]
   );
   const billingReviewDecisionByOrderItemId = useMemo(
@@ -3248,9 +3256,11 @@ export default function BillingEncounterLedgerPage() {
               {autoBillDecisionWarning}
             </div>
           ) : null}
-          {data.events.length === 0 ? (
+          {data.events.length === 0 && procedureDocumentedAutoBillRows.length === 0 ? (
             <p style={{ color: "#64748b" }}>{t("billingPage.billingSummaryEmpty")}</p>
           ) : (
+            <>
+              {data.events.length > 0 ? (
             <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
@@ -3650,6 +3660,72 @@ export default function BillingEncounterLedgerPage() {
                 </tbody>
               </table>
             </div>
+              ) : null}
+              {procedureDocumentedAutoBillRows.length > 0 ? (
+                <div style={{ marginTop: 20 }}>
+                  <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                    {t("billingPage.documentedProcedureReviewSectionTitle")}
+                  </h3>
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b", lineHeight: 1.45, maxWidth: 900 }}>
+                    {t("billingPage.documentedProcedureReviewSectionHint")}
+                  </p>
+                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fafafa" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid #e2e8f0", background: "#f1f5f9" }}>
+                          <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.documentedProcedureReviewColLabel")}</th>
+                          <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.documentedProcedureReviewColMedora")}</th>
+                          <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.documentedProcedureReviewColEvidence")}</th>
+                          <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableReadiness")}</th>
+                          <th style={{ padding: 10, textAlign: "left" }}>{t("billingPage.billingSummaryTableAutoBillDecision")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {procedureDocumentedAutoBillRows.map((row) => (
+                          <tr key={row.orderItemId} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                            <td style={{ padding: 10, fontWeight: 600, color: "#0f172a" }}>
+                              {row.displayName?.trim() ? row.displayName : t("common.dash")}
+                            </td>
+                            <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{row.medoraCode}</td>
+                            <td style={{ padding: 10, fontFamily: "ui-monospace, monospace", fontSize: 11, color: "#475569" }}>
+                              {row.evidenceSource?.trim() ? row.evidenceSource : t("common.dash")}
+                            </td>
+                            <td style={{ padding: 10 }}>
+                              <BillingReadinessBadge status={row.billingStatus} t={t} />
+                            </td>
+                            <td style={{ padding: 10, minWidth: 200 }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    width: "fit-content",
+                                    borderRadius: 999,
+                                    border: "1px solid #fde68a",
+                                    background: "#fffbeb",
+                                    color: "#92400e",
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: "2px 8px",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {t("billingPage.autoBillManualReviewRequired")}
+                                </span>
+                                {row.reason.trim() ? (
+                                  <span style={{ color: "#64748b", fontSize: 11, lineHeight: 1.35 }}>
+                                    {autoBillDecisionReasonText(t, row.reason)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
 
           {canEditLines ? (

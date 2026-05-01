@@ -223,6 +223,16 @@ export default {
     autoBillDecisionReasonMissing: "Aucun code sûr disponible pour l’auto-facturation.",
     autoBillDecisionReasonValidatedLabRequired:
       "L’auto-facturation nécessite un code laboratoire validé.",
+    autoBillDecisionReasonDocumentedProcedureReview:
+      "Procédure documentée ; revue CPT / grille tarifaire requise.",
+    documentedProcedureReviewSectionTitle: "Procédures documentées (revue facturation)",
+    documentedProcedureReviewSectionHint:
+      "Lignes issues de la documentation clinique des procédures uniquement. Aucun CPT / HCPCS n’est attribué. Revue seule — pas prêt pour l’auto-facturation et hors compteur de la revue manuelle de finalisation.",
+    documentedProcedureReviewColLabel: "Procédure",
+    documentedProcedureReviewColMedora: "Code Medora",
+    documentedProcedureReviewColEvidence: "Preuve",
+    manualReviewProcedureRowHint:
+      "Revue seule dans cette phase — aucune décision de facturation n’est enregistrée pour cette ligne.",
     editBillingCapture: "Modifier la saisie facturation",
     billingCaptureModalTitle: "Saisie facturation (avancé)",
     billingCaptureGuidance:
