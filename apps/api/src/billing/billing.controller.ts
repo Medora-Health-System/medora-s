@@ -4,11 +4,21 @@ import { RoleCode } from "@prisma/client";
 import type { Response } from "express";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { BillingService } from "./billing.service";
+import { ExternalBillingExportService } from "./external-billing-export.service";
+
+function parseAllowOpen(raw: string | string[] | undefined): boolean {
+  if (raw == null) return false;
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return String(v).trim().toLowerCase() === "true" || String(v).trim() === "1";
+}
 
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class BillingController {
-  constructor(private readonly billingService: BillingService) {}
+  constructor(
+    private readonly billingService: BillingService,
+    private readonly externalBillingExport: ExternalBillingExportService
+  ) {}
 
   @Get("billing/encounters/:encounterId/readiness")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
@@ -80,5 +90,88 @@ export class BillingController {
     }
 
     return rows;
+  }
+
+  @Get("billing/external/encounters/:encounterId/export")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingEncounter(
+    @Param("encounterId") encounterId: string,
+    @Query("format") formatRaw: string | undefined,
+    @Query("allowOpen") allowOpenRaw: string | undefined,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const format = formatRaw?.trim().toLowerCase() || "json";
+    if (format !== "json" && format !== "csv") {
+      throw new BadRequestException("format must be json or csv");
+    }
+    const facilityId = req.facilityId;
+    const userId = req.user?.userId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(userId, String(req.userRole ?? ""));
+    const allowOpen = parseAllowOpen(allowOpenRaw);
+
+    if (format === "csv") {
+      const { csv, filename } = await this.externalBillingExport.exportEncounterCsv({
+        facilityId,
+        encounterId,
+        allowOpen,
+        userCtx,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"] as string | undefined,
+      });
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return csv;
+    }
+
+    return this.externalBillingExport.exportEncounterJson({
+      facilityId,
+      encounterId,
+      allowOpen,
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
+  }
+
+  @Get("billing/external/daily-export")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingDaily(
+    @Query("date") date: string,
+    @Query("format") formatRaw: string | undefined,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    if (!date?.trim()) {
+      throw new BadRequestException("date is required (YYYY-MM-DD)");
+    }
+    const format = formatRaw?.trim().toLowerCase() || "json";
+    if (format !== "json" && format !== "csv") {
+      throw new BadRequestException("format must be json or csv");
+    }
+    const facilityId = req.facilityId;
+    const userId = req.user?.userId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(userId, String(req.userRole ?? ""));
+
+    if (format === "csv") {
+      const { csv, filename } = await this.externalBillingExport.exportDailyCsv({
+        facilityId,
+        date: date.trim(),
+        userCtx,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"] as string | undefined,
+      });
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return csv;
+    }
+
+    return this.externalBillingExport.exportDailyJson({
+      facilityId,
+      date: date.trim(),
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
   }
 }
