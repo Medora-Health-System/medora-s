@@ -5,10 +5,11 @@
  * Persists via PATCH /encounters/:id { nursingAssessment: merged } (unchanged contract).
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import {
   erHandoffV1HasPersistedBlob,
   mergeErHandoffV1IntoNursingAssessment,
@@ -437,12 +438,14 @@ export function ErHandoffV1Editor({
   );
 }
 
-const handoffFieldsetShell: React.CSSProperties = {
+const handoffCollapsibleShell: React.CSSProperties = {
   border: "1px solid #bae6fd",
   borderRadius: 12,
   margin: 0,
-  padding: "16px 18px",
+  marginTop: 4,
+  padding: 0,
   backgroundColor: "#f0f9ff",
+  overflow: "hidden",
 };
 
 export function ErHandoffV1NursingSection({
@@ -467,27 +470,107 @@ export function ErHandoffV1NursingSection({
   onUpdated: () => void | Promise<void>;
   onSaved?: (patch: Record<string, unknown>) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+  const reactId = useId();
+  const headingId = `${reactId}-er-handoff-heading`;
+  const panelId = `${reactId}-er-handoff-panel`;
   const show = shouldShowErHandoffV1InNursing(encounter);
   if (!show) return null;
   const allowEdit = canEditErHandoff && (encounter.status ?? "").trim() === "OPEN" && !isLocked;
 
+  const hf = useMemo(
+    () => readErHandoffV1FromNursingAssessment(encounter.nursingAssessment),
+    [encounter.nursingAssessment]
+  );
+
+  const compactSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (hf.receivingNurseName?.trim()) {
+      parts.push(hf.receivingNurseName.trim());
+    }
+    if (hf.reportGivenAt?.trim()) {
+      const d = new Date(hf.reportGivenAt);
+      if (!Number.isNaN(d.getTime())) {
+        parts.push(formatEncounterChromeDateTime(hf.reportGivenAt, language));
+      }
+    }
+    if (hf.handoffLastSavedByDisplayName?.trim() && hf.handoffLastSavedAt?.trim()) {
+      const d = new Date(hf.handoffLastSavedAt);
+      const when = Number.isNaN(d.getTime())
+        ? hf.handoffLastSavedAt.trim()
+        : formatEncounterChromeDateTime(hf.handoffLastSavedAt, language);
+      parts.push(
+        t("nursingAssessmentTab.erHandoffCollapsedSavedBy")
+          .replace("{name}", hf.handoffLastSavedByDisplayName.trim())
+          .replace("{when}", when)
+      );
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }, [hf, language, t]);
+
   return (
-    <fieldset style={handoffFieldsetShell}>
-      <legend style={{ fontWeight: 700, padding: "0 10px", fontSize: 14, color: "#0f172a" }}>
-        {t("nursingAssessmentTab.erHandoffLegend")}
-      </legend>
-      <p style={{ margin: "0 0 12px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-        {t("nursingAssessmentTab.erHandoffIntro")}
-      </p>
-      <ErHandoffV1Editor
-        encounterId={encounterId}
-        facilityId={facilityId}
-        nursingAssessment={encounter.nursingAssessment}
-        onUpdated={onUpdated}
-        onSaved={onSaved}
-        readOnly={!allowEdit}
-      />
-    </fieldset>
+    <section style={handoffCollapsibleShell} aria-labelledby={headingId}>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "12px 14px",
+          borderBottom: expanded ? "1px solid #bae6fd" : "none",
+        }}
+      >
+        <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+          <h3
+            id={headingId}
+            style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.35 }}
+          >
+            {t("nursingAssessmentTab.erHandoffLegend")}
+          </h3>
+          {compactSummary ? (
+            <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45, wordBreak: "break-word" }}>
+              {compactSummary}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            flexShrink: 0,
+            padding: "8px 14px",
+            fontSize: 13,
+            fontWeight: 600,
+            borderRadius: 10,
+            border: "1px solid #7dd3fc",
+            backgroundColor: "#fff",
+            color: "#0369a1",
+            cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+          }}
+        >
+          {expanded ? t("nursingAssessmentTab.erHandoffCollapse") : t("nursingAssessmentTab.erHandoffExpand")}
+        </button>
+      </div>
+      {expanded ? (
+        <div id={panelId} style={{ padding: "14px 16px 16px" }}>
+          <p style={{ margin: "0 0 12px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+            {t("nursingAssessmentTab.erHandoffIntro")}
+          </p>
+          <ErHandoffV1Editor
+            encounterId={encounterId}
+            facilityId={facilityId}
+            nursingAssessment={encounter.nursingAssessment}
+            onUpdated={onUpdated}
+            onSaved={onSaved}
+            readOnly={!allowEdit}
+          />
+        </div>
+      ) : null}
+    </section>
   );
 }

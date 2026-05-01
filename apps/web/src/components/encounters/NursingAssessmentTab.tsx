@@ -294,16 +294,6 @@ export function NursingAssessmentTab({
         </p>
       </div>
 
-      <ErHandoffV1NursingSection
-        encounter={encounter}
-        encounterId={encounterId}
-        facilityId={facilityId}
-        isLocked={formLocked}
-        canEditErHandoff={canEditErInpatientHandoff}
-        onUpdated={onUpdate}
-        onSaved={onHandoffSaved}
-      />
-
       <fieldset
         style={{
           ...shell,
@@ -539,6 +529,16 @@ export function NursingAssessmentTab({
           {error}
         </p>
       )}
+
+      <ErHandoffV1NursingSection
+        encounter={encounter}
+        encounterId={encounterId}
+        facilityId={facilityId}
+        isLocked={formLocked}
+        canEditErHandoff={canEditErInpatientHandoff}
+        onUpdated={onUpdate}
+        onSaved={onHandoffSaved}
+      />
     </div>
   );
 }

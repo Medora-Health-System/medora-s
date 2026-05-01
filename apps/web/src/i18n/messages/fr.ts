@@ -3974,6 +3974,9 @@ export default {
       "Infirmier ou infirmière réceptionnaire, heure du compte rendu et notes — enregistrement dans le dossier partagé (même donnée que les paramètres opérationnels).",
     erHandoffReadOnlyBanner:
       "Consultation fermée, dossier verrouillé ou rôle non autorisé — champs en lecture seule.",
+    erHandoffExpand: "Afficher la transmission",
+    erHandoffCollapse: "Masquer la transmission",
+    erHandoffCollapsedSavedBy: "Dernier enregistrement : {name} · {when}",
     proceduresLegend: "Procédures infirmières",
     proceduresHelp1:
       "Saisie rapide au lit — pose de voie IV pour l'instant ; d'autres procédures pourront s'ajouter.",

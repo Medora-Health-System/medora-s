@@ -4002,6 +4002,9 @@ export default {
     erHandoffIntro:
       "Receiving nurse, report time, and notes — saved to the shared encounter record (same data as operational settings).",
     erHandoffReadOnlyBanner: "Encounter closed, chart locked, or role not allowed — read-only fields.",
+    erHandoffExpand: "Show handoff",
+    erHandoffCollapse: "Hide handoff",
+    erHandoffCollapsedSavedBy: "Last saved: {name} · {when}",
     proceduresLegend: "Nursing procedures",
     proceduresHelp1:
       "Quick entry at the bedside — IV placement for now; additional procedures may be added later.",

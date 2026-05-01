@@ -830,14 +830,6 @@ export function EmergencyChartView() {
             </h2>
             {showNursingTab ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <ErHandoffV1NursingSection
-                  encounter={encounter}
-                  encounterId={encounterId}
-                  facilityId={fid}
-                  isLocked={isLocked}
-                  canEditErHandoff={canEditOperationalEncounter && encounter.status === "OPEN"}
-                  onUpdated={onEmbeddedEncounterUpdate}
-                />
                 <EmergencyNursingReassessmentPanel
                   encounterId={encounterId}
                   facilityId={fid}
@@ -845,6 +837,14 @@ export function EmergencyChartView() {
                   isLocked={isLocked}
                   onSaved={onEmbeddedEncounterUpdate}
                   nursingTabHref={tabHref("nursing")}
+                />
+                <ErHandoffV1NursingSection
+                  encounter={encounter}
+                  encounterId={encounterId}
+                  facilityId={fid}
+                  isLocked={isLocked}
+                  canEditErHandoff={canEditOperationalEncounter && encounter.status === "OPEN"}
+                  onUpdated={onEmbeddedEncounterUpdate}
                 />
               </div>
             ) : (
