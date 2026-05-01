@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
@@ -18,13 +17,7 @@ import {
   CARE_LEVEL_OPTIONS_FR,
   type AdmissionFormState,
 } from "@/lib/encounterAdmission";
-import {
-  MedoraCard,
-  MedoraCardActions,
-  MedoraCardIdentity,
-  MedoraCardInner,
-  MedoraCardTitle,
-} from "@/components/medora-card";
+import { MedoraCard, MedoraCardIdentity, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
 import {
   buildErDispositionPreviewModel,
   emptyErDispositionSupplementForm,
@@ -102,8 +95,6 @@ export function EmergencyDispositionPanel({
   encounter,
   isLocked,
   onSaved,
-  summaryTabHref,
-  onSummaryClosureClick,
   canPrescribe,
   canEditNursingDischarge,
   canEditMedicalDischarge,
@@ -113,10 +104,6 @@ export function EmergencyDispositionPanel({
   encounter: EncounterLite;
   isLocked: boolean;
   onSaved: () => void | Promise<void>;
-  /** When set, Summary & closure stays in the ER workflow (no navigation to the generic encounter page). */
-  onSummaryClosureClick?: () => void;
-  /** Fallback when `onSummaryClosureClick` is not provided (e.g. reuse outside ER). */
-  summaryTabHref?: string;
   canPrescribe: boolean;
   canEditNursingDischarge: boolean;
   canEditMedicalDischarge: boolean;
@@ -174,10 +161,6 @@ export function EmergencyDispositionPanel({
     [t]
   );
 
-  const patientDossierPrintHref =
-    encounter.patient?.id != null && String(encounter.patient.id).trim() !== ""
-      ? `/app/patients/${encodeURIComponent(encounter.patient.id)}?tab=summary`
-      : undefined;
   const [dischargeForm, setDischargeForm] = useState<DischargeFormState>(() => emptyDischargeForm());
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
   const [supplementForm, setSupplementForm] = useState<ErDispositionSupplementForm>(() =>
@@ -418,66 +401,6 @@ export function EmergencyDispositionPanel({
             }
           />
         </MedoraCardIdentity>
-
-        <MedoraCardActions railBorderTopColor="#e2e8f0" gap={8} minWidth={0} alignItems="flex-start">
-          {patientDossierPrintHref ? (
-            <Link
-              href={patientDossierPrintHref}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#f8fafc",
-                color: "#334155",
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              {t("emergencyDisposition.printChart")}
-            </Link>
-          ) : null}
-          {onSummaryClosureClick ? (
-            <button
-              type="button"
-              onClick={onSummaryClosureClick}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#f8fafc",
-                color: "#334155",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {t("emergencyDisposition.summaryClosureLink")}
-            </button>
-          ) : summaryTabHref ? (
-            <Link
-              href={summaryTabHref}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#f8fafc",
-                color: "#334155",
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              {t("emergencyDisposition.summaryClosureLink")}
-            </Link>
-          ) : null}
-        </MedoraCardActions>
 
         {encounter.type === "INPATIENT" ? (
           <p

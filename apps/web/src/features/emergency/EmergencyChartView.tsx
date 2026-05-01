@@ -919,7 +919,6 @@ export function EmergencyChartView() {
               encounter={encounter}
               isLocked={isLocked}
               onSaved={onEmbeddedEncounterUpdate}
-              onSummaryClosureClick={scrollToErSummaryClosure}
               canPrescribe={canPrescribe}
               canEditNursingDischarge={canEditNursingDischarge}
               canEditMedicalDischarge={canEditMedicalDischarge}
