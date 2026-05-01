@@ -5141,6 +5141,24 @@ export default {
       "If your protocol allows it, use the checkbox in the close dialog to proceed despite these items.",
     overrideCheckbox:
       "I confirm I accept the risks and request closure despite the safety blockers listed above.",
+    blockers: {
+      VITALS_MISSING:
+        "No recent vitals are documented for this encounter (patient chart, triage, or encounter record).",
+      VITALS_STALE:
+        "The latest vitals are older than 4 hours. Record a new set or explicitly acknowledge closure despite this risk.",
+      PROVIDER_DOCUMENTATION_UNSIGNED: "Medical documentation must be signed before final closure.",
+      ACTIVE_ORDERS_UNRESOLVED:
+        "Active orders are unresolved (lab: {lab}, imaging: {imaging}, medication: {medication}, care: {care}). Complete or cancel the affected lines.",
+      NURSING_HANDOFF_INCOMPLETE:
+        "Nursing handoff is not confirmed (report given or “ready for transfer” required).",
+      ADMISSION_DOCUMENTATION_INCOMPLETE: "Admission requires a completed structured admission packet.",
+      PROVIDER_DISPOSITION_INCOMPLETE:
+        "Transfer requires provider disposition documentation (note, plan, or structured evaluation).",
+    },
+    warnings: {
+      VITALS_NOT_DOCUMENTED:
+        "No structured vitals found — confirm whether a recent recording is needed before closure.",
+    },
   },
   createOrderModal: {
     tabOrderSets: "Order Sets",

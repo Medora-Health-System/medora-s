@@ -6,6 +6,30 @@ import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 
+function dispositionReadinessIssueText(
+  t: (key: string) => string,
+  issue: { code: string; message: string },
+  data: DispositionSafetyReadinessResponse
+): string {
+  const blockKey = `dispositionReadiness.blockers.${issue.code}`;
+  const warnKey = `dispositionReadiness.warnings.${issue.code}`;
+  const blockMsg = t(blockKey);
+  const warnMsg = t(warnKey);
+  const resolved = blockMsg !== blockKey ? blockMsg : warnMsg !== warnKey ? warnMsg : null;
+  if (resolved) {
+    if (issue.code === "ACTIVE_ORDERS_UNRESOLVED") {
+      const c = data.activeOrderCounts;
+      return resolved
+        .replace("{lab}", String(c.lab))
+        .replace("{imaging}", String(c.imaging))
+        .replace("{medication}", String(c.medication))
+        .replace("{care}", String(c.care));
+    }
+    return resolved;
+  }
+  return issue.message;
+}
+
 export function DispositionReadinessBanner({
   encounterId,
   facilityId,
@@ -166,7 +190,7 @@ export function DispositionReadinessBanner({
         <ul style={{ margin: "0 0 8px 0", paddingLeft: 18, fontSize: 12, color: "#7f1d1d", lineHeight: 1.45 }}>
           {data.blockers.map((b) => (
             <li key={b.code} style={{ marginBottom: 4 }}>
-              {b.message}
+              {dispositionReadinessIssueText(t, b, data)}
             </li>
           ))}
         </ul>
@@ -175,7 +199,7 @@ export function DispositionReadinessBanner({
         <ul style={{ margin: "0 0 0 0", paddingLeft: 18, fontSize: 12, color: "#92400e", lineHeight: 1.45 }}>
           {data.warnings.map((w) => (
             <li key={w.code} style={{ marginBottom: 4 }}>
-              {w.message}
+              {dispositionReadinessIssueText(t, w, data)}
             </li>
           ))}
         </ul>

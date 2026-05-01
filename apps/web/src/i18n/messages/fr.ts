@@ -5130,6 +5130,26 @@ export default {
       "Si votre protocole l’autorise, cochez la case d’attestation dans la fenêtre de clôture pour poursuivre malgré ces points.",
     overrideCheckbox:
       "Je confirme assumer les risques et demander la clôture malgré les blocages de sécurité listés ci-dessus.",
+    blockers: {
+      VITALS_MISSING:
+        "Aucun signe vital récent n’est documenté pour cette consultation (dossier patient, triage ou dossier consultation).",
+      VITALS_STALE:
+        "Les derniers signes vitaux datent de plus de 4 heures. Actualisez un relevé ou confirmez explicitement la clôture malgré ce risque.",
+      PROVIDER_DOCUMENTATION_UNSIGNED:
+        "La documentation médicale doit être signée avant la clôture définitive de la consultation.",
+      ACTIVE_ORDERS_UNRESOLVED:
+        "Des ordres actifs ne sont pas résolus (labo : {lab}, imagerie : {imaging}, médicaments : {medication}, soins : {care}). Terminez ou annulez les lignes concernées.",
+      NURSING_HANDOFF_INCOMPLETE:
+        "Passation infirmière / transfert des soins non confirmée (compte rendu ou confirmation « prêt pour transfert » requis).",
+      ADMISSION_DOCUMENTATION_INCOMPLETE:
+        "L’admission / hospitalisation exige un dossier d’admission structuré complété.",
+      PROVIDER_DISPOSITION_INCOMPLETE:
+        "Le transfert exige une documentation médicale de disposition (impression, plan ou évaluation structurée).",
+    },
+    warnings: {
+      VITALS_NOT_DOCUMENTED:
+        "Aucun signe vital structuré retrouvé — vérifiez qu’un relevé récent n’est pas nécessaire avant la clôture.",
+    },
   },
   createOrderModal: {
     tabOrderSets: "Protocoles",

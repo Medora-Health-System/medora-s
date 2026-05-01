@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { EncounterResultsTab, type EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
 import {
@@ -11,18 +11,8 @@ import {
   MedoraCardTitle,
 } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
-import { apiFetch } from "@/lib/apiClient";
-import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
-import { formatEncounterVitalsHistoryCompactLine } from "@/lib/patientVitals";
 import { buildEmergencyVisitSummaryModel, type VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
 import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
-
-type VitalsHistoryEntry = {
-  recordedAt: string;
-  recordedBy: { userId: string | null; displayName: string | null };
-  source: string;
-  vitals: Record<string, unknown>;
-};
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -97,46 +87,10 @@ export function EmergencyVisitSummaryPanel({
 }) {
   const { language, t } = useI18n();
   const [resultsSnap, setResultsSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
-  const [vitalsHistoryState, setVitalsHistoryState] = useState<{
-    loading: boolean;
-    error: boolean;
-    entries: VitalsHistoryEntry[];
-  }>({ loading: true, error: false, entries: [] });
 
   const onLabRadSnapshot = useCallback((s: EncounterResultsLabRadSnapshot) => {
     setResultsSnap(s);
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setVitalsHistoryState((s) => ({ ...s, loading: true, error: false }));
-    (async () => {
-      try {
-        const data = await apiFetch(`/encounters/${encounterId}/vitals-history`, { facilityId });
-        if (cancelled) return;
-        const raw = data && typeof data === "object" && !Array.isArray(data) ? (data as { entries?: unknown }).entries : null;
-        const entries: VitalsHistoryEntry[] = Array.isArray(raw)
-          ? (raw as VitalsHistoryEntry[]).filter(
-              (e) =>
-                e &&
-                typeof e === "object" &&
-                typeof e.recordedAt === "string" &&
-                e.vitals &&
-                typeof e.vitals === "object" &&
-                !Array.isArray(e.vitals)
-            )
-          : [];
-        setVitalsHistoryState({ loading: false, error: false, entries });
-      } catch {
-        if (!cancelled) {
-          setVitalsHistoryState({ loading: false, error: true, entries: [] });
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [encounterId, facilityId, resultsRefresh]);
 
   const model = useMemo(
     () => buildEmergencyVisitSummaryModel(encounter, triageSnapshot, resultsSnap, language),
@@ -152,20 +106,9 @@ export function EmergencyVisitSummaryPanel({
         model.disposition ||
         model.handoff ||
         model.emtala ||
-        model.timeline.length > 0 ||
-        vitalsHistoryState.entries.length > 0 ||
-        vitalsHistoryState.loading
+        model.timeline.length > 0
     );
-  }, [model, vitalsHistoryState.entries.length, vitalsHistoryState.loading]);
-
-  const vitalsSourceLabel = useCallback(
-    (src: string) => {
-      if (src === "TRIAGE") return t("emergencyVisitSummaryPanel.vitalsHistorySourceTriage");
-      if (src === "ENCOUNTER_CHART") return t("emergencyVisitSummaryPanel.vitalsHistorySourceEncounterChart");
-      return t("emergencyVisitSummaryPanel.vitalsHistorySourceUnknown");
-    },
-    [t]
-  );
+  }, [model]);
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
@@ -217,51 +160,6 @@ export function EmergencyVisitSummaryPanel({
         {model.triageResume ? <SummaryBlockCard accent="#b91c1c" block={model.triageResume} /> : null}
         {model.resumeInfirmier ? <SummaryBlockCard accent="#0ea5e9" block={model.resumeInfirmier} /> : null}
         {model.evaluationMedicale ? <SummaryBlockCard accent="#4f46e5" block={model.evaluationMedicale} /> : null}
-
-        <MedoraCard leftAccentColor="#be123c" variant="default">
-          <MedoraCardInner>
-            <p style={sectionTitle}>{t("emergencyVisitSummaryPanel.vitalsHistoryTitle")}</p>
-            {vitalsHistoryState.loading ? (
-              <p style={{ ...lineStyle, marginTop: 8 }}>{t("common.loading")}</p>
-            ) : vitalsHistoryState.error ? (
-              <p style={{ ...lineStyle, marginTop: 8, color: "#92400e", fontWeight: 600 }}>
-                {t("emergencyVisitSummaryPanel.vitalsHistoryLoadError")}
-              </p>
-            ) : vitalsHistoryState.entries.length === 0 ? (
-              <p style={{ ...lineStyle, marginTop: 8, color: "#64748b" }}>{t("emergencyVisitSummaryPanel.vitalsHistoryEmpty")}</p>
-            ) : (
-              <ul style={{ margin: "8px 0 0 0", paddingLeft: 0, listStyle: "none" }}>
-                {vitalsHistoryState.entries.map((e, i) => {
-                  const vitalsLine = formatEncounterVitalsHistoryCompactLine(e.vitals, language) || t("common.dash");
-                  const when = formatEncounterChromeDateTime(e.recordedAt, language);
-                  const by =
-                    e.recordedBy.displayName?.trim() ||
-                    (e.source === "TRIAGE" ? t("emergencyVisitSummaryPanel.vitalsHistoryActorTriage") : t("common.dash"));
-                  const src = vitalsSourceLabel(e.source);
-                  return (
-                    <li
-                      key={`${e.recordedAt}-${i}`}
-                      style={{
-                        ...lineStyle,
-                        marginBottom: i === vitalsHistoryState.entries.length - 1 ? 0 : 8,
-                        paddingBottom: i === vitalsHistoryState.entries.length - 1 ? 0 : 8,
-                        borderBottom: i === vitalsHistoryState.entries.length - 1 ? "none" : "1px solid #f1f5f9",
-                      }}
-                    >
-                      <span style={{ color: "#0f172a", fontWeight: 600 }}>{when}</span>
-                      <span style={{ color: "#94a3b8" }}> — </span>
-                      {vitalsLine}
-                      <span style={{ color: "#94a3b8" }}> — </span>
-                      <span style={{ color: "#64748b" }}>{src}</span>
-                      <span style={{ color: "#94a3b8" }}> — </span>
-                      <span style={{ color: "#475569" }}>{by}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </MedoraCardInner>
-        </MedoraCard>
 
         {model.resultats ? (
           <MedoraCard leftAccentColor="#6366f1" variant="default">
