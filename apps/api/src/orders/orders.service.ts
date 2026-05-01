@@ -135,12 +135,16 @@ const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
   name: true,
   displayNameEn: true,
   displayNameFr: true,
+  genericName: true,
+  therapeuticClass: true,
   strength: true,
   dosageForm: true,
   route: true,
   ndc11: true,
   ndcDisplay: true,
   billingUnitType: true,
+  isControlled: true,
+  controlledSchedule: true,
 } as const;
 
 const CATALOG_LAB_SELECT = {

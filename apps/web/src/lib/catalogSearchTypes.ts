@@ -24,6 +24,9 @@ export type CatalogSearchItem = {
     controlledSchedule?: string;
     requiresWitness?: boolean;
     requiresDoubleSign?: boolean;
+    genericName?: string;
+    therapeuticClass?: string;
+    commonAliases?: string[];
     category?: string;
     modality?: string;
     bodyRegion?: string;

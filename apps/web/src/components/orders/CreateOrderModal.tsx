@@ -205,6 +205,14 @@ function catalogItemToOrderLine(
       _requiresDoubleSign: item.metadata?.requiresDoubleSign,
       refillCount: 0,
       medicationFulfillmentIntent: erAdministerOnly ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE",
+      _safetyCatalog: {
+        code: item.code,
+        name: item.name ?? null,
+        displayName: item.displayNameEn?.trim() || item.displayNameFr?.trim() || item.name || null,
+        genericName: item.metadata?.genericName,
+        therapeuticClass: item.metadata?.therapeuticClass,
+        commonAliases: item.metadata?.commonAliases,
+      },
     };
   }
 
@@ -1043,6 +1051,14 @@ export function CreateOrderModal({
             _requiresDoubleSign: item.metadata?.requiresDoubleSign,
             refillCount: 0,
             medicationFulfillmentIntent: erAdministerOnly ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE",
+            _safetyCatalog: {
+              code: item.code,
+              name: item.name ?? null,
+              displayName: item.displayNameEn?.trim() || item.displayNameFr?.trim() || item.name || null,
+              genericName: item.metadata?.genericName,
+              therapeuticClass: item.metadata?.therapeuticClass,
+              commonAliases: item.metadata?.commonAliases,
+            },
           },
         ],
       };

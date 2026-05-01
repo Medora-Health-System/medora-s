@@ -43,4 +43,13 @@ export type CreateOrderLineItem = {
   _requiresDoubleSign?: boolean;
   _modality?: string;
   _bodyRegion?: string;
+  /** Snapshot from catalog search at pick time (soft safety rules). */
+  _safetyCatalog?: {
+    code?: string;
+    name?: string | null;
+    displayName?: string | null;
+    genericName?: string | null;
+    therapeuticClass?: string | null;
+    commonAliases?: string[];
+  };
 };

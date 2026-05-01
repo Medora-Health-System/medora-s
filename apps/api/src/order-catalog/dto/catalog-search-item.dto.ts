@@ -29,6 +29,10 @@ export type CatalogSearchItemDto = {
     controlledSchedule?: string;
     requiresWitness?: boolean;
     requiresDoubleSign?: boolean;
+    /** MEDICATION: clinical / safety hints (additive). */
+    genericName?: string;
+    therapeuticClass?: string;
+    commonAliases?: string[];
     category?: string;
     modality?: string;
     bodyRegion?: string;

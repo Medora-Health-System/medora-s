@@ -9,12 +9,16 @@ export type CatalogMedicationEnrichment = Pick<
   | "name"
   | "displayNameEn"
   | "displayNameFr"
+  | "genericName"
+  | "therapeuticClass"
   | "strength"
   | "dosageForm"
   | "route"
   | "ndc11"
   | "ndcDisplay"
   | "billingUnitType"
+  | "isControlled"
+  | "controlledSchedule"
 >;
 
 export type CatalogLabTestEnrichment = {

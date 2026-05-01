@@ -3,6 +3,10 @@
 import React from "react";
 import { useI18n } from "@/lib/i18n";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
+import {
+  MedicationSoftSafetyPanel,
+  medicationSoftSafetyWarningsForOrderLine,
+} from "@/components/medication/MedicationSoftSafetyPanel";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -122,6 +126,7 @@ export function SelectedMedicationItems({
                   </p>
                 </div>
               ) : null}
+              <MedicationSoftSafetyPanel warnings={medicationSoftSafetyWarningsForOrderLine(item, items)} />
             </div>
             {erAdministerOnly ? (
               <div style={{ marginBottom: 10, fontSize: 13, color: "#475569" }}>

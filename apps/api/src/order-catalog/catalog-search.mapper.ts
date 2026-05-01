@@ -55,6 +55,8 @@ export function mapMedicationToCatalogSearchItem(
       controlledSchedule: m.controlledSchedule ?? undefined,
       requiresWitness: m.requiresWitness || undefined,
       requiresDoubleSign: m.requiresDoubleSign || undefined,
+      genericName: m.genericName?.trim() || undefined,
+      therapeuticClass: m.therapeuticClass?.trim() || undefined,
     },
   };
 }

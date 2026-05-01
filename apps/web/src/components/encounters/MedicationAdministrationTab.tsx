@@ -12,7 +12,14 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
-import { resolveMedicationMarActionFromStorage, getEncounterAllergyDocumentationSummary } from "@medora/shared";
+import {
+  resolveMedicationMarActionFromStorage,
+  getEncounterAllergyDocumentationSummary,
+  getMedicationSafetyWarnings,
+  type MedicationSafetyCatalogInput,
+  type MedicationSafetyWarning,
+} from "@medora/shared";
+import { MedicationSoftSafetyPanel } from "@/components/medication/MedicationSoftSafetyPanel";
 import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
@@ -32,18 +39,55 @@ type AdminRow = {
 type OrderItemApi = {
   id?: string;
   quantity?: number | null;
+  catalogItemId?: string | null;
   catalogItemType?: string | null;
+  manualLabel?: string | null;
+  strength?: string | number | null;
   medicationFulfillmentIntent?: string | null;
   status?: string | null;
   route?: string | null;
   intendedAdministrationAt?: string | null;
   catalogMedication?: {
+    code?: string | null;
+    name?: string | null;
+    displayNameEn?: string | null;
+    displayNameFr?: string | null;
+    genericName?: string | null;
+    therapeuticClass?: string | null;
     route?: string | null;
     ndc11?: string | null;
     ndcDisplay?: string | null;
     billingUnitType?: string | null;
+    isControlled?: boolean | null;
+    controlledSchedule?: string | null;
   } | null;
 };
+
+function marOrderItemToSafetyCatalogInput(it: OrderItemApi, displayLabel: string): MedicationSafetyCatalogInput {
+  const cm = it.catalogMedication;
+  const strengthRaw = it.strength;
+  const strengthStr =
+    typeof strengthRaw === "string"
+      ? strengthRaw
+      : strengthRaw != null && String(strengthRaw).trim() !== ""
+        ? String(strengthRaw)
+        : undefined;
+  return {
+    code: cm?.code ?? undefined,
+    name: cm?.name ?? undefined,
+    displayName: cm?.displayNameEn?.trim() || cm?.displayNameFr?.trim() || displayLabel,
+    genericName: cm?.genericName?.trim() || undefined,
+    therapeuticClass: cm?.therapeuticClass?.trim() || undefined,
+    strength: strengthStr,
+    route: it.route?.trim() || cm?.route?.trim() || undefined,
+    manualLabel:
+      String(it.catalogItemType ?? "").toUpperCase() === "MEDICATION" && !it.catalogItemId?.trim()
+        ? it.manualLabel?.trim() || displayLabel
+        : undefined,
+    isControlled: cm?.isControlled ?? undefined,
+    controlledSchedule: cm?.controlledSchedule ?? undefined,
+  };
+}
 
 const RECENT_MS = 24 * 60 * 60 * 1000;
 
@@ -174,6 +218,7 @@ export function MedicationAdministrationTab({
     authorityLine: string;
     attributionLines: string[];
     highRiskWarning: string | null;
+    softSafetyWarnings: MedicationSafetyWarning[];
     routeHint: string;
     ndcHint: string;
     billingUnitHint: string;
@@ -259,7 +304,7 @@ export function MedicationAdministrationTab({
   }, [admins]);
 
   const taskRows = useMemo(() => {
-    const rows: {
+    type RowDraft = {
       orderItemId: string;
       label: string;
       routeHint: string;
@@ -270,7 +315,9 @@ export function MedicationAdministrationTab({
       authorityLine: string;
       attributionLines: string[];
       highRiskWarning: string | null;
-    }[] = [];
+      safetyCatalogInput: MedicationSafetyCatalogInput;
+    };
+    const drafts: RowDraft[] = [];
     for (const order of orders) {
       if ((order as { status?: string }).status === "CANCELLED") continue;
       const items = (order as { items?: OrderItemApi[] }).items ?? [];
@@ -293,7 +340,7 @@ export function MedicationAdministrationTab({
                   return Number.isFinite(n) ? n : null;
                 })()
               : null;
-        rows.push({
+        drafts.push({
           orderItemId: it.id,
           label,
           authorityLine: formatOrderAuthority(order as Record<string, unknown>, t),
@@ -304,10 +351,20 @@ export function MedicationAdministrationTab({
           billingUnitHint: it.catalogMedication?.billingUnitType?.trim() || "",
           orderedQuantity,
           intendedAt: it.intendedAdministrationAt ?? null,
+          safetyCatalogInput: marOrderItemToSafetyCatalogInput(it, label),
         });
       }
     }
-    return rows;
+    const siblingInputs = drafts.map((d) => d.safetyCatalogInput);
+    return drafts.map((row, idx) => {
+      const { safetyCatalogInput, ...rest } = row;
+      return {
+        ...rest,
+        softSafetyWarnings: getMedicationSafetyWarnings(safetyCatalogInput, {
+          siblingMedications: siblingInputs.filter((_, i) => i !== idx),
+        }),
+      };
+    });
   }, [orders, language, t]);
 
   const openModal = (row: (typeof taskRows)[0]) => {
@@ -317,6 +374,7 @@ export function MedicationAdministrationTab({
       authorityLine: row.authorityLine,
       attributionLines: row.attributionLines,
       highRiskWarning: row.highRiskWarning,
+      softSafetyWarnings: row.softSafetyWarnings,
       routeHint: row.routeHint,
       ndcHint: row.ndcHint,
       billingUnitHint: row.billingUnitHint,
@@ -803,6 +861,7 @@ export function MedicationAdministrationTab({
                     <span style={{ color: "#94a3b8" }}> · </span>
                     {cumulativeLabel}
                   </div>
+                  <MedicationSoftSafetyPanel warnings={modalItem.softSafetyWarnings} density="compact" />
                 </div>
               );
             })()}
