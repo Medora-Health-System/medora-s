@@ -3,15 +3,30 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
+import {
+  lacerationAnesthesiaDisplayText,
+  lacerationClosureDisplayText,
+  lacerationIrrigationDisplayText,
+  lacerationSiteDisplayText,
+  lacerationSuturesDisplayText,
+  lacerationWoundLengthDisplayText,
+  procedurePerformerDisplayNameWithTitle,
+  type ProcedurePayload,
+} from "@/lib/lacerationProcedurePayloadDisplay";
+
+type CreatedBy = { firstName: string | null; lastName: string | null };
 
 type ProcedureEntry = {
   id: string;
   createdAt: string;
   procedureType: string;
-  site: string;
   performedAt: string | null;
   performerDisplayName: string | null;
+  performerTitle: string | null;
+  createdBy: CreatedBy | null;
+  payload: ProcedurePayload;
 };
 
 function fillTpl(s: string, vars: Record<string, string>): string {
@@ -20,6 +35,55 @@ function fillTpl(s: string, vars: Record<string, string>): string {
     out = out.split(`{${k}}`).join(v);
   }
   return out;
+}
+
+function formatActor(firstName: string | null | undefined, lastName: string | null | undefined, dash: string): string {
+  const s = `${firstName ?? ""} ${lastName ?? ""}`.trim();
+  return s || dash;
+}
+
+function procedureDisplayName(t: (k: string) => string, procedureType: string): string {
+  if (procedureType === "LACERATION_REPAIR") return t("erProcedureLauncher.procedureNames.lacerationRepair");
+  return procedureType || "—";
+}
+
+function mergePayloadFromRow(x: Record<string, unknown>): ProcedurePayload {
+  const base =
+    x.payload && typeof x.payload === "object" && !Array.isArray(x.payload)
+      ? ({ ...(x.payload as Record<string, unknown>) } as ProcedurePayload)
+      : ({} as ProcedurePayload);
+  const copyKeys = [
+    "procedureType",
+    "site",
+    "siteOther",
+    "performedAt",
+    "woundLength",
+    "woundLengthOther",
+    "woundLengthCm",
+    "anesthesia",
+    "anesthesiaOther",
+    "irrigation",
+    "irrigationOther",
+    "closureMethod",
+    "closureMethodOther",
+    "suturesOrStaples",
+    "suturesOrStaplesOther",
+    "asepticTechnique",
+    "dressingApplied",
+    "toleratedWell",
+    "complications",
+    "notes",
+    "performerDisplayName",
+    "performedByDisplayName",
+    "performerTitle",
+    "performerRoleCode",
+  ] as const;
+  for (const k of copyKeys) {
+    if (base[k] === undefined && x[k] !== undefined) {
+      (base as Record<string, unknown>)[k] = x[k];
+    }
+  }
+  return base;
 }
 
 function parseProceduresPayload(raw: unknown): ProcedureEntry[] | null {
@@ -33,25 +97,114 @@ function parseProceduresPayload(raw: unknown): ProcedureEntry[] | null {
     const x = row as Record<string, unknown>;
     const id = typeof x.id === "string" ? x.id : "";
     if (!id) continue;
+    const cbRaw = x.createdBy;
+    let createdBy: CreatedBy | null = null;
+    if (cbRaw && typeof cbRaw === "object" && !Array.isArray(cbRaw)) {
+      const c = cbRaw as Record<string, unknown>;
+      createdBy = {
+        firstName: typeof c.firstName === "string" ? c.firstName : null,
+        lastName: typeof c.lastName === "string" ? c.lastName : null,
+      };
+    }
+    const payload = mergePayloadFromRow(x);
+    const performedAt =
+      typeof x.performedAt === "string" && x.performedAt.trim()
+        ? x.performedAt.trim()
+        : typeof payload.performedAt === "string" && payload.performedAt.trim()
+          ? String(payload.performedAt).trim()
+          : null;
+    const performerDisplayName =
+      typeof x.performerDisplayName === "string" && x.performerDisplayName.trim()
+        ? x.performerDisplayName.trim()
+        : null;
+    const performerTitle =
+      typeof x.performerTitle === "string" && x.performerTitle.trim() ? x.performerTitle.trim() : null;
     out.push({
       id,
       createdAt: typeof x.createdAt === "string" ? x.createdAt : "",
       procedureType: typeof x.procedureType === "string" ? x.procedureType : "",
-      site: typeof x.site === "string" ? x.site : "",
-      performedAt: typeof x.performedAt === "string" && x.performedAt.trim() ? x.performedAt.trim() : null,
-      performerDisplayName: typeof x.performerDisplayName === "string" ? x.performerDisplayName : null,
+      performedAt,
+      performerDisplayName,
+      performerTitle,
+      createdBy,
+      payload,
     });
   }
   return out;
 }
 
-function procedureDisplayName(t: (k: string) => string, procedureType: string): string {
-  if (procedureType === "LACERATION_REPAIR") return t("erProcedureLauncher.procedureNames.lacerationRepair");
-  return procedureType || "—";
+function boolLabel(v: unknown, t: (k: string) => string): string {
+  if (v === true) return t("erProcedureLauncher.boolYes");
+  if (v === false) return t("erProcedureLauncher.boolNo");
+  return "—";
+}
+
+function DetailDl({
+  row,
+  t,
+  language,
+}: {
+  row: ProcedureEntry;
+  t: (k: string) => string;
+  language: SupportedLanguage;
+}) {
+  const p = row.payload;
+  const createdBy = row.createdBy ?? { firstName: null, lastName: null };
+  const whenIso = row.performedAt ?? row.createdAt;
+  const when = whenIso ? formatEncounterChromeDateTime(whenIso, language) : "—";
+  const who = procedurePerformerDisplayNameWithTitle(p, createdBy, (fn, ln) =>
+    formatActor(fn, ln, t("common.dash"))
+  );
+  const rows: Array<{ k: string; v: string }> = [
+    { k: "summaryDetailProcedure", v: procedureDisplayName(t, row.procedureType) },
+    { k: "summaryDetailSite", v: lacerationSiteDisplayText(p, t) },
+    { k: "summaryDetailPerformedAt", v: when },
+    { k: "summaryDetailPerformedBy", v: who },
+    { k: "summaryDetailWoundLength", v: lacerationWoundLengthDisplayText(p, t) },
+    { k: "summaryDetailAnesthesia", v: lacerationAnesthesiaDisplayText(p, t) || "—" },
+    { k: "summaryDetailIrrigation", v: lacerationIrrigationDisplayText(p, t) || "—" },
+    { k: "summaryDetailAseptic", v: boolLabel(p.asepticTechnique, t) },
+    { k: "summaryDetailClosure", v: lacerationClosureDisplayText(p, t) || "—" },
+    { k: "summaryDetailSutures", v: lacerationSuturesDisplayText(p, t) || "—" },
+    { k: "summaryDetailDressing", v: boolLabel(p.dressingApplied, t) },
+    { k: "summaryDetailTolerated", v: boolLabel(p.toleratedWell, t) },
+  ];
+  const comp = typeof p.complications === "string" ? p.complications.trim() : "";
+  const notes = typeof p.notes === "string" ? p.notes.trim() : "";
+  if (comp) rows.push({ k: "summaryDetailComplications", v: comp });
+  if (notes) rows.push({ k: "summaryDetailNotes", v: notes });
+
+  const dt: React.CSSProperties = {
+    margin: 0,
+    padding: "4px 0",
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#64748b",
+    verticalAlign: "top",
+    width: "38%",
+  };
+  const dd: React.CSSProperties = {
+    margin: 0,
+    padding: "4px 0",
+    fontSize: 12,
+    color: "#334155",
+    lineHeight: 1.45,
+  };
+
+  return (
+    <dl style={{ margin: "8px 0 0 0", display: "grid", gridTemplateColumns: "minmax(0, 38%) 1fr", columnGap: 10 }}>
+      {rows.map((r) => (
+        <React.Fragment key={r.k}>
+          <dt style={dt}>{t(`erProcedureLauncher.${r.k}`)}</dt>
+          <dd style={dd}>{r.v}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
 }
 
 /**
- * Compact documented procedures for ER visit summary (S14A).
+ * Compact documented procedures for ER visit summary (S14A / S14B).
  */
 export function ErProceduresSummaryCard({
   encounterId,
@@ -70,6 +223,7 @@ export function ErProceduresSummaryCard({
     error: boolean;
     entries: ProcedureEntry[];
   }>({ loading: false, error: false, entries: [] });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!enabled || !encounterId || !facilityId) {
@@ -169,19 +323,52 @@ export function ErProceduresSummaryCard({
       </div>
       <div style={{ padding: "10px 14px 12px" }}>
         <p style={sub}>{t("erProcedureLauncher.summaryRecent")}</p>
-        <ul style={{ margin: "4px 0 0 0", paddingLeft: 16, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+        <ul style={{ margin: "4px 0 0 0", paddingLeft: 0, listStyle: "none", fontSize: 12, color: "#334155" }}>
           {state.entries.slice(0, 8).map((row) => {
             const whenIso = row.performedAt ?? row.createdAt;
             const when = whenIso ? formatEncounterChromeDateTime(whenIso, language) : "—";
-            const by = (row.performerDisplayName ?? "").trim() || "—";
+            const createdBy = row.createdBy ?? { firstName: null, lastName: null };
+            const p = row.payload;
+            const by = procedurePerformerDisplayNameWithTitle(p, createdBy, (fn, ln) =>
+              formatActor(fn, ln, t("common.dash"))
+            );
+            const siteLine = lacerationSiteDisplayText(p, t);
+            const isOpen = Boolean(expanded[row.id]);
             return (
-              <li key={row.id} style={{ marginBottom: 4 }}>
-                {fillTpl(t("erProcedureLauncher.summaryLine"), {
-                  name: procedureDisplayName(t, row.procedureType),
-                  site: row.site.trim() || "—",
-                  by,
-                  time: when,
-                })}
+              <li
+                key={row.id}
+                style={{
+                  marginBottom: 10,
+                  paddingBottom: 10,
+                  borderBottom: "1px solid #f1f5f9",
+                }}
+              >
+                <p style={{ margin: "0 0 6px 0", lineHeight: 1.45 }}>
+                  {fillTpl(t("erProcedureLauncher.summaryLine"), {
+                    name: procedureDisplayName(t, row.procedureType),
+                    site: siteLine,
+                    by,
+                    time: when,
+                  })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setExpanded((prev) => ({ ...prev, [row.id]: !prev[row.id] }))}
+                  aria-expanded={isOpen}
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                    borderRadius: 8,
+                    padding: "4px 10px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#475569",
+                    cursor: "pointer",
+                  }}
+                >
+                  {isOpen ? t("erProcedureLauncher.summaryCollapse") : t("erProcedureLauncher.summaryExpand")}
+                </button>
+                {isOpen ? <DetailDl row={row} t={t} language={language} /> : null}
               </li>
             );
           })}

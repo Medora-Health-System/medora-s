@@ -6,6 +6,11 @@ import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { formatEncounterVitalsHistoryCompactLine } from "@/lib/patientVitals";
+import {
+  buildLacerationProcedureTimelineDetailLine,
+  lacerationSiteDisplayText,
+  type ProcedurePayload,
+} from "@/lib/lacerationProcedurePayloadDisplay";
 
 export type ClinicalTimelineApiRow = {
   id: string;
@@ -106,23 +111,29 @@ function summarizeClinicalEvent(
       };
     }
     case "PROCEDURE_DOCUMENTED": {
-      const site = typeof payload.site === "string" ? payload.site.trim() : "";
-      const performedRaw =
-        typeof payload.performedAt === "string" && payload.performedAt.trim() ? payload.performedAt.trim() : "";
-      let performedPart = "";
-      if (performedRaw) {
-        try {
-          performedPart = t("emergencyVisitSummaryPanel.clinicalTimeline.procedurePerformedPart").replace(
-            "{time}",
-            formatEncounterChromeDateTime(performedRaw, language)
-          );
-        } catch {
-          performedPart = "";
-        }
+      const p = payload as ProcedurePayload;
+      const proc = typeof p.procedureType === "string" ? p.procedureType : "";
+      if (proc === "LACERATION_REPAIR") {
+        const siteLine = lacerationSiteDisplayText(p, t);
+        const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented").replace(
+          "{site}",
+          siteLine
+        );
+        const summary = buildLacerationProcedureTimelineDetailLine(
+          p,
+          row.createdAt,
+          language,
+          t,
+          row.createdBy,
+          (fn, ln) => formatActor(fn, ln, t("common.dash"))
+        );
+        return { label, summary };
       }
-      const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented")
-        .replace("{site}", site || "—")
-        .replace("{performedPart}", performedPart);
+      const siteFallback = typeof p.site === "string" ? p.site.trim() : "—";
+      const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented").replace(
+        "{site}",
+        siteFallback
+      );
       return { label, summary: "" };
     }
     default:

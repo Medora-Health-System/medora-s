@@ -1723,7 +1723,62 @@ export class EncountersService {
     return { ok: true as const };
   }
 
-  /** Append-only PROCEDURE_DOCUMENTED events for ED procedure launcher (S14A). */
+  private static readonly PROCEDURE_PERFORMER_ROLE_ORDER: RoleCode[] = [
+    RoleCode.PROVIDER,
+    RoleCode.RN,
+    RoleCode.RADIOLOGY,
+    RoleCode.LAB,
+    RoleCode.ADMIN,
+  ];
+
+  private procedurePerformerTitle(role: RoleCode): string {
+    switch (role) {
+      case RoleCode.PROVIDER:
+        return "MD";
+      case RoleCode.RN:
+        return "RN";
+      case RoleCode.LAB:
+        return "LT";
+      case RoleCode.RADIOLOGY:
+        return "RD";
+      case RoleCode.ADMIN:
+        return "ADMIN";
+      default:
+        return "";
+    }
+  }
+
+  private async resolveProcedurePerformerSnapshot(
+    facilityId: string,
+    userId: string,
+    actor: { firstName: string | null; lastName: string | null }
+  ): Promise<{
+    performerRoleCode: string | null;
+    performerTitle: string | null;
+    performedByDisplayName: string | null;
+  }> {
+    const name = this.userDisplayName(actor)?.trim() || null;
+    const rows = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      select: { role: { select: { code: true } } },
+    });
+    const codes = new Set(rows.map((r) => r.role.code));
+    let chosen: RoleCode | null = null;
+    for (const rc of EncountersService.PROCEDURE_PERFORMER_ROLE_ORDER) {
+      if (codes.has(rc)) {
+        chosen = rc;
+        break;
+      }
+    }
+    const titleRaw = chosen ? this.procedurePerformerTitle(chosen) : "";
+    return {
+      performerRoleCode: chosen,
+      performerTitle: titleRaw ? titleRaw : null,
+      performedByDisplayName: name,
+    };
+  }
+
+  /** Append-only PROCEDURE_DOCUMENTED events for ED procedure launcher (S14A / S14B). */
   async getDocumentedProcedures(facilityId: string, encounterId: string) {
     const enc = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
@@ -1751,10 +1806,11 @@ export class EncountersService {
         const raw = r.payloadJson;
         const p =
           raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-        const display =
-          typeof p.performerDisplayName === "string" && p.performerDisplayName.trim()
-            ? p.performerDisplayName.trim()
-            : this.userDisplayName(r.createdBy) || null;
+        const nameFromPayload =
+          (typeof p.performedByDisplayName === "string" && p.performedByDisplayName.trim()) ||
+          (typeof p.performerDisplayName === "string" && p.performerDisplayName.trim()) ||
+          "";
+        const display = nameFromPayload || this.userDisplayName(r.createdBy) || null;
         const performedAt =
           typeof p.performedAt === "string" && p.performedAt.trim() ? p.performedAt.trim() : null;
         return {
@@ -1764,6 +1820,14 @@ export class EncountersService {
           site: typeof p.site === "string" ? p.site : "",
           performedAt,
           performerDisplayName: display,
+          performerTitle:
+            typeof p.performerTitle === "string" && p.performerTitle.trim() ? p.performerTitle.trim() : null,
+          performerRoleCode:
+            typeof p.performerRoleCode === "string" && p.performerRoleCode.trim()
+              ? p.performerRoleCode.trim()
+              : null,
+          createdBy: r.createdBy,
+          payload: p,
         };
       }),
     };
@@ -1796,39 +1860,36 @@ export class EncountersService {
     if (!actor) {
       throw new ForbiddenException("Utilisateur introuvable.");
     }
-    const performerDisplayName = this.userDisplayName(actor);
+    const performer = await this.resolveProcedurePerformerSnapshot(facilityId, userId, actor);
 
     const performedAtIso = this.parseOptionalIsoDate(dto.performedAt, "Date ou heure de la procédure");
 
     const payloadJson: Record<string, unknown> = {
       procedureType: dto.procedureType,
-      site: dto.site.trim(),
-      performerDisplayName: performerDisplayName || null,
+      site: dto.site,
+      woundLength: dto.woundLength,
+      anesthesia: dto.anesthesia,
+      irrigation: dto.irrigation,
+      closureMethod: dto.closureMethod,
+      suturesOrStaples: dto.suturesOrStaples,
+      asepticTechnique: dto.asepticTechnique,
+      dressingApplied: dto.dressingApplied,
+      toleratedWell: dto.toleratedWell,
+      performedByDisplayName: performer.performedByDisplayName,
+      performerDisplayName: performer.performedByDisplayName,
+      performerTitle: performer.performerTitle,
+      performerRoleCode: performer.performerRoleCode,
     };
     if (performedAtIso) payloadJson.performedAt = performedAtIso;
-    if (dto.woundLengthCm != null && String(dto.woundLengthCm).trim()) {
-      payloadJson.woundLengthCm = String(dto.woundLengthCm).trim().slice(0, 32);
+    if (dto.siteOther?.trim()) payloadJson.siteOther = dto.siteOther.trim().slice(0, 120);
+    if (dto.woundLengthOther?.trim()) payloadJson.woundLengthOther = dto.woundLengthOther.trim().slice(0, 80);
+    if (dto.anesthesiaOther?.trim()) payloadJson.anesthesiaOther = dto.anesthesiaOther.trim().slice(0, 120);
+    if (dto.irrigationOther?.trim()) payloadJson.irrigationOther = dto.irrigationOther.trim().slice(0, 120);
+    if (dto.closureMethodOther?.trim()) {
+      payloadJson.closureMethodOther = dto.closureMethodOther.trim().slice(0, 120);
     }
-    if (dto.anesthesia != null && String(dto.anesthesia).trim()) {
-      payloadJson.anesthesia = String(dto.anesthesia).trim().slice(0, 200);
-    }
-    if (dto.irrigation != null && String(dto.irrigation).trim()) {
-      payloadJson.irrigation = String(dto.irrigation).trim().slice(0, 200);
-    }
-    if (dto.asepticTechnique === true || dto.asepticTechnique === false) {
-      payloadJson.asepticTechnique = dto.asepticTechnique;
-    }
-    if (dto.closureMethod != null && String(dto.closureMethod).trim()) {
-      payloadJson.closureMethod = String(dto.closureMethod).trim().slice(0, 200);
-    }
-    if (dto.suturesOrStaples != null && String(dto.suturesOrStaples).trim()) {
-      payloadJson.suturesOrStaples = String(dto.suturesOrStaples).trim().slice(0, 120);
-    }
-    if (dto.dressingApplied === true || dto.dressingApplied === false) {
-      payloadJson.dressingApplied = dto.dressingApplied;
-    }
-    if (dto.toleratedWell === true || dto.toleratedWell === false) {
-      payloadJson.toleratedWell = dto.toleratedWell;
+    if (dto.suturesOrStaplesOther?.trim()) {
+      payloadJson.suturesOrStaplesOther = dto.suturesOrStaplesOther.trim().slice(0, 120);
     }
     if (dto.complications != null && String(dto.complications).trim()) {
       payloadJson.complications = String(dto.complications).trim().slice(0, 2000);

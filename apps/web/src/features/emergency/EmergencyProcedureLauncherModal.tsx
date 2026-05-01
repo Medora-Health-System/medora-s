@@ -1,6 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import {
+  LACERATION_ANESTHESIA_VALUES,
+  LACERATION_CLOSURE_VALUES,
+  LACERATION_IRRIGATION_VALUES,
+  LACERATION_SITE_VALUES,
+  LACERATION_SUTURES_VALUES,
+  LACERATION_WOUND_LENGTH_VALUES,
+} from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -65,25 +73,29 @@ const tileBase: React.CSSProperties = {
   justifyContent: "center",
 };
 
-function triStateSelect(
-  value: boolean | undefined,
-  onChange: (v: boolean | undefined) => void,
-  t: (k: string) => string
-): React.ReactElement {
-  const v = value === true ? "true" : value === false ? "false" : "";
+function enumSelect<T extends string>(opts: {
+  value: T | "";
+  onChange: (v: T | "") => void;
+  values: readonly T[];
+  labelKey: (v: T) => string;
+  t: (k: string) => string;
+  required?: boolean;
+  placeholderKey: string;
+}): React.ReactElement {
+  const { value, onChange, values, labelKey, t, required, placeholderKey } = opts;
   return (
     <select
-      value={v}
-      onChange={(e) => {
-        const s = e.target.value;
-        if (s === "") onChange(undefined);
-        else onChange(s === "true");
-      }}
+      value={value}
+      required={required}
+      onChange={(e) => onChange((e.target.value || "") as T | "")}
       style={{ ...inputStyle, marginBottom: 8 }}
     >
-      <option value="">{t("erProcedureLauncher.triUnset")}</option>
-      <option value="true">{t("common.yes")}</option>
-      <option value="false">{t("common.no")}</option>
+      <option value="">{t(placeholderKey)}</option>
+      {values.map((v) => (
+        <option key={v} value={v}>
+          {t(labelKey(v))}
+        </option>
+      ))}
     </select>
   );
 }
@@ -106,16 +118,22 @@ export function EmergencyProcedureLauncherModal({
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [site, setSite] = useState("");
+  const [site, setSite] = useState<(typeof LACERATION_SITE_VALUES)[number] | "">("");
+  const [siteOther, setSiteOther] = useState("");
   const [performedAtLocal, setPerformedAtLocal] = useState(() => toDatetimeLocalValue(new Date()));
-  const [woundLengthCm, setWoundLengthCm] = useState("");
-  const [anesthesia, setAnesthesia] = useState("");
-  const [irrigation, setIrrigation] = useState("");
-  const [asepticTechnique, setAsepticTechnique] = useState<boolean | undefined>(undefined);
-  const [closureMethod, setClosureMethod] = useState("");
-  const [suturesOrStaples, setSuturesOrStaples] = useState("");
-  const [dressingApplied, setDressingApplied] = useState<boolean | undefined>(undefined);
-  const [toleratedWell, setToleratedWell] = useState<boolean | undefined>(undefined);
+  const [woundLength, setWoundLength] = useState<(typeof LACERATION_WOUND_LENGTH_VALUES)[number] | "">("");
+  const [woundLengthOther, setWoundLengthOther] = useState("");
+  const [anesthesia, setAnesthesia] = useState<(typeof LACERATION_ANESTHESIA_VALUES)[number] | "">("");
+  const [anesthesiaOther, setAnesthesiaOther] = useState("");
+  const [irrigation, setIrrigation] = useState<(typeof LACERATION_IRRIGATION_VALUES)[number] | "">("");
+  const [irrigationOther, setIrrigationOther] = useState("");
+  const [closureMethod, setClosureMethod] = useState<(typeof LACERATION_CLOSURE_VALUES)[number] | "">("");
+  const [closureMethodOther, setClosureMethodOther] = useState("");
+  const [suturesOrStaples, setSuturesOrStaples] = useState<(typeof LACERATION_SUTURES_VALUES)[number] | "">("");
+  const [suturesOrStaplesOther, setSuturesOrStaplesOther] = useState("");
+  const [asepticTechnique, setAsepticTechnique] = useState<boolean>(true);
+  const [dressingApplied, setDressingApplied] = useState<boolean>(true);
+  const [toleratedWell, setToleratedWell] = useState<boolean>(true);
   const [complications, setComplications] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -124,30 +142,42 @@ export function EmergencyProcedureLauncherModal({
     setStep("menu");
     setSubmitErr(null);
     setSite("");
+    setSiteOther("");
     setPerformedAtLocal(toDatetimeLocalValue(new Date()));
-    setWoundLengthCm("");
+    setWoundLength("");
+    setWoundLengthOther("");
     setAnesthesia("");
+    setAnesthesiaOther("");
     setIrrigation("");
-    setAsepticTechnique(undefined);
+    setIrrigationOther("");
     setClosureMethod("");
+    setClosureMethodOther("");
     setSuturesOrStaples("");
-    setDressingApplied(undefined);
-    setToleratedWell(undefined);
+    setSuturesOrStaplesOther("");
+    setAsepticTechnique(true);
+    setDressingApplied(true);
+    setToleratedWell(true);
     setComplications("");
     setNotes("");
   }, [open]);
 
   const resetLacerationForm = () => {
     setSite("");
+    setSiteOther("");
     setPerformedAtLocal(toDatetimeLocalValue(new Date()));
-    setWoundLengthCm("");
+    setWoundLength("");
+    setWoundLengthOther("");
     setAnesthesia("");
+    setAnesthesiaOther("");
     setIrrigation("");
-    setAsepticTechnique(undefined);
+    setIrrigationOther("");
     setClosureMethod("");
+    setClosureMethodOther("");
     setSuturesOrStaples("");
-    setDressingApplied(undefined);
-    setToleratedWell(undefined);
+    setSuturesOrStaplesOther("");
+    setAsepticTechnique(true);
+    setDressingApplied(true);
+    setToleratedWell(true);
     setComplications("");
     setNotes("");
     setSubmitErr(null);
@@ -156,24 +186,59 @@ export function EmergencyProcedureLauncherModal({
   const onSaveLaceration = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitErr(null);
+    if (site === "OTHER" && !siteOther.trim()) {
+      setSubmitErr(t("erProcedureLauncher.validationOtherRequired"));
+      return;
+    }
+    if (woundLength === "OTHER" && !woundLengthOther.trim()) {
+      setSubmitErr(t("erProcedureLauncher.validationOtherRequired"));
+      return;
+    }
+    if (anesthesia === "OTHER" && !anesthesiaOther.trim()) {
+      setSubmitErr(t("erProcedureLauncher.validationOtherRequired"));
+      return;
+    }
+    if (irrigation === "OTHER" && !irrigationOther.trim()) {
+      setSubmitErr(t("erProcedureLauncher.validationOtherRequired"));
+      return;
+    }
+    if (closureMethod === "OTHER" && !closureMethodOther.trim()) {
+      setSubmitErr(t("erProcedureLauncher.validationOtherRequired"));
+      return;
+    }
+    if (suturesOrStaples === "OTHER" && !suturesOrStaplesOther.trim()) {
+      setSubmitErr(t("erProcedureLauncher.validationOtherRequired"));
+      return;
+    }
+    if (!site || !woundLength || !anesthesia || !irrigation || !closureMethod || !suturesOrStaples) {
+      setSubmitErr(t("erProcedureLauncher.validationIncomplete"));
+      return;
+    }
+
     setSubmitting(true);
     try {
       const body: Record<string, unknown> = {
         procedureType: "LACERATION_REPAIR",
-        site: site.trim(),
+        site,
+        woundLength,
+        anesthesia,
+        irrigation,
+        closureMethod,
+        suturesOrStaples,
+        asepticTechnique,
+        dressingApplied,
+        toleratedWell,
       };
       if (performedAtLocal.trim()) {
         const d = new Date(performedAtLocal);
         if (!Number.isNaN(d.getTime())) body.performedAt = d.toISOString();
       }
-      if (woundLengthCm.trim()) body.woundLengthCm = woundLengthCm.trim();
-      if (anesthesia.trim()) body.anesthesia = anesthesia.trim();
-      if (irrigation.trim()) body.irrigation = irrigation.trim();
-      if (asepticTechnique === true || asepticTechnique === false) body.asepticTechnique = asepticTechnique;
-      if (closureMethod.trim()) body.closureMethod = closureMethod.trim();
-      if (suturesOrStaples.trim()) body.suturesOrStaples = suturesOrStaples.trim();
-      if (dressingApplied === true || dressingApplied === false) body.dressingApplied = dressingApplied;
-      if (toleratedWell === true || toleratedWell === false) body.toleratedWell = toleratedWell;
+      if (siteOther.trim()) body.siteOther = siteOther.trim();
+      if (woundLengthOther.trim()) body.woundLengthOther = woundLengthOther.trim();
+      if (anesthesiaOther.trim()) body.anesthesiaOther = anesthesiaOther.trim();
+      if (irrigationOther.trim()) body.irrigationOther = irrigationOther.trim();
+      if (closureMethodOther.trim()) body.closureMethodOther = closureMethodOther.trim();
+      if (suturesOrStaplesOther.trim()) body.suturesOrStaplesOther = suturesOrStaplesOther.trim();
       if (complications.trim()) body.complications = complications.trim();
       if (notes.trim()) body.notes = notes.trim();
 
@@ -186,7 +251,9 @@ export function EmergencyProcedureLauncherModal({
       resetLacerationForm();
       setStep("menu");
     } catch (err) {
-      setSubmitErr(normalizeUserFacingError(err instanceof Error ? err.message : null) || t("erProcedureLauncher.saveError"));
+      setSubmitErr(
+        normalizeUserFacingError(err instanceof Error ? err.message : null) || t("erProcedureLauncher.saveError")
+      );
     } finally {
       setSubmitting(false);
     }
@@ -210,6 +277,18 @@ export function EmergencyProcedureLauncherModal({
     cursor: "not-allowed",
     opacity: 0.75,
   };
+
+  const boolSelect = (value: boolean, onChange: (v: boolean) => void) => (
+    <select
+      value={value ? "true" : "false"}
+      required
+      onChange={(e) => onChange(e.target.value === "true")}
+      style={{ ...inputStyle, marginBottom: 8 }}
+    >
+      <option value="true">{t("erProcedureLauncher.boolYes")}</option>
+      <option value="false">{t("erProcedureLauncher.boolNo")}</option>
+    </select>
+  );
 
   return (
     <div
@@ -338,13 +417,26 @@ export function EmergencyProcedureLauncherModal({
               </button>
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldSite")}</label>
-              <input
-                required
-                type="text"
-                value={site}
-                onChange={(e) => setSite(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 10 }}
-              />
+              {enumSelect({
+                value: site,
+                onChange: setSite,
+                values: LACERATION_SITE_VALUES,
+                labelKey: (v) => `erProcedureLauncher.site.${v}`,
+                t,
+                required: true,
+                placeholderKey: "erProcedureLauncher.selectPlaceholder",
+              })}
+              {site === "OTHER" ? (
+                <>
+                  <label style={labelStyle}>{t("erProcedureLauncher.fieldSiteOther")}</label>
+                  <input
+                    type="text"
+                    value={siteOther}
+                    onChange={(e) => setSiteOther(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 10 }}
+                  />
+                </>
+              ) : null}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldPerformedAt")}</label>
               <input
@@ -355,54 +447,123 @@ export function EmergencyProcedureLauncherModal({
               />
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldWoundLength")}</label>
-              <input
-                type="text"
-                value={woundLengthCm}
-                onChange={(e) => setWoundLengthCm(e.target.value)}
-                placeholder={t("erProcedureLauncher.placeholderWoundLength")}
-                style={{ ...inputStyle, marginBottom: 10 }}
-              />
+              {enumSelect({
+                value: woundLength,
+                onChange: setWoundLength,
+                values: LACERATION_WOUND_LENGTH_VALUES,
+                labelKey: (v) => `erProcedureLauncher.woundLength.${v}`,
+                t,
+                required: true,
+                placeholderKey: "erProcedureLauncher.selectPlaceholder",
+              })}
+              {woundLength === "OTHER" ? (
+                <>
+                  <label style={labelStyle}>{t("erProcedureLauncher.fieldWoundLengthOther")}</label>
+                  <input
+                    type="text"
+                    value={woundLengthOther}
+                    onChange={(e) => setWoundLengthOther(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 10 }}
+                  />
+                </>
+              ) : null}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldAnesthesia")}</label>
-              <input
-                type="text"
-                value={anesthesia}
-                onChange={(e) => setAnesthesia(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 10 }}
-              />
+              {enumSelect({
+                value: anesthesia,
+                onChange: setAnesthesia,
+                values: LACERATION_ANESTHESIA_VALUES,
+                labelKey: (v) => `erProcedureLauncher.anesthesia.${v}`,
+                t,
+                required: true,
+                placeholderKey: "erProcedureLauncher.selectPlaceholder",
+              })}
+              {anesthesia === "OTHER" ? (
+                <>
+                  <label style={labelStyle}>{t("erProcedureLauncher.fieldAnesthesiaOther")}</label>
+                  <input
+                    type="text"
+                    value={anesthesiaOther}
+                    onChange={(e) => setAnesthesiaOther(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 10 }}
+                  />
+                </>
+              ) : null}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldIrrigation")}</label>
-              <input
-                type="text"
-                value={irrigation}
-                onChange={(e) => setIrrigation(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 10 }}
-              />
+              {enumSelect({
+                value: irrigation,
+                onChange: setIrrigation,
+                values: LACERATION_IRRIGATION_VALUES,
+                labelKey: (v) => `erProcedureLauncher.irrigation.${v}`,
+                t,
+                required: true,
+                placeholderKey: "erProcedureLauncher.selectPlaceholder",
+              })}
+              {irrigation === "OTHER" ? (
+                <>
+                  <label style={labelStyle}>{t("erProcedureLauncher.fieldIrrigationOther")}</label>
+                  <input
+                    type="text"
+                    value={irrigationOther}
+                    onChange={(e) => setIrrigationOther(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 10 }}
+                  />
+                </>
+              ) : null}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldAsepticTechnique")}</label>
-              {triStateSelect(asepticTechnique, setAsepticTechnique, t)}
+              {boolSelect(asepticTechnique, setAsepticTechnique)}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldClosure")}</label>
-              <input
-                type="text"
-                value={closureMethod}
-                onChange={(e) => setClosureMethod(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 10 }}
-              />
+              {enumSelect({
+                value: closureMethod,
+                onChange: setClosureMethod,
+                values: LACERATION_CLOSURE_VALUES,
+                labelKey: (v) => `erProcedureLauncher.closureMethod.${v}`,
+                t,
+                required: true,
+                placeholderKey: "erProcedureLauncher.selectPlaceholder",
+              })}
+              {closureMethod === "OTHER" ? (
+                <>
+                  <label style={labelStyle}>{t("erProcedureLauncher.fieldClosureOther")}</label>
+                  <input
+                    type="text"
+                    value={closureMethodOther}
+                    onChange={(e) => setClosureMethodOther(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 10 }}
+                  />
+                </>
+              ) : null}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldSutures")}</label>
-              <input
-                type="text"
-                value={suturesOrStaples}
-                onChange={(e) => setSuturesOrStaples(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 10 }}
-              />
+              {enumSelect({
+                value: suturesOrStaples,
+                onChange: setSuturesOrStaples,
+                values: LACERATION_SUTURES_VALUES,
+                labelKey: (v) => `erProcedureLauncher.suturesOrStaples.${v}`,
+                t,
+                required: true,
+                placeholderKey: "erProcedureLauncher.selectPlaceholder",
+              })}
+              {suturesOrStaples === "OTHER" ? (
+                <>
+                  <label style={labelStyle}>{t("erProcedureLauncher.fieldSuturesOther")}</label>
+                  <input
+                    type="text"
+                    value={suturesOrStaplesOther}
+                    onChange={(e) => setSuturesOrStaplesOther(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 10 }}
+                  />
+                </>
+              ) : null}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldDressing")}</label>
-              {triStateSelect(dressingApplied, setDressingApplied, t)}
+              {boolSelect(dressingApplied, setDressingApplied)}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldTolerated")}</label>
-              {triStateSelect(toleratedWell, setToleratedWell, t)}
+              {boolSelect(toleratedWell, setToleratedWell)}
 
               <label style={labelStyle}>{t("erProcedureLauncher.fieldComplications")}</label>
               <textarea
