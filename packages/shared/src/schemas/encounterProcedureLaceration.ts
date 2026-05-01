@@ -105,8 +105,8 @@ const irrigationEnum = z.enum(LACERATION_IRRIGATION_VALUES);
 const closureEnum = z.enum(LACERATION_CLOSURE_VALUES);
 const suturesEnum = z.enum(LACERATION_SUTURES_VALUES);
 
-/** POST /encounters/:id/procedures/document — append-only PROCEDURE_DOCUMENTED (S14B structured). */
-export const encounterProcedureDocumentDtoSchema = z
+/** POST /encounters/:id/procedures/document — LACERATION_REPAIR only (S14B). */
+export const lacerationProcedureDocumentDtoSchema = z
   .object({
     procedureType: z.literal("LACERATION_REPAIR"),
     performedAt: z.preprocess(emptyStrToUndefined, z.string().trim().max(48).optional()),
@@ -169,4 +169,4 @@ export const encounterProcedureDocumentDtoSchema = z
     }
   });
 
-export type EncounterProcedureDocumentDto = z.infer<typeof encounterProcedureDocumentDtoSchema>;
+export type LacerationProcedureDocumentDto = z.infer<typeof lacerationProcedureDocumentDtoSchema>;

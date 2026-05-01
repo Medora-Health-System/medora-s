@@ -7,8 +7,9 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { formatEncounterVitalsHistoryCompactLine } from "@/lib/patientVitals";
 import {
-  buildLacerationProcedureTimelineDetailLine,
-  lacerationSiteDisplayText,
+  buildProcedureTimelineDetailLine,
+  procedureTimelineCompactSuffix,
+  procedureTypeDisplayName,
   type ProcedurePayload,
 } from "@/lib/lacerationProcedurePayloadDisplay";
 
@@ -113,28 +114,20 @@ function summarizeClinicalEvent(
     case "PROCEDURE_DOCUMENTED": {
       const p = payload as ProcedurePayload;
       const proc = typeof p.procedureType === "string" ? p.procedureType : "";
-      if (proc === "LACERATION_REPAIR") {
-        const siteLine = lacerationSiteDisplayText(p, t);
-        const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented").replace(
-          "{site}",
-          siteLine
-        );
-        const summary = buildLacerationProcedureTimelineDetailLine(
-          p,
-          row.createdAt,
-          language,
-          t,
-          row.createdBy,
-          (fn, ln) => formatActor(fn, ln, t("common.dash"))
-        );
-        return { label, summary };
-      }
-      const siteFallback = typeof p.site === "string" ? p.site.trim() : "—";
-      const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented").replace(
-        "{site}",
-        siteFallback
+      const procedure = procedureTypeDisplayName(t, proc);
+      const detail = procedureTimelineCompactSuffix(p, t);
+      const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented")
+        .replace("{procedure}", procedure)
+        .replace("{detail}", detail);
+      const summary = buildProcedureTimelineDetailLine(
+        p,
+        row.createdAt,
+        language,
+        t,
+        row.createdBy,
+        (fn, ln) => formatActor(fn, ln, t("common.dash"))
       );
-      return { label, summary: "" };
+      return { label, summary };
     }
     default:
       return {

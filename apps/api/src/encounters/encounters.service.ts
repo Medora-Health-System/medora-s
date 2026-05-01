@@ -1833,6 +1833,31 @@ export class EncountersService {
     };
   }
 
+  private procedureDocumentPayloadFromDto(
+    dto: EncounterProcedureDocumentDto,
+    performedAtIso: string | undefined,
+    performer: {
+      performerRoleCode: string | null;
+      performerTitle: string | null;
+      performedByDisplayName: string | null;
+    }
+  ): Record<string, unknown> {
+    const plain = dto as unknown as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(plain)) {
+      if (k === "performedAt") continue;
+      if (v === undefined || v === null) continue;
+      if (typeof v === "string" && v.trim() === "") continue;
+      out[k] = v;
+    }
+    if (performedAtIso) out.performedAt = performedAtIso;
+    out.performedByDisplayName = performer.performedByDisplayName;
+    out.performerDisplayName = performer.performedByDisplayName;
+    out.performerTitle = performer.performerTitle;
+    out.performerRoleCode = performer.performerRoleCode;
+    return out;
+  }
+
   async recordProcedureDocumented(
     facilityId: string,
     encounterId: string,
@@ -1862,41 +1887,15 @@ export class EncountersService {
     }
     const performer = await this.resolveProcedurePerformerSnapshot(facilityId, userId, actor);
 
-    const performedAtIso = this.parseOptionalIsoDate(dto.performedAt, "Date ou heure de la procédure");
+    const performedAtRaw =
+      typeof (dto as { performedAt?: unknown }).performedAt === "string"
+        ? (dto as { performedAt?: string }).performedAt?.trim()
+        : undefined;
+    const performedAtIso = performedAtRaw
+      ? this.parseOptionalIsoDate(performedAtRaw, "Date ou heure de la procédure")
+      : undefined;
 
-    const payloadJson: Record<string, unknown> = {
-      procedureType: dto.procedureType,
-      site: dto.site,
-      woundLength: dto.woundLength,
-      anesthesia: dto.anesthesia,
-      irrigation: dto.irrigation,
-      closureMethod: dto.closureMethod,
-      suturesOrStaples: dto.suturesOrStaples,
-      asepticTechnique: dto.asepticTechnique,
-      dressingApplied: dto.dressingApplied,
-      toleratedWell: dto.toleratedWell,
-      performedByDisplayName: performer.performedByDisplayName,
-      performerDisplayName: performer.performedByDisplayName,
-      performerTitle: performer.performerTitle,
-      performerRoleCode: performer.performerRoleCode,
-    };
-    if (performedAtIso) payloadJson.performedAt = performedAtIso;
-    if (dto.siteOther?.trim()) payloadJson.siteOther = dto.siteOther.trim().slice(0, 120);
-    if (dto.woundLengthOther?.trim()) payloadJson.woundLengthOther = dto.woundLengthOther.trim().slice(0, 80);
-    if (dto.anesthesiaOther?.trim()) payloadJson.anesthesiaOther = dto.anesthesiaOther.trim().slice(0, 120);
-    if (dto.irrigationOther?.trim()) payloadJson.irrigationOther = dto.irrigationOther.trim().slice(0, 120);
-    if (dto.closureMethodOther?.trim()) {
-      payloadJson.closureMethodOther = dto.closureMethodOther.trim().slice(0, 120);
-    }
-    if (dto.suturesOrStaplesOther?.trim()) {
-      payloadJson.suturesOrStaplesOther = dto.suturesOrStaplesOther.trim().slice(0, 120);
-    }
-    if (dto.complications != null && String(dto.complications).trim()) {
-      payloadJson.complications = String(dto.complications).trim().slice(0, 2000);
-    }
-    if (dto.notes != null && String(dto.notes).trim()) {
-      payloadJson.notes = String(dto.notes).trim().slice(0, 4000);
-    }
+    const payloadJson = this.procedureDocumentPayloadFromDto(dto, performedAtIso ?? undefined, performer);
 
     await this.prisma.encounterClinicalEvent.create({
       data: {

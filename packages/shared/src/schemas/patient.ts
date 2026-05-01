@@ -643,8 +643,8 @@ export const encounterIvAccessRemoveDtoSchema = z.object({
 export type EncounterIvAccessRemoveDto = z.infer<typeof encounterIvAccessRemoveDtoSchema>;
 
 export {
-  encounterProcedureDocumentDtoSchema,
-  type EncounterProcedureDocumentDto,
+  lacerationProcedureDocumentDtoSchema,
+  type LacerationProcedureDocumentDto,
   LACERATION_SITE_VALUES,
   LACERATION_WOUND_LENGTH_VALUES,
   LACERATION_ANESTHESIA_VALUES,
@@ -658,6 +658,8 @@ export {
   isKnownLacerationClosure,
   isKnownLacerationSutures,
 } from "./encounterProcedureLaceration.js";
+
+export * from "./encounterProcedureDocument.js";
 
 /** GET /roster/clinical-users — role filter for PROVIDER vs RN search. */
 export const rosterClinicalUserRoleQuerySchema = z.enum(["PROVIDER", "RN"]);
