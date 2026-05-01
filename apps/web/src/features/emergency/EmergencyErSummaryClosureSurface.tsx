@@ -76,6 +76,7 @@ export function EmergencyErSummaryClosureSurface({
   canEditMedicalDischarge,
   onReload,
   sectionId,
+  ivAccessFetchEnabled = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -90,6 +91,7 @@ export function EmergencyErSummaryClosureSurface({
   onReload: () => void | Promise<void>;
   /** Anchor for scroll-into-view from disposition panel (chart view). */
   sectionId?: string;
+  ivAccessFetchEnabled?: boolean;
 }) {
   const { t, language } = useI18n();
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -320,6 +322,7 @@ export function EmergencyErSummaryClosureSurface({
         resultsRefresh={resultsRefresh}
         resultsTabHref={resultsTabHref}
         diagnosticsTabHref={diagnosticsTabHref}
+        ivAccessFetchEnabled={ivAccessFetchEnabled}
       />
 
       {open ? (
