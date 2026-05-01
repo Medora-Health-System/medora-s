@@ -3969,8 +3969,11 @@ export default {
     introBold: "Évaluation infirmière",
     introRest:
       " par systèmes — options rapides (puces) et complément libre. Enregistrement dans le dossier de la consultation ; synthèse visible au résumé et dans le dossier patient.",
+    erHandoffLegend: "Transmission infirmière — Compte rendu donné et transfert des soins",
     erHandoffIntro:
-      "Compte rendu donné et transfert des soins vers l’infirmier ou l’infirmière réceptionnaire (urgences — hospitalisation). Même enregistrement que sous Paramètres opérationnels (synthèse).",
+      "Infirmier ou infirmière réceptionnaire, heure du compte rendu et notes — enregistrement dans le dossier partagé (même donnée que les paramètres opérationnels).",
+    erHandoffReadOnlyBanner:
+      "Consultation fermée, dossier verrouillé ou rôle non autorisé — champs en lecture seule.",
     proceduresLegend: "Procédures infirmières",
     proceduresHelp1:
       "Saisie rapide au lit — pose de voie IV pour l'instant ; d'autres procédures pourront s'ajouter.",

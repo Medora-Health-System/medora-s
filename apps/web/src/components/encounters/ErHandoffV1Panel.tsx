@@ -16,19 +16,17 @@ import {
   type ErHandoffV1Stored,
 } from "@medora/shared";
 import { ClinicalUserRoleAutocomplete } from "@/components/clinical/ClinicalUserRoleAutocomplete";
-import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 
-const EMERGENCY_TYPE = "EMERGENCY";
+const ED_HANDOFF_ENCOUNTER_TYPES = new Set(["EMERGENCY", "URGENT_CARE"]);
 
+/** Nursing handoff (erHandoffV1) block: all ED-type encounters, not only when admission packet exists. */
 export function shouldShowErHandoffV1InNursing(encounter: {
   type?: string | null;
   status?: string | null;
   admissionSummaryJson?: unknown;
   nursingAssessment?: unknown;
 }): boolean {
-  if ((encounter.type ?? "").trim() !== EMERGENCY_TYPE) return false;
-  if (erHandoffV1HasPersistedBlob(encounter.nursingAssessment)) return true;
-  return parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null;
+  return ED_HANDOFF_ENCOUNTER_TYPES.has((encounter.type ?? "").trim());
 }
 
 /** Operational panel (read-only): show handoff subsection when any persisted handoff info exists. */
@@ -152,12 +150,15 @@ export function ErHandoffV1Editor({
   nursingAssessment,
   onUpdated,
   onSaved,
+  readOnly = false,
 }: {
   encounterId: string;
   facilityId: string;
   nursingAssessment: unknown;
   onUpdated: () => void | Promise<void>;
   onSaved?: (patch: Record<string, unknown>) => void;
+  /** Locked / closed / view-only: same fields, no save. */
+  readOnly?: boolean;
 }) {
   const { t } = useI18n();
   const [handoffSaving, setHandoffSaving] = useState(false);
@@ -220,6 +221,7 @@ export function ErHandoffV1Editor({
   };
 
   const saveHandoff = useCallback(async () => {
+    if (readOnly) return;
     setHandoffSaving(true);
     setError(null);
     try {
@@ -260,42 +262,53 @@ export function ErHandoffV1Editor({
     } finally {
       setHandoffSaving(false);
     }
-  }, [encounterId, facilityId, handoffForm, nursingAssessment, onSaved, onUpdated, t]);
+  }, [encounterId, facilityId, handoffForm, nursingAssessment, onSaved, onUpdated, readOnly, t]);
+
+  const disabled = handoffSaving || readOnly;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 520 }}>
-      <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-        {t("encounterOperational.handoffRecipientSearchHint")}
-      </p>
+      {readOnly ? (
+        <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }} role="status">
+          {t("nursingAssessmentTab.erHandoffReadOnlyBanner")}
+        </p>
+      ) : (
+        <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+          {t("encounterOperational.handoffRecipientSearchHint")}
+        </p>
+      )}
       <div>
         <label style={fieldLabel}>{t("encounterOperational.receivingNurseLabel")}</label>
         <ClinicalUserRoleAutocomplete
           facilityId={facilityId}
           role="RN"
-          disabled={handoffSaving}
+          disabled={disabled}
           placeholder={t("encounterOperational.receivingNurseAutocompletePlaceholder")}
           ariaLabel={t("encounterOperational.receivingNurseLabel")}
           displayValue={handoffForm.receivingNurseName ?? ""}
-          onChangeDisplay={(v) =>
+          onChangeDisplay={(v) => {
+            if (readOnly) return;
             setHandoffForm((f) => ({
               ...f,
               receivingNurseName: v,
               receivingNurseUserId: undefined,
-            }))
-          }
+            }));
+          }}
           selectedUserId={handoffForm.receivingNurseUserId ?? null}
-          onSelectUser={(u) =>
+          onSelectUser={(u) => {
+            if (readOnly) return;
             setHandoffForm((f) => ({
               ...f,
               receivingNurseUserId: u?.id,
               ...(u ? { receivingNurseName: `${u.firstName} ${u.lastName}`.trim() } : {}),
-            }))
-          }
+            }));
+          }}
         />
       </div>
-      <label style={checkboxRow}>
+      <label style={{ ...checkboxRow, cursor: readOnly ? "default" : undefined }}>
         <input
           type="checkbox"
+          disabled={disabled}
           checked={handoffForm.reportGiven ?? false}
           onChange={(e) => setHandoffForm((f) => ({ ...f, reportGiven: e.target.checked }))}
         />
@@ -305,6 +318,7 @@ export function ErHandoffV1Editor({
         <label style={fieldLabel}>{t("encounterOperational.reportGivenAtLabel")}</label>
         <input
           type="datetime-local"
+          disabled={disabled}
           value={isoToDatetimeLocalValue(handoffForm.reportGivenAt)}
           onChange={(e) =>
             setHandoffForm((f) => ({
@@ -312,7 +326,11 @@ export function ErHandoffV1Editor({
               reportGivenAt: datetimeLocalToIso(e.target.value),
             }))
           }
-          style={{ ...inputStyle, maxWidth: 280 }}
+          style={{
+            ...inputStyle,
+            maxWidth: 280,
+            ...(readOnly ? { backgroundColor: "#f8fafc", cursor: "not-allowed" as const } : {}),
+          }}
         />
       </div>
       <div>
@@ -321,13 +339,20 @@ export function ErHandoffV1Editor({
           value={handoffForm.handoffNote ?? ""}
           onChange={(e) => setHandoffForm((f) => ({ ...f, handoffNote: e.target.value }))}
           rows={3}
+          readOnly={readOnly}
           placeholder={t("encounterOperational.handoffNotePlaceholder")}
-          style={{ ...inputStyle, minHeight: 72, resize: "vertical" as const }}
+          style={{
+            ...inputStyle,
+            minHeight: 72,
+            resize: readOnly ? ("none" as const) : ("vertical" as const),
+            ...(readOnly ? { backgroundColor: "#f8fafc", cursor: "not-allowed" as const } : {}),
+          }}
         />
       </div>
-      <label style={checkboxRow}>
+      <label style={{ ...checkboxRow, cursor: readOnly ? "default" : undefined }}>
         <input
           type="checkbox"
+          disabled={disabled}
           checked={handoffForm.readyForInpatientTransfer ?? false}
           onChange={(e) => setHandoffForm((f) => ({ ...f, readyForInpatientTransfer: e.target.checked }))}
         />
@@ -342,58 +367,64 @@ export function ErHandoffV1Editor({
           borderTop: "1px dashed #e2e8f0",
         }}
       >
-        <label style={checkboxRow}>
+        <label style={{ ...checkboxRow, cursor: readOnly ? "default" : undefined }}>
           <input
             type="checkbox"
+            disabled={disabled}
             checked={handoffForm.providerDispositionCompleted ?? false}
             onChange={(e) => setHandoffForm((f) => ({ ...f, providerDispositionCompleted: e.target.checked }))}
           />
           {t("encounterOperational.checklistProviderDisposition")}
         </label>
-        <label style={checkboxRow}>
+        <label style={{ ...checkboxRow, cursor: readOnly ? "default" : undefined }}>
           <input
             type="checkbox"
+            disabled={disabled}
             checked={handoffForm.nurseDocumentationCompleted ?? false}
             onChange={(e) => setHandoffForm((f) => ({ ...f, nurseDocumentationCompleted: e.target.checked }))}
           />
           {t("encounterOperational.checklistNurseDocumentation")}
         </label>
-        <label style={checkboxRow}>
+        <label style={{ ...checkboxRow, cursor: readOnly ? "default" : undefined }}>
           <input
             type="checkbox"
+            disabled={disabled}
             checked={handoffForm.acceptingPhysicianSelected ?? false}
             onChange={(e) => setHandoffForm((f) => ({ ...f, acceptingPhysicianSelected: e.target.checked }))}
           />
           {t("encounterOperational.checklistAcceptingPhysician")}
         </label>
-        <label style={checkboxRow}>
+        <label style={{ ...checkboxRow, cursor: readOnly ? "default" : undefined }}>
           <input
             type="checkbox"
+            disabled={disabled}
             checked={handoffForm.reportGivenToReceivingUnit ?? false}
             onChange={(e) => setHandoffForm((f) => ({ ...f, reportGivenToReceivingUnit: e.target.checked }))}
           />
           {t("encounterOperational.checklistReportToUnit")}
         </label>
       </div>
-      <button
-        type="button"
-        disabled={handoffSaving}
-        onClick={() => void saveHandoff()}
-        style={{
-          alignSelf: "flex-start",
-          marginTop: 4,
-          padding: "8px 16px",
-          backgroundColor: "#475569",
-          color: "#fff",
-          border: "none",
-          borderRadius: 10,
-          cursor: handoffSaving ? "wait" : "pointer",
-          fontWeight: 600,
-          fontSize: 13,
-        }}
-      >
-        {handoffSaving ? t("common.saving") : t("encounterOperational.saveHandoffButton")}
-      </button>
+      {!readOnly ? (
+        <button
+          type="button"
+          disabled={handoffSaving}
+          onClick={() => void saveHandoff()}
+          style={{
+            alignSelf: "flex-start",
+            marginTop: 4,
+            padding: "8px 16px",
+            backgroundColor: "#475569",
+            color: "#fff",
+            border: "none",
+            borderRadius: 10,
+            cursor: handoffSaving ? "wait" : "pointer",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          {handoffSaving ? t("common.saving") : t("encounterOperational.saveHandoffButton")}
+        </button>
+      ) : null}
       {handoffLastSavedCaption ? (
         <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>{handoffLastSavedCaption}</p>
       ) : null}
@@ -444,22 +475,19 @@ export function ErHandoffV1NursingSection({
   return (
     <fieldset style={handoffFieldsetShell}>
       <legend style={{ fontWeight: 700, padding: "0 10px", fontSize: 14, color: "#0f172a" }}>
-        {t("encounterOperational.handoffSectionTitle")}
+        {t("nursingAssessmentTab.erHandoffLegend")}
       </legend>
       <p style={{ margin: "0 0 12px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
         {t("nursingAssessmentTab.erHandoffIntro")}
       </p>
-      {allowEdit ? (
-        <ErHandoffV1Editor
-          encounterId={encounterId}
-          facilityId={facilityId}
-          nursingAssessment={encounter.nursingAssessment}
-          onUpdated={onUpdated}
-          onSaved={onSaved}
-        />
-      ) : (
-        <ErHandoffV1ReadonlySummary nursingAssessment={encounter.nursingAssessment} />
-      )}
+      <ErHandoffV1Editor
+        encounterId={encounterId}
+        facilityId={facilityId}
+        nursingAssessment={encounter.nursingAssessment}
+        onUpdated={onUpdated}
+        onSaved={onSaved}
+        readOnly={!allowEdit}
+      />
     </fieldset>
   );
 }

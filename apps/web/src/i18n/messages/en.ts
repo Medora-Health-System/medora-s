@@ -3998,8 +3998,10 @@ export default {
     introBold: "Nursing assessment",
     introRest:
       " by system — quick options (chips) and free text. Saved to this encounter; visible on the encounter summary and patient chart.",
+    erHandoffLegend: "Nursing handoff — Report given and care transferred",
     erHandoffIntro:
-      "Report given and care transferred to the receiving nurse (ER — inpatient). Same record as under operational settings (summary).",
+      "Receiving nurse, report time, and notes — saved to the shared encounter record (same data as operational settings).",
+    erHandoffReadOnlyBanner: "Encounter closed, chart locked, or role not allowed — read-only fields.",
     proceduresLegend: "Nursing procedures",
     proceduresHelp1:
       "Quick entry at the bedside — IV placement for now; additional procedures may be added later.",

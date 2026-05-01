@@ -1129,15 +1129,6 @@ export function EmergencyActiveWorkspaceView() {
 
           {activeSection === "nursing" && showNursingTab ? (
             <>
-              <EmergencyErNursingHandoffPanel
-                encounter={encounter}
-                encounterId={encounterId}
-                facilityId={fid}
-                onSaved={onEmbeddedEncounterUpdate}
-                canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
-                onSummaryClosureClick={goToErSummaryClosure}
-                facilityName={facilityName}
-              />
               <ErHandoffV1NursingSection
                 encounter={encounter}
                 encounterId={encounterId}
@@ -1153,6 +1144,15 @@ export function EmergencyActiveWorkspaceView() {
                 isLocked={isLocked}
                 onSaved={onEmbeddedEncounterUpdate}
                 nursingTabHref={tabHref("nursing")}
+              />
+              <EmergencyErNursingHandoffPanel
+                encounter={encounter}
+                encounterId={encounterId}
+                facilityId={fid}
+                onSaved={onEmbeddedEncounterUpdate}
+                canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
+                onSummaryClosureClick={goToErSummaryClosure}
+                facilityName={facilityName}
               />
             </>
           ) : null}
