@@ -303,7 +303,7 @@ export function EmergencyChartView() {
   }, [encounterId, fid, loadTriageForStrip]);
 
   const clinicalStripModel = useMemo(() => {
-    const parsed = triagePreviewSliceFromTriageGet(triageSnapshot);
+    const parsed = triagePreviewSliceFromTriageGet(triageSnapshot, language);
     if (!parsed) {
       const emptySlice = {
         chiefComplaint: "",
@@ -319,6 +319,8 @@ export function EmergencyChartView() {
         heightCm: "",
         allergyNote: "",
         triageCompleteAt: "",
+        heightFeet: "",
+        heightInches: "",
       };
       return {
         esi: "",

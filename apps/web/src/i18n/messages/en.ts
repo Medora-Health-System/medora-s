@@ -3079,6 +3079,23 @@ export default {
     cancel: "Cancel",
     saveError: "Could not save vital signs.",
   },
+  vitalsUnits: {
+    tempLabel: "Temperature (°F / °C)",
+    weightLabel: "Weight (lb / kg)",
+    heightLabel: "Height (ft / in / cm)",
+    unitF: "°F",
+    unitC: "°C",
+    unitLb: "lb",
+    unitKg: "kg",
+    unitFtIn: "ft / in",
+    unitCm: "cm",
+    feetPh: "ft",
+    inchesPh: "in",
+    tempHintC: "≈ {n} °C (stored)",
+    tempHintF: "≈ {n} °F",
+    weightHintKg: "≈ {n} kg (stored)",
+    weightHintLb: "≈ {n} lb",
+  },
   erCds: {
     severity: {
       info: "Info",

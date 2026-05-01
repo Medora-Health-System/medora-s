@@ -4,9 +4,24 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import {
+  canonicalHeightCm,
+  canonicalTemperatureCelsius,
+  canonicalWeightKg,
+  displayHeightCmStringFromStored,
+  displayTemperatureFromStoredC,
+  displayWeightKgFromStored,
+  heightFeetInchStringsFromStoredCm,
+} from "@medora/shared";
 import { erTriageMessagesEn } from "@/i18n/messages/erTriage.en";
 import { erTriageMessagesFr } from "@/i18n/messages/erTriage.fr";
-import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
+import {
+  formatHeightDualLine,
+  formatTemperatureDualLine,
+  formatVitalsHeaderLineForLocale,
+  formatWeightDualLine,
+} from "@/lib/patientVitals";
+import { defaultVitalsEntryUnits } from "@/lib/vitalsEntryDefaults";
 import { erTriageT } from "./erTriageI18nLookup";
 import {
   erTriageV1FormFromVitalsJson,
@@ -369,6 +384,12 @@ export type TriageDocPreviewFormSlice = {
   heightCm: string;
   allergyNote: string;
   triageCompleteAt: string;
+  /** When set, `tempC` / `weightKg` / height fields are interpreted in these units for save + abnormality checks. */
+  tempInputUnit?: "C" | "F";
+  weightInputUnit?: "kg" | "lb";
+  heightInputMode?: "cm" | "ftin";
+  heightFeet?: string;
+  heightInches?: string;
 };
 
 export type TriagePreviewSection = {
@@ -379,8 +400,12 @@ export type TriagePreviewSection = {
 
 /**
  * Maps GET `/encounters/:id/triage` JSON to the preview slice + ER V1 form (same field mapping as `EmergencyTriagePanel`).
+ * When `language` is set, vitals display strings use locale-typical entry units (en: °F / lb / ft·in) while storage stays canonical.
  */
-export function triagePreviewSliceFromTriageGet(triage: Record<string, unknown> | null): {
+export function triagePreviewSliceFromTriageGet(
+  triage: Record<string, unknown> | null,
+  language?: SupportedLanguage
+): {
   slice: TriageDocPreviewFormSlice;
   er: ErTriageV1Form;
 } | null {
@@ -403,7 +428,43 @@ export function triagePreviewSliceFromTriageGet(triage: Record<string, unknown> 
     triageCompleteAt: d.triageCompleteAt
       ? new Date(d.triageCompleteAt as string).toISOString().slice(0, 16)
       : "",
+    heightFeet: "",
+    heightInches: "",
   };
+
+  if (language) {
+    const u = defaultVitalsEntryUnits(language);
+    slice.tempInputUnit = u.tempInputUnit;
+    slice.weightInputUnit = u.weightInputUnit;
+    slice.heightInputMode = u.heightInputMode;
+
+    const tempNum = parseFloat(String(v.tempC ?? "").trim());
+    if (Number.isFinite(tempNum)) {
+      if (u.tempInputUnit === "F") {
+        slice.tempC = displayTemperatureFromStoredC(tempNum, "F");
+      } else {
+        slice.tempC = displayTemperatureFromStoredC(tempNum, "C");
+      }
+    }
+
+    const wNum = parseFloat(String(v.weightKg ?? "").trim());
+    if (Number.isFinite(wNum)) {
+      slice.weightKg = displayWeightKgFromStored(wNum, u.weightInputUnit);
+    }
+
+    const hNum = parseFloat(String(v.heightCm ?? "").trim());
+    if (Number.isFinite(hNum)) {
+      if (u.heightInputMode === "ftin") {
+        const fi = heightFeetInchStringsFromStoredCm(hNum);
+        slice.heightFeet = fi.feet;
+        slice.heightInches = fi.inches;
+        slice.heightCm = "";
+      } else {
+        slice.heightCm = displayHeightCmStringFromStored(hNum);
+      }
+    }
+  }
+
   const er = erTriageV1FormFromVitalsJson(d.vitalsJson);
   return { slice, er };
 }
@@ -441,9 +502,10 @@ export function buildErWorkspaceVitalPairs(
     },
     {
       label: vs.temp,
-      value: f.tempC.trim()
-        ? interpolatePreview(vs.degC, { n: f.tempC.trim() })
-        : dash,
+      value: (() => {
+        const tCanon = canonicalTemperatureCelsius(f.tempC, f.tempInputUnit);
+        return tCanon != null ? formatTemperatureDualLine(tCanon, locale) : dash;
+      })(),
     },
     {
       label: vs.spo2,
@@ -453,15 +515,22 @@ export function buildErWorkspaceVitalPairs(
     },
     {
       label: vs.weight,
-      value: f.weightKg.trim()
-        ? interpolatePreview(vs.kg, { n: f.weightKg.trim() })
-        : dash,
+      value: (() => {
+        const wCanon = canonicalWeightKg(f.weightKg, f.weightInputUnit);
+        return wCanon != null ? formatWeightDualLine(wCanon, locale) : dash;
+      })(),
     },
     {
       label: vs.height,
-      value: f.heightCm.trim()
-        ? interpolatePreview(vs.cm, { n: f.heightCm.trim() })
-        : dash,
+      value: (() => {
+        const hCanon = canonicalHeightCm({
+          heightCmStr: f.heightCm,
+          heightInputMode: f.heightInputMode,
+          heightFeetStr: f.heightFeet,
+          heightInchesStr: f.heightInches,
+        });
+        return hCanon != null ? formatHeightDualLine(hCanon, locale) : dash;
+      })(),
     },
   ];
 }
@@ -470,23 +539,38 @@ function erTriageMessagesForLocale(locale: SupportedLanguage) {
   return locale === "en" ? erTriageMessagesEn : erTriageMessagesFr;
 }
 
-function vitalsRecordForHeader(f: TriageDocPreviewFormSlice): Record<string, number | string | null | undefined> {
+/** Canonical vitals record for header / MSE lines (interprets entry units on the slice). */
+export function vitalsCanonicalRecordFromTriageSlice(
+  f: TriageDocPreviewFormSlice
+): Record<string, number | string | null | undefined> {
+  const tCanon = canonicalTemperatureCelsius(f.tempC, f.tempInputUnit);
+  const wCanon = canonicalWeightKg(f.weightKg, f.weightInputUnit);
+  const hCanon = canonicalHeightCm({
+    heightCmStr: f.heightCm,
+    heightInputMode: f.heightInputMode,
+    heightFeetStr: f.heightFeet,
+    heightInchesStr: f.heightInches,
+  });
   return {
-    tempC: f.tempC ? parseFloat(f.tempC) : "",
+    tempC: tCanon ?? "",
     hr: f.hr ? parseInt(f.hr, 10) : "",
     rr: f.rr ? parseInt(f.rr, 10) : "",
     bpSys: f.bpSys ? parseInt(f.bpSys, 10) : "",
     bpDia: f.bpDia ? parseInt(f.bpDia, 10) : "",
     spo2: f.spo2 ? parseInt(f.spo2, 10) : "",
-    weightKg: f.weightKg ? parseFloat(f.weightKg) : "",
-    heightCm: f.heightCm ? parseFloat(f.heightCm) : "",
+    weightKg: wCanon ?? "",
+    heightCm: hCanon ?? "",
   };
+}
+
+function vitalsRecordForHeader(f: TriageDocPreviewFormSlice): Record<string, number | string | null | undefined> {
+  return vitalsCanonicalRecordFromTriageSlice(f);
 }
 
 function collectVitalAbnormalities(f: TriageDocPreviewFormSlice, locale: SupportedLanguage): string[] {
   const out: string[] = [];
-  const t = f.tempC ? parseFloat(f.tempC) : NaN;
-  if (!Number.isNaN(t)) {
+  const t = canonicalTemperatureCelsius(f.tempC, f.tempInputUnit);
+  if (t != null) {
     if (t > 38.0) out.push(erTriageT(locale, "erTriage.preview.vitalFever"));
     if (t < 36.0) out.push(erTriageT(locale, "erTriage.preview.vitalHypothermia"));
   }

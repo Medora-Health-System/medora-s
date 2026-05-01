@@ -3,7 +3,12 @@
 import React from "react";
 import Link from "next/link";
 import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
-import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
+import {
+  formatHeightDualLine,
+  formatTemperatureDualLine,
+  formatVitalsHeaderLineForLocale,
+  formatWeightDualLine,
+} from "@/lib/patientVitals";
 import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useI18n } from "@/lib/i18n";
 
@@ -35,10 +40,19 @@ export function PatientVitalsHistory({
     return <div style={emptyStateStyle}>{vh("empty")}</div>;
   }
 
+  const num = (x: unknown): number | null => {
+    if (x == null || x === "") return null;
+    const n = typeof x === "number" ? x : parseFloat(String(x).trim());
+    return Number.isFinite(n) ? n : null;
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {items.map((snap) => {
         const v = (snap.vitalsJson || {}) as Record<string, number | string | null>;
+        const tempN = num(v.tempC);
+        const weightN = num(v.weightKg);
+        const heightN = num(v.heightCm);
         const dateHeure = snap.triageCompleteAt ?? snap.updatedAt;
         const formatDateTime = (s: string) =>
           new Date(s).toLocaleString(loc, { dateStyle: "short", timeStyle: "short" });
@@ -68,7 +82,7 @@ export function PatientVitalsHistory({
               {formatVitalsHeaderLineForLocale(v, language) || "—"}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {row(vh("rowTemperature"), v.tempC != null && v.tempC !== "" ? `${v.tempC} °C` : null)}
+              {row(vh("rowTemperature"), tempN != null ? formatTemperatureDualLine(tempN, language) : null)}
               {row(vh("rowHeartRate"), v.hr != null && v.hr !== "" ? `${v.hr}/min` : null)}
               {row(
                 vh("rowBloodPressure"),
@@ -78,8 +92,8 @@ export function PatientVitalsHistory({
               )}
               {row(vh("rowRespiratoryRate"), v.rr != null && v.rr !== "" ? `${v.rr} /min` : null)}
               {row(vh("rowSpo2"), v.spo2 != null && v.spo2 !== "" ? `${v.spo2} %` : null)}
-              {row(vh("rowWeight"), v.weightKg != null && v.weightKg !== "" ? `${v.weightKg} kg` : null)}
-              {row(vh("rowHeight"), v.heightCm != null && v.heightCm !== "" ? `${v.heightCm} cm` : null)}
+              {row(vh("rowWeight"), weightN != null ? formatWeightDualLine(weightN, language) : null)}
+              {row(vh("rowHeight"), heightN != null ? formatHeightDualLine(heightN, language) : null)}
               {v.allergyNote && String(v.allergyNote).trim() !== "" ? (
                 <div style={{ display: "flex", gap: 8, fontSize: 13 }}>
                   <span style={{ color: "#c62828", fontWeight: 700, minWidth: 150 }}>{vh("allergy")}</span>

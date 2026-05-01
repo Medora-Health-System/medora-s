@@ -383,7 +383,7 @@ export function EmergencyActiveWorkspaceView() {
   }, [patientVitalsTimeline, encounterId]);
 
   const clinicalStripModel = useMemo(() => {
-    const parsed = triagePreviewSliceFromTriageGet(triageSnapshot);
+    const parsed = triagePreviewSliceFromTriageGet(triageSnapshot, language);
     if (!parsed) {
       const emptySlice = {
         chiefComplaint: "",
@@ -399,6 +399,8 @@ export function EmergencyActiveWorkspaceView() {
         heightCm: "",
         allergyNote: "",
         triageCompleteAt: "",
+        heightFeet: "",
+        heightInches: "",
       };
       return {
         esi: "",

@@ -13,6 +13,7 @@ import {
   sepsisScreenFromUnknown,
   strokeScreenFromUnknown,
   triagePreviewSliceFromTriageGet,
+  vitalsCanonicalRecordFromTriageSlice,
 } from "./emergencyTriageDocPreview";
 
 export type ErMseSmartAssistContext = {
@@ -97,28 +98,6 @@ function planLinesFromCdsIds(ids: readonly string[] | undefined, locale: Support
   return lines.join("\n");
 }
 
-function vitalsRecordFromSlice(slice: {
-  tempC: string;
-  hr: string;
-  rr: string;
-  bpSys: string;
-  bpDia: string;
-  spo2: string;
-  weightKg: string;
-  heightCm: string;
-}): Record<string, number | string | null | undefined> {
-  return {
-    tempC: slice.tempC ? parseFloat(slice.tempC) : "",
-    hr: slice.hr ? parseInt(slice.hr, 10) : "",
-    rr: slice.rr ? parseInt(slice.rr, 10) : "",
-    bpSys: slice.bpSys ? parseInt(slice.bpSys, 10) : "",
-    bpDia: slice.bpDia ? parseInt(slice.bpDia, 10) : "",
-    spo2: slice.spo2 ? parseInt(slice.spo2, 10) : "",
-    weightKg: slice.weightKg ? parseFloat(slice.weightKg) : "",
-    heightCm: slice.heightCm ? parseFloat(slice.heightCm) : "",
-  };
-}
-
 /**
  * Returns non-empty string fields only. Caller applies to empty MSE fields only.
  */
@@ -130,7 +109,7 @@ export function buildErMseSmartAssistSuggestions(
 
   const out: Partial<ErProviderMseForm> = {};
   const triage = ctx.triage;
-  const parsed = triage ? triagePreviewSliceFromTriageGet(triage) : null;
+  const parsed = triage ? triagePreviewSliceFromTriageGet(triage, locale) : null;
 
   const stroke = strokeScreenFromUnknown(triage?.strokeScreen);
   const sepsis = sepsisScreenFromUnknown(triage?.sepsisScreen);
@@ -204,7 +183,7 @@ export function buildErMseSmartAssistSuggestions(
       out.focusedImpression = mseT(locale, "focusedSepsisPossible");
     }
 
-    const vitalsLine = formatVitalsHeaderLineForLocale(vitalsRecordFromSlice(slice), locale);
+    const vitalsLine = formatVitalsHeaderLineForLocale(vitalsCanonicalRecordFromTriageSlice(slice), locale);
     if (vitalsLine) {
       out.examReassessmentExtra = mseI(locale, "vitalsRecordedLine", { line: vitalsLine });
     }

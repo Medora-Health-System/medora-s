@@ -234,7 +234,7 @@ export function buildEmergencyVisitSummaryModel(
     });
   }
 
-  const parsed = triagePreviewSliceFromTriageGet(triage);
+  const parsed = triagePreviewSliceFromTriageGet(triage, locale);
   let motifPresentation: VisitSummaryTextBlock | null = null;
   let triageResume: VisitSummaryTextBlock | null = null;
 

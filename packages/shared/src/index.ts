@@ -22,4 +22,5 @@ export * from "./ndcNormalize.js";
 export * from "./mar/marClinicalAction.js";
 export * from "./orders/orderItemDisplayLabels.js";
 export * from "./encounter-allergy-safety.js";
+export * from "./vitalsUnitConversions.js";
 

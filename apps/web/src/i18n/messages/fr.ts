@@ -3049,6 +3049,23 @@ export default {
     cancel: "Annuler",
     saveError: "Impossible d’enregistrer les signes vitaux.",
   },
+  vitalsUnits: {
+    tempLabel: "Température (°F / °C)",
+    weightLabel: "Poids (lb / kg)",
+    heightLabel: "Taille (pieds/pouces / cm)",
+    unitF: "°F",
+    unitC: "°C",
+    unitLb: "lb",
+    unitKg: "kg",
+    unitFtIn: "pi / po",
+    unitCm: "cm",
+    feetPh: "pi",
+    inchesPh: "po",
+    tempHintC: "≈ {n} °C (enregistré)",
+    tempHintF: "≈ {n} °F",
+    weightHintKg: "≈ {n} kg (enregistré)",
+    weightHintLb: "≈ {n} lb",
+  },
   erCds: {
     severity: {
       info: "Info",

@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "@/i18n/config";
+import { celsiusToFahrenheit, cmToFeetInches, kgToPounds } from "@medora/shared";
 
 /** Dispatched after encounter triage vitals save (detail: { patientId, supersededSnapshot? }). */
 export const MEDORA_PATIENT_VITALS_UPDATED = "medora:patient-vitals-updated";
@@ -78,6 +79,34 @@ export function hasVitalsJson(vitalsJson: unknown): boolean {
   return Object.keys(vitalsJson as object).length > 0;
 }
 
+function numOrNull(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : parseFloat(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Dual °F / °C from stored canonical °C (product: EN US-first, FR metric-first). */
+export function formatTemperatureDualLine(tempC: number, language: SupportedLanguage): string {
+  const f = celsiusToFahrenheit(tempC);
+  const fStr = `${f.toFixed(1)}°F`;
+  const cStr = `${tempC.toFixed(1)}°C`;
+  return language === "en" ? `${fStr} / ${cStr}` : `${cStr} / ${fStr}`;
+}
+
+export function formatWeightDualLine(weightKg: number, language: SupportedLanguage): string {
+  const lb = kgToPounds(weightKg);
+  const lbStr = `${lb.toFixed(1)} lb`;
+  const kgStr = `${weightKg.toFixed(1)} kg`;
+  return language === "en" ? `${lbStr} / ${kgStr}` : `${kgStr} / ${lbStr}`;
+}
+
+export function formatHeightDualLine(heightCm: number, language: SupportedLanguage): string {
+  const { feet, inches } = cmToFeetInches(heightCm);
+  const ftStr = `${feet} ft ${inches} in`;
+  const cmStr = `${Math.round(heightCm)} cm`;
+  return language === "en" ? `${ftStr} / ${cmStr}` : `${cmStr} / ${ftStr}`;
+}
+
 /**
  * Compact vitals one-liner — locale-aware labels (US clinical English vs FR product copy).
  */
@@ -93,11 +122,14 @@ export function formatVitalsHeaderLineForLocale(
       parts.push(`BP ${sys}/${dia}`);
     }
     if (vitals.hr != null && vitals.hr !== "") parts.push(`HR ${vitals.hr}/min`);
-    if (vitals.tempC != null && vitals.tempC !== "") parts.push(`Temp ${vitals.tempC} °C`);
+    const tc = numOrNull(vitals.tempC);
+    if (tc != null) parts.push(`Temp ${formatTemperatureDualLine(tc, language)}`);
     if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO2 ${vitals.spo2}%`);
     if (vitals.rr != null && vitals.rr !== "") parts.push(`RR ${vitals.rr}/min`);
-    if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Wt ${vitals.weightKg} kg`);
-    if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Ht ${vitals.heightCm} cm`);
+    const wk = numOrNull(vitals.weightKg);
+    if (wk != null) parts.push(`Wt ${formatWeightDualLine(wk, language)}`);
+    const hc = numOrNull(vitals.heightCm);
+    if (hc != null) parts.push(`Ht ${formatHeightDualLine(hc, language)}`);
     return parts.length ? parts.join(" · ") : "";
   }
   const parts: string[] = [];
@@ -107,11 +139,14 @@ export function formatVitalsHeaderLineForLocale(
     parts.push(`TA : ${sys}/${dia}`);
   }
   if (vitals.hr != null && vitals.hr !== "") parts.push(`FC : ${vitals.hr}/min`);
-  if (vitals.tempC != null && vitals.tempC !== "") parts.push(`Température : ${vitals.tempC} °C`);
+  const tcFr = numOrNull(vitals.tempC);
+  if (tcFr != null) parts.push(`Température : ${formatTemperatureDualLine(tcFr, language)}`);
   if (vitals.spo2 != null && vitals.spo2 !== "") parts.push(`SpO₂ : ${vitals.spo2} %`);
   if (vitals.rr != null && vitals.rr !== "") parts.push(`FR : ${vitals.rr}/min`);
-  if (vitals.weightKg != null && vitals.weightKg !== "") parts.push(`Poids : ${vitals.weightKg} kg`);
-  if (vitals.heightCm != null && vitals.heightCm !== "") parts.push(`Taille : ${vitals.heightCm} cm`);
+  const wkFr = numOrNull(vitals.weightKg);
+  if (wkFr != null) parts.push(`Poids : ${formatWeightDualLine(wkFr, language)}`);
+  const hcFr = numOrNull(vitals.heightCm);
+  if (hcFr != null) parts.push(`Taille : ${formatHeightDualLine(hcFr, language)}`);
   return parts.length ? parts.join(" · ") : "";
 }
 

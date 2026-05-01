@@ -9,6 +9,8 @@ import {
 } from "@/lib/patientVitals";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds } from "@medora/shared";
+import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
 import {
   sepsisScreenFormToJson,
   sepsisScreenFromUnknown,
@@ -45,11 +47,16 @@ type Draft = {
   spo2: string;
   weightKg: string;
   heightCm: string;
+  tempInputUnit: "C" | "F";
+  weightInputUnit: "kg" | "lb";
+  heightInputMode: "cm" | "ftin";
+  heightFeet: string;
+  heightInches: string;
   allergyNote: string;
 };
 
-function draftFromTriage(triage: Record<string, unknown> | null): Draft {
-  const parsed = triagePreviewSliceFromTriageGet(triage);
+function draftFromTriage(triage: Record<string, unknown> | null, language: "en" | "fr"): Draft {
+  const parsed = triagePreviewSliceFromTriageGet(triage, language);
   if (!parsed) {
     return {
       tempC: "",
@@ -60,6 +67,11 @@ function draftFromTriage(triage: Record<string, unknown> | null): Draft {
       spo2: "",
       weightKg: "",
       heightCm: "",
+      tempInputUnit: "C",
+      weightInputUnit: "kg",
+      heightInputMode: "cm",
+      heightFeet: "",
+      heightInches: "",
       allergyNote: "",
     };
   }
@@ -73,6 +85,11 @@ function draftFromTriage(triage: Record<string, unknown> | null): Draft {
     spo2: s.spo2,
     weightKg: s.weightKg,
     heightCm: s.heightCm,
+    tempInputUnit: s.tempInputUnit ?? "C",
+    weightInputUnit: s.weightInputUnit ?? "kg",
+    heightInputMode: s.heightInputMode ?? "cm",
+    heightFeet: s.heightFeet ?? "",
+    heightInches: s.heightInches ?? "",
     allergyNote: s.allergyNote,
   };
 }
@@ -94,17 +111,17 @@ export function EmergencyQuickVitalsEditor({
   triageSnapshot: Record<string, unknown> | null;
   onSaved: () => void | Promise<void>;
 }) {
-  const { t } = useI18n();
-  const [draft, setDraft] = useState<Draft>(() => draftFromTriage(triageSnapshot));
+  const { t, language } = useI18n();
+  const [draft, setDraft] = useState<Draft>(() => draftFromTriage(triageSnapshot, language));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setDraft(draftFromTriage(triageSnapshot));
+      setDraft(draftFromTriage(triageSnapshot, language));
       setMsg(null);
     }
-  }, [open, triageSnapshot]);
+  }, [open, triageSnapshot, language]);
 
   const patch = useCallback((p: Partial<Draft>) => {
     setDraft((d) => ({ ...d, ...p }));
@@ -196,6 +213,17 @@ export function EmergencyQuickVitalsEditor({
 
   if (!open) return null;
 
+  const selStyle: React.CSSProperties = {
+    padding: "6px 8px",
+    borderRadius: 8,
+    border: "1px solid #e2e8f0",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#334155",
+    backgroundColor: "#fff",
+    minWidth: 52,
+  };
+
   return (
     <div
       style={{
@@ -208,18 +236,44 @@ export function EmergencyQuickVitalsEditor({
         boxSizing: "border-box",
       }}
     >
-      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#0369a1" }}>{t("erQuickVitals.title")}</p>
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#0369c1" }}>{t("erQuickVitals.title")}</p>
       <div style={{ ...grid2, marginTop: 10 }}>
         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, color: "#475569", fontWeight: 600 }}>
-          {t("erQuickVitals.tempC")}
-          <input
-            type="text"
-            inputMode="decimal"
-            value={draft.tempC}
-            onChange={(e) => patch({ tempC: e.target.value })}
-            disabled={saving}
-            style={inputBase}
-          />
+          {t("vitalsUnits.tempLabel")}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <select
+              value={draft.tempInputUnit}
+              onChange={(e) => {
+                const u = e.target.value as "C" | "F";
+                setDraft((d) => ({ ...d, tempInputUnit: u }));
+              }}
+              disabled={saving}
+              style={selStyle}
+            >
+              <option value="F">{t("vitalsUnits.unitF")}</option>
+              <option value="C">{t("vitalsUnits.unitC")}</option>
+            </select>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={draft.tempC}
+              onChange={(e) => patch({ tempC: e.target.value })}
+              disabled={saving}
+              style={{ ...inputBase, flex: 1, minWidth: 0 }}
+            />
+          </div>
+          {(() => {
+            if (!draft.tempC.trim()) return null;
+            const pair = temperatureHintPairCelsiusFahrenheit(draft.tempC, draft.tempInputUnit);
+            if (!pair) return null;
+            return (
+              <span style={{ fontSize: 10, color: "#64748b" }}>
+                {draft.tempInputUnit === "F"
+                  ? t("vitalsUnits.tempHintC").replace("{n}", pair.celsius.toFixed(1))
+                  : t("vitalsUnits.tempHintF").replace("{n}", pair.fahrenheit.toFixed(1))}
+              </span>
+            );
+          })()}
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, color: "#475569", fontWeight: 600 }}>
           {t("erQuickVitals.hr")}
@@ -277,26 +331,100 @@ export function EmergencyQuickVitalsEditor({
           />
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, color: "#475569", fontWeight: 600 }}>
-          {t("erQuickVitals.weightKg")}
-          <input
-            type="text"
-            inputMode="decimal"
-            value={draft.weightKg}
-            onChange={(e) => patch({ weightKg: e.target.value })}
-            disabled={saving}
-            style={inputBase}
-          />
+          {t("vitalsUnits.weightLabel")}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <select
+              value={draft.weightInputUnit}
+              onChange={(e) => {
+                const u = e.target.value as "kg" | "lb";
+                setDraft((d) => ({ ...d, weightInputUnit: u }));
+              }}
+              disabled={saving}
+              style={selStyle}
+            >
+              <option value="lb">{t("vitalsUnits.unitLb")}</option>
+              <option value="kg">{t("vitalsUnits.unitKg")}</option>
+            </select>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={draft.weightKg}
+              onChange={(e) => patch({ weightKg: e.target.value })}
+              disabled={saving}
+              style={{ ...inputBase, flex: 1, minWidth: 0 }}
+            />
+          </div>
+          {(() => {
+            if (!draft.weightKg.trim()) return null;
+            const pair = weightHintPairKgPounds(draft.weightKg, draft.weightInputUnit);
+            if (!pair) return null;
+            return (
+              <span style={{ fontSize: 10, color: "#64748b" }}>
+                {draft.weightInputUnit === "lb"
+                  ? t("vitalsUnits.weightHintKg").replace("{n}", pair.kg.toFixed(1))
+                  : t("vitalsUnits.weightHintLb").replace("{n}", pair.pounds.toFixed(1))}
+              </span>
+            );
+          })()}
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, color: "#475569", fontWeight: 600 }}>
-          {t("erQuickVitals.heightCm")}
-          <input
-            type="text"
-            inputMode="decimal"
-            value={draft.heightCm}
-            onChange={(e) => patch({ heightCm: e.target.value })}
-            disabled={saving}
-            style={inputBase}
-          />
+          {t("vitalsUnits.heightLabel")}
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <select
+              value={draft.heightInputMode}
+              onChange={(e) => {
+                const m = e.target.value as "cm" | "ftin";
+                setDraft((d) => {
+                  const h = flipHeightInputMode({
+                    heightCmStr: d.heightCm,
+                    heightFeetStr: d.heightFeet,
+                    heightInchesStr: d.heightInches,
+                    from: d.heightInputMode,
+                    to: m,
+                  });
+                  return { ...d, heightInputMode: m, ...h };
+                });
+              }}
+              disabled={saving}
+              style={selStyle}
+            >
+              <option value="ftin">{t("vitalsUnits.unitFtIn")}</option>
+              <option value="cm">{t("vitalsUnits.unitCm")}</option>
+            </select>
+            {draft.heightInputMode === "cm" ? (
+              <input
+                type="text"
+                inputMode="decimal"
+                value={draft.heightCm}
+                onChange={(e) => patch({ heightCm: e.target.value })}
+                disabled={saving}
+                style={{ ...inputBase, flex: 1, minWidth: 0 }}
+              />
+            ) : (
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={t("vitalsUnits.feetPh")}
+                  value={draft.heightFeet}
+                  onChange={(e) => patch({ heightFeet: e.target.value })}
+                  disabled={saving}
+                  style={{ ...inputBase, width: 56 }}
+                />
+                <span style={{ fontSize: 10, color: "#64748b" }}>′</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={t("vitalsUnits.inchesPh")}
+                  value={draft.heightInches}
+                  onChange={(e) => patch({ heightInches: e.target.value })}
+                  disabled={saving}
+                  style={{ ...inputBase, width: 56 }}
+                />
+                <span style={{ fontSize: 10, color: "#64748b" }}>″</span>
+              </div>
+            )}
+          </div>
         </label>
       </div>
       <label

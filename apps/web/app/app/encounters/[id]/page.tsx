@@ -48,6 +48,11 @@ import { EncounterProcedureCapturePanel } from "@/components/encounters/Encounte
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
+import { mergeVitalsJsonForSave } from "@/features/emergency/emergencyTriageVitalsMerge";
+import { triagePreviewSliceFromTriageGet } from "@/features/emergency/emergencyTriageDocPreview";
+import { erTriageV1FormFromVitalsJson } from "@/features/emergency/medoraErTriageV1";
+import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
+import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds } from "@medora/shared";
 import {
   diagnosisDisplayFr,
   nursingAssessmentDisplayLines,
@@ -3318,6 +3323,11 @@ function TriageVitalsTab({
     spo2: "",
     weightKg: "",
     heightCm: "",
+    tempInputUnit: "C" as "C" | "F",
+    weightInputUnit: "kg" as "kg" | "lb",
+    heightInputMode: "cm" as "cm" | "ftin",
+    heightFeet: "",
+    heightInches: "",
     allergyNote: "",
     strokeScreen: "",
     sepsisScreen: "",
@@ -3329,8 +3339,8 @@ function TriageVitalsTab({
   const formDisabled = isReadOnly || isLocked;
 
   useEffect(() => {
-    loadTriage();
-  }, [encounter.id, facilityId]);
+    void loadTriage();
+  }, [encounter.id, facilityId, language]);
 
   const loadTriage = async () => {
     setLoading(true);
@@ -3338,19 +3348,27 @@ function TriageVitalsTab({
       const data = await apiFetch(`/encounters/${encounter.id}/triage`, { facilityId });
       setTriage(data);
       if (data) {
+        const d = data as Record<string, unknown>;
+        const parsed = triagePreviewSliceFromTriageGet(d, language);
+        const s = parsed?.slice;
         const v = (data.vitalsJson || {}) as Record<string, number | string | null>;
         setFormData({
-          chiefComplaint: data.chiefComplaint || "",
+          chiefComplaint: (data.chiefComplaint as string) || "",
           onsetAt: data.onsetAt ? new Date(data.onsetAt).toISOString().slice(0, 16) : "",
           esi: data.esi?.toString() || "",
-          tempC: v.tempC?.toString() ?? "",
+          tempC: s?.tempC ?? v.tempC?.toString() ?? "",
           hr: v.hr?.toString() ?? "",
           rr: v.rr?.toString() ?? "",
           bpSys: v.bpSys?.toString() ?? "",
           bpDia: v.bpDia?.toString() ?? "",
           spo2: v.spo2?.toString() ?? "",
-          weightKg: v.weightKg?.toString() ?? "",
-          heightCm: v.heightCm?.toString() ?? "",
+          weightKg: s?.weightKg ?? v.weightKg?.toString() ?? "",
+          heightCm: s?.heightCm ?? v.heightCm?.toString() ?? "",
+          tempInputUnit: s?.tempInputUnit ?? "C",
+          weightInputUnit: s?.weightInputUnit ?? "kg",
+          heightInputMode: s?.heightInputMode ?? "cm",
+          heightFeet: s?.heightFeet ?? "",
+          heightInches: s?.heightInches ?? "",
           allergyNote:
             (data.vitalsJson as { allergyNote?: string | null } | null | undefined)?.allergyNote ?? "",
           strokeScreen: data.strokeScreen ? JSON.stringify(data.strokeScreen, null, 2) : "",
@@ -3392,33 +3410,34 @@ function TriageVitalsTab({
     }
 
     try {
+      const erV1 = erTriageV1FormFromVitalsJson(triage?.vitalsJson ?? null);
+      const vitalsMerged = mergeVitalsJsonForSave(triage?.vitalsJson, {
+        tempC: formData.tempC,
+        hr: formData.hr,
+        rr: formData.rr,
+        bpSys: formData.bpSys,
+        bpDia: formData.bpDia,
+        spo2: formData.spo2,
+        weightKg: formData.weightKg,
+        heightCm: formData.heightCm,
+        allergyNote: formData.allergyNote,
+        erV1,
+        tempInputUnit: formData.tempInputUnit,
+        weightInputUnit: formData.weightInputUnit,
+        heightInputMode: formData.heightInputMode,
+        heightFeet: formData.heightFeet,
+        heightInches: formData.heightInches,
+      });
+
       const payload: any = {
         chiefComplaint: formData.chiefComplaint || null,
         onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
         esi: formData.esi ? parseInt(formData.esi) : null,
-        vitalsJson: {
-          tempC: formData.tempC ? parseFloat(formData.tempC) : null,
-          hr: formData.hr ? parseInt(formData.hr) : null,
-          rr: formData.rr ? parseInt(formData.rr) : null,
-          bpSys: formData.bpSys ? parseInt(formData.bpSys) : null,
-          bpDia: formData.bpDia ? parseInt(formData.bpDia) : null,
-          spo2: formData.spo2 ? parseInt(formData.spo2) : null,
-          weightKg: formData.weightKg ? parseFloat(formData.weightKg) : null,
-          heightCm: formData.heightCm ? parseFloat(formData.heightCm) : null,
-          allergyNote: (() => {
-            const t = formData.allergyNote.trim();
-            return t.length > 0 ? t.slice(0, 2000) : null;
-          })(),
-        },
+        vitalsJson: vitalsMerged,
         strokeScreen: strokeScreenParsed,
         sepsisScreen: sepsisScreenParsed,
         triageCompleteAt: formData.triageCompleteAt ? new Date(formData.triageCompleteAt).toISOString() : null,
       };
-      // Remove null values from vitalsJson
-      Object.keys(payload.vitalsJson).forEach((key) => {
-        if (payload.vitalsJson[key] === null) delete payload.vitalsJson[key];
-      });
-      if (Object.keys(payload.vitalsJson).length === 0) payload.vitalsJson = null;
 
       const res = await apiFetch(`/encounters/${encounter.id}/triage`, {
         method: "PUT",
@@ -3549,15 +3568,41 @@ function TriageVitalsTab({
       <h4 style={{ marginTop: 24, marginBottom: 16 }}>{t("encounterTriageTab.valuesHeading")}</h4>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.tempC")}</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.tempC}
-            onChange={(e) => setFormData({ ...formData, tempC: e.target.value })}
-            disabled={formDisabled}
-            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-          />
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("vitalsUnits.tempLabel")}</label>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select
+              value={formData.tempInputUnit}
+              onChange={(e) => {
+                const u = e.target.value as "C" | "F";
+                setFormData({ ...formData, tempInputUnit: u });
+              }}
+              disabled={formDisabled}
+              style={{ padding: 8, border: "1px solid #ddd", borderRadius: 4, fontWeight: 600 }}
+            >
+              <option value="F">{t("vitalsUnits.unitF")}</option>
+              <option value="C">{t("vitalsUnits.unitC")}</option>
+            </select>
+            <input
+              type="number"
+              step="0.1"
+              value={formData.tempC}
+              onChange={(e) => setFormData({ ...formData, tempC: e.target.value })}
+              disabled={formDisabled}
+              style={{ flex: 1, minWidth: 0, padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+            />
+          </div>
+          {(() => {
+            if (!formData.tempC.trim()) return null;
+            const pair = temperatureHintPairCelsiusFahrenheit(formData.tempC, formData.tempInputUnit);
+            if (!pair) return null;
+            return (
+              <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#666" }}>
+                {formData.tempInputUnit === "F"
+                  ? t("vitalsUnits.tempHintC").replace("{n}", pair.celsius.toFixed(1))
+                  : t("vitalsUnits.tempHintF").replace("{n}", pair.fahrenheit.toFixed(1))}
+              </p>
+            );
+          })()}
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.heartRate")}</label>
@@ -3612,26 +3657,101 @@ function TriageVitalsTab({
           />
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.weightKg")}</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.weightKg}
-            onChange={(e) => setFormData({ ...formData, weightKg: e.target.value })}
-            disabled={formDisabled}
-            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-          />
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("vitalsUnits.weightLabel")}</label>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select
+              value={formData.weightInputUnit}
+              onChange={(e) => {
+                const u = e.target.value as "kg" | "lb";
+                setFormData({ ...formData, weightInputUnit: u });
+              }}
+              disabled={formDisabled}
+              style={{ padding: 8, border: "1px solid #ddd", borderRadius: 4, fontWeight: 600 }}
+            >
+              <option value="lb">{t("vitalsUnits.unitLb")}</option>
+              <option value="kg">{t("vitalsUnits.unitKg")}</option>
+            </select>
+            <input
+              type="number"
+              step="0.1"
+              value={formData.weightKg}
+              onChange={(e) => setFormData({ ...formData, weightKg: e.target.value })}
+              disabled={formDisabled}
+              style={{ flex: 1, minWidth: 0, padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+            />
+          </div>
+          {(() => {
+            if (!formData.weightKg.trim()) return null;
+            const pair = weightHintPairKgPounds(formData.weightKg, formData.weightInputUnit);
+            if (!pair) return null;
+            return (
+              <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#666" }}>
+                {formData.weightInputUnit === "lb"
+                  ? t("vitalsUnits.weightHintKg").replace("{n}", pair.kg.toFixed(1))
+                  : t("vitalsUnits.weightHintLb").replace("{n}", pair.pounds.toFixed(1))}
+              </p>
+            );
+          })()}
         </div>
         <div>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("encounterTriageTab.heightCm")}</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.heightCm}
-            onChange={(e) => setFormData({ ...formData, heightCm: e.target.value })}
-            disabled={formDisabled}
-            style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
-          />
+          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>{t("vitalsUnits.heightLabel")}</label>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <select
+              value={formData.heightInputMode}
+              onChange={(e) => {
+                const m = e.target.value as "cm" | "ftin";
+                const h = flipHeightInputMode({
+                  heightCmStr: formData.heightCm,
+                  heightFeetStr: formData.heightFeet,
+                  heightInchesStr: formData.heightInches,
+                  from: formData.heightInputMode,
+                  to: m,
+                });
+                setFormData({ ...formData, heightInputMode: m, ...h });
+              }}
+              disabled={formDisabled}
+              style={{ padding: 8, border: "1px solid #ddd", borderRadius: 4, fontWeight: 600 }}
+            >
+              <option value="ftin">{t("vitalsUnits.unitFtIn")}</option>
+              <option value="cm">{t("vitalsUnits.unitCm")}</option>
+            </select>
+            {formData.heightInputMode === "cm" ? (
+              <input
+                type="number"
+                step="0.1"
+                value={formData.heightCm}
+                onChange={(e) => setFormData({ ...formData, heightCm: e.target.value })}
+                disabled={formDisabled}
+                style={{ flex: 1, minWidth: 0, padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+              />
+            ) : (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  placeholder={t("vitalsUnits.feetPh")}
+                  value={formData.heightFeet}
+                  onChange={(e) => setFormData({ ...formData, heightFeet: e.target.value })}
+                  disabled={formDisabled}
+                  style={{ width: 72, padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+                />
+                <span style={{ fontSize: 12, color: "#666" }}>′</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={11.9}
+                  step={0.1}
+                  placeholder={t("vitalsUnits.inchesPh")}
+                  value={formData.heightInches}
+                  onChange={(e) => setFormData({ ...formData, heightInches: e.target.value })}
+                  disabled={formDisabled}
+                  style={{ width: 72, padding: 8, border: "1px solid #ddd", borderRadius: 4 }}
+                />
+                <span style={{ fontSize: 12, color: "#666" }}>″</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
