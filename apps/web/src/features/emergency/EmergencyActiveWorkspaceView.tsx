@@ -1219,7 +1219,6 @@ export function EmergencyActiveWorkspaceView() {
                 encounter={encounter}
                 isLocked={isLocked}
                 onSaved={onEmbeddedEncounterUpdate}
-                onSummaryClosureClick={goToErSummaryClosure}
                 canPrescribe={canPrescribe}
                 canEditNursingDischarge={canEditNursingDischarge}
                 canEditMedicalDischarge={canEditMedicalDischarge}
