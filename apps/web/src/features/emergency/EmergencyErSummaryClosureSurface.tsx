@@ -6,7 +6,6 @@
  */
 
 import React, { useCallback, useState, type ComponentProps } from "react";
-import Link from "next/link";
 import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -16,6 +15,7 @@ import {
   formatEncounterChromeDateTime,
   formatPatientAgeSexLine,
 } from "@/lib/encounterChromeI18n";
+import { printErPacket } from "@/features/emergency/erPrintPacket";
 import {
   dischargeModeFrToDischargeStatus,
   hydrateDischargeFormFromEncounterJson,
@@ -126,10 +126,28 @@ export function EmergencyErSummaryClosureSurface({
   const contextLine = t(contextKey);
   const showContext = contextLine !== contextKey;
 
-  const patientDossierPrintHref =
-    patient?.id != null && String(patient.id).trim() !== ""
-      ? `/app/patients/${encodeURIComponent(patient.id)}?tab=summary`
-      : undefined;
+  const handlePrint = useCallback(() => {
+    const p = encounter.patient;
+    if (!p || !encounter.createdAt) return;
+    printErPacket({
+      patient: p,
+      encounter: {
+        createdAt: encounter.createdAt,
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+        nursingAssessment: encounter.nursingAssessment,
+        physicianAssigned: encounter.physicianAssigned ?? null,
+        providerDocumentationStatus: encounter.providerDocumentationStatus ?? null,
+        providerDocumentationSignedAt: encounter.providerDocumentationSignedAt ?? null,
+        providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr ?? null,
+        providerAddenda: encounter.providerAddenda,
+      },
+      facilityName: facilityName ?? null,
+      primaryDiagnosis: null,
+      triageSnapshot,
+      language,
+    });
+  }, [encounter, facilityName, language, triageSnapshot]);
 
   const executeClose = useCallback(
     async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {
@@ -328,41 +346,23 @@ export function EmergencyErSummaryClosureSurface({
             backgroundColor: "#fff",
           }}
         >
-          {patientDossierPrintHref ? (
-            <Link
-              href={patientDossierPrintHref}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#fff",
-                color: "#334155",
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              {t("emergencyDisposition.printChart")}
-            </Link>
-          ) : (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                backgroundColor: "#f1f5f9",
-                color: "#94a3b8",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              {t("emergencyDisposition.printChart")}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={handlePrint}
+            disabled={!patient || !encounter.createdAt}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: "1px solid #cbd5e1",
+              backgroundColor: patient && encounter.createdAt ? "#fff" : "#f1f5f9",
+              color: patient && encounter.createdAt ? "#334155" : "#94a3b8",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
+            }}
+          >
+            {t("emergencyDisposition.printChart")}
+          </button>
           <button
             type="button"
             onClick={() => {
