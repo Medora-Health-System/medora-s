@@ -51,6 +51,8 @@ import {
   type EncounterProviderAddendumCreateDto,
   type EncounterProviderDocumentationUnlockDto,
   type EncounterProviderHandoffCreateDto,
+  type EncounterIvAccessInsertDto,
+  type EncounterIvAccessRemoveDto,
   type EncounterUpdateDto,
   type EncounterCloseDocumentationCheckResult,
   type EncounterIntakeUpsertDto,
@@ -1403,6 +1405,292 @@ export class EncountersService {
       },
       payloadJson: r.payloadJson,
     }));
+  }
+
+  private parseOptionalIsoDate(input: string | undefined, fieldLabelFr: string): string | null {
+    if (input == null || !String(input).trim()) return null;
+    const d = new Date(String(input).trim());
+    if (Number.isNaN(d.getTime())) {
+      throw new BadRequestException(`${fieldLabelFr} invalide.`);
+    }
+    return d.toISOString();
+  }
+
+  private userDisplayName(u: { firstName: string | null; lastName: string | null }): string {
+    return `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
+  }
+
+  /**
+   * Structured IV access derived from append-only IV_INSERTED / IV_REMOVED clinical events (S13).
+   */
+  async getIvAccess(facilityId: string, encounterId: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const rows = await this.prisma.encounterClinicalEvent.findMany({
+      where: {
+        encounterId,
+        facilityId,
+        eventType: {
+          in: [EncounterClinicalEventType.IV_INSERTED, EncounterClinicalEventType.IV_REMOVED],
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    const insertions = new Map<string, (typeof rows)[number]>();
+    const removedInsertionIds = new Set<string>();
+
+    for (const r of rows) {
+      if (r.eventType === EncounterClinicalEventType.IV_INSERTED) {
+        insertions.set(r.id, r);
+      } else if (r.eventType === EncounterClinicalEventType.IV_REMOVED) {
+        const p = r.payloadJson as Record<string, unknown>;
+        const insId = typeof p.insertionEventId === "string" ? p.insertionEventId.trim() : "";
+        if (insId) removedInsertionIds.add(insId);
+      }
+    }
+
+    const active: Array<{
+      insertionEventId: string;
+      site: string;
+      gauge: string;
+      insertedAt: string;
+      recordedByUserId: string;
+      recordedByDisplayName: string | null;
+      notes: string | null;
+    }> = [];
+
+    for (const [id, row] of insertions) {
+      if (removedInsertionIds.has(id)) continue;
+      const p = (row.payloadJson && typeof row.payloadJson === "object" && !Array.isArray(row.payloadJson)
+        ? (row.payloadJson as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+      const site = typeof p.site === "string" ? p.site : "";
+      const gauge = typeof p.gauge === "string" ? p.gauge : "";
+      const insIso =
+        typeof p.insertedAt === "string" && p.insertedAt.trim() ? p.insertedAt.trim() : row.createdAt.toISOString();
+      active.push({
+        insertionEventId: id,
+        site,
+        gauge,
+        insertedAt: insIso,
+        recordedByUserId: row.createdByUserId,
+        recordedByDisplayName: this.userDisplayName(row.createdBy) || null,
+        notes: typeof p.notes === "string" && p.notes.trim() ? p.notes.trim().slice(0, 4000) : null,
+      });
+    }
+
+    const removed: Array<{
+      removalEventId: string;
+      insertionEventId: string;
+      site: string;
+      gauge: string;
+      insertedAt: string;
+      removedAt: string;
+      reason: string | null;
+      notes: string | null;
+      recordedByDisplayName: string | null;
+    }> = [];
+
+    for (const r of rows) {
+      if (r.eventType !== EncounterClinicalEventType.IV_REMOVED) continue;
+      const p = (r.payloadJson && typeof r.payloadJson === "object" && !Array.isArray(r.payloadJson)
+        ? (r.payloadJson as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+      const insId = typeof p.insertionEventId === "string" ? p.insertionEventId.trim() : "";
+      const ins = insId ? insertions.get(insId) : undefined;
+      const insPayload =
+        ins && ins.payloadJson && typeof ins.payloadJson === "object" && !Array.isArray(ins.payloadJson)
+          ? (ins.payloadJson as Record<string, unknown>)
+          : {};
+      const siteFromRemoval = typeof p.site === "string" ? p.site : "";
+      const gaugeFromRemoval = typeof p.gauge === "string" ? p.gauge : "";
+      const site =
+        siteFromRemoval.trim() ||
+        (typeof insPayload.site === "string" ? insPayload.site : "");
+      const gauge =
+        gaugeFromRemoval.trim() ||
+        (typeof insPayload.gauge === "string" ? insPayload.gauge : "");
+      const insertedAt =
+        typeof insPayload.insertedAt === "string" && insPayload.insertedAt.trim()
+          ? insPayload.insertedAt.trim()
+          : ins?.createdAt.toISOString() ?? "";
+      const removedAt =
+        typeof p.removedAt === "string" && p.removedAt.trim() ? p.removedAt.trim() : r.createdAt.toISOString();
+      removed.push({
+        removalEventId: r.id,
+        insertionEventId: insId,
+        site,
+        gauge,
+        insertedAt,
+        removedAt,
+        reason: typeof p.reason === "string" && p.reason.trim() ? p.reason.trim().slice(0, 500) : null,
+        notes: typeof p.notes === "string" && p.notes.trim() ? p.notes.trim().slice(0, 4000) : null,
+        recordedByDisplayName: this.userDisplayName(r.createdBy) || null,
+      });
+    }
+
+    removed.sort((a, b) => new Date(b.removedAt).getTime() - new Date(a.removedAt).getTime());
+
+    return { active, removed };
+  }
+
+  async recordIvInsertion(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterIvAccessInsertDto,
+    userId?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentication required.");
+    }
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("La consultation doit être ouverte pour documenter un accès IV.");
+    }
+    assertEncounterNotSigned(encounter);
+
+    const actor = await this.prisma.user.findFirst({
+      where: { id: userId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!actor) {
+      throw new ForbiddenException("Utilisateur introuvable.");
+    }
+    const performerDisplayName = this.userDisplayName(actor);
+
+    const insertedAtIso = this.parseOptionalIsoDate(dto.insertedAt, "Date ou heure d'insertion");
+    const notesTrim =
+      dto.notes != null && String(dto.notes).trim() ? String(dto.notes).trim().slice(0, 4000) : null;
+
+    const payloadJson: Record<string, unknown> = {
+      site: dto.site.trim(),
+      gauge: dto.gauge.trim(),
+      performerDisplayName: performerDisplayName || null,
+    };
+    if (insertedAtIso) payloadJson.insertedAt = insertedAtIso;
+    if (notesTrim) payloadJson.notes = notesTrim;
+
+    await this.prisma.encounterClinicalEvent.create({
+      data: {
+        facilityId,
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        eventType: EncounterClinicalEventType.IV_INSERTED,
+        payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
+        createdByUserId: userId,
+      },
+    });
+
+    return { ok: true as const };
+  }
+
+  async recordIvRemoval(
+    facilityId: string,
+    encounterId: string,
+    insertionEventId: string,
+    dto: EncounterIvAccessRemoveDto,
+    userId?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentication required.");
+    }
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("La consultation doit être ouverte pour documenter le retrait IV.");
+    }
+    assertEncounterNotSigned(encounter);
+
+    const insertion = await this.prisma.encounterClinicalEvent.findFirst({
+      where: {
+        id: insertionEventId,
+        encounterId,
+        facilityId,
+        eventType: EncounterClinicalEventType.IV_INSERTED,
+      },
+    });
+    if (!insertion) {
+      throw new BadRequestException("Événement d'insertion IV introuvable pour cette consultation.");
+    }
+    const insPayload =
+      insertion.payloadJson && typeof insertion.payloadJson === "object" && !Array.isArray(insertion.payloadJson)
+        ? (insertion.payloadJson as Record<string, unknown>)
+        : {};
+    const siteSnap = typeof insPayload.site === "string" ? insPayload.site : "";
+    const gaugeSnap = typeof insPayload.gauge === "string" ? insPayload.gauge : "";
+
+    const dup = await this.prisma.encounterClinicalEvent.findFirst({
+      where: {
+        encounterId,
+        facilityId,
+        eventType: EncounterClinicalEventType.IV_REMOVED,
+        payloadJson: {
+          path: ["insertionEventId"],
+          equals: insertionEventId,
+        },
+      },
+      select: { id: true },
+    });
+    if (dup) {
+      throw new BadRequestException("Ce site IV a déjà un retrait documenté.");
+    }
+
+    const actor = await this.prisma.user.findFirst({
+      where: { id: userId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!actor) {
+      throw new ForbiddenException("Utilisateur introuvable.");
+    }
+    const performerDisplayName = this.userDisplayName(actor);
+
+    const removedAtIso = this.parseOptionalIsoDate(dto.removedAt, "Date ou heure de retrait");
+    const reasonTrim =
+      dto.reason != null && String(dto.reason).trim() ? String(dto.reason).trim().slice(0, 500) : null;
+    const notesTrim =
+      dto.notes != null && String(dto.notes).trim() ? String(dto.notes).trim().slice(0, 4000) : null;
+
+    const payloadJson: Record<string, unknown> = {
+      insertionEventId,
+      performerDisplayName: performerDisplayName || null,
+      site: siteSnap,
+      gauge: gaugeSnap,
+    };
+    if (removedAtIso) payloadJson.removedAt = removedAtIso;
+    if (reasonTrim) payloadJson.reason = reasonTrim;
+    if (notesTrim) payloadJson.notes = notesTrim;
+
+    await this.prisma.encounterClinicalEvent.create({
+      data: {
+        facilityId,
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        eventType: EncounterClinicalEventType.IV_REMOVED,
+        payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
+        createdByUserId: userId,
+      },
+    });
+
+    return { ok: true as const };
   }
 
   private async assertProviderAtFacility(facilityId: string, userId: string | null | undefined) {

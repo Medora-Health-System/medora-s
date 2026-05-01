@@ -87,6 +87,24 @@ function summarizeClinicalEvent(
         summary: "",
       };
     }
+    case "IV_INSERTED": {
+      const gauge = typeof payload.gauge === "string" ? payload.gauge.trim() : "";
+      const site = typeof payload.site === "string" ? payload.site.trim() : "";
+      const detail = [gauge, site].filter(Boolean).join(" ").trim() || "—";
+      return {
+        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.ivInserted").replace("{detail}", detail),
+        summary: "",
+      };
+    }
+    case "IV_REMOVED": {
+      const gauge = typeof payload.gauge === "string" ? payload.gauge.trim() : "";
+      const site = typeof payload.site === "string" ? payload.site.trim() : "";
+      const detail = [gauge, site].filter(Boolean).join(" ").trim() || "—";
+      return {
+        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.ivRemoved").replace("{detail}", detail),
+        summary: "",
+      };
+    }
     default:
       return {
         label: row.eventType,

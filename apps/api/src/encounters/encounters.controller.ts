@@ -27,6 +27,8 @@ import {
   encounterProviderAddendumCreateDtoSchema,
   encounterProviderDocumentationUnlockDtoSchema,
   encounterProviderHandoffCreateDtoSchema,
+  encounterIvAccessInsertDtoSchema,
+  encounterIvAccessRemoveDtoSchema,
   encounterUpdateDtoSchema,
   rosterClinicalUserRoleQuerySchema,
 } from "@medora/shared";
@@ -301,6 +303,49 @@ export class EncountersController {
     }
     const parsed = limit != null && String(limit).trim() !== "" ? Number.parseInt(String(limit), 10) : undefined;
     return this.encountersService.getClinicalTimeline(facilityId, id, parsed);
+  }
+
+  @Get("encounters/:id/iv-access")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.ADMIN)
+  async getIvAccess(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.getIvAccess(facilityId, id);
+  }
+
+  @Post("encounters/:id/iv-access/insert")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.ADMIN)
+  async recordIvInsertion(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterIvAccessInsertDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.recordIvInsertion(facilityId, id, parsed.data, req.user?.userId);
+  }
+
+  @Post("encounters/:id/iv-access/:eventId/remove")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.ADMIN)
+  async recordIvRemoval(
+    @Param("id") id: string,
+    @Param("eventId") eventId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterIvAccessRemoveDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.recordIvRemoval(facilityId, id, eventId, parsed.data, req.user?.userId);
   }
 
   @Get("encounters/:id/disposition-readiness")

@@ -623,6 +623,25 @@ export const encounterProviderHandoffCreateDtoSchema = z.object({
 
 export type EncounterProviderHandoffCreateDto = z.infer<typeof encounterProviderHandoffCreateDtoSchema>;
 
+/** POST /encounters/:id/iv-access/insert — append-only IV_INSERTED (S13). */
+export const encounterIvAccessInsertDtoSchema = z.object({
+  site: z.string().trim().min(1).max(240),
+  gauge: z.string().trim().min(1).max(80),
+  insertedAt: z.preprocess(emptyStrToUndefined, z.string().trim().max(48).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().trim().max(4000).optional()),
+});
+
+export type EncounterIvAccessInsertDto = z.infer<typeof encounterIvAccessInsertDtoSchema>;
+
+/** POST /encounters/:id/iv-access/:eventId/remove — append-only IV_REMOVED; eventId = insertion event. */
+export const encounterIvAccessRemoveDtoSchema = z.object({
+  removedAt: z.preprocess(emptyStrToUndefined, z.string().trim().max(48).optional()),
+  reason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().trim().max(4000).optional()),
+});
+
+export type EncounterIvAccessRemoveDto = z.infer<typeof encounterIvAccessRemoveDtoSchema>;
+
 /** GET /roster/clinical-users — role filter for PROVIDER vs RN search. */
 export const rosterClinicalUserRoleQuerySchema = z.enum(["PROVIDER", "RN"]);
 

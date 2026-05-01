@@ -50,6 +50,7 @@ import { EmergencyNursingReassessmentPanel } from "@/features/emergency/Emergenc
 import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProviderMsePanel";
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
 import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
+import { EmergencyIvAccessModal } from "@/features/emergency/EmergencyIvAccessModal";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
@@ -211,6 +212,7 @@ export function EmergencyActiveWorkspaceView() {
   );
   const [triageLoading, setTriageLoading] = useState(false);
   const [showQuickVitals, setShowQuickVitals] = useState(false);
+  const [showIvAccessModal, setShowIvAccessModal] = useState(false);
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
 
@@ -247,6 +249,13 @@ export function EmergencyActiveWorkspaceView() {
   const canDocumentEncounterDiagnoses =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canRecordDischargeSortieExecution = roles.includes("RN") || roles.includes("ADMIN");
+
+  const canDocumentIvAccess =
+    roles.includes("RN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY") ||
+    roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -788,6 +797,36 @@ export function EmergencyActiveWorkspaceView() {
                     allergySummary={clinicalStripModel.allergyText}
                     loading={triageLoading}
                   />
+                  {canDocumentIvAccess && fid ? (
+                    <button
+                      type="button"
+                      title={t("erIvAccess.openTooltip")}
+                      aria-label={t("erIvAccess.openAria")}
+                      disabled={
+                        triageLoading || encounter?.status !== "OPEN" || isLocked || !encounter
+                      }
+                      onClick={() => setShowIvAccessModal(true)}
+                      style={{
+                        alignSelf: "stretch",
+                        minWidth: 44,
+                        width: 44,
+                        padding: 0,
+                        borderRadius: 10,
+                        border: "1px solid #e9d5ff",
+                        backgroundColor: "#faf5ff",
+                        fontSize: 20,
+                        lineHeight: 1,
+                        cursor:
+                          triageLoading || encounter?.status !== "OPEN" || isLocked || !encounter
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          triageLoading || encounter?.status !== "OPEN" || isLocked || !encounter ? 0.45 : 1,
+                      }}
+                    >
+                      💉
+                    </button>
+                  ) : null}
                 </div>
                 {showQuickVitals && vitalsQuickEditEnabled && fid ? (
                   <EmergencyQuickVitalsEditor
@@ -800,6 +839,15 @@ export function EmergencyActiveWorkspaceView() {
                     onSaved={async () => {
                       setTriageRefresh((r) => r + 1);
                     }}
+                  />
+                ) : null}
+                {showIvAccessModal && fid ? (
+                  <EmergencyIvAccessModal
+                    open={showIvAccessModal}
+                    onClose={() => setShowIvAccessModal(false)}
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    onRecorded={() => setResultsRefresh((r) => r + 1)}
                   />
                 ) : null}
               </div>
@@ -1002,6 +1050,7 @@ export function EmergencyActiveWorkspaceView() {
               canEditNursingDischarge={canEditNursingDischarge}
               canEditMedicalDischarge={canEditMedicalDischarge}
               onReload={onEmbeddedEncounterUpdate}
+              ivAccessFetchEnabled={canDocumentIvAccess}
             />
           ) : null}
 
