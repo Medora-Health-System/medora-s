@@ -3065,6 +3065,23 @@ export default {
     emptyActive: "No active IV documented.",
     activeLine: "{gauge} {site} — inserted by {by} — {time}",
     removedLine: "{gauge} {site} — removed {time}",
+    removedLifecycleLine:
+      "{gauge} {site} — inserted by {insertedBy} {insertedTime} — removed by {removedBy} {removedTime}",
+    quickNotesLabel: "Quick phrases",
+    insertQuickNotes: {
+      toleratedWell: "Patient tolerated well",
+      noInfiltration: "No sign of infiltration",
+      bloodDrawn: "Blood drawn",
+      flushedEasy: "Flushed without difficulty",
+      dressingSecured: "Secured with dressing",
+    },
+    removeQuickNotes: {
+      bandageApplied: "Bandage applied",
+      noBleeding: "No bleeding noted",
+      catheterIntact: "Catheter intact",
+      siteCleanDry: "Site clean and dry",
+      toleratedRemoval: "Patient tolerated removal",
+    },
     summaryTitle: "IV access",
     summaryActive: "Active",
     summaryRemoved: "Removed",

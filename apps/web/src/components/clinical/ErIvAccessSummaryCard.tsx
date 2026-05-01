@@ -20,7 +20,12 @@ type IvRemovedRow = {
   site: string;
   gauge: string;
   insertedAt: string;
+  insertedByDisplayName?: string | null;
+  insertionNotes?: string | null;
   removedAt: string;
+  removedByDisplayName?: string | null;
+  removalReason?: string | null;
+  removalNotes?: string | null;
   reason: string | null;
   notes: string | null;
   recordedByDisplayName: string | null;
@@ -61,16 +66,40 @@ function parseIvPayload(raw: unknown): { active: IvActiveRow[]; removed: IvRemov
     const x = row as Record<string, unknown>;
     const rid = typeof x.removalEventId === "string" ? x.removalEventId : "";
     if (!rid) continue;
+    const removalReason =
+      typeof x.removalReason === "string"
+        ? x.removalReason
+        : typeof x.reason === "string"
+          ? x.reason
+          : null;
+    const removalNotes =
+      typeof x.removalNotes === "string"
+        ? x.removalNotes
+        : typeof x.notes === "string"
+          ? x.notes
+          : null;
+    const removedBy =
+      typeof x.removedByDisplayName === "string"
+        ? x.removedByDisplayName
+        : typeof x.recordedByDisplayName === "string"
+          ? x.recordedByDisplayName
+          : null;
     removed.push({
       removalEventId: rid,
       insertionEventId: typeof x.insertionEventId === "string" ? x.insertionEventId : "",
       site: typeof x.site === "string" ? x.site : "",
       gauge: typeof x.gauge === "string" ? x.gauge : "",
       insertedAt: typeof x.insertedAt === "string" ? x.insertedAt : "",
+      insertedByDisplayName:
+        typeof x.insertedByDisplayName === "string" ? x.insertedByDisplayName : null,
+      insertionNotes: typeof x.insertionNotes === "string" ? x.insertionNotes : null,
       removedAt: typeof x.removedAt === "string" ? x.removedAt : "",
-      reason: typeof x.reason === "string" ? x.reason : null,
-      notes: typeof x.notes === "string" ? x.notes : null,
-      recordedByDisplayName: typeof x.recordedByDisplayName === "string" ? x.recordedByDisplayName : null,
+      removedByDisplayName: removedBy,
+      removalReason,
+      removalNotes,
+      reason: removalReason,
+      notes: removalNotes,
+      recordedByDisplayName: removedBy,
     });
   }
   return { active, removed };
@@ -208,15 +237,30 @@ export function ErIvAccessSummaryCard({
           <div>
             <p style={sub}>{t("erIvAccess.summaryRemoved")}</p>
             <ul style={{ margin: "4px 0 0 0", paddingLeft: 16, fontSize: 12, color: "#64748b" }}>
-              {state.removed.slice(0, 8).map((row) => (
-                <li key={row.removalEventId} style={{ marginBottom: 4 }}>
-                  {fillTpl(t("erIvAccess.removedLine"), {
-                    gauge: row.gauge.trim(),
-                    site: row.site.trim(),
-                    time: formatEncounterChromeDateTime(row.removedAt, language),
-                  })}
-                </li>
-              ))}
+              {state.removed.slice(0, 8).map((row) => {
+                const insertedBy = (row.insertedByDisplayName ?? "").trim() || "—";
+                const removedBy = (row.removedByDisplayName ?? row.recordedByDisplayName ?? "").trim() || "—";
+                const meta = [row.removalReason, row.insertionNotes, row.removalNotes]
+                  .filter((x): x is string => Boolean(x && String(x).trim()))
+                  .join(" · ");
+                return (
+                  <li key={row.removalEventId} style={{ marginBottom: 6 }}>
+                    <div style={{ color: "#334155", fontWeight: 600 }}>
+                      {fillTpl(t("erIvAccess.removedLifecycleLine"), {
+                        gauge: row.gauge.trim(),
+                        site: row.site.trim(),
+                        insertedBy,
+                        insertedTime: formatEncounterChromeDateTime(row.insertedAt, language),
+                        removedBy,
+                        removedTime: formatEncounterChromeDateTime(row.removedAt, language),
+                      })}
+                    </div>
+                    {meta ? (
+                      <p style={{ margin: "3px 0 0 0", fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{meta}</p>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ) : null}

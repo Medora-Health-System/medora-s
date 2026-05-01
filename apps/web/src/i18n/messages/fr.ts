@@ -3035,6 +3035,23 @@ export default {
     emptyActive: "Aucun accès IV actif documenté.",
     activeLine: "{gauge} {site} — posé par {by} — {time}",
     removedLine: "{gauge} {site} — retiré {time}",
+    removedLifecycleLine:
+      "{gauge} {site} — posé par {insertedBy} {insertedTime} — retiré par {removedBy} {removedTime}",
+    quickNotesLabel: "Formulations rapides",
+    insertQuickNotes: {
+      toleratedWell: "Le patient a bien toléré",
+      noInfiltration: "Pas de signe d'infiltration",
+      bloodDrawn: "Prélèvement sanguin effectué",
+      flushedEasy: "Rinçage sans difficulté",
+      dressingSecured: "Fixé avec pansement",
+    },
+    removeQuickNotes: {
+      bandageApplied: "Pansement posé",
+      noBleeding: "Pas de saignement noté",
+      catheterIntact: "Cathéter intact",
+      siteCleanDry: "Site propre et sec",
+      toleratedRemoval: "Bonne tolérance au retrait",
+    },
     summaryTitle: "Accès IV",
     summaryActive: "En place",
     summaryRemoved: "Retirés",

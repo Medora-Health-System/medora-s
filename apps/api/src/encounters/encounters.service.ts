@@ -1495,10 +1495,18 @@ export class EncountersService {
       site: string;
       gauge: string;
       insertedAt: string;
+      insertedByDisplayName: string | null;
+      insertionNotes: string | null;
       removedAt: string;
-      reason: string | null;
-      notes: string | null;
+      removedByDisplayName: string | null;
+      removalReason: string | null;
+      removalNotes: string | null;
+      /** Same as removedByDisplayName (legacy field name). */
       recordedByDisplayName: string | null;
+      /** Same as removalReason (legacy field name). */
+      reason: string | null;
+      /** Same as removalNotes (legacy field name). */
+      notes: string | null;
     }> = [];
 
     for (const r of rows) {
@@ -1526,16 +1534,37 @@ export class EncountersService {
           : ins?.createdAt.toISOString() ?? "";
       const removedAt =
         typeof p.removedAt === "string" && p.removedAt.trim() ? p.removedAt.trim() : r.createdAt.toISOString();
+      const insertionNotesRaw =
+        typeof insPayload.notes === "string" && insPayload.notes.trim()
+          ? insPayload.notes.trim().slice(0, 4000)
+          : null;
+      const fromInsUser = ins ? this.userDisplayName(ins.createdBy).trim() : "";
+      const fromInsPayload =
+        typeof insPayload.performerDisplayName === "string" && insPayload.performerDisplayName.trim()
+          ? insPayload.performerDisplayName.trim()
+          : "";
+      const insertedByDisplayName =
+        fromInsUser || fromInsPayload || null;
+      const removalReason =
+        typeof p.reason === "string" && p.reason.trim() ? p.reason.trim().slice(0, 500) : null;
+      const removalNotes =
+        typeof p.notes === "string" && p.notes.trim() ? p.notes.trim().slice(0, 4000) : null;
+      const removedByDisplayName = this.userDisplayName(r.createdBy) || null;
       removed.push({
         removalEventId: r.id,
         insertionEventId: insId,
         site,
         gauge,
         insertedAt,
+        insertedByDisplayName,
+        insertionNotes: insertionNotesRaw,
         removedAt,
-        reason: typeof p.reason === "string" && p.reason.trim() ? p.reason.trim().slice(0, 500) : null,
-        notes: typeof p.notes === "string" && p.notes.trim() ? p.notes.trim().slice(0, 4000) : null,
-        recordedByDisplayName: this.userDisplayName(r.createdBy) || null,
+        removedByDisplayName,
+        removalReason,
+        removalNotes,
+        recordedByDisplayName: removedByDisplayName,
+        reason: removalReason,
+        notes: removalNotes,
       });
     }
 

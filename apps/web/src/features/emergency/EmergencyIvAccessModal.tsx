@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { appendIvQuickNoteUnique } from "@/lib/ivAccessQuickNotes";
 
 type IvActiveRow = {
   insertionEventId: string;
@@ -21,7 +22,12 @@ type IvRemovedRow = {
   site: string;
   gauge: string;
   insertedAt: string;
+  insertedByDisplayName?: string | null;
+  insertionNotes?: string | null;
   removedAt: string;
+  removedByDisplayName?: string | null;
+  removalReason?: string | null;
+  removalNotes?: string | null;
   reason: string | null;
   notes: string | null;
   recordedByDisplayName: string | null;
@@ -62,16 +68,40 @@ function parseIvPayload(raw: unknown): { active: IvActiveRow[]; removed: IvRemov
     const x = row as Record<string, unknown>;
     const rid = typeof x.removalEventId === "string" ? x.removalEventId : "";
     if (!rid) continue;
+    const removalReason =
+      typeof x.removalReason === "string"
+        ? x.removalReason
+        : typeof x.reason === "string"
+          ? x.reason
+          : null;
+    const removalNotes =
+      typeof x.removalNotes === "string"
+        ? x.removalNotes
+        : typeof x.notes === "string"
+          ? x.notes
+          : null;
+    const removedBy =
+      typeof x.removedByDisplayName === "string"
+        ? x.removedByDisplayName
+        : typeof x.recordedByDisplayName === "string"
+          ? x.recordedByDisplayName
+          : null;
     removed.push({
       removalEventId: rid,
       insertionEventId: typeof x.insertionEventId === "string" ? x.insertionEventId : "",
       site: typeof x.site === "string" ? x.site : "",
       gauge: typeof x.gauge === "string" ? x.gauge : "",
       insertedAt: typeof x.insertedAt === "string" ? x.insertedAt : "",
+      insertedByDisplayName:
+        typeof x.insertedByDisplayName === "string" ? x.insertedByDisplayName : null,
+      insertionNotes: typeof x.insertionNotes === "string" ? x.insertionNotes : null,
       removedAt: typeof x.removedAt === "string" ? x.removedAt : "",
-      reason: typeof x.reason === "string" ? x.reason : null,
-      notes: typeof x.notes === "string" ? x.notes : null,
-      recordedByDisplayName: typeof x.recordedByDisplayName === "string" ? x.recordedByDisplayName : null,
+      removedByDisplayName: removedBy,
+      removalReason,
+      removalNotes,
+      reason: removalReason,
+      notes: removalNotes,
+      recordedByDisplayName: removedBy,
     });
   }
   return { active, removed };
@@ -120,6 +150,84 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid #cbd5e1",
   fontSize: 14,
 };
+
+const IV_INSERT_CHIP_KEYS = [
+  "toleratedWell",
+  "noInfiltration",
+  "bloodDrawn",
+  "flushedEasy",
+  "dressingSecured",
+] as const;
+const IV_REMOVE_CHIP_KEYS = [
+  "bandageApplied",
+  "noBleeding",
+  "catheterIntact",
+  "siteCleanDry",
+  "toleratedRemoval",
+] as const;
+
+const chipBtn: React.CSSProperties = {
+  padding: "4px 10px",
+  fontSize: 11,
+  fontWeight: 600,
+  borderRadius: 9999,
+  border: "1px solid #cbd5e1",
+  background: "#f8fafc",
+  color: "#334155",
+  cursor: "pointer",
+  lineHeight: 1.3,
+};
+
+function IvQuickChipRow({
+  group,
+  keys,
+  disabled,
+  onAppend,
+  t,
+}: {
+  group: "insertQuickNotes" | "removeQuickNotes";
+  keys: readonly string[];
+  disabled: boolean;
+  onAppend: (phrase: string) => void;
+  t: (k: string) => string;
+}) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <p
+        style={{
+          margin: "0 0 6px 0",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "#64748b",
+        }}
+      >
+        {t("erIvAccess.quickNotesLabel")}
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {keys.map((k) => {
+          const label = t(`erIvAccess.${group}.${k}`);
+          return (
+            <button
+              key={k}
+              type="button"
+              disabled={disabled}
+              onClick={() => onAppend(label)}
+              style={{
+                ...chipBtn,
+                opacity: disabled ? 0.5 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function EmergencyIvAccessModal({
   open,
@@ -368,6 +476,13 @@ export function EmergencyIvAccessModal({
                 style={{ ...inputStyle, marginBottom: 10 }}
               />
               <label style={labelStyle}>{t("erIvAccess.notesLabel")}</label>
+              <IvQuickChipRow
+                group="removeQuickNotes"
+                keys={IV_REMOVE_CHIP_KEYS}
+                disabled={submitting}
+                t={t}
+                onAppend={(phrase) => setRemoveNotes((prev) => appendIvQuickNoteUnique(prev, phrase))}
+              />
               <textarea
                 value={removeNotes}
                 onChange={(e) => setRemoveNotes(e.target.value)}
@@ -439,6 +554,13 @@ export function EmergencyIvAccessModal({
               style={{ ...inputStyle, marginBottom: 10 }}
             />
             <label style={labelStyle}>{t("erIvAccess.notesLabel")}</label>
+            <IvQuickChipRow
+              group="insertQuickNotes"
+              keys={IV_INSERT_CHIP_KEYS}
+              disabled={submitting || loading}
+              t={t}
+              onAppend={(phrase) => setNotes((prev) => appendIvQuickNoteUnique(prev, phrase))}
+            />
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -467,15 +589,30 @@ export function EmergencyIvAccessModal({
             <div>
               <p style={sectionTitle}>{t("erIvAccess.sectionRemoved")}</p>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                {removed.slice(0, 12).map((row) => (
-                  <li key={row.removalEventId} style={{ marginBottom: 4 }}>
-                    {fillTpl(t("erIvAccess.removedLine"), {
-                      gauge: row.gauge.trim(),
-                      site: row.site.trim(),
-                      time: formatEncounterChromeDateTime(row.removedAt, language),
-                    })}
-                  </li>
-                ))}
+                {removed.slice(0, 12).map((row) => {
+                  const insertedBy = (row.insertedByDisplayName ?? "").trim() || "—";
+                  const removedBy = (row.removedByDisplayName ?? row.recordedByDisplayName ?? "").trim() || "—";
+                  const meta = [row.removalReason, row.insertionNotes, row.removalNotes]
+                    .filter((x): x is string => Boolean(x && String(x).trim()))
+                    .join(" · ");
+                  return (
+                    <li key={row.removalEventId} style={{ marginBottom: 8 }}>
+                      <div style={{ color: "#334155", fontWeight: 600 }}>
+                        {fillTpl(t("erIvAccess.removedLifecycleLine"), {
+                          gauge: row.gauge.trim(),
+                          site: row.site.trim(),
+                          insertedBy,
+                          insertedTime: formatEncounterChromeDateTime(row.insertedAt, language),
+                          removedBy,
+                          removedTime: formatEncounterChromeDateTime(row.removedAt, language),
+                        })}
+                      </div>
+                      {meta ? (
+                        <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{meta}</p>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ) : null}
