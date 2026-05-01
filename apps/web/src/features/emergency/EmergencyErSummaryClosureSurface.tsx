@@ -78,6 +78,7 @@ export type EmergencyErSummaryClosureSurfaceProps = {
   /** Anchor for scroll-into-view from disposition panel (chart view). */
   sectionId?: string;
   ivAccessFetchEnabled?: boolean;
+  proceduresFetchEnabled?: boolean;
 };
 
 export function EmergencyErSummaryClosureSurface({
@@ -94,8 +95,10 @@ export function EmergencyErSummaryClosureSurface({
   onReload,
   sectionId,
   ivAccessFetchEnabled,
+  proceduresFetchEnabled,
 }: EmergencyErSummaryClosureSurfaceProps) {
   const canFetchIvAccess = ivAccessFetchEnabled ?? false;
+  const canFetchProcedures = proceduresFetchEnabled ?? false;
   const { t, language } = useI18n();
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
@@ -326,6 +329,7 @@ export function EmergencyErSummaryClosureSurface({
         resultsTabHref={resultsTabHref}
         diagnosticsTabHref={diagnosticsTabHref}
         ivAccessFetchEnabled={canFetchIvAccess}
+        proceduresFetchEnabled={canFetchProcedures}
       />
 
       {open ? (

@@ -259,6 +259,7 @@ enum EncounterClinicalEventType {
   HANDOFF_NURSING
   IV_INSERTED
   IV_REMOVED
+  PROCEDURE_DOCUMENTED
 }
 
 /// Closed-loop line-item lifecycle (distinct from legacy `OrderStatus` values like RESULTED / VERIFIED).

@@ -14,6 +14,7 @@ import { useI18n } from "@/lib/i18n";
 import { buildEmergencyVisitSummaryModel, type VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
 import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
+import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -78,6 +79,7 @@ export function EmergencyVisitSummaryPanel({
   resultsTabHref,
   diagnosticsTabHref,
   ivAccessFetchEnabled = false,
+  proceduresFetchEnabled = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -88,6 +90,8 @@ export function EmergencyVisitSummaryPanel({
   diagnosticsTabHref: string;
   /** When true, loads GET /encounters/:id/iv-access (roles RN, PROVIDER, LAB, RADIOLOGY, ADMIN only). */
   ivAccessFetchEnabled?: boolean;
+  /** When true, loads GET /encounters/:id/procedures (same role set as IV quick actions). */
+  proceduresFetchEnabled?: boolean;
 }) {
   const { language, t } = useI18n();
   const [resultsSnap, setResultsSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
@@ -160,6 +164,13 @@ export function EmergencyVisitSummaryPanel({
         facilityId={facilityId}
         refreshToken={resultsRefresh}
         enabled={ivAccessFetchEnabled}
+      />
+
+      <ErProceduresSummaryCard
+        encounterId={encounterId}
+        facilityId={facilityId}
+        refreshToken={resultsRefresh}
+        enabled={proceduresFetchEnabled}
       />
 
       <ClinicalTimeline encounterId={encounterId} facilityId={facilityId} refreshToken={resultsRefresh} />

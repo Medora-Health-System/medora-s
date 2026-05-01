@@ -29,6 +29,7 @@ import {
   encounterProviderHandoffCreateDtoSchema,
   encounterIvAccessInsertDtoSchema,
   encounterIvAccessRemoveDtoSchema,
+  encounterProcedureDocumentDtoSchema,
   encounterUpdateDtoSchema,
   rosterClinicalUserRoleQuerySchema,
 } from "@medora/shared";
@@ -346,6 +347,30 @@ export class EncountersController {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
     return this.encountersService.recordIvRemoval(facilityId, id, eventId, parsed.data, req.user?.userId);
+  }
+
+  @Get("encounters/:id/procedures")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.ADMIN)
+  async getDocumentedProcedures(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.getDocumentedProcedures(facilityId, id);
+  }
+
+  @Post("encounters/:id/procedures/document")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.ADMIN)
+  async recordProcedureDocumented(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterProcedureDocumentDtoSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.recordProcedureDocumented(facilityId, id, parsed.data, req.user?.userId);
   }
 
   @Get("encounters/:id/disposition-readiness")

@@ -642,6 +642,25 @@ export const encounterIvAccessRemoveDtoSchema = z.object({
 
 export type EncounterIvAccessRemoveDto = z.infer<typeof encounterIvAccessRemoveDtoSchema>;
 
+/** POST /encounters/:id/procedures/document — append-only PROCEDURE_DOCUMENTED (S14A). */
+export const encounterProcedureDocumentDtoSchema = z.object({
+  procedureType: z.literal("LACERATION_REPAIR"),
+  performedAt: z.preprocess(emptyStrToUndefined, z.string().trim().max(48).optional()),
+  site: z.string().trim().min(1).max(240),
+  woundLengthCm: z.preprocess(emptyStrToUndefined, z.string().trim().max(32).optional()),
+  anesthesia: z.preprocess(emptyStrToUndefined, z.string().trim().max(200).optional()),
+  irrigation: z.preprocess(emptyStrToUndefined, z.string().trim().max(200).optional()),
+  asepticTechnique: z.boolean().optional(),
+  closureMethod: z.preprocess(emptyStrToUndefined, z.string().trim().max(200).optional()),
+  suturesOrStaples: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  dressingApplied: z.boolean().optional(),
+  toleratedWell: z.boolean().optional(),
+  complications: z.preprocess(emptyStrToUndefined, z.string().trim().max(2000).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().trim().max(4000).optional()),
+});
+
+export type EncounterProcedureDocumentDto = z.infer<typeof encounterProcedureDocumentDtoSchema>;
+
 /** GET /roster/clinical-users — role filter for PROVIDER vs RN search. */
 export const rosterClinicalUserRoleQuerySchema = z.enum(["PROVIDER", "RN"]);
 

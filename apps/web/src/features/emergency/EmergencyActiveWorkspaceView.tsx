@@ -51,6 +51,7 @@ import { EmergencyProviderMsePanel } from "@/features/emergency/EmergencyProvide
 import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDispositionPanel";
 import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
 import { EmergencyIvAccessModal } from "@/features/emergency/EmergencyIvAccessModal";
+import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
@@ -213,6 +214,7 @@ export function EmergencyActiveWorkspaceView() {
   const [triageLoading, setTriageLoading] = useState(false);
   const [showQuickVitals, setShowQuickVitals] = useState(false);
   const [showIvAccessModal, setShowIvAccessModal] = useState(false);
+  const [showProcedureLauncherModal, setShowProcedureLauncherModal] = useState(false);
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
 
@@ -827,6 +829,36 @@ export function EmergencyActiveWorkspaceView() {
                       💉
                     </button>
                   ) : null}
+                  {canDocumentIvAccess && fid ? (
+                    <button
+                      type="button"
+                      title={t("erProcedureLauncher.openTooltip")}
+                      aria-label={t("erProcedureLauncher.openAria")}
+                      disabled={
+                        triageLoading || encounter?.status !== "OPEN" || isLocked || !encounter
+                      }
+                      onClick={() => setShowProcedureLauncherModal(true)}
+                      style={{
+                        alignSelf: "stretch",
+                        minWidth: 44,
+                        width: 44,
+                        padding: 0,
+                        borderRadius: 10,
+                        border: "1px solid #fcd34d",
+                        backgroundColor: "#fffbeb",
+                        fontSize: 20,
+                        lineHeight: 1,
+                        cursor:
+                          triageLoading || encounter?.status !== "OPEN" || isLocked || !encounter
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          triageLoading || encounter?.status !== "OPEN" || isLocked || !encounter ? 0.45 : 1,
+                      }}
+                    >
+                      🧰
+                    </button>
+                  ) : null}
                 </div>
                 {showQuickVitals && vitalsQuickEditEnabled && fid ? (
                   <EmergencyQuickVitalsEditor
@@ -845,6 +877,15 @@ export function EmergencyActiveWorkspaceView() {
                   <EmergencyIvAccessModal
                     open={showIvAccessModal}
                     onClose={() => setShowIvAccessModal(false)}
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    onRecorded={() => setResultsRefresh((r) => r + 1)}
+                  />
+                ) : null}
+                {showProcedureLauncherModal && fid ? (
+                  <EmergencyProcedureLauncherModal
+                    open={showProcedureLauncherModal}
+                    onClose={() => setShowProcedureLauncherModal(false)}
                     encounterId={encounterId}
                     facilityId={fid}
                     onRecorded={() => setResultsRefresh((r) => r + 1)}
@@ -1051,6 +1092,7 @@ export function EmergencyActiveWorkspaceView() {
               canEditMedicalDischarge={canEditMedicalDischarge}
               onReload={onEmbeddedEncounterUpdate}
               ivAccessFetchEnabled={canDocumentIvAccess}
+              proceduresFetchEnabled={canDocumentIvAccess}
             />
           ) : null}
 

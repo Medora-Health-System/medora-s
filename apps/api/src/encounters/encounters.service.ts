@@ -53,6 +53,7 @@ import {
   type EncounterProviderHandoffCreateDto,
   type EncounterIvAccessInsertDto,
   type EncounterIvAccessRemoveDto,
+  type EncounterProcedureDocumentDto,
   type EncounterUpdateDto,
   type EncounterCloseDocumentationCheckResult,
   type EncounterIntakeUpsertDto,
@@ -1714,6 +1715,134 @@ export class EncountersService {
         encounterId: encounter.id,
         patientId: encounter.patientId,
         eventType: EncounterClinicalEventType.IV_REMOVED,
+        payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
+        createdByUserId: userId,
+      },
+    });
+
+    return { ok: true as const };
+  }
+
+  /** Append-only PROCEDURE_DOCUMENTED events for ED procedure launcher (S14A). */
+  async getDocumentedProcedures(facilityId: string, encounterId: string) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const rows = await this.prisma.encounterClinicalEvent.findMany({
+      where: {
+        encounterId,
+        facilityId,
+        eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: {
+        createdBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    return {
+      entries: rows.map((r) => {
+        const raw = r.payloadJson;
+        const p =
+          raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+        const display =
+          typeof p.performerDisplayName === "string" && p.performerDisplayName.trim()
+            ? p.performerDisplayName.trim()
+            : this.userDisplayName(r.createdBy) || null;
+        const performedAt =
+          typeof p.performedAt === "string" && p.performedAt.trim() ? p.performedAt.trim() : null;
+        return {
+          id: r.id,
+          createdAt: r.createdAt.toISOString(),
+          procedureType: typeof p.procedureType === "string" ? p.procedureType : "",
+          site: typeof p.site === "string" ? p.site : "",
+          performedAt,
+          performerDisplayName: display,
+        };
+      }),
+    };
+  }
+
+  async recordProcedureDocumented(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterProcedureDocumentDto,
+    userId?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentication required.");
+    }
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException("La consultation doit être ouverte pour documenter une procédure.");
+    }
+    assertEncounterNotSigned(encounter);
+
+    const actor = await this.prisma.user.findFirst({
+      where: { id: userId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!actor) {
+      throw new ForbiddenException("Utilisateur introuvable.");
+    }
+    const performerDisplayName = this.userDisplayName(actor);
+
+    const performedAtIso = this.parseOptionalIsoDate(dto.performedAt, "Date ou heure de la procédure");
+
+    const payloadJson: Record<string, unknown> = {
+      procedureType: dto.procedureType,
+      site: dto.site.trim(),
+      performerDisplayName: performerDisplayName || null,
+    };
+    if (performedAtIso) payloadJson.performedAt = performedAtIso;
+    if (dto.woundLengthCm != null && String(dto.woundLengthCm).trim()) {
+      payloadJson.woundLengthCm = String(dto.woundLengthCm).trim().slice(0, 32);
+    }
+    if (dto.anesthesia != null && String(dto.anesthesia).trim()) {
+      payloadJson.anesthesia = String(dto.anesthesia).trim().slice(0, 200);
+    }
+    if (dto.irrigation != null && String(dto.irrigation).trim()) {
+      payloadJson.irrigation = String(dto.irrigation).trim().slice(0, 200);
+    }
+    if (dto.asepticTechnique === true || dto.asepticTechnique === false) {
+      payloadJson.asepticTechnique = dto.asepticTechnique;
+    }
+    if (dto.closureMethod != null && String(dto.closureMethod).trim()) {
+      payloadJson.closureMethod = String(dto.closureMethod).trim().slice(0, 200);
+    }
+    if (dto.suturesOrStaples != null && String(dto.suturesOrStaples).trim()) {
+      payloadJson.suturesOrStaples = String(dto.suturesOrStaples).trim().slice(0, 120);
+    }
+    if (dto.dressingApplied === true || dto.dressingApplied === false) {
+      payloadJson.dressingApplied = dto.dressingApplied;
+    }
+    if (dto.toleratedWell === true || dto.toleratedWell === false) {
+      payloadJson.toleratedWell = dto.toleratedWell;
+    }
+    if (dto.complications != null && String(dto.complications).trim()) {
+      payloadJson.complications = String(dto.complications).trim().slice(0, 2000);
+    }
+    if (dto.notes != null && String(dto.notes).trim()) {
+      payloadJson.notes = String(dto.notes).trim().slice(0, 4000);
+    }
+
+    await this.prisma.encounterClinicalEvent.create({
+      data: {
+        facilityId,
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
         payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
         createdByUserId: userId,
       },

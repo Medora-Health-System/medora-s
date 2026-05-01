@@ -105,6 +105,26 @@ function summarizeClinicalEvent(
         summary: "",
       };
     }
+    case "PROCEDURE_DOCUMENTED": {
+      const site = typeof payload.site === "string" ? payload.site.trim() : "";
+      const performedRaw =
+        typeof payload.performedAt === "string" && payload.performedAt.trim() ? payload.performedAt.trim() : "";
+      let performedPart = "";
+      if (performedRaw) {
+        try {
+          performedPart = t("emergencyVisitSummaryPanel.clinicalTimeline.procedurePerformedPart").replace(
+            "{time}",
+            formatEncounterChromeDateTime(performedRaw, language)
+          );
+        } catch {
+          performedPart = "";
+        }
+      }
+      const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented")
+        .replace("{site}", site || "—")
+        .replace("{performedPart}", performedPart);
+      return { label, summary: "" };
+    }
     default:
       return {
         label: row.eventType,
