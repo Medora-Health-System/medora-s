@@ -165,6 +165,20 @@ const IV_REMOVE_CHIP_KEYS = [
   "siteCleanDry",
   "toleratedRemoval",
 ] as const;
+const IV_INSERT_TRANSFER_KEYS = [
+  "duringTransfer",
+  "duringAdmission",
+  "flushed10Ns",
+  "salineLock",
+  "patentLine",
+  "dressingIntact",
+] as const;
+const IV_REMOVE_TRANSFER_KEYS = [
+  "beforeTransfer",
+  "beforeDischarge",
+  "newDressing",
+  "noBleedingNoted",
+] as const;
 
 const chipBtn: React.CSSProperties = {
   padding: "4px 10px",
@@ -184,12 +198,15 @@ function IvQuickChipRow({
   disabled,
   onAppend,
   t,
+  sectionTitleKey = "erIvAccess.quickNotesLabel",
 }: {
-  group: "insertQuickNotes" | "removeQuickNotes";
+  group: string;
   keys: readonly string[];
   disabled: boolean;
   onAppend: (phrase: string) => void;
   t: (k: string) => string;
+  /** i18n key for the small-caps label above chips (default: general quick phrases). */
+  sectionTitleKey?: string;
 }) {
   return (
     <div style={{ marginBottom: 8 }}>
@@ -203,7 +220,7 @@ function IvQuickChipRow({
           color: "#64748b",
         }}
       >
-        {t("erIvAccess.quickNotesLabel")}
+        {t(sectionTitleKey)}
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {keys.map((k) => {
@@ -483,6 +500,14 @@ export function EmergencyIvAccessModal({
                 t={t}
                 onAppend={(phrase) => setRemoveNotes((prev) => appendIvQuickNoteUnique(prev, phrase))}
               />
+              <IvQuickChipRow
+                group="removeTransferContext"
+                keys={IV_REMOVE_TRANSFER_KEYS}
+                sectionTitleKey="erIvAccess.transferContextLabel"
+                disabled={submitting}
+                t={t}
+                onAppend={(phrase) => setRemoveNotes((prev) => appendIvQuickNoteUnique(prev, phrase))}
+              />
               <textarea
                 value={removeNotes}
                 onChange={(e) => setRemoveNotes(e.target.value)}
@@ -557,6 +582,14 @@ export function EmergencyIvAccessModal({
             <IvQuickChipRow
               group="insertQuickNotes"
               keys={IV_INSERT_CHIP_KEYS}
+              disabled={submitting || loading}
+              t={t}
+              onAppend={(phrase) => setNotes((prev) => appendIvQuickNoteUnique(prev, phrase))}
+            />
+            <IvQuickChipRow
+              group="insertTransferContext"
+              keys={IV_INSERT_TRANSFER_KEYS}
+              sectionTitleKey="erIvAccess.transferContextLabel"
               disabled={submitting || loading}
               t={t}
               onAppend={(phrase) => setNotes((prev) => appendIvQuickNoteUnique(prev, phrase))}

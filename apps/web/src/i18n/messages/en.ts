@@ -3068,6 +3068,21 @@ export default {
     removedLifecycleLine:
       "{gauge} {site} — inserted by {insertedBy} {insertedTime} — removed by {removedBy} {removedTime}",
     quickNotesLabel: "Quick phrases",
+    transferContextLabel: "Transfer / context",
+    insertTransferContext: {
+      duringTransfer: "IV inserted during transfer",
+      duringAdmission: "IV inserted during admission",
+      flushed10Ns: "IV flushed with 10 cc NS",
+      salineLock: "Saline lock",
+      patentLine: "Patent line",
+      dressingIntact: "Dressing intact",
+    },
+    removeTransferContext: {
+      beforeTransfer: "Removed before transfer",
+      beforeDischarge: "Removed before discharge",
+      newDressing: "New dressing applied",
+      noBleedingNoted: "No bleeding noted",
+    },
     insertQuickNotes: {
       toleratedWell: "Patient tolerated well",
       noInfiltration: "No sign of infiltration",

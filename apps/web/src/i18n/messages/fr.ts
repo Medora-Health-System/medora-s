@@ -3038,6 +3038,21 @@ export default {
     removedLifecycleLine:
       "{gauge} {site} — posé par {insertedBy} {insertedTime} — retiré par {removedBy} {removedTime}",
     quickNotesLabel: "Formulations rapides",
+    transferContextLabel: "Transfert / contexte",
+    insertTransferContext: {
+      duringTransfer: "Pose IV pendant le transfert",
+      duringAdmission: "Pose IV à l'admission",
+      flushed10Ns: "Rinçage avec 10 cc SF",
+      salineLock: "Saline lock",
+      patentLine: "Cathéter perméable",
+      dressingIntact: "Pansement intact",
+    },
+    removeTransferContext: {
+      beforeTransfer: "Retiré avant transfert",
+      beforeDischarge: "Retiré avant la sortie",
+      newDressing: "Nouveau pansement appliqué",
+      noBleedingNoted: "Pas de saignement noté",
+    },
     insertQuickNotes: {
       toleratedWell: "Le patient a bien toléré",
       noInfiltration: "Pas de signe d'infiltration",
