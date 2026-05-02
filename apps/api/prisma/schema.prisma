@@ -9,6 +9,8 @@ datasource db {
 
 enum RoleCode {
   ADMIN
+  /// Medora platform operations (exports, env health, backup readiness). Assigned only by platform ops / DB — not in facility admin role picker.
+  MEDORA_SUPER_ADMIN
   PROVIDER
   RN
   FRONT_DESK

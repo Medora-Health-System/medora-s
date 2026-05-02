@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RoleCode } from "@prisma/client";
+import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { AdminAuditService } from "./admin-audit.service";
 import { adminAuditEventsQuerySchema } from "./dto/admin-audit-events-query.dto";
@@ -29,7 +29,7 @@ export class AdminAuditController {
   constructor(private readonly adminAudit: AdminAuditService) {}
 
   @Get("events")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async listEvents(@Req() req: any, @Query() query: Record<string, string | string[] | undefined>) {
     const parsed = adminAuditEventsQuerySchema.safeParse(flattenQuery(query));
     if (!parsed.success) {

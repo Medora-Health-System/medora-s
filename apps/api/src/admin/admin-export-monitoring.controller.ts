@@ -1,14 +1,15 @@
 import { BadRequestException, Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RoleCode } from "@prisma/client";
-/** Role label for export audit context (JWT guard already enforced ADMIN). */
-const ADMIN_ROLE_LABEL = "ADMIN";
+import { PLATFORM_OPERATOR_ROLES } from "../common/auth/platform-operator-roles";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { ExternalBillingAutomationService } from "../billing/external-billing-automation.service";
 import { ExternalBillingExportService } from "../billing/external-billing-export.service";
 import { AdminExportMonitoringService } from "./admin-export-monitoring.service";
 import { exportMonitoringQuerySchema } from "./dto/export-monitoring-query.dto";
 import { exportMonitoringRetryBodySchema } from "./dto/export-monitoring-retry.dto";
+
+/** Role label for export audit context (platform operator retry). */
+const PLATFORM_OPERATOR_ROLE_LABEL = "MEDORA_SUPER_ADMIN";
 
 type AuthedReq = {
   user?: { userId: string; facilityId?: string };
@@ -45,7 +46,7 @@ export class AdminExportMonitoringController {
   ) {}
 
   @Get("export-monitoring")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...PLATFORM_OPERATOR_ROLES)
   async getExportMonitoring(@Req() req: AuthedReq, @Query() query: Record<string, string | string[] | undefined>) {
     const parsed = exportMonitoringQuerySchema.safeParse(flattenQuery(query));
     if (!parsed.success) {
@@ -56,7 +57,7 @@ export class AdminExportMonitoringController {
   }
 
   @Post("export-monitoring/retry")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...PLATFORM_OPERATOR_ROLES)
   async postExportRetry(@Req() req: AuthedReq, @Body() body: unknown) {
     const parsed = exportMonitoringRetryBodySchema.safeParse(body && typeof body === "object" ? body : {});
     if (!parsed.success) {
@@ -67,7 +68,7 @@ export class AdminExportMonitoringController {
     if (!userId) {
       throw new BadRequestException("Utilisateur non authentifié.");
     }
-    const userCtx = await this.externalExport.resolveExportUserContext(userId, ADMIN_ROLE_LABEL);
+    const userCtx = await this.externalExport.resolveExportUserContext(userId, PLATFORM_OPERATOR_ROLE_LABEL);
     return this.automation.retryDailyVendorDeliveryForFacility({
       facilityId,
       exportDate: parsed.data.date,

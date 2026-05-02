@@ -27,8 +27,7 @@ function checkBorder(status: SystemHealthCheck["status"]): string {
 
 export default function AdminSystemHealthPage() {
   const { t, language } = useI18n();
-  const { ready, facilityId, roles } = useFacilityAndRoles();
-  const isAdmin = roles.includes("ADMIN");
+  const { ready, facilityId, isPlatformOperator } = useFacilityAndRoles();
   const [data, setData] = useState<SystemHealthPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +51,9 @@ export default function AdminSystemHealthPage() {
   }, [facilityId, language, t]);
 
   useEffect(() => {
-    if (!ready || !isAdmin || !facilityId) return;
+    if (!ready || !isPlatformOperator || !facilityId) return;
     void load();
-  }, [ready, isAdmin, facilityId, load]);
+  }, [ready, isPlatformOperator, facilityId, load]);
 
   const m = data?.metrics;
   const hasSignals =
@@ -72,10 +71,10 @@ export default function AdminSystemHealthPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isPlatformOperator) {
     return (
       <div style={{ padding: 24 }}>
-        <p>{t("systemHealth.accessDenied")}</p>
+        <p>{t("platformOps.restrictedBody")}</p>
         <Link href="/app">{t("systemHealth.backApp")}</Link>
       </div>
     );

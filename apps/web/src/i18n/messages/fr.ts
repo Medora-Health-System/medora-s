@@ -1225,9 +1225,16 @@ export default {
       success: "Mot de passe mis à jour.",
     },
   },
+  platformOps: {
+    restrictedTitle: "Réservé aux opérations plateforme Medora",
+    restrictedBody:
+      "Réservé aux opérations plateforme Medora. Les administrateurs de l’établissement n’y ont pas accès.",
+  },
   adminHub: {
     title: "Administration",
     intro: "Gestion de la plateforme pour les administrateurs de l'établissement.",
+    sectionFacility: "Administration de l’établissement",
+    sectionPlatform: "Opérations plateforme Medora",
     usersAndAccess: "Utilisateurs et accès",
     facilities: "Établissements",
     loading: "Chargement…",

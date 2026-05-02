@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RoleCode } from "@prisma/client";
+import { PLATFORM_OPERATOR_ROLES } from "../common/auth/platform-operator-roles";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { SystemHealthService } from "./system-health.service";
 
@@ -17,7 +17,7 @@ export class AdminSystemHealthController {
   constructor(private readonly systemHealth: SystemHealthService) {}
 
   @Get("system-health")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...PLATFORM_OPERATOR_ROLES)
   async getSystemHealth(@Req() req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }) {
     const facilityId = facilityIdFromReq(req);
     return this.systemHealth.getSnapshot(facilityId);

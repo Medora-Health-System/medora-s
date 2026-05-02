@@ -117,6 +117,11 @@ export function useFacilityAndRoles() {
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const isMsppAdmin = msppRoles.includes("MSPP_ADMIN");
 
+  /** S22 — Medora platform operator (export/env/backup health APIs), not facility administrators alone. */
+  const isPlatformOperator = roles.includes("MEDORA_SUPER_ADMIN");
+  /** Facility admin or platform operator — shared admin hub, users, audit, reports, go-live. */
+  const isFacilityOrPlatformAdmin = roles.includes("ADMIN") || isPlatformOperator;
+
   /** Résumé santé publique — Medora inchangé ; MSPP : admin délégué ou rôle module explicite. */
   const canViewPublicHealthSummary =
     medoraPublicHealthRoles || isMsppAdmin || msppRoles.includes("MSPP_PUBLIC_HEALTH");
@@ -151,6 +156,8 @@ export function useFacilityAndRoles() {
     canViewPublicHealthDiseaseReports,
     canViewPublicHealthVaccinations,
     isMsppAdmin,
+    isPlatformOperator,
+    isFacilityOrPlatformAdmin,
     isMsppUser,
     hasFacilityAccess,
     isMsppOnlyUser,

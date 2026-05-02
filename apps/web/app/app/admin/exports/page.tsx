@@ -33,8 +33,7 @@ function fmtTs(iso: string | null, locale: string): string {
 
 export default function AdminExportMonitoringPage() {
   const { t, language } = useI18n();
-  const { ready, facilityId, roles } = useFacilityAndRoles();
-  const isAdmin = roles.includes("ADMIN");
+  const { ready, facilityId, isPlatformOperator } = useFacilityAndRoles();
   const [filter, setFilter] = useState<ExportMonitoringFilter>("all");
   const [data, setData] = useState<ExportMonitoringPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,9 +57,9 @@ export default function AdminExportMonitoringPage() {
   }, [facilityId, filter, language, t]);
 
   useEffect(() => {
-    if (!ready || !isAdmin || !facilityId) return;
+    if (!ready || !isPlatformOperator || !facilityId) return;
     void load();
-  }, [ready, isAdmin, facilityId, load]);
+  }, [ready, isPlatformOperator, facilityId, load]);
 
   const onRetry = async (row: ExportMonitoringRecentRow) => {
     if (!facilityId || !row.retryable || !row.from || (row.format !== "json" && row.format !== "csv")) return;
@@ -86,10 +85,10 @@ export default function AdminExportMonitoringPage() {
     return <div style={{ padding: 24 }}>{t("common.loading")}</div>;
   }
 
-  if (!isAdmin) {
+  if (!isPlatformOperator) {
     return (
       <div style={{ padding: 24, maxWidth: 640 }}>
-        <p>{t("exportMonitoring.accessDenied")}</p>
+        <p>{t("platformOps.restrictedBody")}</p>
         <Link href="/app">{t("common.back")}</Link>
       </div>
     );

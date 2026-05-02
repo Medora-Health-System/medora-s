@@ -19,13 +19,13 @@ const HUB_LINKS: { slug: EdReportSlug; titleKey: string; descKey: string }[] = [
 export default function ReportsHubPage() {
   const { t } = useI18n();
   const { ready, roles } = useFacilityAndRoles();
-  const isAdmin = roles.includes("ADMIN");
+  const isFacilityOrPlatformAdmin = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
 
   if (!ready) {
     return <div style={{ padding: 24 }}>{t("common.loading")}</div>;
   }
 
-  if (!isAdmin) {
+  if (!isFacilityOrPlatformAdmin) {
     return (
       <div style={{ padding: 24, maxWidth: 640 }}>
         <p>{t("reportsOps.accessDenied")}</p>

@@ -80,12 +80,13 @@ export default function AdminUsersPage() {
   const [profileUser, setProfileUser] = useState<AdminUserRow | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<AdminUserRow | null>(null);
 
-  const isAdmin = ready && roles.includes("ADMIN");
+  const isFacilityOrPlatformAdmin =
+    ready && (roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN"));
   const currentFacilityName =
     facilities.find((f) => f.id === facilityId)?.name ?? t("common.dash");
 
   const load = useCallback(async () => {
-    if (!facilityId || !isAdmin) return;
+    if (!facilityId || !isFacilityOrPlatformAdmin) return;
     setLoading(true);
     try {
       const res = await fetchAdminUsers(facilityId);
@@ -96,7 +97,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [facilityId, isAdmin]);
+  }, [facilityId, isFacilityOrPlatformAdmin]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -110,8 +111,8 @@ export default function AdminUsersPage() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin && facilityId) load();
-  }, [isAdmin, facilityId, load]);
+    if (isFacilityOrPlatformAdmin && facilityId) load();
+  }, [isFacilityOrPlatformAdmin, facilityId, load]);
 
   useEffect(() => {
     if (!toast) return;
@@ -123,7 +124,7 @@ export default function AdminUsersPage() {
     return <div style={{ padding: 24 }}>{t("adminUsers.loading")}</div>;
   }
 
-  if (!isAdmin && !canCreateFacilities) {
+  if (!isFacilityOrPlatformAdmin && !canCreateFacilities) {
     return (
       <div style={{ padding: 24 }}>
         <p>{t("adminUsers.forbidden")}</p>
@@ -162,7 +163,7 @@ export default function AdminUsersPage() {
       >
         <div>
           <h1 style={{ margin: "0 0 8px 0" }}>{t("adminUsers.title")}</h1>
-          {isAdmin ? (
+          {isFacilityOrPlatformAdmin ? (
             <p style={{ margin: 0, fontSize: 14, color: "#555", maxWidth: 720 }}>
               {t("adminUsers.introManagedBefore")} <strong>{currentFacilityName}</strong>.{" "}
               {t("adminUsers.introManagedAfter")}
@@ -191,7 +192,7 @@ export default function AdminUsersPage() {
               {t("adminUsers.addFacility")}
             </button>
           ) : null}
-          {isAdmin ? (
+          {isFacilityOrPlatformAdmin ? (
             <button
               type="button"
               onClick={() => setShowCreate(true)}
@@ -216,7 +217,7 @@ export default function AdminUsersPage() {
         </Link>
       </p>
 
-      {isAdmin && facilityId ? (
+      {isFacilityOrPlatformAdmin && facilityId ? (
         <div
           style={{
             marginTop: 16,
@@ -250,7 +251,7 @@ export default function AdminUsersPage() {
         </div>
       ) : null}
 
-      {isAdmin ? (
+      {isFacilityOrPlatformAdmin ? (
         loading ? (
           <p style={{ marginTop: 24 }}>{t("adminUsers.loading")}</p>
         ) : items.length === 0 ? (
@@ -455,7 +456,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {showCreate && facilityId && isAdmin && (
+      {showCreate && facilityId && isFacilityOrPlatformAdmin && (
         <CreateUserModal
           facilities={facilities}
           defaultFacilityId={facilityId}
@@ -469,7 +470,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {editUser && facilityId && isAdmin && (
+      {editUser && facilityId && isFacilityOrPlatformAdmin && (
         <EditRolesModal
           facilityId={facilityId}
           facilityDisplayName={currentFacilityName}
@@ -484,7 +485,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {profileUser && facilityId && isAdmin && (
+      {profileUser && facilityId && isFacilityOrPlatformAdmin && (
         <EditProfileModal
           facilityId={facilityId}
           user={profileUser}
@@ -498,7 +499,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {showFacilityBilling && facilityId && isAdmin ? (
+      {showFacilityBilling && facilityId && isFacilityOrPlatformAdmin ? (
         <FacilityBillingIdentityModal
           headerFacilityId={facilityId}
           targetFacilityId={facilityId}
@@ -512,7 +513,7 @@ export default function AdminUsersPage() {
         />
       ) : null}
 
-      {resetPasswordUser && facilityId && isAdmin && (
+      {resetPasswordUser && facilityId && isFacilityOrPlatformAdmin && (
         <ResetPasswordModal
           facilityId={facilityId}
           facilityDisplayName={currentFacilityName}

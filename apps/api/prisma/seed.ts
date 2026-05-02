@@ -38,6 +38,7 @@ async function main() {
   const roles = await Promise.all(
     ([
       { code: RoleCode.ADMIN, name: "Admin" },
+      { code: RoleCode.MEDORA_SUPER_ADMIN, name: "Medora platform operator" },
       { code: RoleCode.PROVIDER, name: "Provider" },
       { code: RoleCode.RN, name: "Registered Nurse" },
       { code: RoleCode.FRONT_DESK, name: "Front Desk" },

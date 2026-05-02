@@ -96,7 +96,7 @@ export default function EdReportDetailPage() {
   const slug = rawSlug as EdReportSlug;
   const { t, language } = useI18n();
   const { ready, facilityId, roles } = useFacilityAndRoles();
-  const isAdmin = roles.includes("ADMIN");
+  const isFacilityOrPlatformAdmin = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
   const [range, setRange] = useState(defaultRange);
   const [providerId, setProviderId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -189,7 +189,7 @@ export default function EdReportDetailPage() {
     return <div style={{ padding: 24 }}>{t("common.loading")}</div>;
   }
 
-  if (!isAdmin) {
+  if (!isFacilityOrPlatformAdmin) {
     return (
       <div style={{ padding: 24, maxWidth: 640 }}>
         <p>{t("reportsOps.accessDenied")}</p>

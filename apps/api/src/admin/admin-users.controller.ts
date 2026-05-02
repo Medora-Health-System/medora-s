@@ -10,8 +10,8 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
+import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
-import { RoleCode } from "@prisma/client";
 import { AdminUsersService } from "./admin-users.service";
 import {
   createAdminUserDtoSchema,
@@ -34,13 +34,13 @@ export class AdminUsersController {
   constructor(private readonly adminUsers: AdminUsersService) {}
 
   @Get("users")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async list(@Req() req: any) {
     return this.adminUsers.listForFacility(facilityIdFromReq(req));
   }
 
   @Post("users")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async create(@Body() body: unknown, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
     const parsed = createAdminUserDtoSchema.safeParse(body);
@@ -54,7 +54,7 @@ export class AdminUsersController {
 
   /** Profil (prénom, nom, courriel) */
   @Patch("users/:id")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async updateProfile(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
     const parsed = updateAdminUserDtoSchema.safeParse(body);
@@ -67,7 +67,7 @@ export class AdminUsersController {
   }
 
   @Patch("users/:id/roles")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async updateRoles(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
     const parsed = updateAdminUserRolesDtoSchema.safeParse(body);
@@ -80,7 +80,7 @@ export class AdminUsersController {
   }
 
   @Patch("users/:id/status")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async updateStatus(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
     const parsed = updateAdminUserStatusDtoSchema.safeParse(body);
@@ -93,14 +93,14 @@ export class AdminUsersController {
   }
 
   @Get("users/:id/billing-identity")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async getBillingIdentity(@Param("id") id: string, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
     return this.adminUsers.getUserBillingIdentity(facilityId, id);
   }
 
   @Patch("users/:id/billing-identity")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async patchBillingIdentity(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
     const parsed = userBillingIdentityPatchDtoSchema.safeParse(body);
@@ -111,7 +111,7 @@ export class AdminUsersController {
   }
 
   @Patch("users/:id/password")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async resetPassword(@Param("id") id: string, @Body() body: any, @Req() req: any) {
     const facilityId = facilityIdFromReq(req);
 

@@ -1263,9 +1263,16 @@ export default {
       success: "Password updated.",
     },
   },
+  platformOps: {
+    restrictedTitle: "Medora platform operations only",
+    restrictedBody:
+      "Restricted to Medora platform operations. Facility administrators cannot access this area.",
+  },
   adminHub: {
     title: "Administration",
     intro: "Platform administration for facility administrators.",
+    sectionFacility: "Facility administration",
+    sectionPlatform: "Medora platform operations",
     usersAndAccess: "Users & access",
     facilities: "Facilities",
     loading: "Loading...",

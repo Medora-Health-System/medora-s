@@ -22,7 +22,7 @@ function switchSessionToFacility(facilityId: string) {
 
 export default function AdminPage() {
   const { t, language } = useI18n();
-  const { ready, canCreateFacilities, facilityId, refreshFromMe } = useFacilityAndRoles();
+  const { ready, canCreateFacilities, facilityId, refreshFromMe, isPlatformOperator } = useFacilityAndRoles();
   const [facilities, setFacilities] = useState<AdminFacilityRow[] | null>(null);
   const [facilitiesError, setFacilitiesError] = useState<string | null>(null);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
@@ -81,7 +81,8 @@ export default function AdminPage() {
     <div style={{ padding: 24 }}>
       <h1 style={{ marginTop: 0 }}>{t("adminHub.title")}</h1>
       <p style={{ color: "#555", marginBottom: 20 }}>{t("adminHub.intro")}</p>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
+      <h2 style={{ fontSize: 16, margin: "0 0 12px 0", color: "#334155" }}>{t("adminHub.sectionFacility")}</h2>
+      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0", display: "flex", flexWrap: "wrap", gap: 12 }}>
         <li>
           <Link
             href="/app/admin/users"
@@ -149,57 +150,66 @@ export default function AdminPage() {
             {t("adminHub.goLiveLink")}
           </Link>
         </li>
-        <li>
-          <Link
-            href="/app/admin/exports"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            {t("adminHub.exportMonitoringLink")}
-          </Link>
-        </li>
-        <li>
-          <Link
-            href="/app/admin/backup-readiness"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            {t("adminHub.backupReadinessLink")}
-          </Link>
-        </li>
-        <li>
-          <Link
-            href="/app/admin/system-health"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            {t("adminHub.systemHealthLink")}
-          </Link>
-        </li>
+      </ul>
+      {isPlatformOperator ? (
+        <>
+          <h2 style={{ fontSize: 16, margin: "0 0 12px 0", color: "#334155" }}>{t("adminHub.sectionPlatform")}</h2>
+          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0", display: "flex", flexWrap: "wrap", gap: 12 }}>
+            <li>
+              <Link
+                href="/app/admin/exports"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.exportMonitoringLink")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/app/admin/backup-readiness"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.backupReadinessLink")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/app/admin/system-health"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.systemHealthLink")}
+              </Link>
+            </li>
+          </ul>
+        </>
+      ) : null}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
         {ready && canCreateFacilities ? (
           <li>
             <Link

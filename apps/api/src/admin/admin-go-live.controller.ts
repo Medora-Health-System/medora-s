@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RoleCode } from "@prisma/client";
+import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { GoLiveReadinessService } from "./go-live-readiness.service";
 
@@ -17,7 +17,7 @@ export class AdminGoLiveController {
   constructor(private readonly goLive: GoLiveReadinessService) {}
 
   @Get("go-live-readiness")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async getGoLiveReadiness(@Req() req: any) {
     const facilityId = facilityIdFromReq(req);
     return this.goLive.getSnapshot(facilityId);

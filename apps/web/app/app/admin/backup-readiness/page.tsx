@@ -27,8 +27,7 @@ function checkBorder(status: BackupReadinessCheck["status"]): string {
 
 export default function AdminBackupReadinessPage() {
   const { t, language } = useI18n();
-  const { ready, facilityId, roles } = useFacilityAndRoles();
-  const isAdmin = roles.includes("ADMIN");
+  const { ready, facilityId, isPlatformOperator } = useFacilityAndRoles();
   const [data, setData] = useState<BackupReadinessPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +51,9 @@ export default function AdminBackupReadinessPage() {
   }, [facilityId, language, t]);
 
   useEffect(() => {
-    if (!ready || !isAdmin || !facilityId) return;
+    if (!ready || !isPlatformOperator || !facilityId) return;
     void load();
-  }, [ready, isAdmin, facilityId, load]);
+  }, [ready, isPlatformOperator, facilityId, load]);
 
   if (!ready) {
     return (
@@ -64,10 +63,10 @@ export default function AdminBackupReadinessPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isPlatformOperator) {
     return (
       <div style={{ padding: 24 }}>
-        <p>{t("backupReadiness.accessDenied")}</p>
+        <p>{t("platformOps.restrictedBody")}</p>
         <Link href="/app">{t("backupReadiness.backApp")}</Link>
       </div>
     );

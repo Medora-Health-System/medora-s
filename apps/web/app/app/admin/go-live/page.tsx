@@ -37,7 +37,7 @@ function formatMetricValue(
 export default function AdminGoLivePage() {
   const { t, language } = useI18n();
   const { ready, roles, facilityId } = useFacilityAndRoles();
-  const isAdmin = roles.includes("ADMIN");
+  const isFacilityOrPlatformAdmin = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
   const [data, setData] = useState<GoLiveReadinessPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +61,9 @@ export default function AdminGoLivePage() {
   }, [facilityId, language, t]);
 
   useEffect(() => {
-    if (!ready || !isAdmin || !facilityId) return;
+    if (!ready || !isFacilityOrPlatformAdmin || !facilityId) return;
     void load();
-  }, [ready, isAdmin, facilityId, load]);
+  }, [ready, isFacilityOrPlatformAdmin, facilityId, load]);
 
   if (!ready) {
     return (
@@ -73,7 +73,7 @@ export default function AdminGoLivePage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isFacilityOrPlatformAdmin) {
     return (
       <div style={{ padding: 24 }}>
         <p>{t("goLiveReadiness.accessDenied")}</p>

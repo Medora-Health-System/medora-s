@@ -10,6 +10,7 @@
 /** Assignable / known app roles (single source for admin UI + docs). */
 export const APP_ROLE_CODES = [
   "ADMIN",
+  "MEDORA_SUPER_ADMIN",
   "PROVIDER",
   "RN",
   "PHARMACY",
@@ -52,6 +53,7 @@ export const MSPP_MODULE_ROLE_CODES = [
 
 const ROLE_LANDING: Array<{ role: string; path: string }> = [
   { role: "ADMIN", path: "/app/admin" },
+  { role: "MEDORA_SUPER_ADMIN", path: "/app/admin" },
   { role: "PROVIDER", path: "/app/provider" },
   { role: "RN", path: "/app/nursing" },
   { role: "PHARMACY", path: "/app/pharmacy" },
@@ -148,9 +150,23 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/hospitalisation", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
   { prefix: "/app/fracture", roles: ["ADMIN"] },
-  { prefix: "/app/admin", roles: ["ADMIN"] },
-  { prefix: "/app/admin/users", roles: ["ADMIN"] },
-  { prefix: "/app/users", roles: ["ADMIN"] },
+  {
+    prefix: "/app/admin/system-health",
+    roles: ["MEDORA_SUPER_ADMIN"],
+  },
+  {
+    prefix: "/app/admin/backup-readiness",
+    roles: ["MEDORA_SUPER_ADMIN"],
+  },
+  {
+    prefix: "/app/admin/exports",
+    roles: ["MEDORA_SUPER_ADMIN"],
+  },
+  { prefix: "/app/reports", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
+  { prefix: "/app/admin/go-live", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
+  { prefix: "/app/admin", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
+  { prefix: "/app/admin/users", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
+  { prefix: "/app/users", roles: ["ADMIN", "MEDORA_SUPER_ADMIN"] },
   { prefix: "/app/lab", roles: ["ADMIN", "LAB", "PROVIDER", "RN"] },
   { prefix: "/app/radiology", roles: ["ADMIN", "RADIOLOGY", "PROVIDER", "RN"] },
   { prefix: "/app/imaging", roles: ["ADMIN", "RADIOLOGY", "PROVIDER", "RN"] },
@@ -185,6 +201,18 @@ function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
 function normalizeAppPathnameForRouteRules(pathname: string): string {
   if (pathname === "/app/hospitalization") return "/app/hospitalisation";
   return pathname;
+}
+
+/** S22 — Medora platform operations UI; not facility administrators (`ADMIN` alone). */
+const PLATFORM_OPERATOR_ONLY_PREFIXES = [
+  "/app/admin/system-health",
+  "/app/admin/backup-readiness",
+  "/app/admin/exports",
+] as const;
+
+function isPlatformOperatorOnlyAppPath(pathname: string): boolean {
+  const p = normalizeAppPathnameForRouteRules(pathname);
+  return PLATFORM_OPERATOR_ONLY_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
 }
 
 /** Sorted longest prefix first for first-match semantics */
@@ -227,7 +255,8 @@ export function getLandingRouteForRoles(roles: string[]): string {
 
 /**
  * Whether the user may open this pathname under /app (for active facility roles).
- * ADMIN: all /app paths. Others: longest matching APP_ROUTE_RULES prefix must allow a role they hold.
+ * Platform-only admin paths require `MEDORA_SUPER_ADMIN`. Otherwise `ADMIN` retains broad /app access;
+ * others use longest matching APP_ROUTE_RULES prefix.
  */
 export function isAppPathAllowedForRoles(
   pathname: string,
@@ -236,14 +265,17 @@ export function isAppPathAllowedForRoles(
 ): boolean {
   if (!pathname.startsWith("/app")) return false;
   const pathForRules = normalizeAppPathnameForRouteRules(pathname);
-  /** Compte principal plateforme (`canCreateFacilities` depuis `/auth/me`) : hub `/app/admin` et sous-routes (sans exiger le rôle ADMIN). */
+  const set = normalizeRoleSet(roles);
+  if (isPlatformOperatorOnlyAppPath(pathForRules)) {
+    return set.has("MEDORA_SUPER_ADMIN");
+  }
+  /** Compte principal plateforme (`canCreateFacilities` depuis `/auth/me`) : hub `/app/admin` et sous-routes (hors pages réservées opérateur Medora — voir ci-dessus). */
   if (
     options?.canCreateFacilities === true &&
     (pathForRules === "/app/admin" || pathForRules.startsWith("/app/admin/"))
   ) {
     return true;
   }
-  const set = normalizeRoleSet(roles);
   if (
     pathForRules === "/app/admin/mspp-access" ||
     pathForRules.startsWith("/app/admin/mspp-access/")
@@ -286,6 +318,10 @@ export function getRouteGuardRedirect(
     return getLandingRouteForRoles(roles);
   }
   const set = normalizeRoleSet(roles);
+  const pathForRules = normalizeAppPathnameForRouteRules(pathname);
+  if (isPlatformOperatorOnlyAppPath(pathForRules) && !set.has("MEDORA_SUPER_ADMIN")) {
+    return getLandingRouteForRoles(roles);
+  }
   if (set.has("ADMIN")) return null;
   if (!isAppPathAllowedForRoles(pathname, roles, options)) return getLandingRouteForRoles(roles);
   return null;

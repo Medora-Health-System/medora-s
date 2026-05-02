@@ -1,6 +1,7 @@
 import { BadRequestException, Controller, Get, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { AuditAction, RoleCode } from "@prisma/client";
+import { AuditAction } from "@prisma/client";
+import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
 import type { Response } from "express";
 import type { Request } from "express";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
@@ -77,7 +78,7 @@ export class ReportsController {
   }
 
   @Get("door-to-ekg")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async doorToEkg(
     @Req() req: AuthedRequest,
     @Query() query: Record<string, string | string[] | undefined>,
@@ -100,7 +101,7 @@ export class ReportsController {
   }
 
   @Get("door-to-provider")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async doorToProvider(
     @Req() req: AuthedRequest,
     @Query() query: Record<string, string | string[] | undefined>,
@@ -123,7 +124,7 @@ export class ReportsController {
   }
 
   @Get("door-to-door")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async doorToDoor(
     @Req() req: AuthedRequest,
     @Query() query: Record<string, string | string[] | undefined>,
@@ -146,7 +147,7 @@ export class ReportsController {
   }
 
   @Get("medication-administration")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async medicationAdministration(
     @Req() req: AuthedRequest,
     @Query() query: Record<string, string | string[] | undefined>,
