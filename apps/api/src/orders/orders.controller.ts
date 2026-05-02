@@ -247,6 +247,28 @@ export class OrdersController {
     );
   }
 
+  @Post("orders/items/:id/cancel")
+  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
+  async cancelOrderItem(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+
+    const dto = assertZodBody(orderCancelDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+
+    return this.ordersService.cancelOrderItem(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Post("orders/items/:id/nurse-complete")
   @RequireRoles(RoleCode.RN, RoleCode.ADMIN)
   async nurseCompleteOrderItem(@Param("id") orderItemId: string, @Req() req: any) {

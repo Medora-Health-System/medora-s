@@ -570,6 +570,11 @@ export const orderCancelDtoSchema = z.object({
   cancellationReason: z.enum(ORDER_CANCELLATION_REASON_VALUES, {
     errorMap: () => ({ message: "Motif d'annulation invalide." }),
   }),
+  /** Optional non-PHI context; stored in OrderEvent/audit metadata only (not Order row). */
+  cancellationDetails: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.string().trim().max(500).optional()
+  ),
 });
 
 export type OrderCancelDto = z.infer<typeof orderCancelDtoSchema>;

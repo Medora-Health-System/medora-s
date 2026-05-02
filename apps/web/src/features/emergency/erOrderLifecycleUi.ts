@@ -21,6 +21,13 @@ export function isOrderItemActiveForErDashboard(item: Record<string, unknown>): 
   return true;
 }
 
+/** True when this line may be cancelled individually (ER × button). */
+export function isOrderItemCancellableLineForEr(item: Record<string, unknown>): boolean {
+  const ls = String(item.lifecycleState ?? "");
+  if (ls === "REVIEWED" || ls === "CANCELLED") return false;
+  return isOrderItemActiveForErDashboard(item);
+}
+
 /** Line counts as clinically completed for the Completed section (not cancelled). */
 export function isOrderItemCompletedForErDashboard(item: Record<string, unknown>): boolean {
   const st = orderItemStatus(item);

@@ -4761,6 +4761,8 @@ export default {
     medicationRoute: "Route: {route}",
     medicationDirections: "Directions: {directions}",
     cancelOrder: "Cancel order",
+    /** Generic a11y label for ER orders cancel affordances; line-level × uses `cancelOrderModal.cancelOrderLineAria`. */
+    cancelOrderAria: "Cancel order",
     cancelOrderBusy: "Cancelling…",
     acknowledgeOrder: "Acknowledge",
     startOrder: "Start",
@@ -5911,6 +5913,31 @@ export default {
       successCreated: "Encounter started.",
       syncWhenOnline: "The chart will sync when connection returns.",
     },
+  },
+  cancelOrderModal: {
+    cancelReasonTitle: "Cancel order",
+    cancelReasonLabel: "Reason for cancellation",
+    cancelReasonRequired: "Please select a reason",
+    cancelReasonPlaceholder: "— Select a reason —",
+    cancelScopeWarning:
+      "This cancels the entire order (all lines). You cannot undo this from this screen.",
+    cancelReasons: {
+      PROVIDER_REQUEST: "Provider request",
+      PATIENT_REFUSED: "Patient refused",
+      DUPLICATE_ORDER: "Duplicate order",
+      ORDER_ERROR: "Order error",
+      OTHER: "Other",
+    },
+    commentLabel: "Additional details (optional)",
+    commentPlaceholder: "Optional context",
+    commentNonPhiHint: "Do not enter patient names or identifiers.",
+    confirm: "Confirm cancellation",
+    confirmBusy: "Cancelling…",
+    cancelOrderLineAria: "Cancel this order line",
+    cancelOrderLineTitle: "Cancel order line",
+    cancelOrderLineConfirm: "Confirm line cancellation",
+    cancelOrderLineWarning:
+      "Only this order line will be cancelled. Other items in the same order will remain active.",
   },
   orderCancelReason: {
     entryError: "Data entry error",

@@ -5,7 +5,7 @@ import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/cli
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
-import { CreateOrderModal } from "@/components/orders";
+import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
@@ -13,6 +13,7 @@ import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
 import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
 import {
   isOrderItemActiveForErDashboard,
+  isOrderItemCancellableLineForEr,
   isOrderItemCompletedForErDashboard,
   isParentOrderCancelled,
   orderHasAnyActiveItemForEr,
@@ -20,10 +21,7 @@ import {
   shouldIncludeCompletedOrderEventInErMerge,
 } from "@/features/emergency/erOrderLifecycleUi";
 import { apiFetch } from "@/lib/apiClient";
-import {
-  formatCancellationReasonForDisplay,
-  ORDER_CANCEL_API_REASON_PATIENT_REQUEST,
-} from "@/lib/orderCancelReasonDisplay";
+import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 
@@ -51,6 +49,43 @@ const ordersTableScrollWrap: React.CSSProperties = {
   maxHeight: "min(65vh, 560px)",
   WebkitOverflowScrolling: "touch",
   width: "100%",
+};
+
+/** Parent-order cancel (POST /orders/:id/cancel) — same id for every line under one order. */
+const cancelOrderCompactX: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 32,
+  height: 32,
+  minWidth: 32,
+  padding: 0,
+  borderRadius: 8,
+  border: "1px solid #dc2626",
+  backgroundColor: "#fef2f2",
+  color: "#b91c1c",
+  fontSize: 18,
+  fontWeight: 700,
+  lineHeight: 1,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+};
+
+const ordersTableTh: React.CSSProperties = {
+  textAlign: "left",
+  padding: "8px 8px",
+  fontSize: 11,
+  color: "#0f172a",
+  fontWeight: 700,
+  borderBottom: "2px solid #475569",
+  borderRight: "1px solid #cbd5e1",
+  backgroundColor: "#e2e8f0",
+};
+
+const ordersTableTdBorder: React.CSSProperties = {
+  borderRight: "1px solid #e2e8f0",
+  borderBottom: "1px solid #cbd5e1",
 };
 
 const DOMAIN_ORDER: ErOrderDomain[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
@@ -350,7 +385,8 @@ export function EmergencyErOrdersPanel({
   const [orderEventsRaw, setOrderEventsRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [eventLoading, setEventLoading] = useState(true);
-  const [cancelBusyOrderId, setCancelBusyOrderId] = useState<string | null>(null);
+  const [cancelBusyItemId, setCancelBusyItemId] = useState<string | null>(null);
+  const [cancelLineModalItemId, setCancelLineModalItemId] = useState<string | null>(null);
   const [lineActionBusy, setLineActionBusy] = useState<string | null>(null);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -543,17 +579,23 @@ export function EmergencyErOrdersPanel({
     [parsedEvents]
   );
 
-  const onCancelOrder = async (orderId: string) => {
-    setCancelBusyOrderId(orderId);
+  const submitCancelLineFromModal = async (payload: CancelOrderConfirmPayload) => {
+    if (!cancelLineModalItemId) return;
+    setCancelBusyItemId(cancelLineModalItemId);
     try {
-      await apiFetch(`/orders/${orderId}/cancel`, {
+      await apiFetch(`/orders/items/${cancelLineModalItemId}/cancel`, {
         method: "POST",
         facilityId,
-        body: JSON.stringify({ cancellationReason: ORDER_CANCEL_API_REASON_PATIENT_REQUEST }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cancellationReason: payload.cancellationReason,
+          ...(payload.cancellationDetails ? { cancellationDetails: payload.cancellationDetails } : {}),
+        }),
       });
       setOrdersRefresh((x) => x + 1);
+      setCancelLineModalItemId(null);
     } finally {
-      setCancelBusyOrderId(null);
+      setCancelBusyItemId(null);
     }
   };
 
@@ -697,38 +739,44 @@ export function EmergencyErOrdersPanel({
                   <table
                     style={{
                       width: "100%",
-                      minWidth: 640,
+                      minWidth: 720,
                       borderCollapse: "collapse",
                       fontSize: 12,
                       background: "#fff",
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid #cbd5e1",
                       borderRadius: 10,
                     }}
                   >
                     <thead>
-                      <tr style={{ background: "#f8fafc" }}>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                      <tr>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableCategory")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableIssued")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableTime")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableOrder")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableLastAction")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableTitle")}
                         </th>
+                        <th
+                          scope="col"
+                          aria-label={t("cancelOrderModal.cancelOrderLineAria")}
+                          title={t("cancelOrderModal.cancelOrderLineAria")}
+                          style={{ ...ordersTableTh, borderRight: "none", width: 44, textAlign: "center", color: "#64748b" }}
+                        />
                       </tr>
                     </thead>
                     <tbody>
-                      {activeOrderGroups.map(({ order: o, lines }) => {
+                      {activeOrderGroups.map(({ order: o, lines }, groupIdx) => {
                         const authorityLine = formatOrderAuthority(o, t);
                         const attributionLines = formatOrderAttributionLines(o, t, language);
                         const issuedPrimary = attributionLines[0] ?? authorityLine;
@@ -739,23 +787,27 @@ export function EmergencyErOrdersPanel({
                         const categoryLabel = t(domainHeadingKey(o.type as ErOrderDomain));
                         return (
                           <React.Fragment key={o.id}>
-                            <tr style={{ background: "#f1f5f9" }}>
-                              <td colSpan={6} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 700, color: "#0f172a" }}>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
-                                  <span>
-                                    {categoryLabel} · {o.type}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    style={{ ...btn, flex: "0 0 auto" }}
-                                    disabled={cancelBusyOrderId === o.id}
-                                    onClick={() => void onCancelOrder(o.id)}
-                                  >
-                                    {cancelBusyOrderId === o.id
-                                      ? t("erEmergencyOrders.cancelOrderBusy")
-                                      : t("erEmergencyOrders.cancelOrder")}
-                                  </button>
-                                </div>
+                            <tr
+                              style={{
+                                background: "#f1f5f9",
+                                borderTop:
+                                  groupIdx > 0 ? "3px solid #475569" : "2px solid #cbd5e1",
+                              }}
+                            >
+                              <td
+                                colSpan={7}
+                                style={{
+                                  ...ordersTableTdBorder,
+                                  padding: "8px 10px",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: "#0f172a",
+                                  borderRight: "none",
+                                }}
+                              >
+                                <span>
+                                  {categoryLabel} · {o.type}
+                                </span>
                               </td>
                             </tr>
                             {lines.map((raw) => {
@@ -772,6 +824,17 @@ export function EmergencyErOrdersPanel({
                                 o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
                               const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
                               const busy = lineActionBusy;
+                              const canAttemptLineCancel = hasAnyRole(
+                                roles,
+                                "RN",
+                                "PROVIDER",
+                                "LAB",
+                                "RADIOLOGY",
+                                "PHARMACY",
+                                "ADMIN"
+                              );
+                              const showLineCancel =
+                                canAttemptLineCancel && isOrderItemCancellableLineForEr(item);
                               const lineBtns: React.ReactNode[] = [];
                               if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
                                 lineBtns.push(
@@ -840,12 +903,21 @@ export function EmergencyErOrdersPanel({
                                 }
                               }
                               return (
-                                <tr key={itemId} style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>
-                                  <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                                <tr key={itemId} style={{ verticalAlign: "top" }}>
+                                  <td
+                                    style={{
+                                      ...ordersTableTdBorder,
+                                      padding: "8px 8px",
+                                      color: "#334155",
+                                      overflowWrap: "anywhere",
+                                      wordBreak: "break-word",
+                                    }}
+                                  >
                                     {categoryLabel}
                                   </td>
                                   <td
                                     style={{
+                                      ...ordersTableTdBorder,
                                       padding: "8px 8px",
                                       color: "#64748b",
                                       overflowWrap: "anywhere",
@@ -855,9 +927,19 @@ export function EmergencyErOrdersPanel({
                                   >
                                     {issuedPrimary}
                                   </td>
-                                  <td style={{ padding: "8px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{timeStr}</td>
                                   <td
                                     style={{
+                                      ...ordersTableTdBorder,
+                                      padding: "8px 8px",
+                                      color: "#64748b",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {timeStr}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...ordersTableTdBorder,
                                       padding: "8px 8px",
                                       color: "#0f172a",
                                       overflowWrap: "anywhere",
@@ -873,7 +955,15 @@ export function EmergencyErOrdersPanel({
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                     ) : null}
                                   </td>
-                                  <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                                  <td
+                                    style={{
+                                      ...ordersTableTdBorder,
+                                      padding: "8px 8px",
+                                      color: "#334155",
+                                      overflowWrap: "anywhere",
+                                      wordBreak: "break-word",
+                                    }}
+                                  >
                                     <div style={{ marginBottom: lineBtns.length > 0 ? 6 : 0 }}>
                                       {orderLineItemStatusLabel(st, t)}
                                     </div>
@@ -883,6 +973,7 @@ export function EmergencyErOrdersPanel({
                                   </td>
                                   <td
                                     style={{
+                                      ...ordersTableTdBorder,
                                       padding: "8px 8px",
                                       color: "#64748b",
                                       overflowWrap: "anywhere",
@@ -891,6 +982,29 @@ export function EmergencyErOrdersPanel({
                                     }}
                                   >
                                     {authorityLine}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...ordersTableTdBorder,
+                                      padding: "6px 8px",
+                                      textAlign: "center",
+                                      verticalAlign: "middle",
+                                      borderRight: "none",
+                                    }}
+                                  >
+                                    {showLineCancel ? (
+                                      <button
+                                        type="button"
+                                        style={cancelOrderCompactX}
+                                        disabled={cancelBusyItemId === itemId}
+                                        title={t("cancelOrderModal.cancelOrderLineAria")}
+                                        aria-label={t("cancelOrderModal.cancelOrderLineAria")}
+                                        aria-busy={cancelBusyItemId === itemId}
+                                        onClick={() => setCancelLineModalItemId(itemId)}
+                                      >
+                                        <span aria-hidden>{cancelBusyItemId === itemId ? "…" : "×"}</span>
+                                      </button>
+                                    ) : null}
                                   </td>
                                 </tr>
                               );
@@ -921,28 +1035,28 @@ export function EmergencyErOrdersPanel({
                       borderCollapse: "collapse",
                       fontSize: 12,
                       background: "#fff",
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid #cbd5e1",
                       borderRadius: 10,
                     }}
                   >
                     <thead>
-                      <tr style={{ background: "#f8fafc" }}>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                      <tr>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableCategory")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableIssued")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableTime")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableOrder")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableLastAction")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={{ ...ordersTableTh, borderRight: "none" }}>
                           {t("erEmergencyOrders.tableTitle")}
                         </th>
                       </tr>
@@ -964,12 +1078,21 @@ export function EmergencyErOrdersPanel({
                         const performedWhen = new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US");
                         const titleCell = `${t("orderEvent.performedBy")}: ${e.performedByDisplayName || "—"} · ${e.roleSnapshot ?? "—"}`;
                         return (
-                          <tr key={e.id} style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>
-                            <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                          <tr key={e.id} style={{ verticalAlign: "top" }}>
+                            <td
+                              style={{
+                                ...ordersTableTdBorder,
+                                padding: "8px 8px",
+                                color: "#334155",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                              }}
+                            >
                               {categoryLabel}
                             </td>
                             <td
                               style={{
+                                ...ordersTableTdBorder,
                                 padding: "8px 8px",
                                 color: "#64748b",
                                 overflowWrap: "anywhere",
@@ -979,9 +1102,19 @@ export function EmergencyErOrdersPanel({
                             >
                               {issuedPrimary}
                             </td>
-                            <td style={{ padding: "8px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{performedWhen}</td>
                             <td
                               style={{
+                                ...ordersTableTdBorder,
+                                padding: "8px 8px",
+                                color: "#64748b",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {performedWhen}
+                            </td>
+                            <td
+                              style={{
+                                ...ordersTableTdBorder,
                                 padding: "8px 8px",
                                 color: "#0f172a",
                                 overflowWrap: "anywhere",
@@ -994,16 +1127,26 @@ export function EmergencyErOrdersPanel({
                                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                               ) : null}
                             </td>
-                            <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                            <td
+                              style={{
+                                ...ordersTableTdBorder,
+                                padding: "8px 8px",
+                                color: "#334155",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                              }}
+                            >
                               {secondaryLine ?? t("orderEvent.completed")}
                             </td>
                             <td
                               style={{
+                                ...ordersTableTdBorder,
                                 padding: "8px 8px",
                                 color: "#64748b",
                                 overflowWrap: "anywhere",
                                 wordBreak: "break-word",
                                 maxWidth: 220,
+                                borderRight: "none",
                               }}
                             >
                               <div>{titleCell}</div>
@@ -1042,28 +1185,28 @@ export function EmergencyErOrdersPanel({
                       borderCollapse: "collapse",
                       fontSize: 12,
                       background: "#fff",
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid #cbd5e1",
                       borderRadius: 10,
                     }}
                   >
                     <thead>
-                      <tr style={{ background: "#f8fafc" }}>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                      <tr>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableCategory")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableIssued")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableTime")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableOrder")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={ordersTableTh}>
                           {t("erEmergencyOrders.tableLastAction")}
                         </th>
-                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                        <th scope="col" style={{ ...ordersTableTh, borderRight: "none" }}>
                           {t("erEmergencyOrders.tableTitle")}
                         </th>
                       </tr>
@@ -1083,12 +1226,21 @@ export function EmergencyErOrdersPanel({
                         const cancelReason = formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t);
                         const titleCell = `${t("orderEvent.performedBy")}: ${e.performedByDisplayName || "—"} · ${e.roleSnapshot ?? "—"}`;
                         return (
-                          <tr key={e.id} style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>
-                            <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                          <tr key={e.id} style={{ verticalAlign: "top" }}>
+                            <td
+                              style={{
+                                ...ordersTableTdBorder,
+                                padding: "8px 8px",
+                                color: "#334155",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                              }}
+                            >
                               {categoryLabel}
                             </td>
                             <td
                               style={{
+                                ...ordersTableTdBorder,
                                 padding: "8px 8px",
                                 color: "#64748b",
                                 overflowWrap: "anywhere",
@@ -1098,9 +1250,19 @@ export function EmergencyErOrdersPanel({
                             >
                               {issuedPrimary}
                             </td>
-                            <td style={{ padding: "8px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{performedWhen}</td>
                             <td
                               style={{
+                                ...ordersTableTdBorder,
+                                padding: "8px 8px",
+                                color: "#64748b",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {performedWhen}
+                            </td>
+                            <td
+                              style={{
+                                ...ordersTableTdBorder,
                                 padding: "8px 8px",
                                 color: "#0f172a",
                                 overflowWrap: "anywhere",
@@ -1113,7 +1275,15 @@ export function EmergencyErOrdersPanel({
                                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                               ) : null}
                             </td>
-                            <td style={{ padding: "8px 8px", color: "#b91c1c", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                            <td
+                              style={{
+                                ...ordersTableTdBorder,
+                                padding: "8px 8px",
+                                color: "#b91c1c",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                              }}
+                            >
                               <div>{t("orderEvent.cancelled")}</div>
                               {medCancelLine ? (
                                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{medCancelLine}</div>
@@ -1124,11 +1294,13 @@ export function EmergencyErOrdersPanel({
                             </td>
                             <td
                               style={{
+                                ...ordersTableTdBorder,
                                 padding: "8px 8px",
                                 color: "#64748b",
                                 overflowWrap: "anywhere",
                                 wordBreak: "break-word",
                                 maxWidth: 220,
+                                borderRight: "none",
                               }}
                             >
                               <div>{titleCell}</div>
@@ -1153,6 +1325,17 @@ export function EmergencyErOrdersPanel({
         )}
       </MedoraCardInner>
 
+      <CancelOrderModal
+        variant="orderLine"
+        open={cancelLineModalItemId !== null}
+        orderId={cancelLineModalItemId}
+        submitting={cancelBusyItemId !== null && cancelBusyItemId === cancelLineModalItemId}
+        onClose={() => {
+          if (cancelBusyItemId) return;
+          setCancelLineModalItemId(null);
+        }}
+        onConfirm={submitCancelLineFromModal}
+      />
       {showCreateModal ? (
         <CreateOrderModal
           key={`${encounterId}-${createModalInitialTab}-${ordersRefresh}`}

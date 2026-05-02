@@ -4733,6 +4733,8 @@ export default {
     medicationRoute: "Voie : {route}",
     medicationDirections: "Instructions : {directions}",
     cancelOrder: "Annuler l'ordre",
+    /** Libellé d’accessibilité générique pour annulation (urgences) ; le × par ligne utilise `cancelOrderModal.cancelOrderLineAria`. */
+    cancelOrderAria: "Annuler l'ordre",
     cancelOrderBusy: "Annulation…",
     acknowledgeOrder: "Accuser réception",
     startOrder: "Démarrer",
@@ -5891,6 +5893,31 @@ export default {
       syncWhenOnline:
         "Le dossier sera synchronisé dès le retour de la connexion",
     },
+  },
+  cancelOrderModal: {
+    cancelReasonTitle: "Annuler l’ordre",
+    cancelReasonLabel: "Motif d’annulation",
+    cancelReasonRequired: "Veuillez sélectionner un motif",
+    cancelReasonPlaceholder: "— Choisir un motif —",
+    cancelScopeWarning:
+      "Cette action annule toute la commande (toutes les lignes). Elle ne peut pas être annulée depuis cet écran.",
+    cancelReasons: {
+      PROVIDER_REQUEST: "Demande du médecin",
+      PATIENT_REFUSED: "Refus du patient",
+      DUPLICATE_ORDER: "Ordonnance en double",
+      ORDER_ERROR: "Erreur de prescription",
+      OTHER: "Autre",
+    },
+    commentLabel: "Précisions (facultatif)",
+    commentPlaceholder: "Contexte facultatif",
+    commentNonPhiHint: "N’inscrivez pas de noms ni d’identifiants de patient.",
+    confirm: "Confirmer l’annulation",
+    confirmBusy: "Annulation…",
+    cancelOrderLineAria: "Annuler cette ligne d’ordre",
+    cancelOrderLineTitle: "Annuler la ligne d’ordre",
+    cancelOrderLineConfirm: "Confirmer l’annulation de la ligne",
+    cancelOrderLineWarning:
+      "Seule cette ligne d’ordre sera annulée. Les autres lignes de la même commande resteront actives.",
   },
   orderCancelReason: {
     entryError: "Erreur de saisie",

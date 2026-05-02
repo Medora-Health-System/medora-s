@@ -14,7 +14,7 @@ import {
   PROVIDER_IMPRESSION_SNIPPETS,
   PROVIDER_PLAN_SNIPPETS,
 } from "@/constants/clinicalTemplates";
-import { CreateOrderModal } from "@/components/orders";
+import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -39,7 +39,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError, USER_FACING_ENCOUNTER_NOT_FOUND_FR } from "@/lib/userFacingError";
-import { ORDER_CANCELLATION_REASON_VALUES, type DispositionSafetyReadinessResponse } from "@medora/shared";
+import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
@@ -4376,7 +4376,6 @@ function OrdersTab({
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
   const encounterOpen = encounter?.status === "OPEN";
   const [cancelConfirmOrderId, setCancelConfirmOrderId] = useState<string | null>(null);
-  const [cancelReasonSelection, setCancelReasonSelection] = useState<string>("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [ordersFeedback, setOrdersFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -4421,8 +4420,8 @@ function OrdersTab({
     }
   };
 
-  const confirmCancelWholeOrder = async () => {
-    if (!cancelConfirmOrderId || cancelSubmitting || !cancelReasonSelection.trim()) return;
+  const confirmCancelWholeOrder = async (payload: CancelOrderConfirmPayload) => {
+    if (!cancelConfirmOrderId || cancelSubmitting) return;
     setCancelSubmitting(true);
     setOrdersFeedback(null);
     try {
@@ -4430,10 +4429,12 @@ function OrdersTab({
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cancellationReason: cancelReasonSelection }),
+        body: JSON.stringify({
+          cancellationReason: payload.cancellationReason,
+          ...(payload.cancellationDetails ? { cancellationDetails: payload.cancellationDetails } : {}),
+        }),
       });
       setCancelConfirmOrderId(null);
-      setCancelReasonSelection("");
       setOrdersFeedback({ type: "ok", text: t("encounterChrome.ordersTab.orderCanceledOk") });
       await loadOrders({ silent: true });
       await onOrdersUpdated?.();
@@ -4808,7 +4809,6 @@ function OrdersTab({
                             disabled={cancelSubmitting}
                             onClick={() => {
                               setOrdersFeedback(null);
-                              setCancelReasonSelection("");
                               setCancelConfirmOrderId(order.id);
                             }}
                             style={{
@@ -4840,112 +4840,17 @@ function OrdersTab({
         </div>
       )}
 
-      {cancelConfirmOrderId ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cancel-order-title"
-          aria-busy={cancelSubmitting}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1100,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            boxSizing: "border-box",
-            cursor: cancelSubmitting ? "wait" : "default",
-          }}
-          onClick={(e) => {
-            if (cancelSubmitting) return;
-            if (e.target === e.currentTarget) setCancelConfirmOrderId(null);
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: 8,
-              maxWidth: 440,
-              width: "100%",
-              padding: 20,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h4 id="cancel-order-title" style={{ margin: "0 0 12px 0", fontSize: 17 }}>
-              Annuler cette commande ?
-            </h4>
-            <p style={{ margin: "0 0 16px 0", fontSize: 14, lineHeight: 1.5, color: "#424242" }}>
-              Cette action annule toute la commande (toutes les lignes). Elle ne peut pas être annulée depuis cet écran.
-            </p>
-            <label style={{ display: "block", marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
-              Motif d&apos;annulation
-              <select
-                value={cancelReasonSelection}
-                onChange={(e) => setCancelReasonSelection(e.target.value)}
-                disabled={cancelSubmitting}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  marginTop: 8,
-                  padding: "8px 10px",
-                  fontSize: 14,
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  boxSizing: "border-box",
-                }}
-              >
-                <option value="">— Choisir un motif —</option>
-                {ORDER_CANCELLATION_REASON_VALUES.map((r: (typeof ORDER_CANCELLATION_REASON_VALUES)[number]) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                disabled={cancelSubmitting}
-                onClick={() => {
-                  setCancelConfirmOrderId(null);
-                  setCancelReasonSelection("");
-                }}
-                style={{
-                  padding: "8px 16px",
-                  fontSize: 14,
-                  border: "1px solid #ccc",
-                  borderRadius: 4,
-                  background: "#fff",
-                  cursor: cancelSubmitting ? "not-allowed" : "pointer",
-                }}
-              >
-                Retour
-              </button>
-              <button
-                type="button"
-                disabled={cancelSubmitting || !cancelReasonSelection.trim()}
-                onClick={() => void confirmCancelWholeOrder()}
-                style={{
-                  padding: "8px 16px",
-                  fontSize: 14,
-                  border: "none",
-                  borderRadius: 4,
-                  background: "#c62828",
-                  color: "white",
-                  fontWeight: 600,
-                  cursor: cancelSubmitting || !cancelReasonSelection.trim() ? "not-allowed" : "pointer",
-                  opacity: cancelSubmitting || !cancelReasonSelection.trim() ? 0.7 : 1,
-                }}
-              >
-                {cancelSubmitting ? "Annulation…" : "Confirmer l'annulation"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <CancelOrderModal
+        variant="parentOrder"
+        open={cancelConfirmOrderId !== null}
+        orderId={cancelConfirmOrderId}
+        submitting={cancelSubmitting}
+        onClose={() => {
+          if (cancelSubmitting) return;
+          setCancelConfirmOrderId(null);
+        }}
+        onConfirm={confirmCancelWholeOrder}
+      />
 
       {showCreateModal && (
         <CreateOrderModal

@@ -1353,6 +1353,49 @@ export class OrdersService {
     throw new ForbiddenException("Droits insuffisants pour annuler cette commande.");
   }
 
+  /**
+   * Single-line cancel authority: mirrors {@link assertCanCancelOrder} but LAB/RADIOLOGY apply when
+   * **this line's** catalog type matches (not “all items same type”).
+   */
+  private assertCanCancelOrderItem(
+    order: {
+      type: string;
+      orderedBy: string | null;
+      source: string | null;
+    },
+    item: { catalogItemType: string },
+    requestorRoleCodes: RoleCode[],
+    userId: string
+  ): CancelPolicyActor {
+    if (requestorRoleCodes.includes(RoleCode.ADMIN)) {
+      return "ADMIN";
+    }
+
+    if (requestorRoleCodes.includes(RoleCode.PROVIDER)) {
+      if (order.type === "MEDICATION" || order.type === "CARE" || order.orderedBy === userId) {
+        return "PROVIDER";
+      }
+    }
+
+    if (
+      requestorRoleCodes.includes(RoleCode.RN) &&
+      order.orderedBy === userId &&
+      (order.source === "VERBAL_ORDER" || order.source === "NURSING_PROTOCOL")
+    ) {
+      return "RN";
+    }
+
+    if (requestorRoleCodes.includes(RoleCode.LAB) && item.catalogItemType === "LAB_TEST") {
+      return "LAB";
+    }
+
+    if (requestorRoleCodes.includes(RoleCode.RADIOLOGY) && item.catalogItemType === "IMAGING_STUDY") {
+      return "RADIOLOGY";
+    }
+
+    throw new ForbiddenException("Droits insuffisants pour annuler cette ligne.");
+  }
+
   async cancel(
     facilityId: string,
     id: string,
@@ -1445,6 +1488,9 @@ export class OrdersService {
         note: reason,
         metadata: {
           cancellationReason: reason,
+          ...(dto.cancellationDetails?.trim()
+            ? { cancellationDetails: dto.cancellationDetails.trim() }
+            : {}),
           cancelPolicyActor,
           requestorRoles: requestorRoleCodes,
           orderSource: order.source,
@@ -1467,6 +1513,9 @@ export class OrdersService {
       userAgent,
       metadata: {
         cancellationReason: reason,
+        ...(dto.cancellationDetails?.trim()
+          ? { cancellationDetails: dto.cancellationDetails.trim() }
+          : {}),
         cancelPolicyActor,
         requestorRoles: requestorRoleCodes,
         orderSource: order.source,
@@ -1491,6 +1540,156 @@ export class OrdersService {
     userAgent?: string
   ) {
     return this.cancel(facilityId, orderId, dto, requestorRoleCodes, userId, ip, userAgent);
+  }
+
+  /**
+   * Cancels a single {@link OrderItem} on an otherwise active parent {@link Order}.
+   * When every non-REVIEWED line is CANCELLED, parent order is moved to CANCELLED with this request’s reason.
+   */
+  async cancelOrderItem(
+    facilityId: string,
+    orderItemId: string,
+    dto: OrderCancelDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour annuler une ligne.");
+    }
+
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { facilityId },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: { include: { patient: true } },
+          },
+        },
+      },
+    });
+
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+
+    if (orderItem.lifecycleState === OrderItemLifecycleState.REVIEWED) {
+      throw new BadRequestException("Cette ligne est closée ; l'annulation n'est pas possible.");
+    }
+    if (orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED) {
+      throw new BadRequestException("Cette ligne est déjà annulée.");
+    }
+
+    const cancelPolicyActor = this.assertCanCancelOrderItem(
+      orderItem.order,
+      { catalogItemType: orderItem.catalogItemType },
+      requestorRoleCodes,
+      userId
+    );
+
+    const reason = dto.cancellationReason.trim();
+    if (!reason) {
+      throw new BadRequestException("Le motif d'annulation est requis.");
+    }
+
+    const now = new Date();
+    let statusPatch: OrderStatus | undefined;
+    try {
+      assertCanTransition(orderItem.status, OrderStatus.CANCELLED);
+      statusPatch = OrderStatus.CANCELLED;
+    } catch {
+      statusPatch = undefined;
+    }
+    const lifecycleState = applyLifecycleWithStatus(orderItem.lifecycleState, OrderStatus.CANCELLED);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orderItem.update({
+        where: { id: orderItemId },
+        data: {
+          lifecycleState,
+          ...(statusPatch ? { status: statusPatch } : {}),
+        },
+      });
+
+      await this.writeOrderEvent({
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        eventType: OrderEventType.CANCELLED,
+        performedByUserId: userId,
+        note: reason,
+        metadata: {
+          cancelScope: "ORDER_ITEM",
+          orderItemId,
+          cancellationReason: reason,
+          ...(dto.cancellationDetails?.trim()
+            ? { cancellationDetails: dto.cancellationDetails.trim() }
+            : {}),
+          cancelPolicyActor,
+          requestorRoles: requestorRoleCodes,
+          orderSource: orderItem.order.source,
+          orderDomain: orderItem.order.type,
+        },
+        tx,
+      });
+
+      const parentId = orderItem.orderId;
+      const siblings = await tx.orderItem.findMany({ where: { orderId: parentId } });
+      const allNonReviewedCancelled = siblings.every(
+        (it) =>
+          it.lifecycleState === OrderItemLifecycleState.REVIEWED ||
+          it.lifecycleState === OrderItemLifecycleState.CANCELLED
+      );
+
+      if (allNonReviewedCancelled) {
+        const parent = await tx.order.findFirst({ where: { id: parentId } });
+        if (parent && parent.status !== OrderStatus.CANCELLED) {
+          assertCanTransition(parent.status, OrderStatus.CANCELLED);
+          await tx.order.update({
+            where: { id: parentId },
+            data: {
+              status: OrderStatus.CANCELLED,
+              cancelledAt: now,
+              cancelledByUserId: userId,
+              cancellationReason: reason,
+            },
+          });
+        }
+      }
+    });
+
+    await this.audit.log(AuditAction.ORDER_CANCEL, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
+      ip,
+      userAgent,
+      metadata: {
+        cancelScope: "ORDER_ITEM",
+        parentOrderId: orderItem.orderId,
+        orderItemId,
+        cancellationReason: reason,
+        ...(dto.cancellationDetails?.trim()
+          ? { cancellationDetails: dto.cancellationDetails.trim() }
+          : {}),
+        cancelPolicyActor,
+        requestorRoles: requestorRoleCodes,
+        orderSource: orderItem.order.source,
+      },
+    });
+
+    return this.prisma.orderItem.findFirstOrThrow({ where: { id: orderItemId } });
   }
 
   async acknowledgeOrderItem(
