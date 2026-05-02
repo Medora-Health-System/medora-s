@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -91,6 +91,7 @@ function colLabel(t: (k: string) => string, key: string): string {
 
 export default function EdReportDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const rawSlug = typeof params?.slug === "string" ? params.slug : "";
   const slug = rawSlug as EdReportSlug;
   const { t, language } = useI18n();
@@ -105,6 +106,14 @@ export default function EdReportDetailPage() {
   const [meta, setMeta] = useState<Pick<EdReportJsonResponse, "from" | "to" | "truncated"> | null>(null);
 
   const validSlug = SLUGS.has(slug);
+
+  useEffect(() => {
+    const pf = searchParams.get("prefillFrom")?.trim() ?? "";
+    const pt = searchParams.get("prefillTo")?.trim() ?? "";
+    if (!pf || !pt) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(pf) || !/^\d{4}-\d{2}-\d{2}$/.test(pt)) return;
+    setRange((r) => (r.from === pf && r.to === pt ? r : { from: pf, to: pt }));
+  }, [searchParams]);
 
   const queryBase = useMemo(
     () => ({

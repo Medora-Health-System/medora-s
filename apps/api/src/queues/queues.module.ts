@@ -54,7 +54,13 @@ import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearin
     BillingIdentityService,
     ClearinghouseAckWebhookGuard,
   ],
-  exports: [QueuesService, BillingIdentityService, BillingService],
+  exports: [
+    QueuesService,
+    BillingIdentityService,
+    BillingService,
+    ExternalBillingExportService,
+    ExternalBillingAutomationService,
+  ],
 })
 export class QueuesModule {}
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { AuditService } from "../common/services/audit.service";
 import { queueMedoraAlert } from "../common/logging/medoraAlert";
@@ -341,4 +341,131 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
       },
     });
   }
+
+  /**
+   * Admin retry: rebuild daily export for one facility and POST to vendor.
+   * Does not mutate billing ledger. Requires MEDORA_EXTERNAL_BILLING_VENDOR_WEBHOOK_URL.
+   */
+  async retryDailyVendorDeliveryForFacility(params: {
+    facilityId: string;
+    exportDate: string;
+    format: "json" | "csv";
+    userCtx: ExternalExportUserContext;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<{ automationBatchId: string }> {
+    const vendorUrl = readVendorWebhookUrl();
+    if (!vendorUrl) {
+      throw new BadRequestException(
+        "L’URL webhook prestataire (MEDORA_EXTERNAL_BILLING_VENDOR_WEBHOOK_URL) n’est pas configurée ; un nouvel envoi vers le prestataire est impossible."
+      );
+    }
+
+    const automationBatchId = `RETRY-${params.exportDate.replace(/-/g, "")}-${Date.now().toString(36).toUpperCase()}`;
+
+    await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
+      userId: params.userCtx.userId,
+      facilityId: params.facilityId,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      metadata: {
+        automationEvent: "external_billing_manual_retry_started",
+        exportDate: params.exportDate,
+        format: params.format,
+        automationBatchId,
+      },
+    });
+
+    try {
+      let vendorBody: Record<string, unknown>;
+      if (params.format === "json") {
+        const payload = await this.exportService.exportDailyJson({
+          facilityId: params.facilityId,
+          date: params.exportDate,
+          userCtx: params.userCtx,
+          ip: params.ip,
+          userAgent: params.userAgent ?? "medora-external-billing-manual-retry/1",
+        });
+        const meta = payload.exportMeta as Record<string, unknown> | undefined;
+        const encounterCount =
+          typeof meta?.encounterCount === "number" && Number.isFinite(meta.encounterCount) ? meta.encounterCount : 0;
+        vendorBody = {
+          kind: "medora_external_billing_automation_v1",
+          automationBatchId,
+          exportDate: params.exportDate,
+          format: "json",
+          facilityCount: 1,
+          facilities: [{ facilityId: params.facilityId, encounterCount, data: payload }],
+        };
+      } else {
+        const { csv } = await this.exportService.exportDailyCsv({
+          facilityId: params.facilityId,
+          date: params.exportDate,
+          userCtx: params.userCtx,
+          ip: params.ip,
+          userAgent: params.userAgent ?? "medora-external-billing-manual-retry/1",
+        });
+        vendorBody = {
+          kind: "medora_external_billing_automation_v1",
+          automationBatchId,
+          exportDate: params.exportDate,
+          format: "csv",
+          facilityCount: 1,
+          csv,
+        };
+      }
+
+      await postVendorPayload(vendorUrl, vendorBody);
+
+      await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
+        userId: params.userCtx.userId,
+        facilityId: params.facilityId,
+        ip: params.ip,
+        userAgent: params.userAgent,
+        metadata: {
+          automationEvent: "external_billing_manual_retry_succeeded",
+          exportDate: params.exportDate,
+          format: params.format,
+          automationBatchId,
+        },
+      });
+
+      logInfo("external_billing_manual_retry_succeeded", {
+        action: "billing.external.manual_retry",
+        exportDate: params.exportDate,
+        facilityId: params.facilityId,
+        format: params.format,
+      });
+
+      return { automationBatchId };
+    } catch (err: unknown) {
+      const errName = err instanceof Error ? err.name : typeof err;
+      logError("external_billing_manual_retry_failed", {
+        action: "billing.external.manual_retry",
+        exportDate: params.exportDate,
+        facilityId: params.facilityId,
+        format: params.format,
+        errorName: errName,
+      });
+      await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
+        userId: params.userCtx.userId,
+        facilityId: params.facilityId,
+        ip: params.ip,
+        userAgent: params.userAgent,
+        metadata: {
+          automationEvent: "external_billing_manual_retry_failed",
+          exportDate: params.exportDate,
+          format: params.format,
+          automationBatchId,
+        },
+      });
+      queueMedoraAlert({
+        event: "external_billing_manual_retry_failed",
+        severity: "critical",
+        route: "ADMIN MEDORA_EXTERNAL_BILLING_VENDOR_WEBHOOK_URL",
+      });
+      throw err;
+    }
+  }
 }
+

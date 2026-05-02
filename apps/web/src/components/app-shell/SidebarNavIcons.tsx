@@ -36,6 +36,7 @@ const HREF_TWEMOJI_SVG: Record<string, string> = {
   "/app/admin/audit": "1f4dc.svg",
   "/app/reports": "1f4ca.svg",
   "/app/admin/go-live": "26a0.svg",
+  "/app/admin/exports": "1f4e6.svg",
 };
 
 function MsppBrandMark() {
