@@ -5117,6 +5117,9 @@ export default {
       finish: "End",
       documentationDeficiencyTitle: "Incomplete documentation",
       documentationDeficiencyLead: "The following items are missing or incomplete:",
+      goToTab: "Go to: {tab}",
+      openDischargeSummary: "Open discharge summary",
+      openAdmissionPacket: "Open admission packet",
       backToChart: "Back to chart",
       closeAnyway: "End anyway",
       closeDischargeSaveFailed: "Unable to save the discharge summary.",
@@ -6708,6 +6711,7 @@ export default {
     ivLine: "Peripheral IV placement",
     oxygenTherapy: "Oxygen therapy",
     dressingWoundCare: "Dressing / wound care",
+    orderSetSkippedHelper: "If items were skipped, review the message above before continuing.",
   },
   mar: {
     viewSafetyDetails: "View safety details",

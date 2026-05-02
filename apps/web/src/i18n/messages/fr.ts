@@ -5087,6 +5087,9 @@ export default {
       finish: "Terminer",
       documentationDeficiencyTitle: "Documentation incomplète",
       documentationDeficiencyLead: "Les éléments suivants sont manquants ou incomplets :",
+      goToTab: "Ouvrir : {tab}",
+      openDischargeSummary: "Ouvrir le dossier de sortie",
+      openAdmissionPacket: "Ouvrir le dossier d’admission",
       backToChart: "Retour au dossier",
       closeAnyway: "Terminer quand même",
       closeDischargeSaveFailed: "Impossible d'enregistrer le dossier de sortie.",
@@ -6701,6 +6704,8 @@ export default {
     ivLine: "Pose de voie IV",
     oxygenTherapy: "Administration d’oxygène",
     dressingWoundCare: "Pansement / soin de plaie",
+    orderSetSkippedHelper:
+      "Si des éléments ont été ignorés, consultez le message ci-dessus avant de continuer.",
   },
   mar: {
     viewSafetyDetails: "Voir les détails de sécurité",

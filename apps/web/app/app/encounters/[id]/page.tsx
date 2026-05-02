@@ -160,6 +160,33 @@ const ENCOUNTER_TAB_IDS = new Set([
   "history",
 ]);
 
+/** Button label for documentation-deficiency “go to” actions (maps known API deficiency codes only). */
+function documentationDeficiencyNavigateButtonLabel(
+  code: string,
+  tabs: { id: string; label: string }[],
+  tr: (key: string) => string
+): string | null {
+  switch (code) {
+    case "CHIEF_COMPLAINT":
+    case "PROVIDER_DOCUMENTATION": {
+      const lab = tabs.find((x) => x.id === "clinic")?.label;
+      if (!lab) return null;
+      return tr("encounterChrome.modals.goToTab").replace("{tab}", lab);
+    }
+    case "NURSING_ASSESSMENT": {
+      const lab = tabs.find((x) => x.id === "nursing")?.label;
+      if (!lab) return null;
+      return tr("encounterChrome.modals.goToTab").replace("{tab}", lab);
+    }
+    case "DISCHARGE_SUMMARY":
+      return tr("encounterChrome.modals.openDischargeSummary");
+    case "ADMISSION_SUMMARY":
+      return tr("encounterChrome.modals.openAdmissionPacket");
+    default:
+      return null;
+  }
+}
+
 export default function EncounterDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -797,6 +824,29 @@ export default function EncounterDetailPage() {
     ],
     [t, showNursingTab, canFetchMarTab]
   );
+
+  const handleDocumentationDeficiencyNavigate = useCallback((code: string) => {
+    setShowDocumentationDeficiencyModal(false);
+    setDocumentationDeficiencies([]);
+    setAckDispositionSafety(false);
+    switch (code) {
+      case "CHIEF_COMPLAINT":
+      case "PROVIDER_DOCUMENTATION":
+        setActiveTab("clinic");
+        return;
+      case "NURSING_ASSESSMENT":
+        if (showNursingTab) setActiveTab("nursing");
+        return;
+      case "DISCHARGE_SUMMARY":
+        setShowDischargeModal(true);
+        return;
+      case "ADMISSION_SUMMARY":
+        setShowAdmissionModal(true);
+        return;
+      default:
+        return;
+    }
+  }, [showNursingTab]);
 
   if (!facilityId || !encounterId) {
     return (
@@ -2177,9 +2227,30 @@ export default function EncounterDetailPage() {
                 const v = t(k);
                 const fallback =
                   v !== k ? v : language === "en" ? d.code.replace(/_/g, " ") : d.labelFr;
+                const navLabel = documentationDeficiencyNavigateButtonLabel(d.code, tabs, t);
                 return (
-                  <li key={d.code} style={{ marginBottom: 6 }}>
-                    {fallback}
+                  <li key={d.code} style={{ marginBottom: 10 }}>
+                    <div style={{ marginBottom: navLabel ? 6 : 0 }}>{fallback}</div>
+                    {navLabel ? (
+                      <button
+                        type="button"
+                        disabled={closingEncounter}
+                        onClick={() => handleDocumentationDeficiencyNavigate(d.code)}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          borderRadius: 8,
+                          border: "1px solid #cbd5e1",
+                          background: "#fff",
+                          color: "#1d4ed8",
+                          cursor: closingEncounter ? "not-allowed" : "pointer",
+                          opacity: closingEncounter ? 0.65 : 1,
+                        }}
+                      >
+                        {navLabel}
+                      </button>
+                    ) : null}
                   </li>
                 );
               })}

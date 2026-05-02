@@ -245,6 +245,7 @@ export function MedicationAdministrationTab({
   const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
   const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
+  const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -419,6 +420,12 @@ export function MedicationAdministrationTab({
       siblingEncounterLines: siblings,
     });
   }, [modalItem, modalAction, taskRows, modalDoseValue, modalRoute, modalAdminQty]);
+
+  const advancedMarWarningCount = marAdvancedMedicationSafetyWarnings.length;
+  useEffect(() => {
+    if (!modalItem) return;
+    setMarSafetyDetailsOpen(advancedMarWarningCount > 0);
+  }, [modalItem?.orderItemId, advancedMarWarningCount]);
 
   const openModal = (row: (typeof taskRows)[0]) => {
     setModalItem({
@@ -919,7 +926,11 @@ export function MedicationAdministrationTab({
                     <span style={{ color: "#94a3b8" }}> · </span>
                     {cumulativeLabel}
                   </div>
-                  <details style={{ marginTop: 10 }}>
+                  <details
+                    style={{ marginTop: 10 }}
+                    open={marSafetyDetailsOpen}
+                    onToggle={(e) => setMarSafetyDetailsOpen(e.currentTarget.open)}
+                  >
                     <summary
                       style={{
                         cursor: "pointer",

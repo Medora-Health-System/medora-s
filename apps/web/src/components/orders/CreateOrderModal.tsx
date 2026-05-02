@@ -1525,7 +1525,10 @@ export function CreateOrderModal({
                 }}
                 role="status"
               >
-                {t("orders.orderSetWarning").replace("{count}", String(orderSetWarning.count))}
+                <div>{t("orders.orderSetWarning").replace("{count}", String(orderSetWarning.count))}</div>
+                <p style={{ margin: "8px 0 0", fontSize: 12, lineHeight: 1.45, opacity: 0.95 }}>
+                  {t("orders.orderSetSkippedHelper")}
+                </p>
               </div>
             ) : null}
             <div
