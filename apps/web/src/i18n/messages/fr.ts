@@ -5568,6 +5568,8 @@ export default {
       "Je confirme avoir revu les allergies ou intolérances documentées avant d’enregistrer l’administration.",
     errAllergyAckRequired:
       "Cochez la confirmation concernant les allergies documentées avant d’enregistrer l’administration.",
+    highRiskMarAckLabel:
+      "J’ai relu l’alerte médicament à haut risque et je confirme que cette administration est volontaire.",
     allergyTopBannerLead:
       "Des allergies ou intolérances sont documentées dans le dossier — vérifiez-les avant toute administration.",
     safetyPreviewTitle: "Aperçu sécurité",

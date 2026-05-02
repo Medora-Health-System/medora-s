@@ -5578,6 +5578,8 @@ export default {
       "I confirm I reviewed documented allergies or intolerances before recording this administration.",
     errAllergyAckRequired:
       "Confirm documented allergies before recording this administration.",
+    highRiskMarAckLabel:
+      "I reviewed the high-risk medication warning and confirm this administration is intentional.",
     allergyTopBannerLead:
       "Allergies or intolerances are documented on the chart — review them before any administration.",
     safetyPreviewTitle: "Safety preview",

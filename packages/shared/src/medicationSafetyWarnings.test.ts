@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getMedicationSafetyWarnings, medicationSafetyHaystack, type MedicationSafetyCatalogInput } from "./medicationSafetyWarnings";
+import {
+  getMedicationSafetyWarnings,
+  medicationSafetyHaystack,
+  medicationWarningsRequireMarHighRiskAck,
+  type MedicationSafetyCatalogInput,
+} from "./medicationSafetyWarnings";
 
 describe("medicationSafetyHaystack", () => {
   it("joins catalog fields into a normalized haystack", () => {
@@ -45,5 +50,25 @@ describe("getMedicationSafetyWarnings", () => {
   it("flags controlled substances", () => {
     const w = getMedicationSafetyWarnings({ displayName: "Fentanyl", isControlled: true });
     expect(w.some((x) => x.category === "CONTROLLED_SUBSTANCE")).toBe(true);
+  });
+});
+
+describe("medicationWarningsRequireMarHighRiskAck", () => {
+  it("is true for sedation / vasopressor / anticoag / insulin / generic high risk", () => {
+    expect(
+      medicationWarningsRequireMarHighRiskAck([
+        { category: "SEDATION_RESPIRATORY_DEPRESSION", ruleId: "sedation_opioid" },
+      ])
+    ).toBe(true);
+    expect(
+      medicationWarningsRequireMarHighRiskAck([{ category: "INSULIN_HIGH_ALERT", ruleId: "insulin_high_alert" }])
+    ).toBe(true);
+  });
+
+  it("is false for controlled-only or LASA-only", () => {
+    expect(medicationWarningsRequireMarHighRiskAck([{ category: "CONTROLLED_SUBSTANCE", ruleId: "x" }])).toBe(false);
+    expect(
+      medicationWarningsRequireMarHighRiskAck([{ category: "LOOK_ALIKE_SOUND_ALIKE", ruleId: "lasa_morphine_hydromorphone" }])
+    ).toBe(false);
   });
 });

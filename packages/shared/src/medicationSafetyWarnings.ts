@@ -236,3 +236,16 @@ export function getMedicationSafetyWarnings(
 
   return out;
 }
+
+/** Categories that require an extra MAR “high-risk” acknowledgment in the client UI (S15C). Excludes CONTROLLED_SUBSTANCE (separate UI) and LOOK_ALIKE_SOUND_ALIKE. */
+const MAR_HIGH_RISK_ACK_CATEGORIES = new Set<MedicationSafetyWarningCategory>([
+  "HIGH_RISK",
+  "INSULIN_HIGH_ALERT",
+  "ANTICOAGULATION_HIGH_ALERT",
+  "VASOPRESSOR_HIGH_ALERT",
+  "SEDATION_RESPIRATORY_DEPRESSION",
+]);
+
+export function medicationWarningsRequireMarHighRiskAck(warnings: MedicationSafetyWarning[]): boolean {
+  return warnings.some((w) => MAR_HIGH_RISK_ACK_CATEGORIES.has(w.category));
+}

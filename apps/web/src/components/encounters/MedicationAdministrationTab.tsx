@@ -16,6 +16,7 @@ import {
   resolveMedicationMarActionFromStorage,
   getEncounterAllergyDocumentationSummary,
   getMedicationSafetyWarnings,
+  medicationWarningsRequireMarHighRiskAck,
   evaluateMedicationTimingSafety,
   type MedicationSafetyCatalogInput,
   type MedicationSafetyWarning,
@@ -236,6 +237,7 @@ export function MedicationAdministrationTab({
   const [marAllergyDocSummary, setMarAllergyDocSummary] = useState<string | null>(null);
   const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
   const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
+  const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
@@ -407,6 +409,7 @@ export function MedicationAdministrationTab({
     setModalNdc(row.ndcHint);
     setMarAllergySafetyAck(false);
     setMarTimingOverrideAck(false);
+    setMarHighRiskSafetyAck(false);
   };
 
   const closeModal = () => {
@@ -414,6 +417,7 @@ export function MedicationAdministrationTab({
     setModalItem(null);
     setModalSubmitError(null);
     setMarTimingOverrideAck(false);
+    setMarHighRiskSafetyAck(false);
   };
 
   const submitModal = async () => {
@@ -1020,6 +1024,7 @@ export function MedicationAdministrationTab({
                       if (a !== "administered") {
                         setMarAllergySafetyAck(false);
                         setMarTimingOverrideAck(false);
+                        setMarHighRiskSafetyAck(false);
                       }
                     }}
                     disabled={submitting}
@@ -1056,6 +1061,33 @@ export function MedicationAdministrationTab({
                     onChange={(e) => setMarAllergySafetyAck(e.target.checked)}
                   />
                   <span>{t("marTab.allergyAckLabel")}</span>
+                </label>
+              </div>
+            ) : null}
+
+            {modalAction === "administered" &&
+            modalItem &&
+            medicationWarningsRequireMarHighRiskAck(modalItem.softSafetyWarnings) ? (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f1f5f9",
+                  fontSize: 13,
+                  color: "#0f172a",
+                  lineHeight: 1.45,
+                }}
+              >
+                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: submitting ? "default" : "pointer", fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={marHighRiskSafetyAck}
+                    disabled={submitting}
+                    onChange={(e) => setMarHighRiskSafetyAck(e.target.checked)}
+                  />
+                  <span>{t("marTab.highRiskMarAckLabel")}</span>
                 </label>
               </div>
             ) : null}
@@ -1175,14 +1207,22 @@ export function MedicationAdministrationTab({
                 onClick={() => void submitModal()}
                 disabled={(() => {
                   if (submitting) return true;
-                  if (modalAction === "administered" && marAllergyDocSummary && !marAllergySafetyAck) return true;
-                  if (!modalItem || modalAction !== "administered" || !lastAdministeredForModal) return false;
-                  const te = evaluateMedicationTimingSafety({
-                    lastAdministeredAt: lastAdministeredForModal.administeredAt,
-                    now: new Date(),
-                    medicationKey: modalItem.orderItemId,
-                  });
-                  if (te.level === "critical" && !marTimingOverrideAck) return true;
+                  if (!modalItem || modalAction !== "administered") return false;
+                  if (marAllergyDocSummary && !marAllergySafetyAck) return true;
+                  if (
+                    medicationWarningsRequireMarHighRiskAck(modalItem.softSafetyWarnings) &&
+                    !marHighRiskSafetyAck
+                  ) {
+                    return true;
+                  }
+                  if (lastAdministeredForModal) {
+                    const te = evaluateMedicationTimingSafety({
+                      lastAdministeredAt: lastAdministeredForModal.administeredAt,
+                      now: new Date(),
+                      medicationKey: modalItem.orderItemId,
+                    });
+                    if (te.level === "critical" && !marTimingOverrideAck) return true;
+                  }
                   return false;
                 })()}
                 style={{
