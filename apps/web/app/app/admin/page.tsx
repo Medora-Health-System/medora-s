@@ -166,6 +166,23 @@ export default function AdminPage() {
             {t("adminHub.exportMonitoringLink")}
           </Link>
         </li>
+        <li>
+          <Link
+            href="/app/admin/backup-readiness"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.backupReadinessLink")}
+          </Link>
+        </li>
         {ready && canCreateFacilities ? (
           <li>
             <Link

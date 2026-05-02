@@ -8,8 +8,10 @@ import { AdminMsppAccessService } from "./admin-mspp-access.service";
 import { AdminAuditController } from "./admin-audit.controller";
 import { AdminAuditService } from "./admin-audit.service";
 import { AdminGoLiveController } from "./admin-go-live.controller";
+import { AdminBackupReadinessController } from "./admin-backup-readiness.controller";
 import { AdminExportMonitoringController } from "./admin-export-monitoring.controller";
 import { AdminExportMonitoringService } from "./admin-export-monitoring.service";
+import { BackupReadinessService } from "./backup-readiness.service";
 import { GoLiveReadinessService } from "./go-live-readiness.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { QueuesModule } from "../queues/queues.module";
@@ -24,6 +26,7 @@ import { ReportsModule } from "../reports/reports.module";
     AdminAuditController,
     AdminGoLiveController,
     AdminExportMonitoringController,
+    AdminBackupReadinessController,
   ],
   providers: [
     AdminUsersService,
@@ -32,6 +35,7 @@ import { ReportsModule } from "../reports/reports.module";
     AdminAuditService,
     GoLiveReadinessService,
     AdminExportMonitoringService,
+    BackupReadinessService,
   ],
 })
 export class AdminModule {}
