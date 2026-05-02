@@ -76,6 +76,7 @@ const fr = {
     diseaseReports: "Déclarations maladies",
     admin: "Administration",
     adminUsers: "Utilisateurs et accès",
+    adminAudit: "Journal d’audit",
     adminMsppAccess: "Accès MSPP (national)",
     msppDashboard: "MSPP — Tableau de bord",
     /** Menu : section Surveillance nationale (même route que le tableau de bord). */

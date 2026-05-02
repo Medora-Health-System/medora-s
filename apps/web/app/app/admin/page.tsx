@@ -98,6 +98,23 @@ export default function AdminPage() {
             {t("adminHub.usersAndAccess")}
           </Link>
         </li>
+        <li>
+          <Link
+            href="/app/admin/audit"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.auditLogLink")}
+          </Link>
+        </li>
         {ready && canCreateFacilities ? (
           <li>
             <Link
