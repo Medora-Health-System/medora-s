@@ -108,6 +108,7 @@ export default function AdminGoLivePage() {
         </button>
       </div>
       <p style={{ color: "#555", maxWidth: 720 }}>{t("goLiveReadiness.intro")}</p>
+      <p style={{ fontSize: 13, color: "#64748b", maxWidth: 720, marginTop: 8 }}>{t("goLiveReadiness.monitoringRiskNote")}</p>
 
       {error ? (
         <p style={{ color: "#b91c1c" }} role="alert">

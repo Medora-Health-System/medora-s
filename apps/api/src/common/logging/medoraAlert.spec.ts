@@ -49,7 +49,9 @@ describe("medoraAlert S17C", () => {
   it("delivery uses up to 3 fetch attempts when all fail", async () => {
     const p = buildMedoraAlertPayload(baseInput);
     const fetchImpl = jest.fn().mockResolvedValue({ ok: false, status: 503 });
-    await deliverMedoraAlertWebhookWithRetries("http://example.test/hook", "{}", p, fetchImpl as unknown as typeof fetch);
+    await expect(
+      deliverMedoraAlertWebhookWithRetries("http://example.test/hook", "{}", p, fetchImpl as unknown as typeof fetch)
+    ).resolves.toBe(false);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(medoraLogger.logError).toHaveBeenCalled();
   });
@@ -57,7 +59,9 @@ describe("medoraAlert S17C", () => {
   it("delivery stops after first success", async () => {
     const p = buildMedoraAlertPayload(baseInput);
     const fetchImpl = jest.fn().mockResolvedValue({ ok: true, status: 200 });
-    await deliverMedoraAlertWebhookWithRetries("http://example.test/hook", "{}", p, fetchImpl as unknown as typeof fetch);
+    await expect(
+      deliverMedoraAlertWebhookWithRetries("http://example.test/hook", "{}", p, fetchImpl as unknown as typeof fetch)
+    ).resolves.toBe(true);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(medoraLogger.logInfo).toHaveBeenCalledWith(
       "medora_alert_delivery_succeeded",
@@ -70,7 +74,7 @@ describe("medoraAlert S17C", () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error("network"));
     await expect(
       deliverMedoraAlertWebhookWithRetries("http://example.test/hook", "{}", p, fetchImpl as unknown as typeof fetch)
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(false);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 });

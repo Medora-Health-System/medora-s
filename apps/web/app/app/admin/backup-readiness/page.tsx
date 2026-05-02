@@ -109,6 +109,7 @@ export default function AdminBackupReadinessPage() {
         ) : null}
       </div>
       <p style={{ color: "#555", maxWidth: 720, marginTop: 12 }}>{t("backupReadiness.intro")}</p>
+      <p style={{ fontSize: 13, color: "#64748b", maxWidth: 720, marginTop: 8 }}>{t("backupReadiness.monitoringRiskNote")}</p>
       <p style={{ fontSize: 13, color: "#64748b" }}>
         {t("backupReadiness.generatedAt")}:{" "}
         {data?.generatedAt
