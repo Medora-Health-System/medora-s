@@ -22,6 +22,7 @@ import { BillingIdentityController } from "../billing/billing-identity.controlle
 import { BillingController } from "../billing/billing.controller";
 import { BillingService } from "../billing/billing.service";
 import { ExternalBillingExportService } from "../billing/external-billing-export.service";
+import { ExternalBillingAutomationService } from "../billing/external-billing-automation.service";
 import { ClearinghouseStabilizationService } from "../billing/clearinghouse-stabilization.service";
 import { ClaimOperationalEventService } from "../billing/claim-operational-event.service";
 import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearinghouse-observability.service";
@@ -34,6 +35,7 @@ import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearin
     AuditService,
     BillingService,
     ExternalBillingExportService,
+    ExternalBillingAutomationService,
     ClaimBuilderService,
     ClaimExportService,
     X12837GeneratorService,

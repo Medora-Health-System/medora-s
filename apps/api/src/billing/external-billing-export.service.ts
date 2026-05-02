@@ -74,7 +74,8 @@ function codingInstructionForExportLine(input: {
 }
 
 export type ExternalExportUserContext = {
-  userId: string;
+  /** Optional for scheduled automation (no interactive user); omit on `AuditLog` when absent. */
+  userId?: string;
   displayName: string;
   role: string;
 };
@@ -103,7 +104,7 @@ export class ExternalBillingExportService {
     facilityId: string,
     encounterId: string,
     allowOpen: boolean,
-    userId: string
+    userId: string | undefined
   ) {
     const enc = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
@@ -114,7 +115,7 @@ export class ExternalBillingExportService {
       if (!allowOpen) {
         throw new BadRequestException("Export is limited to closed encounters unless allowOpen=true.");
       }
-      if (!(await this.userMayAllowOpenExport(userId, facilityId))) {
+      if (!(await this.userMayAllowOpenExport(userId ?? "", facilityId))) {
         throw new ForbiddenException("allowOpen=true requires ADMIN or BILLING role.");
       }
     }
@@ -145,7 +146,7 @@ export class ExternalBillingExportService {
       exportMeta: {
         ...(pkg.json.exportMeta as Record<string, unknown>),
         exportedBy: {
-          userId: params.userCtx.userId,
+          userId: params.userCtx.userId ?? null,
           displayName: params.userCtx.displayName,
           role: params.userCtx.role,
         },
@@ -226,7 +227,7 @@ export class ExternalBillingExportService {
         schemaVersion: EXPORT_SCHEMA_VERSION,
         exportedAt,
         exportedBy: {
-          userId: params.userCtx.userId,
+          userId: params.userCtx.userId ?? null,
           displayName: params.userCtx.displayName,
           role: params.userCtx.role,
         },
