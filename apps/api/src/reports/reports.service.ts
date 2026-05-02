@@ -38,6 +38,27 @@ function isEkgProcedurePayload(payload: Prisma.JsonValue): boolean {
   return pt === "EKG" || pt === "ECG";
 }
 
+/**
+ * Door-to-EKG/ECG procedure branch: earliest defensible clinical time from payload.performedAt when
+ * parseable ISO; otherwise EncounterClinicalEvent.createdAt. Invalid/missing performedAt never throws.
+ */
+function getProcedurePerformedAtForReporting(event: { createdAt: Date; payloadJson: Prisma.JsonValue }): Date {
+  if (!isEkgProcedurePayload(event.payloadJson)) {
+    return event.createdAt;
+  }
+  if (event.payloadJson == null || typeof event.payloadJson !== "object" || Array.isArray(event.payloadJson)) {
+    return event.createdAt;
+  }
+  const p = event.payloadJson as Record<string, unknown>;
+  const raw = p.performedAt;
+  if (typeof raw !== "string") return event.createdAt;
+  const s = raw.trim();
+  if (!s) return event.createdAt;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return event.createdAt;
+  return d;
+}
+
 function truncateDisposition(s: string | null | undefined, max = 120): string {
   if (s == null) return "";
   const t = String(s).trim();
@@ -697,7 +718,7 @@ export class ReportsService {
       for (const ev of procEvents) {
         if (ev.encounterId !== enc.id) continue;
         if (!isEkgProcedurePayload(ev.payloadJson)) continue;
-        ekgTimes.push({ t: ev.createdAt, source: "PROCEDURE_DOCUMENTED" });
+        ekgTimes.push({ t: getProcedurePerformedAtForReporting(ev), source: "PROCEDURE_DOCUMENTED" });
       }
       let best: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" } | null = null;
       for (const x of ekgTimes) {
@@ -811,7 +832,7 @@ export class ReportsService {
           for (const ev of procEvents) {
             if (ev.encounterId !== enc.id) continue;
             if (!isEkgProcedurePayload(ev.payloadJson)) continue;
-            ekgTimes.push({ t: ev.createdAt, source: "PROCEDURE_DOCUMENTED" });
+            ekgTimes.push({ t: getProcedurePerformedAtForReporting(ev), source: "PROCEDURE_DOCUMENTED" });
           }
           let best: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" } | null = null;
           for (const x of ekgTimes) {

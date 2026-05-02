@@ -39,6 +39,9 @@ const SAFE_METADATA_KEYS = new Set([
   "encounterIntake",
   "reportType",
   "rowCount",
+  "procedureType",
+  "performedAt",
+  "documentedAt",
 ]);
 
 const MAX_SCALAR_LEN = 120;

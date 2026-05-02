@@ -1983,7 +1983,7 @@ export class EncountersService {
 
     const payloadJson = this.procedureDocumentPayloadFromDto(dto, performedAtIso ?? undefined, performer);
 
-    await this.prisma.encounterClinicalEvent.create({
+    const created = await this.prisma.encounterClinicalEvent.create({
       data: {
         facilityId,
         encounterId: encounter.id,
@@ -1991,6 +1991,31 @@ export class EncountersService {
         eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
         payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
         createdByUserId: userId,
+      },
+    });
+
+    const storedPayload =
+      created.payloadJson && typeof created.payloadJson === "object" && !Array.isArray(created.payloadJson)
+        ? (created.payloadJson as Record<string, unknown>)
+        : {};
+    const procedureType =
+      typeof storedPayload.procedureType === "string" ? storedPayload.procedureType.trim() : "";
+    const performedAtAudit =
+      typeof storedPayload.performedAt === "string" && storedPayload.performedAt.trim()
+        ? storedPayload.performedAt.trim()
+        : undefined;
+
+    await this.audit.log(AuditAction.CREATE, "PROCEDURE_DOCUMENTED", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId,
+      entityId: created.id,
+      metadata: {
+        procedureType,
+        ...(performedAtAudit ? { performedAt: performedAtAudit } : {}),
+        documentedAt: created.createdAt.toISOString(),
+        source: "UI",
       },
     });
 
