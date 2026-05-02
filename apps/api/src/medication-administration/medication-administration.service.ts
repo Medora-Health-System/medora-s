@@ -25,6 +25,7 @@ import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
+import { logInfo } from "../common/logging/medoraLogger";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -459,6 +460,16 @@ export class MedicationAdministrationService {
       }
 
       return row;
+    });
+
+    logInfo("mar_action_recorded", {
+      userId: administeredByUserId,
+      encounterId,
+      facilityId,
+      action: "mar.record",
+      marAction: marActionResolved,
+      ...(orderItemId ? { orderItemId } : {}),
+      medicationAdministrationId: created.id,
     });
 
     const atIso =

@@ -22,6 +22,7 @@ import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { logError as medoraLogError } from "../common/logging/medoraLogger";
 import {
   assertAckOrStartActor,
   assertDepartmentRoleForItem,
@@ -713,6 +714,16 @@ export class OrdersService {
       const code = err && typeof err === "object" && "code" in err ? (err as { code?: unknown }).code : undefined;
       ordersLog.error("order_create_failed", {
         facilityId,
+        orderType: data.type,
+        itemCount: data.items.length,
+        errorName: err instanceof Error ? err.name : typeof err,
+        errorCode: typeof code === "string" ? code : undefined,
+      });
+      medoraLogError("order_create_failed", {
+        userId: userId ?? null,
+        encounterId,
+        facilityId,
+        action: "order.create",
         orderType: data.type,
         itemCount: data.items.length,
         errorName: err instanceof Error ? err.name : typeof err,

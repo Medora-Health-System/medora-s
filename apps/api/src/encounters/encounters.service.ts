@@ -73,6 +73,7 @@ import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment"
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
 import { appendEmergencyEMBilling } from "../billing/billing-em.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import { logError, logInfo } from "../common/logging/medoraLogger";
 import type { AppendProcedureCaptureDto } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
@@ -1014,6 +1015,15 @@ export class EncountersService {
       },
     });
 
+    if (data.dischargeSummaryJson !== undefined) {
+      logInfo("discharge_summary_saved", {
+        userId: userId ?? null,
+        encounterId: encounter.id,
+        facilityId,
+        action: "encounter.discharge_summary.update",
+      });
+    }
+
     return toEncounterClinicResponse(updated);
   }
 
@@ -1602,53 +1612,70 @@ export class EncountersService {
     dto: EncounterIvAccessInsertDto,
     userId?: string
   ) {
-    if (!userId) {
-      throw new ForbiddenException("Authentication required.");
-    }
-    const encounter = await this.prisma.encounter.findFirst({
-      where: { id: encounterId, facilityId },
-    });
-    if (!encounter) {
-      throw new NotFoundException("Encounter not found");
-    }
-    if (encounter.status !== EncounterStatus.OPEN) {
-      throw new BadRequestException("La consultation doit être ouverte pour documenter un accès IV.");
-    }
-    assertEncounterNotSigned(encounter);
+    try {
+      if (!userId) {
+        throw new ForbiddenException("Authentication required.");
+      }
+      const encounter = await this.prisma.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+      });
+      if (!encounter) {
+        throw new NotFoundException("Encounter not found");
+      }
+      if (encounter.status !== EncounterStatus.OPEN) {
+        throw new BadRequestException("La consultation doit être ouverte pour documenter un accès IV.");
+      }
+      assertEncounterNotSigned(encounter);
 
-    const actor = await this.prisma.user.findFirst({
-      where: { id: userId, isActive: true },
-      select: { id: true, firstName: true, lastName: true },
-    });
-    if (!actor) {
-      throw new ForbiddenException("Utilisateur introuvable.");
-    }
-    const performerDisplayName = this.userDisplayName(actor);
+      const actor = await this.prisma.user.findFirst({
+        where: { id: userId, isActive: true },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      if (!actor) {
+        throw new ForbiddenException("Utilisateur introuvable.");
+      }
+      const performerDisplayName = this.userDisplayName(actor);
 
-    const insertedAtIso = this.parseOptionalIsoDate(dto.insertedAt, "Date ou heure d'insertion");
-    const notesTrim =
-      dto.notes != null && String(dto.notes).trim() ? String(dto.notes).trim().slice(0, 4000) : null;
+      const insertedAtIso = this.parseOptionalIsoDate(dto.insertedAt, "Date ou heure d'insertion");
+      const notesTrim =
+        dto.notes != null && String(dto.notes).trim() ? String(dto.notes).trim().slice(0, 4000) : null;
 
-    const payloadJson: Record<string, unknown> = {
-      site: dto.site.trim(),
-      gauge: dto.gauge.trim(),
-      performerDisplayName: performerDisplayName || null,
-    };
-    if (insertedAtIso) payloadJson.insertedAt = insertedAtIso;
-    if (notesTrim) payloadJson.notes = notesTrim;
+      const payloadJson: Record<string, unknown> = {
+        site: dto.site.trim(),
+        gauge: dto.gauge.trim(),
+        performerDisplayName: performerDisplayName || null,
+      };
+      if (insertedAtIso) payloadJson.insertedAt = insertedAtIso;
+      if (notesTrim) payloadJson.notes = notesTrim;
 
-    await this.prisma.encounterClinicalEvent.create({
-      data: {
+      await this.prisma.encounterClinicalEvent.create({
+        data: {
+          facilityId,
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          eventType: EncounterClinicalEventType.IV_INSERTED,
+          payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
+          createdByUserId: userId,
+        },
+      });
+
+      logInfo("iv_inserted", {
+        userId,
+        encounterId,
         facilityId,
-        encounterId: encounter.id,
-        patientId: encounter.patientId,
-        eventType: EncounterClinicalEventType.IV_INSERTED,
-        payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
-        createdByUserId: userId,
-      },
-    });
-
-    return { ok: true as const };
+        action: "encounter.iv.insert",
+      });
+      return { ok: true as const };
+    } catch (err: unknown) {
+      logError("iv_insert_failed", {
+        userId: userId ?? null,
+        encounterId,
+        facilityId,
+        action: "encounter.iv.insert",
+        errorName: err instanceof Error ? err.name : typeof err,
+      });
+      throw err;
+    }
   }
 
   async recordIvRemoval(
@@ -1658,91 +1685,109 @@ export class EncountersService {
     dto: EncounterIvAccessRemoveDto,
     userId?: string
   ) {
-    if (!userId) {
-      throw new ForbiddenException("Authentication required.");
-    }
-    const encounter = await this.prisma.encounter.findFirst({
-      where: { id: encounterId, facilityId },
-    });
-    if (!encounter) {
-      throw new NotFoundException("Encounter not found");
-    }
-    if (encounter.status !== EncounterStatus.OPEN) {
-      throw new BadRequestException("La consultation doit être ouverte pour documenter le retrait IV.");
-    }
-    assertEncounterNotSigned(encounter);
+    try {
+      if (!userId) {
+        throw new ForbiddenException("Authentication required.");
+      }
+      const encounter = await this.prisma.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+      });
+      if (!encounter) {
+        throw new NotFoundException("Encounter not found");
+      }
+      if (encounter.status !== EncounterStatus.OPEN) {
+        throw new BadRequestException("La consultation doit être ouverte pour documenter le retrait IV.");
+      }
+      assertEncounterNotSigned(encounter);
 
-    const insertion = await this.prisma.encounterClinicalEvent.findFirst({
-      where: {
-        id: insertionEventId,
-        encounterId,
-        facilityId,
-        eventType: EncounterClinicalEventType.IV_INSERTED,
-      },
-    });
-    if (!insertion) {
-      throw new BadRequestException("Événement d'insertion IV introuvable pour cette consultation.");
-    }
-    const insPayload =
-      insertion.payloadJson && typeof insertion.payloadJson === "object" && !Array.isArray(insertion.payloadJson)
-        ? (insertion.payloadJson as Record<string, unknown>)
-        : {};
-    const siteSnap = typeof insPayload.site === "string" ? insPayload.site : "";
-    const gaugeSnap = typeof insPayload.gauge === "string" ? insPayload.gauge : "";
-
-    const dup = await this.prisma.encounterClinicalEvent.findFirst({
-      where: {
-        encounterId,
-        facilityId,
-        eventType: EncounterClinicalEventType.IV_REMOVED,
-        payloadJson: {
-          path: ["insertionEventId"],
-          equals: insertionEventId,
+      const insertion = await this.prisma.encounterClinicalEvent.findFirst({
+        where: {
+          id: insertionEventId,
+          encounterId,
+          facilityId,
+          eventType: EncounterClinicalEventType.IV_INSERTED,
         },
-      },
-      select: { id: true },
-    });
-    if (dup) {
-      throw new BadRequestException("Ce site IV a déjà un retrait documenté.");
-    }
+      });
+      if (!insertion) {
+        throw new BadRequestException("Événement d'insertion IV introuvable pour cette consultation.");
+      }
+      const insPayload =
+        insertion.payloadJson && typeof insertion.payloadJson === "object" && !Array.isArray(insertion.payloadJson)
+          ? (insertion.payloadJson as Record<string, unknown>)
+          : {};
+      const siteSnap = typeof insPayload.site === "string" ? insPayload.site : "";
+      const gaugeSnap = typeof insPayload.gauge === "string" ? insPayload.gauge : "";
 
-    const actor = await this.prisma.user.findFirst({
-      where: { id: userId, isActive: true },
-      select: { id: true, firstName: true, lastName: true },
-    });
-    if (!actor) {
-      throw new ForbiddenException("Utilisateur introuvable.");
-    }
-    const performerDisplayName = this.userDisplayName(actor);
+      const dup = await this.prisma.encounterClinicalEvent.findFirst({
+        where: {
+          encounterId,
+          facilityId,
+          eventType: EncounterClinicalEventType.IV_REMOVED,
+          payloadJson: {
+            path: ["insertionEventId"],
+            equals: insertionEventId,
+          },
+        },
+        select: { id: true },
+      });
+      if (dup) {
+        throw new BadRequestException("Ce site IV a déjà un retrait documenté.");
+      }
 
-    const removedAtIso = this.parseOptionalIsoDate(dto.removedAt, "Date ou heure de retrait");
-    const reasonTrim =
-      dto.reason != null && String(dto.reason).trim() ? String(dto.reason).trim().slice(0, 500) : null;
-    const notesTrim =
-      dto.notes != null && String(dto.notes).trim() ? String(dto.notes).trim().slice(0, 4000) : null;
+      const actor = await this.prisma.user.findFirst({
+        where: { id: userId, isActive: true },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      if (!actor) {
+        throw new ForbiddenException("Utilisateur introuvable.");
+      }
+      const performerDisplayName = this.userDisplayName(actor);
 
-    const payloadJson: Record<string, unknown> = {
-      insertionEventId,
-      performerDisplayName: performerDisplayName || null,
-      site: siteSnap,
-      gauge: gaugeSnap,
-    };
-    if (removedAtIso) payloadJson.removedAt = removedAtIso;
-    if (reasonTrim) payloadJson.reason = reasonTrim;
-    if (notesTrim) payloadJson.notes = notesTrim;
+      const removedAtIso = this.parseOptionalIsoDate(dto.removedAt, "Date ou heure de retrait");
+      const reasonTrim =
+        dto.reason != null && String(dto.reason).trim() ? String(dto.reason).trim().slice(0, 500) : null;
+      const notesTrim =
+        dto.notes != null && String(dto.notes).trim() ? String(dto.notes).trim().slice(0, 4000) : null;
 
-    await this.prisma.encounterClinicalEvent.create({
-      data: {
+      const payloadJson: Record<string, unknown> = {
+        insertionEventId,
+        performerDisplayName: performerDisplayName || null,
+        site: siteSnap,
+        gauge: gaugeSnap,
+      };
+      if (removedAtIso) payloadJson.removedAt = removedAtIso;
+      if (reasonTrim) payloadJson.reason = reasonTrim;
+      if (notesTrim) payloadJson.notes = notesTrim;
+
+      await this.prisma.encounterClinicalEvent.create({
+        data: {
+          facilityId,
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          eventType: EncounterClinicalEventType.IV_REMOVED,
+          payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
+          createdByUserId: userId,
+        },
+      });
+
+      logInfo("iv_removed", {
+        userId,
+        encounterId,
         facilityId,
-        encounterId: encounter.id,
-        patientId: encounter.patientId,
-        eventType: EncounterClinicalEventType.IV_REMOVED,
-        payloadJson: payloadJson as unknown as Prisma.InputJsonValue,
-        createdByUserId: userId,
-      },
-    });
-
-    return { ok: true as const };
+        action: "encounter.iv.remove",
+        insertionEventId,
+      });
+      return { ok: true as const };
+    } catch (err: unknown) {
+      logError("iv_remove_failed", {
+        userId: userId ?? null,
+        encounterId,
+        facilityId,
+        action: "encounter.iv.remove",
+        errorName: err instanceof Error ? err.name : typeof err,
+      });
+      throw err;
+    }
   }
 
   private static readonly PROCEDURE_PERFORMER_ROLE_ORDER: RoleCode[] = [
@@ -2134,6 +2179,39 @@ export class EncountersService {
     ip?: string,
     userAgent?: string
   ) {
+    logInfo("encounter_close_attempt", {
+      userId: userId ?? null,
+      encounterId: id,
+      facilityId,
+      action: "encounter.close.attempt",
+      acknowledgeDeficiencies: data?.acknowledgeDeficiencies === true,
+      acknowledgeDispositionSafety: data?.acknowledgeDispositionSafety === true,
+    });
+    try {
+      return await this.executeEncounterClose(facilityId, id, data, userId, ip, userAgent);
+    } catch (err: unknown) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      logError("encounter_close_failed", {
+        userId: userId ?? null,
+        encounterId: id,
+        facilityId,
+        action: "encounter.close",
+        errorName: err instanceof Error ? err.name : typeof err,
+      });
+      throw err;
+    }
+  }
+
+  private async executeEncounterClose(
+    facilityId: string,
+    id: string,
+    data: EncounterCloseDto | undefined,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id, facilityId },
     });
@@ -2289,6 +2367,14 @@ export class EncountersService {
 
     void appendEmergencyEMBilling(this.prisma, facilityId, id);
 
+    logInfo("encounter_close_completed", {
+      userId: userId ?? null,
+      encounterId: id,
+      facilityId,
+      action: "encounter.close.completed",
+      documentationGapOverride: docCheck.hasDeficiencies && data?.acknowledgeDeficiencies === true,
+      dispositionSafetyOverride: !safetyReadiness.canClose && data?.acknowledgeDispositionSafety === true,
+    });
     return toEncounterClinicResponse(updated);
   }
 
@@ -2419,6 +2505,13 @@ export class EncountersService {
             existingCaptureItemId: dup.id,
           },
         });
+        logInfo("procedure_capture_duplicate_blocked", {
+          userId: userId ?? null,
+          encounterId: encounter.id,
+          facilityId,
+          action: "encounter.procedure.append.duplicate_blocked",
+          fromCatalog: true,
+        });
         return { duplicateBlocked: true, reasonCode: PROCEDURE_DUPLICATE_BLOCKED };
       }
       item = buildProcedureCaptureCandidate({
@@ -2467,6 +2560,13 @@ export class EncountersService {
             existingCaptureItemId: dupManual.id,
           },
         });
+        logInfo("procedure_capture_duplicate_blocked", {
+          userId: userId ?? null,
+          encounterId: encounter.id,
+          facilityId,
+          action: "encounter.procedure.append.duplicate_blocked",
+          fromCatalog: false,
+        });
         return { duplicateBlocked: true, reasonCode: PROCEDURE_DUPLICATE_BLOCKED };
       }
       item = buildProcedureCaptureCandidate({
@@ -2484,20 +2584,39 @@ export class EncountersService {
       });
     }
 
-    await appendBillingCaptureCandidate(this.prisma, encounterId, facilityId, item);
+    try {
+      await appendBillingCaptureCandidate(this.prisma, encounterId, facilityId, item);
 
-    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
-      userId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId: encounter.id,
-      entityId: encounter.id,
-      ip,
-      userAgent,
-      metadata: { procedureCapture: true, captureItemId: item.id },
-    });
+      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        metadata: { procedureCapture: true, captureItemId: item.id },
+      });
 
-    return { duplicateBlocked: false, captureItemId: item.id };
+      logInfo("procedure_capture_appended", {
+        userId: userId ?? null,
+        encounterId: encounter.id,
+        facilityId,
+        action: "encounter.procedure.append",
+        captureItemId: item.id,
+        fromCatalog: Boolean(catId),
+      });
+      return { duplicateBlocked: false, captureItemId: item.id };
+    } catch (err: unknown) {
+      logError("procedure_capture_append_failed", {
+        userId: userId ?? null,
+        encounterId,
+        facilityId,
+        action: "encounter.procedure.append",
+        errorName: err instanceof Error ? err.name : typeof err,
+      });
+      throw err;
+    }
   }
 }
 

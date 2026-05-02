@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
@@ -27,6 +27,7 @@ import { MsppModule } from "./mspp/mspp.module";
 import { FhirModule } from "./fhir/fhir.module";
 import { InsuranceModule } from "./insurance/insurance.module";
 import { BillingProcedureCodesModule } from "./billing-procedure-codes/billing-procedure-codes.module";
+import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -69,6 +70,11 @@ const imports = [
 @Module({
   imports,
   controllers: [AppController],
+  providers: [RequestLoggerMiddleware],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestLoggerMiddleware).forRoutes("*");
+  }
+}
 
