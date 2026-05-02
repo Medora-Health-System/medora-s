@@ -180,12 +180,28 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     }
   }
 
+  const upstreamContentType = r.headers.get("content-type") || "";
+  const isStreamingCsv = upstreamContentType.includes("text/csv") && r.body != null;
+
+  if (isStreamingCsv) {
+    const outHeaders = new Headers();
+    outHeaders.set("Content-Type", upstreamContentType);
+    const cd = r.headers.get("content-disposition");
+    if (cd) outHeaders.set("Content-Disposition", cd);
+    const res = new NextResponse(r.body, { status: r.status, headers: outHeaders });
+    if (requestId) res.headers.set("x-request-id", requestId);
+    if (lastRefreshed) {
+      applyAuthCookiesToResponse(res, lastRefreshed);
+    }
+    return res;
+  }
+
   const text = await r.text();
 
   const res = new NextResponse(text, {
     status: r.status,
     headers: {
-      "Content-Type": r.headers.get("content-type") || "application/json",
+      "Content-Type": upstreamContentType || "application/json",
     },
   });
   if (requestId) res.headers.set("x-request-id", requestId);

@@ -1388,14 +1388,15 @@ export default {
     title: "ED operational reports",
     intro:
       "Read-only operational metrics for emergency visits (arrival-based cohort). Identifiers are technical (UUIDs); no clinical free text.",
-    hubIntro: "Choose a report to open filters, preview paginated results, or download a full JSON export (all pages merged).",
+    hubIntro:
+      "Choose a report to open filters, preview paginated JSON, or start a streamed CSV export (audit log records ED operational report exports).",
     backHub: "← Reports",
     unknownReport: "Unknown report.",
     reportPageIntro:
-      "UTC date bounds. JSON preview is paginated; JSON download fetches all pages for the selected range (up to the server range limit).",
+      "UTC date bounds. JSON preview is paginated. The CSV button opens a streamed export (avoids loading the entire file into browser memory), within the server range limit.",
     runReport: "Run report",
     loadMore: "Load more",
-    downloadJson: "Download JSON (full export)",
+    downloadCsv: "Download CSV (full export, streamed)",
     rowsLoaded: "Rows loaded (preview)",
     morePagesHint: "more data available — use Load more.",
     runToPreview: "Set dates and select Run report to load a preview (nothing is fetched until you run).",

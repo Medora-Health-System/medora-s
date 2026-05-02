@@ -1354,14 +1354,14 @@ export default {
     intro:
       "Indicateurs en lecture seule pour les visites aux urgences (cohorte basée sur l’arrivée). Identifiants techniques (UUID) — pas de texte clinique libre.",
     hubIntro:
-      "Choisissez un rapport pour ouvrir les filtres, prévisualiser des pages JSON, ou télécharger un export JSON complet (toutes les pages fusionnées).",
+      "Choisissez un rapport pour ouvrir les filtres, prévisualiser des pages JSON, ou lancer un export CSV en flux (journal d’audit : export rapport opérationnel).",
     backHub: "← Rapports",
     unknownReport: "Rapport inconnu.",
     reportPageIntro:
-      "Bornes de dates en UTC. L’aperçu JSON est paginé ; le téléchargement JSON récupère toutes les pages sur la plage (dans la limite serveur).",
+      "Bornes de dates en UTC. L’aperçu JSON est paginé. Le bouton CSV ouvre un export en flux (sans charger tout le fichier en mémoire dans le navigateur), dans la limite de plage serveur.",
     runReport: "Exécuter le rapport",
     loadMore: "Charger la suite",
-    downloadJson: "Télécharger le JSON (export complet)",
+    downloadCsv: "Télécharger le CSV (export complet, flux)",
     rowsLoaded: "Lignes chargées (aperçu)",
     morePagesHint: "d’autres données sont disponibles — utilisez « Charger la suite ».",
     runToPreview: "Choisissez les dates puis « Exécuter le rapport » pour charger l’aperçu (aucun chargement avant l’exécution).",

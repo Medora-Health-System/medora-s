@@ -6,7 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import {
-  fetchEdReportAllRowsForExport,
+  buildEdReportCsvDownloadUrl,
   fetchEdReportJson,
   type EdReportJsonResponse,
   type EdReportSlug,
@@ -81,16 +81,6 @@ function defaultRange(): { from: string; to: string } {
   const to = new Date();
   const from = new Date(to.getTime() - 7 * 86400_000);
   return { from: isoDay(from), to: isoDay(to) };
-}
-
-function downloadJsonFile(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 function colLabel(t: (k: string) => string, key: string): string {
@@ -172,36 +162,19 @@ export default function EdReportDetailPage() {
     }
   }, [facilityId, validSlug, slug, queryBase, nextCursor, language, t]);
 
-  const downloadJson = useCallback(async () => {
+  const downloadCsv = useCallback(() => {
     if (!facilityId || !validSlug) {
       setError(t("reportsOps.errorFacility"));
       return;
     }
-    setLoading(true);
     setError(null);
-    try {
-      const data = await fetchEdReportAllRowsForExport(facilityId, slug, {
-        from: queryBase.from,
-        to: queryBase.to,
-        ...(queryBase.providerId ? { providerId: queryBase.providerId } : {}),
-      });
-      const payload = {
-        reportType: data.reportType,
-        generatedAt: data.generatedAt,
-        from: data.from,
-        to: data.to,
-        rowCount: data.rowCount,
-        truncated: data.truncated,
-        rows: data.rows,
-      };
-      downloadJsonFile(`${slug}.json`, JSON.stringify(payload, null, 2));
-    } catch (e: unknown) {
-      const raw = e instanceof Error ? e.message : "";
-      setError(normalizeUserFacingError(raw, language) || t("reportsOps.errorLoad"));
-    } finally {
-      setLoading(false);
-    }
-  }, [facilityId, validSlug, slug, queryBase, language, t]);
+    const url = buildEdReportCsvDownloadUrl(slug, {
+      from: queryBase.from,
+      to: queryBase.to,
+      ...(queryBase.providerId ? { providerId: queryBase.providerId } : {}),
+    });
+    window.location.href = url;
+  }, [facilityId, validSlug, slug, queryBase, t]);
 
   if (!ready) {
     return <div style={{ padding: 24 }}>{t("common.loading")}</div>;
@@ -320,18 +293,18 @@ export default function EdReportDetailPage() {
         </button>
         <button
           type="button"
-          disabled={!facilityId || loading}
-          onClick={() => void downloadJson()}
+          disabled={!facilityId}
+          onClick={() => downloadCsv()}
           style={{
             padding: "10px 16px",
             borderRadius: 8,
             border: "1px solid #1a1a1a",
             background: "#fff",
             fontWeight: 600,
-            cursor: loading ? "wait" : "pointer",
+            cursor: !facilityId ? "not-allowed" : "pointer",
           }}
         >
-          {t("reportsOps.downloadJson")}
+          {t("reportsOps.downloadCsv")}
         </button>
       </div>
 

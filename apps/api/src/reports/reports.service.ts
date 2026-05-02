@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { createStructuredLogger } from "../common/logging/structured-logger";
 import {
   EncounterClinicalEventType,
   EncounterStatus,
@@ -60,9 +61,27 @@ function displayUserName(u: { firstName: string; lastName: string; email: string
   return n || u.email?.trim() || "";
 }
 
+const reportCsvLog = createStructuredLogger("ReportsService.csv");
+
 @Injectable()
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** End CSV response safely after success or failure (never throw from here). */
+  private endCsvResponse(res: Response, err: unknown | null, logCtx: Record<string, unknown>): void {
+    if (err) {
+      reportCsvLog.error("ed_report_csv_stream_failed", {
+        ...logCtx,
+        errorName: err instanceof Error ? err.name : "unknown",
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+    }
+    try {
+      if (!res.writableEnded) res.end();
+    } catch {
+      /* ignore */
+    }
+  }
 
   private edVisitWhere(facilityId: string, from: Date, to: Date, providerId?: string): Prisma.EncounterWhereInput {
     const providerOr: Prisma.EncounterWhereInput | undefined = providerId
@@ -258,47 +277,52 @@ export class ReportsService {
     res.write(csvRow(header));
     let total = 0;
     let lastId: string | undefined;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const batch = await this.prisma.encounter.findMany({
-        where: { ...where, ...(lastId ? { id: { gt: lastId } } : {}) },
-        orderBy: { id: "asc" },
-        take: CSV_BATCH_SIZE,
-        select: {
-          id: true,
-          patientId: true,
-          facilityId: true,
-          createdAt: true,
-          dischargedAt: true,
-          status: true,
-          disposition: true,
-          intake: { select: { arrivalAt: true } },
-        },
-      });
-      if (batch.length === 0) break;
-      const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
-      for (const enc of batch) {
-        const door = arrivalTime(enc);
-        const end = enc.dischargedAt!;
-        res.write(
-          csvRow([
-            enc.facilityId,
-            enc.id,
-            enc.patientId,
-            mrns.get(enc.patientId) ?? "",
-            iso(door) ?? "",
-            iso(end) ?? "",
-            String(minutesBetween(door, end)),
-            enc.status,
-            truncateDisposition(enc.disposition),
-          ])
-        );
-        total += 1;
+    let streamErr: unknown | null = null;
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const batch = await this.prisma.encounter.findMany({
+          where: { ...where, ...(lastId ? { id: { gt: lastId } } : {}) },
+          orderBy: { id: "asc" },
+          take: CSV_BATCH_SIZE,
+          select: {
+            id: true,
+            patientId: true,
+            facilityId: true,
+            createdAt: true,
+            dischargedAt: true,
+            status: true,
+            disposition: true,
+            intake: { select: { arrivalAt: true } },
+          },
+        });
+        if (batch.length === 0) break;
+        const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+        for (const enc of batch) {
+          const door = arrivalTime(enc);
+          const end = enc.dischargedAt!;
+          res.write(
+            csvRow([
+              enc.facilityId,
+              enc.id,
+              enc.patientId,
+              mrns.get(enc.patientId) ?? "",
+              iso(door) ?? "",
+              iso(end) ?? "",
+              String(minutesBetween(door, end)),
+              enc.status,
+              truncateDisposition(enc.disposition),
+            ])
+          );
+          total += 1;
+        }
+        lastId = batch[batch.length - 1]!.id;
+        if (batch.length < CSV_BATCH_SIZE) break;
       }
-      lastId = batch[batch.length - 1]!.id;
-      if (batch.length < CSV_BATCH_SIZE) break;
+    } catch (e) {
+      streamErr = e;
     }
-    res.end();
+    this.endCsvResponse(res, streamErr, { reportType: "door-to-door", rowCount: total });
     return total;
   }
 
@@ -444,6 +468,7 @@ export class ReportsService {
       "arrival_at",
       "first_provider_at",
       "minutes_to_provider",
+      "provider_user_id",
       "provider_name",
       "provider_title",
       "source",
@@ -451,113 +476,119 @@ export class ReportsService {
     res.write(csvRow(header));
     let total = 0;
     let lastId: string | undefined;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const batch = await this.prisma.encounter.findMany({
-        where: { ...whereVisit, ...(lastId ? { id: { gt: lastId } } : {}) },
-        orderBy: { id: "asc" },
-        take: CSV_BATCH_SIZE,
-        select: {
-          id: true,
-          patientId: true,
-          facilityId: true,
-          createdAt: true,
-          providerDocumentationSignedAt: true,
-          providerDocumentationSignedByUserId: true,
-          intake: { select: { arrivalAt: true } },
-        },
-      });
-      if (batch.length === 0) break;
-      const ids = batch.map((e) => e.id);
-      const evs = await this.prisma.encounterClinicalEvent.findMany({
-        where: {
-          facilityId,
-          encounterId: { in: ids },
-          eventType: {
-            in: [EncounterClinicalEventType.PROVIDER_MSE_SAVED, EncounterClinicalEventType.PROVIDER_SIGNED],
+    let streamErr: unknown | null = null;
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const batch = await this.prisma.encounter.findMany({
+          where: { ...whereVisit, ...(lastId ? { id: { gt: lastId } } : {}) },
+          orderBy: { id: "asc" },
+          take: CSV_BATCH_SIZE,
+          select: {
+            id: true,
+            patientId: true,
+            facilityId: true,
+            createdAt: true,
+            providerDocumentationSignedAt: true,
+            providerDocumentationSignedByUserId: true,
+            intake: { select: { arrivalAt: true } },
           },
-        },
-        select: { encounterId: true, createdAt: true, eventType: true, createdByUserId: true },
-        orderBy: { createdAt: "asc" },
-      });
-      const byEnc = new Map<string, typeof evs>();
-      for (const ev of evs) {
-        const l = byEnc.get(ev.encounterId) ?? [];
-        l.push(ev);
-        byEnc.set(ev.encounterId, l);
-      }
-      const userIdSet: string[] = [];
-      const lines: Array<{
-        facilityId: string;
-        encounterId: string;
-        patientId: string;
-        arrival: string;
-        firstAt: string;
-        mins: string;
-        source: string;
-        userId: string | null;
-      }> = [];
-      const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
-      for (const enc of batch) {
-        const door = arrivalTime(enc);
-        const list = byEnc.get(enc.id) ?? [];
-        type Cand = { t: Date; source: string; userId: string | null };
-        const candidates: Cand[] = [];
-        for (const ev of list) {
-          if (ev.eventType === EncounterClinicalEventType.PROVIDER_MSE_SAVED) {
-            candidates.push({ t: ev.createdAt, source: "PROVIDER_MSE_SAVED", userId: ev.createdByUserId });
-          } else if (ev.eventType === EncounterClinicalEventType.PROVIDER_SIGNED) {
-            candidates.push({ t: ev.createdAt, source: "PROVIDER_SIGNED", userId: ev.createdByUserId });
-          }
+        });
+        if (batch.length === 0) break;
+        const ids = batch.map((e) => e.id);
+        const evs = await this.prisma.encounterClinicalEvent.findMany({
+          where: {
+            facilityId,
+            encounterId: { in: ids },
+            eventType: {
+              in: [EncounterClinicalEventType.PROVIDER_MSE_SAVED, EncounterClinicalEventType.PROVIDER_SIGNED],
+            },
+          },
+          select: { encounterId: true, createdAt: true, eventType: true, createdByUserId: true },
+          orderBy: { createdAt: "asc" },
+        });
+        const byEnc = new Map<string, typeof evs>();
+        for (const ev of evs) {
+          const l = byEnc.get(ev.encounterId) ?? [];
+          l.push(ev);
+          byEnc.set(ev.encounterId, l);
         }
-        if (enc.providerDocumentationSignedAt) {
-          candidates.push({
-            t: enc.providerDocumentationSignedAt,
-            source: "ENCOUNTER_SIGNATURE",
-            userId: enc.providerDocumentationSignedByUserId,
+        const userIdSet: string[] = [];
+        const lines: Array<{
+          facilityId: string;
+          encounterId: string;
+          patientId: string;
+          arrival: string;
+          firstAt: string;
+          mins: string;
+          source: string;
+          userId: string | null;
+        }> = [];
+        const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+        for (const enc of batch) {
+          const door = arrivalTime(enc);
+          const list = byEnc.get(enc.id) ?? [];
+          type Cand = { t: Date; source: string; userId: string | null };
+          const candidates: Cand[] = [];
+          for (const ev of list) {
+            if (ev.eventType === EncounterClinicalEventType.PROVIDER_MSE_SAVED) {
+              candidates.push({ t: ev.createdAt, source: "PROVIDER_MSE_SAVED", userId: ev.createdByUserId });
+            } else if (ev.eventType === EncounterClinicalEventType.PROVIDER_SIGNED) {
+              candidates.push({ t: ev.createdAt, source: "PROVIDER_SIGNED", userId: ev.createdByUserId });
+            }
+          }
+          if (enc.providerDocumentationSignedAt) {
+            candidates.push({
+              t: enc.providerDocumentationSignedAt,
+              source: "ENCOUNTER_SIGNATURE",
+              userId: enc.providerDocumentationSignedByUserId,
+            });
+          }
+          let best: Cand | null = null;
+          for (const c of candidates) {
+            if (!best || c.t.getTime() < best.t.getTime()) best = c;
+          }
+          const uid = best?.userId ?? enc.providerDocumentationSignedByUserId ?? null;
+          if (uid) userIdSet.push(uid);
+          const seenAt = best?.t ?? null;
+          lines.push({
+            facilityId: enc.facilityId,
+            encounterId: enc.id,
+            patientId: enc.patientId,
+            arrival: iso(door) ?? "",
+            firstAt: seenAt ? iso(seenAt)! : "",
+            mins: seenAt ? String(minutesBetween(door, seenAt)) : "",
+            source: best?.source ?? "",
+            userId: uid,
           });
         }
-        let best: Cand | null = null;
-        for (const c of candidates) {
-          if (!best || c.t.getTime() < best.t.getTime()) best = c;
+        const users = await this.loadUsersMap(userIdSet);
+        for (const ln of lines) {
+          const u = ln.userId ? users.get(ln.userId) : undefined;
+          res.write(
+            csvRow([
+              ln.facilityId,
+              ln.encounterId,
+              ln.patientId,
+              mrns.get(ln.patientId) ?? "",
+              ln.arrival,
+              ln.firstAt,
+              ln.mins,
+              ln.userId ?? "",
+              displayUserName(u ?? null),
+              u?.billingTaxonomyCode?.trim() ?? "",
+              ln.source,
+            ])
+          );
+          total += 1;
         }
-        const uid = best?.userId ?? enc.providerDocumentationSignedByUserId ?? null;
-        if (uid) userIdSet.push(uid);
-        const seenAt = best?.t ?? null;
-        lines.push({
-          facilityId: enc.facilityId,
-          encounterId: enc.id,
-          patientId: enc.patientId,
-          arrival: iso(door) ?? "",
-          firstAt: seenAt ? iso(seenAt)! : "",
-          mins: seenAt ? String(minutesBetween(door, seenAt)) : "",
-          source: best?.source ?? "",
-          userId: uid,
-        });
+        lastId = batch[batch.length - 1]!.id;
+        if (batch.length < CSV_BATCH_SIZE) break;
       }
-      const users = await this.loadUsersMap(userIdSet);
-      for (const ln of lines) {
-        const u = ln.userId ? users.get(ln.userId) : undefined;
-        res.write(
-          csvRow([
-            ln.facilityId,
-            ln.encounterId,
-            ln.patientId,
-            mrns.get(ln.patientId) ?? "",
-            ln.arrival,
-            ln.firstAt,
-            ln.mins,
-            displayUserName(u ?? null),
-            u?.billingTaxonomyCode?.trim() ?? "",
-            ln.source,
-          ])
-        );
-        total += 1;
-      }
-      lastId = batch[batch.length - 1]!.id;
-      if (batch.length < CSV_BATCH_SIZE) break;
+    } catch (e) {
+      streamErr = e;
     }
-    res.end();
+    this.endCsvResponse(res, streamErr, { reportType: "door-to-provider", rowCount: total });
     return total;
   }
 
@@ -722,88 +753,93 @@ export class ReportsService {
     res.write(csvRow(header));
     let total = 0;
     let lastId: string | undefined;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const batch = await this.prisma.encounter.findMany({
-        where: { ...whereVisit, ...(lastId ? { id: { gt: lastId } } : {}) },
-        orderBy: { id: "asc" },
-        take: CSV_BATCH_SIZE,
-        select: {
-          id: true,
-          patientId: true,
-          facilityId: true,
-          createdAt: true,
-          intake: { select: { arrivalAt: true } },
-        },
-      });
-      if (batch.length === 0) break;
-      const ids = batch.map((e) => e.id);
-      const [orderItems, procEvents] = await Promise.all([
-        this.prisma.orderItem.findMany({
-          where: {
-            catalogItemType: "IMAGING_STUDY",
-            order: { encounterId: { in: ids }, facilityId, cancelledAt: null },
-          },
+    let streamErr: unknown | null = null;
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const batch = await this.prisma.encounter.findMany({
+          where: { ...whereVisit, ...(lastId ? { id: { gt: lastId } } : {}) },
+          orderBy: { id: "asc" },
+          take: CSV_BATCH_SIZE,
           select: {
             id: true,
+            patientId: true,
+            facilityId: true,
             createdAt: true,
-            completedAt: true,
-            catalogItemType: true,
-            catalogItemId: true,
-            manualLabel: true,
-            manualSecondaryText: true,
-            order: { select: { encounterId: true, createdAt: true } },
+            intake: { select: { arrivalAt: true } },
           },
-        }),
-        this.prisma.encounterClinicalEvent.findMany({
-          where: {
-            facilityId,
-            encounterId: { in: ids },
-            eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
-          },
-          select: { encounterId: true, createdAt: true, payloadJson: true },
-        }),
-      ]);
-      const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
-      for (const enc of batch) {
-        const door = arrivalTime(enc);
-        const ekgTimes: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" }[] = [];
-        for (const it of orderItems) {
-          if (it.order.encounterId !== enc.id) continue;
-          if (!this.isEkgOrderItem(it, ekgCatalogIds)) continue;
-          ekgTimes.push({ t: it.createdAt, source: "ORDER_ITEM" });
-          if (it.completedAt) ekgTimes.push({ t: it.completedAt, source: "ORDER_ITEM" });
-          ekgTimes.push({ t: it.order.createdAt, source: "ORDER_ITEM" });
+        });
+        if (batch.length === 0) break;
+        const ids = batch.map((e) => e.id);
+        const [orderItems, procEvents] = await Promise.all([
+          this.prisma.orderItem.findMany({
+            where: {
+              catalogItemType: "IMAGING_STUDY",
+              order: { encounterId: { in: ids }, facilityId, cancelledAt: null },
+            },
+            select: {
+              id: true,
+              createdAt: true,
+              completedAt: true,
+              catalogItemType: true,
+              catalogItemId: true,
+              manualLabel: true,
+              manualSecondaryText: true,
+              order: { select: { encounterId: true, createdAt: true } },
+            },
+          }),
+          this.prisma.encounterClinicalEvent.findMany({
+            where: {
+              facilityId,
+              encounterId: { in: ids },
+              eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
+            },
+            select: { encounterId: true, createdAt: true, payloadJson: true },
+          }),
+        ]);
+        const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+        for (const enc of batch) {
+          const door = arrivalTime(enc);
+          const ekgTimes: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" }[] = [];
+          for (const it of orderItems) {
+            if (it.order.encounterId !== enc.id) continue;
+            if (!this.isEkgOrderItem(it, ekgCatalogIds)) continue;
+            ekgTimes.push({ t: it.createdAt, source: "ORDER_ITEM" });
+            if (it.completedAt) ekgTimes.push({ t: it.completedAt, source: "ORDER_ITEM" });
+            ekgTimes.push({ t: it.order.createdAt, source: "ORDER_ITEM" });
+          }
+          for (const ev of procEvents) {
+            if (ev.encounterId !== enc.id) continue;
+            if (!isEkgProcedurePayload(ev.payloadJson)) continue;
+            ekgTimes.push({ t: ev.createdAt, source: "PROCEDURE_DOCUMENTED" });
+          }
+          let best: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" } | null = null;
+          for (const x of ekgTimes) {
+            if (!best || x.t.getTime() < best.t.getTime()) best = x;
+            else if (best && x.t.getTime() === best.t.getTime() && x.source === "PROCEDURE_DOCUMENTED") best = x;
+          }
+          const ekgAt = best?.t ?? null;
+          res.write(
+            csvRow([
+              enc.facilityId,
+              enc.id,
+              enc.patientId,
+              mrns.get(enc.patientId) ?? "",
+              iso(door) ?? "",
+              ekgAt ? iso(ekgAt)! : "",
+              ekgAt ? String(minutesBetween(door, ekgAt)) : "",
+              best?.source ?? "",
+            ])
+          );
+          total += 1;
         }
-        for (const ev of procEvents) {
-          if (ev.encounterId !== enc.id) continue;
-          if (!isEkgProcedurePayload(ev.payloadJson)) continue;
-          ekgTimes.push({ t: ev.createdAt, source: "PROCEDURE_DOCUMENTED" });
-        }
-        let best: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" } | null = null;
-        for (const x of ekgTimes) {
-          if (!best || x.t.getTime() < best.t.getTime()) best = x;
-          else if (best && x.t.getTime() === best.t.getTime() && x.source === "PROCEDURE_DOCUMENTED") best = x;
-        }
-        const ekgAt = best?.t ?? null;
-        res.write(
-          csvRow([
-            enc.facilityId,
-            enc.id,
-            enc.patientId,
-            mrns.get(enc.patientId) ?? "",
-            iso(door) ?? "",
-            ekgAt ? iso(ekgAt)! : "",
-            ekgAt ? String(minutesBetween(door, ekgAt)) : "",
-            best?.source ?? "",
-          ])
-        );
-        total += 1;
+        lastId = batch[batch.length - 1]!.id;
+        if (batch.length < CSV_BATCH_SIZE) break;
       }
-      lastId = batch[batch.length - 1]!.id;
-      if (batch.length < CSV_BATCH_SIZE) break;
+    } catch (e) {
+      streamErr = e;
     }
-    res.end();
+    this.endCsvResponse(res, streamErr, { reportType: "door-to-ekg", rowCount: total });
     return total;
   }
 
@@ -965,102 +1001,107 @@ export class ReportsService {
     let total = 0;
     let lastId: string | undefined;
     let lastAt: Date | undefined;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const batch = await this.prisma.medicationAdministration.findMany({
-        where: {
-          facilityId,
-          administeredAt: { gte: from, lte: to },
-          encounter: encounterFilter,
-          ...(lastAt && lastId
-            ? {
-                OR: [
-                  { administeredAt: { gt: lastAt } },
-                  {
-                    AND: [{ administeredAt: lastAt }, { id: { gt: lastId } }],
-                  },
-                ],
-              }
-            : {}),
-        },
-        orderBy: [{ administeredAt: "asc" }, { id: "asc" }],
-        take: CSV_BATCH_SIZE,
-        select: {
-          id: true,
-          encounterId: true,
-          patientId: true,
-          facilityId: true,
-          orderItemId: true,
-          medicationLabelSnapshot: true,
-          marAction: true,
-          route: true,
-          administeredQuantity: true,
-          quantityUnit: true,
-          notes: true,
-          administeredAt: true,
-          administeredBy: {
-            select: { id: true, firstName: true, lastName: true, email: true, billingTaxonomyCode: true },
+    let streamErr: unknown | null = null;
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const batch = await this.prisma.medicationAdministration.findMany({
+          where: {
+            facilityId,
+            administeredAt: { gte: from, lte: to },
+            encounter: encounterFilter,
+            ...(lastAt && lastId
+              ? {
+                  OR: [
+                    { administeredAt: { gt: lastAt } },
+                    {
+                      AND: [{ administeredAt: lastAt }, { id: { gt: lastId } }],
+                    },
+                  ],
+                }
+              : {}),
           },
-          orderItem: {
-            select: {
-              id: true,
-              createdAt: true,
-              manualLabel: true,
-              catalogItemId: true,
-              order: { select: { createdAt: true } },
+          orderBy: [{ administeredAt: "asc" }, { id: "asc" }],
+          take: CSV_BATCH_SIZE,
+          select: {
+            id: true,
+            encounterId: true,
+            patientId: true,
+            facilityId: true,
+            orderItemId: true,
+            medicationLabelSnapshot: true,
+            marAction: true,
+            route: true,
+            administeredQuantity: true,
+            quantityUnit: true,
+            notes: true,
+            administeredAt: true,
+            administeredBy: {
+              select: { id: true, firstName: true, lastName: true, email: true, billingTaxonomyCode: true },
+            },
+            orderItem: {
+              select: {
+                id: true,
+                createdAt: true,
+                manualLabel: true,
+                catalogItemId: true,
+                order: { select: { createdAt: true } },
+              },
             },
           },
-        },
-      });
-      if (batch.length === 0) break;
-      const medIds = [
-        ...new Set(
-          batch.map((a) => a.orderItem?.catalogItemId).filter((x): x is string => typeof x === "string" && x.length > 0)
-        ),
-      ];
-      const medLabels = new Map<string, string>();
-      if (medIds.length > 0) {
-        const meds = await this.prisma.catalogMedication.findMany({
-          where: { id: { in: medIds } },
-          select: { id: true, code: true, displayNameFr: true, displayNameEn: true },
         });
-        for (const m of meds) {
-          medLabels.set(m.id, m.displayNameFr?.trim() || m.displayNameEn?.trim() || m.code);
+        if (batch.length === 0) break;
+        const medIds = [
+          ...new Set(
+            batch.map((a) => a.orderItem?.catalogItemId).filter((x): x is string => typeof x === "string" && x.length > 0)
+          ),
+        ];
+        const medLabels = new Map<string, string>();
+        if (medIds.length > 0) {
+          const meds = await this.prisma.catalogMedication.findMany({
+            where: { id: { in: medIds } },
+            select: { id: true, code: true, displayNameFr: true, displayNameEn: true },
+          });
+          for (const m of meds) {
+            medLabels.set(m.id, m.displayNameFr?.trim() || m.displayNameEn?.trim() || m.code);
+          }
         }
+        const mrns = await this.loadMrnMap(batch.map((a) => a.patientId));
+        for (const a of batch) {
+          const oi = a.orderItem;
+          const orderedAt = oi?.order.createdAt ?? oi?.createdAt ?? a.administeredAt;
+          const catalogLabel = oi?.catalogItemId ? medLabels.get(oi.catalogItemId) : undefined;
+          const medicationName =
+            catalogLabel ?? oi?.manualLabel?.trim() ?? a.medicationLabelSnapshot?.trim() ?? "MEDICATION";
+          res.write(
+            csvRow([
+              a.facilityId,
+              a.encounterId,
+              a.patientId,
+              mrns.get(a.patientId) ?? "",
+              a.orderItemId ?? "",
+              medicationName,
+              a.route ?? "",
+              iso(orderedAt) ?? "",
+              iso(a.administeredAt) ?? "",
+              displayUserName(a.administeredBy),
+              a.administeredBy.billingTaxonomyCode?.trim() ?? "",
+              a.marAction ?? "",
+              formatQuantity(a.administeredQuantity, a.quantityUnit),
+              a.notes?.trim() ? "true" : "false",
+            ])
+          );
+          total += 1;
+        }
+        const last = batch[batch.length - 1]!;
+        lastAt = last.administeredAt;
+        lastId = last.id;
+        if (batch.length < CSV_BATCH_SIZE) break;
       }
-      const mrns = await this.loadMrnMap(batch.map((a) => a.patientId));
-      for (const a of batch) {
-        const oi = a.orderItem;
-        const orderedAt = oi?.order.createdAt ?? oi?.createdAt ?? a.administeredAt;
-        const catalogLabel = oi?.catalogItemId ? medLabels.get(oi.catalogItemId) : undefined;
-        const medicationName =
-          catalogLabel ?? oi?.manualLabel?.trim() ?? a.medicationLabelSnapshot?.trim() ?? "MEDICATION";
-        res.write(
-          csvRow([
-            a.facilityId,
-            a.encounterId,
-            a.patientId,
-            mrns.get(a.patientId) ?? "",
-            a.orderItemId ?? "",
-            medicationName,
-            a.route ?? "",
-            iso(orderedAt) ?? "",
-            iso(a.administeredAt) ?? "",
-            displayUserName(a.administeredBy),
-            a.administeredBy.billingTaxonomyCode?.trim() ?? "",
-            a.marAction ?? "",
-            formatQuantity(a.administeredQuantity, a.quantityUnit),
-            a.notes?.trim() ? "true" : "false",
-          ])
-        );
-        total += 1;
-      }
-      const last = batch[batch.length - 1]!;
-      lastAt = last.administeredAt;
-      lastId = last.id;
-      if (batch.length < CSV_BATCH_SIZE) break;
+    } catch (e) {
+      streamErr = e;
     }
-    res.end();
+    this.endCsvResponse(res, streamErr, { reportType: "medication-administration", rowCount: total });
     return total;
   }
 }
