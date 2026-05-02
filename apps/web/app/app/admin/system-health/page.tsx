@@ -9,10 +9,42 @@ import {
   fetchSystemHealth,
   postSystemHealthTestAlert,
   type SystemHealthCheck,
+  type SystemHealthCheckStatus,
   type SystemHealthOverallStatus,
   type SystemHealthPayload,
 } from "@/lib/systemHealthApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+
+const CLARITY_CHECK_KEYS = new Set([
+  "database",
+  "node_env",
+  "alerts",
+  "external_billing_automation",
+  "failed_exports",
+  "http_5xx",
+  "audit_overrides_critical",
+]);
+
+function translateIfPresent(t: (key: string) => string, key: string): string | null {
+  const value = t(key);
+  return value === key ? null : value;
+}
+
+function getFriendlyOverallLabel(status: SystemHealthOverallStatus): string {
+  return `systemHealth.clarity.overallLabel.${status}`;
+}
+
+function getOverallClarityKey(status: SystemHealthOverallStatus): string {
+  return `systemHealth.clarity.overall.${status}`;
+}
+
+function getCheckMeaningKey(checkKey: string, status: SystemHealthCheckStatus): string {
+  return `systemHealth.clarity.checks.${checkKey}.${status}.meaning`;
+}
+
+function getCheckActionKey(checkKey: string, status: SystemHealthCheckStatus): string {
+  return `systemHealth.clarity.checks.${checkKey}.${status}.action`;
+}
 
 function overallBadgeStyle(s: SystemHealthOverallStatus): CSSProperties {
   if (s === "healthy") return { background: "#166534", color: "#fff" };
@@ -24,6 +56,29 @@ function checkBorder(status: SystemHealthCheck["status"]): string {
   if (status === "pass") return "1px solid #bbf7d0";
   if (status === "warn") return "1px solid #fde047";
   return "1px solid #fecaca";
+}
+
+function CheckClarityBlock(props: {
+  t: (key: string) => string;
+  checkKey: string;
+  status: SystemHealthCheckStatus;
+}) {
+  const { t, checkKey, status } = props;
+  const meaning = translateIfPresent(t, getCheckMeaningKey(checkKey, status));
+  const action = translateIfPresent(t, getCheckActionKey(checkKey, status));
+  if (!meaning && !action) return null;
+  return (
+    <>
+      {meaning ? (
+        <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "#475569", lineHeight: 1.45 }}>{meaning}</p>
+      ) : null}
+      {action ? (
+        <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+          <strong style={{ color: "#475569" }}>{t("systemHealth.clarity.nextStepLabel")}</strong> {action}
+        </p>
+      ) : null}
+    </>
+  );
 }
 
 export default function AdminSystemHealthPage() {
@@ -81,6 +136,7 @@ export default function AdminSystemHealthPage() {
       m.recentFailedExportsCount > 0 ||
       m.recentCriticalAlertsCount > 0 ||
       data.status !== "healthy");
+  const overallClarityLine = data ? translateIfPresent(t, getOverallClarityKey(data.status)) : null;
 
   if (!ready) {
     return (
@@ -131,10 +187,23 @@ export default function AdminSystemHealthPage() {
               ...overallBadgeStyle(data.status),
             }}
           >
-            {t(`systemHealth.overall.${data.status}`)}
+            {translateIfPresent(t, getFriendlyOverallLabel(data.status)) ?? t(`systemHealth.overall.${data.status}`)}
           </span>
         ) : null}
       </div>
+      {overallClarityLine ? (
+        <p
+          style={{
+            margin: "10px 0 0 0",
+            fontSize: 14,
+            color: "#64748b",
+            maxWidth: 720,
+            lineHeight: 1.45,
+          }}
+        >
+          {overallClarityLine}
+        </p>
+      ) : null}
       <p style={{ color: "#555", maxWidth: 720, marginTop: 12 }}>{t("systemHealth.intro")}</p>
       <p style={{ fontSize: 13, color: "#64748b", maxWidth: 720, marginTop: 8 }}>{t("systemHealth.monitoringRiskNote")}</p>
       <p style={{ fontSize: 13, color: "#64748b" }}>
@@ -160,6 +229,9 @@ export default function AdminSystemHealthPage() {
           }}
         >
           <h2 style={{ fontSize: 16, margin: "0 0 10px 0" }}>{t("systemHealth.alertConfigHeading")}</h2>
+          <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#64748b", maxWidth: 720, lineHeight: 1.45 }}>
+            {t("systemHealth.testAlertPhiFreeIntro")}
+          </p>
           <ul
             style={{
               listStyle: "none",
@@ -311,6 +383,9 @@ export default function AdminSystemHealthPage() {
                 <p style={{ margin: "8px 0 0 0", fontSize: 13, color: "#334155" }}>
                   {t(`systemHealth.details.${c.detail}`)}
                 </p>
+              ) : null}
+              {CLARITY_CHECK_KEYS.has(c.key) ? (
+                <CheckClarityBlock t={t} checkKey={c.key} status={c.status} />
               ) : null}
             </li>
           ))}

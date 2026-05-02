@@ -1667,7 +1667,7 @@ export default {
     intro:
       "Vue opérationnelle en lecture seule : base de données, configuration d’alertes, automatisation d’export (indicateurs seulement), erreurs HTTP récentes et agrégats d’audit. Aucun secret ni donnée patient.",
     monitoringRiskNote:
-      "« Critique » ou « Dégradé » concernent la surveillance opérationnelle (alertes, erreurs HTTP, exports…), pas une panne applicative garantie. L’application clinique peut continuer à fonctionner alors que la supervision production est incomplète.",
+      "« Critique » ou « Attention » concernent la surveillance opérationnelle (alertes, erreurs HTTP, exports…), pas une panne applicative garantie. L’application clinique peut continuer à fonctionner alors que la supervision production est incomplète.",
     alertConfigHeading: "Alertes opérationnelles (configuration)",
     alertEnvironment: "Environnement",
     alertFormatLabel: "Format webhook",
@@ -1676,10 +1676,131 @@ export default {
     sendTestAlert: "Envoyer une alerte test",
     testAlertSending: "Envoi…",
     testAlertMessages: {
-      test_alert_delivered: "Alerte test acceptée par le webhook.",
-      test_alert_failed_delivery: "Échec de livraison après plusieurs tentatives (voir journaux serveur).",
-      test_alert_disabled: "Les alertes sont désactivées (MEDORA_ALERT_ENABLED).",
-      test_alert_no_webhook: "Aucun webhook configuré (MEDORA_ALERT_WEBHOOK_URL).",
+      test_alert_delivered:
+        "Alerte test envoyée. La livraison des alertes semble fonctionner.",
+      test_alert_failed_delivery:
+        "L’alerte test a été préparée mais la livraison n’a pas pu être confirmée. Demandez au support technique de vérifier la livraison des alertes.",
+      test_alert_disabled: "L’alerte test n’a pas pu être envoyée car la livraison des alertes n’est pas activée.",
+      test_alert_no_webhook:
+        "L’alerte test n’a pas pu être envoyée car la livraison des alertes n’est pas entièrement configurée.",
+    },
+    testAlertPhiFreeIntro:
+      "Cette action envoie une alerte test opérationnelle sans données de santé. Elle n’inclut pas d’informations patient, de détails de consultation, de détails de prescription, d’URL de webhook ni de secrets.",
+    clarity: {
+      nextStepLabel: "Action recommandée :",
+      overallLabel: {
+        healthy: "OK",
+        degraded: "Attention",
+        critical: "Critique",
+      },
+      overall: {
+        healthy: "OK signifie que tous les contrôles surveillés sont actuellement satisfaisants.",
+        degraded:
+          "Attention signifie que le système fonctionne, mais qu’un ou plusieurs contrôles devraient être revus prochainement.",
+        critical:
+          "Critique signifie qu’un ou plusieurs contrôles peuvent affecter les exports de facturation, la livraison des alertes, l’accès à la base de données ou la disponibilité opérationnelle. À traiter en priorité.",
+      },
+      checks: {
+        database: {
+          pass: {
+            meaning: "L’API peut joindre la base de données.",
+            action: "Aucune action requise.",
+          },
+          warn: {
+            meaning: "Le contrôle base de données mérite un examen.",
+            action: "Faites vérifier la connectivité avec le support technique.",
+          },
+          fail: {
+            meaning:
+              "L’API ne peut pas confirmer la connectivité à la base de données. Les usages cliniques et d’administration peuvent être impactés.",
+            action: "Faites remonter immédiatement au support technique.",
+          },
+        },
+        node_env: {
+          pass: {
+            meaning: "Le système s’exécute dans le mode production attendu.",
+            action: "Aucune action requise.",
+          },
+          warn: {
+            meaning: "Le système ne semble pas s’exécuter en mode production.",
+            action: "Demandez au support technique de confirmer l’environnement de déploiement.",
+          },
+          fail: {
+            meaning: "L’environnement d’exécution nécessite un examen immédiat.",
+            action: "Faites remonter au support technique.",
+          },
+        },
+        alerts: {
+          pass: {
+            meaning: "La livraison des alertes est configurée.",
+            action: "Envoyez une alerte test lors de la validation de la mise en service.",
+          },
+          warn: {
+            meaning: "La livraison des alertes peut être incomplète.",
+            action: "Demandez au support technique de confirmer la configuration des alertes.",
+          },
+          fail: {
+            meaning: "La livraison des alertes peut être indisponible.",
+            action: "Revoyez la configuration des alertes avant la mise en service ou après un incident.",
+          },
+        },
+        external_billing_automation: {
+          pass: {
+            meaning: "L’automatisation de facturation externe semble prête.",
+            action: "Aucune action requise.",
+          },
+          warn: {
+            meaning: "L’automatisation de facturation peut nécessiter une revue de configuration.",
+            action: "Confirmez les paramètres d’automatisation avec le support technique.",
+          },
+          fail: {
+            meaning: "L’automatisation de facturation peut ne pas être prête.",
+            action: "Revoyez l’automatisation avant de vous reposer sur des exports automatiques.",
+          },
+        },
+        failed_exports: {
+          pass: {
+            meaning: "Aucun échec d’export récent n’a été détecté.",
+            action: "Aucune action requise.",
+          },
+          warn: {
+            meaning: "Un ou plusieurs exports ont récemment échoué.",
+            action: "Consultez la surveillance des exports et relancez les exports en échec si approprié.",
+          },
+          fail: {
+            meaning: "Plusieurs exports récents ont échoué.",
+            action: "Consultez immédiatement la surveillance des exports et faites remonter si les échecs continuent.",
+          },
+        },
+        http_5xx: {
+          pass: {
+            meaning: "Aucune erreur serveur récente de l’API n’a été détectée.",
+            action: "Aucune action requise.",
+          },
+          warn: {
+            meaning: "Des erreurs serveur récentes de l’API ont été détectées.",
+            action: "Examinez les journaux et les déploiements récents.",
+          },
+          fail: {
+            meaning: "De nombreuses erreurs serveur récentes de l’API ont été détectées.",
+            action: "Faites remonter au support technique et examinez les déploiements récents.",
+          },
+        },
+        audit_overrides_critical: {
+          pass: {
+            meaning: "L’activité d’audit critique récente semble dans des limites attendues.",
+            action: "Aucune action requise.",
+          },
+          warn: {
+            meaning: "Une activité accrue d’audit critique ou de dérogations a été détectée.",
+            action: "Consultez le journal d’audit pour l’activité critique ou les dérogations.",
+          },
+          fail: {
+            meaning: "L’activité d’audit critique ou de dérogations nécessite un examen immédiat.",
+            action: "Consultez immédiatement le journal d’audit et faites remonter si l’activité est inattendue.",
+          },
+        },
+      },
     },
     backAdmin: "← Administration",
     backApp: "Retour à l’application",

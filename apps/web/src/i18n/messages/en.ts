@@ -1703,7 +1703,7 @@ export default {
     intro:
       "Read-only operational snapshot: database, alert configuration, external export automation flags, recent HTTP 5xx on this API process, and audit aggregates. No secrets or patient data.",
     monitoringRiskNote:
-      "“Critical” or “Degraded” refer to operational monitoring (alerts, HTTP errors, exports…), not a guaranteed app crash. The clinical app may still run while production monitoring is incomplete.",
+      "“Critical” or “Attention” refer to operational monitoring (alerts, HTTP errors, exports…), not a guaranteed app crash. The clinical app may still run while production monitoring is incomplete.",
     alertConfigHeading: "Operational alerts (configuration)",
     alertEnvironment: "Environment",
     alertFormatLabel: "Webhook format",
@@ -1712,10 +1712,128 @@ export default {
     sendTestAlert: "Send test alert",
     testAlertSending: "Sending…",
     testAlertMessages: {
-      test_alert_delivered: "Test alert accepted by the webhook.",
-      test_alert_failed_delivery: "Delivery failed after retries (check server logs).",
-      test_alert_disabled: "Alerts are disabled (MEDORA_ALERT_ENABLED).",
-      test_alert_no_webhook: "No webhook configured (MEDORA_ALERT_WEBHOOK_URL).",
+      test_alert_delivered:
+        "Test alert delivered. Alert delivery appears to be working.",
+      test_alert_failed_delivery:
+        "Test alert was created but delivery could not be confirmed. Ask technical support to review alert delivery.",
+      test_alert_disabled: "Test alert could not be sent because alert delivery is not enabled.",
+      test_alert_no_webhook: "Test alert could not be sent because alert delivery is not fully configured.",
+    },
+    testAlertPhiFreeIntro:
+      "This sends a PHI-free operational test alert. It does not include patient information, encounter details, order details, webhook URLs, or secrets.",
+    clarity: {
+      nextStepLabel: "Recommended action:",
+      overallLabel: {
+        healthy: "OK",
+        degraded: "Attention",
+        critical: "Critical",
+      },
+      overall: {
+        healthy: "OK means all monitored checks are currently passing.",
+        degraded: "Attention means the system is working, but one or more checks should be reviewed soon.",
+        critical:
+          "Critical means one or more checks may affect billing exports, alert delivery, database access, or operational readiness. Review immediately.",
+      },
+      checks: {
+        database: {
+          pass: {
+            meaning: "The API can reach the database.",
+            action: "No action needed.",
+          },
+          warn: {
+            meaning: "The database check should be reviewed.",
+            action: "Review database connectivity with technical support.",
+          },
+          fail: {
+            meaning: "The API cannot confirm database connectivity. Clinical and admin workflows may be affected.",
+            action: "Escalate to technical support immediately.",
+          },
+        },
+        node_env: {
+          pass: {
+            meaning: "The system is running in the expected production mode.",
+            action: "No action needed.",
+          },
+          warn: {
+            meaning: "The system may not be running in production mode.",
+            action: "Ask technical support to confirm the deployment environment.",
+          },
+          fail: {
+            meaning: "The runtime environment needs immediate review.",
+            action: "Escalate to technical support.",
+          },
+        },
+        alerts: {
+          pass: {
+            meaning: "Alert delivery is configured.",
+            action: "Send a test alert when validating readiness.",
+          },
+          warn: {
+            meaning: "Alert delivery may not be fully configured.",
+            action: "Ask technical support to confirm alert configuration.",
+          },
+          fail: {
+            meaning: "Alert delivery may be unavailable.",
+            action: "Review alert configuration before go-live or after incidents.",
+          },
+        },
+        external_billing_automation: {
+          pass: {
+            meaning: "External billing automation appears ready.",
+            action: "No action needed.",
+          },
+          warn: {
+            meaning: "Billing automation may need configuration review.",
+            action: "Confirm billing automation settings with technical support.",
+          },
+          fail: {
+            meaning: "Billing automation may not be ready.",
+            action: "Review billing automation before relying on automated exports.",
+          },
+        },
+        failed_exports: {
+          pass: {
+            meaning: "No recent failed exports were detected.",
+            action: "No action needed.",
+          },
+          warn: {
+            meaning: "One or more exports recently failed.",
+            action: "Review Export Monitoring and retry failed billing exports if appropriate.",
+          },
+          fail: {
+            meaning: "Multiple recent exports failed.",
+            action: "Review Export Monitoring immediately and escalate if failures continue.",
+          },
+        },
+        http_5xx: {
+          pass: {
+            meaning: "No recent API server errors were detected.",
+            action: "No action needed.",
+          },
+          warn: {
+            meaning: "Recent API server errors were detected.",
+            action: "Review logs and recent deployments.",
+          },
+          fail: {
+            meaning: "Many recent API server errors were detected.",
+            action: "Escalate to technical support and review recent deployments.",
+          },
+        },
+        audit_overrides_critical: {
+          pass: {
+            meaning: "Recent critical audit activity appears within expected limits.",
+            action: "No action needed.",
+          },
+          warn: {
+            meaning: "Elevated critical audit or override activity was detected.",
+            action: "Review Audit Log for critical or override activity.",
+          },
+          fail: {
+            meaning: "Critical audit or override activity requires immediate review.",
+            action: "Review Audit Log immediately and escalate if activity is unexpected.",
+          },
+        },
+      },
     },
     backAdmin: "← Administration",
     backApp: "Back to app",
