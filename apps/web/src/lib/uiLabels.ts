@@ -81,6 +81,7 @@ const fr = {
     adminExports: "Surveillance des exports",
     adminBackupReadiness: "Sauvegarde et reprise",
     adminSystemHealth: "Santé système",
+    adminCompliance: "Conformité et couverture d’audit",
     adminReports: "Rapports urgences (exploitation)",
     adminMsppAccess: "Accès MSPP (national)",
     msppDashboard: "MSPP — Tableau de bord",

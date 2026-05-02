@@ -1260,6 +1260,7 @@ export default {
     exportMonitoringLink: "Surveillance des exports",
     backupReadinessLink: "Sauvegarde et reprise",
     systemHealthLink: "Santé système",
+    complianceLink: "Conformité et couverture d’audit",
   },
   exportMonitoring: {
     title: "Surveillance des exports",
@@ -1858,6 +1859,55 @@ export default {
     recentLine5xx: "{{count}} réponse(s) HTTP 5xx (24 h, ce processus API).",
     recentLineExports: "{{count}} échec(s) d’export facturation externe (24 h, audit).",
     recentLineCritical: "{{count}} événement(s) d’audit critique (24 h).",
+  },
+  compliance: {
+    title: "Complétude d’audit et conformité",
+    intro:
+      "Indicateurs agrégés de couverture d’audit et de risque pour l’établissement et la période affichés. Aucun identifiant patient, texte libre ni donnée ligne à ligne.",
+    window: "Période (UTC)",
+    auditCoverage: "Couverture d’audit",
+    missingAuditSignals: "Signaux d’absence d’audit",
+    riskSignals: "Signaux de risque",
+    orders: "Ordres",
+    mar: "MAR (administration médicamenteuse)",
+    exports: "Exports (piste d’audit)",
+    total: "Total",
+    audited: "Avec entrée d’audit correspondante",
+    percent: "Couverture",
+    ordersMissing: "Ordres sans audit de création",
+    marMissing: "Lignes MAR sans audit",
+    exportsMissing: "Exports sans audit (attendu)",
+    exportsMissingExplain:
+      "Les exports sont natifs à l’audit : chaque événement d’export dans le périmètre est une ligne d’audit. Cette valeur reste à zéro ; aucune attente d’export n’est déduite de l’état clinique ou de facturation.",
+    exportAuditNativeNote:
+      "Les indicateurs d’export comptent uniquement les lignes du journal d’audit. Le produit n’infère pas qu’un export aurait dû avoir lieu à partir des consultations ou de la clôture de facturation.",
+    exportPercentExplain:
+      "100 % signifie que chaque événement d’export dans la période est enregistré dans le journal d’audit. 100 % avec zéro activité d’export signifie qu’aucune activité d’export n’a été détectée sur la période — pas qu’un défaut est passé inaperçu.",
+    noPhiNote:
+      "Vue sans données de santé nominatives : compteurs et taux seulement. Utilisez le journal d’audit pour un examen filtré des événements.",
+    status: {
+      ok: "OK",
+      attention: "Attention",
+      critical: "Critique",
+    },
+    recommendedActionsTitle: "Prochaines étapes recommandées",
+    recommendedActions: {
+      ok: "La couverture et les signaux de risque semblent acceptables sur la période. Poursuivez la surveillance habituelle.",
+      attention:
+        "Examinez les créations d’ordre ou de MAR sans audit si affichées ; examinez le taux d’échec d’export et le volume d’événements critiques ou de dérogations avec le support technique si besoin.",
+      critical:
+        "Faites remonter au support technique : absence d’audit sur ordre/MAR, taux d’échec d’export élevé, ou volume élevé d’événements critiques ou de dérogations.",
+    },
+    errorFacility: "Sélectionnez un établissement.",
+    errorLoad: "Impossible de charger le tableau de conformité.",
+    backAdmin: "← Administration",
+    backApp: "Retour à l’application",
+    refresh: "Actualiser",
+    empty: "Aucune donnée pour l’instant. Actualisez pour réessayer.",
+    overrideCount: "Événements de dérogation",
+    failedExportCount: "Échecs d’export (audits facturation)",
+    failedExportRate: "Taux d’échec d’export",
+    criticalAuditCount: "Événements d’audit critiques",
   },
   goLiveReadiness: {
     title: "Préparation mise en service",

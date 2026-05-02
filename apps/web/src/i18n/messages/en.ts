@@ -78,6 +78,7 @@ export default {
     adminExports: "Export monitoring",
     adminBackupReadiness: "Backup & recovery",
     adminSystemHealth: "System health",
+    adminCompliance: "Audit compliance",
     adminReports: "ED reports",
     adminMsppAccess: "MSPP access (national)",
     msppDashboard: "MSPP — Dashboard",
@@ -1298,6 +1299,7 @@ export default {
     exportMonitoringLink: "Export monitoring",
     backupReadinessLink: "Backup & recovery readiness",
     systemHealthLink: "System health",
+    complianceLink: "Audit compliance",
   },
   exportMonitoring: {
     title: "Export monitoring",
@@ -1891,6 +1893,55 @@ export default {
     recentLine5xx: "{{count}} HTTP 5xx responses (24h, this API process).",
     recentLineExports: "{{count}} failed external billing export(s) (24h, audit).",
     recentLineCritical: "{{count}} critical audit event(s) (24h).",
+  },
+  compliance: {
+    title: "Audit completeness & compliance",
+    intro:
+      "Aggregated audit coverage and risk counts for the selected facility and time window. No patient identifiers, free text, or row-level data.",
+    window: "Window (UTC)",
+    auditCoverage: "Audit coverage",
+    missingAuditSignals: "Missing audit signals",
+    riskSignals: "Risk signals",
+    orders: "Orders",
+    mar: "MAR (medication administration)",
+    exports: "Exports (audit trail)",
+    total: "Total",
+    audited: "With matching audit record",
+    percent: "Coverage",
+    ordersMissing: "Orders missing create-audit",
+    marMissing: "MAR rows missing audit",
+    exportsMissing: "Exports missing audit (expected)",
+    exportsMissingExplain:
+      "Exports are audit-native: each export event in scope is an audit row. This value stays at zero; we do not infer expected exports from clinical or billing state.",
+    exportAuditNativeNote:
+      "Export metrics count audit log rows only. The product does not infer that an export should have occurred based on encounters or billing finalization.",
+    exportPercentExplain:
+      "100% means every export event in this window is recorded in the audit log. 100% with zero export activity means no export audit activity was detected in the window — not that something failed silently.",
+    noPhiNote:
+      "PHI-safe view: counts and rates only. Use the Audit log for filtered event review.",
+    status: {
+      ok: "OK",
+      attention: "Attention",
+      critical: "Critical",
+    },
+    recommendedActionsTitle: "Recommended next steps",
+    recommendedActions: {
+      ok: "Coverage and risk signals look acceptable for the window. Continue routine monitoring.",
+      attention:
+        "Review missing create-audits for orders or MAR if shown; review failed export rate and override or critical event volume with technical support if needed.",
+      critical:
+        "Escalate to technical support: investigate missing order/MAR audits, elevated failed export rate, or high override / critical audit volume.",
+    },
+    errorFacility: "Select a facility.",
+    errorLoad: "Unable to load compliance dashboard.",
+    backAdmin: "← Administration",
+    backApp: "Back to app",
+    refresh: "Refresh",
+    empty: "No data yet. Refresh to try again.",
+    overrideCount: "Override events",
+    failedExportCount: "Failed export events (billing audits)",
+    failedExportRate: "Failed export rate",
+    criticalAuditCount: "Critical audit events",
   },
   goLiveReadiness: {
     title: "Go-live readiness",

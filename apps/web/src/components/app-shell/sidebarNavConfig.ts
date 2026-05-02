@@ -341,6 +341,13 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     accent: "redGray",
   },
   {
+    href: "/app/admin/compliance",
+    labelKey: "nav.adminCompliance",
+    roles: ["MEDORA_SUPER_ADMIN"],
+    group: "admin",
+    accent: "redGray",
+  },
+  {
     href: "/app/admin/mspp-access",
     labelKey: "nav.adminMsppAccess",
     roles: [],
