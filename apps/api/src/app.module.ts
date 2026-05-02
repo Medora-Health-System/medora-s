@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
@@ -28,6 +29,7 @@ import { FhirModule } from "./fhir/fhir.module";
 import { InsuranceModule } from "./insurance/insurance.module";
 import { BillingProcedureCodesModule } from "./billing-procedure-codes/billing-procedure-codes.module";
 import { ReportsModule } from "./reports/reports.module";
+import { AuditContextInterceptor } from "./common/audit/audit-context.interceptor";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error-metrics.module";
 
@@ -74,7 +76,10 @@ const imports = [
 @Module({
   imports,
   controllers: [AppController],
-  providers: [RequestLoggerMiddleware],
+  providers: [
+    RequestLoggerMiddleware,
+    { provide: APP_INTERCEPTOR, useClass: AuditContextInterceptor },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

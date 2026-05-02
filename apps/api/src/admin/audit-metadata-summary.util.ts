@@ -4,6 +4,8 @@
  */
 
 const SAFE_METADATA_KEYS = new Set([
+  "actorRole",
+  "source",
   "scope",
   "format",
   "schemaVersion",

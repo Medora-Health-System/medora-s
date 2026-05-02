@@ -63,3 +63,30 @@ export function auditCategoryLabel(t: AuditDisplayTranslate, category: string): 
 export function auditSummaryEmptyText(t: AuditDisplayTranslate): string {
   return t("auditLabels.summaryEmpty");
 }
+
+/** Keys shown separately under the action line — omit from the generic summary line. */
+const AUDIT_CONTEXT_METADATA_KEYS = new Set(["actorRole", "source"]);
+
+export function auditMetadataSummaryEntries(
+  meta: Record<string, string | number | boolean>
+): [string, string | number | boolean][] {
+  return Object.entries(meta).filter(([k]) => !AUDIT_CONTEXT_METADATA_KEYS.has(k));
+}
+
+/** Human label for persisted `metadata.actorRole` (backend codes only). */
+export function getAuditActorRoleLabel(role: string | undefined, t: AuditDisplayTranslate): string {
+  const raw = role?.trim();
+  if (!raw) return t("audit.context.roles.UNKNOWN");
+  const key = `audit.context.roles.${raw}`;
+  const out = t(key);
+  return out !== key ? out : raw;
+}
+
+/** Human label for persisted `metadata.source` (backend codes only). */
+export function getAuditSourceLabel(source: string | undefined, t: AuditDisplayTranslate): string {
+  const raw = source?.trim();
+  if (!raw) return t("audit.context.sources.UNKNOWN");
+  const key = `audit.context.sources.${raw}`;
+  const out = t(key);
+  return out !== key ? out : raw;
+}

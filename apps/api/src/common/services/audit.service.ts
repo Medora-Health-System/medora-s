@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Prisma } from "@prisma/client";
 import { AuditAction } from "@prisma/client";
+import { auditContextStorage } from "../audit/audit-context.storage";
 import { createStructuredLogger } from "../logging/structured-logger";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -47,6 +48,18 @@ export class AuditService {
     const db = tx ?? this.prisma;
 
     try {
+      const fromCaller =
+        options.metadata && typeof options.metadata === "object" && !Array.isArray(options.metadata)
+          ? ({ ...(options.metadata as Record<string, unknown>) } as Record<string, unknown>)
+          : ({} as Record<string, unknown>);
+      const fromAls = auditContextStorage.getStore();
+      if (fromCaller.actorRole === undefined && fromAls?.actorRole) {
+        fromCaller.actorRole = fromAls.actorRole;
+      }
+      if (fromCaller.source === undefined && fromAls?.source) {
+        fromCaller.source = fromAls.source;
+      }
+
       await db.auditLog.create({
         data: {
           action,
@@ -60,7 +73,7 @@ export class AuditService {
           ip: options.ip,
           userAgent: options.userAgent,
           metadata: {
-            ...((options.metadata || {}) as Record<string, unknown>),
+            ...fromCaller,
             ...(options.encounterId ? { encounterId: options.encounterId } : {}),
             ...(options.orderId ? { orderId: options.orderId } : {}),
           },

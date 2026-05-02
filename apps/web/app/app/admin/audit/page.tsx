@@ -15,14 +15,17 @@ import {
   auditActionLabel,
   auditCategoryLabel,
   auditEntityLabel,
+  auditMetadataSummaryEntries,
   auditSummaryEmptyText,
+  getAuditActorRoleLabel,
+  getAuditSourceLabel,
 } from "@/lib/auditDisplayLabels";
 
 function formatSummary(
   t: (key: string) => string,
   meta: Record<string, string | number | boolean>
 ): string {
-  const entries = Object.entries(meta);
+  const entries = auditMetadataSummaryEntries(meta);
   if (entries.length === 0) return auditSummaryEmptyText(t);
   return entries
     .map(([k, v]) => `${k}=${typeof v === "string" ? v : String(v)}`)
@@ -33,6 +36,31 @@ function highlightTagLabel(t: (key: string) => string, tag: string): string {
   const key = `adminAudit.tag.${tag}`;
   const out = t(key);
   return out === key ? tag : out;
+}
+
+function auditActorContextBlock(
+  t: (key: string) => string,
+  meta: Record<string, string | number | boolean>
+) {
+  const ar = meta.actorRole;
+  const src = meta.source;
+  const hasAr = ar !== undefined && ar !== null && String(ar).trim() !== "";
+  const hasSrc = src !== undefined && src !== null && String(src).trim() !== "";
+  if (!hasAr && !hasSrc) return null;
+  return (
+    <div style={{ marginTop: 6, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+      {hasAr ? (
+        <div>
+          {t("audit.context.actorRole")}: {getAuditActorRoleLabel(String(ar), t)}
+        </div>
+      ) : null}
+      {hasSrc ? (
+        <div>
+          {t("audit.context.source")}: {getAuditSourceLabel(String(src), t)}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function defaultDateRange(): { from: string; to: string } {
@@ -331,6 +359,7 @@ export default function AdminAuditPage() {
                         {auditActionLabel(t, row.action, row.entity, row.metadataSummary)}
                       </div>
                       <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{row.action}</div>
+                      {auditActorContextBlock(t, row.metadataSummary)}
                     </td>
                     <td style={{ padding: 10, verticalAlign: "top" }}>
                       <div style={{ fontWeight: 600 }}>{auditEntityLabel(t, row.entity)}</div>

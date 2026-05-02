@@ -80,6 +80,17 @@ export type ExternalExportUserContext = {
   role: string;
 };
 
+/** Canonical `metadata.actorRole` / `metadata.source` for billing export audits (not inferred in the browser). */
+export function auditActorMetaForExportContext(userCtx: ExternalExportUserContext): {
+  actorRole: string;
+  source: string;
+} {
+  if (userCtx.role === "AUTOMATION") {
+    return { actorRole: "SYSTEM", source: "AUTOMATION" };
+  }
+  return { actorRole: userCtx.role, source: "UI" };
+}
+
 @Injectable()
 export class ExternalBillingExportService {
   constructor(
@@ -161,6 +172,7 @@ export class ExternalBillingExportService {
       ip: params.ip,
       userAgent: params.userAgent,
       metadata: {
+        ...auditActorMetaForExportContext(params.userCtx),
         scope: "ENCOUNTER",
         format: "json",
         encounterId: params.encounterId,
@@ -191,6 +203,7 @@ export class ExternalBillingExportService {
       ip: params.ip,
       userAgent: params.userAgent,
       metadata: {
+        ...auditActorMetaForExportContext(params.userCtx),
         scope: "ENCOUNTER",
         format: "csv",
         encounterId: params.encounterId,
@@ -248,6 +261,7 @@ export class ExternalBillingExportService {
       ip: params.ip,
       userAgent: params.userAgent,
       metadata: {
+        ...auditActorMetaForExportContext(params.userCtx),
         scope: "DAILY",
         format: "json",
         date: params.date,
@@ -282,6 +296,7 @@ export class ExternalBillingExportService {
       ip: params.ip,
       userAgent: params.userAgent,
       metadata: {
+        ...auditActorMetaForExportContext(params.userCtx),
         scope: "DAILY",
         format: "csv",
         date: params.date,

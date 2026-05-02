@@ -5,7 +5,10 @@ import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { logError, logInfo } from "../common/logging/medoraLogger";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ExternalExportUserContext } from "./external-billing-export.service";
-import { ExternalBillingExportService } from "./external-billing-export.service";
+import {
+  auditActorMetaForExportContext,
+  ExternalBillingExportService,
+} from "./external-billing-export.service";
 
 const AUTOMATION_USER_AGENT = "medora-external-billing-automation/1";
 const AUDIT_ENTITY_AUTO = "EXTERNAL_BILLING_AUTO_EXPORT";
@@ -14,6 +17,8 @@ const AUTOMATION_USER_CTX: ExternalExportUserContext = {
   displayName: "Scheduled export",
   role: "AUTOMATION",
 };
+
+const SCHEDULED_AUTOMATION_AUDIT_META = { actorRole: "SYSTEM", source: "AUTOMATION" } as const;
 
 function readAutomationEnabled(): boolean {
   const raw = process.env.MEDORA_EXTERNAL_BILLING_AUTO_EXPORT_ENABLED?.trim().toLowerCase();
@@ -173,6 +178,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
     });
     await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
       metadata: {
+        ...SCHEDULED_AUTOMATION_AUDIT_META,
         automationEvent: "external_billing_auto_export_started",
         exportDate,
         facilityCount: facilities.length,
@@ -227,6 +233,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
       });
       await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
         metadata: {
+          ...SCHEDULED_AUTOMATION_AUDIT_META,
           automationEvent: "external_billing_auto_export_failed",
           exportDate,
           facilityCount: facilities.length,
@@ -255,6 +262,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
       });
       await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
         metadata: {
+          ...SCHEDULED_AUTOMATION_AUDIT_META,
           automationEvent: "external_billing_auto_export_succeeded",
           exportDate,
           facilityCount: facilities.length,
@@ -306,6 +314,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
       });
       await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
         metadata: {
+          ...SCHEDULED_AUTOMATION_AUDIT_META,
           automationEvent: "external_billing_auto_export_failed",
           exportDate,
           facilityCount: facilities.length,
@@ -333,6 +342,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
     });
     await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY_AUTO, {
       metadata: {
+        ...SCHEDULED_AUTOMATION_AUDIT_META,
         automationEvent: "external_billing_auto_export_succeeded",
         exportDate,
         facilityCount: facilities.length,
@@ -369,6 +379,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
       ip: params.ip,
       userAgent: params.userAgent,
       metadata: {
+        ...auditActorMetaForExportContext(params.userCtx),
         automationEvent: "external_billing_manual_retry_started",
         exportDate: params.exportDate,
         format: params.format,
@@ -423,6 +434,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
         ip: params.ip,
         userAgent: params.userAgent,
         metadata: {
+          ...auditActorMetaForExportContext(params.userCtx),
           automationEvent: "external_billing_manual_retry_succeeded",
           exportDate: params.exportDate,
           format: params.format,
@@ -453,6 +465,7 @@ export class ExternalBillingAutomationService implements OnModuleInit, OnModuleD
         ip: params.ip,
         userAgent: params.userAgent,
         metadata: {
+          ...auditActorMetaForExportContext(params.userCtx),
           automationEvent: "external_billing_manual_retry_failed",
           exportDate: params.exportDate,
           format: params.format,
