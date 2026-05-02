@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AdminAuditEventsQueryDto } from "./dto/admin-audit-events-query.dto";
 import { auditHighlightTags, summarizeAuditMetadata } from "./audit-metadata-summary.util";
+import { auditPresetWhere, classifyAuditUiCategory, type AuditPreset } from "./audit-category.util";
 
 function parseTimeBoundary(raw: string | undefined, endOfDay: boolean): Date | undefined {
   if (!raw?.trim()) return undefined;
@@ -59,13 +60,15 @@ export class AdminAuditService {
     const take = query.limit ?? 50;
     const cursorDecoded = query.cursor ? decodeCursor(query.cursor) : null;
 
+    const preset = query.preset as AuditPreset | undefined;
     const where = {
       facilityId,
       createdAt: { gte: from, lte: to },
       ...(query.actorUserId ? { userId: query.actorUserId } : {}),
-      ...(query.entity ? { entityType: query.entity } : {}),
-      ...(query.action ? { action: query.action } : {}),
       ...(query.encounterId ? { encounterId: query.encounterId } : {}),
+      ...(preset ? auditPresetWhere(preset) : {}),
+      ...(!preset && query.entity ? { entityType: query.entity } : {}),
+      ...(!preset && query.action ? { action: query.action } : {}),
       ...(cursorDecoded
         ? {
             OR: [
@@ -112,6 +115,9 @@ export class AdminAuditService {
         action: r.action,
         entity: r.entityType,
         entityId: r.entityId,
+        auditCategory: classifyAuditUiCategory(r.action, r.entityType),
+        actionLabelKey: r.action,
+        entityLabelKey: r.entityType,
         actor: {
           userId: r.userId,
           displayName: actorDisplayName(r.user),

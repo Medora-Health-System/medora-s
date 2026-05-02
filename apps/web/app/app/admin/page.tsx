@@ -115,6 +115,40 @@ export default function AdminPage() {
             {t("adminHub.auditLogLink")}
           </Link>
         </li>
+        <li>
+          <Link
+            href="/app/reports"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.opsReportsLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/go-live"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.goLiveLink")}
+          </Link>
+        </li>
         {ready && canCreateFacilities ? (
           <li>
             <Link

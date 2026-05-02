@@ -77,6 +77,8 @@ const fr = {
     admin: "Administration",
     adminUsers: "Utilisateurs et accès",
     adminAudit: "Journal d’audit",
+    adminGoLive: "Préparation mise en service",
+    adminReports: "Rapports urgences (exploitation)",
     adminMsppAccess: "Accès MSPP (national)",
     msppDashboard: "MSPP — Tableau de bord",
     /** Menu : section Surveillance nationale (même route que le tableau de bord). */

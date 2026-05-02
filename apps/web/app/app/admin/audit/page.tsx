@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchAdminAuditEvents,
   type AdminAuditEventRow,
   type AdminAuditEventsQuery,
+  type AdminAuditPreset,
 } from "@/lib/adminAuditApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
@@ -32,6 +33,28 @@ function defaultDateRange(): { from: string; to: string } {
   return { from: isoDay(from), to: isoDay(to) };
 }
 
+function labelAction(t: (key: string) => string, action: string): string {
+  const key = `adminAudit.actions.${action}`;
+  const out = t(key);
+  return out === key ? t("adminAudit.labelRaw").replace("{code}", action) : out;
+}
+
+function labelEntity(t: (key: string) => string, entity: string): string {
+  const key = `adminAudit.entities.${entity}`;
+  const out = t(key);
+  return out === key ? t("adminAudit.labelRaw").replace("{code}", entity) : out;
+}
+
+const PRESETS: { id: AdminAuditPreset; labelKey: string }[] = [
+  { id: "critical_events", labelKey: "adminAudit.preset.critical_events" },
+  { id: "clinical_actions", labelKey: "adminAudit.preset.clinical_actions" },
+  { id: "billing_exports", labelKey: "adminAudit.preset.billing_exports" },
+  { id: "access_views", labelKey: "adminAudit.preset.access_views" },
+  { id: "overrides", labelKey: "adminAudit.preset.overrides" },
+];
+
+const CATEGORY_ORDER = ["critical", "clinical", "billing", "access", "override", "other"] as const;
+
 export default function AdminAuditPage() {
   const { t, language } = useI18n();
   const { ready, facilityId } = useFacilityAndRoles();
@@ -39,6 +62,7 @@ export default function AdminAuditPage() {
   const [action, setAction] = useState("");
   const [entity, setEntity] = useState("");
   const [encounterId, setEncounterId] = useState("");
+  const [preset, setPreset] = useState<AdminAuditPreset | "">("");
   const [items, setItems] = useState<AdminAuditEventRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,8 +80,9 @@ export default function AdminAuditPage() {
         from: `${range.from}T00:00:00.000Z`,
         to: `${range.to}T23:59:59.999Z`,
         limit: 50,
-        ...(action.trim() ? { action: action.trim() } : {}),
-        ...(entity.trim() ? { entity: entity.trim() } : {}),
+        ...(preset ? { preset } : {}),
+        ...(!preset && action.trim() ? { action: action.trim() } : {}),
+        ...(!preset && entity.trim() ? { entity: entity.trim() } : {}),
         ...(encounterId.trim() ? { encounterId: encounterId.trim() } : {}),
         ...(cursor ? { cursor } : {}),
       };
@@ -74,7 +99,7 @@ export default function AdminAuditPage() {
         setLoading(false);
       }
     },
-    [facilityId, range.from, range.to, action, entity, encounterId, language, t]
+    [facilityId, range.from, range.to, action, entity, encounterId, preset, language, t]
   );
 
   useEffect(() => {
@@ -85,15 +110,78 @@ export default function AdminAuditPage() {
 
   const hasHighlight = (row: AdminAuditEventRow) => row.highlightTags.length > 0;
 
+  const grouped = useMemo(() => {
+    const buckets = new Map<string, AdminAuditEventRow[]>();
+    for (const cat of CATEGORY_ORDER) buckets.set(cat, []);
+    for (const row of items) {
+      const raw = row.auditCategory ?? "other";
+      const cat = buckets.has(raw) ? raw : "other";
+      buckets.get(cat)!.push(row);
+    }
+    return CATEGORY_ORDER.map((cat) => ({ cat, rows: buckets.get(cat) ?? [] })).filter((g) => g.rows.length > 0);
+  }, [items]);
+
   return (
     <div style={{ padding: 24, maxWidth: 1400 }}>
       <p style={{ marginTop: 0 }}>
         <Link href="/app/admin" style={{ color: "#1a1a1a" }}>
           {t("adminAudit.backAdmin")}
         </Link>
+        {" · "}
+        <Link href="/app/reports" style={{ color: "#1a1a1a" }}>
+          {t("adminAudit.linkOpsReports")}
+        </Link>
       </p>
       <h1 style={{ marginTop: 8 }}>{t("adminAudit.title")}</h1>
       <p style={{ color: "#555", maxWidth: 720 }}>{t("adminAudit.intro")}</p>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 8 }}>
+          {t("adminAudit.presetHeading")}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setPreset("");
+            }}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 999,
+              border: preset === "" ? "2px solid #0f172a" : "1px solid #cbd5e1",
+              background: preset === "" ? "#f1f5f9" : "#fff",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {t("adminAudit.presetAll")}
+          </button>
+          {PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                setPreset(p.id);
+                setAction("");
+                setEntity("");
+              }}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 999,
+                border: preset === p.id ? "2px solid #0f172a" : "1px solid #cbd5e1",
+                background: preset === p.id ? "#f1f5f9" : "#fff",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {t(p.labelKey)}
+            </button>
+          ))}
+        </div>
+        {preset ? <p style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>{t("adminAudit.presetHint")}</p> : null}
+      </div>
 
       <section
         style={{
@@ -122,11 +210,12 @@ export default function AdminAuditPage() {
             style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }}
           />
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, opacity: preset ? 0.45 : 1 }}>
           <span>{t("adminAudit.filterAction")}</span>
           <input
             value={action}
             onChange={(e) => setAction(e.target.value)}
+            disabled={Boolean(preset)}
             placeholder={t("adminAudit.placeholderAction")}
             list="admin-audit-actions"
             style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }}
@@ -140,11 +229,12 @@ export default function AdminAuditPage() {
             <option value="LOGOUT" />
           </datalist>
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, opacity: preset ? 0.45 : 1 }}>
           <span>{t("adminAudit.filterEntity")}</span>
           <input
             value={entity}
             onChange={(e) => setEntity(e.target.value)}
+            disabled={Boolean(preset)}
             placeholder={t("adminAudit.placeholderEntity")}
             list="admin-audit-entities"
             style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }}
@@ -202,47 +292,60 @@ export default function AdminAuditPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((row) => (
-              <tr
-                key={row.id}
-                style={{
-                  borderBottom: "1px solid #eee",
-                  background: hasHighlight(row) ? "rgba(153,27,27,0.06)" : undefined,
-                }}
-              >
-                <td style={{ padding: 10, whiteSpace: "nowrap", verticalAlign: "top" }}>
-                  {new Date(row.createdAt).toLocaleString(language === "en" ? "en-CA" : "fr-CA", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </td>
-                <td style={{ padding: 10, verticalAlign: "top" }}>
-                  <div>{row.actor.displayName || "—"}</div>
-                  {row.actor.roleHint ? (
-                    <div style={{ fontSize: 11, color: "#666" }}>{row.actor.roleHint}</div>
-                  ) : null}
-                </td>
-                <td style={{ padding: 10, verticalAlign: "top", fontFamily: "monospace", fontSize: 12 }}>
-                  {row.action}
-                </td>
-                <td style={{ padding: 10, verticalAlign: "top", fontFamily: "monospace", fontSize: 12 }}>
-                  <div>{row.entity}</div>
-                  {row.entityId ? (
-                    <div style={{ fontSize: 11, color: "#666", wordBreak: "break-all" }}>{row.entityId}</div>
-                  ) : null}
-                </td>
-                <td style={{ padding: 10, verticalAlign: "top", fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
-                  {row.encounterId ?? "—"}
-                </td>
-                <td style={{ padding: 10, verticalAlign: "top", color: "#333", maxWidth: 420 }}>
-                  {hasHighlight(row) ? (
-                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: "#7f1d1d" }}>
-                      {row.highlightTags.map((tag) => highlightTagLabel(t, tag)).join(" · ")}
-                    </div>
-                  ) : null}
-                  <span style={{ wordBreak: "break-word" }}>{formatSummary(row.metadataSummary)}</span>
-                </td>
-              </tr>
+            {grouped.map(({ cat, rows }) => (
+              <Fragment key={cat}>
+                <tr style={{ background: "#f8fafc" }}>
+                  <td colSpan={6} style={{ padding: "8px 10px", fontWeight: 800, fontSize: 12, color: "#0f172a" }}>
+                    {t(`adminAudit.category.${cat}`)}
+                  </td>
+                </tr>
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    style={{
+                      borderBottom: "1px solid #eee",
+                      background: hasHighlight(row) ? "rgba(153,27,27,0.06)" : undefined,
+                    }}
+                  >
+                    <td style={{ padding: 10, whiteSpace: "nowrap", verticalAlign: "top" }}>
+                      {new Date(row.createdAt).toLocaleString(language === "en" ? "en-CA" : "fr-CA", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </td>
+                    <td style={{ padding: 10, verticalAlign: "top" }}>
+                      <div>{row.actor.displayName || "—"}</div>
+                      {row.actor.roleHint ? (
+                        <div style={{ fontSize: 11, color: "#666" }}>{row.actor.roleHint}</div>
+                      ) : null}
+                    </td>
+                    <td style={{ padding: 10, verticalAlign: "top" }}>
+                      <div style={{ fontWeight: 600 }}>{labelAction(t, row.action)}</div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{row.action}</div>
+                    </td>
+                    <td style={{ padding: 10, verticalAlign: "top" }}>
+                      <div style={{ fontWeight: 600 }}>{labelEntity(t, row.entity)}</div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{row.entity}</div>
+                      {row.entityId ? (
+                        <div style={{ fontSize: 10, color: "#64748b", wordBreak: "break-all", fontFamily: "monospace" }}>
+                          {row.entityId}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td style={{ padding: 10, verticalAlign: "top", fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
+                      {row.encounterId ?? "—"}
+                    </td>
+                    <td style={{ padding: 10, verticalAlign: "top", color: "#333", maxWidth: 420 }}>
+                      {hasHighlight(row) ? (
+                        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: "#7f1d1d" }}>
+                          {row.highlightTags.map((tag) => highlightTagLabel(t, tag)).join(" · ")}
+                        </div>
+                      ) : null}
+                      <span style={{ wordBreak: "break-word" }}>{formatSummary(row.metadataSummary)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
             ))}
             {items.length === 0 && !loading ? (
               <tr>

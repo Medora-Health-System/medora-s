@@ -46,12 +46,22 @@ async function adminApiFetch(
   return await parseApiResponse(response);
 }
 
+export type AdminAuditPreset =
+  | "critical_events"
+  | "clinical_actions"
+  | "billing_exports"
+  | "access_views"
+  | "overrides";
+
 export type AdminAuditEventRow = {
   id: string;
   createdAt: string;
   action: string;
   entity: string;
   entityId: string | null;
+  auditCategory?: string;
+  actionLabelKey?: string;
+  entityLabelKey?: string;
   actor: { userId: string | null; displayName: string; roleHint: string | null };
   facilityId: string | null;
   encounterId: string | null;
@@ -69,8 +79,10 @@ export type AdminAuditEventsQuery = {
   to?: string;
   actorUserId?: string;
   entity?: string;
+  /** Raw audit action code (server validates against `AuditAction` when used). */
   action?: string;
   encounterId?: string;
+  preset?: AdminAuditPreset;
   limit?: number;
   cursor?: string;
 };
@@ -86,6 +98,7 @@ export async function fetchAdminAuditEvents(
   if (query.entity?.trim()) sp.set("entity", query.entity.trim());
   if (query.action?.trim()) sp.set("action", query.action.trim());
   if (query.encounterId?.trim()) sp.set("encounterId", query.encounterId.trim());
+  if (query.preset) sp.set("preset", query.preset);
   if (query.limit != null) sp.set("limit", String(query.limit));
   if (query.cursor) sp.set("cursor", query.cursor);
   const qs = sp.toString();

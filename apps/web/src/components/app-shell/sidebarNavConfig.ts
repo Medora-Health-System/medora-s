@@ -287,6 +287,8 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
   { href: "/app/admin", labelKey: "nav.admin", roles: ["ADMIN"], group: "admin", accent: "redGray" },
   { href: "/app/admin/users", labelKey: "nav.adminUsers", roles: ["ADMIN"], group: "admin", accent: "redGray" },
   { href: "/app/admin/audit", labelKey: "nav.adminAudit", roles: ["ADMIN"], group: "admin", accent: "redGray" },
+  { href: "/app/reports", labelKey: "nav.adminReports", roles: ["ADMIN"], group: "admin", accent: "redGray" },
+  { href: "/app/admin/go-live", labelKey: "nav.adminGoLive", roles: ["ADMIN"], group: "admin", accent: "redGray" },
   {
     href: "/app/admin/mspp-access",
     labelKey: "nav.adminMsppAccess",
