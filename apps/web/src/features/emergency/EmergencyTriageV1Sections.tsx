@@ -196,16 +196,6 @@ export function EmergencyTriageV1Sections({
                 placeholder={t("erTriage.v1.referralPlaceholder")}
               />
             </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.triageStart")}</label>
-              <input
-                type="datetime-local"
-                value={er.triageStartedAt}
-                onChange={(e) => patchErV1({ triageStartedAt: e.target.value })}
-                disabled={formDisabled}
-                style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              />
-            </div>
           </div>
           <div
             style={{
@@ -454,18 +444,6 @@ export function EmergencyTriageV1Sections({
               rows={3}
               maxLength={8000}
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>{t("erTriage.v1.foodAllergy")}</label>
-            <textarea
-              value={er.foodAllergiesDetail}
-              onChange={(e) => patchErV1({ foodAllergiesDetail: e.target.value })}
-              disabled={formDisabled}
-              rows={3}
-              maxLength={4000}
-              style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              placeholder={t("erTriage.v1.foodAllergyPlaceholder")}
             />
           </div>
           <div>
