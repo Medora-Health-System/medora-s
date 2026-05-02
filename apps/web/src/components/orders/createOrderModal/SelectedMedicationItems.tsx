@@ -214,7 +214,9 @@ export function SelectedMedicationItems({
                   style={inputSm}
                 />
                 {missingDirections ? (
-                  <p style={inlineWarningStyle}>{t("createOrderModal.errDirectionsRequired")}</p>
+                  <p style={{ ...inlineWarningStyle, color: "#dc2626", fontWeight: 600 }}>
+                    {t("orders.medicationDirectionsRequired")}
+                  </p>
                 ) : null}
               </div>
               <div>

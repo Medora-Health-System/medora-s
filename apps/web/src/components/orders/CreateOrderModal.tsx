@@ -522,11 +522,14 @@ export function CreateOrderModal({
   /** Si onglet initial CARE : préremplit une ligne manuelle (ex. action rapide). */
   initialCareManualLabel,
   medicationOrderMode = "DEFAULT",
+  /** When true, show RN-specific copy if medication/care tabs are hidden. */
+  isRn = false,
 }: {
   encounterId: string;
   facilityId: string;
   canPrescribe: boolean;
   canUseRnOrderAuthority?: boolean;
+  isRn?: boolean;
   encounter?: {
     patient?: { firstName?: string; lastName?: string; mrn?: string };
     vitals?: unknown;
@@ -571,6 +574,7 @@ export function CreateOrderModal({
     checkedOrderSetItemKeys("chestPain")
   );
   const [orderSetApplying, setOrderSetApplying] = useState(false);
+  const [orderSetWarning, setOrderSetWarning] = useState<{ count: number } | null>(null);
   const [orderSetReviewActive, setOrderSetReviewActive] = useState(false);
   const [nextStagedTabAfterSuccess, setNextStagedTabAfterSuccess] = useState<OrderTypeKey | null>(null);
   const [submittedOrderType, setSubmittedOrderType] = useState<OrderTypeKey | null>(null);
@@ -669,6 +673,10 @@ export function CreateOrderModal({
     CARE: currentStagedItems.CARE.length,
   };
   const hasStagedOrderSetItems = ORDER_TYPE_REVIEW_ORDER.some((tab) => stagedCounts[tab] > 0);
+  const nextReviewTab =
+    orderSetReviewActive && hasStagedOrderSetItems
+      ? (ORDER_TYPE_REVIEW_ORDER.find((tab) => stagedCounts[tab] > 0) ?? null)
+      : null;
   const domainLabel = (tab: OrderTypeKey): string =>
     tab === "LAB"
       ? t("encounterChrome.chartTabs.orderTypeLAB")
@@ -955,6 +963,12 @@ export function CreateOrderModal({
 
       setStagedItems(nextStagedItems);
       setOrderSetReviewActive(true);
+
+      if (resolved.skipped.length > 0) {
+        setOrderSetWarning({ count: resolved.skipped.length });
+      } else {
+        setOrderSetWarning(null);
+      }
 
       if (!nextTab) {
         setError(t("ordersets.apply.noMatch"));
@@ -1497,6 +1511,23 @@ export function CreateOrderModal({
 
         {!rxSuccess && !orderSuccess && (
           <>
+            {orderSetWarning ? (
+              <div
+                style={{
+                  marginBottom: 12,
+                  backgroundColor: "#fffbeb",
+                  border: "1px solid #fde68a",
+                  color: "#92400e",
+                  padding: "10px 12px",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+                role="status"
+              >
+                {t("orders.orderSetWarning").replace("{count}", String(orderSetWarning.count))}
+              </div>
+            ) : null}
             <div
               role="tablist"
               style={{
@@ -1533,6 +1564,20 @@ export function CreateOrderModal({
                 );
               })}
             </div>
+
+            {!canUseMedicationCareTabs && isRn ? (
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                {t("orders.rnAuthorityInfo")}
+              </p>
+            ) : null}
+
+            {orderSetReviewActive && nextReviewTab ? (
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                {t("orders.nextStep")
+                  .replace("{type}", domainLabel(nextReviewTab))
+                  .replace("{count}", String(stagedCounts[nextReviewTab] ?? 0))}
+              </p>
+            ) : null}
 
             {orderSetReviewActive && hasStagedOrderSetItems ? (
               <div style={{ marginBottom: 12 }}>

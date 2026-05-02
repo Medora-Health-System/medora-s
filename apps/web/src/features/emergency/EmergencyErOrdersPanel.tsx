@@ -970,6 +970,7 @@ export function EmergencyErOrdersPanel({
           facilityId={facilityId}
           canPrescribe={canPrescribe}
           canUseRnOrderAuthority={canUseRnOrderAuthority}
+          isRn={hasAnyRole(roles, "RN")}
           encounter={
             encounterForOrderModal?.patient
               ? {

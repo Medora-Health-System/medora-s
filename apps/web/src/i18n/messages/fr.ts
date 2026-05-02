@@ -6690,4 +6690,19 @@ export default {
     errMedicationAllergyAckRequired:
       "Cochez la confirmation concernant les allergies documentées avant d’envoyer l’ordonnance.",
   },
+  orders: {
+    orderSetWarning:
+      "Certains éléments du jeu d’ordres n’ont pas été ajoutés ({count}). Vérifiez avant de continuer.",
+    nextStep: "Suivant : créer les ordres {type} ({count}).",
+    rnAuthorityInfo:
+      "Les ordres de médicaments et de soins nécessitent une autorité prescriptrice, un ordre verbal ou un protocole infirmier.",
+    medicationDirectionsRequired:
+      "Les instructions sont requises pour créer cet ordre de médicament.",
+    ivLine: "Pose de voie IV",
+    oxygenTherapy: "Administration d’oxygène",
+    dressingWoundCare: "Pansement / soin de plaie",
+  },
+  mar: {
+    viewSafetyDetails: "Voir les détails de sécurité",
+  },
 };

@@ -919,10 +919,25 @@ export function MedicationAdministrationTab({
                     <span style={{ color: "#94a3b8" }}> · </span>
                     {cumulativeLabel}
                   </div>
-                  <MedicationSoftSafetyPanel warnings={modalItem.softSafetyWarnings} density="compact" />
-                  {modalAction === "administered" ? (
-                    <AdvancedMedicationSafetyPanel warnings={marAdvancedMedicationSafetyWarnings} density="compact" />
-                  ) : null}
+                  <details style={{ marginTop: 10 }}>
+                    <summary
+                      style={{
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#334155",
+                        listStyle: "none",
+                      }}
+                    >
+                      {t("mar.viewSafetyDetails")}
+                    </summary>
+                    <div style={{ marginTop: 10 }}>
+                      <MedicationSoftSafetyPanel warnings={modalItem.softSafetyWarnings} density="compact" />
+                      {modalAction === "administered" ? (
+                        <AdvancedMedicationSafetyPanel warnings={marAdvancedMedicationSafetyWarnings} density="compact" />
+                      ) : null}
+                    </div>
+                  </details>
                 </div>
               );
             })()}

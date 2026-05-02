@@ -1445,7 +1445,7 @@ export default function EncounterDetailPage() {
                         style={quickBtn}
                         onClick={() => {
                           setActiveTab("orders");
-                          setCareModalPresetLabel("Pose de voie IV");
+                          setCareModalPresetLabel(t("orders.ivLine"));
                           setCareModalRequestTick((tick) => tick + 1);
                         }}
                       >
@@ -1456,7 +1456,7 @@ export default function EncounterDetailPage() {
                         style={quickBtn}
                         onClick={() => {
                           setActiveTab("orders");
-                          setCareModalPresetLabel("Administration d'oxygène");
+                          setCareModalPresetLabel(t("orders.oxygenTherapy"));
                           setCareModalRequestTick((tick) => tick + 1);
                         }}
                       >
@@ -1467,7 +1467,7 @@ export default function EncounterDetailPage() {
                         style={quickBtn}
                         onClick={() => {
                           setActiveTab("orders");
-                          setCareModalPresetLabel("Pansement / soin de plaie");
+                          setCareModalPresetLabel(t("orders.dressingWoundCare"));
                           setCareModalRequestTick((tick) => tick + 1);
                         }}
                       >
@@ -4881,6 +4881,7 @@ function OrdersTab({
           facilityId={facilityId}
           canPrescribe={canPrescribe}
           canUseRnOrderAuthority={canUseRnOrderAuthority}
+          isRn={roles.includes("RN")}
           encounter={encounter}
           initialOrderTab={createModalInitialTab}
           initialCareManualLabel={carePresetForOpenModal}

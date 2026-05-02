@@ -6698,4 +6698,18 @@ export default {
     errMedicationAllergyAckRequired:
       "Confirm documented allergies before sending the medication order.",
   },
+  orders: {
+    orderSetWarning:
+      "Some order set items were not added ({count}). Review before continuing.",
+    nextStep: "Next: create {type} orders ({count}).",
+    rnAuthorityInfo:
+      "Medication and care orders require provider authority, verbal order, or nursing protocol.",
+    medicationDirectionsRequired: "Directions are required to create this medication order.",
+    ivLine: "Peripheral IV placement",
+    oxygenTherapy: "Oxygen therapy",
+    dressingWoundCare: "Dressing / wound care",
+  },
+  mar: {
+    viewSafetyDetails: "View safety details",
+  },
 };
