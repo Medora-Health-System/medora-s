@@ -4776,6 +4776,11 @@ export default {
     resultReviewPendingAck: "Awaiting clinician acknowledgment.",
     acknowledgeResult: "Acknowledge result",
     verifyResult: "Verify result",
+    pendingCancel: "Cancellation scheduled. Undo available for 30 seconds.",
+    undoCancel: "Undo",
+    pendingCancelLine: "Pending cancellation",
+    cancelNow: "Cancel now",
+    cancelUndoExpired: "Cancellation submitted.",
   },
   orderEvent: {
     created: "Created",

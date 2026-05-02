@@ -4748,6 +4748,11 @@ export default {
     resultReviewPendingAck: "En attente d'accusé de réception clinicien.",
     acknowledgeResult: "Accuser réception du résultat",
     verifyResult: "Vérifier le résultat",
+    pendingCancel: "Annulation programmée. Annulation possible pendant 30 secondes.",
+    undoCancel: "Annuler l'action",
+    pendingCancelLine: "Annulation en attente",
+    cancelNow: "Annuler maintenant",
+    cancelUndoExpired: "Annulation envoyée.",
   },
   orderEvent: {
     created: "Créé",

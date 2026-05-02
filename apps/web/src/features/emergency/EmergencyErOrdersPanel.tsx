@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import type { SupportedLanguage } from "@/i18n/config";
@@ -51,7 +51,15 @@ const ordersTableScrollWrap: React.CSSProperties = {
   width: "100%",
 };
 
-/** Parent-order cancel (POST /orders/:id/cancel) — same id for every line under one order. */
+const SCHEDULED_LINE_CANCEL_MS = 30_000;
+
+type PendingLineCancel = {
+  orderItemId: string;
+  payload: CancelOrderConfirmPayload;
+  expiresAt: number;
+};
+
+/** Compact × for scheduled line cancel (API deferred until timer or flush). */
 const cancelOrderCompactX: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -392,6 +400,16 @@ export function EmergencyErOrdersPanel({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEkgProcedureLauncher, setShowEkgProcedureLauncher] = useState(false);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
+  const [pendingCancel, setPendingCancel] = useState<PendingLineCancel | null>(null);
+  const [scheduledSubmitFlash, setScheduledSubmitFlash] = useState<string | null>(null);
+  const pendingCancelRef = useRef<PendingLineCancel | null>(null);
+  const scheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushInProgressRef = useRef(false);
+  const flushPendingCancelRef = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    pendingCancelRef.current = pendingCancel;
+  }, [pendingCancel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -579,25 +597,101 @@ export function EmergencyErOrdersPanel({
     [parsedEvents]
   );
 
-  const submitCancelLineFromModal = async (payload: CancelOrderConfirmPayload) => {
-    if (!cancelLineModalItemId) return;
-    setCancelBusyItemId(cancelLineModalItemId);
+  const flushPendingCancel = useCallback(async () => {
+    const p = pendingCancelRef.current;
+    if (!p || flushInProgressRef.current) return;
+    flushInProgressRef.current = true;
+    if (scheduleTimerRef.current) {
+      clearTimeout(scheduleTimerRef.current);
+      scheduleTimerRef.current = null;
+    }
+    pendingCancelRef.current = null;
+    setPendingCancel(null);
+    setCancelBusyItemId(p.orderItemId);
     try {
-      await apiFetch(`/orders/items/${cancelLineModalItemId}/cancel`, {
+      await apiFetch(`/orders/items/${p.orderItemId}/cancel`, {
         method: "POST",
         facilityId,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cancellationReason: payload.cancellationReason,
-          ...(payload.cancellationDetails ? { cancellationDetails: payload.cancellationDetails } : {}),
+          cancellationReason: p.payload.cancellationReason,
+          ...(p.payload.cancellationDetails ? { cancellationDetails: p.payload.cancellationDetails } : {}),
         }),
       });
       setOrdersRefresh((x) => x + 1);
-      setCancelLineModalItemId(null);
+      setScheduledSubmitFlash(t("erEmergencyOrders.cancelUndoExpired"));
+      window.setTimeout(() => setScheduledSubmitFlash(null), 5000);
     } finally {
       setCancelBusyItemId(null);
+      flushInProgressRef.current = false;
     }
+  }, [facilityId, t]);
+
+  useEffect(() => {
+    flushPendingCancelRef.current = flushPendingCancel;
+  }, [flushPendingCancel]);
+
+  const scheduleCancel = useCallback((orderItemId: string, payload: CancelOrderConfirmPayload) => {
+    if (scheduleTimerRef.current) {
+      clearTimeout(scheduleTimerRef.current);
+      scheduleTimerRef.current = null;
+    }
+    const next: PendingLineCancel = {
+      orderItemId,
+      payload,
+      expiresAt: Date.now() + SCHEDULED_LINE_CANCEL_MS,
+    };
+    pendingCancelRef.current = next;
+    setPendingCancel(next);
+    scheduleTimerRef.current = setTimeout(() => {
+      scheduleTimerRef.current = null;
+      void flushPendingCancelRef.current?.();
+    }, SCHEDULED_LINE_CANCEL_MS);
+  }, []);
+
+  const undoCancel = useCallback(() => {
+    if (scheduleTimerRef.current) {
+      clearTimeout(scheduleTimerRef.current);
+      scheduleTimerRef.current = null;
+    }
+    pendingCancelRef.current = null;
+    setPendingCancel(null);
+  }, []);
+
+  const confirmLineCancelFromModal = (payload: CancelOrderConfirmPayload) => {
+    if (!cancelLineModalItemId) return;
+    scheduleCancel(cancelLineModalItemId, payload);
+    setCancelLineModalItemId(null);
   };
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden" && pendingCancelRef.current) {
+        void flushPendingCancelRef.current?.();
+      }
+    };
+    const onPageHide = () => {
+      if (pendingCancelRef.current) void flushPendingCancelRef.current?.();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (scheduleTimerRef.current) {
+        clearTimeout(scheduleTimerRef.current);
+        scheduleTimerRef.current = null;
+      }
+      if (pendingCancelRef.current) {
+        void flushPendingCancelRef.current?.();
+      }
+    };
+  }, []);
 
   const runOrderItemLifecycleAction = async (itemId: string, op: "acknowledge" | "start" | "complete" | "nurse") => {
     const busyKey = `${itemId}:${op}`;
@@ -732,6 +826,57 @@ export function EmergencyErOrdersPanel({
               <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
                 {t("erEmergencyOrders.openOrdersTitle")}
               </div>
+              {pendingCancel ? (
+                <div
+                  role="status"
+                  style={{
+                    marginBottom: 8,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #fcd34d",
+                    background: "#fffbeb",
+                    fontSize: 12,
+                    color: "#78350f",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ flex: "1 1 220px" }}>{t("erEmergencyOrders.pendingCancel")}</span>
+                  <button type="button" style={btn} onClick={undoCancel}>
+                    {t("erEmergencyOrders.undoCancel")}
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      ...btn,
+                      border: "1px solid #fcd34d",
+                      backgroundColor: "#fff7ed",
+                      color: "#9a3412",
+                    }}
+                    onClick={() => void flushPendingCancel()}
+                  >
+                    {t("erEmergencyOrders.cancelNow")}
+                  </button>
+                </div>
+              ) : null}
+              {scheduledSubmitFlash ? (
+                <div
+                  role="status"
+                  style={{
+                    marginBottom: 8,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #bbf7d0",
+                    background: "#f0fdf4",
+                    fontSize: 12,
+                    color: "#166534",
+                  }}
+                >
+                  {scheduledSubmitFlash}
+                </div>
+              ) : null}
               {activeOrderGroups.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.openOrdersEmpty")}</div>
               ) : (
@@ -833,8 +978,11 @@ export function EmergencyErOrdersPanel({
                                 "PHARMACY",
                                 "ADMIN"
                               );
+                              const linePendingCancel = pendingCancel?.orderItemId === itemId;
                               const showLineCancel =
                                 canAttemptLineCancel && isOrderItemCancellableLineForEr(item);
+                              const lineCancelDisabled =
+                                cancelBusyItemId === itemId || pendingCancel !== null;
                               const lineBtns: React.ReactNode[] = [];
                               if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
                                 lineBtns.push(
@@ -903,7 +1051,15 @@ export function EmergencyErOrdersPanel({
                                 }
                               }
                               return (
-                                <tr key={itemId} style={{ verticalAlign: "top" }}>
+                                <tr
+                                  key={itemId}
+                                  style={{
+                                    verticalAlign: "top",
+                                    ...(linePendingCancel
+                                      ? { background: "rgba(254, 243, 199, 0.28)" }
+                                      : {}),
+                                  }}
+                                >
                                   <td
                                     style={{
                                       ...ordersTableTdBorder,
@@ -970,6 +1126,35 @@ export function EmergencyErOrdersPanel({
                                     {lineBtns.length > 0 ? (
                                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
                                     ) : null}
+                                    {linePendingCancel ? (
+                                      <div
+                                        style={{
+                                          marginTop: 8,
+                                          display: "flex",
+                                          flexWrap: "wrap",
+                                          alignItems: "center",
+                                          gap: 8,
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            display: "inline-block",
+                                            padding: "2px 8px",
+                                            borderRadius: 9999,
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            color: "#92400e",
+                                            background: "#fef3c7",
+                                            border: "1px solid #fcd34d",
+                                          }}
+                                        >
+                                          {t("erEmergencyOrders.pendingCancelLine")}
+                                        </span>
+                                        <button type="button" style={btn} onClick={undoCancel}>
+                                          {t("erEmergencyOrders.undoCancel")}
+                                        </button>
+                                      </div>
+                                    ) : null}
                                   </td>
                                   <td
                                     style={{
@@ -995,12 +1180,20 @@ export function EmergencyErOrdersPanel({
                                     {showLineCancel ? (
                                       <button
                                         type="button"
-                                        style={cancelOrderCompactX}
-                                        disabled={cancelBusyItemId === itemId}
+                                        style={{
+                                          ...cancelOrderCompactX,
+                                          ...(lineCancelDisabled
+                                            ? { opacity: 0.45, cursor: "not-allowed" }
+                                            : {}),
+                                        }}
+                                        disabled={lineCancelDisabled}
                                         title={t("cancelOrderModal.cancelOrderLineAria")}
                                         aria-label={t("cancelOrderModal.cancelOrderLineAria")}
                                         aria-busy={cancelBusyItemId === itemId}
-                                        onClick={() => setCancelLineModalItemId(itemId)}
+                                        onClick={() => {
+                                          if (lineCancelDisabled) return;
+                                          setCancelLineModalItemId(itemId);
+                                        }}
                                       >
                                         <span aria-hidden>{cancelBusyItemId === itemId ? "…" : "×"}</span>
                                       </button>
@@ -1334,7 +1527,7 @@ export function EmergencyErOrdersPanel({
           if (cancelBusyItemId) return;
           setCancelLineModalItemId(null);
         }}
-        onConfirm={submitCancelLineFromModal}
+        onConfirm={confirmLineCancelFromModal}
       />
       {showCreateModal ? (
         <CreateOrderModal
