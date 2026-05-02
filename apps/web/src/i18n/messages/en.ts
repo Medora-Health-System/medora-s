@@ -5650,6 +5650,13 @@ export default {
       lasa_morphine_hydromorphone: "LASA: morphine vs hydromorphone — different potencies; confirm product and dose.",
     },
   },
+  medicationTimingSafety: {
+    critical:
+      "An “Administered” MAR entry was recorded {minutes} minute(s) ago by {name}. Risk of duplicate dose or duplicate entry.",
+    warning: "Recently administered ({minutes} minutes ago). Verify before recording another administration.",
+    info: "Last administration was recorded {minutes} minutes ago.",
+    overrideAck: "I confirm this administration is intentional.",
+  },
   clinicalSafetyGuardrails: {
     latestVitalsTitle: "Latest vitals",
     latestVitalsRecorded: "Recorded: {datetime}",

@@ -5640,6 +5640,13 @@ export default {
       lasa_morphine_hydromorphone: "LASA : morphine vs hydromorphone — puissances différentes ; confirmer le produit et la dose.",
     },
   },
+  medicationTimingSafety: {
+    critical:
+      "Une administration « Administré » a été enregistrée il y a {minutes} min par {name}. Risque de double dose ou de double saisie.",
+    warning: "Récemment administré (il y a {minutes} min). Vérifiez avant d’enregistrer une nouvelle administration.",
+    info: "Dernière administration enregistrée il y a {minutes} min.",
+    overrideAck: "Je confirme que cette administration est volontaire.",
+  },
   clinicalSafetyGuardrails: {
     latestVitalsTitle: "Derniers signes vitaux",
     latestVitalsRecorded: "Relevé : {datetime}",

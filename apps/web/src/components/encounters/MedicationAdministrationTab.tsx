@@ -16,6 +16,7 @@ import {
   resolveMedicationMarActionFromStorage,
   getEncounterAllergyDocumentationSummary,
   getMedicationSafetyWarnings,
+  evaluateMedicationTimingSafety,
   type MedicationSafetyCatalogInput,
   type MedicationSafetyWarning,
 } from "@medora/shared";
@@ -234,6 +235,7 @@ export function MedicationAdministrationTab({
   const [modalNdc, setModalNdc] = useState("");
   const [marAllergyDocSummary, setMarAllergyDocSummary] = useState<string | null>(null);
   const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
+  const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
@@ -302,6 +304,20 @@ export function MedicationAdministrationTab({
     }
     return m;
   }, [admins]);
+
+  /** Same medication line = same `orderItemId`; most recent MAR row with outcome "administered". */
+  const lastAdministeredForModal = useMemo(() => {
+    if (!modalItem) return null;
+    const list = adminsByOrderItemId.get(modalItem.orderItemId) ?? [];
+    for (const r of list) {
+      const act = resolveMedicationMarActionFromStorage({
+        marAction: r.marAction ?? null,
+        notes: r.notes,
+      });
+      if (act === "administered") return r;
+    }
+    return null;
+  }, [modalItem, adminsByOrderItemId]);
 
   const taskRows = useMemo(() => {
     type RowDraft = {
@@ -390,12 +406,14 @@ export function MedicationAdministrationTab({
     setModalBillingQty("");
     setModalNdc(row.ndcHint);
     setMarAllergySafetyAck(false);
+    setMarTimingOverrideAck(false);
   };
 
   const closeModal = () => {
     if (submitting) return;
     setModalItem(null);
     setModalSubmitError(null);
+    setMarTimingOverrideAck(false);
   };
 
   const submitModal = async () => {
@@ -999,7 +1017,10 @@ export function MedicationAdministrationTab({
                     checked={modalAction === a}
                     onChange={() => {
                       setModalAction(a);
-                      if (a !== "administered") setMarAllergySafetyAck(false);
+                      if (a !== "administered") {
+                        setMarAllergySafetyAck(false);
+                        setMarTimingOverrideAck(false);
+                      }
                     }}
                     disabled={submitting}
                   />
@@ -1058,6 +1079,80 @@ export function MedicationAdministrationTab({
             />
             <p style={{ margin: "0 0 14px 0", fontSize: 12, color: "#666" }}>{t("marTab.timestampHint")}</p>
 
+            {(() => {
+              if (!modalItem || modalAction !== "administered" || !lastAdministeredForModal) return null;
+              const timingEv = evaluateMedicationTimingSafety({
+                lastAdministeredAt: lastAdministeredForModal.administeredAt,
+                now: new Date(),
+                medicationKey: modalItem.orderItemId,
+              });
+              if (timingEv.level === "none") return null;
+              const by = lastAdministeredForModal.administeredBy;
+              const rnName = `${by.firstName ?? ""} ${by.lastName ?? ""}`.trim() || t("common.dash");
+              const minutes = timingEv.minutesSinceLast ?? 0;
+              const msgBase = `medicationTimingSafety.${timingEv.messageKey}`;
+              const timingText = t(msgBase)
+                .replace("{minutes}", String(minutes))
+                .replace("{name}", rnName);
+              const shell =
+                timingEv.level === "critical"
+                  ? {
+                      border: "1px solid #ef4444",
+                      backgroundColor: "#fef2f2",
+                      color: "#991b1b",
+                    }
+                  : timingEv.level === "warning"
+                    ? {
+                        border: "1px solid #f59e0b",
+                        backgroundColor: "#fffbeb",
+                        color: "#92400e",
+                      }
+                    : {
+                        border: "1px solid #3b82f6",
+                        backgroundColor: "#eff6ff",
+                        color: "#1e40af",
+                      };
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  <div
+                    role="status"
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      lineHeight: 1.45,
+                      fontWeight: 600,
+                      ...shell,
+                    }}
+                  >
+                    {timingText}
+                  </div>
+                  {timingEv.level === "critical" ? (
+                    <label
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "flex-start",
+                        marginTop: 10,
+                        cursor: submitting ? "default" : "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#0f172a",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={marTimingOverrideAck}
+                        disabled={submitting}
+                        onChange={(e) => setMarTimingOverrideAck(e.target.checked)}
+                      />
+                      <span>{t("medicationTimingSafety.overrideAck")}</span>
+                    </label>
+                  ) : null}
+                </div>
+              );
+            })()}
+
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -1078,7 +1173,18 @@ export function MedicationAdministrationTab({
               <button
                 type="button"
                 onClick={() => void submitModal()}
-                disabled={submitting}
+                disabled={(() => {
+                  if (submitting) return true;
+                  if (modalAction === "administered" && marAllergyDocSummary && !marAllergySafetyAck) return true;
+                  if (!modalItem || modalAction !== "administered" || !lastAdministeredForModal) return false;
+                  const te = evaluateMedicationTimingSafety({
+                    lastAdministeredAt: lastAdministeredForModal.administeredAt,
+                    now: new Date(),
+                    medicationKey: modalItem.orderItemId,
+                  });
+                  if (te.level === "critical" && !marTimingOverrideAck) return true;
+                  return false;
+                })()}
                 style={{
                   padding: "12px 18px",
                   fontSize: 15,
