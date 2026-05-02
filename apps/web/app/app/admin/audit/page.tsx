@@ -11,10 +11,19 @@ import {
   type AdminAuditPreset,
 } from "@/lib/adminAuditApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import {
+  auditActionLabel,
+  auditCategoryLabel,
+  auditEntityLabel,
+  auditSummaryEmptyText,
+} from "@/lib/auditDisplayLabels";
 
-function formatSummary(meta: Record<string, string | number | boolean>): string {
+function formatSummary(
+  t: (key: string) => string,
+  meta: Record<string, string | number | boolean>
+): string {
   const entries = Object.entries(meta);
-  if (entries.length === 0) return "—";
+  if (entries.length === 0) return auditSummaryEmptyText(t);
   return entries
     .map(([k, v]) => `${k}=${typeof v === "string" ? v : String(v)}`)
     .join(" · ");
@@ -31,18 +40,6 @@ function defaultDateRange(): { from: string; to: string } {
   const from = new Date(to.getTime() - 7 * 86400_000);
   const isoDay = (d: Date) => d.toISOString().slice(0, 10);
   return { from: isoDay(from), to: isoDay(to) };
-}
-
-function labelAction(t: (key: string) => string, action: string): string {
-  const key = `adminAudit.actions.${action}`;
-  const out = t(key);
-  return out === key ? t("adminAudit.labelRaw").replace("{code}", action) : out;
-}
-
-function labelEntity(t: (key: string) => string, entity: string): string {
-  const key = `adminAudit.entities.${entity}`;
-  const out = t(key);
-  return out === key ? t("adminAudit.labelRaw").replace("{code}", entity) : out;
 }
 
 const PRESETS: { id: AdminAuditPreset; labelKey: string }[] = [
@@ -222,8 +219,14 @@ export default function AdminAuditPage() {
           />
           <datalist id="admin-audit-actions">
             <option value="ENCOUNTER_CLOSE" />
+            <option value="ENCOUNTER_VIEW" />
+            <option value="ORDER_VIEW" />
             <option value="ORDER_CREATE" />
+            <option value="TRIAGE_SAVE" />
             <option value="VIEW" />
+            <option value="CREATE" />
+            <option value="UPDATE" />
+            <option value="DELETE" />
             <option value="ENCOUNTER_UPDATE" />
             <option value="LOGIN" />
             <option value="LOGOUT" />
@@ -242,8 +245,12 @@ export default function AdminAuditPage() {
           <datalist id="admin-audit-entities">
             <option value="EXTERNAL_BILLING_EXPORT" />
             <option value="EXTERNAL_BILLING_AUTO_EXPORT" />
+            <option value="ED_REPORT_EXPORT" />
             <option value="ENCOUNTER" />
             <option value="ORDER" />
+            <option value="TRIAGE" />
+            <option value="DIAGNOSIS" />
+            <option value="MEDICATION_ADMINISTRATION" />
           </datalist>
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, gridColumn: "span 2" }}>
@@ -296,7 +303,7 @@ export default function AdminAuditPage() {
               <Fragment key={cat}>
                 <tr style={{ background: "#f8fafc" }}>
                   <td colSpan={6} style={{ padding: "8px 10px", fontWeight: 800, fontSize: 12, color: "#0f172a" }}>
-                    {t(`adminAudit.category.${cat}`)}
+                    {auditCategoryLabel(t, cat)}
                   </td>
                 </tr>
                 {rows.map((row) => (
@@ -320,11 +327,13 @@ export default function AdminAuditPage() {
                       ) : null}
                     </td>
                     <td style={{ padding: 10, verticalAlign: "top" }}>
-                      <div style={{ fontWeight: 600 }}>{labelAction(t, row.action)}</div>
+                      <div style={{ fontWeight: 600 }}>
+                        {auditActionLabel(t, row.action, row.entity, row.metadataSummary)}
+                      </div>
                       <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{row.action}</div>
                     </td>
                     <td style={{ padding: 10, verticalAlign: "top" }}>
-                      <div style={{ fontWeight: 600 }}>{labelEntity(t, row.entity)}</div>
+                      <div style={{ fontWeight: 600 }}>{auditEntityLabel(t, row.entity)}</div>
                       <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{row.entity}</div>
                       {row.entityId ? (
                         <div style={{ fontSize: 10, color: "#64748b", wordBreak: "break-all", fontFamily: "monospace" }}>
@@ -341,7 +350,9 @@ export default function AdminAuditPage() {
                           {row.highlightTags.map((tag) => highlightTagLabel(t, tag)).join(" · ")}
                         </div>
                       ) : null}
-                      <span style={{ wordBreak: "break-word" }}>{formatSummary(row.metadataSummary)}</span>
+                      <span style={{ wordBreak: "break-word" }}>
+                        {formatSummary(t, row.metadataSummary)}
+                      </span>
                     </td>
                   </tr>
                 ))}
