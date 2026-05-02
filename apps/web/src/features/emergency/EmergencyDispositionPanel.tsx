@@ -37,6 +37,7 @@ import {
   emtalaDispositionComplementFromNursing,
   type EmtalaDispositionComplementForm,
 } from "./erEmtalaV1";
+import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
 
@@ -553,6 +554,17 @@ export function EmergencyDispositionPanel({
                 ) : null}
               </div>
             </div>
+
+            <PatientDischargeInstructionsClosureCard
+              encounterId={encounterId}
+              facilityId={facilityId}
+              dischargeSummaryJson={encounter.dischargeSummaryJson}
+              encounterStatus={encounter.status}
+              canEditNursingDischarge={canEditNursingDischarge}
+              canEditMedicalDischarge={canEditMedicalDischarge}
+              formDisabled={formDisabled}
+              onSaved={onSaved}
+            />
 
             {showAdmissionFields && canPrescribe ? (
               <div>

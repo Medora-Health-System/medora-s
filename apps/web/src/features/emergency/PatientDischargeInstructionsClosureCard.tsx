@@ -73,6 +73,7 @@ export function PatientDischargeInstructionsClosureCard({
   canEditNursingDischarge,
   canEditMedicalDischarge,
   onSaved,
+  formDisabled = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -81,6 +82,8 @@ export function PatientDischargeInstructionsClosureCard({
   canEditNursingDischarge: boolean;
   canEditMedicalDischarge: boolean;
   onSaved: () => void | Promise<void>;
+  /** When true (e.g. disposition panel locked), fields and save are read-only. */
+  formDisabled?: boolean;
 }) {
   const { t, language } = useI18n();
   const [slice, setSlice] = useState<PatientDischargeInstructionsSlice>(() =>
@@ -92,7 +95,9 @@ export function PatientDischargeInstructionsClosureCard({
   const [signerDisplay, setSignerDisplay] = useState("");
 
   const canEdit =
-    (encounterStatus ?? "") === "OPEN" && (canEditNursingDischarge || canEditMedicalDischarge);
+    !formDisabled &&
+    (encounterStatus ?? "") === "OPEN" &&
+    (canEditNursingDischarge || canEditMedicalDischarge);
 
   useEffect(() => {
     setSlice(hydratePatientDischargeInstructionsSlice(dischargeSummaryJson));

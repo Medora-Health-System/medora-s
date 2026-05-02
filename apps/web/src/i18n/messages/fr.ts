@@ -2580,7 +2580,7 @@ export default {
   patientDischargeInstructions: {
     cardTitle: "Instructions de sortie au patient",
     cardHint:
-      "Consignes structurées — enregistrez avant la clôture définitive. Complète le dossier de sortie existant sans le remplacer.",
+      "Consignes structurées — saisir dans le panneau Disposition ; enregistrez avant la clôture. Complète le dossier de sortie existant sans le remplacer.",
     dischargeDiagnosisSummary: "Résumé diagnostic de sortie",
     medicationInstructions: "Médicaments (consignes)",
     returnPrecautions: "Précautions et signes d'alarme",
@@ -5710,6 +5710,14 @@ export default {
         "L’admission / hospitalisation exige un dossier d’admission structuré complété.",
       PROVIDER_DISPOSITION_INCOMPLETE:
         "Le transfert exige une documentation médicale de disposition (impression, plan ou évaluation structurée).",
+      DISCHARGE_INSTRUCTIONS_MISSING:
+        "La sortie à domicile / LAMA exige des instructions patient structurées (remplissez au moins deux sections : diagnostic de sortie, suivi, activité, et si des médicaments sont prévus la posologie).",
+      DISCHARGE_RETURN_PRECAUTIONS_MISSING:
+        "Documentez les précautions et signes d’alarme (retour aux urgences) dans les instructions de sortie.",
+      DISCHARGE_FOLLOW_UP_MISSING:
+        "Documentez le suivi et les rendez-vous dans les instructions de sortie.",
+      DISCHARGE_INSTRUCTIONS_NOT_GIVEN:
+        "Cochez la confirmation que les consignes ont été expliquées au patient (instructions de sortie).",
     },
     warnings: {
       VITALS_NOT_DOCUMENTED:

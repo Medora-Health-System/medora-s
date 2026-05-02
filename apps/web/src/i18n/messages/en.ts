@@ -2609,7 +2609,7 @@ export default {
   patientDischargeInstructions: {
     cardTitle: "Patient discharge instructions",
     cardHint:
-      "Structured instructions — save before final closure. Complements the existing discharge summary; it does not replace it.",
+      "Structured instructions — capture in the Disposition panel; save before final closure. Complements the existing discharge summary; it does not replace it.",
     dischargeDiagnosisSummary: "Discharge diagnosis summary",
     medicationInstructions: "Medications (instructions)",
     returnPrecautions: "Precautions and warning signs",
@@ -5718,6 +5718,13 @@ export default {
       ADMISSION_DOCUMENTATION_INCOMPLETE: "Admission requires a completed structured admission packet.",
       PROVIDER_DISPOSITION_INCOMPLETE:
         "Transfer requires provider disposition documentation (note, plan, or structured evaluation).",
+      DISCHARGE_INSTRUCTIONS_MISSING:
+        "Home / AMA discharge requires structured patient instructions (complete at least two sections: discharge diagnosis, follow-up, activity, and medication instructions if discharge medications exist).",
+      DISCHARGE_RETURN_PRECAUTIONS_MISSING:
+        "Record return precautions and warning signs in discharge instructions.",
+      DISCHARGE_FOLLOW_UP_MISSING: "Record follow-up and appointments in discharge instructions.",
+      DISCHARGE_INSTRUCTIONS_NOT_GIVEN:
+        "Confirm that instructions were explained to the patient (discharge instructions checkbox).",
     },
     warnings: {
       VITALS_NOT_DOCUMENTED:

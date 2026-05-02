@@ -28,7 +28,6 @@ import {
   localizedErDischargeModeLabel,
 } from "@/features/emergency/emergencyDispositionV1";
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
-import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
 /** API encounters include `patient`; `EncounterLike` does not — widen for header / print / close. */
@@ -335,16 +334,6 @@ export function EmergencyErSummaryClosureSurface({
         diagnosticsTabHref={diagnosticsTabHref}
         ivAccessFetchEnabled={canFetchIvAccess}
         proceduresFetchEnabled={canFetchProcedures}
-      />
-
-      <PatientDischargeInstructionsClosureCard
-        encounterId={encounterId}
-        facilityId={facilityId}
-        dischargeSummaryJson={encounter.dischargeSummaryJson}
-        encounterStatus={encounter.status}
-        canEditNursingDischarge={canEditNursingDischarge}
-        canEditMedicalDischarge={canEditMedicalDischarge}
-        onSaved={onReload}
       />
 
       {open ? (
