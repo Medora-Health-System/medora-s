@@ -486,7 +486,12 @@ export class MedicationAdministrationService {
 
       const line = linkedMedicationLine;
       if (line && line.catalogItemType === "MEDICATION") {
-        if (marActionResolved === "administered" && line.status !== OrderStatus.COMPLETED && line.status !== OrderStatus.CANCELLED) {
+        const isTerminalMarAction =
+          marActionResolved === "administered" ||
+          marActionResolved === "refused" ||
+          marActionResolved === "not_available" ||
+          marActionResolved === "md_changed";
+        if (isTerminalMarAction && line.status !== OrderStatus.COMPLETED && line.status !== OrderStatus.CANCELLED) {
           this.assertMedicationLineCloseableViaMar(line.status);
           const lifecycleState = applyLifecycleWithStatus(line.lifecycleState, OrderStatus.COMPLETED);
           await tx.orderItem.update({
