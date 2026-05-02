@@ -118,8 +118,9 @@ export function buildSlackWebhookBody(payload: MedoraAlertPayload): { text: stri
     slackFieldLine("Timestamp", payload.timestamp),
   ].filter(Boolean);
 
+  const severityLabel = payload.severity === "warning" ? "warning" : "critical";
   return {
-    text: `🚨 Medora critical alert: ${payload.event}`,
+    text: `🚨 Medora ${severityLabel} alert: ${payload.event}`,
     blocks: [
       {
         type: "section",
@@ -155,12 +156,13 @@ function deliveryLogPayload(
  * Logs delivery outcome via medoraLogger. Does not throw.
  * @param fetchImpl inject for tests (default global fetch).
  */
+/** @returns true if HTTP delivery succeeded within retry budget */
 export async function deliverMedoraAlertWebhookWithRetries(
   url: string,
   bodyString: string,
   payload: MedoraAlertPayload,
   fetchImpl: typeof fetch = fetch
-): Promise<void> {
+): Promise<boolean> {
   let lastHttpStatus = 0;
   for (let attempt = 1; attempt <= 3; attempt++) {
     const ac = new AbortController();
@@ -175,7 +177,7 @@ export async function deliverMedoraAlertWebhookWithRetries(
       lastHttpStatus = res.status;
       if (res.ok) {
         logInfo("medora_alert_delivery_succeeded", deliveryLogPayload(payload, { attempt, httpStatus: res.status }));
-        return;
+        return true;
       }
     } catch {
       lastHttpStatus = 0;
@@ -191,6 +193,96 @@ export async function deliverMedoraAlertWebhookWithRetries(
 
   logError("medora_alert_delivery_failed", deliveryLogPayload(payload, { attempt: 3, httpStatus: lastHttpStatus }));
   console.warn("[medora-alert] delivery exhausted after 3 attempts", payload.event, lastHttpStatus);
+  return false;
+}
+
+export type MedoraAlertStatusForApi = {
+  enabled: boolean;
+  webhookConfigured: boolean;
+  format: "json" | "slack";
+  environment: string;
+  canSendTest: boolean;
+};
+
+/** Read-only snapshot for admin APIs (no secrets). S23 */
+export function getMedoraAlertStatusForApi(): MedoraAlertStatusForApi {
+  const enabled = readAlertsEnabled();
+  const webhookConfigured = Boolean(readWebhookUrl());
+  return {
+    enabled,
+    webhookConfigured,
+    format: readAlertFormat(),
+    environment: readEnvironment(),
+    canSendTest: enabled && webhookConfigured,
+  };
+}
+
+export type MedoraTestAlertMessageKey =
+  | "test_alert_delivered"
+  | "test_alert_failed_delivery"
+  | "test_alert_disabled"
+  | "test_alert_no_webhook";
+
+/**
+ * Synchronous test delivery (PHI-safe payload). Logs medora_test_alert_* ; never exposes webhook URL.
+ */
+export async function sendMedoraTestAlert(params: {
+  facilityId?: string;
+  userId?: string;
+  requestId?: string;
+}): Promise<{ delivered: boolean; messageKey: MedoraTestAlertMessageKey }> {
+  logInfo("medora_test_alert_requested", {
+    action: "medora_test_alert_requested",
+    facilityId: params.facilityId,
+  });
+
+  if (!readAlertsEnabled()) {
+    logError("medora_test_alert_failed", {
+      action: "medora_test_alert_failed",
+      reason: "alerts_disabled",
+      facilityId: params.facilityId,
+    });
+    return { delivered: false, messageKey: "test_alert_disabled" };
+  }
+  const url = readWebhookUrl();
+  if (!url) {
+    logError("medora_test_alert_failed", {
+      action: "medora_test_alert_failed",
+      reason: "no_webhook",
+      facilityId: params.facilityId,
+    });
+    return { delivered: false, messageKey: "test_alert_no_webhook" };
+  }
+
+  const input: MedoraAlertInput = {
+    event: "medora_test_alert",
+    severity: "warning",
+    route: "/admin/system-health/test-alert",
+    facilityId: params.facilityId ?? null,
+    userId: params.userId ?? null,
+    requestId: params.requestId ?? null,
+  };
+  const payload = buildMedoraAlertPayload(input);
+  const format = readAlertFormat();
+  const bodyString =
+    format === "slack" ? JSON.stringify(buildSlackWebhookBody(payload)) : JSON.stringify(payload);
+
+  const ok = await deliverMedoraAlertWebhookWithRetries(url, bodyString, payload, fetch);
+  if (ok) {
+    logInfo("medora_test_alert_sent", {
+      action: "medora_test_alert_sent",
+      event: payload.event,
+      facilityId: payload.facilityId,
+    });
+    return { delivered: true, messageKey: "test_alert_delivered" };
+  }
+  logError("medora_test_alert_failed", {
+    action: "medora_test_alert_failed",
+    reason: "delivery_exhausted",
+    event: payload.event,
+    facilityId: payload.facilityId,
+  });
+  return { delivered: false, messageKey: "test_alert_failed_delivery" };
 }
 
 /**
@@ -218,7 +310,7 @@ export function queueMedoraAlert(input: MedoraAlertInput): void {
         return;
       }
 
-      await deliverMedoraAlertWebhookWithRetries(url, bodyString, payload, fetch);
+      await deliverMedoraAlertWebhookWithRetries(url, bodyString, payload, fetch).catch(() => false);
     } catch (e: unknown) {
       const errorName = e instanceof Error ? e.name : typeof e;
       logError("medora_alert_delivery_failed", {

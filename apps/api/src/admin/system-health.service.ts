@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { getMedoraAlertStatusForApi, type MedoraAlertStatusForApi } from "../common/logging/medoraAlert";
 import { PrismaService } from "../prisma/prisma.service";
 import { RecentHttpErrorMetricsService } from "../common/metrics/recent-http-error-metrics.service";
 import { auditPresetWhere } from "./audit-category.util";
@@ -29,6 +30,7 @@ export type SystemHealthPayload = {
   generatedAt: string;
   checks: SystemHealthCheck[];
   metrics: SystemHealthMetrics;
+  alertStatus: MedoraAlertStatusForApi;
 };
 
 const WINDOW_MS = 24 * 3600_000;
@@ -286,6 +288,7 @@ export class SystemHealthService {
       generatedAt,
       checks,
       metrics,
+      alertStatus: getMedoraAlertStatusForApi(),
     };
   }
 }

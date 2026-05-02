@@ -1523,6 +1523,8 @@ export default {
     title: "Backup & recovery readiness",
     intro:
       "Configuration signals for backup, restore, and data safety (no connection strings or secrets are returned).",
+    monitoringRiskNote:
+      "“Blocked” or “Attention” reflect operational readiness or monitoring risk (backup, policies, alerts), not a guaranteed application outage. The clinical app may still run while production readiness is incomplete.",
     backAdmin: "← Administration",
     backApp: "Back to app",
     accessDenied: "This page is reserved for facility administrators.",
@@ -1574,6 +1576,21 @@ export default {
     title: "System health",
     intro:
       "Read-only operational snapshot: database, alert configuration, external export automation flags, recent HTTP 5xx on this API process, and audit aggregates. No secrets or patient data.",
+    monitoringRiskNote:
+      "“Critical” or “Degraded” refer to operational monitoring (alerts, HTTP errors, exports…), not a guaranteed app crash. The clinical app may still run while production monitoring is incomplete.",
+    alertConfigHeading: "Operational alerts (configuration)",
+    alertEnvironment: "Environment",
+    alertFormatLabel: "Webhook format",
+    formatJson: "JSON",
+    formatSlack: "Slack",
+    sendTestAlert: "Send test alert",
+    testAlertSending: "Sending…",
+    testAlertMessages: {
+      test_alert_delivered: "Test alert accepted by the webhook.",
+      test_alert_failed_delivery: "Delivery failed after retries (check server logs).",
+      test_alert_disabled: "Alerts are disabled (MEDORA_ALERT_ENABLED).",
+      test_alert_no_webhook: "No webhook configured (MEDORA_ALERT_WEBHOOK_URL).",
+    },
     backAdmin: "← Administration",
     backApp: "Back to app",
     accessDenied: "This page is reserved for facility administrators.",
@@ -1635,6 +1652,8 @@ export default {
     title: "Go-live readiness",
     intro:
       "Operational snapshot for the emergency department today (UTC day for throughput metrics). No patient names or clinical free text — UUIDs and configuration flags only.",
+    monitoringRiskNote:
+      "“Blocked” or “Attention” indicate operational readiness or monitoring risk, not necessarily a clinical app outage. The app may still be usable while production monitoring is incomplete.",
     backAdmin: "← Administration",
     backApp: "Back to app",
     accessDenied: "This page is reserved for facility administrators.",

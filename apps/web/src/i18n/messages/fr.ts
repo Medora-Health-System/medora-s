@@ -1487,6 +1487,8 @@ export default {
     title: "Sauvegarde et reprise",
     intro:
       "Indicateurs de configuration pour la sauvegarde, la restauration et la sécurité des données (aucune chaîne de connexion ni secret n’est affiché).",
+    monitoringRiskNote:
+      "« Bloqué » ou « Attention » reflètent un risque de préparation ou de surveillance opérationnelle (sauvegarde, politiques, alertes), pas une panne applicative. L’outil clinique peut rester utilisable alors que la préparation production est incomplète.",
     backAdmin: "← Administration",
     backApp: "Retour à l’application",
     accessDenied: "Cette page est réservée aux administrateurs de l’établissement.",
@@ -1538,6 +1540,21 @@ export default {
     title: "Santé système",
     intro:
       "Vue opérationnelle en lecture seule : base de données, configuration d’alertes, automatisation d’export (indicateurs seulement), erreurs HTTP récentes et agrégats d’audit. Aucun secret ni donnée patient.",
+    monitoringRiskNote:
+      "« Critique » ou « Dégradé » concernent la surveillance opérationnelle (alertes, erreurs HTTP, exports…), pas une panne applicative garantie. L’application clinique peut continuer à fonctionner alors que la supervision production est incomplète.",
+    alertConfigHeading: "Alertes opérationnelles (configuration)",
+    alertEnvironment: "Environnement",
+    alertFormatLabel: "Format webhook",
+    formatJson: "JSON",
+    formatSlack: "Slack",
+    sendTestAlert: "Envoyer une alerte test",
+    testAlertSending: "Envoi…",
+    testAlertMessages: {
+      test_alert_delivered: "Alerte test acceptée par le webhook.",
+      test_alert_failed_delivery: "Échec de livraison après plusieurs tentatives (voir journaux serveur).",
+      test_alert_disabled: "Les alertes sont désactivées (MEDORA_ALERT_ENABLED).",
+      test_alert_no_webhook: "Aucun webhook configuré (MEDORA_ALERT_WEBHOOK_URL).",
+    },
     backAdmin: "← Administration",
     backApp: "Retour à l’application",
     accessDenied: "Cette page est réservée aux administrateurs de l’établissement.",
@@ -1599,6 +1616,8 @@ export default {
     title: "Préparation mise en service",
     intro:
       "Vue opérationnelle des urgences pour la journée (métriques de débit en jour UTC). Aucun nom de patient ni texte clinique libre — uniquement des UUID et des indicateurs de configuration.",
+    monitoringRiskNote:
+      "« Bloqué » ou « Attention » indiquent un risque de préparation ou de surveillance opérationnelle, pas nécessairement une panne de l’application clinique. L’outil peut rester utilisable alors que la supervision production est incomplète.",
     backAdmin: "← Administration",
     backApp: "Retour à l’application",
     accessDenied: "Cette page est réservée aux administrateurs de l’établissement.",

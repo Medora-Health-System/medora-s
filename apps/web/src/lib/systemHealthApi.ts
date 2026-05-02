@@ -1,5 +1,5 @@
 /**
- * S17D — GET `/api/admin/system-health` (Nest, ADMIN).
+ * S17D / S23 — GET/POST `/api/admin/system-health*` (Nest, MEDORA_SUPER_ADMIN).
  */
 
 import { normalizeUserFacingError } from "./userFacingError";
@@ -28,11 +28,26 @@ export type SystemHealthMetrics = {
   recentFailedExportsCount: number;
 };
 
+export type SystemHealthAlertStatus = {
+  enabled: boolean;
+  webhookConfigured: boolean;
+  format: "json" | "slack";
+  environment: string;
+  canSendTest: boolean;
+};
+
 export type SystemHealthPayload = {
   status: SystemHealthOverallStatus;
   generatedAt: string;
   checks: SystemHealthCheck[];
   metrics: SystemHealthMetrics;
+  alertStatus: SystemHealthAlertStatus;
+};
+
+export type SystemHealthTestAlertResponse = {
+  ok: boolean;
+  delivered: boolean;
+  messageKey: string;
 };
 
 export async function fetchSystemHealth(facilityId: string): Promise<SystemHealthPayload> {
@@ -46,4 +61,17 @@ export async function fetchSystemHealth(facilityId: string): Promise<SystemHealt
     throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
   }
   return (await parseApiResponse(res)) as SystemHealthPayload;
+}
+
+export async function postSystemHealthTestAlert(facilityId: string): Promise<SystemHealthTestAlertResponse> {
+  const res = await fetch(`${ADMIN_API_BASE}/system-health/test-alert`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "x-facility-id": facilityId },
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+  }
+  return (await parseApiResponse(res)) as SystemHealthTestAlertResponse;
 }

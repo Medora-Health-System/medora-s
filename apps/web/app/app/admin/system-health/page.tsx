@@ -7,6 +7,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchSystemHealth,
+  postSystemHealthTestAlert,
   type SystemHealthCheck,
   type SystemHealthOverallStatus,
   type SystemHealthPayload,
@@ -31,6 +32,8 @@ export default function AdminSystemHealthPage() {
   const [data, setData] = useState<SystemHealthPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
+  const [testFeedback, setTestFeedback] = useState<{ messageKey: string; delivered: boolean } | null>(null);
 
   const load = useCallback(async () => {
     if (!facilityId) {
@@ -47,6 +50,22 @@ export default function AdminSystemHealthPage() {
       setError(normalizeUserFacingError(raw, language) || t("systemHealth.errorLoad"));
     } finally {
       setLoading(false);
+    }
+  }, [facilityId, language, t]);
+
+  const sendTestAlert = useCallback(async () => {
+    if (!facilityId) return;
+    setTestBusy(true);
+    setTestFeedback(null);
+    try {
+      const r = await postSystemHealthTestAlert(facilityId);
+      setTestFeedback({ messageKey: r.messageKey, delivered: r.delivered });
+    } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : "";
+      setTestFeedback(null);
+      setError(normalizeUserFacingError(raw, language) || t("systemHealth.errorLoad"));
+    } finally {
+      setTestBusy(false);
     }
   }, [facilityId, language, t]);
 
@@ -117,6 +136,7 @@ export default function AdminSystemHealthPage() {
         ) : null}
       </div>
       <p style={{ color: "#555", maxWidth: 720, marginTop: 12 }}>{t("systemHealth.intro")}</p>
+      <p style={{ fontSize: 13, color: "#64748b", maxWidth: 720, marginTop: 8 }}>{t("systemHealth.monitoringRiskNote")}</p>
       <p style={{ fontSize: 13, color: "#64748b" }}>
         {t("systemHealth.generatedAt")}:{" "}
         {data?.generatedAt
@@ -128,6 +148,74 @@ export default function AdminSystemHealthPage() {
       </p>
 
       {error ? <p style={{ color: "#b71c1c" }}>{error}</p> : null}
+
+      {data?.alertStatus ? (
+        <section
+          style={{
+            marginTop: 16,
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: "14px 16px",
+            background: "#f8fafc",
+          }}
+        >
+          <h2 style={{ fontSize: 16, margin: "0 0 10px 0" }}>{t("systemHealth.alertConfigHeading")}</h2>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: "0 0 12px 0",
+              fontSize: 14,
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <li>
+              <strong>{t("systemHealth.metricAlertEnabled")}</strong>{" "}
+              {data.alertStatus.enabled ? t("common.yes") : t("common.no")}
+            </li>
+            <li>
+              <strong>{t("systemHealth.metricAlertWebhook")}</strong>{" "}
+              {data.alertStatus.webhookConfigured ? t("common.yes") : t("common.no")}
+            </li>
+            <li>
+              <strong>{t("systemHealth.alertFormatLabel")}</strong>{" "}
+              {data.alertStatus.format === "slack" ? t("systemHealth.formatSlack") : t("systemHealth.formatJson")}
+            </li>
+            <li>
+              <strong>{t("systemHealth.alertEnvironment")}</strong> {data.alertStatus.environment}
+            </li>
+          </ul>
+          <button
+            type="button"
+            onClick={() => void sendTestAlert()}
+            disabled={testBusy || !data.alertStatus.canSendTest}
+            style={{
+              padding: "10px 18px",
+              borderRadius: 8,
+              border: "1px solid #1a1a1a",
+              background: data.alertStatus.canSendTest ? "#1a1a1a" : "#e2e8f0",
+              color: data.alertStatus.canSendTest ? "#fff" : "#94a3b8",
+              fontWeight: 600,
+              cursor: testBusy || !data.alertStatus.canSendTest ? "not-allowed" : "pointer",
+            }}
+          >
+            {testBusy ? t("systemHealth.testAlertSending") : t("systemHealth.sendTestAlert")}
+          </button>
+          {testFeedback ? (
+            <p
+              style={{
+                margin: "12px 0 0 0",
+                fontSize: 14,
+                color: testFeedback.delivered ? "#166534" : "#b45309",
+              }}
+              role="status"
+            >
+              {t(`systemHealth.testAlertMessages.${testFeedback.messageKey}`)}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {m ? (
         <section style={{ marginTop: 20 }}>
