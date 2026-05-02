@@ -2,6 +2,7 @@ import { Injectable, NestMiddleware } from "@nestjs/common";
 import type { NextFunction, Request, Response } from "express";
 import { queueMedoraAlert } from "../logging/medoraAlert";
 import { logInfo } from "../logging/medoraLogger";
+import { RecentHttpErrorMetricsService } from "../metrics/recent-http-error-metrics.service";
 
 type ReqWithMeta = Request & { requestId?: string; facilityId?: string; user?: { userId?: string } };
 
@@ -11,6 +12,8 @@ type ReqWithMeta = Request & { requestId?: string; facilityId?: string; user?: {
  */
 @Injectable()
 export class RequestLoggerMiddleware implements NestMiddleware {
+  constructor(private readonly httpErrorMetrics: RecentHttpErrorMetricsService) {}
+
   use(req: ReqWithMeta, res: Response, next: NextFunction): void {
     const start = Date.now();
     const rawUrl = req.originalUrl ?? req.url ?? "";
@@ -26,6 +29,7 @@ export class RequestLoggerMiddleware implements NestMiddleware {
         durationMs: Date.now() - start,
       });
       if (res.statusCode >= 500) {
+        this.httpErrorMetrics.record5xx();
         const r = req as ReqWithMeta;
         queueMedoraAlert({
           event: "http_request_5xx",

@@ -29,9 +29,11 @@ import { InsuranceModule } from "./insurance/insurance.module";
 import { BillingProcedureCodesModule } from "./billing-procedure-codes/billing-procedure-codes.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
+import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error-metrics.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
+  RecentHttpErrorMetricsModule,
   ThrottlerModule.forRoot({
     throttlers: [
       {

@@ -298,6 +298,13 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     accent: "redGray",
   },
   {
+    href: "/app/admin/system-health",
+    labelKey: "nav.adminSystemHealth",
+    roles: ["ADMIN"],
+    group: "admin",
+    accent: "redGray",
+  },
+  {
     href: "/app/admin/mspp-access",
     labelKey: "nav.adminMsppAccess",
     roles: [],

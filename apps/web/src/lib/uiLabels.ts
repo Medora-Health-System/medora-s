@@ -80,6 +80,7 @@ const fr = {
     adminGoLive: "Préparation mise en service",
     adminExports: "Surveillance des exports",
     adminBackupReadiness: "Sauvegarde et reprise",
+    adminSystemHealth: "Santé système",
     adminReports: "Rapports urgences (exploitation)",
     adminMsppAccess: "Accès MSPP (national)",
     msppDashboard: "MSPP — Tableau de bord",
