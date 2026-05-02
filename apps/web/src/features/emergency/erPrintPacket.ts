@@ -8,9 +8,11 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import {
+  DISCHARGE_SUMMARY_CORE_STRING_KEYS,
   nirMrnDisplay,
   parseAdmissionSummaryForChart,
   parseDischargeSummaryForChart,
+  PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS,
   type DischargeSummaryFieldsFr,
 } from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
@@ -47,7 +49,7 @@ export type ErPrintEncounter = DischargePrintEncounter & {
   }>;
 };
 
-const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
+const DISCHARGE_CORE_FIELD_LABEL_KEYS: Record<(typeof DISCHARGE_SUMMARY_CORE_STRING_KEYS)[number], string> = {
   disposition: "encounterChrome.modals.dischargeField.disposition",
   exitCondition: "encounterChrome.modals.dischargeField.exitCondition",
   dischargeInstructions: "encounterChrome.modals.dischargeField.dischargeInstructions",
@@ -57,6 +59,64 @@ const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
   patientDestination: "encounterChrome.modals.dischargeField.patientDestination",
   dischargeMode: "encounterChrome.modals.dischargeField.dischargeMode",
 };
+
+function appendCoreDischargeFieldsToBody(
+  body: string[],
+  language: SupportedLanguage,
+  d: DischargeSummaryFieldsFr | null
+): void {
+  if (!d) return;
+  for (const k of DISCHARGE_SUMMARY_CORE_STRING_KEYS) {
+    const v = d[k];
+    if (typeof v === "string" && v.trim()) {
+      body.push(line(printT(language, DISCHARGE_CORE_FIELD_LABEL_KEYS[k]), v));
+    }
+  }
+}
+
+function dischargeSummaryHasPatientInstructions(d: DischargeSummaryFieldsFr | null): boolean {
+  if (!d) return false;
+  for (const k of PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS) {
+    const v = d[k];
+    if (typeof v === "string" && v.trim()) return true;
+  }
+  if (d.patientInstructionsGiven === true) return true;
+  return false;
+}
+
+function appendPatientDischargeInstructionsPrint(
+  body: string[],
+  language: SupportedLanguage,
+  loc: string,
+  d: DischargeSummaryFieldsFr | null
+): void {
+  if (!dischargeSummaryHasPatientInstructions(d) || !d) return;
+  body.push(h2(language, "printOutput.patientDischargeInstructions.sectionTitle"));
+  for (const k of PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS) {
+    const v = d[k];
+    if (typeof v === "string" && v.trim()) {
+      body.push(line(printT(language, `patientDischargeInstructions.${k}`), v.trim()));
+    }
+  }
+  if (d.patientInstructionsGiven === true) {
+    body.push(
+      line(
+        printT(language, "printOutput.patientDischargeInstructions.givenYes"),
+        printT(language, "printOutput.erPacket.yes")
+      )
+    );
+  }
+  if (d.instructionsGivenBy?.trim()) {
+    body.push(
+      line(printT(language, "printOutput.patientDischargeInstructions.metaBy"), d.instructionsGivenBy.trim())
+    );
+  }
+  if (d.instructionsGivenAt?.trim()) {
+    body.push(
+      line(printT(language, "printOutput.patientDischargeInstructions.metaAt"), fmtIso(d.instructionsGivenAt, loc))
+    );
+  }
+}
 
 function esc(s: string): string {
   return String(s)
@@ -199,14 +259,7 @@ export function getErPrintPacketHtml(params: {
     }
   } else if (outcome === "TRANSFER") {
     body.push(h2(language, "printOutput.erPacket.sectionTransferClinical"));
-    if (d) {
-      (Object.keys(DISCHARGE_FIELD_KEYS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
-        const v = d[k];
-        if (typeof v === "string" && v.trim()) {
-          body.push(line(printT(language, DISCHARGE_FIELD_KEYS[k]), v));
-        }
-      });
-    }
+    appendCoreDischargeFieldsToBody(body, language, d);
     if (supplement.transferHandoffNote.trim()) {
       body.push(line(printT(language, "printOutput.erPacket.handoffSummary"), supplement.transferHandoffNote.trim()));
     }
@@ -222,14 +275,7 @@ export function getErPrintPacketHtml(params: {
     }
   } else {
     body.push(h2(language, "printOutput.erPacket.sectionDischargeClinical"));
-    if (d) {
-      (Object.keys(DISCHARGE_FIELD_KEYS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
-        const v = d[k];
-        if (typeof v === "string" && v.trim()) {
-          body.push(line(printT(language, DISCHARGE_FIELD_KEYS[k]), v));
-        }
-      });
-    }
+    appendCoreDischargeFieldsToBody(body, language, d);
     if (!d) {
       body.push(
         `<p style="margin: 12px 0; font-size: 13px;">${esc(
@@ -247,6 +293,8 @@ export function getErPrintPacketHtml(params: {
       body.push(line(printT(language, "printOutput.erPacket.deceasedNote"), supplement.deceasedPlaceholderNote.trim()));
     }
   }
+
+  appendPatientDischargeInstructionsPrint(body, language, loc, d);
 
   body.push(h2(language, "printOutput.erPacket.sectionEmtalaSummary"));
   appendEmtalaBlock(body, language, loc, emtalaDerived);

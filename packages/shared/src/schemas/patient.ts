@@ -317,6 +317,18 @@ export const encounterDischargeFieldsSchema = z.object({
   patientDestination: z.string().max(4000).optional(),
   /** Libellé français (ex. Domicile, Transfert, Admission) — souvent choisi dans une liste */
   dischargeMode: z.string().max(256).optional(),
+  /** S16A — structured patient-facing discharge instructions (JSON only, no DB migration). */
+  dischargeDiagnosisSummary: z.string().max(4000).optional(),
+  medicationInstructions: z.string().max(8000).optional(),
+  returnPrecautions: z.string().max(4000).optional(),
+  followUpInstructions: z.string().max(4000).optional(),
+  activityInstructions: z.string().max(4000).optional(),
+  woundCareInstructions: z.string().max(4000).optional(),
+  workSchoolNote: z.string().max(2000).optional(),
+  patientInstructionsGiven: z.boolean().optional(),
+  instructionsGivenBy: z.string().max(256).optional(),
+  /** ISO-8601 timestamp string */
+  instructionsGivenAt: z.string().max(48).optional(),
 });
 
 export type EncounterDischargeFields = z.infer<typeof encounterDischargeFieldsSchema>;

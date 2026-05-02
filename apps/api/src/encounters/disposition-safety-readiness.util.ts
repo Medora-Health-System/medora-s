@@ -84,7 +84,7 @@ function encounterHasSignableProviderContent(args: {
   return hasPhysicianEvalV1Content(args.nursingAssessment);
 }
 
-function dischargeModeFromEffectiveSummary(summary: Record<string, string> | undefined): string {
+function dischargeModeFromEffectiveSummary(summary: Record<string, unknown> | undefined): string {
   const m = summary?.dischargeMode;
   return typeof m === "string" ? m.trim() : "";
 }
@@ -155,7 +155,7 @@ export function computeDispositionSafetyReadiness(input: {
     treatmentPlan: string | null;
   };
   /** Merged discharge summary keys for inferring disposition path at close (optional on GET). */
-  effectiveDischargeSummary: Record<string, string> | undefined;
+  effectiveDischargeSummary: Record<string, unknown> | undefined;
   patientLatestVitalsAt: Date | null;
   latestTriageVitalsRecordedAt: Date | null;
   latestVitalsClinicalEventAt: Date | null;

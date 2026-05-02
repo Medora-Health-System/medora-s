@@ -76,7 +76,7 @@ import { appendBillingCaptureCandidate } from "../billing/billing-capture.append
 import type { AppendProcedureCaptureDto } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
-const DISCHARGE_SUMMARY_KEYS = [
+const DISCHARGE_SUMMARY_STRING_KEYS = [
   "disposition",
   "exitCondition",
   "dischargeInstructions",
@@ -85,6 +85,15 @@ const DISCHARGE_SUMMARY_KEYS = [
   "returnIfWorse",
   "patientDestination",
   "dischargeMode",
+  "dischargeDiagnosisSummary",
+  "medicationInstructions",
+  "returnPrecautions",
+  "followUpInstructions",
+  "activityInstructions",
+  "woundCareInstructions",
+  "workSchoolNote",
+  "instructionsGivenBy",
+  "instructionsGivenAt",
 ] as const;
 
 function admissionSummaryHasContent(data: Record<string, unknown>): boolean {
@@ -143,23 +152,36 @@ function nursingAssessmentHasContent(raw: unknown): boolean {
 function mergeDischargeSummaryJson(
   existing: unknown,
   incoming: EncounterCloseDto["discharge"]
-): Record<string, string> | undefined {
-  const out: Record<string, string> = {};
+): Record<string, unknown> | undefined {
+  const out: Record<string, unknown> = {};
   if (existing && typeof existing === "object" && !Array.isArray(existing)) {
     const o = existing as Record<string, unknown>;
-    for (const k of DISCHARGE_SUMMARY_KEYS) {
+    for (const k of DISCHARGE_SUMMARY_STRING_KEYS) {
       const v = o[k];
       if (typeof v === "string" && v.trim()) {
         out[k] = v.trim();
       }
     }
+    const g0 = o.patientInstructionsGiven;
+    if (typeof g0 === "boolean") {
+      out.patientInstructionsGiven = g0;
+    }
   }
   if (incoming) {
     const inc = incoming as Record<string, unknown>;
-    for (const k of DISCHARGE_SUMMARY_KEYS) {
+    for (const k of DISCHARGE_SUMMARY_STRING_KEYS) {
       const v = inc[k];
-      if (v !== undefined && String(v).trim() !== "") {
-        out[k] = String(v).trim();
+      if (v === undefined) continue;
+      if (typeof v === "string") {
+        if (v.trim() === "") delete out[k];
+        else out[k] = v.trim();
+      }
+    }
+    if (typeof inc.patientInstructionsGiven === "boolean") {
+      out.patientInstructionsGiven = inc.patientInstructionsGiven;
+      if (inc.patientInstructionsGiven === false) {
+        delete out.instructionsGivenBy;
+        delete out.instructionsGivenAt;
       }
     }
   }

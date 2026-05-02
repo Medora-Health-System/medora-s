@@ -2577,6 +2577,26 @@ export default {
       OTHER: "Vérifiez la documentation finale avant de terminer la consultation.",
     },
   },
+  patientDischargeInstructions: {
+    cardTitle: "Instructions de sortie au patient",
+    cardHint:
+      "Consignes structurées — enregistrez avant la clôture définitive. Complète le dossier de sortie existant sans le remplacer.",
+    dischargeDiagnosisSummary: "Résumé diagnostic de sortie",
+    medicationInstructions: "Médicaments (consignes)",
+    returnPrecautions: "Précautions et signes d'alarme",
+    followUpInstructions: "Suivi et rendez-vous",
+    activityInstructions: "Activités",
+    woundCareInstructions: "Plaies / pansements",
+    workSchoolNote: "Arrêt / école / travail",
+    givenCheckbox: "Les consignes ont été expliquées au patient (ou à son représentant).",
+    givenBy: "Par :",
+    givenAt: "Horodatage :",
+    save: "Enregistrer les instructions",
+    saveOk: "Instructions enregistrées.",
+    saveQueued: "Instructions mises en file (hors ligne).",
+    saveFailed: "Enregistrement impossible.",
+    saveNothing: "Aucune donnée à enregistrer (remplissez un champ ou cochez la case).",
+  },
   emergencyErNursingHandoff: {
     panelTitle: "Exécution équipe (après décision)",
     panelSubline:
@@ -4566,6 +4586,12 @@ export default {
         "Aucun résumé de sortie structuré n'est encore enregistré pour cette consultation.",
       signatureHeading: "Signature / nom du professionnel",
       footerMedora: "Medora-S",
+    },
+    patientDischargeInstructions: {
+      sectionTitle: "Instructions structurées au patient",
+      givenYes: "Consignes données au patient (documenté)",
+      metaBy: "Documenté par",
+      metaAt: "Horodatage",
     },
     erPacket: {
       htmlTitleDischarge: "Dossier de sortie urgences",

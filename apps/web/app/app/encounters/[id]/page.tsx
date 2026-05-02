@@ -199,7 +199,7 @@ export default function EncounterDetailPage() {
   const [queuedDischargeSaveNotice, setQueuedDischargeSaveNotice] = useState(false);
   const [showDischargeModal, setShowDischargeModal] = useState(false);
   /** Objet fusionné enregistré avant la modale de confirmation finale (ou null si clôture sans étape dossier). */
-  const [pendingDischarge, setPendingDischarge] = useState<Record<string, string> | null>(null);
+  const [pendingDischarge, setPendingDischarge] = useState<Record<string, unknown> | null>(null);
   const [dispositionReadiness, setDispositionReadiness] = useState<DispositionSafetyReadinessResponse | null>(null);
   const [ackDispositionSafety, setAckDispositionSafety] = useState(false);
   const [dischargeForm, setDischargeForm] = useState<DischargeFormState>(() => emptyDischargeForm());
@@ -289,7 +289,9 @@ export default function EncounterDetailPage() {
     const parsed = parseDischargeSummaryForChart(encounter?.dischargeSummaryJson);
     if (!parsed) return;
     const matches = Object.entries(pendingDischarge).every(([k, v]) => {
-      const sv = String((parsed as Record<string, unknown>)[k] ?? "").trim();
+      const parsedV = (parsed as Record<string, unknown>)[k];
+      if (typeof v === "boolean") return parsedV === v;
+      const sv = typeof parsedV === "string" ? parsedV.trim() : "";
       return sv === String(v).trim();
     });
     if (matches) setQueuedDischargeSaveNotice(false);
@@ -664,11 +666,15 @@ export default function EncounterDetailPage() {
   };
 
   const buildDischargePayloadFromPending = () => {
-    const dischargePayload: Record<string, string> = {};
+    const dischargePayload: Record<string, unknown> = {};
     if (pendingDischarge) {
       for (const [k, v] of Object.entries(pendingDischarge)) {
-        const t = typeof v === "string" ? v.trim() : "";
-        if (t) dischargePayload[k] = t;
+        if (typeof v === "boolean") {
+          dischargePayload[k] = v;
+        } else if (typeof v === "string") {
+          const t = v.trim();
+          if (t) dischargePayload[k] = t;
+        }
       }
     }
     return dischargePayload;
@@ -686,7 +692,9 @@ export default function EncounterDetailPage() {
       if (Object.keys(dischargePayload).length > 0) body.discharge = dischargePayload;
       if (acknowledgeDeficiencies) body.acknowledgeDeficiencies = true;
       if (acknowledgeDispositionSafetyOverride) body.acknowledgeDispositionSafety = true;
-      const derivedStatus = dischargeModeFrToDischargeStatus(pendingDischarge?.dischargeMode);
+      const derivedStatus = dischargeModeFrToDischargeStatus(
+        typeof pendingDischarge?.dischargeMode === "string" ? pendingDischarge.dischargeMode : undefined
+      );
       if (derivedStatus) body.dischargeStatus = derivedStatus;
       const res = await apiFetch(`/encounters/${encounterId}/close`, {
         method: "POST",
@@ -732,7 +740,9 @@ export default function EncounterDetailPage() {
     setClosingEncounter(true);
     try {
       const dischargePayload = buildDischargePayloadFromPending();
-      const derivedStatus = dischargeModeFrToDischargeStatus(pendingDischarge?.dischargeMode);
+      const derivedStatus = dischargeModeFrToDischargeStatus(
+        typeof pendingDischarge?.dischargeMode === "string" ? pendingDischarge.dischargeMode : undefined
+      );
       const checkBody: Record<string, unknown> = {};
       if (Object.keys(dischargePayload).length > 0) checkBody.discharge = dischargePayload;
       if (derivedStatus) checkBody.dischargeStatus = derivedStatus;

@@ -28,6 +28,7 @@ import {
   localizedErDischargeModeLabel,
 } from "@/features/emergency/emergencyDispositionV1";
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
+import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
 /** API encounters include `patient`; `EncounterLike` does not — widen for header / print / close. */
@@ -53,11 +54,15 @@ type ErClosureEncounter = ComponentProps<typeof EmergencyVisitSummaryPanel>["enc
 function dischargePayloadForClose(encounter: ErClosureEncounter, canEditNursing: boolean, canEditMedical: boolean) {
   const form = hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson);
   const merged = mergeDischargeForSave(encounter.dischargeSummaryJson, form, canEditNursing, canEditMedical);
-  const out: Record<string, string> = {};
+  const out: Record<string, unknown> = {};
   if (merged) {
     for (const [k, v] of Object.entries(merged)) {
-      const t = typeof v === "string" ? v.trim() : "";
-      if (t) out[k] = t;
+      if (typeof v === "boolean") {
+        out[k] = v;
+      } else if (typeof v === "string") {
+        const t = v.trim();
+        if (t) out[k] = t;
+      }
     }
   }
   return out;
@@ -330,6 +335,16 @@ export function EmergencyErSummaryClosureSurface({
         diagnosticsTabHref={diagnosticsTabHref}
         ivAccessFetchEnabled={canFetchIvAccess}
         proceduresFetchEnabled={canFetchProcedures}
+      />
+
+      <PatientDischargeInstructionsClosureCard
+        encounterId={encounterId}
+        facilityId={facilityId}
+        dischargeSummaryJson={encounter.dischargeSummaryJson}
+        encounterStatus={encounter.status}
+        canEditNursingDischarge={canEditNursingDischarge}
+        canEditMedicalDischarge={canEditMedicalDischarge}
+        onSaved={onReload}
       />
 
       {open ? (

@@ -398,9 +398,9 @@ export function mergeErDischargeForEncounterPatch(
   canEditNursing: boolean,
   canEditMedical: boolean,
   outcomeUi: ErDispositionOutcomeUi
-): Record<string, string> | null {
+): Record<string, unknown> | null {
   const fromRoles = mergeDischargeForSave(encounterDischargeJson, form, canEditNursing, canEditMedical);
-  const out: Record<string, string> = fromRoles != null ? { ...fromRoles } : {};
+  const out: Record<string, unknown> = fromRoles != null ? { ...fromRoles } : {};
   const modeFromForm = form.dischargeMode.trim();
   const modeFromOutcome = outcomeUiToDischargeMode(outcomeUi).trim();
   const effectiveMode = modeFromForm || modeFromOutcome;

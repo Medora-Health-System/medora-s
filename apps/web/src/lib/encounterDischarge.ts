@@ -3,7 +3,10 @@
  * et parseDischargeSummaryForChart (patientChartHelpers).
  */
 
-import { parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
+import {
+  parseDischargeSummaryForChart,
+  PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS,
+} from "@/components/patient-chart/patientChartHelpers";
 
 export type DischargeFormState = {
   disposition: string;
@@ -14,6 +17,16 @@ export type DischargeFormState = {
   returnIfWorse: string;
   patientDestination: string;
   dischargeMode: string;
+  dischargeDiagnosisSummary: string;
+  medicationInstructions: string;
+  returnPrecautions: string;
+  followUpInstructions: string;
+  activityInstructions: string;
+  woundCareInstructions: string;
+  workSchoolNote: string;
+  patientInstructionsGiven: boolean;
+  instructionsGivenBy: string;
+  instructionsGivenAt: string;
 };
 
 export const DISCHARGE_NURSING_KEYS = new Set([
@@ -66,6 +79,16 @@ export function emptyDischargeForm(): DischargeFormState {
     returnIfWorse: "",
     patientDestination: "",
     dischargeMode: "",
+    dischargeDiagnosisSummary: "",
+    medicationInstructions: "",
+    returnPrecautions: "",
+    followUpInstructions: "",
+    activityInstructions: "",
+    woundCareInstructions: "",
+    workSchoolNote: "",
+    patientInstructionsGiven: false,
+    instructionsGivenBy: "",
+    instructionsGivenAt: "",
   };
 }
 
@@ -82,6 +105,16 @@ export function hydrateDischargeFormFromEncounterJson(raw: unknown): DischargeFo
     returnIfWorse: p.returnIfWorse ?? "",
     patientDestination: p.patientDestination ?? "",
     dischargeMode: p.dischargeMode ?? "",
+    dischargeDiagnosisSummary: p.dischargeDiagnosisSummary ?? "",
+    medicationInstructions: p.medicationInstructions ?? "",
+    returnPrecautions: p.returnPrecautions ?? "",
+    followUpInstructions: p.followUpInstructions ?? "",
+    activityInstructions: p.activityInstructions ?? "",
+    woundCareInstructions: p.woundCareInstructions ?? "",
+    workSchoolNote: p.workSchoolNote ?? "",
+    patientInstructionsGiven: p.patientInstructionsGiven === true,
+    instructionsGivenBy: p.instructionsGivenBy ?? "",
+    instructionsGivenAt: p.instructionsGivenAt ?? "",
   };
 }
 
@@ -94,14 +127,16 @@ export function mergeDischargeForSave(
   form: DischargeFormState,
   canEditNursing: boolean,
   canEditMedical: boolean
-): Record<string, string> | null {
-  const base = parseDischargeSummaryForChart(encounterJson) ?? {};
-  const out: Record<string, string> = { ...(base as Record<string, string>) };
+): Record<string, unknown> | null {
+  const parsed = parseDischargeSummaryForChart(encounterJson);
+  const out: Record<string, unknown> = parsed ? { ...(parsed as Record<string, unknown>) } : {};
 
   const apply = (keys: Set<string>, canEdit: boolean) => {
     if (!canEdit) return;
+    const formRec = form as unknown as Record<string, unknown>;
     for (const k of keys) {
-      const v = (form as Record<string, string>)[k]?.trim() ?? "";
+      const raw = formRec[k];
+      const v = typeof raw === "string" ? raw.trim() : "";
       if (v) out[k] = v;
       else delete out[k];
     }
@@ -110,5 +145,60 @@ export function mergeDischargeForSave(
   apply(DISCHARGE_NURSING_KEYS, canEditNursing);
   apply(DISCHARGE_MEDICAL_KEYS, canEditMedical);
 
+  const canDocPatientInstructions = canEditNursing || canEditMedical;
+  if (canDocPatientInstructions) {
+    const formRec = form as unknown as Record<string, unknown>;
+    for (const k of PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS) {
+      const raw = formRec[k];
+      const v = typeof raw === "string" ? raw.trim() : "";
+      if (v) out[k] = v;
+      else delete out[k];
+    }
+    for (const k of ["instructionsGivenBy", "instructionsGivenAt"] as const) {
+      const raw = formRec[k];
+      const v = typeof raw === "string" ? raw.trim() : "";
+      if (v) out[k] = v;
+      else delete out[k];
+    }
+    if (form.patientInstructionsGiven) {
+      out.patientInstructionsGiven = true;
+    } else {
+      delete out.patientInstructionsGiven;
+      delete out.instructionsGivenBy;
+      delete out.instructionsGivenAt;
+    }
+  }
+
   return Object.keys(out).length ? out : null;
+}
+
+/** S16A — sous-ensemble éditable dans la carte « instructions patient » (résumé / clôture). */
+export type PatientDischargeInstructionsSlice = Pick<
+  DischargeFormState,
+  | "dischargeDiagnosisSummary"
+  | "medicationInstructions"
+  | "returnPrecautions"
+  | "followUpInstructions"
+  | "activityInstructions"
+  | "woundCareInstructions"
+  | "workSchoolNote"
+  | "patientInstructionsGiven"
+  | "instructionsGivenBy"
+  | "instructionsGivenAt"
+>;
+
+export function hydratePatientDischargeInstructionsSlice(raw: unknown): PatientDischargeInstructionsSlice {
+  const f = hydrateDischargeFormFromEncounterJson(raw);
+  return {
+    dischargeDiagnosisSummary: f.dischargeDiagnosisSummary,
+    medicationInstructions: f.medicationInstructions,
+    returnPrecautions: f.returnPrecautions,
+    followUpInstructions: f.followUpInstructions,
+    activityInstructions: f.activityInstructions,
+    woundCareInstructions: f.woundCareInstructions,
+    workSchoolNote: f.workSchoolNote,
+    patientInstructionsGiven: f.patientInstructionsGiven,
+    instructionsGivenBy: f.instructionsGivenBy,
+    instructionsGivenAt: f.instructionsGivenAt,
+  };
 }

@@ -2606,6 +2606,26 @@ export default {
       OTHER: "Review final documentation before ending the encounter.",
     },
   },
+  patientDischargeInstructions: {
+    cardTitle: "Patient discharge instructions",
+    cardHint:
+      "Structured instructions — save before final closure. Complements the existing discharge summary; it does not replace it.",
+    dischargeDiagnosisSummary: "Discharge diagnosis summary",
+    medicationInstructions: "Medications (instructions)",
+    returnPrecautions: "Precautions and warning signs",
+    followUpInstructions: "Follow-up and appointments",
+    activityInstructions: "Activity",
+    woundCareInstructions: "Wounds / dressings",
+    workSchoolNote: "Work / school note",
+    givenCheckbox: "Instructions were explained to the patient (or representative).",
+    givenBy: "By:",
+    givenAt: "Timestamp:",
+    save: "Save instructions",
+    saveOk: "Instructions saved.",
+    saveQueued: "Instructions queued (offline).",
+    saveFailed: "Could not save.",
+    saveNothing: "Nothing to save (enter text in a field or check the box).",
+  },
   emergencyErNursingHandoff: {
     panelTitle: "Team execution (after decision)",
     panelSubline:
@@ -4588,6 +4608,12 @@ export default {
       noStructuredSummary: "No structured discharge summary has been recorded for this encounter yet.",
       signatureHeading: "Signature / clinician name",
       footerMedora: "Medora-S",
+    },
+    patientDischargeInstructions: {
+      sectionTitle: "Structured patient discharge instructions",
+      givenYes: "Instructions given to patient (documented)",
+      metaBy: "Documented by",
+      metaAt: "Timestamp",
     },
     erPacket: {
       htmlTitleDischarge: "ED discharge packet",

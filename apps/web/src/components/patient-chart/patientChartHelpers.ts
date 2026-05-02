@@ -183,6 +183,29 @@ export function parsePhysicianEvalV1ForChart(
   return out;
 }
 
+/** Champs dossier de sortie historiques (V1). */
+export const DISCHARGE_SUMMARY_CORE_STRING_KEYS = [
+  "disposition",
+  "exitCondition",
+  "dischargeInstructions",
+  "medicationsGiven",
+  "followUp",
+  "returnIfWorse",
+  "patientDestination",
+  "dischargeMode",
+] as const;
+
+/** S16A — instructions patient structurées (même JSON `dischargeSummaryJson`). */
+export const PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS = [
+  "dischargeDiagnosisSummary",
+  "medicationInstructions",
+  "returnPrecautions",
+  "followUpInstructions",
+  "activityInstructions",
+  "woundCareInstructions",
+  "workSchoolNote",
+] as const;
+
 export type DischargeSummaryFieldsFr = {
   disposition?: string;
   exitCondition?: string;
@@ -192,30 +215,55 @@ export type DischargeSummaryFieldsFr = {
   returnIfWorse?: string;
   patientDestination?: string;
   dischargeMode?: string;
+  dischargeDiagnosisSummary?: string;
+  medicationInstructions?: string;
+  returnPrecautions?: string;
+  followUpInstructions?: string;
+  activityInstructions?: string;
+  woundCareInstructions?: string;
+  workSchoolNote?: string;
+  patientInstructionsGiven?: boolean;
+  instructionsGivenBy?: string;
+  instructionsGivenAt?: string;
 };
 
 /** Résumé de sortie structuré ; `null` si aucun champ renseigné. */
 export function parseDischargeSummaryForChart(raw: unknown): DischargeSummaryFieldsFr | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
-  const keys = [
-    "disposition",
-    "exitCondition",
-    "dischargeInstructions",
-    "medicationsGiven",
-    "followUp",
-    "returnIfWorse",
-    "patientDestination",
-    "dischargeMode",
-  ] as const;
   const out: DischargeSummaryFieldsFr = {};
   let any = false;
-  for (const k of keys) {
+  for (const k of DISCHARGE_SUMMARY_CORE_STRING_KEYS) {
     const v = o[k];
     if (typeof v === "string" && v.trim()) {
       (out as Record<string, string>)[k] = v.trim();
       any = true;
     }
+  }
+  for (const k of PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) {
+      (out as Record<string, string>)[k] = v.trim();
+      any = true;
+    }
+  }
+  for (const k of ["instructionsGivenBy", "instructionsGivenAt"] as const) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) {
+      (out as Record<string, string>)[k] = v.trim();
+      any = true;
+    }
+  }
+  const pig = o.patientInstructionsGiven;
+  if (typeof pig === "boolean") {
+    out.patientInstructionsGiven = pig;
+    any = true;
+  } else if (pig === "true" || pig === "1") {
+    out.patientInstructionsGiven = true;
+    any = true;
+  } else if (pig === "false" || pig === "0") {
+    out.patientInstructionsGiven = false;
+    any = true;
   }
   return any ? out : null;
 }

@@ -8,9 +8,14 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
-import { nirMrnDisplay, parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
+import {
+  DISCHARGE_SUMMARY_CORE_STRING_KEYS,
+  nirMrnDisplay,
+  parseDischargeSummaryForChart,
+  PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS,
+  type DischargeSummaryFieldsFr,
+} from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
-import type { DischargeSummaryFieldsFr } from "@/components/patient-chart/patientChartHelpers";
 
 export type DischargePrintPatient = {
   firstName?: string | null;
@@ -43,7 +48,7 @@ function line(label: string, value: string | null | undefined): string {
   return `<p style="margin: 6px 0; line-height: 1.45;"><strong>${esc(label)}</strong> ${esc(v)}</p>`;
 }
 
-const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
+const DISCHARGE_CORE_FIELD_LABEL_KEYS: Record<(typeof DISCHARGE_SUMMARY_CORE_STRING_KEYS)[number], string> = {
   disposition: "encounterChrome.modals.dischargeField.disposition",
   exitCondition: "encounterChrome.modals.dischargeField.exitCondition",
   dischargeInstructions: "encounterChrome.modals.dischargeField.dischargeInstructions",
@@ -53,6 +58,16 @@ const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
   patientDestination: "encounterChrome.modals.dischargeField.patientDestination",
   dischargeMode: "encounterChrome.modals.dischargeField.dischargeMode",
 };
+
+function dischargeSummaryHasPatientInstructions(d: DischargeSummaryFieldsFr | null): boolean {
+  if (!d) return false;
+  for (const k of PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS) {
+    const v = d[k];
+    if (typeof v === "string" && v.trim()) return true;
+  }
+  if (d.patientInstructionsGiven === true) return true;
+  return false;
+}
 
 /**
  * Full HTML for a print window (patient-facing discharge document).
@@ -128,14 +143,53 @@ export function getDischargePrintHtml(params: {
 
   bodySections.push(`<div style="margin-bottom: 16px;">`);
   if (d) {
-    (Object.keys(DISCHARGE_FIELD_KEYS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
+    for (const k of DISCHARGE_SUMMARY_CORE_STRING_KEYS) {
       const v = d[k];
       if (typeof v === "string" && v.trim()) {
-        bodySections.push(line(printT(language, DISCHARGE_FIELD_KEYS[k]), v));
+        bodySections.push(line(printT(language, DISCHARGE_CORE_FIELD_LABEL_KEYS[k]), v));
       }
-    });
+    }
   }
   bodySections.push(`</div>`);
+
+  if (d && dischargeSummaryHasPatientInstructions(d)) {
+    const loc = printDateLocale(language);
+    bodySections.push(
+      `<h2 style="font-size: 15px; margin: 18px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px;">${esc(
+        printT(language, "printOutput.patientDischargeInstructions.sectionTitle")
+      )}</h2>`
+    );
+    bodySections.push(`<div style="margin-bottom: 16px;">`);
+    for (const k of PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS) {
+      const v = d[k];
+      if (typeof v === "string" && v.trim()) {
+        bodySections.push(line(printT(language, `patientDischargeInstructions.${k}`), v));
+      }
+    }
+    if (d.patientInstructionsGiven === true) {
+      bodySections.push(
+        line(
+          printT(language, "printOutput.patientDischargeInstructions.givenYes"),
+          printT(language, "printOutput.erPacket.yes")
+        )
+      );
+    }
+    if (d.instructionsGivenBy?.trim()) {
+      bodySections.push(
+        line(printT(language, "printOutput.patientDischargeInstructions.metaBy"), d.instructionsGivenBy.trim())
+      );
+    }
+    if (d.instructionsGivenAt?.trim()) {
+      let when = d.instructionsGivenAt.trim();
+      try {
+        when = new Date(d.instructionsGivenAt).toLocaleString(loc);
+      } catch {
+        /* keep raw */
+      }
+      bodySections.push(line(printT(language, "printOutput.patientDischargeInstructions.metaAt"), when));
+    }
+    bodySections.push(`</div>`);
+  }
 
   if (!d) {
     bodySections.push(

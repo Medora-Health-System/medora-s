@@ -16,8 +16,10 @@ import { calculateAge } from "@/lib/patientDisplay";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import {
   diagnosisDisplayFr,
+  DISCHARGE_SUMMARY_CORE_STRING_KEYS,
   parseDischargeSummaryForChart,
   parseNursingAssessmentSectionsForChart,
+  PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS,
   nirMrnDisplay,
   type DischargeSummaryFieldsFr,
 } from "./patientChartHelpers";
@@ -54,7 +56,7 @@ function fmtShort(iso: string | null | undefined, lang: SupportedLanguage): stri
   }
 }
 
-const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
+const DISCHARGE_CORE_FIELD_LABEL_KEYS: Record<(typeof DISCHARGE_SUMMARY_CORE_STRING_KEYS)[number], string> = {
   disposition: "encounterChrome.modals.dischargeField.disposition",
   exitCondition: "encounterChrome.modals.dischargeField.exitCondition",
   dischargeInstructions: "encounterChrome.modals.dischargeField.dischargeInstructions",
@@ -67,14 +69,37 @@ const DISCHARGE_FIELD_KEYS: Record<keyof DischargeSummaryFieldsFr, string> = {
 
 function dischargeFieldsHtml(lang: SupportedLanguage, d: DischargeSummaryFieldsFr): string {
   const parts: string[] = [];
-  (Object.keys(DISCHARGE_FIELD_KEYS) as (keyof DischargeSummaryFieldsFr)[]).forEach((k) => {
+  for (const k of DISCHARGE_SUMMARY_CORE_STRING_KEYS) {
     const v = d[k];
     if (typeof v === "string" && v.trim()) {
       parts.push(
-        `<div style="margin:2px 0;"><strong>${esc(printT(lang, DISCHARGE_FIELD_KEYS[k]))}</strong> ${esc(v)}</div>`
+        `<div style="margin:2px 0;"><strong>${esc(printT(lang, DISCHARGE_CORE_FIELD_LABEL_KEYS[k]))}</strong> ${esc(v)}</div>`
       );
     }
-  });
+  }
+  for (const k of PATIENT_DISCHARGE_INSTRUCTION_STRING_KEYS) {
+    const v = d[k];
+    if (typeof v === "string" && v.trim()) {
+      parts.push(
+        `<div style="margin:2px 0;"><strong>${esc(printT(lang, `patientDischargeInstructions.${k}`))}</strong> ${esc(v)}</div>`
+      );
+    }
+  }
+  if (d.patientInstructionsGiven === true) {
+    parts.push(
+      `<div style="margin:2px 0;"><strong>${esc(printT(lang, "printOutput.patientDischargeInstructions.givenYes"))}</strong> ${esc(printT(lang, "printOutput.erPacket.yes"))}</div>`
+    );
+  }
+  if (d.instructionsGivenBy?.trim()) {
+    parts.push(
+      `<div style="margin:2px 0;"><strong>${esc(printT(lang, "printOutput.patientDischargeInstructions.metaBy"))}</strong> ${esc(d.instructionsGivenBy.trim())}</div>`
+    );
+  }
+  if (d.instructionsGivenAt?.trim()) {
+    parts.push(
+      `<div style="margin:2px 0;"><strong>${esc(printT(lang, "printOutput.patientDischargeInstructions.metaAt"))}</strong> ${esc(fmtShort(d.instructionsGivenAt, lang))}</div>`
+    );
+  }
   return parts.length ? parts.join("") : "";
 }
 
