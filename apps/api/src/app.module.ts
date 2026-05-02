@@ -27,6 +27,7 @@ import { MsppModule } from "./mspp/mspp.module";
 import { FhirModule } from "./fhir/fhir.module";
 import { InsuranceModule } from "./insurance/insurance.module";
 import { BillingProcedureCodesModule } from "./billing-procedure-codes/billing-procedure-codes.module";
+import { ReportsModule } from "./reports/reports.module";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 
 const imports = [
@@ -65,6 +66,7 @@ const imports = [
   FhirModule,
   InsuranceModule,
   BillingProcedureCodesModule,
+  ReportsModule,
 ];
 
 @Module({
