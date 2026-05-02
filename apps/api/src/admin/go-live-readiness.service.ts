@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { EncounterClinicalEventType, EncounterStatus, EncounterType } from "@prisma/client";
+import { AuditAction, EncounterClinicalEventType, EncounterStatus, EncounterType, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { ReportsService } from "../reports/reports.service";
 import type { EdReportsQueryDto } from "../reports/dto/ed-reports-query.dto";
@@ -49,11 +49,11 @@ function dischargeSummaryFromEncounter(existing: unknown): Record<string, unknow
 
 function utcTodayRange(): EdReportsQueryDto {
   const day = new Date().toISOString().slice(0, 10);
-  return { from: day, to: day, export: "json" };
+  return { from: day, to: day, format: "json", limit: 500 };
 }
 
-function avgMinutes(rows: { minutes: number | null }[]): number | null {
-  const nums = rows.map((r) => r.minutes).filter((m): m is number => m != null && Number.isFinite(m));
+function avgMinutesNumeric(vals: (number | null | undefined)[]): number | null {
+  const nums = vals.filter((m): m is number => m != null && Number.isFinite(m));
   if (nums.length === 0) return null;
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
 }
@@ -90,6 +90,17 @@ export type GoLiveReadinessCheck = {
   detail: string | null;
 };
 
+type GoLiveDoorProvMetricRow = { minutesToProvider?: number | null };
+type GoLiveDoorDoorMetricRow = { durationMinutes?: number };
+type GoLiveCriticalAuditRow = {
+  id: string;
+  createdAt: Date;
+  action: AuditAction;
+  entityType: string;
+  encounterId: string | null;
+  metadata: Prisma.JsonValue | null;
+};
+
 @Injectable()
 export class GoLiveReadinessService {
   constructor(
@@ -111,9 +122,9 @@ export class GoLiveReadinessService {
       criticalAudits,
     ] = await Promise.all([
       this.loadOpenEdEncountersWithSafety(facilityId),
-      this.reports.doorToProvider(facilityId, todayQuery),
-      this.reports.doorToDoor(facilityId, todayQuery),
-      this.reports.medicationAdministration(facilityId, todayQuery),
+      this.reports.doorToProviderJson(facilityId, todayQuery),
+      this.reports.doorToDoorJson(facilityId, todayQuery),
+      this.reports.medicationAdministrationJson(facilityId, todayQuery),
       this.prisma.auditLog.findFirst({
         where: {
           facilityId,
@@ -175,8 +186,14 @@ export class GoLiveReadinessService {
       }
     }
 
-    const doorToProviderAvgMinutes = avgMinutes((doorProv as { rows: { minutes: number | null }[] }).rows ?? []);
-    const doorToDoorAvgMinutes = avgMinutes((doorDoor as { rows: { minutes: number | null }[] }).rows ?? []);
+    const doorProvRows = (doorProv as { rows?: GoLiveDoorProvMetricRow[] }).rows ?? [];
+    const doorToProviderAvgMinutes = avgMinutesNumeric(
+      doorProvRows.map((r: GoLiveDoorProvMetricRow) => r.minutesToProvider ?? null)
+    );
+    const doorDoorRows = (doorDoor as { rows?: GoLiveDoorDoorMetricRow[] }).rows ?? [];
+    const doorToDoorAvgMinutes = avgMinutesNumeric(
+      doorDoorRows.map((r: GoLiveDoorDoorMetricRow) => r.durationMinutes)
+    );
     const medicationAdministrationsToday = (medMar as { rows: unknown[] }).rows?.length ?? 0;
 
     let billingFailures48h = 0;
@@ -192,7 +209,7 @@ export class GoLiveReadinessService {
 
     const lastExternalBillingExportAt = lastBillingExport?.createdAt.toISOString() ?? null;
 
-    const recentCriticalEvents = criticalAudits.map((r) => {
+    const recentCriticalEvents = (criticalAudits as GoLiveCriticalAuditRow[]).map((r: GoLiveCriticalAuditRow) => {
       const tags = auditHighlightTags({
         action: r.action,
         entityType: r.entityType,

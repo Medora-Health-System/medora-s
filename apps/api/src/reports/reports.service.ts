@@ -17,8 +17,6 @@ import {
 } from "./ed-report-range.util";
 import { iso, minutesBetween, parseReportTimeBoundary } from "./ed-reports-time.util";
 
-export type EdReportSlug = "door-to-door" | "door-to-provider" | "door-to-ekg" | "medication-administration";
-
 function csvEscape(value: string): string {
   if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
   return value;
@@ -47,11 +45,11 @@ function truncateDisposition(s: string | null | undefined, max = 120): string {
 }
 
 function formatQuantity(
-  qty: Prisma.Decimal | null | undefined,
+  qty: { toString(): string } | null | undefined,
   unit: string | null | undefined
 ): string {
   if (qty == null && !unit?.trim()) return "";
-  const q = qty != null ? String(qty) : "";
+  const q = qty != null ? qty.toString() : "";
   const u = unit?.trim() ?? "";
   return u ? `${q} ${u}`.trim() : q;
 }
@@ -101,14 +99,15 @@ export class ReportsService {
 
   private isEkgOrderItem(
     item: {
-      catalogItemType: string;
+      catalogItemType?: string | null;
       catalogItemId: string | null;
       manualLabel: string | null;
       manualSecondaryText: string | null;
     },
     ekgCatalogIds: Set<string>
   ): boolean {
-    if (item.catalogItemType !== "IMAGING_STUDY") return false;
+    const catalogItemType = item.catalogItemType ?? "";
+    if (catalogItemType !== "IMAGING_STUDY") return false;
     const manual = `${item.manualLabel ?? ""} ${item.manualSecondaryText ?? ""}`;
     if (/ekg|ecg/i.test(manual)) return true;
     const cid = item.catalogItemId?.trim();
@@ -367,7 +366,6 @@ export class ReportsService {
     }
 
     type Cand = { t: Date; source: string; userId: string | null };
-    const userIds: string[] = [];
     const rows = page.map((enc) => {
       const door = arrivalTime(enc);
       const list = byEncounter.get(enc.id) ?? [];
@@ -390,8 +388,6 @@ export class ReportsService {
       for (const c of candidates) {
         if (!best || c.t.getTime() < best.t.getTime()) best = c;
       }
-      if (best?.userId) userIds.push(best.userId);
-      if (enc.providerDocumentationSignedByUserId) userIds.push(enc.providerDocumentationSignedByUserId);
       const seenAt = best?.t ?? null;
       return {
         facilityId: enc.facilityId,
@@ -752,6 +748,7 @@ export class ReportsService {
             id: true,
             createdAt: true,
             completedAt: true,
+            catalogItemType: true,
             catalogItemId: true,
             manualLabel: true,
             manualSecondaryText: true,

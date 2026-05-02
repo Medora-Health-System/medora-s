@@ -30,6 +30,8 @@ const SAFE_METADATA_KEYS = new Set([
   "billingCaptureJsonUpdated",
   "procedureCaptureDuplicateBlocked",
   "encounterIntake",
+  "reportType",
+  "rowCount",
 ]);
 
 const MAX_SCALAR_LEN = 120;

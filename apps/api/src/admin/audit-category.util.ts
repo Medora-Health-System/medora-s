@@ -5,6 +5,9 @@ export type AuditUiCategory = "critical" | "clinical" | "billing" | "access" | "
 const BILLING_EXPORT_ENTITIES = new Set(["EXTERNAL_BILLING_EXPORT", "EXTERNAL_BILLING_AUTO_EXPORT"]);
 
 export function classifyAuditUiCategory(action: AuditAction, entityType: string): AuditUiCategory {
+  if (entityType === "ED_REPORT_EXPORT") {
+    return "clinical";
+  }
   if (
     action === AuditAction.CRITICAL_FLAG ||
     action === AuditAction.BREAK_GLASS_START ||
