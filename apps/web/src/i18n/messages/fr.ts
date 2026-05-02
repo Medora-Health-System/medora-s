@@ -6741,6 +6741,8 @@ export default {
       "Je confirme avoir revu les allergies ou intolérances documentées avant de prescrire.",
     errMedicationAllergyAckRequired:
       "Cochez la confirmation concernant les allergies documentées avant d’envoyer l’ordonnance.",
+    errImagingCatalogIdMissing:
+      "Une ou plusieurs lignes d’imagerie n’ont pas d’examen catalogue. Retirez la ligne ou choisissez un examen au catalogue.",
   },
   orders: {
     orderSetWarning:
@@ -6755,6 +6757,15 @@ export default {
     dressingWoundCare: "Pansement / soin de plaie",
     orderSetSkippedHelper:
       "Si des éléments ont été ignorés, consultez le message ci-dessus avant de continuer.",
+    createAllStaged: "Créer tous les ordres en attente",
+    createCurrentCategory: "Créer la catégorie actuelle",
+    willCreate: "Seront créés :",
+    creatingDomain: "Création de {type}…",
+    createdDomainsPartial: "Créés : {types}.",
+    remainingOrdersKept: "Les autres ordres en attente ont été conservés.",
+    domainCreateFailed: "{type} n’a pas été créé : {reason}",
+    allStagedCreated: "Tous les ordres en attente ont été créés.",
+    noStagedOrders: "Aucun ordre en attente à créer.",
   },
   mar: {
     viewSafetyDetails: "Voir les détails de sécurité",

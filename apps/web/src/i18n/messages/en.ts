@@ -6749,6 +6749,8 @@ export default {
       "I confirm I reviewed documented allergies or intolerances before prescribing.",
     errMedicationAllergyAckRequired:
       "Confirm documented allergies before sending the medication order.",
+    errImagingCatalogIdMissing:
+      "One or more imaging lines are missing a catalog selection. Remove the line or pick a catalog study.",
   },
   orders: {
     orderSetWarning:
@@ -6761,6 +6763,15 @@ export default {
     oxygenTherapy: "Oxygen therapy",
     dressingWoundCare: "Dressing / wound care",
     orderSetSkippedHelper: "If items were skipped, review the message above before continuing.",
+    createAllStaged: "Create all staged orders",
+    createCurrentCategory: "Create current category",
+    willCreate: "Will create:",
+    creatingDomain: "Creating {type}…",
+    createdDomainsPartial: "Created: {types}.",
+    remainingOrdersKept: "Remaining staged orders were kept.",
+    domainCreateFailed: "{type} was not created: {reason}",
+    allStagedCreated: "All staged orders were created.",
+    noStagedOrders: "No staged orders to create.",
   },
   mar: {
     viewSafetyDetails: "View safety details",

@@ -624,6 +624,10 @@ export function CreateOrderModal({
     createdByDisplay?: unknown;
     lastActionDisplay?: unknown;
   } | null>(null);
+  /** After multi-domain submit, RX success UI uses these lines instead of `formData.items` (active tab may differ). */
+  const [rxIntentDisplayItems, setRxIntentDisplayItems] = useState<CreateOrderLineItem[] | null>(null);
+  const [bulkCreateProgress, setBulkCreateProgress] = useState<string | null>(null);
+  const [lastBatchAllStagedSuccess, setLastBatchAllStagedSuccess] = useState(false);
   const [stagedItems, setStagedItems] = useState<Record<OrderTypeKey, CreateOrderLineItem[]>>(() => ({
     LAB: [],
     IMAGING: [],
@@ -819,7 +823,8 @@ export function CreateOrderModal({
   }, [facilityId, formData.orderSource, isRnAuthorityTab, providerDirectoryLoaded]);
 
   useEffect(() => {
-    if (!isOrderTypeKey(activeTab) || activeTab !== "MEDICATION") {
+    const medStagedElsewhere = stagedItems.MEDICATION.length > 0;
+    if ((!isOrderTypeKey(activeTab) || activeTab !== "MEDICATION") && !medStagedElsewhere) {
       setMedicationAllergyDocSummary(null);
       setMedicationAllergySafetyAck(false);
       return;
@@ -862,13 +867,14 @@ export function CreateOrderModal({
     encounter?.vitals,
     encounter?.nursingAssessment,
     encounter?.triage,
+    stagedItems.MEDICATION.length,
   ]);
 
-  const authorityPayloadFields = (): OrderAuthorityPayloadFields | undefined => {
-    if (canPrescribe && (formData.type === "MEDICATION" || formData.type === "CARE")) {
+  const authorityPayloadFieldsForType = (orderType: OrderModalTab): OrderAuthorityPayloadFields | undefined => {
+    if (canPrescribe && (orderType === "MEDICATION" || orderType === "CARE")) {
       return { orderSource: "PROVIDER_ORDER" };
     }
-    if (canUseRnOrderAuthority && (formData.type === "MEDICATION" || formData.type === "CARE")) {
+    if (canUseRnOrderAuthority && (orderType === "MEDICATION" || orderType === "CARE")) {
       if (formData.orderSource === "VERBAL_ORDER") {
         return { orderSource: "VERBAL_ORDER", readbackConfirmed: formData.readbackConfirmed };
       }
@@ -878,6 +884,9 @@ export function CreateOrderModal({
     }
     return undefined;
   };
+
+  const authorityPayloadFields = (): OrderAuthorityPayloadFields | undefined =>
+    authorityPayloadFieldsForType(formData.type);
 
   const validateRnAuthorityForSubmit = (): string | null => {
     if (!isRnAuthorityTab) return null;
@@ -894,6 +903,136 @@ export function CreateOrderModal({
       return null;
     }
     return t("createOrderModal.rnAuthority.errors.sourceRequired");
+  };
+
+  const getMergedStagedSnapshot = (): Record<OrderTypeKey, CreateOrderLineItem[]> => {
+    const base: Record<OrderTypeKey, CreateOrderLineItem[]> = {
+      LAB: [...stagedItems.LAB],
+      IMAGING: [...stagedItems.IMAGING],
+      MEDICATION: [...stagedItems.MEDICATION],
+      CARE: [...stagedItems.CARE],
+    };
+    if (isOrderTypeKey(activeTab)) {
+      base[activeTab] = [...formData.items];
+    }
+    return base;
+  };
+
+  const validateRnAuthorityForStagedBatch = (snap: Record<OrderTypeKey, CreateOrderLineItem[]>): string | null => {
+    const batchTouchesMedOrCare =
+      (snap.MEDICATION.length > 0 || snap.CARE.length > 0) && canUseRnOrderAuthority;
+    if (!batchTouchesMedOrCare) return null;
+    if (!formData.orderSource || formData.orderSource === "PROVIDER_ORDER") {
+      return t("createOrderModal.rnAuthority.errors.sourceRequired");
+    }
+    if (formData.orderSource === "VERBAL_ORDER") {
+      if (!formData.prescriberName.trim()) return t("createOrderModal.rnAuthority.errors.physicianRequired");
+      if (formData.readbackConfirmed !== true) return t("createOrderModal.rnAuthority.errors.readbackRequired");
+      return null;
+    }
+    if (formData.orderSource === "NURSING_PROTOCOL") {
+      if (!formData.protocolName.trim()) return t("createOrderModal.rnAuthority.errors.protocolRequired");
+      return null;
+    }
+    return t("createOrderModal.rnAuthority.errors.sourceRequired");
+  };
+
+  const validateDomainForOrder = (
+    type: OrderTypeKey,
+    items: CreateOrderLineItem[],
+    summaryAtSubmit: string | null
+  ): string | null => {
+    if (items.length === 0) return t("createOrderModal.errSelectOne");
+
+    if (type === "MEDICATION") {
+      const rnNursingProtocol = canUseRnOrderAuthority && formData.orderSource === "NURSING_PROTOCOL";
+      if (!rnNursingProtocol && !formData.prescriberName.trim()) {
+        return t("createOrderModal.errPrescriberRequired");
+      }
+      const missingQty = items.some((it) => it.quantity == null || it.quantity < 1);
+      if (missingQty) return t("createOrderModal.errQuantityRequired");
+      const missingDirections = items.some((it) => !it.notes?.trim());
+      if (missingDirections) return t("createOrderModal.errDirectionsRequired");
+      const missingIvConfirmation = items.some(
+        (it) => (it.route === "IVP" || it.route === "IVPB") && ivRouteConfirmations[it._lineId] !== true
+      );
+      if (missingIvConfirmation) return t("createOrderModal.errIvConfirmationRequired");
+      const missingErQuantityConfirmation =
+        erAdministerOnlyMedication &&
+        items.some((it) => (it.quantity ?? 0) > 1 && erQuantityConfirmations[it._lineId] !== true);
+      if (missingErQuantityConfirmation) return t("createOrderModal.errErQuantityConfirmationRequired");
+      if (summaryAtSubmit && !medicationAllergySafetyAck) {
+        return t("createOrderModal.errMedicationAllergyAckRequired");
+      }
+    }
+
+    if (type === "LAB") {
+      const catalogLineMissingId = items.some((it) => !it.isManual && !it.catalogItemId?.trim());
+      if (catalogLineMissingId) {
+        console.warn(
+          "[CreateOrderModal] Lab line marked as catalog (not manual) but catalogItemId is missing — submit blocked",
+          items.filter((it) => !it.isManual && !it.catalogItemId?.trim())
+        );
+        return t("createOrderModal.errLabCatalogIdMissing");
+      }
+    }
+
+    if (type === "IMAGING") {
+      const catalogLineMissingId = items.some((it) => !it.isManual && !it.catalogItemId?.trim());
+      if (catalogLineMissingId) {
+        console.warn(
+          "[CreateOrderModal] Imaging line marked as catalog (not manual) but catalogItemId is missing — submit blocked",
+          items.filter((it) => !it.isManual && !it.catalogItemId?.trim())
+        );
+        return t("createOrderModal.errImagingCatalogIdMissing");
+      }
+    }
+
+    if (type === "CARE") {
+      const missingLabel = items.some((it) => !(it.manualLabel ?? it._label)?.trim());
+      if (missingLabel) return t("createOrderModal.errSelectOne");
+    }
+
+    return null;
+  };
+
+  type OrderCreateResponse = {
+    id: string;
+    createdAt: string;
+    prescriberName?: string;
+    prescriberLicense?: string;
+    prescriberContact?: string;
+    authority?: unknown;
+    createdByDisplay?: unknown;
+    lastActionDisplay?: unknown;
+    queued?: boolean;
+  };
+
+  const postOrderDomainApi = async (
+    type: OrderTypeKey,
+    items: CreateOrderLineItem[],
+    summaryAtSubmit: string | null
+  ): Promise<OrderCreateResponse> => {
+    const allergyAckForApi = type === "MEDICATION" && Boolean(summaryAtSubmit) && medicationAllergySafetyAck;
+    const payload = buildPayload(
+      type,
+      formData.priority,
+      formData.notes,
+      formData.prescriberName,
+      formData.prescriberLicense,
+      formData.prescriberContact,
+      erAdministerOnlyMedication && type === "MEDICATION"
+        ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
+        : items,
+      authorityPayloadFieldsForType(type),
+      allergyAckForApi ? true : undefined
+    );
+    return (await apiFetch(`/encounters/${encounterId}/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      facilityId,
+    })) as OrderCreateResponse;
   };
 
   const resolveOrderSetItems = async (items: OrderSetItem[]): Promise<ResolvedOrderSetItems> => {
@@ -1042,6 +1181,8 @@ export function CreateOrderModal({
     setRxSuccess(false);
     setQueuedSync(false);
     setCreatedOrder(null);
+    setRxIntentDisplayItems(null);
+    setLastBatchAllStagedSuccess(false);
     setNextStagedTabAfterSuccess(null);
     setSubmittedOrderType(null);
     setActiveTab(tab);
@@ -1195,52 +1336,10 @@ export function CreateOrderModal({
       return;
     }
 
-    if (formData.type === "MEDICATION") {
-      const rnNursingProtocol = canUseRnOrderAuthority && formData.orderSource === "NURSING_PROTOCOL";
-      if (!rnNursingProtocol && !formData.prescriberName.trim()) {
-        setError(t("createOrderModal.errPrescriberRequired"));
-        return;
-      }
-      const missingQty = formData.items.some((it) => it.quantity == null || it.quantity < 1);
-      if (missingQty) {
-        setError(t("createOrderModal.errQuantityRequired"));
-        return;
-      }
-      const missingDirections = formData.items.some((it) => !it.notes?.trim());
-      if (missingDirections) {
-        setError(t("createOrderModal.errDirectionsRequired"));
-        return;
-      }
-      const missingIvConfirmation = formData.items.some(
-        (it) => (it.route === "IVP" || it.route === "IVPB") && ivRouteConfirmations[it._lineId] !== true
-      );
-      if (missingIvConfirmation) {
-        setError(t("createOrderModal.errIvConfirmationRequired"));
-        return;
-      }
-      const missingErQuantityConfirmation =
-        erAdministerOnlyMedication &&
-        formData.items.some((it) => (it.quantity ?? 0) > 1 && erQuantityConfirmations[it._lineId] !== true);
-      if (missingErQuantityConfirmation) {
-        setError(t("createOrderModal.errErQuantityConfirmationRequired"));
-        return;
-      }
-    }
-
-    if (formData.type === "LAB") {
-      const catalogLineMissingId = formData.items.some((it) => !it.isManual && !it.catalogItemId?.trim());
-      if (catalogLineMissingId) {
-        console.warn(
-          "[CreateOrderModal] Lab line marked as catalog (not manual) but catalogItemId is missing — submit blocked",
-          formData.items.filter((it) => !it.isManual && !it.catalogItemId?.trim())
-        );
-        setError(t("createOrderModal.errLabCatalogIdMissing"));
-        return;
-      }
-    }
-
     setLoading(true);
     setError(null);
+    setBulkCreateProgress(null);
+    setLastBatchAllStagedSuccess(false);
 
     try {
       type EncounterLatestForOrderSafety = {
@@ -1275,45 +1374,15 @@ export function CreateOrderModal({
             })
           : medicationAllergyDocSummary;
 
-      if (formData.type === "MEDICATION" && summaryAtSubmit && !medicationAllergySafetyAck) {
-        setError(t("createOrderModal.errMedicationAllergyAckRequired"));
+      const submittedType = formData.type as OrderTypeKey;
+      const domainErr = validateDomainForOrder(submittedType, formData.items, summaryAtSubmit);
+      if (domainErr) {
+        setError(domainErr);
         return;
       }
 
-      const allergyAckForApi =
-        formData.type === "MEDICATION" && Boolean(summaryAtSubmit) && medicationAllergySafetyAck;
+      const res = await postOrderDomainApi(submittedType, formData.items, summaryAtSubmit);
 
-      const payload = buildPayload(
-        formData.type,
-        formData.priority,
-        formData.notes,
-        formData.prescriberName,
-        formData.prescriberLicense,
-        formData.prescriberContact,
-        erAdministerOnlyMedication && formData.type === "MEDICATION"
-          ? formData.items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
-          : formData.items,
-        authorityPayloadFields(),
-        allergyAckForApi ? true : undefined
-      );
-
-      const res = (await apiFetch(`/encounters/${encounterId}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        facilityId,
-      })) as {
-        id: string;
-        createdAt: string;
-        prescriberName?: string;
-        prescriberLicense?: string;
-        prescriberContact?: string;
-        authority?: unknown;
-        createdByDisplay?: unknown;
-        lastActionDisplay?: unknown;
-      };
-
-      const submittedType = formData.type;
       const nextStagedItems = { ...stagedItems, [submittedType]: [] };
       const nextReviewTab =
         orderSetReviewActive
@@ -1328,10 +1397,11 @@ export function CreateOrderModal({
         setOrderSetReviewActive(false);
       }
 
-      if ((res as any)?.queued) {
+      setRxIntentDisplayItems(null);
+      if ((res as OrderCreateResponse)?.queued) {
         setQueuedSync(true);
         setOrderSuccess(true);
-      } else if (formData.type === "MEDICATION") {
+      } else if (submittedType === "MEDICATION") {
         setCreatedOrder(res);
         setRxSuccess(true);
       } else {
@@ -1345,6 +1415,171 @@ export function CreateOrderModal({
       setError(mapOrderCreateError(err, t));
     } finally {
       setLoading(false);
+      setBulkCreateProgress(null);
+    }
+  };
+
+  const handleSubmitAllStagedOrders = async () => {
+    if (loading) return;
+
+    const snapshot = getMergedStagedSnapshot();
+    const domainsToSubmit = ORDER_TYPE_REVIEW_ORDER.filter(
+      (tab) => orderTypes.includes(tab) && snapshot[tab].length > 0
+    );
+
+    if (activeTab === "ORDER_SET" && domainsToSubmit.length === 0) {
+      setError(t("createOrderModal.orderSetsApplyDisabledHelp"));
+      return;
+    }
+
+    if (domainsToSubmit.length === 0) {
+      setError(t("orders.noStagedOrders"));
+      return;
+    }
+
+    const rnBatchErr = validateRnAuthorityForStagedBatch(snapshot);
+    if (rnBatchErr) {
+      setError(rnBatchErr);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setBulkCreateProgress(null);
+    setLastBatchAllStagedSuccess(false);
+    setRxIntentDisplayItems(null);
+
+    type EncounterLatestForOrderSafety = {
+      status?: string;
+      vitals?: unknown;
+      nursingAssessment?: unknown;
+      triage?: { vitalsJson?: unknown } | null;
+    };
+
+    try {
+      let latestForSafety: EncounterLatestForOrderSafety | null = null;
+      try {
+        const latestRaw = await apiFetch(`/encounters/${encounterId}`, { facilityId });
+        latestForSafety = asApiObject(latestRaw) as EncounterLatestForOrderSafety;
+        if (
+          latestForSafety &&
+          typeof latestForSafety.status === "string" &&
+          latestForSafety.status !== "OPEN"
+        ) {
+          await onRefetchEncounter?.();
+          setError(t("createOrderModal.errEncounterClosed"));
+          return;
+        }
+      } catch {
+        latestForSafety = null;
+      }
+
+      const summaryAtSubmit =
+        latestForSafety != null
+          ? getEncounterAllergyDocumentationSummary({
+              vitals: latestForSafety.vitals,
+              nursingAssessment: latestForSafety.nursingAssessment,
+              triageVitalsJson: latestForSafety.triage?.vitalsJson ?? null,
+            })
+          : medicationAllergyDocSummary;
+
+      for (const tab of domainsToSubmit) {
+        const v = validateDomainForOrder(tab, snapshot[tab], summaryAtSubmit);
+        if (v) {
+          setError(v);
+          return;
+        }
+      }
+
+      const successfulTypes: OrderTypeKey[] = [];
+      let anyQueued = false;
+      let lastMedRes: OrderCreateResponse | null = null;
+      let lastMedItemsSnapshot: CreateOrderLineItem[] | null = null;
+
+      for (const tab of domainsToSubmit) {
+        setBulkCreateProgress(t("orders.creatingDomain").replace("{type}", domainLabel(tab)));
+        try {
+          const res = await postOrderDomainApi(tab, snapshot[tab], summaryAtSubmit);
+          successfulTypes.push(tab);
+          if (res.queued) anyQueued = true;
+          if (tab === "MEDICATION") {
+            lastMedRes = res;
+            lastMedItemsSnapshot = [...snapshot[tab]];
+          }
+        } catch (err) {
+          const raw = err instanceof Error ? err.message : "";
+          if (isEncounterMustBeOpenForOrderError(raw)) {
+            await onRefetchEncounter?.();
+          }
+          const reason = mapOrderCreateError(err, t);
+          const nextStaged: Record<OrderTypeKey, CreateOrderLineItem[]> = {
+            LAB: successfulTypes.includes("LAB") ? [] : [...snapshot.LAB],
+            IMAGING: successfulTypes.includes("IMAGING") ? [] : [...snapshot.IMAGING],
+            MEDICATION: successfulTypes.includes("MEDICATION") ? [] : [...snapshot.MEDICATION],
+            CARE: successfulTypes.includes("CARE") ? [] : [...snapshot.CARE],
+          };
+          setStagedItems(nextStaged);
+          setActiveTab(tab);
+          setFormData((fd) => ({ ...fd, type: tab, items: [...nextStaged[tab]] }));
+          const createdLabels = successfulTypes.map((x) => domainLabel(x)).join(", ");
+          const partial =
+            successfulTypes.length > 0
+              ? `${t("orders.createdDomainsPartial").replace("{types}", createdLabels)} `
+              : "";
+          const failedLine = t("orders.domainCreateFailed")
+            .replace("{type}", domainLabel(tab))
+            .replace("{reason}", reason);
+          setError(`${partial}${failedLine} ${t("orders.remainingOrdersKept")}`.trim());
+          return;
+        }
+      }
+
+      const nextStagedItems: Record<OrderTypeKey, CreateOrderLineItem[]> = {
+        LAB: [...snapshot.LAB],
+        IMAGING: [...snapshot.IMAGING],
+        MEDICATION: [...snapshot.MEDICATION],
+        CARE: [...snapshot.CARE],
+      };
+      for (const t0 of successfulTypes) {
+        nextStagedItems[t0] = [];
+      }
+      setStagedItems(nextStagedItems);
+      setFormData((fd) => ({
+        ...fd,
+        items: isOrderTypeKey(activeTab) ? [...nextStagedItems[activeTab as OrderTypeKey]] : fd.items,
+      }));
+
+      const nextReviewTab =
+        orderSetReviewActive
+          ? ORDER_TYPE_REVIEW_ORDER.find((tab) => orderTypes.includes(tab) && nextStagedItems[tab].length > 0) ??
+            null
+          : null;
+      setSubmittedOrderType(successfulTypes[successfulTypes.length - 1] ?? null);
+      setNextStagedTabAfterSuccess(nextReviewTab);
+      if (!nextReviewTab) {
+        setOrderSetReviewActive(false);
+      }
+
+      setLastBatchAllStagedSuccess(true);
+      if (anyQueued) {
+        setQueuedSync(true);
+        setOrderSuccess(true);
+      } else if (lastMedRes && lastMedItemsSnapshot?.length) {
+        setCreatedOrder(lastMedRes);
+        setRxIntentDisplayItems(lastMedItemsSnapshot);
+        setRxSuccess(true);
+      } else {
+        setOrderSuccess(true);
+      }
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "";
+      if (isEncounterMustBeOpenForOrderError(raw)) {
+        await onRefetchEncounter?.();
+      }
+      setError(mapOrderCreateError(err, t));
+    } finally {
+      setLoading(false);
+      setBulkCreateProgress(null);
     }
   };
 
@@ -1365,13 +1600,24 @@ export function CreateOrderModal({
           ? ""
           : t("createOrderModal.searchPlaceholderMed");
   const successMessage =
-    submittedOrderType && nextStagedTabAfterSuccess
-      ? t("createOrderModal.successCreatedNext")
-          .replace("{createdType}", domainLabel(submittedOrderType))
-          .replace("{nextType}", domainLabel(nextStagedTabAfterSuccess))
-      : queuedSync
-        ? t("createOrderModal.successQueued")
-        : t("createOrderModal.successOk");
+    orderSuccess && lastBatchAllStagedSuccess && !nextStagedTabAfterSuccess
+      ? t("orders.allStagedCreated")
+      : submittedOrderType && nextStagedTabAfterSuccess
+        ? t("createOrderModal.successCreatedNext")
+            .replace("{createdType}", domainLabel(submittedOrderType))
+            .replace("{nextType}", domainLabel(nextStagedTabAfterSuccess))
+        : queuedSync
+          ? t("createOrderModal.successQueued")
+          : t("createOrderModal.successOk");
+
+  const mergedStagedForSubmitBar = getMergedStagedSnapshot();
+  const stagedTabsWithItemsBar = ORDER_TYPE_REVIEW_ORDER.filter(
+    (tab) => orderTypes.includes(tab) && mergedStagedForSubmitBar[tab].length > 0
+  );
+  const showMultiStagedSubmitBar = stagedTabsWithItemsBar.length >= 2 && !orderSuccess && !rxSuccess;
+  const multiStagedSummaryLine = stagedTabsWithItemsBar
+    .map((tab) => `${domainLabel(tab)} (${mergedStagedForSubmitBar[tab].length})`)
+    .join(", ");
 
   return (
     <div
@@ -1416,6 +1662,8 @@ export function CreateOrderModal({
                 setOrderSuccess(false);
                 setQueuedSync(false);
                 setSubmittedOrderType(null);
+                setLastBatchAllStagedSuccess(false);
+                setRxIntentDisplayItems(null);
                 onSuccess();
               }}
               style={{
@@ -1436,7 +1684,7 @@ export function CreateOrderModal({
         {rxSuccess && createdOrder && (
           <div style={{ marginBottom: 20 }}>
             {(() => {
-              const items = formData.items;
+              const items = rxIntentDisplayItems ?? formData.items;
               const intents = items.map(
                 (it) => it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE"
               );
@@ -1467,7 +1715,7 @@ export function CreateOrderModal({
                       authority: createdOrder.authority as any,
                       createdByDisplay: createdOrder.createdByDisplay as any,
                       lastActionDisplay: createdOrder.lastActionDisplay as any,
-                      items: formData.items.map((it) => ({
+                      items: items.map((it) => ({
                         catalogItemId: it.catalogItemId,
                         manualLabel: it.isManual ? it.manualLabel ?? it._label : undefined,
                         strength: it.strength ?? null,
@@ -1527,6 +1775,8 @@ export function CreateOrderModal({
                   setRxSuccess(false);
                   setCreatedOrder(null);
                   setSubmittedOrderType(null);
+                  setRxIntentDisplayItems(null);
+                  setLastBatchAllStagedSuccess(false);
                   onSuccess();
                 }}
                 style={{
@@ -1683,6 +1933,24 @@ export function CreateOrderModal({
             ) : null}
 
             <form onSubmit={handleSubmit}>
+              {showMultiStagedSubmitBar ? (
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+                    {t("orders.willCreate")} {multiStagedSummaryLine}
+                  </div>
+                  {bulkCreateProgress ? (
+                    <div style={{ fontSize: 12, color: "#475569", marginTop: 8 }}>{bulkCreateProgress}</div>
+                  ) : null}
+                </div>
+              ) : null}
               {error ? (
                 <div
                   role="alert"
@@ -1708,7 +1976,8 @@ export function CreateOrderModal({
                 <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
               ) : null}
 
-              {activeTab === "MEDICATION" && medicationAllergyDocSummary ? (
+              {medicationAllergyDocSummary &&
+              (activeTab === "MEDICATION" || mergedStagedForSubmitBar.MEDICATION.length > 0) ? (
                     <div
                       style={{
                         marginBottom: 12,
@@ -2142,7 +2411,7 @@ export function CreateOrderModal({
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 4 }}>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", paddingTop: 4 }}>
                 <button
                   type="button"
                   onClick={onClose}
@@ -2150,15 +2419,35 @@ export function CreateOrderModal({
                 >
                   {t("createOrderModal.cancel")}
                 </button>
+                {showMultiStagedSubmitBar ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSubmitAllStagedOrders()}
+                    disabled={loading}
+                    style={{
+                      padding: "10px 18px",
+                      backgroundColor: "#1a1a1a",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.65 : 1,
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {loading ? t("createOrderModal.submitSending") : t("orders.createAllStaged")}
+                  </button>
+                ) : null}
                 {activeTab !== "ORDER_SET" && (
                   <button
                     type="submit"
                     disabled={loading}
                   style={{
                     padding: "10px 18px",
-                    backgroundColor: "#1a1a1a",
-                    color: "white",
-                    border: "none",
+                    backgroundColor: showMultiStagedSubmitBar ? "#fff" : "#1a1a1a",
+                    color: showMultiStagedSubmitBar ? "#1a1a1a" : "white",
+                    border: showMultiStagedSubmitBar ? "1px solid #1a1a1a" : "none",
                     borderRadius: 4,
                     cursor: loading ? "not-allowed" : "pointer",
                     opacity: loading ? 0.65 : 1,
@@ -2169,11 +2458,13 @@ export function CreateOrderModal({
                       ? activeTab === "MEDICATION"
                         ? t("createOrderModal.submitSavingMed")
                         : t("createOrderModal.submitSending")
-                      : activeTab === "MEDICATION"
-                        ? t("createOrderModal.submitMedicationOrder")
-                        : activeTab === "CARE"
-                          ? t("createOrderModal.submitCreateCare")
-                          : t("createOrderModal.submitCreateOrder")}
+                      : showMultiStagedSubmitBar
+                        ? t("orders.createCurrentCategory")
+                        : activeTab === "MEDICATION"
+                          ? t("createOrderModal.submitMedicationOrder")
+                          : activeTab === "CARE"
+                            ? t("createOrderModal.submitCreateCare")
+                            : t("createOrderModal.submitCreateOrder")}
                   </button>
                 )}
               </div>
