@@ -15,6 +15,7 @@ import {
   PROVIDER_PLAN_SNIPPETS,
 } from "@/constants/clinicalTemplates";
 import { CreateOrderModal } from "@/components/orders";
+import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
@@ -4364,6 +4365,7 @@ function OrdersTab({
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEkgProcedureLauncher, setShowEkgProcedureLauncher] = useState(false);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
   /** Libellé CARE à injecter uniquement à l’ouverture via action rapide (évite de réutiliser un ancien preset avec une ordonnance). */
   const [carePresetForOpenModal, setCarePresetForOpenModal] = useState<string | null>(null);
@@ -4958,6 +4960,10 @@ function OrdersTab({
           initialCareManualLabel={carePresetForOpenModal}
           onClose={() => setShowCreateModal(false)}
           onRefetchEncounter={onRefetchEncounter}
+          onOpenEkgProcedureDocumentation={() => {
+            setShowCreateModal(false);
+            setShowEkgProcedureLauncher(true);
+          }}
           onSuccess={async () => {
             setShowCreateModal(false);
             await loadOrders();
@@ -4965,6 +4971,21 @@ function OrdersTab({
           }}
         />
       )}
+      {showEkgProcedureLauncher ? (
+        <EmergencyProcedureLauncherModal
+          open={showEkgProcedureLauncher}
+          onClose={() => setShowEkgProcedureLauncher(false)}
+          encounterId={encounterId}
+          facilityId={facilityId}
+          initialNonLacerationStep="EKG"
+          onRecorded={() => {
+            setShowEkgProcedureLauncher(false);
+            void onRefetchEncounter?.();
+            void loadOrders({ silent: true });
+            void onOrdersUpdated?.();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -111,12 +111,15 @@ export function EmergencyProcedureLauncherModal({
   encounterId,
   facilityId,
   onRecorded,
+  /** When opening, jump directly to this procedure form (e.g. EKG from order-set shortcut). */
+  initialNonLacerationStep = null,
 }: {
   open: boolean;
   onClose: () => void;
   encounterId: string;
   facilityId: string;
   onRecorded: () => void;
+  initialNonLacerationStep?: NonLacerationProcedureType | null;
 }) {
   const { t } = useI18n();
   const [step, setStep] = useState<LauncherStep>("menu");
@@ -144,7 +147,7 @@ export function EmergencyProcedureLauncherModal({
 
   useEffect(() => {
     if (!open) return;
-    setStep("menu");
+    setStep(initialNonLacerationStep ?? "menu");
     setSubmitErr(null);
     setSite("");
     setSiteOther("");
@@ -164,7 +167,7 @@ export function EmergencyProcedureLauncherModal({
     setToleratedWell(true);
     setComplications("");
     setNotes("");
-  }, [open]);
+  }, [open, initialNonLacerationStep]);
 
   const resetLacerationForm = () => {
     setSite("");

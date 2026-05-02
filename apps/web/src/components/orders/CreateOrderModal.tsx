@@ -77,7 +77,6 @@ const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
     { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
     { key: "troponin", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TROPONIN", catalogCodes: ["TROP", "ER_TROP"] },
     { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
-    { key: "ekgComingSoon", type: "CARE", comingSoon: true },
   ],
   abdominalPain: [
     { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
@@ -232,6 +231,7 @@ function OrderSetPreview({
   onApply,
   canApply,
   applying,
+  onOpenEkgDocumentation,
   t,
 }: {
   selected: OrderSetKey;
@@ -241,6 +241,7 @@ function OrderSetPreview({
   onApply: () => void;
   canApply: boolean;
   applying: boolean;
+  onOpenEkgDocumentation?: () => void;
   t: (key: string) => string;
 }) {
   const items = ORDER_SET_ITEMS[selected];
@@ -351,6 +352,38 @@ function OrderSetPreview({
               </label>
             ))}
           </div>
+          {selected === "chestPain" && onOpenEkgDocumentation ? (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px dashed #93c5fd",
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#1e40af", marginBottom: 8 }}>
+                {t("createOrderModal.orderSetEcgProcedureHint")}
+              </div>
+              <button
+                type="button"
+                onClick={onOpenEkgDocumentation}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  border: "1px solid #1d4ed8",
+                  borderRadius: 6,
+                  background: "#eff6ff",
+                  color: "#1e3a8a",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                {t("createOrderModal.orderSetDocumentEcgButton")}
+              </button>
+            </div>
+          ) : null}
           {checkedCount === 0 ? (
             <p style={{ margin: "0 0 12px", color: "#b45309", fontSize: 12, fontWeight: 600 }}>
               {t("createOrderModal.orderSetsNoneSelectedWarning")}
@@ -524,6 +557,8 @@ export function CreateOrderModal({
   medicationOrderMode = "DEFAULT",
   /** When true, show RN-specific copy if medication/care tabs are hidden. */
   isRn = false,
+  /** Opens structured ECG/EKG procedure documentation (no CARE order line). */
+  onOpenEkgProcedureDocumentation,
 }: {
   encounterId: string;
   facilityId: string;
@@ -542,6 +577,7 @@ export function CreateOrderModal({
   onClose: () => void;
   onSuccess: () => void;
   onRefetchEncounter?: () => Promise<void>;
+  onOpenEkgProcedureDocumentation?: () => void;
 }) {
   const { language, t } = useI18n();
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
@@ -623,6 +659,7 @@ export function CreateOrderModal({
   const [medicationAllergySafetyAck, setMedicationAllergySafetyAck] = useState(false);
   const [activeCatalogKeys, setActiveCatalogKeys] = useState<Set<string>>(() => new Set());
   const [encounterOrdersSnapshot, setEncounterOrdersSnapshot] = useState<unknown[]>([]);
+  const [otherProcedureDraft, setOtherProcedureDraft] = useState("");
   const prescriberPrefilled = useRef(false);
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
@@ -1032,6 +1069,13 @@ export function CreateOrderModal({
         },
       ],
     }));
+  };
+
+  const addOtherProcedureLine = () => {
+    const label = otherProcedureDraft.trim();
+    if (!label) return;
+    addCarePreset(label);
+    setOtherProcedureDraft("");
   };
 
   const handleSelectItem = (item: CatalogSearchItem) => {
@@ -1865,6 +1909,7 @@ export function CreateOrderModal({
                     onApply={applyOrderSet}
                     canApply={canApplyOrderSet}
                     applying={orderSetApplying}
+                    onOpenEkgDocumentation={onOpenEkgProcedureDocumentation}
                     t={t}
                   />
                 ) : activeTab === "CARE" ? (
@@ -1901,6 +1946,53 @@ export function CreateOrderModal({
                           {label}
                         </button>
                       ))}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 4,
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
+                        background: "#fff",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                        {t("createOrderModal.otherProcedureLabel")}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "stretch" }}>
+                        <input
+                          type="text"
+                          value={otherProcedureDraft}
+                          onChange={(e) => setOtherProcedureDraft(e.target.value)}
+                          placeholder={t("createOrderModal.otherProcedurePlaceholder")}
+                          style={{
+                            flex: "1 1 200px",
+                            minWidth: 0,
+                            padding: "8px 10px",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 6,
+                            fontSize: 14,
+                            boxSizing: "border-box",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={addOtherProcedureLine}
+                          disabled={!otherProcedureDraft.trim()}
+                          style={{
+                            padding: "8px 14px",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            border: "1px solid #0f172a",
+                            borderRadius: 6,
+                            background: otherProcedureDraft.trim() ? "#0f172a" : "#e2e8f0",
+                            color: otherProcedureDraft.trim() ? "#fff" : "#94a3b8",
+                            cursor: otherProcedureDraft.trim() ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          {t("createOrderModal.otherProcedureAdd")}
+                        </button>
+                      </div>
                     </div>
                   </>
                 ) : (

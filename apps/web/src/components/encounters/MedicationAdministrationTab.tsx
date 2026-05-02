@@ -591,7 +591,7 @@ export function MedicationAdministrationTab({
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              minWidth: 280,
+              minWidth: 720,
               backgroundColor: "white",
               borderRadius: 8,
               border: "1px solid #eee",
@@ -599,10 +599,12 @@ export function MedicationAdministrationTab({
           >
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd", backgroundColor: "#f5f5f5" }}>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnMedication")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnStatus")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnWhen")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 13 }}>{t("marTab.columnActions")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnCategory")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnIssued")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnWhen")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnOrderLine")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnLastAction")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnTitle")}</th>
               </tr>
             </thead>
             <tbody>
@@ -683,6 +685,14 @@ export function MedicationAdministrationTab({
                         }
                       : { fontSize: 12, color: "#424242", marginTop: 4 };
 
+                const issuedCell = row.attributionLines[0]?.trim() || "—";
+                const titleCellParts: string[] = [];
+                if (row.authorityLine?.trim()) titleCellParts.push(row.authorityLine.trim());
+                for (const line of row.attributionLines.slice(1)) {
+                  if (line.trim()) titleCellParts.push(line.trim());
+                }
+                const titleCell = titleCellParts.length > 0 ? titleCellParts.join(" · ") : "—";
+
                 return (
                   <tr
                     key={row.orderItemId}
@@ -692,16 +702,14 @@ export function MedicationAdministrationTab({
                       backgroundColor: latest?.pendingSync ? "#fff8e1" : undefined,
                     }}
                   >
-                    <td style={{ padding: "12px 8px", fontSize: 14, wordBreak: "break-word" }}>
-                      <div style={{ fontWeight: 600 }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
-                        {row.authorityLine}
-                      </div>
-                      {row.attributionLines.map((line) => (
-                        <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
-                          {line}
-                        </div>
-                      ))}
+                    <td style={{ padding: "12px 8px", fontSize: 13, color: "#334155", fontWeight: 600 }}>
+                      {t("marTab.columnCategoryValue")}
+                    </td>
+                    <td style={{ padding: "12px 8px", fontSize: 13, wordBreak: "break-word", color: "#64748b" }}>
+                      {issuedCell}
+                    </td>
+                    <td style={{ padding: "12px 8px", fontSize: 13, color: "#424242" }}>
+                      <div style={{ whiteSpace: "nowrap" }}>{timeCell}</div>
                       {intendedLine ? (
                         <div
                           style={intendedLineStyle}
@@ -711,11 +719,14 @@ export function MedicationAdministrationTab({
                               : intendedUrgency === "dueSoon"
                                 ? t("marTab.intendedDueSoonTitle")
                                 : undefined
-                        }
-                      >
+                          }
+                        >
                           {t("marTab.intendedPrefix")} {intendedLine}
                         </div>
                       ) : null}
+                    </td>
+                    <td style={{ padding: "12px 8px", fontSize: 14, wordBreak: "break-word" }}>
+                      <div style={{ fontWeight: 600 }}>{displayName}</div>
                       {row.routeHint ? (
                         <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
                           {t("marTab.routePrefix")} {row.routeHint}
@@ -727,9 +738,8 @@ export function MedicationAdministrationTab({
                         </div>
                       ) : null}
                     </td>
-                    <td style={{ padding: "12px 8px", fontSize: 14 }}>{statusCell}</td>
-                    <td style={{ padding: "12px 8px", fontSize: 14, whiteSpace: "nowrap" }}>{timeCell}</td>
-                    <td style={{ padding: "12px 8px" }}>
+                    <td style={{ padding: "12px 8px", fontSize: 14 }}>
+                      <div style={{ marginBottom: 8 }}>{statusCell}</div>
                       <button
                         type="button"
                         disabled={!isOpen || submitting || marRowLocked}
@@ -750,6 +760,9 @@ export function MedicationAdministrationTab({
                       >
                         {t("marTab.administer")}
                       </button>
+                    </td>
+                    <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                      {titleCell}
                     </td>
                   </tr>
                 );

@@ -6,6 +6,7 @@ import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
 import { CreateOrderModal } from "@/components/orders";
+import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
@@ -41,6 +42,15 @@ const btn: React.CSSProperties = {
   fontFamily: "inherit",
   boxSizing: "border-box",
   minHeight: 40,
+};
+
+/** Horizontal + bounded vertical scroll for dense order tables (mobile-friendly). */
+const ordersTableScrollWrap: React.CSSProperties = {
+  overflowX: "auto",
+  overflowY: "auto",
+  maxHeight: "min(65vh, 560px)",
+  WebkitOverflowScrolling: "touch",
+  width: "100%",
 };
 
 const DOMAIN_ORDER: ErOrderDomain[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
@@ -261,6 +271,12 @@ function medicationCancellationSubLabel(e: OrderEventRow, tr: (k: string) => str
   return null;
 }
 
+function orderLineItemStatusLabel(st: string, tr: (k: string) => string): string {
+  const key = `encounterChrome.orderItemChart.${st}`;
+  const resolved = tr(key);
+  return resolved !== key ? resolved : st.trim() || "—";
+}
+
 function hasAnyRole(roles: string[] | undefined, ...codes: string[]): boolean {
   if (!roles?.length) return false;
   const set = new Set(roles.map((r) => String(r).toUpperCase()));
@@ -338,6 +354,7 @@ export function EmergencyErOrdersPanel({
   const [lineActionBusy, setLineActionBusy] = useState<string | null>(null);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEkgProcedureLauncher, setShowEkgProcedureLauncher] = useState(false);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
 
   useEffect(() => {
@@ -676,173 +693,213 @@ export function EmergencyErOrdersPanel({
               {activeOrderGroups.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.openOrdersEmpty")}</div>
               ) : (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {activeOrderGroups.map(({ order: o, lines }) => {
-                    const authorityLine = formatOrderAuthority(o, t);
-                    const attributionLines = formatOrderAttributionLines(o, t, language);
-                    return (
-                    <div
-                      key={o.id}
-                      style={{
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 10,
-                        padding: "8px 10px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 8,
-                        minWidth: 0,
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, flex: "1 1 auto", minWidth: 0 }}>{o.type}</span>
-                        <button
-                          type="button"
-                          style={{ ...btn, flex: "0 0 auto" }}
-                          disabled={cancelBusyOrderId === o.id}
-                          onClick={() => void onCancelOrder(o.id)}
-                        >
-                          {cancelBusyOrderId === o.id
-                            ? t("erEmergencyOrders.cancelOrderBusy")
-                            : t("erEmergencyOrders.cancelOrder")}
-                        </button>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                        {authorityLine}
-                      </div>
-                      {attributionLines.map((line) => (
-                        <div key={line} style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                          {line}
-                        </div>
-                      ))}
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {lines.map((raw) => {
-                          const item = raw as Record<string, unknown>;
-                          const itemId = String(item.id ?? "");
-                          const st = String(item.status ?? "");
-                          const cat = String(item.catalogItemType ?? "");
-                          const label = getOrderItemDisplayLabelForLanguage(
-                            item as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
-                            language,
-                            t
-                          );
-                          const directionsLine =
-                            o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
-                          const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
-                          const busy = lineActionBusy;
-                          const lineBtns: React.ReactNode[] = [];
-                          if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
-                            lineBtns.push(
-                              <button
-                                key="nurse"
-                                type="button"
-                                style={btn}
-                                disabled={busy === `${itemId}:nurse`}
-                                onClick={() => void runOrderItemLifecycleAction(itemId, "nurse")}
-                              >
-                                {busy === `${itemId}:nurse`
-                                  ? t("erEmergencyOrders.lineActionBusy")
-                                  : t("erEmergencyOrders.nurseMarkBedsideComplete")}
-                              </button>
-                            );
-                          } else {
-                            const deptOk =
-                              (o.type === "LAB" && hasAnyRole(roles, "LAB", "ADMIN")) ||
-                              (o.type === "IMAGING" && hasAnyRole(roles, "RADIOLOGY", "ADMIN")) ||
-                              (o.type === "MEDICATION" && hasAnyRole(roles, "PHARMACY", "ADMIN")) ||
-                              ((o.type === "CARE" || cat === "SUPPLY") && hasAnyRole(roles, "RN", "ADMIN"));
-                            if (deptOk && itemStatusAllowsAcknowledge(st)) {
-                              lineBtns.push(
-                                <button
-                                  key="ack"
-                                  type="button"
-                                  style={btn}
-                                  disabled={busy === `${itemId}:acknowledge`}
-                                  onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
-                                >
-                                  {busy === `${itemId}:acknowledge`
-                                    ? t("erEmergencyOrders.lineActionBusy")
-                                    : t("erEmergencyOrders.acknowledgeOrder")}
-                                </button>
+                <div style={ordersTableScrollWrap}>
+                  <table
+                    style={{
+                      width: "100%",
+                      minWidth: 640,
+                      borderCollapse: "collapse",
+                      fontSize: 12,
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableCategory")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableIssued")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableTime")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableOrder")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableLastAction")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableTitle")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeOrderGroups.map(({ order: o, lines }) => {
+                        const authorityLine = formatOrderAuthority(o, t);
+                        const attributionLines = formatOrderAttributionLines(o, t, language);
+                        const issuedPrimary = attributionLines[0] ?? authorityLine;
+                        const timeStr =
+                          o.createdAt != null && String(o.createdAt).trim()
+                            ? new Date(String(o.createdAt)).toLocaleString(language === "fr" ? "fr-FR" : "en-US")
+                            : "—";
+                        const categoryLabel = t(domainHeadingKey(o.type as ErOrderDomain));
+                        return (
+                          <React.Fragment key={o.id}>
+                            <tr style={{ background: "#f1f5f9" }}>
+                              <td colSpan={6} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 700, color: "#0f172a" }}>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+                                  <span>
+                                    {categoryLabel} · {o.type}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    style={{ ...btn, flex: "0 0 auto" }}
+                                    disabled={cancelBusyOrderId === o.id}
+                                    onClick={() => void onCancelOrder(o.id)}
+                                  >
+                                    {cancelBusyOrderId === o.id
+                                      ? t("erEmergencyOrders.cancelOrderBusy")
+                                      : t("erEmergencyOrders.cancelOrder")}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {lines.map((raw) => {
+                              const item = raw as Record<string, unknown>;
+                              const itemId = String(item.id ?? "");
+                              const st = String(item.status ?? "");
+                              const cat = String(item.catalogItemType ?? "");
+                              const label = getOrderItemDisplayLabelForLanguage(
+                                item as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+                                language,
+                                t
                               );
-                            }
-                            if (deptOk && itemStatusAllowsStart(st)) {
-                              lineBtns.push(
-                                <button
-                                  key="start"
-                                  type="button"
-                                  style={btn}
-                                  disabled={busy === `${itemId}:start`}
-                                  onClick={() => void runOrderItemLifecycleAction(itemId, "start")}
-                                >
-                                  {busy === `${itemId}:start`
-                                    ? t("erEmergencyOrders.lineActionBusy")
-                                    : t("erEmergencyOrders.startOrder")}
-                                </button>
+                              const directionsLine =
+                                o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
+                              const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
+                              const busy = lineActionBusy;
+                              const lineBtns: React.ReactNode[] = [];
+                              if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
+                                lineBtns.push(
+                                  <button
+                                    key="nurse"
+                                    type="button"
+                                    style={btn}
+                                    disabled={busy === `${itemId}:nurse`}
+                                    onClick={() => void runOrderItemLifecycleAction(itemId, "nurse")}
+                                  >
+                                    {busy === `${itemId}:nurse`
+                                      ? t("erEmergencyOrders.lineActionBusy")
+                                      : t("erEmergencyOrders.nurseMarkBedsideComplete")}
+                                  </button>
+                                );
+                              } else {
+                                const deptOk =
+                                  (o.type === "LAB" && hasAnyRole(roles, "LAB", "ADMIN")) ||
+                                  (o.type === "IMAGING" && hasAnyRole(roles, "RADIOLOGY", "ADMIN")) ||
+                                  (o.type === "MEDICATION" && hasAnyRole(roles, "PHARMACY", "ADMIN")) ||
+                                  ((o.type === "CARE" || cat === "SUPPLY") && hasAnyRole(roles, "RN", "ADMIN"));
+                                if (deptOk && itemStatusAllowsAcknowledge(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="ack"
+                                      type="button"
+                                      style={btn}
+                                      disabled={busy === `${itemId}:acknowledge`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
+                                    >
+                                      {busy === `${itemId}:acknowledge`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                    </button>
+                                  );
+                                }
+                                if (deptOk && itemStatusAllowsStart(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="start"
+                                      type="button"
+                                      style={btn}
+                                      disabled={busy === `${itemId}:start`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "start")}
+                                    >
+                                      {busy === `${itemId}:start`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.startOrder")}
+                                    </button>
+                                  );
+                                }
+                                if (deptOk && itemStatusAllowsComplete(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="complete"
+                                      type="button"
+                                      style={btn}
+                                      disabled={busy === `${itemId}:complete`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "complete")}
+                                    >
+                                      {busy === `${itemId}:complete`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.completeOrder")}
+                                    </button>
+                                  );
+                                }
+                              }
+                              return (
+                                <tr key={itemId} style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>
+                                  <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                                    {categoryLabel}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "8px 8px",
+                                      color: "#64748b",
+                                      overflowWrap: "anywhere",
+                                      wordBreak: "break-word",
+                                      maxWidth: 200,
+                                    }}
+                                  >
+                                    {issuedPrimary}
+                                  </td>
+                                  <td style={{ padding: "8px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{timeStr}</td>
+                                  <td
+                                    style={{
+                                      padding: "8px 8px",
+                                      color: "#0f172a",
+                                      overflowWrap: "anywhere",
+                                      wordBreak: "break-word",
+                                      maxWidth: 280,
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 600 }}>{label}</div>
+                                    {routeLine ? (
+                                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{routeLine}</div>
+                                    ) : null}
+                                    {directionsLine ? (
+                                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
+                                    ) : null}
+                                  </td>
+                                  <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                                    <div style={{ marginBottom: lineBtns.length > 0 ? 6 : 0 }}>
+                                      {orderLineItemStatusLabel(st, t)}
+                                    </div>
+                                    {lineBtns.length > 0 ? (
+                                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
+                                    ) : null}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "8px 8px",
+                                      color: "#64748b",
+                                      overflowWrap: "anywhere",
+                                      wordBreak: "break-word",
+                                      maxWidth: 220,
+                                    }}
+                                  >
+                                    {authorityLine}
+                                  </td>
+                                </tr>
                               );
-                            }
-                            if (deptOk && itemStatusAllowsComplete(st)) {
-                              lineBtns.push(
-                                <button
-                                  key="complete"
-                                  type="button"
-                                  style={btn}
-                                  disabled={busy === `${itemId}:complete`}
-                                  onClick={() => void runOrderItemLifecycleAction(itemId, "complete")}
-                                >
-                                  {busy === `${itemId}:complete`
-                                    ? t("erEmergencyOrders.lineActionBusy")
-                                    : t("erEmergencyOrders.completeOrder")}
-                                </button>
-                              );
-                            }
-                          }
-                          return (
-                            <div
-                              key={itemId}
-                              style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 8,
-                                alignItems: "flex-start",
-                                justifyContent: "space-between",
-                                borderTop: "1px solid #f1f5f9",
-                                paddingTop: 6,
-                                minWidth: 0,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  color: "#0f172a",
-                                  flex: "1 1 220px",
-                                  minWidth: 0,
-                                  overflowWrap: "anywhere",
-                                  whiteSpace: "normal",
-                                  lineHeight: 1.35,
-                                }}
-                              >
-                                {label}
-                                {routeLine ? (
-                                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
-                                    {routeLine}
-                                  </div>
-                                ) : null}
-                                {directionsLine ? (
-                                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
-                                    {directionsLine}
-                                  </div>
-                                ) : null}
-                              </div>
-                              {lineBtns.length > 0 ? (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, flex: "0 0 auto", justifyContent: "flex-end" }}>{lineBtns}</div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                  })}
+                            })}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -856,49 +913,114 @@ export function EmergencyErOrdersPanel({
               ) : completedRows.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.completedOrdersEmpty")}</div>
               ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {completedRows.map((e) => {
-                    const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
-                    const marLine = marActionOutcomeSubLabel(e.metadata, t);
-                    const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
-                    const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
-                    const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
-                    const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
-                    const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
-                    const attributionLines = completedOrder ? formatOrderAttributionLines(completedOrder, t, language) : [];
-                    return (
-                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                        {eventLinePrimaryTitle(e, language, t, parsedOrders)}
-                      </div>
-                      {secondaryLine ? (
-                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
-                          {secondaryLine}
-                        </div>
-                      ) : null}
-                      {directionsLine ? (
-                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
-                          {directionsLine}
-                        </div>
-                      ) : null}
-                      {authorityLine ? (
-                        <div style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                          {authorityLine}
-                        </div>
-                      ) : null}
-                      {attributionLines.map((line) => (
-                        <div key={line} style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                          {line}
-                        </div>
-                      ))}
-                      <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                        {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
-                        {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
-                        {e.roleSnapshot ?? "—"}
-                      </div>
-                    </div>
-                    );
-                  })}
+                <div style={ordersTableScrollWrap}>
+                  <table
+                    style={{
+                      width: "100%",
+                      minWidth: 640,
+                      borderCollapse: "collapse",
+                      fontSize: 12,
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableCategory")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableIssued")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableTime")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableOrder")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableLastAction")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableTitle")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completedRows.map((e) => {
+                        const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
+                        const marLine = marActionOutcomeSubLabel(e.metadata, t);
+                        const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
+                        const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
+                        const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
+                        const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
+                        const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
+                        const attributionLines = completedOrder ? formatOrderAttributionLines(completedOrder, t, language) : [];
+                        const issuedPrimary = attributionLines[0] ?? authorityLine ?? "—";
+                        const typeKey = (completedOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
+                        const categoryLabel = t(domainHeadingKey(typeKey));
+                        const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
+                        const performedWhen = new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US");
+                        const titleCell = `${t("orderEvent.performedBy")}: ${e.performedByDisplayName || "—"} · ${e.roleSnapshot ?? "—"}`;
+                        return (
+                          <tr key={e.id} style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>
+                            <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                              {categoryLabel}
+                            </td>
+                            <td
+                              style={{
+                                padding: "8px 8px",
+                                color: "#64748b",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                maxWidth: 200,
+                              }}
+                            >
+                              {issuedPrimary}
+                            </td>
+                            <td style={{ padding: "8px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{performedWhen}</td>
+                            <td
+                              style={{
+                                padding: "8px 8px",
+                                color: "#0f172a",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                maxWidth: 280,
+                              }}
+                            >
+                              <div style={{ fontWeight: 600 }}>{primaryTitle}</div>
+                              {directionsLine ? (
+                                <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
+                              ) : null}
+                            </td>
+                            <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                              {secondaryLine ?? t("orderEvent.completed")}
+                            </td>
+                            <td
+                              style={{
+                                padding: "8px 8px",
+                                color: "#64748b",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                maxWidth: 220,
+                              }}
+                            >
+                              <div>{titleCell}</div>
+                              {authorityLine ? (
+                                <div style={{ fontSize: 11, marginTop: 4 }}>{authorityLine}</div>
+                              ) : null}
+                              {attributionLines.slice(1).map((line) => (
+                                <div key={line} style={{ fontSize: 11, marginTop: 4 }}>
+                                  {line}
+                                </div>
+                              ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -912,50 +1034,118 @@ export function EmergencyErOrdersPanel({
               ) : cancelledEvents.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.cancelledOrdersEmpty")}</div>
               ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {cancelledEvents.map((e) => {
-                    const medCancelLine = medicationCancellationSubLabel(e, t);
-                    const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
-                    const cancelledOrder = parsedOrders.find((order) => order.id === e.orderId);
-                    const authorityLine = cancelledOrder ? formatOrderAuthority(cancelledOrder, t) : null;
-                    const attributionLines = cancelledOrder ? formatOrderAttributionLines(cancelledOrder, t, language) : [];
-                    return (
-                    <div key={e.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 10px", minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                        {eventLinePrimaryTitle(e, language, t, parsedOrders)}
-                      </div>
-                      {medCancelLine ? (
-                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
-                          {medCancelLine}
-                        </div>
-                      ) : null}
-                      {directionsLine ? (
-                        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
-                          {directionsLine}
-                        </div>
-                      ) : null}
-                      {authorityLine ? (
-                        <div style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                          {authorityLine}
-                        </div>
-                      ) : null}
-                      {attributionLines.map((line) => (
-                        <div key={line} style={{ fontSize: 11, color: "#64748b", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                          {line}
-                        </div>
-                      ))}
-                      <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                        {t("orderEvent.performedBy")}: {e.performedByDisplayName || "—"} •{" "}
-                        {new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US")} •{" "}
-                        {e.roleSnapshot ?? "—"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere", whiteSpace: "normal" }}>
-                        {t("orderEvent.cancelReason")}:{" "}
-                        {formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t)}
-                      </div>
-                    </div>
-                    );
-                  })}
+                <div style={ordersTableScrollWrap}>
+                  <table
+                    style={{
+                      width: "100%",
+                      minWidth: 640,
+                      borderCollapse: "collapse",
+                      fontSize: 12,
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: "#f8fafc" }}>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableCategory")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableIssued")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableTime")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableOrder")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableLastAction")}
+                        </th>
+                        <th style={{ textAlign: "left", padding: "8px 8px", fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                          {t("erEmergencyOrders.tableTitle")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cancelledEvents.map((e) => {
+                        const medCancelLine = medicationCancellationSubLabel(e, t);
+                        const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
+                        const cancelledOrder = parsedOrders.find((order) => order.id === e.orderId);
+                        const authorityLine = cancelledOrder ? formatOrderAuthority(cancelledOrder, t) : null;
+                        const attributionLines = cancelledOrder ? formatOrderAttributionLines(cancelledOrder, t, language) : [];
+                        const issuedPrimary = attributionLines[0] ?? authorityLine ?? "—";
+                        const typeKey = (cancelledOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
+                        const categoryLabel = t(domainHeadingKey(typeKey));
+                        const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
+                        const performedWhen = new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US");
+                        const cancelReason = formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t);
+                        const titleCell = `${t("orderEvent.performedBy")}: ${e.performedByDisplayName || "—"} · ${e.roleSnapshot ?? "—"}`;
+                        return (
+                          <tr key={e.id} style={{ borderBottom: "1px solid #f1f5f9", verticalAlign: "top" }}>
+                            <td style={{ padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                              {categoryLabel}
+                            </td>
+                            <td
+                              style={{
+                                padding: "8px 8px",
+                                color: "#64748b",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                maxWidth: 200,
+                              }}
+                            >
+                              {issuedPrimary}
+                            </td>
+                            <td style={{ padding: "8px 8px", color: "#64748b", whiteSpace: "nowrap" }}>{performedWhen}</td>
+                            <td
+                              style={{
+                                padding: "8px 8px",
+                                color: "#0f172a",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                maxWidth: 280,
+                              }}
+                            >
+                              <div style={{ fontWeight: 600 }}>{primaryTitle}</div>
+                              {directionsLine ? (
+                                <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
+                              ) : null}
+                            </td>
+                            <td style={{ padding: "8px 8px", color: "#b91c1c", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                              <div>{t("orderEvent.cancelled")}</div>
+                              {medCancelLine ? (
+                                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{medCancelLine}</div>
+                              ) : null}
+                              <div style={{ fontSize: 11, marginTop: 4 }}>
+                                {t("orderEvent.cancelReason")}: {cancelReason}
+                              </div>
+                            </td>
+                            <td
+                              style={{
+                                padding: "8px 8px",
+                                color: "#64748b",
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                maxWidth: 220,
+                              }}
+                            >
+                              <div>{titleCell}</div>
+                              {authorityLine ? (
+                                <div style={{ fontSize: 11, marginTop: 4 }}>{authorityLine}</div>
+                              ) : null}
+                              {attributionLines.slice(1).map((line) => (
+                                <div key={line} style={{ fontSize: 11, marginTop: 4 }}>
+                                  {line}
+                                </div>
+                              ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -986,10 +1176,29 @@ export function EmergencyErOrdersPanel({
           medicationOrderMode="ER_ADMINISTER_ONLY"
           onClose={() => setShowCreateModal(false)}
           onRefetchEncounter={onRefetchEncounter}
+          onOpenEkgProcedureDocumentation={() => {
+            setShowCreateModal(false);
+            setShowEkgProcedureLauncher(true);
+          }}
           onSuccess={async () => {
             setShowCreateModal(false);
             setOrdersRefresh((x) => x + 1);
             await onOrdersCreated?.();
+          }}
+        />
+      ) : null}
+      {showEkgProcedureLauncher ? (
+        <EmergencyProcedureLauncherModal
+          open={showEkgProcedureLauncher}
+          onClose={() => setShowEkgProcedureLauncher(false)}
+          encounterId={encounterId}
+          facilityId={facilityId}
+          initialNonLacerationStep="EKG"
+          onRecorded={() => {
+            setShowEkgProcedureLauncher(false);
+            setOrdersRefresh((x) => x + 1);
+            void onRefetchEncounter();
+            void onOrdersCreated?.();
           }}
         />
       ) : null}
