@@ -1,15 +1,35 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import type { Response } from "express";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { BillingService } from "./billing.service";
 import { ExternalBillingExportService } from "./external-billing-export.service";
+import { queueMedoraAlert } from "../common/logging/medoraAlert";
 
 function parseAllowOpen(raw: string | string[] | undefined): boolean {
   if (raw == null) return false;
   const v = Array.isArray(raw) ? raw[0] : raw;
   return String(v).trim().toLowerCase() === "true" || String(v).trim() === "1";
+}
+
+function externalExportAlertRoute(req: { method: string; originalUrl?: string; url?: string }): string | undefined {
+  const raw = typeof req.originalUrl === "string" ? req.originalUrl : typeof req.url === "string" ? req.url : "";
+  const pathOnly = raw.split("?")[0] || "";
+  if (!pathOnly) return undefined;
+  return `${req.method} ${pathOnly}`;
 }
 
 @Controller()
@@ -101,17 +121,31 @@ export class BillingController {
     @Req() req: any,
     @Res({ passthrough: true }) res: Response
   ) {
-    const format = formatRaw?.trim().toLowerCase() || "json";
-    if (format !== "json" && format !== "csv") {
-      throw new BadRequestException("format must be json or csv");
-    }
-    const facilityId = req.facilityId;
-    const userId = req.user?.userId;
-    const userCtx = await this.externalBillingExport.resolveExportUserContext(userId, String(req.userRole ?? ""));
-    const allowOpen = parseAllowOpen(allowOpenRaw);
+    try {
+      const format = formatRaw?.trim().toLowerCase() || "json";
+      if (format !== "json" && format !== "csv") {
+        throw new BadRequestException("format must be json or csv");
+      }
+      const facilityId = req.facilityId;
+      const userId = req.user?.userId;
+      const userCtx = await this.externalBillingExport.resolveExportUserContext(userId, String(req.userRole ?? ""));
+      const allowOpen = parseAllowOpen(allowOpenRaw);
 
-    if (format === "csv") {
-      const { csv, filename } = await this.externalBillingExport.exportEncounterCsv({
+      if (format === "csv") {
+        const { csv, filename } = await this.externalBillingExport.exportEncounterCsv({
+          facilityId,
+          encounterId,
+          allowOpen,
+          userCtx,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"] as string | undefined,
+        });
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return csv;
+      }
+
+      return this.externalBillingExport.exportEncounterJson({
         facilityId,
         encounterId,
         allowOpen,
@@ -119,19 +153,20 @@ export class BillingController {
         ip: req.ip,
         userAgent: req.headers["user-agent"] as string | undefined,
       });
-      res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      return csv;
+    } catch (err: unknown) {
+      if (!(err instanceof HttpException)) {
+        queueMedoraAlert({
+          event: "external_billing_export_failed",
+          severity: "critical",
+          requestId: typeof req.requestId === "string" ? req.requestId : undefined,
+          facilityId: typeof req.facilityId === "string" ? req.facilityId : undefined,
+          userId: typeof req.user?.userId === "string" ? req.user.userId : undefined,
+          encounterId,
+          route: externalExportAlertRoute(req),
+        });
+      }
+      throw err;
     }
-
-    return this.externalBillingExport.exportEncounterJson({
-      facilityId,
-      encounterId,
-      allowOpen,
-      userCtx,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"] as string | undefined,
-    });
   }
 
   @Get("billing/external/daily-export")
@@ -142,36 +177,50 @@ export class BillingController {
     @Req() req: any,
     @Res({ passthrough: true }) res: Response
   ) {
-    if (!date?.trim()) {
-      throw new BadRequestException("date is required (YYYY-MM-DD)");
-    }
-    const format = formatRaw?.trim().toLowerCase() || "json";
-    if (format !== "json" && format !== "csv") {
-      throw new BadRequestException("format must be json or csv");
-    }
-    const facilityId = req.facilityId;
-    const userId = req.user?.userId;
-    const userCtx = await this.externalBillingExport.resolveExportUserContext(userId, String(req.userRole ?? ""));
+    try {
+      if (!date?.trim()) {
+        throw new BadRequestException("date is required (YYYY-MM-DD)");
+      }
+      const format = formatRaw?.trim().toLowerCase() || "json";
+      if (format !== "json" && format !== "csv") {
+        throw new BadRequestException("format must be json or csv");
+      }
+      const facilityId = req.facilityId;
+      const userId = req.user?.userId;
+      const userCtx = await this.externalBillingExport.resolveExportUserContext(userId, String(req.userRole ?? ""));
 
-    if (format === "csv") {
-      const { csv, filename } = await this.externalBillingExport.exportDailyCsv({
+      if (format === "csv") {
+        const { csv, filename } = await this.externalBillingExport.exportDailyCsv({
+          facilityId,
+          date: date.trim(),
+          userCtx,
+          ip: req.ip,
+          userAgent: req.headers["user-agent"] as string | undefined,
+        });
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return csv;
+      }
+
+      return this.externalBillingExport.exportDailyJson({
         facilityId,
         date: date.trim(),
         userCtx,
         ip: req.ip,
         userAgent: req.headers["user-agent"] as string | undefined,
       });
-      res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      return csv;
+    } catch (err: unknown) {
+      if (!(err instanceof HttpException)) {
+        queueMedoraAlert({
+          event: "external_billing_export_failed",
+          severity: "critical",
+          requestId: typeof req.requestId === "string" ? req.requestId : undefined,
+          facilityId: typeof req.facilityId === "string" ? req.facilityId : undefined,
+          userId: typeof req.user?.userId === "string" ? req.user.userId : undefined,
+          route: externalExportAlertRoute(req),
+        });
+      }
+      throw err;
     }
-
-    return this.externalBillingExport.exportDailyJson({
-      facilityId,
-      date: date.trim(),
-      userCtx,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"] as string | undefined,
-    });
   }
 }

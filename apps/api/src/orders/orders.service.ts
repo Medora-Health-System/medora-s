@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  HttpException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -22,6 +23,7 @@ import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { logError as medoraLogError } from "../common/logging/medoraLogger";
 import {
   assertAckOrStartActor,
@@ -729,6 +731,15 @@ export class OrdersService {
         errorName: err instanceof Error ? err.name : typeof err,
         errorCode: typeof code === "string" ? code : undefined,
       });
+      if (!(err instanceof HttpException)) {
+        queueMedoraAlert({
+          event: "order_create_failed",
+          severity: "critical",
+          userId: userId ?? undefined,
+          encounterId,
+          facilityId,
+        });
+      }
       throw err;
     }
 

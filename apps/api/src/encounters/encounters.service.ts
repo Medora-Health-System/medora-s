@@ -73,6 +73,7 @@ import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment"
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
 import { appendEmergencyEMBilling } from "../billing/billing-em.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { logError, logInfo } from "../common/logging/medoraLogger";
 import type { AppendProcedureCaptureDto } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 
@@ -1674,6 +1675,15 @@ export class EncountersService {
         action: "encounter.iv.insert",
         errorName: err instanceof Error ? err.name : typeof err,
       });
+      if (!(err instanceof HttpException)) {
+        queueMedoraAlert({
+          event: "iv_insert_failed",
+          severity: "critical",
+          userId: userId ?? undefined,
+          encounterId,
+          facilityId,
+        });
+      }
       throw err;
     }
   }
@@ -1786,6 +1796,15 @@ export class EncountersService {
         action: "encounter.iv.remove",
         errorName: err instanceof Error ? err.name : typeof err,
       });
+      if (!(err instanceof HttpException)) {
+        queueMedoraAlert({
+          event: "iv_remove_failed",
+          severity: "critical",
+          userId: userId ?? undefined,
+          encounterId,
+          facilityId,
+        });
+      }
       throw err;
     }
   }
@@ -2199,6 +2218,13 @@ export class EncountersService {
         facilityId,
         action: "encounter.close",
         errorName: err instanceof Error ? err.name : typeof err,
+      });
+      queueMedoraAlert({
+        event: "encounter_close_failed",
+        severity: "critical",
+        userId: userId ?? undefined,
+        encounterId: id,
+        facilityId,
       });
       throw err;
     }
@@ -2615,6 +2641,15 @@ export class EncountersService {
         action: "encounter.procedure.append",
         errorName: err instanceof Error ? err.name : typeof err,
       });
+      if (!(err instanceof HttpException)) {
+        queueMedoraAlert({
+          event: "procedure_capture_append_failed",
+          severity: "critical",
+          userId: userId ?? undefined,
+          encounterId,
+          facilityId,
+        });
+      }
       throw err;
     }
   }
