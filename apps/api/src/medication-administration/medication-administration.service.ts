@@ -48,6 +48,37 @@ function utcDayBoundsForMar(at: Date): { start: Date; end: Date } {
   };
 }
 
+const MAR_AUDIT_DOSE_MAX_LEN = 80;
+const MAR_AUDIT_ROUTE_MAX_LEN = 64;
+
+/** PHI-safe dose string for `AuditLog.metadata` (numeric + unit only; no drug names). */
+function normalizedDoseForAudit(input: {
+  doseValue: number | null;
+  doseUnit: string | null;
+  administeredQuantity: number | null;
+  quantityUnit: string | null;
+}): string | null {
+  const dv = input.doseValue;
+  const du = input.doseUnit?.trim();
+  if (dv != null && Number.isFinite(Number(dv))) {
+    const s = du && du.length > 0 ? `${String(dv)} ${du}` : String(dv);
+    return s.length > MAR_AUDIT_DOSE_MAX_LEN ? `${s.slice(0, MAR_AUDIT_DOSE_MAX_LEN - 3)}...` : s;
+  }
+  const aq = input.administeredQuantity;
+  const qu = input.quantityUnit?.trim();
+  if (aq != null && Number.isFinite(Number(aq))) {
+    const s = qu && qu.length > 0 ? `${String(aq)} ${qu}` : String(aq);
+    return s.length > MAR_AUDIT_DOSE_MAX_LEN ? `${s.slice(0, MAR_AUDIT_DOSE_MAX_LEN - 3)}...` : s;
+  }
+  return null;
+}
+
+function safeRouteForAudit(route: string | null | undefined): string | null {
+  const t = route?.trim();
+  if (!t) return null;
+  return t.length > MAR_AUDIT_ROUTE_MAX_LEN ? `${t.slice(0, MAR_AUDIT_ROUTE_MAX_LEN - 3)}...` : t;
+}
+
 @Injectable()
 export class MedicationAdministrationService {
   constructor(
@@ -393,6 +424,29 @@ export class MedicationAdministrationService {
       }
     }
 
+    const doseStr = normalizedDoseForAudit({
+      doseValue: doseValue != null ? Number(doseValue) : null,
+      doseUnit,
+      administeredQuantity: administeredQuantity != null ? Number(administeredQuantity) : null,
+      quantityUnit: candidateQuantityUnit,
+    });
+    const safeRoute = safeRouteForAudit(data.route);
+    const administeredAtIso =
+      administeredAtEffective instanceof Date
+        ? administeredAtEffective.toISOString()
+        : new Date(administeredAtEffective).toISOString();
+
+    const marAuditMetadata: Record<string, unknown> = {
+      marOutcome: marActionResolved,
+      administeredBy: administeredByUserId,
+      timestamp: administeredAtIso,
+    };
+    if (doseStr) marAuditMetadata.dose = doseStr;
+    if (safeRoute) marAuditMetadata.route = safeRoute;
+    if (data.safetyAcknowledgedMedicationAllergies === true) {
+      marAuditMetadata.safetyAcknowledgedMedicationAllergies = true;
+    }
+
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.medicationAdministration.create({
         data: {
@@ -427,9 +481,7 @@ export class MedicationAdministrationService {
         ...(orderIdForAudit ? { orderId: orderIdForAudit } : {}),
         critical: true,
         tx,
-        ...(data.safetyAcknowledgedMedicationAllergies === true
-          ? { metadata: { safetyAcknowledgedMedicationAllergies: true } }
-          : {}),
+        metadata: marAuditMetadata,
       });
 
       const line = linkedMedicationLine;

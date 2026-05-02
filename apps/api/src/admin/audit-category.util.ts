@@ -8,6 +8,9 @@ export function classifyAuditUiCategory(action: AuditAction, entityType: string)
   if (entityType === "ED_REPORT_EXPORT") {
     return "clinical";
   }
+  if (action === AuditAction.CREATE && entityType === "MEDICATION_ADMINISTRATION") {
+    return "clinical";
+  }
   if (
     action === AuditAction.CRITICAL_FLAG ||
     action === AuditAction.BREAK_GLASS_START ||
@@ -77,6 +80,7 @@ export function auditPresetWhere(preset: AuditPreset): { OR: Array<Record<string
     case "clinical_actions":
       return {
         OR: [
+          { action: AuditAction.CREATE, entityType: "MEDICATION_ADMINISTRATION" },
           { action: AuditAction.ORDER_CREATE },
           { action: AuditAction.ORDER_CANCEL },
           { action: AuditAction.ORDER_UPDATE },

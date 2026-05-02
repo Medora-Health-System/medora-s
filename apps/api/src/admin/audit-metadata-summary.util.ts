@@ -6,6 +6,11 @@
 const SAFE_METADATA_KEYS = new Set([
   "actorRole",
   "source",
+  "dose",
+  "route",
+  "administeredBy",
+  "timestamp",
+  "marOutcome",
   "scope",
   "format",
   "schemaVersion",
