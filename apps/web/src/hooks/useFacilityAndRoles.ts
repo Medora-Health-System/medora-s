@@ -29,6 +29,8 @@ export function useFacilityAndRoles() {
   const [ready, setReady] = useState(false);
   const [isMsppUser, setIsMsppUser] = useState(false);
   const [hasFacilityAccess, setHasFacilityAccess] = useState(false);
+  /** True if any `facilityRoles` row has `MEDORA_SUPER_ADMIN` (not scoped to active facility cookie). */
+  const [isPlatformOperator, setIsPlatformOperator] = useState(false);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     setCanCreateFacilities(d.canCreateFacilities === true);
@@ -51,6 +53,7 @@ export function useFacilityAndRoles() {
       setFacilityId("");
       setRoles([]);
       setFacilities([]);
+      setIsPlatformOperator(false);
       setReady(true);
       return;
     }
@@ -59,9 +62,11 @@ export function useFacilityAndRoles() {
     }
     setFacilityId(String(fid));
     const fidKey = String(fid);
+    const frsTyped = (d.facilityRoles as { facilityId?: string; role?: string }[]) ?? [];
+    setIsPlatformOperator(frsTyped.some((fr) => fr.role === "MEDORA_SUPER_ADMIN"));
     const r =
-      (d.facilityRoles as { facilityId?: string; role?: string }[])
-        ?.filter((fr) => String(fr.facilityId) === fidKey)
+      frsTyped
+        .filter((fr) => String(fr.facilityId) === fidKey)
         .map((fr) => fr.role)
         .filter((role): role is string => typeof role === "string") ?? [];
     setRoles(r);
@@ -81,6 +86,7 @@ export function useFacilityAndRoles() {
       try {
         const res = await fetch("/api/auth/me", { credentials: "include" });
         if (!res.ok) {
+          setIsPlatformOperator(false);
           setReady(true);
           return;
         }
@@ -89,6 +95,7 @@ export function useFacilityAndRoles() {
           data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
         applySessionFromMe(d);
       } catch {
+        setIsPlatformOperator(false);
         setReady(true);
       }
     })();
@@ -117,10 +124,8 @@ export function useFacilityAndRoles() {
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const isMsppAdmin = msppRoles.includes("MSPP_ADMIN");
 
-  /** S22 — Medora platform operator (export/env/backup health APIs), not facility administrators alone. */
-  const isPlatformOperator = roles.includes("MEDORA_SUPER_ADMIN");
-  /** Facility admin or platform operator — shared admin hub, users, audit, reports, go-live. */
-  const isFacilityOrPlatformAdmin = roles.includes("ADMIN") || isPlatformOperator;
+  /** Facility admin or platform operator at the **active** facility — shared admin hub, users, audit, reports, go-live. */
+  const isFacilityOrPlatformAdmin = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
 
   /** Résumé santé publique — Medora inchangé ; MSPP : admin délégué ou rôle module explicite. */
   const canViewPublicHealthSummary =
