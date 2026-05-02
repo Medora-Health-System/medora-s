@@ -116,6 +116,37 @@ const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
   ],
 };
 
+/** Static CARE picker keys — localized under `createOrderModal.<key>` (PHI-free labels). */
+const CARE_PICKER_I18N_KEYS = [
+  "carePickerWoundCare",
+  "carePickerDressingChange",
+  "carePickerSplintApplication",
+  "carePickerFoleyCatheter",
+  "carePickerGlucoseCheck",
+  "carePickerUrineCollection",
+  "carePickerPregnancyTest",
+  "carePickerIvFluidsSetup",
+  "carePickerBloodCultureCollection",
+  "carePickerRespiratoryTreatment",
+  "carePickerPatientMonitoring",
+  "carePickerFallPrecautions",
+  "carePickerIsolationPrecautions",
+  "carePickerNpoStatus",
+  "carePickerOralChallenge",
+  "carePickerAmbulationTrial",
+  "carePickerDischargeTeaching",
+  "carePickerTransferPreparation",
+] as const;
+
+function careLabelNorm(label: string): string {
+  return label.trim().toLowerCase();
+}
+
+function careLabelExistsInItems(items: CreateOrderLineItem[], label: string): boolean {
+  const n = careLabelNorm(label);
+  return items.some((i) => careLabelNorm(i.manualLabel ?? i._label ?? "") === n);
+}
+
 function checkedOrderSetItemKeys(orderSet: OrderSetKey): string[] {
   return ORDER_SET_ITEMS[orderSet].map((item) => item.key);
 }
@@ -580,7 +611,13 @@ export function CreateOrderModal({
   onOpenEkgProcedureDocumentation?: () => void;
 }) {
   const { language, t } = useI18n();
+  const [carePickerQuery, setCarePickerQuery] = useState("");
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
+  const carePickerMatches = useMemo(() => {
+    const q = carePickerQuery.trim().toLowerCase();
+    if (q.length < 3) return [];
+    return CARE_PICKER_I18N_KEYS.filter((key) => t(`createOrderModal.${key}`).toLowerCase().includes(q));
+  }, [carePickerQuery, t]);
   const canUseMedicationCareTabs = canPrescribe || canUseRnOrderAuthority;
   const erAdministerOnlyMedication = medicationOrderMode === "ER_ADMINISTER_ONLY";
   const firstTab: OrderModalTab =
@@ -648,6 +685,9 @@ export function CreateOrderModal({
     items: initialOrderItems,
   });
 
+  const careHasEkgWorkflowLine = formData.items.some((i) => i._careQuickKey === "ekg_workflow");
+  const careHasLacerationKitLine = formData.items.some((i) => i._careQuickKey === "laceration_kit");
+
   const orderTypes: CreateOrderModalTab[] = canUseMedicationCareTabs
     ? ["ORDER_SET", "LAB", "IMAGING", "MEDICATION", "CARE"]
     : ["ORDER_SET", "LAB", "IMAGING"];
@@ -663,7 +703,8 @@ export function CreateOrderModal({
   const [medicationAllergySafetyAck, setMedicationAllergySafetyAck] = useState(false);
   const [activeCatalogKeys, setActiveCatalogKeys] = useState<Set<string>>(() => new Set());
   const [encounterOrdersSnapshot, setEncounterOrdersSnapshot] = useState<unknown[]>([]);
-  const [otherProcedureDraft, setOtherProcedureDraft] = useState("");
+  const [customCareTaskDraft, setCustomCareTaskDraft] = useState("");
+  const [careDuplicateHint, setCareDuplicateHint] = useState<string | null>(null);
   const prescriberPrefilled = useRef(false);
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
@@ -1196,27 +1237,44 @@ export function CreateOrderModal({
     return "MEDICATION";
   };
 
-  const addCarePreset = (label: string) => {
-    setFormData((fd) => ({
-      ...fd,
-      items: [
-        ...fd.items,
-        {
-          _lineId: newOrderLineId(),
-          isManual: true,
-          catalogItemType: "CARE",
-          manualLabel: label,
-          _label: label,
-        },
-      ],
-    }));
+  const addCareLine = (label: string, quickKey?: "ekg_workflow" | "laceration_kit") => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    setFormData((fd) => {
+      if (careLabelExistsInItems(fd.items, trimmed)) {
+        queueMicrotask(() => setCareDuplicateHint(t("createOrderModal.careDuplicateAlreadySelected")));
+        return fd;
+      }
+      queueMicrotask(() => setCareDuplicateHint(null));
+      return {
+        ...fd,
+        items: [
+          ...fd.items,
+          {
+            _lineId: newOrderLineId(),
+            isManual: true,
+            catalogItemType: "CARE",
+            manualLabel: trimmed,
+            _label: trimmed,
+            ...(quickKey ? { _careQuickKey: quickKey } : {}),
+          },
+        ],
+      };
+    });
   };
 
-  const addOtherProcedureLine = () => {
-    const label = otherProcedureDraft.trim();
+  const addCarePickerOption = (i18nKey: (typeof CARE_PICKER_I18N_KEYS)[number]) => {
+    const picked = t(`createOrderModal.${i18nKey}`).trim();
+    if (!picked) return;
+    addCareLine(picked);
+    setCarePickerQuery("");
+  };
+
+  const addCustomCareTaskLine = () => {
+    const label = customCareTaskDraft.trim();
     if (!label) return;
-    addCarePreset(label);
-    setOtherProcedureDraft("");
+    addCareLine(label);
+    setCustomCareTaskDraft("");
   };
 
   const handleSelectItem = (item: CatalogSearchItem) => {
@@ -2199,7 +2257,7 @@ export function CreateOrderModal({
                         <button
                           key={label}
                           type="button"
-                          onClick={() => addCarePreset(label)}
+                          onClick={() => addCareLine(label)}
                           style={{
                             padding: "8px 12px",
                             fontSize: 13,
@@ -2215,7 +2273,176 @@ export function CreateOrderModal({
                           {label}
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => addCareLine(t("createOrderModal.careQuickEkgWorkflow"), "ekg_workflow")}
+                        style={{
+                          padding: "8px 12px",
+                          fontSize: 13,
+                          border: "1px solid #00695c",
+                          borderRadius: 6,
+                          background: "#fff",
+                          color: "#004d40",
+                          cursor: "pointer",
+                          fontWeight: 500,
+                          textAlign: "left",
+                        }}
+                      >
+                        {t("createOrderModal.careQuickEkgWorkflow")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addCareLine(t("createOrderModal.careQuickLacerationKit"), "laceration_kit")}
+                        style={{
+                          padding: "8px 12px",
+                          fontSize: 13,
+                          border: "1px solid #00695c",
+                          borderRadius: 6,
+                          background: "#fff",
+                          color: "#004d40",
+                          cursor: "pointer",
+                          fontWeight: 500,
+                          textAlign: "left",
+                        }}
+                      >
+                        {t("createOrderModal.careQuickLacerationKit")}
+                      </button>
                     </div>
+                    {careHasEkgWorkflowLine ? (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#334155",
+                          marginBottom: 10,
+                          lineHeight: 1.45,
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #bae6fd",
+                          background: "#f0f9ff",
+                        }}
+                      >
+                        <div style={{ marginBottom: onOpenEkgProcedureDocumentation ? 8 : 0 }}>
+                          {t("createOrderModal.careEkgReportingHelper")}
+                        </div>
+                        {onOpenEkgProcedureDocumentation ? (
+                          <button
+                            type="button"
+                            onClick={onOpenEkgProcedureDocumentation}
+                            style={{
+                              padding: "6px 12px",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              border: "1px solid #0369a1",
+                              borderRadius: 6,
+                              background: "#fff",
+                              color: "#0c4a6e",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {t("createOrderModal.careOpenProcedureDocButton")}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {careHasLacerationKitLine ? (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#475569",
+                          marginBottom: 10,
+                          lineHeight: 1.45,
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #e2e8f0",
+                          background: "#fff",
+                        }}
+                      >
+                        {t("createOrderModal.careLacerationDocHelper")}
+                      </div>
+                    ) : null}
+                    <div style={{ marginBottom: 12 }}>
+                      <input
+                        type="search"
+                        value={carePickerQuery}
+                        onChange={(e) => {
+                          setCarePickerQuery(e.target.value);
+                          setCareDuplicateHint(null);
+                        }}
+                        placeholder={t("createOrderModal.careSearchPlaceholder")}
+                        autoComplete="off"
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 6,
+                          fontSize: 14,
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {carePickerQuery.trim().length > 0 && carePickerQuery.trim().length < 3 ? (
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>
+                          {t("createOrderModal.careSearchMinCharsHint")}
+                        </div>
+                      ) : null}
+                      {carePickerQuery.trim().length >= 3 ? (
+                        carePickerMatches.length === 0 ? (
+                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>
+                            {t("createOrderModal.careSearchNoResults")}
+                          </div>
+                        ) : (
+                          <ul
+                            style={{
+                              listStyle: "none",
+                              margin: "8px 0 0",
+                              padding: 0,
+                              maxHeight: 200,
+                              overflowY: "auto",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 6,
+                              background: "#fff",
+                            }}
+                          >
+                            {carePickerMatches.map((key) => (
+                              <li key={key} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => addCarePickerOption(key)}
+                                  style={{
+                                    display: "block",
+                                    width: "100%",
+                                    textAlign: "left",
+                                    padding: "8px 10px",
+                                    fontSize: 13,
+                                    border: "none",
+                                    background: "transparent",
+                                    cursor: "pointer",
+                                    color: "#0f172a",
+                                  }}
+                                >
+                                  {t(`createOrderModal.${key}`)}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      ) : null}
+                    </div>
+                    {careDuplicateHint ? (
+                      <div
+                        role="alert"
+                        style={{
+                          marginBottom: 10,
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #fecaca",
+                          background: "#fef2f2",
+                          fontSize: 12,
+                          color: "#991b1b",
+                        }}
+                      >
+                        {careDuplicateHint}
+                      </div>
+                    ) : null}
                     <div
                       style={{
                         marginTop: 4,
@@ -2226,14 +2453,14 @@ export function CreateOrderModal({
                       }}
                     >
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                        {t("createOrderModal.otherProcedureLabel")}
+                        {t("createOrderModal.customCareTaskLabel")}
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "stretch" }}>
                         <input
                           type="text"
-                          value={otherProcedureDraft}
-                          onChange={(e) => setOtherProcedureDraft(e.target.value)}
-                          placeholder={t("createOrderModal.otherProcedurePlaceholder")}
+                          value={customCareTaskDraft}
+                          onChange={(e) => setCustomCareTaskDraft(e.target.value)}
+                          placeholder={t("createOrderModal.customCareTaskPlaceholder")}
                           style={{
                             flex: "1 1 200px",
                             minWidth: 0,
@@ -2246,20 +2473,20 @@ export function CreateOrderModal({
                         />
                         <button
                           type="button"
-                          onClick={addOtherProcedureLine}
-                          disabled={!otherProcedureDraft.trim()}
+                          onClick={addCustomCareTaskLine}
+                          disabled={!customCareTaskDraft.trim()}
                           style={{
                             padding: "8px 14px",
                             fontSize: 13,
                             fontWeight: 600,
                             border: "1px solid #0f172a",
                             borderRadius: 6,
-                            background: otherProcedureDraft.trim() ? "#0f172a" : "#e2e8f0",
-                            color: otherProcedureDraft.trim() ? "#fff" : "#94a3b8",
-                            cursor: otherProcedureDraft.trim() ? "pointer" : "not-allowed",
+                            background: customCareTaskDraft.trim() ? "#0f172a" : "#e2e8f0",
+                            color: customCareTaskDraft.trim() ? "#fff" : "#94a3b8",
+                            cursor: customCareTaskDraft.trim() ? "pointer" : "not-allowed",
                           }}
                         >
-                          {t("createOrderModal.otherProcedureAdd")}
+                          {t("createOrderModal.customCareTaskAdd")}
                         </button>
                       </div>
                     </div>

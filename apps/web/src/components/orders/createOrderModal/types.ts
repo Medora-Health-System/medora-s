@@ -43,6 +43,8 @@ export type CreateOrderLineItem = {
   _requiresDoubleSign?: boolean;
   _modality?: string;
   _bodyRegion?: string;
+  /** CARE UI only: quick-pick semantics for in-modal helpers (not sent to API). */
+  _careQuickKey?: "ekg_workflow" | "laceration_kit";
   /** Snapshot from catalog search at pick time (soft safety rules). */
   _safetyCatalog?: {
     code?: string;
