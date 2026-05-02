@@ -201,10 +201,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const facilityLanguage = getActiveFacilityLanguage();
 
   const activeRoles = getActiveRoles();
+  const hasMedoraSuperAdminAnywhere =
+    Array.isArray(user?.facilityRoles) &&
+    user.facilityRoles.some((fr: { role?: unknown }) => fr.role === "MEDORA_SUPER_ADMIN");
   const msppRolesForNav = Array.isArray(user?.msppRoles)
     ? user.msppRoles.filter((x: unknown): x is string => typeof x === "string")
     : [];
-  const combinedRolesForNav = [...activeRoles, ...msppRolesForNav];
+  const combinedRolesForNav = [
+    ...activeRoles,
+    ...(hasMedoraSuperAdminAnywhere && !activeRoles.includes("MEDORA_SUPER_ADMIN")
+      ? (["MEDORA_SUPER_ADMIN"] as const)
+      : []),
+    ...msppRolesForNav,
+  ];
   /** Rôles « soins / technique » — accueil seul (FRONT_DESK sans ces rôles) : menu limité à inscription / liste patients / suivis / facturation. */
   const clinicalCareRoles = ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY", "PHARMACY"];
   const isFrontDeskNavRestricted =
@@ -260,7 +269,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
     const facilityRoleCodes = getActiveRoles();
-    const roles = [...facilityRoleCodes, ...msppRolesForGuard];
+    const hasMsAnywhere =
+      Array.isArray(user.facilityRoles) &&
+      user.facilityRoles.some((fr: { role?: unknown }) => fr.role === "MEDORA_SUPER_ADMIN");
+    const roles = [
+      ...facilityRoleCodes,
+      ...(hasMsAnywhere && !facilityRoleCodes.includes("MEDORA_SUPER_ADMIN")
+        ? (["MEDORA_SUPER_ADMIN"] as const)
+        : []),
+      ...msppRolesForGuard,
+    ];
     const frs = Array.isArray(user.facilityRoles) ? user.facilityRoles : [];
     const hasAnyFacilityRole = frs.length > 0;
     const hasMspp = msppRolesForGuard.length > 0;
