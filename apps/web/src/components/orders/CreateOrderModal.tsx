@@ -5,7 +5,7 @@ import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
 import type { OrderCreateDto, OrderSource } from "@medora/shared";
-import { getEncounterAllergyDocumentationSummary } from "@medora/shared";
+import { computeAdvancedMedicationSafetyWarnings, getEncounterAllergyDocumentationSummary } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog } from "@/lib/catalogSearchApi";
@@ -22,6 +22,11 @@ import { newOrderLineId } from "./createOrderModal/types";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { buildActiveCatalogDedupKeySetFromOrders } from "@/lib/encounterClinicalSafetyUi";
+import {
+  createOrderLineToAdvancedMedicationSafetyLine,
+  encounterOrdersToAdvancedMedicationSafetyLines,
+} from "@/lib/advancedMedicationSafetyLineMappers";
+import { AdvancedMedicationSafetyPanel } from "@/components/medication/AdvancedMedicationSafetyPanel";
 import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
 
 type OrderSetKey = "chestPain" | "abdominalPain" | "sepsis" | "trauma" | "respiratoryDistress";
@@ -613,6 +618,7 @@ export function CreateOrderModal({
   const [medicationAllergyDocSummary, setMedicationAllergyDocSummary] = useState<string | null>(null);
   const [medicationAllergySafetyAck, setMedicationAllergySafetyAck] = useState(false);
   const [activeCatalogKeys, setActiveCatalogKeys] = useState<Set<string>>(() => new Set());
+  const [encounterOrdersSnapshot, setEncounterOrdersSnapshot] = useState<unknown[]>([]);
   const prescriberPrefilled = useRef(false);
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
@@ -621,10 +627,15 @@ export function CreateOrderModal({
     void apiFetch(`/encounters/${encounterId}/orders`, { facilityId })
       .then((o) => {
         if (cancelled) return;
-        setActiveCatalogKeys(buildActiveCatalogDedupKeySetFromOrders(Array.isArray(o) ? o : []));
+        const arr = Array.isArray(o) ? o : [];
+        setActiveCatalogKeys(buildActiveCatalogDedupKeySetFromOrders(arr));
+        setEncounterOrdersSnapshot(arr);
       })
       .catch(() => {
-        if (!cancelled) setActiveCatalogKeys(new Set());
+        if (!cancelled) {
+          setActiveCatalogKeys(new Set());
+          setEncounterOrdersSnapshot([]);
+        }
       });
     return () => {
       cancelled = true;
@@ -693,6 +704,15 @@ export function CreateOrderModal({
     }
     return false;
   }, [activeTab, formData.items, activeCatalogKeys]);
+
+  const advancedMedicationSafetyWarnings = useMemo(() => {
+    if (activeTab !== "MEDICATION") return [];
+    const stagedLines = formData.items
+      .filter((i) => i.catalogItemType === "MEDICATION")
+      .map(createOrderLineToAdvancedMedicationSafetyLine);
+    const activeEncounterLines = encounterOrdersToAdvancedMedicationSafetyLines(encounterOrdersSnapshot);
+    return computeAdvancedMedicationSafetyWarnings({ stagedLines, activeEncounterLines });
+  }, [activeTab, formData.items, encounterOrdersSnapshot]);
 
   const changeTab = (tab: CreateOrderModalTab) => {
     const nextStagedItems = isOrderTypeKey(activeTab)
@@ -1888,20 +1908,23 @@ export function CreateOrderModal({
                   {activeTab === "LAB" && <SelectedLabItems items={formData.items} onRemove={removeItem} />}
                   {activeTab === "IMAGING" && <SelectedImagingItems items={formData.items} onRemove={removeItem} />}
                   {activeTab === "MEDICATION" && (
-                    <SelectedMedicationItems
-                      items={formData.items}
-                      onPatch={patchMedItem}
-                      onRemove={removeItem}
-                      medicationOrderMode={medicationOrderMode}
-                      ivRouteConfirmations={ivRouteConfirmations}
-                      erQuantityConfirmations={erQuantityConfirmations}
-                      onIvRouteConfirmationChange={(lineId, confirmed) =>
-                        setIvRouteConfirmations((current) => ({ ...current, [lineId]: confirmed }))
-                      }
-                      onErQuantityConfirmationChange={(lineId, confirmed) =>
-                        setErQuantityConfirmations((current) => ({ ...current, [lineId]: confirmed }))
-                      }
-                    />
+                    <>
+                      <SelectedMedicationItems
+                        items={formData.items}
+                        onPatch={patchMedItem}
+                        onRemove={removeItem}
+                        medicationOrderMode={medicationOrderMode}
+                        ivRouteConfirmations={ivRouteConfirmations}
+                        erQuantityConfirmations={erQuantityConfirmations}
+                        onIvRouteConfirmationChange={(lineId, confirmed) =>
+                          setIvRouteConfirmations((current) => ({ ...current, [lineId]: confirmed }))
+                        }
+                        onErQuantityConfirmationChange={(lineId, confirmed) =>
+                          setErQuantityConfirmations((current) => ({ ...current, [lineId]: confirmed }))
+                        }
+                      />
+                      <AdvancedMedicationSafetyPanel warnings={advancedMedicationSafetyWarnings} />
+                    </>
                   )}
                   {activeTab === "CARE" && (
                     <SelectedLabItems

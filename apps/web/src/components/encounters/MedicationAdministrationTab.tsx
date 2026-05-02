@@ -18,9 +18,14 @@ import {
   getMedicationSafetyWarnings,
   medicationWarningsRequireMarHighRiskAck,
   evaluateMedicationTimingSafety,
+  computeAdvancedMedicationSafetyForSingleLine,
+  mergeAdvancedMedicationLineWithDraft,
+  type AdvancedMedicationSafetyLine,
   type MedicationSafetyCatalogInput,
   type MedicationSafetyWarning,
 } from "@medora/shared";
+import { orderItemLikeToAdvancedMedicationSafetyLine } from "@/lib/advancedMedicationSafetyLineMappers";
+import { AdvancedMedicationSafetyPanel } from "@/components/medication/AdvancedMedicationSafetyPanel";
 import { MedicationSoftSafetyPanel } from "@/components/medication/MedicationSoftSafetyPanel";
 import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -221,6 +226,7 @@ export function MedicationAdministrationTab({
     attributionLines: string[];
     highRiskWarning: string | null;
     softSafetyWarnings: MedicationSafetyWarning[];
+    advancedSafetyLine: AdvancedMedicationSafetyLine;
     routeHint: string;
     ndcHint: string;
     billingUnitHint: string;
@@ -334,6 +340,7 @@ export function MedicationAdministrationTab({
       attributionLines: string[];
       highRiskWarning: string | null;
       safetyCatalogInput: MedicationSafetyCatalogInput;
+      advancedSafetyLine: AdvancedMedicationSafetyLine;
     };
     const drafts: RowDraft[] = [];
     for (const order of orders) {
@@ -370,6 +377,12 @@ export function MedicationAdministrationTab({
           orderedQuantity,
           intendedAt: it.intendedAdministrationAt ?? null,
           safetyCatalogInput: marOrderItemToSafetyCatalogInput(it, label),
+          advancedSafetyLine:
+            orderItemLikeToAdvancedMedicationSafetyLine(it, label) ?? ({
+              lineKey: it.id,
+              catalogItemId: it.catalogItemId ?? null,
+              displayName: label,
+            } satisfies AdvancedMedicationSafetyLine),
         });
       }
     }
@@ -385,6 +398,28 @@ export function MedicationAdministrationTab({
     });
   }, [orders, language, t]);
 
+  const marAdvancedMedicationSafetyWarnings = useMemo(() => {
+    if (!modalItem?.advancedSafetyLine || modalAction !== "administered") return [];
+    const adminQty = modalAdminQty.trim() ? Number(modalAdminQty) : null;
+    const draft = mergeAdvancedMedicationLineWithDraft(modalItem.advancedSafetyLine, {
+      strength: modalDoseValue.trim() || undefined,
+      route: modalRoute.trim() || undefined,
+      quantity:
+        adminQty != null && Number.isFinite(adminQty)
+          ? adminQty
+          : modalItem.orderedQuantity != null && Number.isFinite(modalItem.orderedQuantity)
+            ? modalItem.orderedQuantity
+            : undefined,
+    });
+    const siblings = taskRows
+      .filter((r) => r.orderItemId !== modalItem.orderItemId)
+      .map((r) => r.advancedSafetyLine);
+    return computeAdvancedMedicationSafetyForSingleLine({
+      primaryLine: draft,
+      siblingEncounterLines: siblings,
+    });
+  }, [modalItem, modalAction, taskRows, modalDoseValue, modalRoute, modalAdminQty]);
+
   const openModal = (row: (typeof taskRows)[0]) => {
     setModalItem({
       orderItemId: row.orderItemId,
@@ -393,6 +428,7 @@ export function MedicationAdministrationTab({
       attributionLines: row.attributionLines,
       highRiskWarning: row.highRiskWarning,
       softSafetyWarnings: row.softSafetyWarnings,
+      advancedSafetyLine: row.advancedSafetyLine,
       routeHint: row.routeHint,
       ndcHint: row.ndcHint,
       billingUnitHint: row.billingUnitHint,
@@ -884,6 +920,9 @@ export function MedicationAdministrationTab({
                     {cumulativeLabel}
                   </div>
                   <MedicationSoftSafetyPanel warnings={modalItem.softSafetyWarnings} density="compact" />
+                  {modalAction === "administered" ? (
+                    <AdvancedMedicationSafetyPanel warnings={marAdvancedMedicationSafetyWarnings} density="compact" />
+                  ) : null}
                 </div>
               );
             })()}

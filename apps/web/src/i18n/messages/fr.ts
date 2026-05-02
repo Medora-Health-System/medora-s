@@ -5703,6 +5703,61 @@ export default {
       lasa_morphine_hydromorphone: "LASA : morphine vs hydromorphone — puissances différentes ; confirmer le produit et la dose.",
     },
   },
+  advancedMedicationSafety: {
+    panelTitle: "Sécurité médicamenteuse avancée (relecture seulement)",
+    panelTitleInline: "Sécurité médicamenteuse avancée",
+    panelSubtitle:
+      "Contrôles informatifs — ne remplacent pas le jugement clinique ni les protocoles locaux.",
+    messageFallback: "Avis de sécurité ({key}) — vérifier avant de poursuivre.",
+    severityLabel: {
+      info: "Information",
+      warning: "Avertissement",
+      critical: "Critique",
+    },
+    categoryTag: {
+      DOSE_REVIEW: "Relecture posologique",
+      DUPLICATE_THERAPY: "Doublon thérapeutique",
+      DUPLICATE_ACTIVE_MEDICATION: "Médicament déjà actif",
+      ROUTE_REVIEW: "Relecture de la voie",
+      SEDATION_STACKING: "Cumul sédation",
+      OPIOID_STACKING: "Cumul opioïdes",
+      ANTICOAGULATION_STACKING: "Risque hémorragique (association)",
+      INSULIN_REVIEW: "Relecture insuline",
+      INTERACTION_REVIEW: "Relecture interaction",
+    },
+    messages: {
+      duplicate_active_catalog:
+        "Ce médicament catalogue figure déjà sur un ordre actif pour cette consultation. Évitez le doublon thérapeutique sauf intention clinique documentée.",
+      duplicate_same_catalog_staged:
+        "Le même médicament catalogue apparaît plusieurs fois dans cet ordre. Vérifiez les lignes en double.",
+      duplicate_generic_therapy:
+        "Le même principe actif apparaît sur plusieurs lignes (panier et/ou ordres actifs). Confirmez le chevauchement voulu.",
+      duplicate_high_risk_therapeutic_class:
+        "Plusieurs médicaments partagent la même classe thérapeutique à haut risque. Vérifiez le risque cumulé.",
+      dose_review_required_missing:
+        "Relecture posologique : aucune dose chiffrée détectée pour un médicament à haute vigilance — confirmez dose et unités.",
+      dose_review_unparseable:
+        "Relecture posologique : la dose saisie en texte libre n’a pas pu être interprétée — confirmez la valeur numérique et les unités.",
+      route_review_required:
+        "Relecture de la voie : voie absente pour un médicament à haute vigilance — confirmez la voie prévue.",
+      dose_review_unusual_quantity:
+        "Relecture posologique : la quantité prescrite est inhabituelle pour cette classe — confirmez montant et unités (avis non bloquant).",
+      stacking_opioid_benzodiazepine:
+        "Association opioïde / benzodiazépine ou sédatif sur cette consultation — risque de dépression respiratoire ; revue et surveillance.",
+      stacking_multiple_opioids:
+        "Plusieurs opioïdes détectés sur cette consultation — revoyez le plan analgésique, les totaux et la surveillance.",
+      stacking_multiple_sedatives:
+        "Plusieurs agents sédatifs détectés — revoyez la dépression du SNC cumulée et le risque voies aériennes.",
+      stacking_anticoagulant_nsaid:
+        "Anticoagulant avec AINS (ou aspirine) — risque hémorragique ; revoyez l’indication et la protection digestive si indiquée.",
+      interaction_potassium_ace_arb:
+        "Potassium avec inhibiteur de l’ECA ou sartan — risque d’hyperkaliémie ; revoyez biologie et posologie.",
+      interaction_insulin_secretagogue:
+        "Insuline avec sécrétagogue — risque d’hypoglycémie ; revoyez glycémies capillaires et doses.",
+      insulin_multiple_review:
+        "Plusieurs lignes contenant de l’insuline — revoyez chevauchement basal/bolus et unités (avis non bloquant).",
+    },
+  },
   medicationTimingSafety: {
     critical:
       "Une administration « Administré » a été enregistrée il y a {minutes} min par {name}. Risque de double dose ou de double saisie.",

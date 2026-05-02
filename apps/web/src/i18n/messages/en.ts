@@ -5714,6 +5714,60 @@ export default {
       lasa_morphine_hydromorphone: "LASA: morphine vs hydromorphone — different potencies; confirm product and dose.",
     },
   },
+  advancedMedicationSafety: {
+    panelTitle: "Advanced medication safety (review only)",
+    panelTitleInline: "Advanced medication safety",
+    panelSubtitle: "Informational checks — not a substitute for clinical judgment or local protocols.",
+    messageFallback: "Safety notice ({key}) — verify before proceeding.",
+    severityLabel: {
+      info: "Info",
+      warning: "Warning",
+      critical: "Critical",
+    },
+    categoryTag: {
+      DOSE_REVIEW: "Dose review",
+      DUPLICATE_THERAPY: "Duplicate therapy",
+      DUPLICATE_ACTIVE_MEDICATION: "Duplicate active medication",
+      ROUTE_REVIEW: "Route review",
+      SEDATION_STACKING: "Sedation stacking",
+      OPIOID_STACKING: "Opioid-related stacking",
+      ANTICOAGULATION_STACKING: "Bleeding risk combination",
+      INSULIN_REVIEW: "Insulin review",
+      INTERACTION_REVIEW: "Interaction review",
+    },
+    messages: {
+      duplicate_active_catalog:
+        "This catalog medication is already on an active order for this encounter. Avoid duplicate therapy unless clinically intended.",
+      duplicate_same_catalog_staged:
+        "The same catalog medication appears more than once in this order. Review duplicate lines.",
+      duplicate_generic_therapy:
+        "The same generic ingredient appears on more than one line (basket and/or active orders). Confirm intentional overlap.",
+      duplicate_high_risk_therapeutic_class:
+        "More than one medication shares the same high-risk therapeutic class. Review cumulative risk.",
+      dose_review_required_missing:
+        "Dose review required: no structured dose quantity was detected for a high-alert medication — confirm dose and units.",
+      dose_review_unparseable:
+        "Dose review required: free-text dose fields could not be parsed — confirm numeric dose and units.",
+      route_review_required:
+        "Route review required: route is missing for a high-alert medication — confirm intended route.",
+      dose_review_unusual_quantity:
+        "Dose review required: ordered quantity is unusual for this medication class — confirm amount and units (review only).",
+      stacking_opioid_benzodiazepine:
+        "Opioid with benzodiazepine/sedative overlap on this encounter — respiratory depression risk; review and monitor.",
+      stacking_multiple_opioids:
+        "Multiple opioids detected on this encounter — review analgesic plan, totals, and monitoring.",
+      stacking_multiple_sedatives:
+        "Multiple sedative agents detected — review cumulative CNS depression and airway risk.",
+      stacking_anticoagulant_nsaid:
+        "Anticoagulant with NSAID (or aspirin) overlap — bleeding risk; review indication and gastroprotection.",
+      interaction_potassium_ace_arb:
+        "Potassium therapy with ACE inhibitor / ARB context — hyperkalemia risk; review labs and dosing.",
+      interaction_insulin_secretagogue:
+        "Insulin with insulin secretagogue context — hypoglycemia risk; review glucose monitoring and doses.",
+      insulin_multiple_review:
+        "More than one insulin-containing order line — review basal/bolus overlap and units (review only).",
+    },
+  },
   medicationTimingSafety: {
     critical:
       "An “Administered” MAR entry was recorded {minutes} minute(s) ago by {name}. Risk of duplicate dose or duplicate entry.",
