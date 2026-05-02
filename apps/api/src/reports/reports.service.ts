@@ -3,14 +3,21 @@ import {
   EncounterClinicalEventType,
   EncounterStatus,
   EncounterType,
-  MedicationMarAction,
   Prisma,
 } from "@prisma/client";
+import type { Response } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 import type { EdReportsQueryDto } from "./dto/ed-reports-query.dto";
+import { jsonPageLimit } from "./dto/ed-reports-query.dto";
+import { decodeReportCursor, encodeReportCursor } from "./ed-report-cursor.util";
+import {
+  assertEdReportDateRange,
+  CSV_BATCH_SIZE,
+  JSON_PAGE_MAX_LIMIT,
+} from "./ed-report-range.util";
 import { iso, minutesBetween, parseReportTimeBoundary } from "./ed-reports-time.util";
 
-const MAX_ENCOUNTERS = 2500;
+export type EdReportSlug = "door-to-door" | "door-to-provider" | "door-to-ekg" | "medication-administration";
 
 function csvEscape(value: string): string {
   if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
@@ -30,6 +37,29 @@ function isEkgProcedurePayload(payload: Prisma.JsonValue): boolean {
   const p = payload as Record<string, unknown>;
   const pt = p.procedureType;
   return pt === "EKG" || pt === "ECG";
+}
+
+function truncateDisposition(s: string | null | undefined, max = 120): string {
+  if (s == null) return "";
+  const t = String(s).trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 3)}...`;
+}
+
+function formatQuantity(
+  qty: Prisma.Decimal | null | undefined,
+  unit: string | null | undefined
+): string {
+  if (qty == null && !unit?.trim()) return "";
+  const q = qty != null ? String(qty) : "";
+  const u = unit?.trim() ?? "";
+  return u ? `${q} ${u}`.trim() : q;
+}
+
+function displayUserName(u: { firstName: string; lastName: string; email: string } | null | undefined): string {
+  if (!u) return "";
+  const n = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
+  return n || u.email?.trim() || "";
 }
 
 @Injectable()
@@ -85,28 +115,517 @@ export class ReportsService {
     return Boolean(cid && ekgCatalogIds.has(cid));
   }
 
-  async doorToEkg(facilityId: string, query: EdReportsQueryDto) {
+  private async loadMrnMap(patientIds: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    const uniq = [...new Set(patientIds)].filter(Boolean);
+    const chunk = 500;
+    for (let i = 0; i < uniq.length; i += chunk) {
+      const slice = uniq.slice(i, i + chunk);
+      const rows = await this.prisma.patient.findMany({
+        where: { id: { in: slice } },
+        select: { id: true, mrn: true },
+      });
+      for (const p of rows) map.set(p.id, p.mrn ?? "");
+    }
+    return map;
+  }
+
+  private async loadUsersMap(userIds: (string | null | undefined)[]): Promise<
+    Map<string, { firstName: string; lastName: string; email: string; billingTaxonomyCode: string | null }>
+  > {
+    const ids = [...new Set(userIds.filter((x): x is string => Boolean(x)))];
+    const map = new Map<string, { firstName: string; lastName: string; email: string; billingTaxonomyCode: string | null }>();
+    if (ids.length === 0) return map;
+    const chunk = 200;
+    for (let i = 0; i < ids.length; i += chunk) {
+      const slice = ids.slice(i, i + chunk);
+      const rows = await this.prisma.user.findMany({
+        where: { id: { in: slice } },
+        select: { id: true, firstName: true, lastName: true, email: true, billingTaxonomyCode: true },
+      });
+      for (const u of rows) {
+        map.set(u.id, {
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          billingTaxonomyCode: u.billingTaxonomyCode,
+        });
+      }
+    }
+    return map;
+  }
+
+  async doorToDoorJson(facilityId: string, query: EdReportsQueryDto) {
     const from = parseReportTimeBoundary(query.from, false);
     const to = parseReportTimeBoundary(query.to, true);
-    const ekgCatalogIds = await this.loadEkgCatalogItemIds();
+    assertEdReportDateRange(from, to);
+    const limit = Math.min(jsonPageLimit(query), JSON_PAGE_MAX_LIMIT);
     const whereVisit = this.edVisitWhere(facilityId, from, to, query.providerId);
+    const cursor = decodeReportCursor(query.cursor);
 
-    const encounters = await this.prisma.encounter.findMany({
-      where: whereVisit,
-      take: MAX_ENCOUNTERS + 1,
-      orderBy: { createdAt: "desc" },
+    const where: Prisma.EncounterWhereInput = {
+      ...whereVisit,
+      status: EncounterStatus.CLOSED,
+      dischargedAt: { not: null },
+      ...(cursor
+        ? {
+            OR: [
+              { dischargedAt: { lt: new Date(cursor.isoDate) } },
+              {
+                AND: [{ dischargedAt: new Date(cursor.isoDate) }, { id: { lt: cursor.id } }],
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const rowsDb = await this.prisma.encounter.findMany({
+      where,
+      take: limit + 1,
+      orderBy: [{ dischargedAt: "desc" }, { id: "desc" }],
       select: {
         id: true,
         patientId: true,
+        facilityId: true,
+        createdAt: true,
+        dischargedAt: true,
+        status: true,
+        disposition: true,
+        intake: { select: { arrivalAt: true } },
+      },
+    });
+
+    const truncated = rowsDb.length > limit;
+    const page = truncated ? rowsDb.slice(0, limit) : rowsDb;
+    const mrns = await this.loadMrnMap(page.map((e) => e.patientId));
+
+    const last = page[page.length - 1];
+    const nextCursor =
+      truncated && last?.dischargedAt
+        ? encodeReportCursor(last.dischargedAt.toISOString(), last.id)
+        : null;
+
+    const rows = page.map((enc) => {
+      const door = arrivalTime(enc);
+      const end = enc.dischargedAt!;
+      return {
+        facilityId: enc.facilityId,
+        encounterId: enc.id,
+        patientId: enc.patientId,
+        mrn: mrns.get(enc.patientId) ?? "",
+        arrivalAt: iso(door),
+        closedAt: iso(end),
+        durationMinutes: minutesBetween(door, end),
+        encounterStatus: enc.status,
+        disposition: enc.disposition ?? null,
+      };
+    });
+
+    return {
+      reportType: "door-to-door" as const,
+      generatedAt: new Date().toISOString(),
+      from: from.toISOString(),
+      to: to.toISOString(),
+      format: "json" as const,
+      rowCount: rows.length,
+      truncated,
+      nextCursor,
+      rows,
+    };
+  }
+
+  async streamDoorToDoorCsv(facilityId: string, query: EdReportsQueryDto, res: Response): Promise<number> {
+    const from = parseReportTimeBoundary(query.from, false);
+    const to = parseReportTimeBoundary(query.to, true);
+    assertEdReportDateRange(from, to);
+    const whereVisit = this.edVisitWhere(facilityId, from, to, query.providerId);
+    const where: Prisma.EncounterWhereInput = {
+      ...whereVisit,
+      status: EncounterStatus.CLOSED,
+      dischargedAt: { not: null },
+    };
+
+    const header = [
+      "facility_id",
+      "encounter_id",
+      "patient_id",
+      "mrn",
+      "arrival_at",
+      "closed_at",
+      "duration_minutes",
+      "encounter_status",
+      "disposition",
+    ];
+    res.write(csvRow(header));
+    let total = 0;
+    let lastId: string | undefined;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const batch = await this.prisma.encounter.findMany({
+        where: { ...where, ...(lastId ? { id: { gt: lastId } } : {}) },
+        orderBy: { id: "asc" },
+        take: CSV_BATCH_SIZE,
+        select: {
+          id: true,
+          patientId: true,
+          facilityId: true,
+          createdAt: true,
+          dischargedAt: true,
+          status: true,
+          disposition: true,
+          intake: { select: { arrivalAt: true } },
+        },
+      });
+      if (batch.length === 0) break;
+      const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+      for (const enc of batch) {
+        const door = arrivalTime(enc);
+        const end = enc.dischargedAt!;
+        res.write(
+          csvRow([
+            enc.facilityId,
+            enc.id,
+            enc.patientId,
+            mrns.get(enc.patientId) ?? "",
+            iso(door) ?? "",
+            iso(end) ?? "",
+            String(minutesBetween(door, end)),
+            enc.status,
+            truncateDisposition(enc.disposition),
+          ])
+        );
+        total += 1;
+      }
+      lastId = batch[batch.length - 1]!.id;
+      if (batch.length < CSV_BATCH_SIZE) break;
+    }
+    res.end();
+    return total;
+  }
+
+  async doorToProviderJson(facilityId: string, query: EdReportsQueryDto) {
+    const from = parseReportTimeBoundary(query.from, false);
+    const to = parseReportTimeBoundary(query.to, true);
+    assertEdReportDateRange(from, to);
+    const limit = Math.min(jsonPageLimit(query), JSON_PAGE_MAX_LIMIT);
+    const whereVisit = this.edVisitWhere(facilityId, from, to, query.providerId);
+    const cursor = decodeReportCursor(query.cursor);
+
+    const where: Prisma.EncounterWhereInput = {
+      ...whereVisit,
+      ...(cursor
+        ? {
+            OR: [
+              { createdAt: { lt: new Date(cursor.isoDate) } },
+              {
+                AND: [{ createdAt: new Date(cursor.isoDate) }, { id: { lt: cursor.id } }],
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const encounters = await this.prisma.encounter.findMany({
+      where,
+      take: limit + 1,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        patientId: true,
+        facilityId: true,
+        createdAt: true,
+        providerDocumentationSignedAt: true,
+        providerDocumentationSignedByUserId: true,
+        intake: { select: { arrivalAt: true } },
+      },
+    });
+
+    const truncated = encounters.length > limit;
+    const page = truncated ? encounters.slice(0, limit) : encounters;
+    const encounterIds = page.map((e) => e.id);
+
+    const events =
+      encounterIds.length === 0
+        ? []
+        : await this.prisma.encounterClinicalEvent.findMany({
+            where: {
+              facilityId,
+              encounterId: { in: encounterIds },
+              eventType: {
+                in: [EncounterClinicalEventType.PROVIDER_MSE_SAVED, EncounterClinicalEventType.PROVIDER_SIGNED],
+              },
+            },
+            select: { encounterId: true, createdAt: true, eventType: true, createdByUserId: true },
+            orderBy: { createdAt: "asc" },
+          });
+
+    const byEncounter = new Map<string, typeof events>();
+    for (const ev of events) {
+      const list = byEncounter.get(ev.encounterId) ?? [];
+      list.push(ev);
+      byEncounter.set(ev.encounterId, list);
+    }
+
+    type Cand = { t: Date; source: string; userId: string | null };
+    const userIds: string[] = [];
+    const rows = page.map((enc) => {
+      const door = arrivalTime(enc);
+      const list = byEncounter.get(enc.id) ?? [];
+      const candidates: Cand[] = [];
+      for (const ev of list) {
+        if (ev.eventType === EncounterClinicalEventType.PROVIDER_MSE_SAVED) {
+          candidates.push({ t: ev.createdAt, source: "PROVIDER_MSE_SAVED", userId: ev.createdByUserId });
+        } else if (ev.eventType === EncounterClinicalEventType.PROVIDER_SIGNED) {
+          candidates.push({ t: ev.createdAt, source: "PROVIDER_SIGNED", userId: ev.createdByUserId });
+        }
+      }
+      if (enc.providerDocumentationSignedAt) {
+        candidates.push({
+          t: enc.providerDocumentationSignedAt,
+          source: "ENCOUNTER_SIGNATURE",
+          userId: enc.providerDocumentationSignedByUserId,
+        });
+      }
+      let best: Cand | null = null;
+      for (const c of candidates) {
+        if (!best || c.t.getTime() < best.t.getTime()) best = c;
+      }
+      if (best?.userId) userIds.push(best.userId);
+      if (enc.providerDocumentationSignedByUserId) userIds.push(enc.providerDocumentationSignedByUserId);
+      const seenAt = best?.t ?? null;
+      return {
+        facilityId: enc.facilityId,
+        encounterId: enc.id,
+        patientId: enc.patientId,
+        arrivalAt: iso(door),
+        firstProviderAt: seenAt ? iso(seenAt) : null,
+        minutesToProvider: seenAt ? minutesBetween(door, seenAt) : null,
+        providerUserId: best?.userId ?? enc.providerDocumentationSignedByUserId ?? null,
+        source: best?.source ?? null,
+      };
+    });
+
+    const mrns = await this.loadMrnMap(page.map((e) => e.patientId));
+    const users = await this.loadUsersMap(rows.map((r) => r.providerUserId));
+
+    const rowsOut = rows.map((r) => {
+      const u = r.providerUserId ? users.get(r.providerUserId) : undefined;
+      return {
+        ...r,
+        mrn: mrns.get(r.patientId) ?? "",
+        providerName: displayUserName(u ?? null),
+        providerTitle: u?.billingTaxonomyCode?.trim() ?? "",
+      };
+    });
+
+    const last = page[page.length - 1];
+    const nextCursor =
+      truncated && last ? encodeReportCursor(last.createdAt.toISOString(), last.id) : null;
+
+    return {
+      reportType: "door-to-provider" as const,
+      generatedAt: new Date().toISOString(),
+      from: from.toISOString(),
+      to: to.toISOString(),
+      format: "json" as const,
+      rowCount: rowsOut.length,
+      truncated,
+      nextCursor,
+      rows: rowsOut,
+    };
+  }
+
+  async streamDoorToProviderCsv(facilityId: string, query: EdReportsQueryDto, res: Response): Promise<number> {
+    const from = parseReportTimeBoundary(query.from, false);
+    const to = parseReportTimeBoundary(query.to, true);
+    assertEdReportDateRange(from, to);
+    const whereVisit = this.edVisitWhere(facilityId, from, to, query.providerId);
+    const header = [
+      "facility_id",
+      "encounter_id",
+      "patient_id",
+      "mrn",
+      "arrival_at",
+      "first_provider_at",
+      "minutes_to_provider",
+      "provider_name",
+      "provider_title",
+      "source",
+    ];
+    res.write(csvRow(header));
+    let total = 0;
+    let lastId: string | undefined;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const batch = await this.prisma.encounter.findMany({
+        where: { ...whereVisit, ...(lastId ? { id: { gt: lastId } } : {}) },
+        orderBy: { id: "asc" },
+        take: CSV_BATCH_SIZE,
+        select: {
+          id: true,
+          patientId: true,
+          facilityId: true,
+          createdAt: true,
+          providerDocumentationSignedAt: true,
+          providerDocumentationSignedByUserId: true,
+          intake: { select: { arrivalAt: true } },
+        },
+      });
+      if (batch.length === 0) break;
+      const ids = batch.map((e) => e.id);
+      const evs = await this.prisma.encounterClinicalEvent.findMany({
+        where: {
+          facilityId,
+          encounterId: { in: ids },
+          eventType: {
+            in: [EncounterClinicalEventType.PROVIDER_MSE_SAVED, EncounterClinicalEventType.PROVIDER_SIGNED],
+          },
+        },
+        select: { encounterId: true, createdAt: true, eventType: true, createdByUserId: true },
+        orderBy: { createdAt: "asc" },
+      });
+      const byEnc = new Map<string, typeof evs>();
+      for (const ev of evs) {
+        const l = byEnc.get(ev.encounterId) ?? [];
+        l.push(ev);
+        byEnc.set(ev.encounterId, l);
+      }
+      const userIdSet: string[] = [];
+      const lines: Array<{
+        facilityId: string;
+        encounterId: string;
+        patientId: string;
+        arrival: string;
+        firstAt: string;
+        mins: string;
+        source: string;
+        userId: string | null;
+      }> = [];
+      const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+      for (const enc of batch) {
+        const door = arrivalTime(enc);
+        const list = byEnc.get(enc.id) ?? [];
+        type Cand = { t: Date; source: string; userId: string | null };
+        const candidates: Cand[] = [];
+        for (const ev of list) {
+          if (ev.eventType === EncounterClinicalEventType.PROVIDER_MSE_SAVED) {
+            candidates.push({ t: ev.createdAt, source: "PROVIDER_MSE_SAVED", userId: ev.createdByUserId });
+          } else if (ev.eventType === EncounterClinicalEventType.PROVIDER_SIGNED) {
+            candidates.push({ t: ev.createdAt, source: "PROVIDER_SIGNED", userId: ev.createdByUserId });
+          }
+        }
+        if (enc.providerDocumentationSignedAt) {
+          candidates.push({
+            t: enc.providerDocumentationSignedAt,
+            source: "ENCOUNTER_SIGNATURE",
+            userId: enc.providerDocumentationSignedByUserId,
+          });
+        }
+        let best: Cand | null = null;
+        for (const c of candidates) {
+          if (!best || c.t.getTime() < best.t.getTime()) best = c;
+        }
+        const uid = best?.userId ?? enc.providerDocumentationSignedByUserId ?? null;
+        if (uid) userIdSet.push(uid);
+        const seenAt = best?.t ?? null;
+        lines.push({
+          facilityId: enc.facilityId,
+          encounterId: enc.id,
+          patientId: enc.patientId,
+          arrival: iso(door) ?? "",
+          firstAt: seenAt ? iso(seenAt)! : "",
+          mins: seenAt ? String(minutesBetween(door, seenAt)) : "",
+          source: best?.source ?? "",
+          userId: uid,
+        });
+      }
+      const users = await this.loadUsersMap(userIdSet);
+      for (const ln of lines) {
+        const u = ln.userId ? users.get(ln.userId) : undefined;
+        res.write(
+          csvRow([
+            ln.facilityId,
+            ln.encounterId,
+            ln.patientId,
+            mrns.get(ln.patientId) ?? "",
+            ln.arrival,
+            ln.firstAt,
+            ln.mins,
+            displayUserName(u ?? null),
+            u?.billingTaxonomyCode?.trim() ?? "",
+            ln.source,
+          ])
+        );
+        total += 1;
+      }
+      lastId = batch[batch.length - 1]!.id;
+      if (batch.length < CSV_BATCH_SIZE) break;
+    }
+    res.end();
+    return total;
+  }
+
+  async doorToEkgJson(facilityId: string, query: EdReportsQueryDto) {
+    const from = parseReportTimeBoundary(query.from, false);
+    const to = parseReportTimeBoundary(query.to, true);
+    assertEdReportDateRange(from, to);
+    const limit = Math.min(jsonPageLimit(query), JSON_PAGE_MAX_LIMIT);
+    const ekgCatalogIds = await this.loadEkgCatalogItemIds();
+    const whereVisit = this.edVisitWhere(facilityId, from, to, query.providerId);
+    const cursor = decodeReportCursor(query.cursor);
+
+    const where: Prisma.EncounterWhereInput = {
+      ...whereVisit,
+      ...(cursor
+        ? {
+            OR: [
+              { createdAt: { lt: new Date(cursor.isoDate) } },
+              {
+                AND: [{ createdAt: new Date(cursor.isoDate) }, { id: { lt: cursor.id } }],
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const encounters = await this.prisma.encounter.findMany({
+      where,
+      take: limit + 1,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        patientId: true,
+        facilityId: true,
         createdAt: true,
         intake: { select: { arrivalAt: true } },
       },
     });
-    const truncated = encounters.length > MAX_ENCOUNTERS;
-    const slice = truncated ? encounters.slice(0, MAX_ENCOUNTERS) : encounters;
-    const encounterIds = slice.map((e) => e.id);
+
+    const truncated = encounters.length > limit;
+    const page = truncated ? encounters.slice(0, limit) : encounters;
+    const encounterIds = page.map((e) => e.id);
+
     if (encounterIds.length === 0) {
-      return { generatedAt: new Date().toISOString(), from: from.toISOString(), to: to.toISOString(), truncated, rows: [] };
+      return {
+        reportType: "door-to-ekg" as const,
+        generatedAt: new Date().toISOString(),
+        from: from.toISOString(),
+        to: to.toISOString(),
+        format: "json" as const,
+        rowCount: 0,
+        truncated: false,
+        nextCursor: null,
+        rows: [] as Array<{
+          facilityId: string;
+          encounterId: string;
+          patientId: string;
+          mrn: string;
+          arrivalAt: string | null;
+          firstEkgAt: string | null;
+          minutesToEkg: number | null;
+          source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" | null;
+        }>,
+      };
     }
 
     const [orderItems, procEvents] = await Promise.all([
@@ -136,153 +655,166 @@ export class ReportsService {
       }),
     ]);
 
-    const rows = slice.map((enc) => {
+    const mrns = await this.loadMrnMap(page.map((e) => e.patientId));
+
+    const rows = page.map((enc) => {
       const door = arrivalTime(enc);
-      const ekgTimes: { t: Date; source: "IMAGING_ORDER" | "PROCEDURE_EVENT" }[] = [];
+      const ekgTimes: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" }[] = [];
       for (const it of orderItems) {
         if (it.order.encounterId !== enc.id) continue;
         if (!this.isEkgOrderItem(it, ekgCatalogIds)) continue;
-        ekgTimes.push({ t: it.createdAt, source: "IMAGING_ORDER" });
-        if (it.completedAt) ekgTimes.push({ t: it.completedAt, source: "IMAGING_ORDER" });
-        ekgTimes.push({ t: it.order.createdAt, source: "IMAGING_ORDER" });
+        ekgTimes.push({ t: it.createdAt, source: "ORDER_ITEM" });
+        if (it.completedAt) ekgTimes.push({ t: it.completedAt, source: "ORDER_ITEM" });
+        ekgTimes.push({ t: it.order.createdAt, source: "ORDER_ITEM" });
       }
       for (const ev of procEvents) {
         if (ev.encounterId !== enc.id) continue;
         if (!isEkgProcedurePayload(ev.payloadJson)) continue;
-        ekgTimes.push({ t: ev.createdAt, source: "PROCEDURE_EVENT" });
+        ekgTimes.push({ t: ev.createdAt, source: "PROCEDURE_DOCUMENTED" });
       }
-      let best: { t: Date; source: "IMAGING_ORDER" | "PROCEDURE_EVENT" } | null = null;
+      let best: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" } | null = null;
       for (const x of ekgTimes) {
         if (!best || x.t.getTime() < best.t.getTime()) best = x;
+        else if (best && x.t.getTime() === best.t.getTime() && x.source === "PROCEDURE_DOCUMENTED") best = x;
       }
       const ekgAt = best?.t ?? null;
-      const ekgSource = best?.source ?? null;
       return {
+        facilityId: enc.facilityId,
         encounterId: enc.id,
         patientId: enc.patientId,
+        mrn: mrns.get(enc.patientId) ?? "",
         arrivalAt: iso(door),
-        ekgAt: ekgAt ? iso(ekgAt) : null,
-        minutes: ekgAt ? minutesBetween(door, ekgAt) : null,
-        ekgSource,
-      };
-    });
-
-    return { generatedAt: new Date().toISOString(), from: from.toISOString(), to: to.toISOString(), truncated, rows };
-  }
-
-  async doorToProvider(facilityId: string, query: EdReportsQueryDto) {
-    const from = parseReportTimeBoundary(query.from, false);
-    const to = parseReportTimeBoundary(query.to, true);
-    const whereVisit = this.edVisitWhere(facilityId, from, to, query.providerId);
-
-    const encounters = await this.prisma.encounter.findMany({
-      where: whereVisit,
-      take: MAX_ENCOUNTERS + 1,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        patientId: true,
-        createdAt: true,
-        providerDocumentationSignedAt: true,
-        intake: { select: { arrivalAt: true } },
-      },
-    });
-    const truncated = encounters.length > MAX_ENCOUNTERS;
-    const slice = truncated ? encounters.slice(0, MAX_ENCOUNTERS) : encounters;
-    const encounterIds = slice.map((e) => e.id);
-    if (encounterIds.length === 0) {
-      return { generatedAt: new Date().toISOString(), from: from.toISOString(), to: to.toISOString(), truncated, rows: [] };
-    }
-
-    const events = await this.prisma.encounterClinicalEvent.findMany({
-      where: {
-        facilityId,
-        encounterId: { in: encounterIds },
-        eventType: {
-          in: [EncounterClinicalEventType.PROVIDER_MSE_SAVED, EncounterClinicalEventType.PROVIDER_SIGNED],
-        },
-      },
-      select: { encounterId: true, createdAt: true, eventType: true },
-      orderBy: { createdAt: "asc" },
-    });
-    const byEncounter = new Map<string, typeof events>();
-    for (const ev of events) {
-      const list = byEncounter.get(ev.encounterId) ?? [];
-      list.push(ev);
-      byEncounter.set(ev.encounterId, list);
-    }
-
-    const rows = slice.map((enc) => {
-      const door = arrivalTime(enc);
-      const list = byEncounter.get(enc.id) ?? [];
-      const candidates: { t: Date; source: "MSE_SAVED" | "PROVIDER_SIGNED" | "ENCOUNTER_SIGNED" }[] = [];
-      for (const ev of list) {
-        if (ev.eventType === EncounterClinicalEventType.PROVIDER_MSE_SAVED) {
-          candidates.push({ t: ev.createdAt, source: "MSE_SAVED" });
-        } else if (ev.eventType === EncounterClinicalEventType.PROVIDER_SIGNED) {
-          candidates.push({ t: ev.createdAt, source: "PROVIDER_SIGNED" });
-        }
-      }
-      if (enc.providerDocumentationSignedAt) {
-        candidates.push({ t: enc.providerDocumentationSignedAt, source: "ENCOUNTER_SIGNED" });
-      }
-      let best: (typeof candidates)[0] | null = null;
-      for (const c of candidates) {
-        if (!best || c.t.getTime() < best.t.getTime()) best = c;
-      }
-      const seenAt = best?.t ?? null;
-      return {
-        encounterId: enc.id,
-        patientId: enc.patientId,
-        arrivalAt: iso(door),
-        providerSeenAt: seenAt ? iso(seenAt) : null,
-        minutes: seenAt ? minutesBetween(door, seenAt) : null,
+        firstEkgAt: ekgAt ? iso(ekgAt) : null,
+        minutesToEkg: ekgAt ? minutesBetween(door, ekgAt) : null,
         source: best?.source ?? null,
       };
     });
 
-    return { generatedAt: new Date().toISOString(), from: from.toISOString(), to: to.toISOString(), truncated, rows };
+    const last = page[page.length - 1];
+    const nextCursor =
+      truncated && last ? encodeReportCursor(last.createdAt.toISOString(), last.id) : null;
+
+    return {
+      reportType: "door-to-ekg" as const,
+      generatedAt: new Date().toISOString(),
+      from: from.toISOString(),
+      to: to.toISOString(),
+      format: "json" as const,
+      rowCount: rows.length,
+      truncated,
+      nextCursor,
+      rows,
+    };
   }
 
-  async doorToDoor(facilityId: string, query: EdReportsQueryDto) {
+  async streamDoorToEkgCsv(facilityId: string, query: EdReportsQueryDto, res: Response): Promise<number> {
     const from = parseReportTimeBoundary(query.from, false);
     const to = parseReportTimeBoundary(query.to, true);
+    assertEdReportDateRange(from, to);
+    const ekgCatalogIds = await this.loadEkgCatalogItemIds();
     const whereVisit = this.edVisitWhere(facilityId, from, to, query.providerId);
-
-    const encounters = await this.prisma.encounter.findMany({
-      where: { ...whereVisit, status: EncounterStatus.CLOSED, dischargedAt: { not: null } },
-      take: MAX_ENCOUNTERS + 1,
-      orderBy: { dischargedAt: "desc" },
-      select: {
-        id: true,
-        patientId: true,
-        createdAt: true,
-        dischargedAt: true,
-        intake: { select: { arrivalAt: true } },
-      },
-    });
-    const truncated = encounters.length > MAX_ENCOUNTERS;
-    const slice = truncated ? encounters.slice(0, MAX_ENCOUNTERS) : encounters;
-
-    const rows = slice.map((enc) => {
-      const door = arrivalTime(enc);
-      const end = enc.dischargedAt!;
-      return {
-        encounterId: enc.id,
-        patientId: enc.patientId,
-        arrivalAt: iso(door),
-        closedAt: iso(end),
-        minutes: minutesBetween(door, end),
-      };
-    });
-
-    return { generatedAt: new Date().toISOString(), from: from.toISOString(), to: to.toISOString(), truncated, rows };
+    const header = [
+      "facility_id",
+      "encounter_id",
+      "patient_id",
+      "mrn",
+      "arrival_at",
+      "first_ekg_at",
+      "minutes_to_ekg",
+      "source",
+    ];
+    res.write(csvRow(header));
+    let total = 0;
+    let lastId: string | undefined;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const batch = await this.prisma.encounter.findMany({
+        where: { ...whereVisit, ...(lastId ? { id: { gt: lastId } } : {}) },
+        orderBy: { id: "asc" },
+        take: CSV_BATCH_SIZE,
+        select: {
+          id: true,
+          patientId: true,
+          facilityId: true,
+          createdAt: true,
+          intake: { select: { arrivalAt: true } },
+        },
+      });
+      if (batch.length === 0) break;
+      const ids = batch.map((e) => e.id);
+      const [orderItems, procEvents] = await Promise.all([
+        this.prisma.orderItem.findMany({
+          where: {
+            catalogItemType: "IMAGING_STUDY",
+            order: { encounterId: { in: ids }, facilityId, cancelledAt: null },
+          },
+          select: {
+            id: true,
+            createdAt: true,
+            completedAt: true,
+            catalogItemId: true,
+            manualLabel: true,
+            manualSecondaryText: true,
+            order: { select: { encounterId: true, createdAt: true } },
+          },
+        }),
+        this.prisma.encounterClinicalEvent.findMany({
+          where: {
+            facilityId,
+            encounterId: { in: ids },
+            eventType: EncounterClinicalEventType.PROCEDURE_DOCUMENTED,
+          },
+          select: { encounterId: true, createdAt: true, payloadJson: true },
+        }),
+      ]);
+      const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+      for (const enc of batch) {
+        const door = arrivalTime(enc);
+        const ekgTimes: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" }[] = [];
+        for (const it of orderItems) {
+          if (it.order.encounterId !== enc.id) continue;
+          if (!this.isEkgOrderItem(it, ekgCatalogIds)) continue;
+          ekgTimes.push({ t: it.createdAt, source: "ORDER_ITEM" });
+          if (it.completedAt) ekgTimes.push({ t: it.completedAt, source: "ORDER_ITEM" });
+          ekgTimes.push({ t: it.order.createdAt, source: "ORDER_ITEM" });
+        }
+        for (const ev of procEvents) {
+          if (ev.encounterId !== enc.id) continue;
+          if (!isEkgProcedurePayload(ev.payloadJson)) continue;
+          ekgTimes.push({ t: ev.createdAt, source: "PROCEDURE_DOCUMENTED" });
+        }
+        let best: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" } | null = null;
+        for (const x of ekgTimes) {
+          if (!best || x.t.getTime() < best.t.getTime()) best = x;
+          else if (best && x.t.getTime() === best.t.getTime() && x.source === "PROCEDURE_DOCUMENTED") best = x;
+        }
+        const ekgAt = best?.t ?? null;
+        res.write(
+          csvRow([
+            enc.facilityId,
+            enc.id,
+            enc.patientId,
+            mrns.get(enc.patientId) ?? "",
+            iso(door) ?? "",
+            ekgAt ? iso(ekgAt)! : "",
+            ekgAt ? String(minutesBetween(door, ekgAt)) : "",
+            best?.source ?? "",
+          ])
+        );
+        total += 1;
+      }
+      lastId = batch[batch.length - 1]!.id;
+      if (batch.length < CSV_BATCH_SIZE) break;
+    }
+    res.end();
+    return total;
   }
 
-  async medicationAdministration(facilityId: string, query: EdReportsQueryDto) {
+  async medicationAdministrationJson(facilityId: string, query: EdReportsQueryDto) {
     const from = parseReportTimeBoundary(query.from, false);
     const to = parseReportTimeBoundary(query.to, true);
-
+    assertEdReportDateRange(from, to);
+    const limit = Math.min(jsonPageLimit(query), JSON_PAGE_MAX_LIMIT);
     const encounterFilter: Prisma.EncounterWhereInput = {
       facilityId,
       type: { in: [EncounterType.EMERGENCY, EncounterType.URGENT_CARE] },
@@ -291,24 +823,43 @@ export class ReportsService {
         : {}),
     };
 
+    const cursor = decodeReportCursor(query.cursor);
+    const where: Prisma.MedicationAdministrationWhereInput = {
+      facilityId,
+      administeredAt: { gte: from, lte: to },
+      encounter: encounterFilter,
+      ...(cursor
+        ? {
+            OR: [
+              { administeredAt: { lt: new Date(cursor.isoDate) } },
+              {
+                AND: [{ administeredAt: new Date(cursor.isoDate) }, { id: { lt: cursor.id } }],
+              },
+            ],
+          }
+        : {}),
+    };
+
     const admins = await this.prisma.medicationAdministration.findMany({
-      where: {
-        facilityId,
-        administeredAt: { gte: from, lte: to },
-        marAction: MedicationMarAction.administered,
-        encounter: encounterFilter,
-      },
-      take: 5000,
-      orderBy: { administeredAt: "desc" },
+      where,
+      take: limit + 1,
+      orderBy: [{ administeredAt: "desc" }, { id: "desc" }],
       select: {
         id: true,
         encounterId: true,
         patientId: true,
+        facilityId: true,
         orderItemId: true,
         medicationLabelSnapshot: true,
         marAction: true,
+        route: true,
+        administeredQuantity: true,
+        quantityUnit: true,
+        notes: true,
         administeredAt: true,
-        administeredBy: { select: { id: true, firstName: true, lastName: true } },
+        administeredBy: {
+          select: { id: true, firstName: true, lastName: true, email: true, billingTaxonomyCode: true },
+        },
         orderItem: {
           select: {
             id: true,
@@ -322,11 +873,12 @@ export class ReportsService {
       },
     });
 
+    const truncated = admins.length > limit;
+    const page = truncated ? admins.slice(0, limit) : admins;
+
     const medIds = [
       ...new Set(
-        admins
-          .map((a) => a.orderItem?.catalogItemId)
-          .filter((x): x is string => typeof x === "string" && x.length > 0)
+        page.map((a) => a.orderItem?.catalogItemId).filter((x): x is string => typeof x === "string" && x.length > 0)
       ),
     ];
     const medLabels = new Map<string, string>();
@@ -341,147 +893,177 @@ export class ReportsService {
       }
     }
 
-    const rows = admins.map((a) => {
+    const mrns = await this.loadMrnMap(page.map((a) => a.patientId));
+
+    const rows = page.map((a) => {
       const oi = a.orderItem;
       const orderedAt = oi?.order.createdAt ?? oi?.createdAt ?? a.administeredAt;
       const catalogLabel = oi?.catalogItemId ? medLabels.get(oi.catalogItemId) : undefined;
-      const medicationOrdered =
+      const medicationName =
         catalogLabel ?? oi?.manualLabel?.trim() ?? a.medicationLabelSnapshot?.trim() ?? "MEDICATION";
-      const by = `${a.administeredBy.firstName ?? ""} ${a.administeredBy.lastName ?? ""}`.trim() || a.administeredBy.id;
-      const minutes = minutesBetween(orderedAt, a.administeredAt);
       return {
-        administrationId: a.id,
+        facilityId: a.facilityId,
         encounterId: a.encounterId,
         patientId: a.patientId,
-        orderId: oi?.order.id ?? null,
+        mrn: mrns.get(a.patientId) ?? "",
         orderItemId: a.orderItemId,
+        medicationName,
+        route: a.route ?? null,
         orderedAt: iso(orderedAt),
-        medicationOrdered,
         administeredAt: iso(a.administeredAt),
-        administeredByUserId: a.administeredBy.id,
-        administeredByDisplay: by,
-        marAction: a.marAction,
-        minutesOrderToAdmin: minutes,
+        administeredBy: displayUserName(a.administeredBy),
+        administeredByTitle: a.administeredBy.billingTaxonomyCode?.trim() ?? "",
+        marAction: a.marAction ?? null,
+        quantity: formatQuantity(a.administeredQuantity, a.quantityUnit),
+        notesPresent: Boolean(a.notes?.trim()),
       };
     });
 
-    return { generatedAt: new Date().toISOString(), from: from.toISOString(), to: to.toISOString(), truncated: false, rows };
+    const last = page[page.length - 1];
+    const nextCursor =
+      truncated && last ? encodeReportCursor(last.administeredAt.toISOString(), last.id) : null;
+
+    return {
+      reportType: "medication-administration" as const,
+      generatedAt: new Date().toISOString(),
+      from: from.toISOString(),
+      to: to.toISOString(),
+      format: "json" as const,
+      rowCount: rows.length,
+      truncated,
+      nextCursor,
+      rows,
+    };
   }
 
-  doorToEkgCsv(payload: {
-    rows: Array<{
-      encounterId: string;
-      patientId: string;
-      arrivalAt: string | null;
-      ekgAt: string | null;
-      minutes: number | null;
-      ekgSource: string | null;
-    }>;
-  }): string {
-    const header = ["encounterId", "patientId", "arrivalAt", "ekgAt", "minutes", "ekgSource"];
-    let out = csvRow(header);
-    for (const r of payload.rows) {
-      out += csvRow([
-        r.encounterId,
-        r.patientId,
-        r.arrivalAt ?? "",
-        r.ekgAt ?? "",
-        r.minutes == null ? "" : String(r.minutes),
-        r.ekgSource ?? "",
-      ]);
-    }
-    return out;
-  }
+  async streamMedicationAdministrationCsv(facilityId: string, query: EdReportsQueryDto, res: Response): Promise<number> {
+    const from = parseReportTimeBoundary(query.from, false);
+    const to = parseReportTimeBoundary(query.to, true);
+    assertEdReportDateRange(from, to);
+    const encounterFilter: Prisma.EncounterWhereInput = {
+      facilityId,
+      type: { in: [EncounterType.EMERGENCY, EncounterType.URGENT_CARE] },
+      ...(query.providerId
+        ? { OR: [{ providerId: query.providerId }, { physicianAssignedUserId: query.providerId }] }
+        : {}),
+    };
 
-  doorToProviderCsv(payload: {
-    rows: Array<{
-      encounterId: string;
-      patientId: string;
-      arrivalAt: string | null;
-      providerSeenAt: string | null;
-      minutes: number | null;
-      source: string | null;
-    }>;
-  }): string {
-    const header = ["encounterId", "patientId", "arrivalAt", "providerSeenAt", "minutes", "source"];
-    let out = csvRow(header);
-    for (const r of payload.rows) {
-      out += csvRow([
-        r.encounterId,
-        r.patientId,
-        r.arrivalAt ?? "",
-        r.providerSeenAt ?? "",
-        r.minutes == null ? "" : String(r.minutes),
-        r.source ?? "",
-      ]);
-    }
-    return out;
-  }
-
-  doorToDoorCsv(payload: {
-    rows: Array<{
-      encounterId: string;
-      patientId: string;
-      arrivalAt: string | null;
-      closedAt: string | null;
-      minutes: number;
-    }>;
-  }): string {
-    const header = ["encounterId", "patientId", "arrivalAt", "closedAt", "minutes"];
-    let out = csvRow(header);
-    for (const r of payload.rows) {
-      out += csvRow([r.encounterId, r.patientId, r.arrivalAt ?? "", r.closedAt ?? "", String(r.minutes)]);
-    }
-    return out;
-  }
-
-  medicationAdministrationCsv(payload: {
-    rows: Array<{
-      administrationId: string;
-      encounterId: string;
-      patientId: string;
-      orderId: string | null;
-      orderItemId: string | null;
-      orderedAt: string | null;
-      medicationOrdered: string;
-      administeredAt: string | null;
-      administeredByUserId: string;
-      administeredByDisplay: string;
-      marAction: string | null;
-      minutesOrderToAdmin: number;
-    }>;
-  }): string {
     const header = [
-      "administrationId",
-      "encounterId",
-      "patientId",
-      "orderId",
-      "orderItemId",
-      "orderedAt",
-      "medicationOrdered",
-      "administeredAt",
-      "administeredByUserId",
-      "administeredByDisplay",
-      "marAction",
-      "minutesOrderToAdmin",
+      "facility_id",
+      "encounter_id",
+      "patient_id",
+      "mrn",
+      "order_item_id",
+      "medication_name",
+      "route",
+      "ordered_at",
+      "administered_at",
+      "administered_by",
+      "administered_by_title",
+      "mar_action",
+      "quantity",
+      "notes_present",
     ];
-    let out = csvRow(header);
-    for (const r of payload.rows) {
-      out += csvRow([
-        r.administrationId,
-        r.encounterId,
-        r.patientId,
-        r.orderId ?? "",
-        r.orderItemId ?? "",
-        r.orderedAt ?? "",
-        r.medicationOrdered,
-        r.administeredAt ?? "",
-        r.administeredByUserId,
-        r.administeredByDisplay,
-        r.marAction ?? "",
-        String(r.minutesOrderToAdmin),
-      ]);
+    res.write(csvRow(header));
+    let total = 0;
+    let lastId: string | undefined;
+    let lastAt: Date | undefined;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const batch = await this.prisma.medicationAdministration.findMany({
+        where: {
+          facilityId,
+          administeredAt: { gte: from, lte: to },
+          encounter: encounterFilter,
+          ...(lastAt && lastId
+            ? {
+                OR: [
+                  { administeredAt: { gt: lastAt } },
+                  {
+                    AND: [{ administeredAt: lastAt }, { id: { gt: lastId } }],
+                  },
+                ],
+              }
+            : {}),
+        },
+        orderBy: [{ administeredAt: "asc" }, { id: "asc" }],
+        take: CSV_BATCH_SIZE,
+        select: {
+          id: true,
+          encounterId: true,
+          patientId: true,
+          facilityId: true,
+          orderItemId: true,
+          medicationLabelSnapshot: true,
+          marAction: true,
+          route: true,
+          administeredQuantity: true,
+          quantityUnit: true,
+          notes: true,
+          administeredAt: true,
+          administeredBy: {
+            select: { id: true, firstName: true, lastName: true, email: true, billingTaxonomyCode: true },
+          },
+          orderItem: {
+            select: {
+              id: true,
+              createdAt: true,
+              manualLabel: true,
+              catalogItemId: true,
+              order: { select: { createdAt: true } },
+            },
+          },
+        },
+      });
+      if (batch.length === 0) break;
+      const medIds = [
+        ...new Set(
+          batch.map((a) => a.orderItem?.catalogItemId).filter((x): x is string => typeof x === "string" && x.length > 0)
+        ),
+      ];
+      const medLabels = new Map<string, string>();
+      if (medIds.length > 0) {
+        const meds = await this.prisma.catalogMedication.findMany({
+          where: { id: { in: medIds } },
+          select: { id: true, code: true, displayNameFr: true, displayNameEn: true },
+        });
+        for (const m of meds) {
+          medLabels.set(m.id, m.displayNameFr?.trim() || m.displayNameEn?.trim() || m.code);
+        }
+      }
+      const mrns = await this.loadMrnMap(batch.map((a) => a.patientId));
+      for (const a of batch) {
+        const oi = a.orderItem;
+        const orderedAt = oi?.order.createdAt ?? oi?.createdAt ?? a.administeredAt;
+        const catalogLabel = oi?.catalogItemId ? medLabels.get(oi.catalogItemId) : undefined;
+        const medicationName =
+          catalogLabel ?? oi?.manualLabel?.trim() ?? a.medicationLabelSnapshot?.trim() ?? "MEDICATION";
+        res.write(
+          csvRow([
+            a.facilityId,
+            a.encounterId,
+            a.patientId,
+            mrns.get(a.patientId) ?? "",
+            a.orderItemId ?? "",
+            medicationName,
+            a.route ?? "",
+            iso(orderedAt) ?? "",
+            iso(a.administeredAt) ?? "",
+            displayUserName(a.administeredBy),
+            a.administeredBy.billingTaxonomyCode?.trim() ?? "",
+            a.marAction ?? "",
+            formatQuantity(a.administeredQuantity, a.quantityUnit),
+            a.notes?.trim() ? "true" : "false",
+          ])
+        );
+        total += 1;
+      }
+      const last = batch[batch.length - 1]!;
+      lastAt = last.administeredAt;
+      lastId = last.id;
+      if (batch.length < CSV_BATCH_SIZE) break;
     }
-    return out;
+    res.end();
+    return total;
   }
 }
