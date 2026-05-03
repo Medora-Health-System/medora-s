@@ -1018,9 +1018,18 @@ export function EmergencyTriagePanel({
                       );
                     })()}
                   </div>
-                  <div>
+                  <div style={{ gridColumn: "1 / -1", width: "100%", minWidth: 0 }}>
                     <label style={labelStyle}>{t("vitalsUnits.heightLabel")}</label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        width: "100%",
+                        marginTop: 4,
+                      }}
+                    >
                       <select
                         value={formData.heightInputMode}
                         onChange={(e) => {
@@ -1058,10 +1067,25 @@ export function EmergencyTriagePanel({
                           value={formData.heightCm}
                           onChange={(e) => setFormData((f) => ({ ...f, heightCm: e.target.value }))}
                           disabled={formDisabled}
-                          style={{ ...inputBase, flex: 1, minWidth: 0, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                          style={{
+                            ...inputBase,
+                            flex: "1 1 140px",
+                            minWidth: 120,
+                            maxWidth: 220,
+                            backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                          }}
                         />
                       ) : (
-                        <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            flex: "1 1 200px",
+                            minWidth: 0,
+                          }}
+                        >
                           <input
                             type="number"
                             min={0}
@@ -1070,9 +1094,14 @@ export function EmergencyTriagePanel({
                             value={formData.heightFeet}
                             onChange={(e) => setFormData((f) => ({ ...f, heightFeet: e.target.value }))}
                             disabled={formDisabled}
-                            style={{ ...inputBase, width: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                            style={{
+                              ...inputBase,
+                              width: 88,
+                              minWidth: 72,
+                              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                            }}
                           />
-                          <span style={{ fontSize: 12, color: "#64748b" }}>′</span>
+                          <span style={{ fontSize: 13, color: "#64748b", flexShrink: 0 }}>′</span>
                           <input
                             type="number"
                             min={0}
@@ -1082,9 +1111,14 @@ export function EmergencyTriagePanel({
                             value={formData.heightInches}
                             onChange={(e) => setFormData((f) => ({ ...f, heightInches: e.target.value }))}
                             disabled={formDisabled}
-                            style={{ ...inputBase, width: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                            style={{
+                              ...inputBase,
+                              width: 88,
+                              minWidth: 72,
+                              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                            }}
                           />
-                          <span style={{ fontSize: 12, color: "#64748b" }}>″</span>
+                          <span style={{ fontSize: 13, color: "#64748b", flexShrink: 0 }}>″</span>
                         </div>
                       )}
                     </div>

@@ -21,7 +21,6 @@ import {
   ER_TRIAGE_NURSING_CHIP_DEFS,
   ER_TRIAGE_PPE_CHIP_DEFS,
   ER_TRIAGE_ROUTING_CHIP_DEFS,
-  ER_TRIAGE_SOCIAL_CHIP_DEFS,
   appendIfNotPresent,
   emptyErTraumaActivationForm,
   erTriageV1FormHasAnyContent,
@@ -207,6 +206,64 @@ const HISTORY_FH_I18N_KEYS = [
 
 type ErHistoryTextField = "pastMedicalHistory" | "pastSurgicalHistory" | "familyHistory";
 
+type ErSubstanceTextField = "smokingStatus" | "alcoholUse" | "marijuanaUse" | "stimulantUse" | "opioidHeroinUse";
+
+const SMOKING_CHIP_I18N_KEYS = [
+  "chipSmokeNo",
+  "chipSmokeCurrent",
+  "chipSmokeFormer",
+  "chipSmokeCigarettes",
+  "chipSmokeCigars",
+  "chipSmokeVaping",
+  "chipSmokeUnknown",
+] as const;
+
+const ALCOHOL_CHIP_I18N_KEYS = [
+  "chipAlcNo",
+  "chipAlcSocial",
+  "chipAlcCurrent",
+  "chipAlcDaily",
+  "chipAlcIntoxication",
+  "chipAlcUnknown",
+] as const;
+
+const CANNABIS_CHIP_I18N_KEYS = [
+  "chipCanNo",
+  "chipCanMarijuana",
+  "chipCanEdibles",
+  "chipCanCurrent",
+  "chipCanUnknown",
+] as const;
+
+const STIMULANT_CHIP_I18N_KEYS = [
+  "chipStimNo",
+  "chipStimCocaine",
+  "chipStimMeth",
+  "chipStimAmphetamine",
+  "chipStimOther",
+  "chipStimUnknown",
+] as const;
+
+const OPIOID_CHIP_I18N_KEYS = [
+  "chipOpiNo",
+  "chipOpiOpioidUse",
+  "chipOpiHeroin",
+  "chipOpiFentanyl",
+  "chipOpiPrescription",
+  "chipOpiUnknown",
+] as const;
+
+const IMMU_CHIP_I18N_KEYS = [
+  "chipImmuUpToDate",
+  "chipImmuUnknown",
+  "chipImmuInfluenza",
+  "chipImmuCovid19",
+  "chipImmuTdap",
+  "chipImmuHepB",
+  "chipImmuPneumo",
+  "chipImmuNotUpToDate",
+] as const;
+
 function painOptions(dash: string): { value: string; label: string }[] {
   const o: { value: string; label: string }[] = [{ value: "", label: dash }];
   for (let i = 0; i <= 10; i += 1) o.push({ value: String(i), label: `${i}/10` });
@@ -362,6 +419,24 @@ export function EmergencyTriageV1Sections({
       patchErV1({ [field]: appendIfNotPresent(er[field], label) });
     },
     [er.pastMedicalHistory, er.pastSurgicalHistory, er.familyHistory, patchErV1, t]
+  );
+
+  const appendSubstanceFieldQuick = useCallback(
+    (field: ErSubstanceTextField, i18nSuffix: string) => {
+      const label = t(`erTriage.v1.${i18nSuffix}`).trim();
+      if (!label) return;
+      patchErV1({ [field]: appendIfNotPresent(er[field], label) });
+    },
+    [er.alcoholUse, er.marijuanaUse, er.opioidHeroinUse, er.smokingStatus, er.stimulantUse, patchErV1, t]
+  );
+
+  const appendImmuQuickText = useCallback(
+    (i18nSuffix: string) => {
+      const label = t(`erTriage.v1.${i18nSuffix}`).trim();
+      if (!label) return;
+      patchErV1({ immunizationStatusNote: appendIfNotPresent(er.immunizationStatusNote, label) });
+    },
+    [er.immunizationStatusNote, patchErV1, t]
   );
 
   const traumaLevelOptions: { value: ErTraumaLevel; label: string }[] = useMemo(
@@ -1005,7 +1080,7 @@ export function EmergencyTriageV1Sections({
             </ErTriageDocChipRow>
           </div>
           <div style={grid2}>
-            <div>
+            <div style={{ gridColumn: "1 / -1" }}>
               <label style={labelStyle}>{t("erTriage.v1.preferredPharmacy")}</label>
               <input
                 type="text"
@@ -1015,17 +1090,28 @@ export function EmergencyTriageV1Sections({
                 style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
             </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.immuStatus")}</label>
-              <input
-                type="text"
-                value={er.immunizationStatusNote}
-                onChange={(e) => patchErV1({ immunizationStatusNote: e.target.value })}
-                disabled={formDisabled}
-                style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                placeholder={t("erTriage.v1.immuPlaceholder")}
-              />
-            </div>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <label style={labelStyle}>{t("erTriage.v1.immuStatus")}</label>
+            <input
+              type="text"
+              value={er.immunizationStatusNote}
+              onChange={(e) => patchErV1({ immunizationStatusNote: e.target.value })}
+              disabled={formDisabled}
+              style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+              placeholder={t("erTriage.v1.immuPlaceholder")}
+            />
+            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+            <ErTriageDocChipRow>
+              {IMMU_CHIP_I18N_KEYS.map((k) => (
+                <ErTriageDocChip
+                  key={k}
+                  label={t(`erTriage.v1.${k}`)}
+                  disabled={formDisabled}
+                  onClick={() => appendImmuQuickText(k)}
+                />
+              ))}
+            </ErTriageDocChipRow>
           </div>
         </div>
       </details>
@@ -1155,7 +1241,7 @@ export function EmergencyTriageV1Sections({
               ))}
             </ErTriageDocChipRow>
           </div>
-          <div style={grid3}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.smoking")}</label>
               <input
@@ -1163,9 +1249,20 @@ export function EmergencyTriageV1Sections({
                 value={er.smokingStatus}
                 onChange={(e) => patchErV1({ smokingStatus: e.target.value })}
                 disabled={formDisabled}
-                style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                 placeholder={t("erTriage.v1.smokingPlaceholder")}
               />
+              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+              <ErTriageDocChipRow>
+                {SMOKING_CHIP_I18N_KEYS.map((k) => (
+                  <ErTriageDocChip
+                    key={k}
+                    label={t(`erTriage.v1.${k}`)}
+                    disabled={formDisabled}
+                    onClick={() => appendSubstanceFieldQuick("smokingStatus", k)}
+                  />
+                ))}
+              </ErTriageDocChipRow>
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.alcohol")}</label>
@@ -1174,8 +1271,19 @@ export function EmergencyTriageV1Sections({
                 value={er.alcoholUse}
                 onChange={(e) => patchErV1({ alcoholUse: e.target.value })}
                 disabled={formDisabled}
-                style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
+              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+              <ErTriageDocChipRow>
+                {ALCOHOL_CHIP_I18N_KEYS.map((k) => (
+                  <ErTriageDocChip
+                    key={k}
+                    label={t(`erTriage.v1.${k}`)}
+                    disabled={formDisabled}
+                    onClick={() => appendSubstanceFieldQuick("alcoholUse", k)}
+                  />
+                ))}
+              </ErTriageDocChipRow>
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.cannabis")}</label>
@@ -1184,8 +1292,19 @@ export function EmergencyTriageV1Sections({
                 value={er.marijuanaUse}
                 onChange={(e) => patchErV1({ marijuanaUse: e.target.value })}
                 disabled={formDisabled}
-                style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
+              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+              <ErTriageDocChipRow>
+                {CANNABIS_CHIP_I18N_KEYS.map((k) => (
+                  <ErTriageDocChip
+                    key={k}
+                    label={t(`erTriage.v1.${k}`)}
+                    disabled={formDisabled}
+                    onClick={() => appendSubstanceFieldQuick("marijuanaUse", k)}
+                  />
+                ))}
+              </ErTriageDocChipRow>
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.stimulants")}</label>
@@ -1194,8 +1313,19 @@ export function EmergencyTriageV1Sections({
                 value={er.stimulantUse}
                 onChange={(e) => patchErV1({ stimulantUse: e.target.value })}
                 disabled={formDisabled}
-                style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
+              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+              <ErTriageDocChipRow>
+                {STIMULANT_CHIP_I18N_KEYS.map((k) => (
+                  <ErTriageDocChip
+                    key={k}
+                    label={t(`erTriage.v1.${k}`)}
+                    disabled={formDisabled}
+                    onClick={() => appendSubstanceFieldQuick("stimulantUse", k)}
+                  />
+                ))}
+              </ErTriageDocChipRow>
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.opioids")}</label>
@@ -1204,8 +1334,19 @@ export function EmergencyTriageV1Sections({
                 value={er.opioidHeroinUse}
                 onChange={(e) => patchErV1({ opioidHeroinUse: e.target.value })}
                 disabled={formDisabled}
-                style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
+              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+              <ErTriageDocChipRow>
+                {OPIOID_CHIP_I18N_KEYS.map((k) => (
+                  <ErTriageDocChip
+                    key={k}
+                    label={t(`erTriage.v1.${k}`)}
+                    disabled={formDisabled}
+                    onClick={() => appendSubstanceFieldQuick("opioidHeroinUse", k)}
+                  />
+                ))}
+              </ErTriageDocChipRow>
             </div>
           </div>
           <div>
@@ -1216,32 +1357,8 @@ export function EmergencyTriageV1Sections({
               disabled={formDisabled}
               rows={3}
               maxLength={8000}
-              style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+              style={{ ...inputBase, marginTop: 6, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
             />
-            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
-            <ErTriageDocChipRow>
-              {ER_TRIAGE_SOCIAL_CHIP_DEFS.map((def) => {
-                const label = t(`erTriage.v1.${def.i18nKey}`);
-                return (
-                  <ErTriageDocChip
-                    key={def.code}
-                    label={label}
-                    active={er.socialHistorySelections.includes(def.code)}
-                    disabled={formDisabled}
-                    onClick={() =>
-                      toggleStructuredTriageChip(
-                        patchErV1,
-                        er,
-                        "socialHistorySelections",
-                        "historySocialComments",
-                        def.code,
-                        label
-                      )
-                    }
-                  />
-                );
-              })}
-            </ErTriageDocChipRow>
           </div>
         </div>
       </details>
