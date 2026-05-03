@@ -48,7 +48,7 @@ function ynuPreview(locale: SupportedLanguage, v: string): string {
 }
 
 /** Returns E/V/M strings and total when all three GCS subscores are valid; otherwise null. */
-function gcsEvmTriadForPreview(er: ErTriageV1Form): { e: string; v: string; m: string; total: number } | null {
+export function gcsEvmTriadForTriagePreview(er: ErTriageV1Form): { e: string; v: string; m: string; total: number } | null {
   const e = er.gcsEye.trim();
   const v = er.gcsVerbal.trim();
   const m = er.gcsMotor.trim();
@@ -754,7 +754,7 @@ export function buildTriageDocumentationPreviewModel(
       })
     );
   }
-  const gcsEvm = gcsEvmTriadForPreview(er);
+  const gcsEvm = gcsEvmTriadForTriagePreview(er);
   if (gcsEvm) {
     etatInitial.push(
       interpolatePreview(erTriageT(locale, "erTriage.preview.lineGcsComponents"), {

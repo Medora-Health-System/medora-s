@@ -21,6 +21,7 @@ import {
   buildTriageDocumentationPreviewModel,
   emptySepsisScreenForm,
   emptyStrokeScreenForm,
+  gcsEvmTriadForTriagePreview,
   type ErSepsisScreenForm,
   type ErScreeningYnu,
   type ErStrokeScreenForm,
@@ -200,6 +201,7 @@ export function EmergencyTriagePanel({
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
   const [complaintTemplateQuery, setComplaintTemplateQuery] = useState("");
   const [templateAppliedHint, setTemplateAppliedHint] = useState<string | null>(null);
+  const [docPreviewOpen, setDocPreviewOpen] = useState(false);
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
@@ -441,8 +443,8 @@ export function EmergencyTriagePanel({
     });
   }, [formData, language]);
 
-  const safetyPromptFlags = useMemo(() => {
-    const mergeInput: VitalsJsonMergeFormInput = {
+  const triageDraftMergeInput: VitalsJsonMergeFormInput = useMemo(
+    () => ({
       tempC: formData.tempC,
       hr: formData.hr,
       rr: formData.rr,
@@ -458,13 +460,36 @@ export function EmergencyTriagePanel({
       heightInputMode: formData.heightInputMode,
       heightFeet: formData.heightFeet,
       heightInches: formData.heightInches,
-    };
-    return {
+    }),
+    [formData]
+  );
+
+  const safetyPromptFlags = useMemo(
+    () => ({
       chestPainEcg: chiefComplaintSuggestsChestPain(formData.chiefComplaint),
-      allergyMissing: !draftTriageHasAllergyDocumentation(triage?.vitalsJson, mergeInput),
+      allergyMissing: !draftTriageHasAllergyDocumentation(triage?.vitalsJson, triageDraftMergeInput),
       highAcuityArrival: erTriageV1HasHighAcuityArrivalSource(formData.erV1),
+    }),
+    [formData.chiefComplaint, formData.erV1, triage?.vitalsJson, triageDraftMergeInput]
+  );
+
+  const documentationReviewMissing = useMemo(() => {
+    const er = formData.erV1;
+    const anyGcs = Boolean(er.gcsEye.trim() || er.gcsVerbal.trim() || er.gcsMotor.trim());
+    const gcsTriad = gcsEvmTriadForTriagePreview(er);
+    return {
+      chiefComplaint: !formData.chiefComplaint.trim(),
+      triageCompleteAt: !formData.triageCompleteAt.trim(),
+      allergies: !draftTriageHasAllergyDocumentation(triage?.vitalsJson, triageDraftMergeInput),
+      gcsIncomplete: anyGcs && gcsTriad == null,
     };
-  }, [formData, triage?.vitalsJson]);
+  }, [formData.chiefComplaint, formData.triageCompleteAt, formData.erV1, triage?.vitalsJson, triageDraftMergeInput]);
+
+  const documentationReviewMissingAny =
+    documentationReviewMissing.chiefComplaint ||
+    documentationReviewMissing.triageCompleteAt ||
+    documentationReviewMissing.allergies ||
+    documentationReviewMissing.gcsIncomplete;
 
   const showSafetyPrompts =
     safetyPromptFlags.chestPainEcg ||
@@ -1336,6 +1361,112 @@ export function EmergencyTriagePanel({
                   </MedoraCard>
                 </div>
               </div>
+            </div>
+
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, rowGap: 8 }}>
+                <p style={{ ...sectionHeading, margin: 0 }}>{t("erTriage.panel.docPreviewTitle")}</p>
+                <button
+                  type="button"
+                  onClick={() => setDocPreviewOpen((o) => !o)}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    border: "1px solid #cbd5e1",
+                    backgroundColor: "#fff",
+                    color: "#334155",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {docPreviewOpen ? t("erTriage.panel.docPreviewHideButton") : t("erTriage.panel.docPreviewReviewButton")}
+                </button>
+              </div>
+              {docPreviewOpen ? (
+                <div style={{ marginTop: 12 }}>
+                  {documentationReviewMissingAny ? (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: "#f8fafc",
+                      }}
+                    >
+                      <p style={{ margin: 0, fontSize: 11, color: "#64748b", fontWeight: 600, lineHeight: 1.4 }}>
+                        {t("erTriage.panel.docPreviewMissingDisclaimer")}
+                      </p>
+                      <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+                        {documentationReviewMissing.chiefComplaint ? (
+                          <li>{t("erTriage.panel.docPreviewMissingChief")}</li>
+                        ) : null}
+                        {documentationReviewMissing.triageCompleteAt ? (
+                          <li>{t("erTriage.panel.docPreviewMissingCompleteAt")}</li>
+                        ) : null}
+                        {documentationReviewMissing.allergies ? (
+                          <li>{t("erTriage.panel.docPreviewMissingAllergies")}</li>
+                        ) : null}
+                        {documentationReviewMissing.gcsIncomplete ? (
+                          <li>{t("erTriage.panel.docPreviewMissingGcs")}</li>
+                        ) : null}
+                      </ul>
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      maxHeight: 320,
+                      overflowY: "auto",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      backgroundColor: "#fff",
+                    }}
+                    aria-live="polite"
+                  >
+                    {previewModel.sections.map((sec) => (
+                      <div
+                        key={sec.id}
+                        style={{
+                          marginBottom: 12,
+                          paddingLeft: 8,
+                          borderLeft: `3px solid ${PREVIEW_SECTION_ACCENTS[sec.id] ?? "#94a3b8"}`,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em" }}>
+                          {sec.title}
+                        </p>
+                        {sec.lines.map((line, i) => (
+                          <p
+                            key={`${sec.id}-l-${i}`}
+                            style={{ margin: "6px 0 0", fontSize: 12, color: "#334155", lineHeight: 1.55, wordBreak: "break-word" }}
+                          >
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                    {previewModel.narrative.trim() ? (
+                      <p
+                        style={{
+                          margin: previewModel.sections.length ? "12px 0 0" : 0,
+                          paddingTop: previewModel.sections.length ? 10 : 0,
+                          borderTop: previewModel.sections.length ? "1px solid #f1f5f9" : undefined,
+                          fontSize: 12,
+                          color: "#0f172a",
+                          lineHeight: 1.55,
+                          fontStyle: "italic",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {previewModel.narrative}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <MedoraCardActions railBorderTopColor="#e2e8f0" gap={10} minWidth={0} alignItems="flex-start">
