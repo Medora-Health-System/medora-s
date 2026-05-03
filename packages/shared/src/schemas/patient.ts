@@ -615,6 +615,16 @@ export const medicationAdministrationCreateDtoSchema = z.object({
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
 
+/** POST /orders/items/:id/infusion/stop — IVPB infusion end (Phase 1). */
+export const medicationInfusionStopDtoSchema = z.object({
+  stoppedAt: z.coerce.date().optional(),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  /** Passed through to MAR create when visit allergy documentation requires acknowledgment. */
+  safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
+});
+
+export type MedicationInfusionStopDto = z.infer<typeof medicationInfusionStopDtoSchema>;
+
 /** POST /encounters/:id/provider-addenda — append-only after signed provider documentation (V1). */
 export const encounterProviderAddendumCreateDtoSchema = z.object({
   text: z.string().trim().min(1).max(5000),

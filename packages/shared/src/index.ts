@@ -27,4 +27,5 @@ export * from "./documentedProcedureBillingBridge.js";
 export * from "./medicationSafetyWarnings.js";
 export * from "./medicationTimingSafety.js";
 export * from "./advancedMedicationSafety.js";
+export * from "./medication/infusionRoute.util.js";
 

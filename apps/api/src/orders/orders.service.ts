@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   Injectable,
   Logger,
@@ -30,8 +31,8 @@ import {
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
-import type { OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
-import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr } from "@medora/shared";
+import type { MedicationInfusionStopDto, OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
+import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isIvpbInfusionRoute } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
   stripUndefinedDeep,
@@ -45,6 +46,7 @@ import {
 import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
+import { MedicationAdministrationService } from "../medication-administration/medication-administration.service";
 
 const ordersLog = createStructuredLogger("OrdersService");
 
@@ -175,7 +177,8 @@ export class OrdersService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly medicationAdministration: MedicationAdministrationService
   ) {}
 
   private authorityFromCreatedEvent(
@@ -2015,5 +2018,337 @@ export class OrdersService {
     });
 
     return updated;
+  }
+
+  private parseMedicationInfusionOrderEventMeta(metadata: Prisma.JsonValue | null): {
+    infusionScope?: string;
+    infusionAction?: string;
+    orderItemId?: string;
+    infusionSessionKey?: string;
+    infusionStartedAt?: string;
+    infusionStoppedAt?: string;
+    durationMinutes?: number;
+    route?: string;
+    source?: string;
+    medicationAdministrationId?: string;
+  } | null {
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+    const m = metadata as Record<string, unknown>;
+    if (m.infusionScope !== "MEDICATION_INFUSION") return null;
+    const num = (v: unknown): number | undefined =>
+      typeof v === "number" && Number.isFinite(v) ? v : undefined;
+    return {
+      infusionScope: String(m.infusionScope),
+      infusionAction: typeof m.infusionAction === "string" ? m.infusionAction : undefined,
+      orderItemId: typeof m.orderItemId === "string" ? m.orderItemId : undefined,
+      infusionSessionKey: typeof m.infusionSessionKey === "string" ? m.infusionSessionKey : undefined,
+      infusionStartedAt: typeof m.infusionStartedAt === "string" ? m.infusionStartedAt : undefined,
+      infusionStoppedAt: typeof m.infusionStoppedAt === "string" ? m.infusionStoppedAt : undefined,
+      durationMinutes: num(m.durationMinutes),
+      route: typeof m.route === "string" ? m.route : undefined,
+      source: typeof m.source === "string" ? m.source : undefined,
+      medicationAdministrationId:
+        typeof m.medicationAdministrationId === "string" ? m.medicationAdministrationId : undefined,
+    };
+  }
+
+  /**
+   * Replays infusion-tagged OrderEvents for the order to find an unmatched START for this order line.
+   */
+  private findActiveMedicationInfusionSession(
+    orderItemId: string,
+    events: Array<{ eventType: OrderEventType; metadata: Prisma.JsonValue | null }>
+  ): { sessionKey: string; startedAt: Date; route: string } | null {
+    let active: { sessionKey: string; startedAt: Date; route: string } | null = null;
+    for (const ev of events) {
+      const m = this.parseMedicationInfusionOrderEventMeta(ev.metadata);
+      if (!m || m.orderItemId !== orderItemId) continue;
+      if (m.infusionAction === "START" && m.infusionSessionKey && m.infusionStartedAt) {
+        const startedAt = new Date(m.infusionStartedAt);
+        if (!Number.isNaN(startedAt.getTime())) {
+          active = {
+            sessionKey: m.infusionSessionKey,
+            startedAt,
+            route: m.route?.trim() ?? "",
+          };
+        }
+      } else if (m.infusionAction === "STOP" && m.infusionSessionKey && active?.sessionKey === m.infusionSessionKey) {
+        active = null;
+      }
+    }
+    return active;
+  }
+
+  private async resolveMedicationRouteForInfusion(
+    item: OrderItem & { catalogItemId: string | null }
+  ): Promise<string | null> {
+    const direct = item.route?.trim();
+    if (direct) return direct;
+    if (!item.catalogItemId) return null;
+    const cat = await this.prisma.catalogMedication.findUnique({
+      where: { id: item.catalogItemId },
+      select: { route: true },
+    });
+    return cat?.route?.trim() || null;
+  }
+
+  /**
+   * IVPB / infusion — Phase 1: OrderItem → IN_PROGRESS, infusion OrderEvent + audit only (no MAR, no billing).
+   */
+  async startMedicationInfusion(
+    facilityId: string,
+    orderItemId: string,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: {
+        order: { include: { encounter: { include: { patient: true } } } },
+      },
+    });
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+    if (orderItem.catalogItemType !== "MEDICATION") {
+      throw new BadRequestException("Seules les lignes de médicament supportent la perfusion IV.");
+    }
+    if (!isMedicationAdministerChart(orderItem)) {
+      throw new BadRequestException(
+        "La perfusion IV documentée ici concerne uniquement les médicaments administrés au lit (ADMINISTER_CHART)."
+      );
+    }
+    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour démarrer une perfusion.");
+    }
+    if (orderItem.status === OrderStatus.COMPLETED || orderItem.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException("Ligne déjà terminée ou annulée.");
+    }
+
+    const routeStr = await this.resolveMedicationRouteForInfusion(orderItem);
+    if (!isIvpbInfusionRoute(routeStr)) {
+      throw new BadRequestException("Cette ligne n’est pas une perfusion IVPB / infusion éligible.");
+    }
+    const routeResolved = routeStr as string;
+
+    const infusionEvents = await this.prisma.orderEvent.findMany({
+      where: { orderId: orderItem.orderId },
+      orderBy: { performedAt: "asc" },
+      select: { eventType: true, metadata: true },
+    });
+    if (this.findActiveMedicationInfusionSession(orderItemId, infusionEvents)) {
+      throw new BadRequestException("Une perfusion est déjà en cours pour cette ligne.");
+    }
+
+    const infusionSessionKey = randomUUID();
+    const infusionStartedAt = new Date();
+    const startedIso = infusionStartedAt.toISOString();
+
+    const startMeta: Record<string, unknown> = {
+      infusionScope: "MEDICATION_INFUSION",
+      infusionAction: "START",
+      orderItemId,
+      infusionSessionKey,
+      infusionStartedAt: startedIso,
+      route: routeResolved,
+      source: "IV_INFUSION",
+    };
+
+    await this.prisma.$transaction(async (tx) => {
+      if (orderItem.status !== OrderStatus.IN_PROGRESS) {
+        assertCanTransition(orderItem.status, OrderStatus.IN_PROGRESS);
+        const lifecycleState = applyLifecycleWithStatus(orderItem.lifecycleState, OrderStatus.IN_PROGRESS);
+        await tx.orderItem.update({
+          where: { id: orderItemId },
+          data: { status: OrderStatus.IN_PROGRESS, lifecycleState },
+        });
+      }
+      await this.writeOrderEvent({
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderId: orderItem.orderId,
+        orderType: orderItem.order.type,
+        eventType: OrderEventType.STARTED,
+        performedByUserId: userId,
+        metadata: startMeta as Prisma.InputJsonValue,
+        tx,
+      });
+    });
+
+    await this.audit.log(AuditAction.ORDER_START, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
+      ip,
+      userAgent,
+      critical: true,
+      metadata: startMeta,
+    });
+
+    const refreshed = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: { order: true },
+    });
+    if (!refreshed) {
+      throw new NotFoundException("Order item not found");
+    }
+    return refreshed;
+  }
+
+  /**
+   * IVPB / infusion — Phase 1: terminal MAR administered + line completion + infusion STOP OrderEvent/audit.
+   * Billing runs only inside MedicationAdministrationService.create when marAction is administered.
+   */
+  async stopMedicationInfusion(
+    facilityId: string,
+    orderItemId: string,
+    dto: MedicationInfusionStopDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: {
+        order: { include: { encounter: { include: { patient: true } } } },
+      },
+    });
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+    if (orderItem.catalogItemType !== "MEDICATION") {
+      throw new BadRequestException("Seules les lignes de médicament supportent la perfusion IV.");
+    }
+    if (!isMedicationAdministerChart(orderItem)) {
+      throw new BadRequestException(
+        "La perfusion IV documentée ici concerne uniquement les médicaments administrés au lit (ADMINISTER_CHART)."
+      );
+    }
+    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour arrêter une perfusion.");
+    }
+    if (orderItem.status === OrderStatus.COMPLETED || orderItem.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException("Ligne déjà terminée ou annulée.");
+    }
+
+    const routeStr = await this.resolveMedicationRouteForInfusion(orderItem);
+    if (!isIvpbInfusionRoute(routeStr)) {
+      throw new BadRequestException("Cette ligne n’est pas une perfusion IVPB / infusion éligible.");
+    }
+    const routeResolved = routeStr as string;
+
+    const infusionEvents = await this.prisma.orderEvent.findMany({
+      where: { orderId: orderItem.orderId },
+      orderBy: { performedAt: "asc" },
+      select: { eventType: true, metadata: true },
+    });
+    const active = this.findActiveMedicationInfusionSession(orderItemId, infusionEvents);
+    if (!active) {
+      throw new BadRequestException("Aucune perfusion en cours pour cette ligne.");
+    }
+
+    const stoppedAt = dto.stoppedAt ?? new Date();
+    if (Number.isNaN(stoppedAt.getTime())) {
+      throw new BadRequestException("Horodatage d’arrêt invalide.");
+    }
+    if (stoppedAt.getTime() < active.startedAt.getTime()) {
+      throw new BadRequestException("L’heure d’arrêt ne peut pas précéder le début de perfusion.");
+    }
+    const durationMinutes = Math.max(
+      0,
+      Math.floor((stoppedAt.getTime() - active.startedAt.getTime()) / 60_000)
+    );
+
+    const autoNote = `Perfusion IV terminée — durée : ${durationMinutes} min`;
+    const notesCombined = [autoNote, dto.notes?.trim()].filter(Boolean).join("\n\n");
+
+    const routeForMar =
+      orderItem.route?.trim() || active.route.trim() || routeResolved || undefined;
+
+    const alreadyStopped = await this.prisma.orderEvent.findFirst({
+      where: {
+        facilityId,
+        orderId: orderItem.orderId,
+        eventType: OrderEventType.COMPLETED,
+        AND: [
+          { metadata: { path: ["infusionScope"], equals: "MEDICATION_INFUSION" } as Prisma.JsonFilter },
+          { metadata: { path: ["infusionAction"], equals: "STOP" } as Prisma.JsonFilter },
+          { metadata: { path: ["orderItemId"], equals: orderItemId } as Prisma.JsonFilter },
+        ],
+      },
+    });
+    if (alreadyStopped) {
+      throw new BadRequestException("Infusion already stopped");
+    }
+
+    const marRow = await this.medicationAdministration.create(
+      orderItem.order.encounterId,
+      facilityId,
+      userId,
+      {
+        orderItemId,
+        marAction: "administered",
+        administeredAt: stoppedAt,
+        ...(routeForMar ? { route: routeForMar } : {}),
+        notes: notesCombined,
+        safetyAcknowledgedMedicationAllergies: dto.safetyAcknowledgedMedicationAllergies,
+      }
+    );
+
+    const stoppedIso = stoppedAt.toISOString();
+    const startedIso = active.startedAt.toISOString();
+    const stopMeta: Record<string, unknown> = {
+      infusionScope: "MEDICATION_INFUSION",
+      infusionAction: "STOP",
+      orderItemId,
+      medicationAdministrationId: marRow.id,
+      infusionSessionKey: active.sessionKey,
+      infusionStartedAt: startedIso,
+      infusionStoppedAt: stoppedIso,
+      durationMinutes,
+      route: routeResolved,
+      source: "IV_INFUSION",
+    };
+
+    await this.writeOrderEvent({
+      facilityId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      orderType: orderItem.order.type,
+      eventType: OrderEventType.COMPLETED,
+      performedByUserId: userId,
+      metadata: stopMeta as Prisma.InputJsonValue,
+    });
+
+    await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
+      ip,
+      userAgent,
+      critical: true,
+      metadata: stopMeta,
+    });
+
+    const refreshed = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: { order: true },
+    });
+    return { orderItem: refreshed, medicationAdministration: marRow, durationMinutes };
   }
 }

@@ -62,8 +62,9 @@ function makeService(options?: { resultFindMany?: jest.Mock }) {
   const audit = {
     log: jest.fn().mockResolvedValue(undefined),
   };
+  const medicationAdministration = { create: jest.fn() };
   return {
-    service: new OrdersService(prisma as any, audit as any),
+    service: new OrdersService(prisma as any, audit as any, medicationAdministration as any),
     prisma,
     audit,
   };

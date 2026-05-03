@@ -15,7 +15,12 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { orderCancelDtoSchema, orderCreateDtoSchema, orderUpdateDtoSchema } from "@medora/shared";
+import {
+  medicationInfusionStopDtoSchema,
+  orderCancelDtoSchema,
+  orderCreateDtoSchema,
+  orderUpdateDtoSchema,
+} from "@medora/shared";
 import { RoleCode } from "@prisma/client";
 import { assertZodBody } from "../common/http/zod-parse";
 
@@ -284,6 +289,46 @@ export class OrdersController {
       facilityId,
       orderItemId,
       userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** IVPB / infusion — Phase 1: start (no MAR row, no billing). */
+  @Post("orders/items/:id/infusion/start")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async startMedicationInfusion(@Param("id") orderItemId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.ordersService.startMedicationInfusion(
+      facilityId,
+      orderItemId,
+      codes,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** IVPB / infusion — Phase 1: stop (terminal MAR + billing once via MAR create). */
+  @Post("orders/items/:id/infusion/stop")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async stopMedicationInfusion(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    const dto = assertZodBody(medicationInfusionStopDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.ordersService.stopMedicationInfusion(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId,
       req.ip,
       req.headers["user-agent"]
     );

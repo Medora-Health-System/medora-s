@@ -8,5 +8,6 @@ import { MedicationAdministrationService } from "./medication-administration.ser
   imports: [PrismaModule],
   controllers: [MedicationAdministrationController],
   providers: [MedicationAdministrationService, AuditService],
+  exports: [MedicationAdministrationService],
 })
 export class MedicationAdministrationModule {}
