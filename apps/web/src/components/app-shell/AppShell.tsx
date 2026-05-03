@@ -11,6 +11,10 @@ import { useI18n } from "@/i18n/provider";
 import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
 import { SidebarNavIcon } from "./SidebarNavIcons";
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "medora_sidebar_collapsed";
+const SIDEBAR_WIDTH_EXPANDED = 244;
+const SIDEBAR_WIDTH_COLLAPSED = 72;
+
 /** Établissements issus de `/api/auth/me` (`facilityRoles`) — `value` du `<select>` = id réel. */
 export type AppShellFacilityOption = { id: string; name: string };
 
@@ -52,6 +56,28 @@ export function AppShell({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+      if (raw === "1") setSidebarCollapsed(true);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   const { t } = useI18n();
   const isMsppArea = pathname.startsWith("/app/mspp");
@@ -135,24 +161,65 @@ export function AppShell({
         </div>
       </header>
 
-      <div style={{ display: "flex", flex: 1 }}>
+      <div style={{ display: "flex", flex: 1, minWidth: 0, minHeight: 0 }}>
         <aside
           style={{
-            width: 244,
+            width: sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
+            flexShrink: 0,
+            transition: "width 0.2s ease",
             background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
             color: "#f8fafc",
-            padding: "18px 12px 24px",
+            padding: sidebarCollapsed ? "12px 6px 20px" : "18px 12px 24px",
             display: "flex",
             flexDirection: "column",
             borderRight: "1px solid rgba(148,163,184,0.12)",
             boxShadow: "4px 0 20px rgba(15,23,42,0.35)",
+            overflowX: "hidden",
+            boxSizing: "border-box",
           }}
         >
-          <nav style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div style={{ marginBottom: sidebarCollapsed ? 8 : 10, flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-expanded={!sidebarCollapsed}
+              aria-controls="medora-app-sidebar-nav"
+              aria-label={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
+              title={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                gap: 8,
+                padding: sidebarCollapsed ? "8px 4px" : "8px 10px",
+                borderRadius: 8,
+                border: "1px solid rgba(148,163,184,0.2)",
+                background: "rgba(15,23,42,0.5)",
+                color: "#f8fafc",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden>
+                {sidebarCollapsed ? "»" : "«"}
+              </span>
+              {!sidebarCollapsed ? (
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {t("appShell.sidebarCollapse")}
+                </span>
+              ) : null}
+            </button>
+          </div>
+          <nav
+            id="medora-app-sidebar-nav"
+            style={{ display: "flex", flexDirection: "column", gap: 0, flex: 1, minHeight: 0, overflowY: "auto" }}
+          >
             {bootstrapping ? (
               <p
                 style={{
-                  margin: "8px 10px 0",
+                  margin: sidebarCollapsed ? "8px 4px 0" : "8px 10px 0",
                   fontSize: 13,
                   color: "rgba(248,250,252,0.75)",
                   lineHeight: 1.45,
@@ -165,12 +232,17 @@ export function AppShell({
               <div
                 key={section.groupId}
                 className={si > 0 ? "border-t border-white/10" : undefined}
+                style={sidebarCollapsed && si > 0 ? { marginTop: 8, paddingTop: 8 } : undefined}
               >
-                <div
-                  className={`px-2.5 text-xs font-bold uppercase tracking-wider text-white/70 mb-2 ${si > 0 ? "mt-6" : ""}`}
-                >
-                  {t(section.title)}
-                </div>
+                {!sidebarCollapsed ? (
+                  <div
+                    className={`px-2.5 text-xs font-bold uppercase tracking-wider text-white/70 mb-2 ${si > 0 ? "mt-6" : ""}`}
+                  >
+                    {t(section.title)}
+                  </div>
+                ) : si > 0 ? (
+                  <div style={{ height: 1, margin: "6px 4px", background: "rgba(255,255,255,0.08)" }} aria-hidden />
+                ) : null}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {section.items.map((item) => {
                     const accent = NAV_ACCENT[item.accent];
@@ -178,10 +250,13 @@ export function AppShell({
                       mounted &&
                       (pathname === item.href ||
                         (item.href !== "/app" && pathname.startsWith(item.href + "/")));
+                    const label = t(item.label);
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
+                        title={label}
+                        aria-label={label}
                         className={`group relative isolate origin-left overflow-hidden rounded-lg transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-sm ${
                           active
                             ? "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:rounded-lg before:bg-transparent before:transition-colors hover:before:bg-white/10"
@@ -190,13 +265,14 @@ export function AppShell({
                         style={{
                           color: active ? "#fff" : "rgba(248,250,252,0.9)",
                           textDecoration: "none",
-                          padding: "9px 10px",
+                          padding: sidebarCollapsed ? "8px 6px" : "9px 10px",
                           borderRadius: 8,
                           fontSize: 13,
                           fontWeight: active ? 600 : 500,
                           display: "flex",
                           alignItems: "center",
-                          gap: 10,
+                          justifyContent: sidebarCollapsed ? "center" : undefined,
+                          gap: sidebarCollapsed ? 0 : 10,
                           ...(active
                             ? {
                                 backgroundColor: accent.activeBg,
@@ -213,9 +289,11 @@ export function AppShell({
                         <span className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 shadow-sm transition-all duration-200 group-hover:bg-white/20">
                           <SidebarNavIcon href={item.href} />
                         </span>
-                        <span className="relative z-10" style={{ lineHeight: 1.3 }}>
-                          {t(item.label)}
-                        </span>
+                        {!sidebarCollapsed ? (
+                          <span className="relative z-10 min-w-0" style={{ lineHeight: 1.3 }}>
+                            {label}
+                          </span>
+                        ) : null}
                       </Link>
                     );
                   })}
@@ -226,7 +304,15 @@ export function AppShell({
           </nav>
         </aside>
 
-        <main style={{ flex: 1, padding: 24, background: "linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%)" }}>
+        <main
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: 24,
+            background: "linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%)",
+            boxSizing: "border-box",
+          }}
+        >
           {bootstrapping ? (
             <div style={{ padding: 24 }}>
               <p style={{ margin: 0 }}>{t("common.loading")}</p>

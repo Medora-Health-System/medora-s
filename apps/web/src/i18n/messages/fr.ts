@@ -836,6 +836,8 @@ export default {
   appShell: {
     msppMinistryTitle:
       "MINISTÈRE DE LA SANTÉ PUBLIQUE ET DE LA POPULATION",
+    sidebarCollapse: "Réduire le menu",
+    sidebarExpand: "Afficher le menu",
   },
   navGroups: {
     accueil: "Accueil",

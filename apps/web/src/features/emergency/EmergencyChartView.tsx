@@ -439,7 +439,7 @@ export function EmergencyChartView() {
 
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
-      <div style={{ maxWidth: 1152, margin: "0 auto" }}>
+      <div style={{ width: "100%", maxWidth: "none", minWidth: 0, boxSizing: "border-box" }}>
         <header style={{ marginBottom: 20 }}>
           <p style={{ margin: "0 0 8px 0", fontSize: 13 }}>
             <Link href={emergencyTrackboardPath()} style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
@@ -460,7 +460,7 @@ export function EmergencyChartView() {
           >
             {t("emergencyChartView.pageTitle")}
           </h1>
-          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.5 }}>
+          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", lineHeight: 1.5 }}>
             {t("emergencyChartView.pageSubtitle")}
           </p>
           <p style={{ margin: "10px 0 0 0", fontSize: 13 }}>

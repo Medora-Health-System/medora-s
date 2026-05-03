@@ -46,6 +46,8 @@ export default {
   appShell: {
     msppMinistryTitle:
       "MINISTÈRE DE LA SANTÉ PUBLIQUE ET DE LA POPULATION",
+    sidebarCollapse: "Collapse menu",
+    sidebarExpand: "Expand menu",
   },
   nav: {
     trackboard: "Clinical trackboard",
