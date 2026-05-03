@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import type { ErAbcOption, ErTraumaActivationCriterionId, ErTraumaLevel, ErTriageV1Form, ErYesNoUnknown } from "./medoraErTriageV1";
 import {
   ER_TRAUMA_ACTIVATION_CRITERIA_IDS,
+  appendIfNotPresent,
   emptyErTraumaActivationForm,
   erTriageV1FormHasAnyContent,
   nextGcsStateAfterComponentChange,
@@ -48,6 +49,89 @@ const help: React.CSSProperties = {
   color: "#64748b",
   lineHeight: 1.45,
 };
+
+const chipHintStyle: React.CSSProperties = {
+  margin: "4px 0 0 0",
+  fontSize: 11,
+  color: "#94a3b8",
+  fontWeight: 500,
+};
+
+type ErTriageDocChipProps = {
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+};
+
+function ErTriageDocChip({ label, onClick, active, disabled }: ErTriageDocChipProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "4px 10px",
+        borderRadius: 9999,
+        border: active ? "1px solid #3b82f6" : "1px solid #e2e8f0",
+        background: active ? "#eff6ff" : "#f8fafc",
+        color: "#334155",
+        fontSize: 12,
+        cursor: disabled ? "not-allowed" : "pointer",
+        lineHeight: 1.3,
+        opacity: disabled ? 0.55 : 1,
+        WebkitTapHighlightColor: "transparent",
+        userSelect: "none",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ErTriageDocChipRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" }}>{children}</div>
+  );
+}
+
+const ROUTING_CHIP_KEYS = [
+  "chipsRoutingSelf",
+  "chipsRoutingAmbulance",
+  "chipsRoutingWalkIn",
+  "chipsRoutingTransfer",
+  "chipsRoutingOther",
+] as const;
+
+const PPE_CHIP_KEYS = [
+  "chipsPpeMask",
+  "chipsPpeGloves",
+  "chipsPpeIsolation",
+  "chipsPpeContact",
+  "chipsPpeAirborne",
+] as const;
+
+const SOCIAL_CHIP_KEYS = [
+  "chipsSocialSmoker",
+  "chipsSocialFormerSmoker",
+  "chipsSocialAlcohol",
+  "chipsSocialCannabis",
+  "chipsSocialOpioid",
+  "chipsSocialStimulant",
+] as const;
+
+const MEDS_CHIP_KEYS = ["chipsMedsNone", "chipsMedsUnknown", "chipsMedsPolypharmacy"] as const;
+
+const ALLERGY_CHIP_KEYS = ["chipsAllergyNkda", "chipsAllergyFood", "chipsAllergyDrug", "chipsAllergyLatex"] as const;
+
+const NURSING_CHIP_KEYS = [
+  "chipsNursingContinuousMonitor",
+  "chipsNursingCardiacMonitor",
+  "chipsNursingOxygen",
+  "chipsNursingIvAccess",
+] as const;
 
 function painOptions(dash: string): { value: string; label: string }[] {
   const o: { value: string; label: string }[] = [{ value: "", label: dash }];
@@ -190,6 +274,20 @@ export function EmergencyTriageV1Sections({
               style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               placeholder={t("erTriage.v1.ppePlaceholder")}
             />
+            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+            <ErTriageDocChipRow>
+              {PPE_CHIP_KEYS.map((k) => {
+                const label = t(`erTriage.v1.${k}`);
+                return (
+                  <ErTriageDocChip
+                    key={k}
+                    label={label}
+                    disabled={formDisabled}
+                    onClick={() => patchErV1({ ppeNote: appendIfNotPresent(er.ppeNote, label) })}
+                  />
+                );
+              })}
+            </ErTriageDocChipRow>
           </div>
           <div style={grid2}>
             <div>
@@ -300,6 +398,22 @@ export function EmergencyTriageV1Sections({
                 style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                 placeholder={t("erTriage.v1.referralPlaceholder")}
               />
+              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+              <ErTriageDocChipRow>
+                {ROUTING_CHIP_KEYS.map((k) => {
+                  const label = t(`erTriage.v1.${k}`);
+                  return (
+                    <ErTriageDocChip
+                      key={k}
+                      label={label}
+                      disabled={formDisabled}
+                      onClick={() =>
+                        patchErV1({ referralSource: appendIfNotPresent(er.referralSource, label) })
+                      }
+                    />
+                  );
+                })}
+              </ErTriageDocChipRow>
             </div>
           </div>
           <div
@@ -475,6 +589,22 @@ export function EmergencyTriageV1Sections({
               maxLength={8000}
               style={{ ...inputBase, minHeight: 56, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
             />
+            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+            <ErTriageDocChipRow>
+              {NURSING_CHIP_KEYS.map((k) => {
+                const label = t(`erTriage.v1.${k}`);
+                return (
+                  <ErTriageDocChip
+                    key={k}
+                    label={label}
+                    disabled={formDisabled}
+                    onClick={() =>
+                      patchErV1({ nursingCareNote: appendIfNotPresent(er.nursingCareNote, label) })
+                    }
+                  />
+                );
+              })}
+            </ErTriageDocChipRow>
           </div>
           <div style={grid3}>
             <div>
@@ -550,6 +680,22 @@ export function EmergencyTriageV1Sections({
               maxLength={8000}
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
             />
+            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+            <ErTriageDocChipRow>
+              {MEDS_CHIP_KEYS.map((k) => {
+                const label = t(`erTriage.v1.${k}`);
+                return (
+                  <ErTriageDocChip
+                    key={k}
+                    label={label}
+                    disabled={formDisabled}
+                    onClick={() =>
+                      patchErV1({ medicationsSummary: appendIfNotPresent(er.medicationsSummary, label) })
+                    }
+                  />
+                );
+              })}
+            </ErTriageDocChipRow>
           </div>
           <div>
             <label style={labelStyle}>{t("erTriage.v1.allergyExtra")}</label>
@@ -562,6 +708,24 @@ export function EmergencyTriageV1Sections({
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               placeholder={t("erTriage.v1.allergyExtraPlaceholder")}
             />
+            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+            <ErTriageDocChipRow>
+              {ALLERGY_CHIP_KEYS.map((k) => {
+                const label = t(`erTriage.v1.${k}`);
+                return (
+                  <ErTriageDocChip
+                    key={k}
+                    label={label}
+                    disabled={formDisabled}
+                    onClick={() =>
+                      patchErV1({
+                        additionalAllergyInfo: appendIfNotPresent(er.additionalAllergyInfo, label),
+                      })
+                    }
+                  />
+                );
+              })}
+            </ErTriageDocChipRow>
           </div>
           <div style={grid2}>
             <div>
@@ -705,6 +869,24 @@ export function EmergencyTriageV1Sections({
               maxLength={8000}
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
             />
+            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
+            <ErTriageDocChipRow>
+              {SOCIAL_CHIP_KEYS.map((k) => {
+                const label = t(`erTriage.v1.${k}`);
+                return (
+                  <ErTriageDocChip
+                    key={k}
+                    label={label}
+                    disabled={formDisabled}
+                    onClick={() =>
+                      patchErV1({
+                        historySocialComments: appendIfNotPresent(er.historySocialComments, label),
+                      })
+                    }
+                  />
+                );
+              })}
+            </ErTriageDocChipRow>
           </div>
         </div>
       </details>

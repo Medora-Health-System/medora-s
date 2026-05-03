@@ -236,6 +236,19 @@ export function nextGcsStateAfterComponentChange(
   };
 }
 
+/**
+ * Quick-chip helper: set field when empty; otherwise append ", value" if that exact fragment
+ * is not already present (substring check on trimmed current). Does not replace nurse text.
+ */
+export function appendIfNotPresent(current: string, value: string): string {
+  const fragment = value.trim();
+  if (!fragment) return current;
+  const trimmed = current.trim();
+  if (!trimmed) return fragment;
+  if (trimmed.includes(fragment)) return current;
+  return `${trimmed}, ${fragment}`;
+}
+
 function traumaLevelFromStorage(v: unknown): ErTraumaLevel {
   const s = stringFromStorage(v);
   if (s === "LEVEL_1" || s === "LEVEL_2" || s === "LEVEL_3" || s === "LEVEL_4") return s;
