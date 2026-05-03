@@ -17,6 +17,7 @@ import {
   isOrderItemCancellableLineForEr,
   isOrderItemCompletedForErDashboard,
   isParentOrderCancelled,
+  medicationInfusionClassificationText,
   medicationRouteSnapshotForInfusionCheck,
   orderHasAnyActiveItemForEr,
   orderItemIdFromEventMetadata,
@@ -25,7 +26,7 @@ import {
 import { apiFetch } from "@/lib/apiClient";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { isIvpbInfusionRoute } from "@medora/shared";
+import { isMedicationInfusionCandidate } from "@medora/shared";
 import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
@@ -1030,14 +1031,25 @@ export function EmergencyErOrdersPanel({
                               const lineCancelDisabled =
                                 cancelBusyItemId === itemId || pendingCancel !== null;
                               const routeSnapshot = medicationRouteSnapshotForInfusionCheck(item);
-                              const isIvpbMed =
-                                isBedsideAdministerMedicationRow(item) && isIvpbInfusionRoute(routeSnapshot);
-                              const activeInfusion = isIvpbMed
+                              const catRow =
+                                item.catalogMedication && typeof item.catalogMedication === "object"
+                                  ? (item.catalogMedication as Record<string, unknown>)
+                                  : null;
+                              const isInfusionLifecycleMed =
+                                isBedsideAdministerMedicationRow(item) &&
+                                isMedicationInfusionCandidate({
+                                  route: routeSnapshot.trim() || null,
+                                  medicationLabel: medicationInfusionClassificationText(item) || null,
+                                  code: typeof catRow?.code === "string" ? catRow.code : null,
+                                  genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
+                                  metadata: null,
+                                });
+                              const activeInfusion = isInfusionLifecycleMed
                                 ? findActiveMedicationInfusionFromOrderEvents(parsedEvents, o.id, itemId)
                                 : null;
 
                               const lineBtns: React.ReactNode[] = [];
-                              if (isIvpbMed && hasAnyRole(roles, "RN", "ADMIN")) {
+                              if (isInfusionLifecycleMed && hasAnyRole(roles, "RN", "ADMIN")) {
                                 if (!activeInfusion) {
                                   lineBtns.push(
                                     <button
@@ -1203,10 +1215,10 @@ export function EmergencyErOrdersPanel({
                                       wordBreak: "break-word",
                                     }}
                                   >
-                                    <div style={{ marginBottom: lineBtns.length > 0 || isIvpbMed ? 6 : 0 }}>
+                                    <div style={{ marginBottom: lineBtns.length > 0 || isInfusionLifecycleMed ? 6 : 0 }}>
                                       {orderLineItemStatusLabel(st, t)}
                                     </div>
-                                    {isIvpbMed && activeInfusion ? (
+                                    {isInfusionLifecycleMed && activeInfusion ? (
                                       <div
                                         style={{
                                           marginBottom: lineBtns.length > 0 ? 8 : 0,
@@ -1218,12 +1230,29 @@ export function EmergencyErOrdersPanel({
                                         <div style={{ fontWeight: 700 }}>{t("erEmergencyOrders.infusionInProgress")}</div>
                                         {activeInfusion.infusionStartedAtIso ? (
                                           <div style={{ marginTop: 2, color: "#0c4a6e" }}>
-                                            {t("erEmergencyOrders.infusionStartedAtLabel").replace(
-                                              "{at}",
-                                              new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
-                                                language === "fr" ? "fr-FR" : "en-US",
-                                                { dateStyle: "short", timeStyle: "short" }
-                                              )
+                                            {activeInfusion.startedByDisplayName
+                                              ? t("erEmergencyOrders.infusionStartedByLine")
+                                                  .replace(
+                                                    "{at}",
+                                                    new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
+                                                      language === "fr" ? "fr-FR" : "en-US",
+                                                      { dateStyle: "short", timeStyle: "short" }
+                                                    )
+                                                  )
+                                                  .replace("{by}", activeInfusion.startedByDisplayName)
+                                              : t("erEmergencyOrders.infusionStartedAtLabel").replace(
+                                                  "{at}",
+                                                  new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
+                                                    language === "fr" ? "fr-FR" : "en-US",
+                                                    { dateStyle: "short", timeStyle: "short" }
+                                                  )
+                                                )}
+                                          </div>
+                                        ) : activeInfusion.startedByDisplayName ? (
+                                          <div style={{ marginTop: 2, color: "#0c4a6e" }}>
+                                            {t("erEmergencyOrders.infusionStartedByOnly").replace(
+                                              "{by}",
+                                              activeInfusion.startedByDisplayName
                                             )}
                                           </div>
                                         ) : null}

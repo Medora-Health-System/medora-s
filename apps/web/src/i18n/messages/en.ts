@@ -4939,6 +4939,8 @@ export default {
     infusionStopped: "Infusion stopped — order line completed.",
     infusionActionError: "Infusion action could not be completed. Try again or contact support.",
     infusionStartedAtLabel: "Started: {at}",
+    infusionStartedByLine: "Started: {at} — {by}",
+    infusionStartedByOnly: "Started by: {by}",
   },
   orderEvent: {
     created: "Created",

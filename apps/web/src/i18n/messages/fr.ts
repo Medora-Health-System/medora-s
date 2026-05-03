@@ -4912,6 +4912,8 @@ export default {
     infusionStopped: "Perfusion arrêtée — ligne d'ordonnance terminée.",
     infusionActionError: "Action sur la perfusion impossible. Réessayez ou contactez le support.",
     infusionStartedAtLabel: "Début : {at}",
+    infusionStartedByLine: "Début : {at} — {by}",
+    infusionStartedByOnly: "Début par : {by}",
   },
   orderEvent: {
     created: "Créé",
