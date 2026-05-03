@@ -47,6 +47,22 @@ function ynuPreview(locale: SupportedLanguage, v: string): string {
   return "";
 }
 
+/** Returns E/V/M strings and total when all three GCS subscores are valid; otherwise null. */
+function gcsEvmTriadForPreview(er: ErTriageV1Form): { e: string; v: string; m: string; total: number } | null {
+  const e = er.gcsEye.trim();
+  const v = er.gcsVerbal.trim();
+  const m = er.gcsMotor.trim();
+  if (!e || !v || !m) return null;
+  const ne = parseInt(e, 10);
+  const nv = parseInt(v, 10);
+  const nm = parseInt(m, 10);
+  if (Number.isNaN(ne) || Number.isNaN(nv) || Number.isNaN(nm)) return null;
+  if (ne < 1 || ne > 4 || nv < 1 || nv > 5 || nm < 1 || nm > 6) return null;
+  const total = ne + nv + nm;
+  if (total < 3 || total > 15) return null;
+  return { e, v, m, total };
+}
+
 function abcPreview(locale: SupportedLanguage, v: string): string {
   if (v === "wnl") return erTriageT(locale, "erTriage.preview.abcWnl");
   return ynuPreview(locale, v);
@@ -738,7 +754,17 @@ export function buildTriageDocumentationPreviewModel(
       })
     );
   }
-  if (er.gcs15) {
+  const gcsEvm = gcsEvmTriadForPreview(er);
+  if (gcsEvm) {
+    etatInitial.push(
+      interpolatePreview(erTriageT(locale, "erTriage.preview.lineGcsComponents"), {
+        total: String(gcsEvm.total),
+        e: gcsEvm.e,
+        v: gcsEvm.v,
+        m: gcsEvm.m,
+      })
+    );
+  } else if (er.gcs15) {
     etatInitial.push(
       interpolatePreview(erTriageT(locale, "erTriage.preview.lineGcs"), { value: ynuPreview(locale, er.gcs15) })
     );

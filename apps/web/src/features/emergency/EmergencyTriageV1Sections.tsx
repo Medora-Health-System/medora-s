@@ -8,6 +8,7 @@ import {
   ER_TRAUMA_ACTIVATION_CRITERIA_IDS,
   emptyErTraumaActivationForm,
   erTriageV1FormHasAnyContent,
+  nextGcsStateAfterComponentChange,
 } from "./medoraErTriageV1";
 import { MedoraCardBadge } from "@/components/medora-card";
 
@@ -52,6 +53,26 @@ function painOptions(dash: string): { value: string; label: string }[] {
   const o: { value: string; label: string }[] = [{ value: "", label: dash }];
   for (let i = 0; i <= 10; i += 1) o.push({ value: String(i), label: `${i}/10` });
   return o;
+}
+
+function gcsScoreOptions(dash: string, max: number): { value: string; label: string }[] {
+  const o: { value: string; label: string }[] = [{ value: "", label: dash }];
+  for (let i = 1; i <= max; i += 1) o.push({ value: String(i), label: String(i) });
+  return o;
+}
+
+function gcsTriadCompleteWithTotal(er: ErTriageV1Form): { total: number } | null {
+  const e = er.gcsEye.trim();
+  const v = er.gcsVerbal.trim();
+  const m = er.gcsMotor.trim();
+  const ne = parseInt(e, 10);
+  const nv = parseInt(v, 10);
+  const nm = parseInt(m, 10);
+  if (Number.isNaN(ne) || Number.isNaN(nv) || Number.isNaN(nm)) return null;
+  if (ne < 1 || ne > 4 || nv < 1 || nv > 5 || nm < 1 || nm > 6) return null;
+  const sum = ne + nv + nm;
+  if (sum < 3 || sum > 15) return null;
+  return { total: sum };
 }
 
 export type EmergencyTriageV1SectionsProps = {
@@ -100,6 +121,12 @@ export function EmergencyTriageV1Sections({
     ],
     [t, dash]
   );
+  const gcsEyeOpts = useMemo(() => gcsScoreOptions(dash, 4), [dash]);
+  const gcsVerbalOpts = useMemo(() => gcsScoreOptions(dash, 5), [dash]);
+  const gcsMotorOpts = useMemo(() => gcsScoreOptions(dash, 6), [dash]);
+  const gcsTriad = useMemo(() => gcsTriadCompleteWithTotal(er), [er.gcsEye, er.gcsVerbal, er.gcsMotor]);
+  const gcsAbnormal = gcsTriad != null && gcsTriad.total < 15;
+
   const traumaLevelOptions: { value: ErTraumaLevel; label: string }[] = useMemo(
     () => [
       { value: "", label: dash },
@@ -177,9 +204,87 @@ export function EmergencyTriageV1Sections({
               <label style={labelStyle}>{t("erTriage.v1.circulation")}</label>
               {sel("circulation", abcOptions)}
             </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.gcs15")}</label>
-              {sel("gcs15", ynuOptions)}
+            <div style={{ gridColumn: "1 / -1" }}>
+              <p style={sectionHeading}>{t("erTriage.v1.gcsSection")}</p>
+              <div style={{ ...grid3, marginTop: 8 }}>
+                <div>
+                  <label style={labelStyle}>{t("erTriage.v1.gcsEye")}</label>
+                  <select
+                    value={er.gcsEye}
+                    onChange={(e) => patchErV1(nextGcsStateAfterComponentChange(er, "gcsEye", e.target.value))}
+                    disabled={formDisabled}
+                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                  >
+                    {gcsEyeOpts.map((o) => (
+                      <option key={o.value === "" ? "empty" : o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>{t("erTriage.v1.gcsVerbal")}</label>
+                  <select
+                    value={er.gcsVerbal}
+                    onChange={(e) => patchErV1(nextGcsStateAfterComponentChange(er, "gcsVerbal", e.target.value))}
+                    disabled={formDisabled}
+                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                  >
+                    {gcsVerbalOpts.map((o) => (
+                      <option key={o.value === "" ? "empty" : o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>{t("erTriage.v1.gcsMotor")}</label>
+                  <select
+                    value={er.gcsMotor}
+                    onChange={(e) => patchErV1(nextGcsStateAfterComponentChange(er, "gcsMotor", e.target.value))}
+                    disabled={formDisabled}
+                    style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer" }}
+                  >
+                    {gcsMotorOpts.map((o) => (
+                      <option key={o.value === "" ? "empty" : o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>{t("erTriage.v1.gcsTotal")}</label>
+                  <div
+                    style={{
+                      ...inputBase,
+                      display: "flex",
+                      alignItems: "center",
+                      minHeight: 38,
+                      backgroundColor: formDisabled ? "#f8fafc" : "#f1f5f9",
+                      fontVariantNumeric: "tabular-nums",
+                      fontWeight: 600,
+                      color: "#334155",
+                    }}
+                    aria-live="polite"
+                  >
+                    {gcsTriad ? String(gcsTriad.total) : dash}
+                  </div>
+                </div>
+              </div>
+              {gcsAbnormal ? (
+                <p
+                  role="status"
+                  style={{
+                    margin: "10px 0 0",
+                    fontSize: 12,
+                    color: "#b45309",
+                    lineHeight: 1.45,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t("erTriage.v1.gcsAbnormalWarning")}
+                </p>
+              ) : null}
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.pain010")}</label>

@@ -66,6 +66,13 @@ export type ErTriageV1Form = {
   airway: ErAbcOption;
   breathing: ErAbcOption;
   circulation: ErAbcOption;
+  /** Glasgow eye (1–4), verbal (1–5), motor (1–6); empty until scored. */
+  gcsEye: string;
+  gcsVerbal: string;
+  gcsMotor: string;
+  /** Sum 3–15 when all components set; kept in sync in UI. */
+  gcsTotal: string;
+  /** Synced from components when triad complete; legacy-only when components absent. */
   gcs15: ErYesNoUnknown;
   triageExceptionsNote: string;
   painScale0to10: string;
@@ -110,6 +117,10 @@ export function emptyErTriageV1Form(): ErTriageV1Form {
     airway: "",
     breathing: "",
     circulation: "",
+    gcsEye: "",
+    gcsVerbal: "",
+    gcsMotor: "",
+    gcsTotal: "",
     gcs15: "",
     triageExceptionsNote: "",
     painScale0to10: "",
@@ -176,6 +187,53 @@ function ynuFromStorage(v: unknown): ErYesNoUnknown {
   const s = stringFromStorage(v);
   if (s === "yes" || s === "no" || s === "unknown") return s;
   return "";
+}
+
+/** Parse GCS subscore from JSON (number or string); returns "" if invalid. */
+export function gcsSubscoreFromStorage(v: unknown, max: number): string {
+  const n = typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : parseInt(stringFromStorage(v), 10);
+  if (Number.isNaN(n) || n < 1 || n > max) return "";
+  return String(n);
+}
+
+/**
+ * After changing eye / verbal / motor: compute total + sync gcs15 when triad is complete;
+ * when incomplete, clear total and gcs15 (do not infer "no" from missing data).
+ */
+export function nextGcsStateAfterComponentChange(
+  prev: ErTriageV1Form,
+  field: "gcsEye" | "gcsVerbal" | "gcsMotor",
+  rawValue: string
+): Partial<ErTriageV1Form> {
+  const next: ErTriageV1Form = { ...prev, [field]: rawValue };
+  const e = next.gcsEye.trim();
+  const ve = next.gcsVerbal.trim();
+  const m = next.gcsMotor.trim();
+  const ne = parseInt(e, 10);
+  const nv = parseInt(ve, 10);
+  const nm = parseInt(m, 10);
+  const triadComplete =
+    !Number.isNaN(ne) &&
+    !Number.isNaN(nv) &&
+    !Number.isNaN(nm) &&
+    ne >= 1 &&
+    ne <= 4 &&
+    nv >= 1 &&
+    nv <= 5 &&
+    nm >= 1 &&
+    nm <= 6;
+  if (!triadComplete) {
+    return { [field]: rawValue, gcsTotal: "", gcs15: "" };
+  }
+  const sum = ne + nv + nm;
+  if (sum < 3 || sum > 15) {
+    return { [field]: rawValue, gcsTotal: "", gcs15: "" };
+  }
+  return {
+    [field]: rawValue,
+    gcsTotal: String(sum),
+    gcs15: sum === 15 ? "yes" : "no",
+  };
 }
 
 function traumaLevelFromStorage(v: unknown): ErTraumaLevel {
@@ -248,7 +306,27 @@ export function erTriageV1FormFromVitalsJson(vitalsJson: unknown): ErTriageV1For
     airway: abcFromStorage(g("airway")),
     breathing: abcFromStorage(g("breathing")),
     circulation: abcFromStorage(g("circulation")),
-    gcs15: ynuFromStorage(g("gcs15")),
+    gcsEye: gcsSubscoreFromStorage(g("gcsEye"), 4),
+    gcsVerbal: gcsSubscoreFromStorage(g("gcsVerbal"), 5),
+    gcsMotor: gcsSubscoreFromStorage(g("gcsMotor"), 6),
+    ...(() => {
+      const eye = gcsSubscoreFromStorage(g("gcsEye"), 4);
+      const verbal = gcsSubscoreFromStorage(g("gcsVerbal"), 5);
+      const motor = gcsSubscoreFromStorage(g("gcsMotor"), 6);
+      if (eye && verbal && motor) {
+        const sum = parseInt(eye, 10) + parseInt(verbal, 10) + parseInt(motor, 10);
+        if (sum >= 3 && sum <= 15) {
+          return {
+            gcsTotal: String(sum),
+            gcs15: (sum === 15 ? "yes" : "no") as ErYesNoUnknown,
+          };
+        }
+      }
+      return {
+        gcsTotal: "",
+        gcs15: ynuFromStorage(g("gcs15")),
+      };
+    })(),
     triageExceptionsNote: stringFromStorage(g("triageExceptionsNote")),
     painScale0to10: (() => {
       const p = g("painScale0to10");
@@ -307,6 +385,10 @@ const FLAT_FORM_KEYS: ErTriageV1FlatKey[] = [
   "airway",
   "breathing",
   "circulation",
+  "gcsEye",
+  "gcsVerbal",
+  "gcsMotor",
+  "gcsTotal",
   "gcs15",
   "triageExceptionsNote",
   "painScale0to10",
@@ -360,6 +442,26 @@ function valueForStorageFlat(key: ErTriageV1FlatKey, form: ErTriageV1Form): unkn
   }
   if (key === "airway" || key === "breathing" || key === "circulation") {
     if (t === "wnl" || t === "yes" || t === "no" || t === "unknown") return t;
+    return undefined;
+  }
+  if (key === "gcsEye") {
+    const n = parseInt(t, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= 4) return n;
+    return undefined;
+  }
+  if (key === "gcsVerbal") {
+    const n = parseInt(t, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= 5) return n;
+    return undefined;
+  }
+  if (key === "gcsMotor") {
+    const n = parseInt(t, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= 6) return n;
+    return undefined;
+  }
+  if (key === "gcsTotal") {
+    const n = parseInt(t, 10);
+    if (!Number.isNaN(n) && n >= 3 && n <= 15) return n;
     return undefined;
   }
   if (
