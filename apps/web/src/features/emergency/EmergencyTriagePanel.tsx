@@ -51,6 +51,7 @@ import {
   chiefComplaintSuggestsChestPain,
   draftTriageHasAllergyDocumentation,
   erTriageV1HasHighAcuityArrivalSource,
+  triageCoreVitalsDocumented,
 } from "./erTriageSafetyPrompts";
 import type { VitalsJsonMergeFormInput } from "./emergencyTriageVitalsMerge";
 import type { SupportedLanguage } from "@/i18n/config";
@@ -491,6 +492,44 @@ export function EmergencyTriagePanel({
     documentationReviewMissing.allergies ||
     documentationReviewMissing.gcsIncomplete;
 
+  const triageCompletenessMissing = useMemo(() => {
+    const vitals = !triageCoreVitalsDocumented(
+      formData.tempC,
+      formData.tempInputUnit,
+      formData.hr,
+      formData.rr,
+      formData.bpSys,
+      formData.bpDia,
+      formData.spo2
+    );
+    return {
+      chief: documentationReviewMissing.chiefComplaint,
+      completeAt: documentationReviewMissing.triageCompleteAt,
+      vitals,
+      allergies: documentationReviewMissing.allergies,
+      gcs: documentationReviewMissing.gcsIncomplete,
+    };
+  }, [
+    documentationReviewMissing.chiefComplaint,
+    documentationReviewMissing.triageCompleteAt,
+    documentationReviewMissing.allergies,
+    documentationReviewMissing.gcsIncomplete,
+    formData.tempC,
+    formData.tempInputUnit,
+    formData.hr,
+    formData.rr,
+    formData.bpSys,
+    formData.bpDia,
+    formData.spo2,
+  ]);
+
+  const triageCompletenessOk =
+    !triageCompletenessMissing.chief &&
+    !triageCompletenessMissing.completeAt &&
+    !triageCompletenessMissing.vitals &&
+    !triageCompletenessMissing.allergies &&
+    !triageCompletenessMissing.gcs;
+
   const showSafetyPrompts =
     safetyPromptFlags.chestPainEcg ||
     safetyPromptFlags.allergyMissing ||
@@ -563,6 +602,83 @@ export function EmergencyTriagePanel({
                 {saveInfo}
               </p>
             ) : null}
+
+            <div
+              style={{
+                marginTop: saveInfo ? 10 : 12,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1px solid ${triageCompletenessOk ? "#a7f3d0" : "#fde68a"}`,
+                backgroundColor: triageCompletenessOk ? "#ecfdf5" : "#fffbeb",
+              }}
+              aria-live="polite"
+            >
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, rowGap: 6 }}>
+                <p style={{ ...sectionHeading, margin: 0, color: triageCompletenessOk ? "#065f46" : "#92400e" }}>
+                  {t("erTriage.panel.triageCompletenessTitle")}
+                </p>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "3px 10px",
+                    borderRadius: 9999,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: triageCompletenessOk ? "#065f46" : "#92400e",
+                    backgroundColor: triageCompletenessOk ? "#d1fae5" : "#fef3c7",
+                    border: `1px solid ${triageCompletenessOk ? "#6ee7b7" : "#fcd34d"}`,
+                  }}
+                >
+                  {triageCompletenessOk
+                    ? t("erTriage.panel.triageCompletenessComplete")
+                    : t("erTriage.panel.triageCompletenessNeedsReview")}
+                </span>
+              </div>
+              {!triageCompletenessOk ? (
+                <div style={{ marginTop: 10 }}>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#64748b", lineHeight: 1.4 }}>
+                    {t("erTriage.panel.triageCompletenessMissing")}
+                  </p>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "#78350f", lineHeight: 1.5 }}>
+                    {triageCompletenessMissing.chief ? (
+                      <li>{t("erTriage.panel.triageMissingChief")}</li>
+                    ) : null}
+                    {triageCompletenessMissing.completeAt ? (
+                      <li>{t("erTriage.panel.triageMissingCompleteAt")}</li>
+                    ) : null}
+                    {triageCompletenessMissing.vitals ? (
+                      <li>{t("erTriage.panel.triageMissingVitals")}</li>
+                    ) : null}
+                    {triageCompletenessMissing.allergies ? (
+                      <li>{t("erTriage.panel.triageMissingAllergies")}</li>
+                    ) : null}
+                    {triageCompletenessMissing.gcs ? <li>{t("erTriage.panel.triageMissingGcs")}</li> : null}
+                  </ul>
+                </div>
+              ) : null}
+              {safetyPromptFlags.chestPainEcg || safetyPromptFlags.highAcuityArrival ? (
+                <ul
+                  style={{
+                    margin: triageCompletenessOk ? "10px 0 0" : "8px 0 0",
+                    paddingLeft: 18,
+                    fontSize: 11,
+                    color: "#64748b",
+                    lineHeight: 1.45,
+                    listStyleType: "disc",
+                  }}
+                >
+                  {safetyPromptFlags.chestPainEcg ? (
+                    <li style={{ marginBottom: safetyPromptFlags.highAcuityArrival ? 4 : 0 }}>
+                      {t("erTriage.panel.triageAdvisoryEcg")}
+                    </li>
+                  ) : null}
+                  {safetyPromptFlags.highAcuityArrival ? (
+                    <li style={{ margin: 0 }}>{t("erTriage.panel.triageAdvisoryHighAcuity")}</li>
+                  ) : null}
+                </ul>
+              ) : null}
+            </div>
 
             {showSafetyPrompts ? (
               <aside

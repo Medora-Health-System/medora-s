@@ -1,4 +1,4 @@
-import { encounterHasMedicationSafetyAllergyDocumentation } from "@medora/shared";
+import { canonicalTemperatureCelsius, encounterHasMedicationSafetyAllergyDocumentation } from "@medora/shared";
 import type { ErTriageV1Form } from "./medoraErTriageV1";
 import { mergeVitalsJsonForSave, type VitalsJsonMergeFormInput } from "./emergencyTriageVitalsMerge";
 
@@ -52,4 +52,26 @@ export function draftTriageHasAllergyDocumentation(
   return encounterHasMedicationSafetyAllergyDocumentation({
     triageVitalsJson: merged && typeof merged === "object" ? merged : {},
   });
+}
+
+/**
+ * True when temperature (canonical °C), HR, RR, BP (sys/dia), and SpO₂ are all entered and parseable
+ * — same numeric row staff expect on the triage vitals form (advisory completeness only).
+ */
+export function triageCoreVitalsDocumented(
+  tempC: string,
+  tempInputUnit: "C" | "F" | undefined,
+  hr: string,
+  rr: string,
+  bpSys: string,
+  bpDia: string,
+  spo2: string
+): boolean {
+  if (canonicalTemperatureCelsius(tempC, tempInputUnit) == null) return false;
+  const parts = [hr, rr, bpSys, bpDia, spo2];
+  for (const p of parts) {
+    const n = parseInt(p.trim(), 10);
+    if (Number.isNaN(n)) return false;
+  }
+  return true;
 }
