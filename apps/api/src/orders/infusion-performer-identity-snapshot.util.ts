@@ -26,8 +26,38 @@ export type BuildInfusionPerformerIdentitySnapshotInput = {
 };
 
 /**
- * Pure builder — load User + UserRole in the service, then call this.
+ * Builds identity snapshot from DB user (optional) + resolved role rows + optional JWT/facility role fallback.
+ * Null-safe on role rows — never throws on missing `role` joins.
  */
+export function buildInfusionPerformerIdentitySnapshotFromDbParts(input: {
+  userId: string;
+  user: { firstName: string | null; lastName: string | null } | null;
+  /** Non-null role rows only (code required). */
+  roleRows: Array<{ code: string; name: string | null }>;
+  /** When DB has no UserRole rows (or all orphaned), use request role codes from auth (e.g. RN). */
+  requestorRoleCodesFallback?: readonly string[];
+  actionRecordedAt?: string;
+}): InfusionPerformerIdentitySnapshot {
+  const sorted = [...input.roleRows].sort((a, b) => a.code.localeCompare(b.code));
+  const uniqueFromDb = [...new Set(sorted.map((r) => r.code))];
+  let roleCodesPipe = uniqueFromDb.join("|");
+  if (!roleCodesPipe && input.requestorRoleCodesFallback?.length) {
+    roleCodesPipe = [...new Set(input.requestorRoleCodesFallback.map(String))].sort().join("|");
+  }
+  if (!roleCodesPipe) {
+    roleCodesPipe = "UNKNOWN";
+  }
+  const primaryRoleTitle = sorted[0]?.name?.trim() || sorted[0]?.code || null;
+  return buildInfusionPerformerIdentitySnapshot({
+    userId: input.userId,
+    firstName: input.user?.firstName ?? null,
+    lastName: input.user?.lastName ?? null,
+    roleCodesPipe,
+    primaryRoleTitle,
+    actionRecordedAt: input.actionRecordedAt,
+  });
+}
+
 export function buildInfusionPerformerIdentitySnapshot(
   input: BuildInfusionPerformerIdentitySnapshotInput
 ): InfusionPerformerIdentitySnapshot {

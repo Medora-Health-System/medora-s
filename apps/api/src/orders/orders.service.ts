@@ -52,7 +52,7 @@ import {
   buildMedicationInfusionCandidateInputFromOrderItem,
 } from "../common/medication/medication-infusion-candidate-from-order-item.util";
 import {
-  buildInfusionPerformerIdentitySnapshot,
+  buildInfusionPerformerIdentitySnapshotFromDbParts,
   resolvePerformedByDisplayNameFromOrderEvent,
   type InfusionPerformerIdentitySnapshot,
 } from "./infusion-performer-identity-snapshot.util";
@@ -573,7 +573,8 @@ export class OrdersService {
       where: { facilityId, userId, isActive: true },
       include: { role: { select: { code: true } } },
     });
-    const unique = [...new Set(roles.map((r) => r.role.code))];
+    const codes = roles.flatMap((r) => (r.role ? [r.role.code] : []));
+    const unique = [...new Set(codes)].sort((a, b) => a.localeCompare(b));
     if (unique.length === 0) return "UNKNOWN";
     return unique.join("|");
   }
@@ -584,6 +585,7 @@ export class OrdersService {
   private async loadInfusionPerformerIdentitySnapshot(
     facilityId: string,
     userId: string,
+    requestorRoleCodes: RoleCode[],
     tx?: Prisma.TransactionClient
   ): Promise<InfusionPerformerIdentitySnapshot> {
     const db = tx ?? this.prisma;
@@ -591,23 +593,18 @@ export class OrdersService {
       where: { id: userId },
       select: { firstName: true, lastName: true },
     });
-    if (!user) {
-      throw new NotFoundException("Utilisateur introuvable pour l'audit de perfusion.");
-    }
     const urs = await db.userRole.findMany({
       where: { facilityId, userId, isActive: true },
       include: { role: { select: { code: true, name: true } } },
     });
-    const sorted = [...urs].sort((a, b) => a.role.code.localeCompare(b.role.code));
-    const codes = [...new Set(sorted.map((r) => r.role.code))];
-    const roleCodesPipe = codes.length > 0 ? codes.join("|") : "UNKNOWN";
-    const primaryRoleTitle = sorted[0]?.role.name?.trim() || sorted[0]?.role.code || null;
-    return buildInfusionPerformerIdentitySnapshot({
+    const roleRows = urs.flatMap((r) =>
+      r.role ? [{ code: r.role.code, name: r.role.name }] : []
+    );
+    return buildInfusionPerformerIdentitySnapshotFromDbParts({
       userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      roleCodesPipe,
-      primaryRoleTitle,
+      user,
+      roleRows,
+      requestorRoleCodesFallback: requestorRoleCodes,
     });
   }
 
@@ -2187,7 +2184,11 @@ export class OrdersService {
     const infusionSessionKey = randomUUID();
     const infusionStartedAt = new Date();
     const startedIso = infusionStartedAt.toISOString();
-    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(facilityId, userId);
+    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(
+      facilityId,
+      userId,
+      requestorRoleCodes
+    );
 
     const startMeta: Record<string, unknown> = {
       infusionScope: "MEDICATION_INFUSION",
@@ -2338,7 +2339,11 @@ export class OrdersService {
       throw new BadRequestException("Infusion already stopped");
     }
 
-    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(facilityId, userId);
+    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(
+      facilityId,
+      userId,
+      requestorRoleCodes
+    );
 
     const marRow = await this.medicationAdministration.create(
       orderItem.order.encounterId,
