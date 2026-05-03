@@ -108,6 +108,68 @@ function marOrderItemToSafetyCatalogInput(it: OrderItemApi, displayLabel: string
 
 const RECENT_MS = 24 * 60 * 60 * 1000;
 
+/** MAR infusion “Last action” column: readable shell (aligned with Medora panel tokens). */
+const MAR_INFUSION_LAST_ACTION_SHELL: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 14,
+  minWidth: 0,
+  padding: "12px 14px",
+  borderRadius: 12,
+  border: "1px solid #e2e8f0",
+  backgroundColor: "#f8fafc",
+  boxSizing: "border-box",
+};
+
+const MAR_INFUSION_STATUS_BADGE_ACTIVE: React.CSSProperties = {
+  alignSelf: "flex-start",
+  padding: "5px 12px",
+  borderRadius: 9999,
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: "0.01em",
+  backgroundColor: "#e0f2fe",
+  color: "#0369a1",
+  border: "1px solid #7dd3fc",
+};
+
+const MAR_INFUSION_STATUS_BADGE_COMPLETED: React.CSSProperties = {
+  alignSelf: "flex-start",
+  padding: "5px 12px",
+  borderRadius: 9999,
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: "0.01em",
+  backgroundColor: "#ccfbf1",
+  color: "#0f766e",
+  border: "1px solid #5eead4",
+};
+
+const MAR_INFUSION_META_LINE_ACTIVE: React.CSSProperties = {
+  fontSize: 13,
+  color: "#0c4a6e",
+  lineHeight: 1.5,
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+};
+
+const MAR_INFUSION_META_LINE_COMPLETED: React.CSSProperties = {
+  fontSize: 13,
+  color: "#134e4a",
+  lineHeight: 1.5,
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+};
+
+const MAR_INFUSION_ACTIONS_STACK: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  minWidth: 0,
+  paddingTop: 4,
+  borderTop: "1px solid #e2e8f0",
+};
+
 type MarOrderEventRow = {
   id: string;
   orderId: string;
@@ -726,7 +788,18 @@ export function MedicationAdministrationTab({
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnIssued")}</th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnWhen")}</th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnOrderLine")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnLastAction")}</th>
+                <th
+                  style={{
+                    padding: "10px 8px",
+                    textAlign: "left",
+                    fontSize: 12,
+                    minWidth: 200,
+                    width: "28%",
+                    verticalAlign: "bottom",
+                  }}
+                >
+                  {t("marTab.columnLastAction")}
+                </th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnTitle")}</th>
               </tr>
             </thead>
@@ -786,27 +859,24 @@ export function MedicationAdministrationTab({
                   );
                   const byJoined = byParts.join(t("infusionTimeline.infusionTimelineDivider"));
                   statusCell = (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={{ fontWeight: 700, color: "#0369a1" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+                      <span style={MAR_INFUSION_STATUS_BADGE_ACTIVE}>
                         {t("erEmergencyOrders.infusionInProgress")}
                       </span>
                       {startedAtStr ? (
-                        <span style={{ fontSize: 12, color: "#0c4a6e" }}>
-                          {byJoined
-                            ? t("erEmergencyOrders.infusionStartedByLine")
-                                .replace("{at}", startedAtStr)
-                                .replace("{by}", byJoined)
-                            : t("erEmergencyOrders.infusionStartedAtLabel").replace("{at}", startedAtStr)}
-                        </span>
-                      ) : byJoined ? (
-                        <span style={{ fontSize: 12, color: "#0c4a6e" }}>
+                        <div style={MAR_INFUSION_META_LINE_ACTIVE}>
+                          {t("erEmergencyOrders.infusionStartedAtLabel").replace("{at}", startedAtStr)}
+                        </div>
+                      ) : null}
+                      {byJoined ? (
+                        <div style={MAR_INFUSION_META_LINE_ACTIVE}>
                           {t("erEmergencyOrders.infusionStartedByOnly").replace("{by}", byJoined)}
-                        </span>
+                        </div>
                       ) : null}
                       {elapsedInner ? (
-                        <span style={{ fontSize: 12, color: "#0c4a6e" }}>
+                        <div style={MAR_INFUSION_META_LINE_ACTIVE}>
                           {t("marTab.infusionElapsedLabel").replace("{elapsed}", elapsedInner)}
-                        </span>
+                        </div>
                       ) : null}
                     </div>
                   );
@@ -849,19 +919,19 @@ export function MedicationAdministrationTab({
                         )
                       : t("common.dash");
                   statusCell = (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={{ fontWeight: 700, color: "#0f766e" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+                      <span style={MAR_INFUSION_STATUS_BADGE_COMPLETED}>
                         {t("infusionTimeline.infusionCompleted")}
                       </span>
-                      <span style={{ fontSize: 12, color: "#134e4a" }}>
+                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>
                         {t("infusionTimeline.infusionStartedAt").replace("{at}", startAt)}
-                      </span>
-                      <span style={{ fontSize: 12, color: "#134e4a" }}>
+                      </div>
+                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>
                         {t("infusionTimeline.infusionStoppedAt").replace("{at}", stopAt)}
-                      </span>
-                      <span style={{ fontSize: 12, color: "#134e4a" }}>{durLine}</span>
-                      <span style={{ fontSize: 12, color: "#134e4a" }}>{startByLine}</span>
-                      <span style={{ fontSize: 12, color: "#134e4a" }}>{stopByLine}</span>
+                      </div>
+                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>{durLine}</div>
+                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>{startByLine}</div>
+                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>{stopByLine}</div>
                     </div>
                   );
                 } else if (marSaysAdministered) {
@@ -976,108 +1046,131 @@ export function MedicationAdministrationTab({
                         </div>
                       ) : null}
                     </td>
-                    <td style={{ padding: "12px 8px", fontSize: 14 }}>
-                      <div style={{ marginBottom: 8 }}>{statusCell}</div>
+                    <td
+                      style={{
+                        padding: "12px 8px",
+                        fontSize: 14,
+                        verticalAlign: "top",
+                        minWidth: 0,
+                        width: "28%",
+                        overflow: "hidden",
+                      }}
+                    >
                       {row.isInfusionLifecycleMed ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 220 }}>
-                          {!activeMarInfusion ? (
+                        <div style={MAR_INFUSION_LAST_ACTION_SHELL}>
+                          <div style={{ minWidth: 0 }}>{statusCell}</div>
+                          <div style={MAR_INFUSION_ACTIONS_STACK}>
+                            {!activeMarInfusion ? (
+                              <button
+                                type="button"
+                                disabled={primaryInfusionDisabled}
+                                onClick={() =>
+                                  void runMarInfusion(
+                                    row.orderItemId,
+                                    resolvedOrderIdForInfusion || row.orderItemId,
+                                    "start"
+                                  )
+                                }
+                                style={{
+                                  padding: "10px 14px",
+                                  fontSize: 14,
+                                  minHeight: 44,
+                                  width: "100%",
+                                  minWidth: 0,
+                                  boxSizing: "border-box",
+                                  backgroundColor: isOpen && !marRowLocked ? "#1565c0" : "#bdbdbd",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: 6,
+                                  cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
+                                  fontWeight: 600,
+                                  whiteSpace: "normal",
+                                }}
+                              >
+                                {infusionBusyStart
+                                  ? t("marTab.infusionStarting")
+                                  : t("marTab.startInfusion")}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={primaryInfusionDisabled}
+                                onClick={() =>
+                                  void runMarInfusion(
+                                    row.orderItemId,
+                                    resolvedOrderIdForInfusion || row.orderItemId,
+                                    "stop"
+                                  )
+                                }
+                                style={{
+                                  padding: "10px 14px",
+                                  fontSize: 14,
+                                  minHeight: 44,
+                                  width: "100%",
+                                  minWidth: 0,
+                                  boxSizing: "border-box",
+                                  backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: 6,
+                                  cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
+                                  fontWeight: 600,
+                                  whiteSpace: "normal",
+                                }}
+                              >
+                                {infusionBusyStop
+                                  ? t("marTab.infusionStopping")
+                                  : t("marTab.stopInfusion")}
+                              </button>
+                            )}
                             <button
                               type="button"
-                              disabled={primaryInfusionDisabled}
-                              onClick={() =>
-                                void runMarInfusion(
-                                  row.orderItemId,
-                                  resolvedOrderIdForInfusion || row.orderItemId,
-                                  "start"
-                                )
-                              }
+                              disabled={!isOpen || submitting || marRowLocked}
+                              onClick={() => openModal(row, { hideAdministeredAction: true })}
                               style={{
-                                padding: "10px 14px",
-                                fontSize: 14,
-                                minHeight: 44,
+                                padding: "8px 10px",
+                                fontSize: 12,
+                                minHeight: 40,
                                 width: "100%",
-                                backgroundColor: isOpen && !marRowLocked ? "#1565c0" : "#bdbdbd",
-                                color: "white",
-                                border: "none",
+                                minWidth: 0,
+                                boxSizing: "border-box",
+                                backgroundColor: "white",
+                                color: "#1565c0",
+                                border: "1px solid #90caf9",
                                 borderRadius: 6,
-                                cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
+                                cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
                                 fontWeight: 600,
+                                whiteSpace: "normal",
                               }}
                             >
-                              {infusionBusyStart
-                                ? t("marTab.infusionStarting")
-                                : t("marTab.startInfusion")}
+                              {t("marTab.infusionAltMarActions")}
                             </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={primaryInfusionDisabled}
-                              onClick={() =>
-                                void runMarInfusion(
-                                  row.orderItemId,
-                                  resolvedOrderIdForInfusion || row.orderItemId,
-                                  "stop"
-                                )
-                              }
-                              style={{
-                                padding: "10px 14px",
-                                fontSize: 14,
-                                minHeight: 44,
-                                width: "100%",
-                                backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
-                                color: "white",
-                                border: "none",
-                                borderRadius: 6,
-                                cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {infusionBusyStop
-                                ? t("marTab.infusionStopping")
-                                : t("marTab.stopInfusion")}
-                            </button>
-                          )}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ marginBottom: 8, minWidth: 0 }}>{statusCell}</div>
                           <button
                             type="button"
                             disabled={!isOpen || submitting || marRowLocked}
-                            onClick={() => openModal(row, { hideAdministeredAction: true })}
+                            onClick={() => openModal(row)}
                             style={{
-                              padding: "8px 10px",
-                              fontSize: 12,
-                              minHeight: 40,
+                              padding: "10px 14px",
+                              fontSize: 14,
+                              minHeight: 44,
                               width: "100%",
-                              backgroundColor: "white",
-                              color: "#1565c0",
-                              border: "1px solid #90caf9",
+                              maxWidth: 200,
+                              backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
+                              color: "white",
+                              border: "none",
                               borderRadius: 6,
                               cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
                               fontWeight: 600,
                             }}
                           >
-                            {t("marTab.infusionAltMarActions")}
+                            {t("marTab.administer")}
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={!isOpen || submitting || marRowLocked}
-                          onClick={() => openModal(row)}
-                          style={{
-                            padding: "10px 14px",
-                            fontSize: 14,
-                            minHeight: 44,
-                            width: "100%",
-                            maxWidth: 200,
-                            backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
-                            color: "white",
-                            border: "none",
-                            borderRadius: 6,
-                            cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {t("marTab.administer")}
-                        </button>
+                        </>
                       )}
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
