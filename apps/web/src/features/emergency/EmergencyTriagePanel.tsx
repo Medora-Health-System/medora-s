@@ -43,8 +43,20 @@ import {
 import {
   filterErChiefComplaintTemplates,
   pickChiefComplaintLocale,
+  type ErChiefComplaintBilingual,
   type ErChiefComplaintTemplate,
 } from "./erChiefComplaintTemplates";
+import type { SupportedLanguage } from "@/i18n/config";
+
+function applyTemplateBilingualIfFieldEmpty(
+  current: string,
+  bilingual: ErChiefComplaintBilingual | undefined,
+  language: SupportedLanguage
+): string {
+  if (!bilingual) return current;
+  if (current.trim()) return current;
+  return pickChiefComplaintLocale(bilingual, language);
+}
 
 type EncounterLite = {
   id: string;
@@ -178,6 +190,7 @@ export function EmergencyTriagePanel({
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
   const [complaintTemplateQuery, setComplaintTemplateQuery] = useState("");
+  const [templateAppliedHint, setTemplateAppliedHint] = useState<string | null>(null);
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
@@ -208,21 +221,40 @@ export function EmergencyTriagePanel({
 
   const applyChiefComplaintTemplate = useCallback(
     (tpl: ErChiefComplaintTemplate) => {
+      setTemplateAppliedHint(t("erTriage.panel.templateAppliedHint"));
       setFormData((f) => {
-        const next: TriageFormState = {
+        const er = f.erV1;
+        const nextEr: ErTriageV1Form = {
+          ...er,
+          triageNarrative: applyTemplateBilingualIfFieldEmpty(er.triageNarrative, tpl.triageNarrativeStarter, language),
+          ppeNote: applyTemplateBilingualIfFieldEmpty(er.ppeNote, tpl.ppePrecautions, language),
+          referralSource: applyTemplateBilingualIfFieldEmpty(er.referralSource, tpl.sourceRouting, language),
+          triageExceptionsNote: applyTemplateBilingualIfFieldEmpty(
+            er.triageExceptionsNote,
+            tpl.exceptionsToExpectedProfile,
+            language
+          ),
+          nursingCareNote: applyTemplateBilingualIfFieldEmpty(er.nursingCareNote, tpl.careMonitoringSummary, language),
+          medicationsSummary: applyTemplateBilingualIfFieldEmpty(er.medicationsSummary, tpl.medicationSummary, language),
+          additionalAllergyInfo: applyTemplateBilingualIfFieldEmpty(
+            er.additionalAllergyInfo,
+            tpl.additionalAllergyInfo,
+            language
+          ),
+          historySocialComments: applyTemplateBilingualIfFieldEmpty(
+            er.historySocialComments,
+            tpl.historySocialComments,
+            language
+          ),
+        };
+        return {
           ...f,
           chiefComplaint: pickChiefComplaintLocale(tpl.chiefComplaint, language),
+          erV1: nextEr,
         };
-        if (tpl.triageNarrativeStarter && !f.erV1.triageNarrative.trim()) {
-          next.erV1 = {
-            ...f.erV1,
-            triageNarrative: pickChiefComplaintLocale(tpl.triageNarrativeStarter, language),
-          };
-        }
-        return next;
       });
     },
-    [language]
+    [language, t]
   );
 
   const patchErV1 = useCallback((patch: Partial<ErTriageV1Form>) => {
@@ -232,6 +264,7 @@ export function EmergencyTriagePanel({
   const loadTriage = useCallback(async () => {
     setLoading(true);
     setSaveInfo(null);
+    setTemplateAppliedHint(null);
     try {
       const data = await apiFetch(`/encounters/${encounter.id}/triage`, { facilityId });
       setTriage(data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : null);
@@ -288,6 +321,7 @@ export function EmergencyTriagePanel({
     if (formDisabled) return;
     setSaving(true);
     setSaveInfo(null);
+    setTemplateAppliedHint(null);
 
     const strokeJson = strokeScreenFormToJson(formData.strokeScreen, triage?.strokeScreen);
     const sepsisJson = sepsisScreenFormToJson(formData.sepsisScreen, triage?.sepsisScreen);
@@ -535,6 +569,19 @@ export function EmergencyTriagePanel({
                             ))}
                           </div>
                         )}
+                        {templateAppliedHint ? (
+                          <p
+                            role="status"
+                            style={{
+                              margin: "8px 0 0",
+                              fontSize: 12,
+                              color: "#64748b",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {templateAppliedHint}
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>

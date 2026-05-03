@@ -1,6 +1,6 @@
 /**
  * Deterministic ER chief-complaint templates for triage (bilingual FR/EN catalog).
- * No diagnoses, exam findings, or orders — chief complaint + optional narrative starter only.
+ * Chief complaint + optional editable prompt prefills (no asserted negatives, no orders).
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
@@ -16,6 +16,14 @@ export type ErChiefComplaintTemplate = {
   chiefComplaint: ErChiefComplaintBilingual;
   /** Prefills `medoraErTriageV1.triageNarrative` when that field is empty. */
   triageNarrativeStarter?: ErChiefComplaintBilingual;
+  /** Optional prefills for `ErTriageV1Form` — applied only when the target field is empty (editable prompts). */
+  ppePrecautions?: ErChiefComplaintBilingual;
+  sourceRouting?: ErChiefComplaintBilingual;
+  exceptionsToExpectedProfile?: ErChiefComplaintBilingual;
+  careMonitoringSummary?: ErChiefComplaintBilingual;
+  medicationSummary?: ErChiefComplaintBilingual;
+  additionalAllergyInfo?: ErChiefComplaintBilingual;
+  historySocialComments?: ErChiefComplaintBilingual;
 };
 
 export function pickChiefComplaintLocale(b: ErChiefComplaintBilingual, locale: SupportedLanguage): string {
@@ -30,8 +38,16 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["chest", "thoracic", "precordial", "heart"],
     chiefComplaint: { fr: "Douleur thoracique", en: "Chest pain" },
     triageNarrativeStarter: {
-      fr: "Plainte de douleur thoracique ; caractères, irradiation et facteurs associés à préciser.",
-      en: "Chest pain complaint; characterize radiation and associated factors.",
+      en: "Chest pain evaluation: onset, duration, location, radiation, severity, associated symptoms, cardiac history/risk factors, medications taken before arrival, and response to interventions.",
+      fr: "Évaluation douleur thoracique : début, durée, siège, irradiation, intensité, signes associés, antécédents cardiovasculaires et facteurs de risque, traitements pris avant l’arrivée, réponse aux interventions.",
+    },
+    medicationSummary: {
+      en: "Document home medications and any taken before arrival (dose and time if known).",
+      fr: "Préciser les traitements habituels et ceux pris avant l’arrivée (dose et heure si connues).",
+    },
+    additionalAllergyInfo: {
+      en: "Document medication and other allergies relevant to this presentation (if not recorded elsewhere).",
+      fr: "Préciser allergies médicamenteuses et autres si pertinentes pour cette présentation (si non déjà consignées ailleurs).",
     },
   },
   {
@@ -41,8 +57,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["dyspnea", "shortness", "breath", "sob", "respiratory"],
     chiefComplaint: { fr: "Dyspnée", en: "Dyspnea" },
     triageNarrativeStarter: {
-      fr: "Gêne respiratoire ; début et évolution à préciser.",
-      en: "Respiratory discomfort; document onset and course.",
+      en: "Dyspnea evaluation: onset, exertional vs at rest, orthopnea, cough, fever, sick contacts or travel, baseline lung disease, home oxygen or interventions before arrival.",
+      fr: "Évaluation dyspnée : début, à l’effort ou au repos, orthopnée, toux, fièvre, contacts ou voyages, pathologie respiratoire de base, oxygène domicile ou interventions avant l’arrivée.",
+    },
+    ppePrecautions: {
+      en: "If indicated: document isolation and PPE per local protocol (e.g. respiratory precautions).",
+      fr: "Si indiqué : préciser isolement et EPI selon protocole local (précautions respiratoires, etc.).",
     },
   },
   {
@@ -52,8 +72,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["abdomen", "belly", "stomach", "gi", "nausea"],
     chiefComplaint: { fr: "Douleur abdominale", en: "Abdominal pain" },
     triageNarrativeStarter: {
-      fr: "Douleur abdominale ; localisation et évolution à préciser.",
-      en: "Abdominal pain; document location and course.",
+      en: "Abdominal pain evaluation: onset, location, migration, severity, associated nausea or vomiting, bowel habit, last oral intake, similar episodes, and prior abdominal surgery.",
+      fr: "Évaluation douleur abdominale : début, siège, migration, intensité, nausées ou vomissements, transit, dernier repas, épisodes similaires, chirurgies abdominales antérieures.",
+    },
+    exceptionsToExpectedProfile: {
+      en: "Document atypical features for this complaint (e.g. pain pattern, associated symptoms) to guide further assessment.",
+      fr: "Préciser les éléments atypiques pour cette plainte (mode douloureux, signes associés) pour orienter l’évaluation.",
     },
   },
   {
@@ -74,8 +98,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["fever", "temperature", "chills"],
     chiefComplaint: { fr: "Fièvre", en: "Fever" },
     triageNarrativeStarter: {
-      fr: "Fièvre rapportée ; durée et signes associés à préciser.",
-      en: "Reported fever; document duration and associated symptoms.",
+      en: "Fever evaluation: measured vs reported, duration, pattern, focal symptoms, rash, sick contacts, travel, hydration, and medications or cooling measures before arrival.",
+      fr: "Évaluation fièvre : mesurée ou rapportée, durée, allure, signes fonctionnels associés, éruption, contacts ou voyages, hydratation, traitements ou mesures antipyrétiques avant l’arrivée.",
+    },
+    careMonitoringSummary: {
+      en: "Document intake/output and comfort measures already provided while awaiting further assessment.",
+      fr: "Préciser hydratisation, diurèse si pertinent, et mesures de confort déjà mises en attendant la poursuite de l’évaluation.",
     },
   },
   {
@@ -85,8 +113,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["weakness", "malaise", "fatigue", "asthenia"],
     chiefComplaint: { fr: "Faiblesse / malaise", en: "Weakness / malaise" },
     triageNarrativeStarter: {
-      fr: "Faiblesse ou malaise ; contexte et chronologie à préciser.",
-      en: "Weakness or malaise; document context and timeline.",
+      en: "Weakness or malaise evaluation: onset and progression, focal vs generalized, gait or balance changes, fever, recent illness, hydration, and ability to perform usual tasks.",
+      fr: "Évaluation faiblesse ou malaise : début et évolution, focalisée ou diffuse, marche ou équilibre, fièvre, épisode récent, hydratation, capacités fonctionnelles usuelles.",
+    },
+    historySocialComments: {
+      en: "Document recent infections, travel, new medications, or substance use relevant to this presentation.",
+      fr: "Préciser infections récentes, voyages, nouveaux traitements ou consommations pertinentes pour cette présentation.",
     },
   },
   {
@@ -96,8 +128,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["dizziness", "syncope", "lightheaded", "vertigo"],
     chiefComplaint: { fr: "Étourdissement / syncope", en: "Dizziness / syncope" },
     triageNarrativeStarter: {
-      fr: "Symptômes neurovégétatifs ; circonstances et récupération à préciser.",
-      en: "Presyncope/syncope symptoms; document circumstances and recovery.",
+      en: "Dizziness or syncope evaluation: onset, triggers, prodrome, loss of consciousness, injury from fall, chest pain, palpitations, hydration, and events before arrival.",
+      fr: "Évaluation étourdissements ou syncope : début, déclencheurs, prodromes, perte de conscience, traumatisme de chute, douleur thoracique, palpitations, hydratation, circonstances avant l’arrivée.",
+    },
+    medicationSummary: {
+      en: "Document antihypertensives, diuretics, or other medications that may relate to symptoms (if known).",
+      fr: "Préciser antihypertenseurs, diurétiques ou autres traitements pouvant être liés aux symptômes (si connus).",
     },
   },
   {
@@ -110,8 +146,16 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
       en: "Neurologic deficit / stroke concern",
     },
     triageNarrativeStarter: {
-      fr: "Symptômes neurologiques en cours ; heure de début et évolution à préciser (filière selon protocole local).",
-      en: "Acute neurologic symptoms; document onset time and course (local pathway).",
+      en: "Acute neurologic symptoms evaluation: time last known well, onset pattern, focal deficits (face, arm, leg, speech, vision), headache, trauma, anticoagulants, prior strokes or baseline deficits.",
+      fr: "Évaluation symptômes neurologiques aigus : heure de référence / dernière fois vu normal, mode d’installation, déficits focalisés (visage, membre, parole, vision), céphalée, traumatisme, anticoagulation, antécédents vasculaires ou déficit de base.",
+    },
+    sourceRouting: {
+      en: "Document arrival mode and routing per local acute neuro or stroke pathway.",
+      fr: "Préciser mode d’arrivée et orientation selon filière locale neuro aigu / suspicion AVC.",
+    },
+    medicationSummary: {
+      en: "Document antiplatelets, anticoagulants, and recent antithrombotic changes if known.",
+      fr: "Préciser antiplaquettaires, anticoagulants et changements récents si connus.",
     },
   },
   {
@@ -121,8 +165,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["trauma", "accident", "injury", "mva"],
     chiefComplaint: { fr: "Traumatisme", en: "Trauma" },
     triageNarrativeStarter: {
-      fr: "Traumatisme ; mécanisme et lésions perçues à préciser.",
-      en: "Trauma; document mechanism and perceived injuries.",
+      en: "Trauma evaluation: mechanism, protective equipment, loss of consciousness, neck pain, external bleeding, pain locations, interventions before arrival, and prehospital care received.",
+      fr: "Évaluation traumatisme : mécanisme, protection, perte de conscience, cervicalgie, hémorragie externe, sièges douloureux, interventions avant l’arrivée, soins préhospitaliers.",
+    },
+    exceptionsToExpectedProfile: {
+      en: "Document extrication time, immobilization, and penetrating vs blunt mechanism if applicable.",
+      fr: "Préciser délais d’extraction, immobilisation et mécanisme pénétrant ou contondant si pertinent.",
     },
   },
   {
@@ -132,8 +180,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["fall", "fell", "slip"],
     chiefComplaint: { fr: "Chute", en: "Fall" },
     triageNarrativeStarter: {
-      fr: "Chute ; circonstances et traumatisme associé à préciser.",
-      en: "Fall; document circumstances and associated injury.",
+      en: "Fall evaluation: circumstances, surface, witnessed vs unwitnessed, head strike, anticoagulation, prior falls, mobility aids, injury locations, and ability to bear weight afterward.",
+      fr: "Évaluation chute : circonstances, terrain, témoin ou non, choc crânien, anticoagulation, antécédents de chute, aide à la marche, sièges lésionnels, reprise de la station debout.",
+    },
+    careMonitoringSummary: {
+      en: "Document who witnessed the fall and baseline mobility compared to now.",
+      fr: "Préciser témoins de la chute et autonomie habituelle comparée à l’état actuel.",
     },
   },
   {
@@ -143,8 +195,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["wound", "laceration", "cut", "bleeding", "suture"],
     chiefComplaint: { fr: "Plaie / lacération", en: "Wound / laceration" },
     triageNarrativeStarter: {
-      fr: "Plaie ; siège, ampleur et antécédent tétanique à préciser si indiqué.",
-      en: "Wound; document site, extent, and tetanus status if relevant.",
+      en: "Wound evaluation: mechanism, time of injury, depth and contamination, bleeding control measures, tetanus immunization status if relevant, sensation and function distal to injury.",
+      fr: "Évaluation plaie : mécanisme, heure de la lésion, profondeur et souillure, mesures d’hémostase, statut antitétanique si pertinent, sensibilité et fonction en aval de la lésion.",
+    },
+    additionalAllergyInfo: {
+      en: "Document latex or local anesthetic allergies if wound care or repair is anticipated.",
+      fr: "Préciser allergies au latex ou aux anesthésiques locaux si soins ou suture envisagés.",
     },
   },
   {
@@ -154,8 +210,12 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["vomit", "vomiting", "diarrhea", "nausea", "gastro"],
     chiefComplaint: { fr: "Vomissements / diarrhée", en: "Vomiting / diarrhea" },
     triageNarrativeStarter: {
-      fr: "Troubles digestifs ; hydratation et contexte à préciser.",
-      en: "GI symptoms; document hydration status and context.",
+      en: "GI symptoms evaluation: vomiting vs diarrhea predominance, onset, frequency, blood or bile, abdominal pain, last oral intake, hydration signs, and recent food or travel.",
+      fr: "Évaluation troubles digestifs : vomissements ou diarrhée, début, fréquence, sang ou bile, douleur abdominale, dernier repas, signes d’hydratation, repas récents ou voyages.",
+    },
+    ppePrecautions: {
+      en: "If indicated: document contact or droplet precautions per local protocol.",
+      fr: "Si indiqué : préciser précautions contact ou gouttelettes selon protocole local.",
     },
   },
   {
@@ -187,8 +247,16 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
     searchTermsEn: ["allergy", "allergic", "urticaria", "anaphylaxis"],
     chiefComplaint: { fr: "Réaction allergique", en: "Allergic reaction" },
     triageNarrativeStarter: {
-      fr: "Réaction allergique suspectée ; exposition et signes à préciser.",
-      en: "Suspected allergic reaction; document exposure and symptoms.",
+      en: "Suspected allergic reaction evaluation: suspected trigger or exposure, onset, skin or airway symptoms, prior similar reactions, medications given before arrival, and observed course.",
+      fr: "Évaluation suspicion réaction allergique : exposition ou déclencheur suspect, début, signes cutanés ou respiratoires, épisodes similaires, traitements pris avant l’arrivée, évolution observée.",
+    },
+    additionalAllergyInfo: {
+      en: "Document known allergens and prior severe reactions (including contrast or latex if relevant).",
+      fr: "Préciser allergènes connus et antécédents de réactions graves (dont produit de contraste ou latex si pertinent).",
+    },
+    medicationSummary: {
+      en: "Document epinephrine or antihistamines taken before arrival (dose/time if known).",
+      fr: "Préciser adrénaline ou antihistaminiques pris avant l’arrivée (dose et heure si connues).",
     },
   },
   {

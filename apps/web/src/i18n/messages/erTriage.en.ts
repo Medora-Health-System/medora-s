@@ -63,6 +63,7 @@ export const erTriageMessagesEn = {
     readonlyEncounter: "Encounter closed — triage read-only.",
     readonlyLocked: "Chart signed — triage read-only.",
     linkFullTriageTab: "Triage tab (full chart)",
+    templateAppliedHint: "Template applied. Review and edit before saving.",
   },
   v1: {
     badge: "Triage V1",

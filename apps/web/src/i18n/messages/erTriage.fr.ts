@@ -64,6 +64,7 @@ export const erTriageMessagesFr = {
     readonlyEncounter: "Consultation fermée — triage en lecture seule.",
     readonlyLocked: "Dossier médical signé — triage en lecture seule.",
     linkFullTriageTab: "Onglet triage (dossier complet)",
+    templateAppliedHint: "Modèle appliqué. Vérifiez et modifiez avant d'enregistrer.",
   },
   v1: {
     badge: "Triage V1",
