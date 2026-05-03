@@ -196,6 +196,67 @@ const EXAM_CHIP_GROUPS: readonly {
   },
 ] as const;
 
+type MdmAppendChipField =
+  | "mdmWorkingAssessment"
+  | "mdmPlanSummary"
+  | "mdmImmediateActionsRationale"
+  | "mdmConsultsDiscussed"
+  | "mdmAdmitObserveDischarge";
+
+const MDM_CHIP_GROUPS: readonly {
+  field: MdmAppendChipField;
+  categoryKey: string;
+  fragmentKeys: readonly string[];
+}[] = [
+  {
+    field: "mdmWorkingAssessment",
+    categoryKey: "catWorkingAssessment",
+    fragmentKeys: [
+      "waUndifferentiated",
+      "waInfectious",
+      "waCardiopulmonary",
+      "waNeurologic",
+      "waAbdominal",
+      "waTrauma",
+      "waMedIntox",
+    ],
+  },
+  {
+    field: "mdmPlanSummary",
+    categoryKey: "catPlanSummary",
+    fragmentKeys: [
+      "planLabs",
+      "planImaging",
+      "planEcg",
+      "planMeds",
+      "planReassess",
+      "planSdM",
+    ],
+  },
+  {
+    field: "mdmImmediateActionsRationale",
+    categoryKey: "catImmediateActions",
+    fragmentKeys: [
+      "actIvMonitor",
+      "actPain",
+      "actAntiemetic",
+      "actFluids",
+      "actOxygen",
+      "actSafety",
+    ],
+  },
+  {
+    field: "mdmConsultsDiscussed",
+    categoryKey: "catConsults",
+    fragmentKeys: ["conHandoff", "conSpecialist", "conAdmTeam", "conNursing"],
+  },
+  {
+    field: "mdmAdmitObserveDischarge",
+    categoryKey: "catDisposition",
+    fragmentKeys: ["dispDcCriteria", "dispObs", "dispAdmit", "dispTransfer", "dispReturnPrecautions"],
+  },
+] as const;
+
 type EncounterLite = {
   id: string;
   status?: string | null;
@@ -374,6 +435,12 @@ export function EmergencyProviderMsePanel({
   }, [t]);
 
   const appendExamChipFragment = useCallback((field: ExamAppendChipField, fragmentI18nKey: string) => {
+    const fragment = t(fragmentI18nKey).trim();
+    if (!fragment) return;
+    setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
+  }, [t]);
+
+  const appendMdmChipFragment = useCallback((field: MdmAppendChipField, fragmentI18nKey: string) => {
     const fragment = t(fragmentI18nKey).trim();
     if (!fragment) return;
     setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
@@ -944,6 +1011,43 @@ export function EmergencyProviderMsePanel({
 
             <div>
               <p style={sectionHeading}>{t("erMseProviderPanel.sectionMdm")}</p>
+              <div
+                style={{
+                  marginTop: 8,
+                  paddingTop: 10,
+                  borderTop: "1px solid #e2e8f0",
+                }}
+              >
+                <p style={hpiChipHintStyle}>{t("erMseMdmChips.hint")}</p>
+                {MDM_CHIP_GROUPS.map((group) => (
+                  <div key={group.field} style={{ marginTop: 8 }}>
+                    <p style={hpiChipCategoryStyle}>{t(`erMseMdmChips.${group.categoryKey}`)}</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, alignItems: "center" }}>
+                      {group.fragmentKeys.map((fk) => {
+                        const msgKey = `erMseMdmChips.${fk}`;
+                        return (
+                          <button
+                            key={fk}
+                            type="button"
+                            disabled={formDisabled}
+                            onClick={() => appendMdmChipFragment(group.field, msgKey)}
+                            style={{
+                              ...mseChipPillBase,
+                              background: formDisabled ? "#f1f5f9" : "#eff6ff",
+                              color: formDisabled ? "#94a3b8" : "#1e3a8a",
+                              borderColor: formDisabled ? "#e2e8f0" : "#bfdbfe",
+                              cursor: formDisabled ? "not-allowed" : "pointer",
+                              opacity: formDisabled ? 0.55 : 1,
+                            }}
+                          >
+                            {t(msgKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
                   <label style={labelStyle}>{t("erMseProviderPanel.labelMdmWorkingAssessment")}</label>
