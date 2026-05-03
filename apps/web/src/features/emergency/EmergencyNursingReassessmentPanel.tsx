@@ -33,6 +33,7 @@ import {
 } from "./erTraumaSurveyV1";
 import { ErTriageV1NursingCareSafetyFieldsBlock } from "./ErTriageV1NursingCareSafetyFieldsBlock";
 import {
+  appendIfNotPresent,
   emptyErTriageV1NursingCarePersistSlice,
   erTriageNursingCareSliceFromVitalsJson,
   patchMedoraErTriageV1FieldsInVitalsJson,
@@ -100,6 +101,164 @@ const PREVIEW_ACCENTS: Record<string, string> = {
   trauma_secondary: "#a16207",
   empty: "#cbd5e1",
 };
+
+type NursingReassessmentTextChipField =
+  | "narrative"
+  | "generalAppearance"
+  | "bedsideStatus"
+  | "responseToTreatment"
+  | "interventionsPerformed"
+  | "safetyRoundingNote"
+  | "addendum";
+
+const NURSING_QUICK_CHIP_GROUPS: readonly {
+  field: NursingReassessmentTextChipField;
+  fragmentKeys: readonly string[];
+}[] = [
+  {
+    field: "narrative",
+    fragmentKeys: [
+      "navBedsideReassessed",
+      "navNoAcuteDistressObserved",
+      "navSymptomsUnchanged",
+      "navSymptomsImproved",
+      "navSymptomsWorsened",
+      "navAwaitingProvider",
+      "navAwaitingResults",
+    ],
+  },
+  {
+    field: "generalAppearance",
+    fragmentKeys: [
+      "gaAlert",
+      "gaRestingComfortably",
+      "gaUncomfortableAppearing",
+      "gaPale",
+      "gaDiaphoretic",
+      "gaAnxious",
+      "gaLethargic",
+    ],
+  },
+  {
+    field: "bedsideStatus",
+    fragmentKeys: [
+      "bsSupine",
+      "bsSittingUpright",
+      "bsAmbulatoryWithAssistance",
+      "bsFamilyAtBedside",
+      "bsCallLightWithinReach",
+      "bsSideRailsUp",
+    ],
+  },
+  {
+    field: "responseToTreatment",
+    fragmentKeys: [
+      "rtImprovedAfterTreatment",
+      "rtNoChangeAfterTreatment",
+      "rtPainImproved",
+      "rtNauseaImproved",
+      "rtBreathingImproved",
+      "rtProviderNotifiedOfChange",
+    ],
+  },
+  {
+    field: "interventionsPerformed",
+    fragmentKeys: [
+      "niIvAccessAssessed",
+      "niMedicationAdministeredPerMar",
+      "niOxygenApplied",
+      "niPatientRepositioned",
+      "niSafetyRoundingCompleted",
+      "niEducationProvided",
+      "niProviderUpdated",
+    ],
+  },
+  {
+    field: "safetyRoundingNote",
+    fragmentKeys: [
+      "srFallPrecautions",
+      "srBedLockedLow",
+      "srCallLightWithinReach",
+      "srRailsUp",
+      "srBelongingsWithinReach",
+      "srLineTubingChecked",
+      "srMonitoringContinued",
+    ],
+  },
+  {
+    field: "addendum",
+    fragmentKeys: [
+      "adSeeProviderNote",
+      "adFamilyUpdated",
+      "adPatientQuestionsAnswered",
+      "adCarePlanReviewed",
+      "adNoAdditionalConcernsVoiced",
+    ],
+  },
+] as const;
+
+const quickChipHintStyle: React.CSSProperties = {
+  margin: "8px 0 0 0",
+  fontSize: 11,
+  color: "#94a3b8",
+  fontWeight: 500,
+  lineHeight: 1.4,
+};
+
+const quickChipPillBase: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "4px 10px",
+  borderRadius: 9999,
+  border: "1px solid #e2e8f0",
+  background: "#f8fafc",
+  color: "#334155",
+  fontSize: 12,
+  lineHeight: 1.3,
+  fontFamily: "inherit",
+  WebkitTapHighlightColor: "transparent",
+  userSelect: "none",
+};
+
+function NursingReassessmentQuickChips({
+  field,
+  formDisabled,
+  t,
+  onChip,
+}: {
+  field: NursingReassessmentTextChipField;
+  formDisabled: boolean;
+  t: (key: string) => string;
+  onChip: (field: NursingReassessmentTextChipField, msgKey: string) => void;
+}) {
+  const group = NURSING_QUICK_CHIP_GROUPS.find((g) => g.field === field);
+  if (!group) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" }}>
+      {group.fragmentKeys.map((fk) => {
+        const msgKey = `emergencyNursingReassessment.quick.${fk}`;
+        return (
+          <button
+            key={fk}
+            type="button"
+            disabled={formDisabled}
+            onClick={() => onChip(field, msgKey)}
+            style={{
+              ...quickChipPillBase,
+              cursor: formDisabled ? "not-allowed" : "pointer",
+              opacity: formDisabled ? 0.55 : 1,
+              background: formDisabled ? "#f1f5f9" : "#f8fafc",
+              color: formDisabled ? "#94a3b8" : "#334155",
+              borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
+            }}
+          >
+            {t(msgKey)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function EmergencyNursingReassessmentPanel({
   encounterId,
@@ -289,6 +448,12 @@ export function EmergencyNursingReassessmentPanel({
   const patchForm = useCallback((patch: Partial<ErNursingReassessmentForm>) => {
     setForm((f) => ({ ...f, ...patch }));
   }, []);
+
+  const appendNursingQuickChip = useCallback((field: NursingReassessmentTextChipField, msgKey: string) => {
+    const fragment = t(msgKey).trim();
+    if (!fragment) return;
+    setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
+  }, [t]);
 
   const patchTraumaForm = useCallback((patch: Partial<ErTraumaSurveyV1>) => {
     setTraumaForm((f) => ({ ...f, ...patch }));
@@ -514,6 +679,7 @@ export function EmergencyNursingReassessmentPanel({
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
                 <div>
                   <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionReassess")}</p>
+                  <p style={quickChipHintStyle}>{t("emergencyNursingReassessment.quick.hint")}</p>
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelReassessmentTime")}</label>
@@ -535,6 +701,12 @@ export function EmergencyNursingReassessmentPanel({
                         style={{ ...inputBase, resize: "vertical", minHeight: 88, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                         placeholder={t("emergencyNursingReassessment.narrativePlaceholder")}
                       />
+                      <NursingReassessmentQuickChips
+                        field="narrative"
+                        formDisabled={formDisabled}
+                        t={t}
+                        onChip={appendNursingQuickChip}
+                      />
                     </div>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelGeneralAppearance")}</label>
@@ -544,6 +716,12 @@ export function EmergencyNursingReassessmentPanel({
                         onChange={(e) => patchForm({ generalAppearance: e.target.value })}
                         disabled={formDisabled}
                         style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                      />
+                      <NursingReassessmentQuickChips
+                        field="generalAppearance"
+                        formDisabled={formDisabled}
+                        t={t}
+                        onChip={appendNursingQuickChip}
                       />
                     </div>
                     <div style={grid2}>
@@ -568,6 +746,12 @@ export function EmergencyNursingReassessmentPanel({
                           disabled={formDisabled}
                           style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                           placeholder={t("emergencyNursingReassessment.placeholderBedsideStatus")}
+                        />
+                        <NursingReassessmentQuickChips
+                          field="bedsideStatus"
+                          formDisabled={formDisabled}
+                          t={t}
+                          onChip={appendNursingQuickChip}
                         />
                       </div>
                     </div>
@@ -620,17 +804,6 @@ export function EmergencyNursingReassessmentPanel({
                   <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
                     {t("emergencyNursingReassessment.vitalsRecheckHelp")}
                   </p>
-                  <div style={{ marginTop: 10 }}>
-                    <label style={labelStyle}>{t("emergencyNursingReassessment.labelVitalsSummary")}</label>
-                    <textarea
-                      value={form.vitalsSummaryNote}
-                      onChange={(e) => patchForm({ vitalsSummaryNote: e.target.value })}
-                      disabled={formDisabled}
-                      rows={3}
-                      style={{ ...inputBase, resize: "vertical", minHeight: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                      placeholder={t("emergencyNursingReassessment.placeholderVitalsSummary")}
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -644,6 +817,12 @@ export function EmergencyNursingReassessmentPanel({
                         disabled={formDisabled}
                         rows={3}
                         style={{ ...inputBase, resize: "vertical", minHeight: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                      />
+                      <NursingReassessmentQuickChips
+                        field="responseToTreatment"
+                        formDisabled={formDisabled}
+                        t={t}
+                        onChip={appendNursingQuickChip}
                       />
                     </div>
                     <div>
@@ -675,6 +854,12 @@ export function EmergencyNursingReassessmentPanel({
                         rows={3}
                         style={{ ...inputBase, resize: "vertical", minHeight: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                       />
+                      <NursingReassessmentQuickChips
+                        field="interventionsPerformed"
+                        formDisabled={formDisabled}
+                        t={t}
+                        onChip={appendNursingQuickChip}
+                      />
                     </div>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelSafetyRounding")}</label>
@@ -686,6 +871,12 @@ export function EmergencyNursingReassessmentPanel({
                         style={{ ...inputBase, resize: "vertical", minHeight: 72, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                         placeholder={t("emergencyNursingReassessment.placeholderSafety")}
                       />
+                      <NursingReassessmentQuickChips
+                        field="safetyRoundingNote"
+                        formDisabled={formDisabled}
+                        t={t}
+                        onChip={appendNursingQuickChip}
+                      />
                     </div>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelAddendum")}</label>
@@ -695,6 +886,12 @@ export function EmergencyNursingReassessmentPanel({
                         disabled={formDisabled}
                         rows={2}
                         style={{ ...inputBase, resize: "vertical", minHeight: 56, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                      />
+                      <NursingReassessmentQuickChips
+                        field="addendum"
+                        formDisabled={formDisabled}
+                        t={t}
+                        onChip={appendNursingQuickChip}
                       />
                     </div>
                   </div>
