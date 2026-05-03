@@ -9,9 +9,43 @@ import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 
 export const ER_NURSING_REASSESSMENT_V1_KEY = "erNursingReassessmentV1" as const;
 
-export type ErAbcOption = "" | "wnl" | "yes" | "no" | "unknown";
+/** Legacy ABCD-style values (prior reassessment saves). */
+export type ErNursingAbcLegacy = "wnl" | "yes" | "no" | "unknown";
 
-export type ErTrend = "" | "improved" | "unchanged" | "worse";
+/** Airway / breathing / circulation reassessment (string codes in JSON; legacy values still load). */
+export type ErAbcOption =
+  | ""
+  | ErNursingAbcLegacy
+  | "air_patent"
+  | "air_needs_suction"
+  | "air_obstructed_concern"
+  | "air_support_in_place"
+  | "air_unable_to_assess"
+  | "br_even_unlabored"
+  | "br_increased_wob"
+  | "br_wheezing"
+  | "br_sob"
+  | "br_o2_in_use"
+  | "br_unable_to_assess"
+  | "circ_warm_perfused"
+  | "circ_pale_cool"
+  | "circ_diaphoretic"
+  | "circ_weak_pulses"
+  | "circ_hypotension_concern"
+  | "circ_unable_to_assess";
+
+/** Patient trend (string codes in JSON; legacy improved/worse normalized on read). */
+export type ErTrend =
+  | ""
+  | "improved"
+  | "unchanged"
+  | "worse"
+  | "improving"
+  | "stable"
+  | "worsening"
+  | "awaiting_reassessment"
+  | "provider_notified"
+  | "unable_to_assess";
 
 export type ErNursingReassessmentForm = {
   reassessmentAt: string;
@@ -72,16 +106,87 @@ export type ErNursingReassessmentStored = {
   signature?: ErNursingReassessmentSignature;
 };
 
+/** Dropdown order: clinical options first, then legacy scale (prior saves). */
+export const ER_NURSING_AIRWAY_SELECT_OPTIONS: readonly ErAbcOption[] = [
+  "air_patent",
+  "air_needs_suction",
+  "air_obstructed_concern",
+  "air_support_in_place",
+  "air_unable_to_assess",
+  "wnl",
+  "yes",
+  "no",
+  "unknown",
+];
+
+export const ER_NURSING_BREATHING_SELECT_OPTIONS: readonly ErAbcOption[] = [
+  "br_even_unlabored",
+  "br_increased_wob",
+  "br_wheezing",
+  "br_sob",
+  "br_o2_in_use",
+  "br_unable_to_assess",
+  "wnl",
+  "yes",
+  "no",
+  "unknown",
+];
+
+export const ER_NURSING_CIRCULATION_SELECT_OPTIONS: readonly ErAbcOption[] = [
+  "circ_warm_perfused",
+  "circ_pale_cool",
+  "circ_diaphoretic",
+  "circ_weak_pulses",
+  "circ_hypotension_concern",
+  "circ_unable_to_assess",
+  "wnl",
+  "yes",
+  "no",
+  "unknown",
+];
+
+const NURSING_ABC_VALUES = new Set<string>([
+  ...ER_NURSING_AIRWAY_SELECT_OPTIONS,
+  ...ER_NURSING_BREATHING_SELECT_OPTIONS,
+  ...ER_NURSING_CIRCULATION_SELECT_OPTIONS,
+]);
+
 function abcFromUnknown(v: unknown): ErAbcOption {
   const s = typeof v === "string" ? v : "";
-  if (s === "wnl" || s === "yes" || s === "no" || s === "unknown") return s;
-  return "";
+  if (!s) return "";
+  return NURSING_ABC_VALUES.has(s) ? (s as ErAbcOption) : "";
 }
+
+const NURSING_TREND_VALUES = new Set<string>([
+  "improved",
+  "unchanged",
+  "worse",
+  "improving",
+  "stable",
+  "worsening",
+  "awaiting_reassessment",
+  "provider_notified",
+  "unable_to_assess",
+]);
+
+/** Dropdown order for patient trend (legacy improved/worse normalized on load). */
+export const ER_NURSING_TREND_SELECT_OPTIONS: readonly ErTrend[] = [
+  "improving",
+  "stable",
+  "unchanged",
+  "worsening",
+  "awaiting_reassessment",
+  "provider_notified",
+  "unable_to_assess",
+];
 
 function trendFromUnknown(v: unknown): ErTrend {
   const s = typeof v === "string" ? v : "";
-  if (s === "improved" || s === "unchanged" || s === "worse") return s;
-  return "";
+  if (!s) return "";
+  if (!NURSING_TREND_VALUES.has(s)) return "";
+  if (s === "improved") return "improving";
+  if (s === "worse") return "worsening";
+  return s as ErTrend;
 }
 
 export function erNursingReassessmentFormFromEncounter(nursingAssessment: unknown): ErNursingReassessmentForm {
@@ -197,20 +302,45 @@ function abcOptionLabel(locale: SupportedLanguage, v: ErAbcOption): string {
   if (v === "yes") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionYes");
   if (v === "no") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionNo");
   if (v === "unknown") return i18nMessage(locale, "emergencyNursingReassessment.abcOptionUnknown");
+  if (v === "air_patent") return i18nMessage(locale, "emergencyNursingReassessment.abcAirPatent");
+  if (v === "air_needs_suction") return i18nMessage(locale, "emergencyNursingReassessment.abcAirNeedsSuction");
+  if (v === "air_obstructed_concern") return i18nMessage(locale, "emergencyNursingReassessment.abcAirObstructedConcern");
+  if (v === "air_support_in_place") return i18nMessage(locale, "emergencyNursingReassessment.abcAirSupportInPlace");
+  if (v === "air_unable_to_assess") return i18nMessage(locale, "emergencyNursingReassessment.abcAirUnableToAssess");
+  if (v === "br_even_unlabored") return i18nMessage(locale, "emergencyNursingReassessment.abcBrEvenUnlabored");
+  if (v === "br_increased_wob") return i18nMessage(locale, "emergencyNursingReassessment.abcBrIncreasedWob");
+  if (v === "br_wheezing") return i18nMessage(locale, "emergencyNursingReassessment.abcBrWheezing");
+  if (v === "br_sob") return i18nMessage(locale, "emergencyNursingReassessment.abcBrSob");
+  if (v === "br_o2_in_use") return i18nMessage(locale, "emergencyNursingReassessment.abcBrO2InUse");
+  if (v === "br_unable_to_assess") return i18nMessage(locale, "emergencyNursingReassessment.abcBrUnableToAssess");
+  if (v === "circ_warm_perfused") return i18nMessage(locale, "emergencyNursingReassessment.abcCircWarmPerfused");
+  if (v === "circ_pale_cool") return i18nMessage(locale, "emergencyNursingReassessment.abcCircPaleCool");
+  if (v === "circ_diaphoretic") return i18nMessage(locale, "emergencyNursingReassessment.abcCircDiaphoretic");
+  if (v === "circ_weak_pulses") return i18nMessage(locale, "emergencyNursingReassessment.abcCircWeakPulses");
+  if (v === "circ_hypotension_concern") return i18nMessage(locale, "emergencyNursingReassessment.abcCircHypotensionConcern");
+  if (v === "circ_unable_to_assess") return i18nMessage(locale, "emergencyNursingReassessment.abcCircUnableToAssess");
   return "";
 }
 
 function trendLineLabel(locale: SupportedLanguage, v: ErTrend): string {
-  if (v === "improved") return i18nMessage(locale, "emergencyNursingReassessment.trendImproved");
+  if (v === "improved" || v === "improving") return i18nMessage(locale, "emergencyNursingReassessment.trendImproving");
   if (v === "unchanged") return i18nMessage(locale, "emergencyNursingReassessment.trendUnchanged");
-  if (v === "worse") return i18nMessage(locale, "emergencyNursingReassessment.trendWorse");
+  if (v === "worse" || v === "worsening") return i18nMessage(locale, "emergencyNursingReassessment.trendWorsening");
+  if (v === "stable") return i18nMessage(locale, "emergencyNursingReassessment.trendStable");
+  if (v === "awaiting_reassessment") return i18nMessage(locale, "emergencyNursingReassessment.trendAwaitingReassessment");
+  if (v === "provider_notified") return i18nMessage(locale, "emergencyNursingReassessment.trendProviderNotified");
+  if (v === "unable_to_assess") return i18nMessage(locale, "emergencyNursingReassessment.trendUnableToAssess");
   return "";
 }
 
 function trendNarrativeFragment(locale: SupportedLanguage, v: ErTrend): string {
-  if (v === "improved") return previewModelString(locale, "narrativeTrendImproved");
+  if (v === "improved" || v === "improving") return previewModelString(locale, "narrativeTrendImproved");
   if (v === "unchanged") return previewModelString(locale, "narrativeTrendUnchanged");
-  if (v === "worse") return previewModelString(locale, "narrativeTrendWorse");
+  if (v === "worse" || v === "worsening") return previewModelString(locale, "narrativeTrendWorse");
+  if (v === "stable") return previewModelString(locale, "narrativeTrendStable");
+  if (v === "awaiting_reassessment") return previewModelString(locale, "narrativeTrendAwaitingReassessment");
+  if (v === "provider_notified") return previewModelString(locale, "narrativeTrendProviderNotified");
+  if (v === "unable_to_assess") return previewModelString(locale, "narrativeTrendUnableToAssess");
   return "";
 }
 

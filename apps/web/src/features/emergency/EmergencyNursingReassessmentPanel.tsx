@@ -16,7 +16,11 @@ import {
 } from "@/components/medora-card";
 import {
   buildErNursingReassessmentPreviewModel,
+  ER_NURSING_AIRWAY_SELECT_OPTIONS,
+  ER_NURSING_BREATHING_SELECT_OPTIONS,
+  ER_NURSING_CIRCULATION_SELECT_OPTIONS,
   ER_NURSING_REASSESSMENT_V1_KEY,
+  ER_NURSING_TREND_SELECT_OPTIONS,
   erNursingReassessmentFormFromEncounter,
   mergeErNursingReassessmentIntoNursingAssessment,
   vitalsLineFromTriageVitalsJson,
@@ -101,6 +105,84 @@ const PREVIEW_ACCENTS: Record<string, string> = {
   trauma_secondary: "#a16207",
   empty: "#cbd5e1",
 };
+
+const NURSING_ABC_OPTION_I18N_SUFFIX: Partial<Record<ErAbcOption, string>> = {
+  wnl: "abcOptionWnl",
+  yes: "abcOptionYes",
+  no: "abcOptionNo",
+  unknown: "abcOptionUnknown",
+  air_patent: "abcAirPatent",
+  air_needs_suction: "abcAirNeedsSuction",
+  air_obstructed_concern: "abcAirObstructedConcern",
+  air_support_in_place: "abcAirSupportInPlace",
+  air_unable_to_assess: "abcAirUnableToAssess",
+  br_even_unlabored: "abcBrEvenUnlabored",
+  br_increased_wob: "abcBrIncreasedWob",
+  br_wheezing: "abcBrWheezing",
+  br_sob: "abcBrSob",
+  br_o2_in_use: "abcBrO2InUse",
+  br_unable_to_assess: "abcBrUnableToAssess",
+  circ_warm_perfused: "abcCircWarmPerfused",
+  circ_pale_cool: "abcCircPaleCool",
+  circ_diaphoretic: "abcCircDiaphoretic",
+  circ_weak_pulses: "abcCircWeakPulses",
+  circ_hypotension_concern: "abcCircHypotensionConcern",
+  circ_unable_to_assess: "abcCircUnableToAssess",
+};
+
+function nursingAbcSelectLabel(t: (key: string) => string, code: ErAbcOption): string {
+  if (!code) return "";
+  const suffix = NURSING_ABC_OPTION_I18N_SUFFIX[code] ?? "abcOptionUnknown";
+  return t(`emergencyNursingReassessment.${suffix}`);
+}
+
+const NURSING_TREND_I18N_SUFFIX: Partial<Record<ErTrend, string>> = {
+  improving: "trendImproving",
+  improved: "trendImproving",
+  stable: "trendStable",
+  unchanged: "trendUnchanged",
+  worsening: "trendWorsening",
+  worse: "trendWorsening",
+  awaiting_reassessment: "trendAwaitingReassessment",
+  provider_notified: "trendProviderNotified",
+  unable_to_assess: "trendUnableToAssess",
+};
+
+function nursingTrendSelectLabel(t: (key: string) => string, code: ErTrend): string {
+  if (!code) return "";
+  const suffix = NURSING_TREND_I18N_SUFFIX[code] ?? "trendUnableToAssess";
+  return t(`emergencyNursingReassessment.${suffix}`);
+}
+
+function NursingAbcSelect({
+  value,
+  options,
+  onChange,
+  disabled,
+  t,
+}: {
+  value: ErAbcOption;
+  options: readonly ErAbcOption[];
+  onChange: (v: ErAbcOption) => void;
+  disabled: boolean;
+  t: (key: string) => string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as ErAbcOption)}
+      disabled={disabled}
+      style={{ ...inputBase, cursor: disabled ? "not-allowed" : "pointer", backgroundColor: disabled ? "#f8fafc" : "#fff" }}
+    >
+      <option value="">—</option>
+      {options.map((code) => (
+        <option key={code} value={code}>
+          {nursingAbcSelectLabel(t, code)}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 type NursingReassessmentTextChipField =
   | "narrative"
@@ -279,20 +361,14 @@ export function EmergencyNursingReassessmentPanel({
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
 
-  const abcSelect = (value: ErAbcOption, onChange: (v: ErAbcOption) => void, disabled: boolean): React.ReactNode => (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as ErAbcOption)}
-      disabled={disabled}
-      style={{ ...inputBase, cursor: disabled ? "not-allowed" : "pointer", backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-    >
-      <option value="">—</option>
-      <option value="wnl">{t("emergencyNursingReassessment.abcOptionWnl")}</option>
-      <option value="yes">{t("emergencyNursingReassessment.abcOptionYes")}</option>
-      <option value="no">{t("emergencyNursingReassessment.abcOptionNo")}</option>
-      <option value="unknown">{t("emergencyNursingReassessment.abcOptionUnknown")}</option>
-    </select>
-  );
+  const applyAbcStableFillEmpty = useCallback(() => {
+    setForm((f) => ({
+      ...f,
+      airway: f.airway ? f.airway : "air_patent",
+      breathing: f.breathing ? f.breathing : "br_even_unlabored",
+      circulation: f.circulation ? f.circulation : "circ_warm_perfused",
+    }));
+  }, []);
 
   const abcdeSelectTrauma = (
     value: ErAbcdeOption,
@@ -783,19 +859,100 @@ export function EmergencyNursingReassessmentPanel({
 
                 <div>
                   <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionAbc")}</p>
+                  <p style={quickChipHintStyle}>{t("emergencyNursingReassessment.abcQuickHint")}</p>
                   <div style={{ marginTop: 10, ...grid3 }}>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelAirway")}</label>
-                      {abcSelect(form.airway, (v) => patchForm({ airway: v }), formDisabled)}
+                      <NursingAbcSelect
+                        value={form.airway}
+                        options={ER_NURSING_AIRWAY_SELECT_OPTIONS}
+                        onChange={(v) => patchForm({ airway: v })}
+                        disabled={formDisabled}
+                        t={t}
+                      />
                     </div>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelBreathing")}</label>
-                      {abcSelect(form.breathing, (v) => patchForm({ breathing: v }), formDisabled)}
+                      <NursingAbcSelect
+                        value={form.breathing}
+                        options={ER_NURSING_BREATHING_SELECT_OPTIONS}
+                        onChange={(v) => patchForm({ breathing: v })}
+                        disabled={formDisabled}
+                        t={t}
+                      />
                     </div>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelCirculation")}</label>
-                      {abcSelect(form.circulation, (v) => patchForm({ circulation: v }), formDisabled)}
+                      <NursingAbcSelect
+                        value={form.circulation}
+                        options={ER_NURSING_CIRCULATION_SELECT_OPTIONS}
+                        onChange={(v) => patchForm({ circulation: v })}
+                        disabled={formDisabled}
+                        t={t}
+                      />
                     </div>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      disabled={formDisabled}
+                      onClick={() => applyAbcStableFillEmpty()}
+                      style={{
+                        ...quickChipPillBase,
+                        cursor: formDisabled ? "not-allowed" : "pointer",
+                        opacity: formDisabled ? 0.55 : 1,
+                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
+                        color: formDisabled ? "#94a3b8" : "#334155",
+                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
+                      }}
+                    >
+                      {t("emergencyNursingReassessment.abcChipAbcStable")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={formDisabled}
+                      onClick={() => patchForm({ airway: "air_patent" })}
+                      style={{
+                        ...quickChipPillBase,
+                        cursor: formDisabled ? "not-allowed" : "pointer",
+                        opacity: formDisabled ? 0.55 : 1,
+                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
+                        color: formDisabled ? "#94a3b8" : "#334155",
+                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
+                      }}
+                    >
+                      {t("emergencyNursingReassessment.abcChipAirwayPatent")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={formDisabled}
+                      onClick={() => patchForm({ breathing: "br_even_unlabored" })}
+                      style={{
+                        ...quickChipPillBase,
+                        cursor: formDisabled ? "not-allowed" : "pointer",
+                        opacity: formDisabled ? 0.55 : 1,
+                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
+                        color: formDisabled ? "#94a3b8" : "#334155",
+                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
+                      }}
+                    >
+                      {t("emergencyNursingReassessment.abcChipBreathingUnlabored")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={formDisabled}
+                      onClick={() => patchForm({ circulation: "circ_warm_perfused" })}
+                      style={{
+                        ...quickChipPillBase,
+                        cursor: formDisabled ? "not-allowed" : "pointer",
+                        opacity: formDisabled ? 0.55 : 1,
+                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
+                        color: formDisabled ? "#94a3b8" : "#334155",
+                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
+                      }}
+                    >
+                      {t("emergencyNursingReassessment.abcChipCirculationStable")}
+                    </button>
                   </div>
                 </div>
 
@@ -834,9 +991,11 @@ export function EmergencyNursingReassessmentPanel({
                         style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                       >
                         <option value="">—</option>
-                        <option value="improved">{t("emergencyNursingReassessment.trendImproved")}</option>
-                        <option value="unchanged">{t("emergencyNursingReassessment.trendUnchanged")}</option>
-                        <option value="worse">{t("emergencyNursingReassessment.trendWorse")}</option>
+                        {ER_NURSING_TREND_SELECT_OPTIONS.map((code) => (
+                          <option key={code} value={code}>
+                            {nursingTrendSelectLabel(t, code)}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
