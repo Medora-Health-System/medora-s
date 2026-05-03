@@ -77,6 +77,56 @@ const hpiChipCategoryStyle: React.CSSProperties = {
   color: "#64748b",
 };
 
+const mseChipPillBase: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "4px 10px",
+  borderRadius: 9999,
+  border: "1px solid #e2e8f0",
+  background: "#f8fafc",
+  color: "#334155",
+  fontSize: 12,
+  lineHeight: 1.3,
+  fontFamily: "inherit",
+  WebkitTapHighlightColor: "transparent",
+  userSelect: "none",
+};
+
+const ROS_POS_FRAGMENT_KEYS = [
+  "posSob",
+  "posChestPain",
+  "posFever",
+  "posVomiting",
+  "posDizziness",
+  "posWeakness",
+  "posAbdominalPain",
+  "posHeadache",
+] as const;
+
+const ROS_RF_FRAGMENT_KEYS = [
+  "rfSyncope",
+  "rfAlteredMs",
+  "rfSeverePain",
+  "rfNeuroDeficit",
+  "rfHypotensionConcern",
+  "rfRespDistress",
+  "rfBleeding",
+  "rfPregnancyConcern",
+] as const;
+
+const ROS_NEG_FRAGMENT_KEYS = [
+  "negDeniesChestPain",
+  "negDeniesSob",
+  "negDeniesFever",
+  "negDeniesVomiting",
+  "negDeniesWeakness",
+  "negDeniesSyncope",
+  "negDeniesAbdominalPain",
+  "negDeniesHeadache",
+] as const;
+
+type RosChipTargetField = "importantPositives" | "importantNegatives" | "redFlagsText";
+
 type EncounterLite = {
   id: string;
   status?: string | null;
@@ -246,6 +296,12 @@ export function EmergencyProviderMsePanel({
     const fragment = t(fragmentI18nKey).trim();
     if (!fragment) return;
     setForm((f) => ({ ...f, hpiNarrative: appendIfNotPresent(f.hpiNarrative, fragment) }));
+  }, [t]);
+
+  const appendRosChipFragment = useCallback((field: RosChipTargetField, fragmentI18nKey: string) => {
+    const fragment = t(fragmentI18nKey).trim();
+    if (!fragment) return;
+    setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
   }, [t]);
 
   const assistApplicable = useMemo(() => {
@@ -530,19 +586,12 @@ export function EmergencyProviderMsePanel({
                               disabled={formDisabled}
                               onClick={() => appendHpiChipFragment(msgKey)}
                               style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "4px 10px",
-                                borderRadius: 9999,
-                                border: "1px solid #e2e8f0",
+                                ...mseChipPillBase,
                                 background: formDisabled ? "#f1f5f9" : "#f8fafc",
                                 color: formDisabled ? "#94a3b8" : "#334155",
-                                fontSize: 12,
+                                borderColor: "#e2e8f0",
                                 cursor: formDisabled ? "not-allowed" : "pointer",
-                                lineHeight: 1.3,
-                                fontFamily: "inherit",
-                                WebkitTapHighlightColor: "transparent",
-                                userSelect: "none",
+                                opacity: formDisabled ? 0.55 : 1,
                               }}
                             >
                               {t(msgKey)}
@@ -591,6 +640,94 @@ export function EmergencyProviderMsePanel({
                   <div>
                     <label style={labelStyle}>{t("erMseProviderPanel.labelImportantNegatives")}</label>
                     {ta(2, "importantNegatives")}
+                  </div>
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  <p style={hpiChipHintStyle}>{t("erMseRosChips.hint")}</p>
+                  <p style={hpiChipCategoryStyle}>{t("erMseRosChips.catPositives")}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, alignItems: "center" }}>
+                    {ROS_POS_FRAGMENT_KEYS.map((fk) => {
+                      const msgKey = `erMseRosChips.${fk}`;
+                      return (
+                        <button
+                          key={fk}
+                          type="button"
+                          disabled={formDisabled}
+                          onClick={() => appendRosChipFragment("importantPositives", msgKey)}
+                          style={{
+                            ...mseChipPillBase,
+                            background: formDisabled ? "#f1f5f9" : "#f8fafc",
+                            color: formDisabled ? "#94a3b8" : "#334155",
+                            borderColor: "#e2e8f0",
+                            cursor: formDisabled ? "not-allowed" : "pointer",
+                            opacity: formDisabled ? 0.55 : 1,
+                          }}
+                        >
+                          {t(msgKey)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={{ ...hpiChipCategoryStyle, marginTop: 10 }}>{t("erMseRosChips.catRedFlags")}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, alignItems: "center" }}>
+                    {ROS_RF_FRAGMENT_KEYS.map((fk) => {
+                      const msgKey = `erMseRosChips.${fk}`;
+                      return (
+                        <button
+                          key={fk}
+                          type="button"
+                          disabled={formDisabled}
+                          onClick={() => appendRosChipFragment("redFlagsText", msgKey)}
+                          style={{
+                            ...mseChipPillBase,
+                            background: formDisabled ? "#fef2f2" : "#fff7ed",
+                            color: formDisabled ? "#94a3b8" : "#9a3412",
+                            borderColor: formDisabled ? "#e2e8f0" : "#fdba74",
+                            cursor: formDisabled ? "not-allowed" : "pointer",
+                            opacity: formDisabled ? 0.55 : 1,
+                          }}
+                        >
+                          {t(msgKey)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #fcd34d",
+                      backgroundColor: "#fffbeb",
+                    }}
+                  >
+                    <p style={{ ...hpiChipCategoryStyle, marginTop: 0, color: "#92400e" }}>
+                      {t("erMseRosChips.explicitNegativesTitle")}
+                    </p>
+                    <p style={{ ...hpiChipHintStyle, marginTop: 4, color: "#a16207" }}>{t("erMseRosChips.explicitNegativesHelp")}</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" }}>
+                      {ROS_NEG_FRAGMENT_KEYS.map((fk) => {
+                        const msgKey = `erMseRosChips.${fk}`;
+                        return (
+                          <button
+                            key={fk}
+                            type="button"
+                            disabled={formDisabled}
+                            onClick={() => appendRosChipFragment("importantNegatives", msgKey)}
+                            style={{
+                              ...mseChipPillBase,
+                              background: formDisabled ? "#f1f5f9" : "#fff",
+                              color: formDisabled ? "#94a3b8" : "#78350f",
+                              borderColor: formDisabled ? "#e2e8f0" : "#fcd34d",
+                              cursor: formDisabled ? "not-allowed" : "pointer",
+                              opacity: formDisabled ? 0.55 : 1,
+                            }}
+                          >
+                            {t(msgKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
                 <div>
