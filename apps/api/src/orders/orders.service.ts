@@ -31,8 +31,8 @@ import {
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
-import type { MedicationInfusionStopDto, OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
-import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isIvpbInfusionRoute } from "@medora/shared";
+import type { MedicationInfusionCandidateInput, MedicationInfusionStopDto, OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
+import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isMedicationInfusionCandidate } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
   stripUndefinedDeep,
@@ -47,6 +47,11 @@ import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { MedicationAdministrationService } from "../medication-administration/medication-administration.service";
+import {
+  buildInfusionPerformerIdentitySnapshot,
+  resolvePerformedByDisplayNameFromOrderEvent,
+  type InfusionPerformerIdentitySnapshot,
+} from "./infusion-performer-identity-snapshot.util";
 
 const ordersLog = createStructuredLogger("OrdersService");
 
@@ -569,6 +574,39 @@ export class OrdersService {
     return unique.join("|");
   }
 
+  /**
+   * User + facility roles at action time for infusion OrderEvent / AuditLog metadata (legal snapshot).
+   */
+  private async loadInfusionPerformerIdentitySnapshot(
+    facilityId: string,
+    userId: string,
+    tx?: Prisma.TransactionClient
+  ): Promise<InfusionPerformerIdentitySnapshot> {
+    const db = tx ?? this.prisma;
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    if (!user) {
+      throw new NotFoundException("Utilisateur introuvable pour l'audit de perfusion.");
+    }
+    const urs = await db.userRole.findMany({
+      where: { facilityId, userId, isActive: true },
+      include: { role: { select: { code: true, name: true } } },
+    });
+    const sorted = [...urs].sort((a, b) => a.role.code.localeCompare(b.role.code));
+    const codes = [...new Set(sorted.map((r) => r.role.code))];
+    const roleCodesPipe = codes.length > 0 ? codes.join("|") : "UNKNOWN";
+    const primaryRoleTitle = sorted[0]?.role.name?.trim() || sorted[0]?.role.code || null;
+    return buildInfusionPerformerIdentitySnapshot({
+      userId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      roleCodesPipe,
+      primaryRoleTitle,
+    });
+  }
+
   private async writeOrderEvent(input: {
     facilityId: string;
     encounterId: string;
@@ -579,12 +617,16 @@ export class OrdersService {
     note?: string;
     metadata?: Prisma.InputJsonValue;
     tx?: Prisma.TransactionClient;
+    /** When set, skips an extra role query (e.g. infusion identity snapshot already loaded). */
+    roleSnapshotOverride?: string;
   }) {
-    const roleSnapshot = await this.buildRoleSnapshot(
-      input.facilityId,
-      input.performedByUserId,
-      input.tx
-    );
+    const roleSnapshot =
+      input.roleSnapshotOverride ??
+      (await this.buildRoleSnapshot(
+        input.facilityId,
+        input.performedByUserId,
+        input.tx
+      ));
     const db = input.tx ?? this.prisma;
     await db.orderEvent.create({
       data: {
@@ -859,7 +901,10 @@ export class OrdersService {
         orderType: event.orderType,
         eventType: event.eventType,
         performedByUserId: event.performedByUserId,
-        performedByDisplayName: `${event.performedBy.firstName} ${event.performedBy.lastName}`.trim(),
+        performedByDisplayName: resolvePerformedByDisplayNameFromOrderEvent(
+          event.metadata,
+          `${event.performedBy.firstName} ${event.performedBy.lastName}`.trim()
+        ),
         performedAt: event.performedAt,
         roleSnapshot: event.roleSnapshot,
         note: event.note,
@@ -2079,17 +2124,64 @@ export class OrdersService {
     return active;
   }
 
-  private async resolveMedicationRouteForInfusion(
-    item: OrderItem & { catalogItemId: string | null }
-  ): Promise<string | null> {
-    const direct = item.route?.trim();
-    if (direct) return direct;
-    if (!item.catalogItemId) return null;
-    const cat = await this.prisma.catalogMedication.findUnique({
-      where: { id: item.catalogItemId },
-      select: { route: true },
+  private async loadMedicationInfusionClassificationContext(orderItem: OrderItem): Promise<{
+    resolvedRoute: string | null;
+    catalog: {
+      code: string;
+      name: string;
+      displayNameEn: string | null;
+      genericName: string | null;
+      route: string | null;
+    } | null;
+  }> {
+    let resolvedRoute = orderItem.route?.trim() || null;
+    if (!orderItem.catalogItemId) {
+      return { resolvedRoute, catalog: null };
+    }
+    const catalog = await this.prisma.catalogMedication.findUnique({
+      where: { id: orderItem.catalogItemId },
+      select: {
+        code: true,
+        name: true,
+        displayNameEn: true,
+        genericName: true,
+        route: true,
+      },
     });
-    return cat?.route?.trim() || null;
+    if (catalog?.route?.trim() && !resolvedRoute) {
+      resolvedRoute = catalog.route.trim();
+    }
+    return { resolvedRoute, catalog };
+  }
+
+  private buildMedicationInfusionCandidateInput(
+    orderItem: OrderItem,
+    catalog: {
+      code: string;
+      name: string;
+      displayNameEn: string | null;
+      genericName: string | null;
+      route: string | null;
+    } | null,
+    resolvedRoute: string | null
+  ): MedicationInfusionCandidateInput {
+    const labelParts = [
+      orderItem.manualLabel,
+      orderItem.manualSecondaryText,
+      catalog?.displayNameEn,
+      catalog?.name,
+      catalog?.genericName,
+      catalog?.code,
+    ]
+      .map((x) => (typeof x === "string" ? x.trim() : ""))
+      .filter(Boolean);
+    return {
+      route: resolvedRoute,
+      medicationLabel: labelParts.length ? labelParts.join(" ") : null,
+      code: catalog?.code ?? null,
+      genericName: catalog?.genericName ?? null,
+      metadata: null,
+    };
   }
 
   /**
@@ -2130,11 +2222,14 @@ export class OrdersService {
       throw new BadRequestException("Ligne déjà terminée ou annulée.");
     }
 
-    const routeStr = await this.resolveMedicationRouteForInfusion(orderItem);
-    if (!isIvpbInfusionRoute(routeStr)) {
-      throw new BadRequestException("Cette ligne n’est pas une perfusion IVPB / infusion éligible.");
+    const { resolvedRoute, catalog } = await this.loadMedicationInfusionClassificationContext(orderItem);
+    const candidateInput = this.buildMedicationInfusionCandidateInput(orderItem, catalog, resolvedRoute);
+    if (!isMedicationInfusionCandidate(candidateInput)) {
+      throw new BadRequestException(
+        "Cette ligne n’est pas éligible à la perfusion (voie / libellé). Utilisez l’administration au lit habituelle."
+      );
     }
-    const routeResolved = routeStr as string;
+    const routeResolved = (resolvedRoute ?? "").trim() || (candidateInput.route ?? "").trim() || "IV";
 
     const infusionEvents = await this.prisma.orderEvent.findMany({
       where: { orderId: orderItem.orderId },
@@ -2148,6 +2243,7 @@ export class OrdersService {
     const infusionSessionKey = randomUUID();
     const infusionStartedAt = new Date();
     const startedIso = infusionStartedAt.toISOString();
+    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(facilityId, userId);
 
     const startMeta: Record<string, unknown> = {
       infusionScope: "MEDICATION_INFUSION",
@@ -2157,6 +2253,7 @@ export class OrdersService {
       infusionStartedAt: startedIso,
       route: routeResolved,
       source: "IV_INFUSION",
+      ...identitySnapshot,
     };
 
     await this.prisma.$transaction(async (tx) => {
@@ -2176,6 +2273,7 @@ export class OrdersService {
         eventType: OrderEventType.STARTED,
         performedByUserId: userId,
         metadata: startMeta as Prisma.InputJsonValue,
+        roleSnapshotOverride: identitySnapshot.performedByRoleSnapshot,
         tx,
       });
     });
@@ -2243,11 +2341,14 @@ export class OrdersService {
       throw new BadRequestException("Ligne déjà terminée ou annulée.");
     }
 
-    const routeStr = await this.resolveMedicationRouteForInfusion(orderItem);
-    if (!isIvpbInfusionRoute(routeStr)) {
-      throw new BadRequestException("Cette ligne n’est pas une perfusion IVPB / infusion éligible.");
+    const { resolvedRoute, catalog } = await this.loadMedicationInfusionClassificationContext(orderItem);
+    const candidateInput = this.buildMedicationInfusionCandidateInput(orderItem, catalog, resolvedRoute);
+    if (!isMedicationInfusionCandidate(candidateInput)) {
+      throw new BadRequestException(
+        "Cette ligne n’est pas éligible à la perfusion (voie / libellé). Utilisez l’administration au lit habituelle."
+      );
     }
-    const routeResolved = routeStr as string;
+    const routeResolved = (resolvedRoute ?? "").trim() || (candidateInput.route ?? "").trim() || "IV";
 
     const infusionEvents = await this.prisma.orderEvent.findMany({
       where: { orderId: orderItem.orderId },
@@ -2293,6 +2394,8 @@ export class OrdersService {
       throw new BadRequestException("Infusion already stopped");
     }
 
+    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(facilityId, userId);
+
     const marRow = await this.medicationAdministration.create(
       orderItem.order.encounterId,
       facilityId,
@@ -2320,6 +2423,7 @@ export class OrdersService {
       durationMinutes,
       route: routeResolved,
       source: "IV_INFUSION",
+      ...identitySnapshot,
     };
 
     await this.writeOrderEvent({
@@ -2330,6 +2434,7 @@ export class OrdersService {
       eventType: OrderEventType.COMPLETED,
       performedByUserId: userId,
       metadata: stopMeta as Prisma.InputJsonValue,
+      roleSnapshotOverride: identitySnapshot.performedByRoleSnapshot,
     });
 
     await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {

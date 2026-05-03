@@ -60,6 +60,30 @@ export function orderItemIdFromEventMetadata(metadata: unknown): string | null {
  * `CANCELLED`. Drop synthetic “completed” stream rows for lines that are explicitly cancelled so
  * the same line is not implied as both completed and cancelled.
  */
+export function shouldIncludeCompletedOrderEventInErMerge(
+  event: { orderId: string; metadata?: unknown },
+  orders: Array<{ id: string; items: unknown[] }>
+): boolean {
+  const meta = event.metadata;
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    const m = meta as Record<string, unknown>;
+    if (typeof m.medicationAdministrationId === "string" && m.medicationAdministrationId.length > 0) {
+      return true;
+    }
+  }
+  const itemId = orderItemIdFromEventMetadata(meta);
+  if (!itemId) return true;
+  const order = orders.find((o) => o.id === event.orderId);
+  if (!order) return true;
+  const items = Array.isArray(order.items) ? order.items : [];
+  const row = items.find((it) => String((it as Record<string, unknown>).id ?? "") === itemId) as
+    | Record<string, unknown>
+    | undefined;
+  if (!row) return true;
+  if (orderItemStatus(row) === CANCELLED_STATUS) return false;
+  return true;
+}
+
 /** Route snapshot for IVPB detection (order line `route` or catalog medication route). */
 export function medicationRouteSnapshotForInfusionCheck(item: Record<string, unknown>): string {
   const catalogMedication = item.catalogMedication;
@@ -71,10 +95,29 @@ export function medicationRouteSnapshotForInfusionCheck(item: Record<string, unk
   return direct || catalogRoute;
 }
 
+/** Text used with `isMedicationInfusionCandidate` (catalog + manual labels + code). */
+export function medicationInfusionClassificationText(item: Record<string, unknown>): string {
+  const cat = item.catalogMedication;
+  const c = cat && typeof cat === "object" ? (cat as Record<string, unknown>) : null;
+  const parts = [
+    item.manualLabel,
+    item.manualSecondaryText,
+    c?.displayNameEn,
+    c?.name,
+    c?.genericName,
+    c?.code,
+  ]
+    .map((x) => (typeof x === "string" ? x.trim() : ""))
+    .filter(Boolean);
+  return parts.join(" ");
+}
+
 export type MedicationInfusionActiveUi = {
   infusionSessionKey: string;
   /** From OrderEvent.metadata.infusionStartedAt (ISO) when backend sent it. */
   infusionStartedAtIso: string | null;
+  /** From order-events API enrichment when present. */
+  startedByDisplayName?: string | null;
 };
 
 function parseMedicationInfusionOrderEventMetadata(metadata: unknown): {
@@ -101,7 +144,13 @@ function parseMedicationInfusionOrderEventMetadata(metadata: unknown): {
  * `events` should be sorted ascending by `performedAt` for deterministic results (caller may pass unsorted).
  */
 export function findActiveMedicationInfusionFromOrderEvents(
-  events: ReadonlyArray<{ orderId: string; eventType: string; performedAt: string; metadata?: unknown }>,
+  events: ReadonlyArray<{
+    orderId: string;
+    eventType: string;
+    performedAt: string;
+    metadata?: unknown;
+    performedByDisplayName?: string | null;
+  }>,
   orderId: string,
   orderItemId: string
 ): MedicationInfusionActiveUi | null {
@@ -118,9 +167,20 @@ export function findActiveMedicationInfusionFromOrderEvents(
         typeof m.infusionStartedAt === "string" && m.infusionStartedAt.trim()
           ? m.infusionStartedAt.trim()
           : null;
+      const meta = ev.metadata;
+      const metaBy =
+        meta && typeof meta === "object" && !Array.isArray(meta)
+          ? (meta as Record<string, unknown>).performedByDisplayName
+          : undefined;
+      const fromMeta = typeof metaBy === "string" && metaBy.trim() ? metaBy.trim() : null;
+      const by =
+        (typeof ev.performedByDisplayName === "string" && ev.performedByDisplayName.trim()
+          ? ev.performedByDisplayName.trim()
+          : null) || fromMeta;
       active = {
         infusionSessionKey: m.infusionSessionKey,
         infusionStartedAtIso: iso,
+        startedByDisplayName: by,
       };
     } else if (
       m.infusionAction === "STOP" &&
@@ -132,28 +192,4 @@ export function findActiveMedicationInfusionFromOrderEvents(
     }
   }
   return active;
-}
-
-export function shouldIncludeCompletedOrderEventInErMerge(
-  event: { orderId: string; metadata?: unknown },
-  orders: Array<{ id: string; items: unknown[] }>
-): boolean {
-  const meta = event.metadata;
-  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
-    const m = meta as Record<string, unknown>;
-    if (typeof m.medicationAdministrationId === "string" && m.medicationAdministrationId.length > 0) {
-      return true;
-    }
-  }
-  const itemId = orderItemIdFromEventMetadata(meta);
-  if (!itemId) return true;
-  const order = orders.find((o) => o.id === event.orderId);
-  if (!order) return true;
-  const items = Array.isArray(order.items) ? order.items : [];
-  const row = items.find((it) => String((it as Record<string, unknown>).id ?? "") === itemId) as
-    | Record<string, unknown>
-    | undefined;
-  if (!row) return true;
-  if (orderItemStatus(row) === CANCELLED_STATUS) return false;
-  return true;
 }
