@@ -6603,6 +6603,12 @@ export default {
     intendedPrefix: "Prévu :",
     routePrefix: "Voie :",
     administer: "Administrer",
+    startInfusion: "Démarrer la perfusion",
+    stopInfusion: "Arrêter la perfusion",
+    infusionStarting: "Démarrage de la perfusion…",
+    infusionStopping: "Arrêt de la perfusion…",
+    infusionAltMarActions: "Refus / indisponible / changement prescripteur",
+    infusionActionError: "Action sur la perfusion impossible. Réessayez ou contactez le support.",
     historyTitle: "Historique des enregistrements",
     offlineNotice:
       "L'administration a été enregistrée sur cet appareil et est en attente de synchronisation avec le serveur. Elle n'est pas encore confirmée côté serveur.",

@@ -139,6 +139,16 @@ const IV_ANTIBIOTIC_SUBSTRINGS = [
   "ertapenem",
 ] as const;
 
+/** Typical IV push / analgesic / antiemetic push meds — never use bag infusion lifecycle. */
+const IV_PUSH_MEDICATION_SUBSTRINGS = [
+  "morphine",
+  "hydromorphone",
+  "ondansetron",
+  "ketorolac",
+  "fentanyl",
+  "lorazepam",
+] as const;
+
 function haystackMatchesAny(hay: string, needles: readonly string[]): boolean {
   for (const k of needles) {
     if (hay.includes(k)) return true;
@@ -161,6 +171,37 @@ function matchesIvAntibioticHeuristics(padded: string): boolean {
   return haystackMatchesAny(padded, IV_ANTIBIOTIC_SUBSTRINGS);
 }
 
+function matchesIvPushMedicationHeuristics(padded: string): boolean {
+  return haystackMatchesAny(padded, IV_PUSH_MEDICATION_SUBSTRINGS);
+}
+
+/**
+ * Large-volume bag / crystalloid context — used to override misleading catalog routes such as "IVP"
+ * on 500–1000 mL fluids (common data-entry quirk).
+ */
+function isLargeVolumeOrBagFluidContext(padded: string): boolean {
+  if (padded.includes(" bag ")) return true;
+  if (/\b\d+(?:[.,]\d+)?\s*l\b/.test(padded)) return true;
+  if (/\b(?:250|500|750|1000|1500|2000|2500|3000|5000)\s*ml\b/.test(padded)) return true;
+  if (/\b\d{4}\s*ml\b/.test(padded)) return true;
+  if (padded.includes(" lactated ringer")) return true;
+  if (padded.includes(" lactated ringers")) return true;
+  if (padded.includes(" ringers lactate")) return true;
+  if (padded.includes(" hartmann")) return true;
+  if (padded.includes(" plasmalyte")) return true;
+  if (padded.includes(" normosol")) return true;
+  if (padded.includes(" isolyte")) return true;
+  if (padded.includes(" crystalloid")) return true;
+  return false;
+}
+
+function isInjectableParenteralRoute(route: string): boolean {
+  const n = normalizeClinicalText(route.trim());
+  if (!n) return false;
+  if (n === "injectable") return true;
+  return n.includes("injectable");
+}
+
 function buildClassificationHaystack(input: MedicationInfusionCandidateInput): string {
   const parts = [
     input.medicationLabel,
@@ -180,16 +221,19 @@ export function isMedicationInfusionCandidate(input: MedicationInfusionCandidate
   const routeRaw = typeof input.route === "string" ? input.route.trim() : "";
 
   if (routeRaw && isRouteExcludedPoImSqSc(routeRaw)) return false;
-  if (routeRaw && isRouteClearlyIvPushOrBolus(routeRaw)) return false;
+
+  const hay = buildClassificationHaystack(input);
+  const padded = padHaystack(hay);
+  const hasPadded = Boolean(padded.trim());
+
+  if (hasPadded && matchesIvPushMedicationHeuristics(padded)) return false;
 
   const adminType = parseAdministrationTypeUpper(input.metadata);
   if (adminType === "INFUSION") return true;
 
   if (routeRaw && isIvpbInfusionRoute(routeRaw)) return true;
 
-  const hay = buildClassificationHaystack(input);
-  const padded = padHaystack(hay);
-  if (!padded.trim()) {
+  if (!hasPadded) {
     return false;
   }
 
@@ -197,7 +241,15 @@ export function isMedicationInfusionCandidate(input: MedicationInfusionCandidate
   const abx = matchesIvAntibioticHeuristics(padded);
   if (!fluid && !abx) return false;
 
+  const routeLooksIvPush = Boolean(routeRaw && isRouteClearlyIvPushOrBolus(routeRaw));
+  if (fluid && routeLooksIvPush && isLargeVolumeOrBagFluidContext(padded)) {
+    return true;
+  }
+
+  if (routeRaw && isRouteClearlyIvPushOrBolus(routeRaw)) return false;
+
   if (!routeRaw) return true;
   if (isIvCapableRoute(routeRaw)) return true;
+  if (abx && isInjectableParenteralRoute(routeRaw)) return true;
   return false;
 }

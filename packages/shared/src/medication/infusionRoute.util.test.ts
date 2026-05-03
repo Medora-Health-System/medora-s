@@ -75,7 +75,7 @@ describe("isMedicationInfusionCandidate", () => {
     ).toBe(true);
   });
 
-  it("rejects IV push / bolus / IVP and PO", () => {
+  it("rejects IV push / bolus route and PO", () => {
     expect(
       isMedicationInfusionCandidate({
         route: "IV push",
@@ -98,6 +98,79 @@ describe("isMedicationInfusionCandidate", () => {
         medicationLabel: "Metronidazole",
         code: null,
         genericName: "metronidazole",
+      })
+    ).toBe(false);
+  });
+
+  it("treats large-volume NS / LR with misleading IVP route as infusion (catalog quirk)", () => {
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVP",
+        medicationLabel: "Normal saline 0.9% 1 L",
+        code: "NS09-1000",
+        genericName: "sodium chloride",
+      })
+    ).toBe(true);
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVP",
+        medicationLabel: "Sodium chloride 1000 mL",
+        code: null,
+        genericName: null,
+      })
+    ).toBe(true);
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVP",
+        medicationLabel: "Lactated Ringer 1 L",
+        code: null,
+        genericName: null,
+      })
+    ).toBe(true);
+  });
+
+  it("classifies IV antibiotics with injectable route", () => {
+    expect(
+      isMedicationInfusionCandidate({
+        route: "injectable",
+        medicationLabel: "Ceftriaxone 1 g",
+        code: "CEF-1G",
+        genericName: "ceftriaxone",
+      })
+    ).toBe(true);
+    expect(
+      isMedicationInfusionCandidate({
+        route: "Injectable",
+        medicationLabel: "Vancomycin",
+        code: "VANC",
+        genericName: null,
+      })
+    ).toBe(true);
+  });
+
+  it("rejects typical IV push medications even with IVP route", () => {
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVP",
+        medicationLabel: "Ondansetron 4 mg",
+        code: null,
+        genericName: null,
+      })
+    ).toBe(false);
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVP",
+        medicationLabel: "Morphine 2 mg",
+        code: null,
+        genericName: null,
+      })
+    ).toBe(false);
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVP",
+        medicationLabel: "Hydromorphone 0.5 mg",
+        code: null,
+        genericName: null,
       })
     ).toBe(false);
   });

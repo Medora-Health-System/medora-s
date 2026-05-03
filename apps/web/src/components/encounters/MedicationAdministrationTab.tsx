@@ -20,10 +20,17 @@ import {
   evaluateMedicationTimingSafety,
   computeAdvancedMedicationSafetyForSingleLine,
   mergeAdvancedMedicationLineWithDraft,
+  isMedicationInfusionCandidate,
   type AdvancedMedicationSafetyLine,
   type MedicationSafetyCatalogInput,
   type MedicationSafetyWarning,
 } from "@medora/shared";
+import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
+import {
+  findActiveMedicationInfusionFromOrderEvents,
+  medicationInfusionClassificationText,
+  medicationRouteSnapshotForInfusionCheck,
+} from "@/features/emergency/erOrderLifecycleUi";
 import { orderItemLikeToAdvancedMedicationSafetyLine } from "@/lib/advancedMedicationSafetyLineMappers";
 import { AdvancedMedicationSafetyPanel } from "@/components/medication/AdvancedMedicationSafetyPanel";
 import { MedicationSoftSafetyPanel } from "@/components/medication/MedicationSoftSafetyPanel";
@@ -97,6 +104,31 @@ function marOrderItemToSafetyCatalogInput(it: OrderItemApi, displayLabel: string
 }
 
 const RECENT_MS = 24 * 60 * 60 * 1000;
+
+type MarOrderEventRow = {
+  id: string;
+  orderId: string;
+  eventType: "CREATED" | "STARTED" | "COMPLETED" | "CANCELLED";
+  performedByDisplayName?: string | null;
+  performedAt: string;
+  metadata?: unknown;
+};
+
+function parseOrderEventsForMar(raw: unknown[] | null): MarOrderEventRow[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row))
+    .map((row) => ({
+      id: String(row.id ?? ""),
+      orderId: String(row.orderId ?? ""),
+      eventType: String(row.eventType ?? "") as MarOrderEventRow["eventType"],
+      performedByDisplayName:
+        typeof row.performedByDisplayName === "string" ? row.performedByDisplayName : null,
+      performedAt: String(row.performedAt ?? ""),
+      metadata: row.metadata,
+    }))
+    .filter((e) => e.id && e.orderId && e.performedAt);
+}
 
 /** Fenêtre avant l’heure prévue : affichage « bientôt dû » (jaune), sans logique de planification. */
 const INTENDED_DUE_SOON_BEFORE_MS = 60 * 60 * 1000;
@@ -213,6 +245,8 @@ export function MedicationAdministrationTab({
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [orders, setOrders] = useState<unknown[]>([]);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [orderEventsRaw, setOrderEventsRaw] = useState<unknown[] | null>(null);
+  const [infusionBusy, setInfusionBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   /** Affichage immédiat si l’enregistrement MAR est seulement mis en file (pas encore confirmé serveur). */
@@ -231,6 +265,8 @@ export function MedicationAdministrationTab({
     ndcHint: string;
     billingUnitHint: string;
     orderedQuantity: number | null;
+    /** When true, MAR modal hides one-step “administered” (perfusion uses start/stop). */
+    hideAdministeredAction?: boolean;
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
@@ -267,6 +303,13 @@ export function MedicationAdministrationTab({
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
         apiFetch(`/encounters/${encounterId}`, { facilityId }),
       ]);
+      let eventsRaw: unknown[] = [];
+      try {
+        const ev = await apiFetch(`/encounters/${encounterId}/order-events`, { facilityId });
+        eventsRaw = Array.isArray(ev) ? ev : [];
+      } catch {
+        eventsRaw = [];
+      }
 
       const serverOrders = Array.isArray(o) ? o : [];
       const serverAdmins = Array.isArray(a) ? (a as AdminRow[]) : [];
@@ -285,10 +328,12 @@ export function MedicationAdministrationTab({
 
       setOrders(mergeOrders(serverOrders, pendingOrders));
       setAdmins([...serverAdmins, ...pendingAdmins]);
+      setOrderEventsRaw(eventsRaw);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("marTab.loadFailed"));
       setOrders(mergeOrders([], pendingOrders));
       setAdmins(pendingAdmins);
+      setOrderEventsRaw([]);
       setMarAllergyDocSummary(null);
     } finally {
       setLoading(false);
@@ -314,6 +359,29 @@ export function MedicationAdministrationTab({
     return m;
   }, [admins]);
 
+  const marOrderEventRows = useMemo(() => parseOrderEventsForMar(orderEventsRaw), [orderEventsRaw]);
+
+  const runMarInfusion = useCallback(
+    async (orderItemId: string, orderId: string, op: "start" | "stop") => {
+      const busyKey = `${orderId}:${orderItemId}:${op}`;
+      setInfusionBusy(busyKey);
+      setError(null);
+      try {
+        if (op === "start") await startMedicationInfusion(orderItemId, facilityId);
+        else await stopMedicationInfusion(orderItemId, facilityId);
+        await loadAll();
+      } catch (e) {
+        setError(
+          normalizeUserFacingError(e instanceof Error ? e.message : String(e), language) ||
+            t("marTab.infusionActionError")
+        );
+      } finally {
+        setInfusionBusy(null);
+      }
+    },
+    [facilityId, language, loadAll, t]
+  );
+
   /** Same medication line = same `orderItemId`; most recent MAR row with outcome "administered". */
   const lastAdministeredForModal = useMemo(() => {
     if (!modalItem) return null;
@@ -330,7 +398,9 @@ export function MedicationAdministrationTab({
 
   const taskRows = useMemo(() => {
     type RowDraft = {
+      orderId: string;
       orderItemId: string;
+      isInfusionLifecycleMed: boolean;
       label: string;
       routeHint: string;
       ndcHint: string;
@@ -346,6 +416,7 @@ export function MedicationAdministrationTab({
     const drafts: RowDraft[] = [];
     for (const order of orders) {
       if ((order as { status?: string }).status === "CANCELLED") continue;
+      const orderId = String((order as { id?: unknown }).id ?? "");
       const items = (order as { items?: OrderItemApi[] }).items ?? [];
       for (const it of items) {
         if (!it.id) continue;
@@ -356,6 +427,20 @@ export function MedicationAdministrationTab({
           language as SupportedLanguage,
           t
         );
+        const itemRec = it as Record<string, unknown>;
+        const routeSnap = medicationRouteSnapshotForInfusionCheck(itemRec);
+        const catM = it.catalogMedication;
+        const catRow = catM && typeof catM === "object" ? (catM as Record<string, unknown>) : null;
+        const isInfusionLifecycleMed =
+          String(it.catalogItemType ?? "") === "MEDICATION" &&
+          String(it.medicationFulfillmentIntent ?? "") === "ADMINISTER_CHART" &&
+          isMedicationInfusionCandidate({
+            route: routeSnap.trim() || null,
+            medicationLabel: medicationInfusionClassificationText(itemRec) || null,
+            code: typeof catRow?.code === "string" ? catRow.code : null,
+            genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
+            metadata: null,
+          });
         const rawQ = it.quantity;
         const orderedQuantity =
           typeof rawQ === "number" && Number.isFinite(rawQ)
@@ -367,7 +452,9 @@ export function MedicationAdministrationTab({
                 })()
               : null;
         drafts.push({
+          orderId,
           orderItemId: it.id,
+          isInfusionLifecycleMed,
           label,
           authorityLine: formatOrderAuthority(order as Record<string, unknown>, t),
           attributionLines: formatOrderAttributionLines(order as Record<string, unknown>, t, language),
@@ -427,7 +514,8 @@ export function MedicationAdministrationTab({
     setMarSafetyDetailsOpen(advancedMarWarningCount > 0);
   }, [modalItem?.orderItemId, advancedMarWarningCount]);
 
-  const openModal = (row: (typeof taskRows)[0]) => {
+  const openModal = (row: (typeof taskRows)[0], options?: { hideAdministeredAction?: boolean }) => {
+    const hideAdmin = options?.hideAdministeredAction === true;
     setModalItem({
       orderItemId: row.orderItemId,
       label: row.label,
@@ -440,9 +528,10 @@ export function MedicationAdministrationTab({
       ndcHint: row.ndcHint,
       billingUnitHint: row.billingUnitHint,
       orderedQuantity: row.orderedQuantity,
+      hideAdministeredAction: hideAdmin,
     });
     setModalSubmitError(null);
-    setModalAction("administered");
+    setModalAction(hideAdmin ? "refused" : "administered");
     setModalRoute(row.routeHint);
     setModalNotes("");
     setModalDoseValue("");
@@ -693,6 +782,20 @@ export function MedicationAdministrationTab({
                 }
                 const titleCell = titleCellParts.length > 0 ? titleCellParts.join(" · ") : "—";
 
+                const activeMarInfusion =
+                  row.isInfusionLifecycleMed && row.orderId
+                    ? findActiveMedicationInfusionFromOrderEvents(
+                        marOrderEventRows,
+                        row.orderId,
+                        row.orderItemId
+                      )
+                    : null;
+                const infusionBusyStart =
+                  infusionBusy === `${row.orderId}:${row.orderItemId}:start`;
+                const infusionBusyStop = infusionBusy === `${row.orderId}:${row.orderItemId}:stop`;
+                const primaryInfusionDisabled =
+                  !isOpen || submitting || marRowLocked || infusionBusyStart || infusionBusyStop;
+
                 return (
                   <tr
                     key={row.orderItemId}
@@ -740,26 +843,99 @@ export function MedicationAdministrationTab({
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 14 }}>
                       <div style={{ marginBottom: 8 }}>{statusCell}</div>
-                      <button
-                        type="button"
-                        disabled={!isOpen || submitting || marRowLocked}
-                        onClick={() => openModal(row)}
-                        style={{
-                          padding: "10px 14px",
-                          fontSize: 14,
-                          minHeight: 44,
-                          width: "100%",
-                          maxWidth: 200,
-                          backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
-                          color: "white",
-                          border: "none",
-                          borderRadius: 6,
-                          cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {t("marTab.administer")}
-                      </button>
+                      {row.isInfusionLifecycleMed ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 220 }}>
+                          {!activeMarInfusion ? (
+                            <button
+                              type="button"
+                              disabled={primaryInfusionDisabled}
+                              onClick={() =>
+                                void runMarInfusion(row.orderItemId, row.orderId, "start")
+                              }
+                              style={{
+                                padding: "10px 14px",
+                                fontSize: 14,
+                                minHeight: 44,
+                                width: "100%",
+                                backgroundColor: isOpen && !marRowLocked ? "#1565c0" : "#bdbdbd",
+                                color: "white",
+                                border: "none",
+                                borderRadius: 6,
+                                cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {infusionBusyStart
+                                ? t("marTab.infusionStarting")
+                                : t("marTab.startInfusion")}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={primaryInfusionDisabled}
+                              onClick={() =>
+                                void runMarInfusion(row.orderItemId, row.orderId, "stop")
+                              }
+                              style={{
+                                padding: "10px 14px",
+                                fontSize: 14,
+                                minHeight: 44,
+                                width: "100%",
+                                backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
+                                color: "white",
+                                border: "none",
+                                borderRadius: 6,
+                                cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {infusionBusyStop
+                                ? t("marTab.infusionStopping")
+                                : t("marTab.stopInfusion")}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={!isOpen || submitting || marRowLocked}
+                            onClick={() => openModal(row, { hideAdministeredAction: true })}
+                            style={{
+                              padding: "8px 10px",
+                              fontSize: 12,
+                              minHeight: 40,
+                              width: "100%",
+                              backgroundColor: "white",
+                              color: "#1565c0",
+                              border: "1px solid #90caf9",
+                              borderRadius: 6,
+                              cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {t("marTab.infusionAltMarActions")}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!isOpen || submitting || marRowLocked}
+                          onClick={() => openModal(row)}
+                          style={{
+                            padding: "10px 14px",
+                            fontSize: 14,
+                            minHeight: 44,
+                            width: "100%",
+                            maxWidth: 200,
+                            backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
+                            color: "white",
+                            border: "none",
+                            borderRadius: 6,
+                            cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {t("marTab.administer")}
+                        </button>
+                      )}
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
                       {titleCell}
@@ -1073,12 +1249,9 @@ export function MedicationAdministrationTab({
             </span>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
               {(
-                [
-                  "administered",
-                  "refused",
-                  "not_available",
-                  "md_changed",
-                ] as const
+                (["administered", "refused", "not_available", "md_changed"] as const).filter(
+                  (a) => !(modalItem.hideAdministeredAction && a === "administered")
+                )
               ).map((a) => (
                 <label
                   key={a}

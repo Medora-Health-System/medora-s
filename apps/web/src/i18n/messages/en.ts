@@ -6613,6 +6613,12 @@ export default {
     intendedPrefix: "Scheduled:",
     routePrefix: "Route:",
     administer: "Administer",
+    startInfusion: "Start infusion",
+    stopInfusion: "Stop infusion",
+    infusionStarting: "Starting infusion…",
+    infusionStopping: "Stopping infusion…",
+    infusionAltMarActions: "Refused / unavailable / prescriber change",
+    infusionActionError: "Infusion action could not be completed. Try again or contact support.",
     historyTitle: "Administration history",
     offlineNotice:
       "This administration was saved on this device and is pending sync with the server. It is not yet confirmed on the server.",
