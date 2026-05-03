@@ -57,7 +57,7 @@ function queueTypeForRequest(path: string, method: string): OfflineQueueItemType
   if (m === "POST" && /^\/encounters\/[^/]+\/close$/.test(path)) return "close_encounter";
   if (
     m === "POST" &&
-    /^\/orders\/items\/[^/]+\/(acknowledge|start|complete)$/.test(path)
+    /^\/orders\/items\/[^/]+\/(acknowledge|start|complete|infusion\/start|infusion\/stop)$/.test(path)
   ) {
     return "order_item_action";
   }

@@ -12,15 +12,20 @@ import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
 import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
 import {
+  findActiveMedicationInfusionFromOrderEvents,
   isOrderItemActiveForErDashboard,
   isOrderItemCancellableLineForEr,
   isOrderItemCompletedForErDashboard,
   isParentOrderCancelled,
+  medicationRouteSnapshotForInfusionCheck,
   orderHasAnyActiveItemForEr,
   orderItemIdFromEventMetadata,
   shouldIncludeCompletedOrderEventInErMerge,
 } from "@/features/emergency/erOrderLifecycleUi";
 import { apiFetch } from "@/lib/apiClient";
+import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { isIvpbInfusionRoute } from "@medora/shared";
 import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
@@ -402,6 +407,7 @@ export function EmergencyErOrdersPanel({
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
   const [pendingCancel, setPendingCancel] = useState<PendingLineCancel | null>(null);
   const [scheduledSubmitFlash, setScheduledSubmitFlash] = useState<string | null>(null);
+  const [orderInfusionError, setOrderInfusionError] = useState<string | null>(null);
   const pendingCancelRef = useRef<PendingLineCancel | null>(null);
   const scheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushInProgressRef = useRef(false);
@@ -696,6 +702,7 @@ export function EmergencyErOrdersPanel({
   const runOrderItemLifecycleAction = async (itemId: string, op: "acknowledge" | "start" | "complete" | "nurse") => {
     const busyKey = `${itemId}:${op}`;
     setLineActionBusy(busyKey);
+    setOrderInfusionError(null);
     try {
       const path =
         op === "nurse"
@@ -703,6 +710,28 @@ export function EmergencyErOrdersPanel({
           : `/orders/items/${itemId}/${op === "acknowledge" ? "acknowledge" : op}`;
       await apiFetch(path, { method: "POST", facilityId });
       setOrdersRefresh((x) => x + 1);
+    } finally {
+      setLineActionBusy(null);
+    }
+  };
+
+  const runInfusionAction = async (itemId: string, op: "start" | "stop") => {
+    const busyKey = `${itemId}:infusion-${op}`;
+    setLineActionBusy(busyKey);
+    setOrderInfusionError(null);
+    try {
+      if (op === "start") await startMedicationInfusion(itemId, facilityId);
+      else await stopMedicationInfusion(itemId, facilityId);
+      setOrdersRefresh((x) => x + 1);
+      setScheduledSubmitFlash(
+        op === "start" ? t("erEmergencyOrders.infusionStarted") : t("erEmergencyOrders.infusionStopped")
+      );
+      window.setTimeout(() => setScheduledSubmitFlash(null), 5000);
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      setOrderInfusionError(
+        normalizeUserFacingError(raw.trim() || null, language) || t("erEmergencyOrders.infusionActionError")
+      );
     } finally {
       setLineActionBusy(null);
     }
@@ -861,6 +890,23 @@ export function EmergencyErOrdersPanel({
                   </button>
                 </div>
               ) : null}
+              {orderInfusionError ? (
+                <div
+                  role="alert"
+                  style={{
+                    marginBottom: 8,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #fecaca",
+                    background: "#fef2f2",
+                    fontSize: 12,
+                    color: "#991b1b",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {orderInfusionError}
+                </div>
+              ) : null}
               {scheduledSubmitFlash ? (
                 <div
                   role="status"
@@ -983,8 +1029,45 @@ export function EmergencyErOrdersPanel({
                                 canAttemptLineCancel && isOrderItemCancellableLineForEr(item);
                               const lineCancelDisabled =
                                 cancelBusyItemId === itemId || pendingCancel !== null;
+                              const routeSnapshot = medicationRouteSnapshotForInfusionCheck(item);
+                              const isIvpbMed =
+                                isBedsideAdministerMedicationRow(item) && isIvpbInfusionRoute(routeSnapshot);
+                              const activeInfusion = isIvpbMed
+                                ? findActiveMedicationInfusionFromOrderEvents(parsedEvents, o.id, itemId)
+                                : null;
+
                               const lineBtns: React.ReactNode[] = [];
-                              if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
+                              if (isIvpbMed && hasAnyRole(roles, "RN", "ADMIN")) {
+                                if (!activeInfusion) {
+                                  lineBtns.push(
+                                    <button
+                                      key="infusion-start"
+                                      type="button"
+                                      style={btn}
+                                      disabled={busy === `${itemId}:infusion-start`}
+                                      onClick={() => void runInfusionAction(itemId, "start")}
+                                    >
+                                      {busy === `${itemId}:infusion-start`
+                                        ? t("erEmergencyOrders.infusionStarting")
+                                        : t("erEmergencyOrders.startInfusion")}
+                                    </button>
+                                  );
+                                } else {
+                                  lineBtns.push(
+                                    <button
+                                      key="infusion-stop"
+                                      type="button"
+                                      style={btn}
+                                      disabled={busy === `${itemId}:infusion-stop`}
+                                      onClick={() => void runInfusionAction(itemId, "stop")}
+                                    >
+                                      {busy === `${itemId}:infusion-stop`
+                                        ? t("erEmergencyOrders.infusionStopping")
+                                        : t("erEmergencyOrders.stopInfusion")}
+                                    </button>
+                                  );
+                                }
+                              } else if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
                                 lineBtns.push(
                                   <button
                                     key="nurse"
@@ -1120,9 +1203,32 @@ export function EmergencyErOrdersPanel({
                                       wordBreak: "break-word",
                                     }}
                                   >
-                                    <div style={{ marginBottom: lineBtns.length > 0 ? 6 : 0 }}>
+                                    <div style={{ marginBottom: lineBtns.length > 0 || isIvpbMed ? 6 : 0 }}>
                                       {orderLineItemStatusLabel(st, t)}
                                     </div>
+                                    {isIvpbMed && activeInfusion ? (
+                                      <div
+                                        style={{
+                                          marginBottom: lineBtns.length > 0 ? 8 : 0,
+                                          fontSize: 11,
+                                          color: "#0369a1",
+                                          lineHeight: 1.4,
+                                        }}
+                                      >
+                                        <div style={{ fontWeight: 700 }}>{t("erEmergencyOrders.infusionInProgress")}</div>
+                                        {activeInfusion.infusionStartedAtIso ? (
+                                          <div style={{ marginTop: 2, color: "#0c4a6e" }}>
+                                            {t("erEmergencyOrders.infusionStartedAtLabel").replace(
+                                              "{at}",
+                                              new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
+                                                language === "fr" ? "fr-FR" : "en-US",
+                                                { dateStyle: "short", timeStyle: "short" }
+                                              )
+                                            )}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
                                     {lineBtns.length > 0 ? (
                                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
                                     ) : null}

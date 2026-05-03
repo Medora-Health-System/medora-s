@@ -60,6 +60,80 @@ export function orderItemIdFromEventMetadata(metadata: unknown): string | null {
  * `CANCELLED`. Drop synthetic “completed” stream rows for lines that are explicitly cancelled so
  * the same line is not implied as both completed and cancelled.
  */
+/** Route snapshot for IVPB detection (order line `route` or catalog medication route). */
+export function medicationRouteSnapshotForInfusionCheck(item: Record<string, unknown>): string {
+  const catalogMedication = item.catalogMedication;
+  const catalogRoute =
+    catalogMedication && typeof catalogMedication === "object"
+      ? String((catalogMedication as Record<string, unknown>).route ?? "").trim()
+      : "";
+  const direct = typeof item.route === "string" ? item.route.trim() : "";
+  return direct || catalogRoute;
+}
+
+export type MedicationInfusionActiveUi = {
+  infusionSessionKey: string;
+  /** From OrderEvent.metadata.infusionStartedAt (ISO) when backend sent it. */
+  infusionStartedAtIso: string | null;
+};
+
+function parseMedicationInfusionOrderEventMetadata(metadata: unknown): {
+  infusionScope?: string;
+  infusionAction?: string;
+  orderItemId?: string;
+  infusionSessionKey?: string;
+  infusionStartedAt?: string;
+} | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const m = metadata as Record<string, unknown>;
+  if (m.infusionScope !== "MEDICATION_INFUSION") return null;
+  return {
+    infusionScope: String(m.infusionScope),
+    infusionAction: typeof m.infusionAction === "string" ? m.infusionAction : undefined,
+    orderItemId: typeof m.orderItemId === "string" ? m.orderItemId : undefined,
+    infusionSessionKey: typeof m.infusionSessionKey === "string" ? m.infusionSessionKey : undefined,
+    infusionStartedAt: typeof m.infusionStartedAt === "string" ? m.infusionStartedAt : undefined,
+  };
+}
+
+/**
+ * Replays infusion-tagged order events for one order line (same rules as API infusion session).
+ * `events` should be sorted ascending by `performedAt` for deterministic results (caller may pass unsorted).
+ */
+export function findActiveMedicationInfusionFromOrderEvents(
+  events: ReadonlyArray<{ orderId: string; eventType: string; performedAt: string; metadata?: unknown }>,
+  orderId: string,
+  orderItemId: string
+): MedicationInfusionActiveUi | null {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime()
+  );
+  let active: MedicationInfusionActiveUi | null = null;
+  for (const ev of sorted) {
+    if (ev.orderId !== orderId) continue;
+    const m = parseMedicationInfusionOrderEventMetadata(ev.metadata);
+    if (!m || m.orderItemId !== orderItemId) continue;
+    if (m.infusionAction === "START" && ev.eventType === "STARTED" && m.infusionSessionKey) {
+      const iso =
+        typeof m.infusionStartedAt === "string" && m.infusionStartedAt.trim()
+          ? m.infusionStartedAt.trim()
+          : null;
+      active = {
+        infusionSessionKey: m.infusionSessionKey,
+        infusionStartedAtIso: iso,
+      };
+    } else if (
+      m.infusionAction === "STOP" &&
+      ev.eventType === "COMPLETED" &&
+      m.infusionSessionKey &&
+      active?.infusionSessionKey === m.infusionSessionKey
+    ) {
+      active = null;
+    }
+  }
+  return active;
+}
+
 export function shouldIncludeCompletedOrderEventInErMerge(
   event: { orderId: string; metadata?: unknown },
   orders: Array<{ id: string; items: unknown[] }>
