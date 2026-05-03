@@ -38,7 +38,7 @@ export class OrdersController {
       where: { userId, facilityId, isActive: true },
       include: { role: true },
     });
-    return urs.map((u) => u.role.code);
+    return urs.flatMap((u) => (u.role ? [u.role.code] : []));
   }
 
   @Post("encounters/:encounterId/orders")
@@ -61,7 +61,7 @@ export class OrdersController {
         where: { userId, facilityId, isActive: true },
         include: { role: true },
       });
-      const codes = userRoles.map((ur) => ur.role.code);
+      const codes = userRoles.flatMap((ur) => (ur.role ? [ur.role.code] : []));
       if (!codes.includes(RoleCode.PROVIDER) && !codes.includes(RoleCode.ADMIN)) {
         if (!codes.includes(RoleCode.RN)) {
           throw new ForbiddenException(

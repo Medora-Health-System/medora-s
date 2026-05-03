@@ -2190,7 +2190,7 @@ export class OrdersService {
       requestorRoleCodes
     );
 
-    const startMeta: Record<string, unknown> = {
+    const startMetaRaw: Record<string, unknown> = {
       infusionScope: "MEDICATION_INFUSION",
       infusionAction: "START",
       orderItemId,
@@ -2200,6 +2200,7 @@ export class OrdersService {
       source: "IV_INFUSION",
       ...identitySnapshot,
     };
+    const startMeta = stripUndefinedDeep(startMetaRaw) as Prisma.InputJsonValue;
 
     await this.prisma.$transaction(async (tx) => {
       if (orderItem.status !== OrderStatus.IN_PROGRESS) {
@@ -2217,7 +2218,7 @@ export class OrdersService {
         orderType: orderItem.order.type,
         eventType: OrderEventType.STARTED,
         performedByUserId: userId,
-        metadata: startMeta as Prisma.InputJsonValue,
+        metadata: startMeta,
         roleSnapshotOverride: identitySnapshot.performedByRoleSnapshot,
         tx,
       });
@@ -2362,7 +2363,7 @@ export class OrdersService {
 
     const stoppedIso = stoppedAt.toISOString();
     const startedIso = active.startedAt.toISOString();
-    const stopMeta: Record<string, unknown> = {
+    const stopMetaRaw: Record<string, unknown> = {
       infusionScope: "MEDICATION_INFUSION",
       infusionAction: "STOP",
       orderItemId,
@@ -2375,6 +2376,7 @@ export class OrdersService {
       source: "IV_INFUSION",
       ...identitySnapshot,
     };
+    const stopMeta = stripUndefinedDeep(stopMetaRaw) as Prisma.InputJsonValue;
 
     await this.writeOrderEvent({
       facilityId,
@@ -2383,7 +2385,7 @@ export class OrdersService {
       orderType: orderItem.order.type,
       eventType: OrderEventType.COMPLETED,
       performedByUserId: userId,
-      metadata: stopMeta as Prisma.InputJsonValue,
+      metadata: stopMeta,
       roleSnapshotOverride: identitySnapshot.performedByRoleSnapshot,
     });
 
