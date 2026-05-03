@@ -127,6 +127,75 @@ const ROS_NEG_FRAGMENT_KEYS = [
 
 type RosChipTargetField = "importantPositives" | "importantNegatives" | "redFlagsText";
 
+type ExamAppendChipField =
+  | "examGeneralAppearance"
+  | "examNeuroMental"
+  | "examHeent"
+  | "examCardiac"
+  | "examRespiratory"
+  | "examAbdomen"
+  | "examMusculoskeletal"
+  | "examSkin"
+  | "examPsychBehavior";
+
+const EXAM_CHIP_GROUPS: readonly {
+  field: ExamAppendChipField;
+  categoryKey: string;
+  fragmentKeys: readonly string[];
+}[] = [
+  {
+    field: "examGeneralAppearance",
+    categoryKey: "catGeneral",
+    fragmentKeys: ["genAlert", "genUncomfortableAppearing", "genNoAcuteDistress", "genToxicAppearing"],
+  },
+  {
+    field: "examNeuroMental",
+    categoryKey: "catNeuro",
+    fragmentKeys: [
+      "neuroAlertOriented",
+      "neuroFollowsCommands",
+      "neuroSpeechClear",
+      "neuroFocalDeficitNoted",
+      "neuroAlteredMs",
+    ],
+  },
+  {
+    field: "examHeent",
+    categoryKey: "catHeent",
+    fragmentKeys: ["heentPerrla", "heentDryMm", "heentOropharynxClear", "heentHeadAtraumatic"],
+  },
+  {
+    field: "examCardiac",
+    categoryKey: "catCardiac",
+    fragmentKeys: ["cardioRrr", "cardioTachycardic", "cardioNoMurmur", "cardioPeripheralPulsesPresent"],
+  },
+  {
+    field: "examRespiratory",
+    categoryKey: "catRespiratory",
+    fragmentKeys: ["respNoDistress", "respClearBs", "respWheezing", "respCrackles", "respIncreasedWob"],
+  },
+  {
+    field: "examAbdomen",
+    categoryKey: "catAbdomen",
+    fragmentKeys: ["abdSoft", "abdNonTender", "abdTendernessPresent", "abdGuarding", "abdDistended"],
+  },
+  {
+    field: "examMusculoskeletal",
+    categoryKey: "catMsk",
+    fragmentKeys: ["mskRomNormal", "mskTendernessPresent", "mskSwellingPresent", "mskDeformityNoted"],
+  },
+  {
+    field: "examSkin",
+    categoryKey: "catSkin",
+    fragmentKeys: ["skinWarmDry", "skinRashPresent", "skinLacerationPresent", "skinDiaphoresis"],
+  },
+  {
+    field: "examPsychBehavior",
+    categoryKey: "catPsych",
+    fragmentKeys: ["psychCalmCooperative", "psychAnxious", "psychAgitated", "psychAppropriateAffect"],
+  },
+] as const;
+
 type EncounterLite = {
   id: string;
   status?: string | null;
@@ -299,6 +368,12 @@ export function EmergencyProviderMsePanel({
   }, [t]);
 
   const appendRosChipFragment = useCallback((field: RosChipTargetField, fragmentI18nKey: string) => {
+    const fragment = t(fragmentI18nKey).trim();
+    if (!fragment) return;
+    setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
+  }, [t]);
+
+  const appendExamChipFragment = useCallback((field: ExamAppendChipField, fragmentI18nKey: string) => {
     const fragment = t(fragmentI18nKey).trim();
     if (!fragment) return;
     setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
@@ -776,6 +851,43 @@ export function EmergencyProviderMsePanel({
                   >
                     {t(EXAM_PRESET_I18N_KEY[pid])}
                   </button>
+                ))}
+              </div>
+              <div
+                style={{
+                  marginTop: 10,
+                  paddingTop: 10,
+                  borderTop: "1px solid #e2e8f0",
+                }}
+              >
+                <p style={hpiChipHintStyle}>{t("erMseExamChips.hint")}</p>
+                {EXAM_CHIP_GROUPS.map((group) => (
+                  <div key={group.field} style={{ marginTop: 8 }}>
+                    <p style={hpiChipCategoryStyle}>{t(`erMseExamChips.${group.categoryKey}`)}</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, alignItems: "center" }}>
+                      {group.fragmentKeys.map((fk) => {
+                        const msgKey = `erMseExamChips.${fk}`;
+                        return (
+                          <button
+                            key={fk}
+                            type="button"
+                            disabled={formDisabled}
+                            onClick={() => appendExamChipFragment(group.field, msgKey)}
+                            style={{
+                              ...mseChipPillBase,
+                              background: formDisabled ? "#f1f5f9" : "#f0fdf4",
+                              color: formDisabled ? "#94a3b8" : "#14532d",
+                              borderColor: formDisabled ? "#e2e8f0" : "#bbf7d0",
+                              cursor: formDisabled ? "not-allowed" : "pointer",
+                              opacity: formDisabled ? 0.55 : 1,
+                            }}
+                          >
+                            {t(msgKey)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
