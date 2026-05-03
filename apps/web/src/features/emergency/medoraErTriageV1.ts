@@ -108,6 +108,14 @@ export type ErTriageV1Form = {
   stimulantUse: string;
   opioidHeroinUse: string;
   historySocialComments: string;
+
+  /** Optional structured quick-picks (stable codes); parallel to free-text fields below. */
+  sourceRoutingSelections: string[];
+  ppeSelections: string[];
+  socialHistorySelections: string[];
+  medicationSummarySelections: string[];
+  allergyDetailSelections: string[];
+  nursingCareSelections: string[];
 };
 
 export function emptyErTriageV1Form(): ErTriageV1Form {
@@ -156,6 +164,13 @@ export function emptyErTriageV1Form(): ErTriageV1Form {
     stimulantUse: "",
     opioidHeroinUse: "",
     historySocialComments: "",
+
+    sourceRoutingSelections: [],
+    ppeSelections: [],
+    socialHistorySelections: [],
+    medicationSummarySelections: [],
+    allergyDetailSelections: [],
+    nursingCareSelections: [],
   };
 }
 
@@ -247,6 +262,105 @@ export function appendIfNotPresent(current: string, value: string): string {
   if (!trimmed) return fragment;
   if (trimmed.includes(fragment)) return current;
   return `${trimmed}, ${fragment}`;
+}
+
+/** Stable codes + `erTriage.v1.${i18nKey}` labels for routing quick-picks. */
+export const ER_TRIAGE_ROUTING_CHIP_DEFS = [
+  { code: "SELF", i18nKey: "chipsRoutingSelf" },
+  { code: "AMBULANCE", i18nKey: "chipsRoutingAmbulance" },
+  { code: "WALK_IN", i18nKey: "chipsRoutingWalkIn" },
+  { code: "TRANSFER", i18nKey: "chipsRoutingTransfer" },
+  { code: "OTHER", i18nKey: "chipsRoutingOther" },
+] as const;
+
+/** PPE quick-picks (parallel to `ppeNote`). */
+export const ER_TRIAGE_PPE_CHIP_DEFS = [
+  { code: "MASK", i18nKey: "chipsPpeMask" },
+  { code: "GLOVES", i18nKey: "chipsPpeGloves" },
+  { code: "ISOLATION", i18nKey: "chipsPpeIsolation" },
+  { code: "CONTACT", i18nKey: "chipsPpeContact" },
+  { code: "AIRBORNE", i18nKey: "chipsPpeAirborne" },
+] as const;
+
+/** Social / substance quick-picks (parallel to `historySocialComments`). */
+export const ER_TRIAGE_SOCIAL_CHIP_DEFS = [
+  { code: "SMOKER", i18nKey: "chipsSocialSmoker" },
+  { code: "FORMER_SMOKER", i18nKey: "chipsSocialFormerSmoker" },
+  { code: "ALCOHOL_USE", i18nKey: "chipsSocialAlcohol" },
+  { code: "CANNABIS_USE", i18nKey: "chipsSocialCannabis" },
+  { code: "OPIOID_USE", i18nKey: "chipsSocialOpioid" },
+  { code: "STIMULANT_USE", i18nKey: "chipsSocialStimulant" },
+] as const;
+
+export const ER_TRIAGE_MEDS_CHIP_DEFS = [
+  { code: "NO_MEDICATIONS", i18nKey: "chipsMedsNone" },
+  { code: "UNKNOWN_MEDICATIONS", i18nKey: "chipsMedsUnknown" },
+  { code: "POLYPHARMACY", i18nKey: "chipsMedsPolypharmacy" },
+] as const;
+
+export const ER_TRIAGE_ALLERGY_CHIP_DEFS = [
+  { code: "NKDA", i18nKey: "chipsAllergyNkda" },
+  { code: "FOOD_ALLERGY", i18nKey: "chipsAllergyFood" },
+  { code: "DRUG_ALLERGY", i18nKey: "chipsAllergyDrug" },
+  { code: "LATEX_ALLERGY", i18nKey: "chipsAllergyLatex" },
+] as const;
+
+export const ER_TRIAGE_NURSING_CHIP_DEFS = [
+  { code: "CONTINUOUS_MONITORING", i18nKey: "chipsNursingContinuousMonitor" },
+  { code: "CARDIAC_MONITOR", i18nKey: "chipsNursingCardiacMonitor" },
+  { code: "OXYGEN_THERAPY", i18nKey: "chipsNursingOxygen" },
+  { code: "IV_ACCESS_ESTABLISHED", i18nKey: "chipsNursingIvAccess" },
+] as const;
+
+const SOURCE_ROUTING_CODE_SET = new Set<string>(ER_TRIAGE_ROUTING_CHIP_DEFS.map((d) => d.code));
+const PPE_SELECTION_CODE_SET = new Set<string>(ER_TRIAGE_PPE_CHIP_DEFS.map((d) => d.code));
+const SOCIAL_HISTORY_CODE_SET = new Set<string>(ER_TRIAGE_SOCIAL_CHIP_DEFS.map((d) => d.code));
+const MED_SUMMARY_CODE_SET = new Set<string>(ER_TRIAGE_MEDS_CHIP_DEFS.map((d) => d.code));
+const ALLERGY_DETAIL_CODE_SET = new Set<string>(ER_TRIAGE_ALLERGY_CHIP_DEFS.map((d) => d.code));
+const NURSING_CARE_CODE_SET = new Set<string>(ER_TRIAGE_NURSING_CHIP_DEFS.map((d) => d.code));
+
+function selectionCodesFromStorage(raw: unknown, allowed: Set<string>): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of raw) {
+    if (typeof x !== "string") continue;
+    const c = x.trim();
+    if (!c || !allowed.has(c) || seen.has(c)) continue;
+    seen.add(c);
+    out.push(c);
+  }
+  return out;
+}
+
+function selectionCodesForMerge(values: string[], allowed: Set<string>): string[] {
+  return selectionCodesFromStorage(values, allowed);
+}
+
+function applyStructuredSelectionsToMerged(merged: Record<string, unknown>, form: ErTriageV1Form): void {
+  const sr = selectionCodesForMerge(form.sourceRoutingSelections, SOURCE_ROUTING_CODE_SET);
+  if (sr.length) merged.sourceRoutingSelections = sr;
+  else delete merged.sourceRoutingSelections;
+
+  const pe = selectionCodesForMerge(form.ppeSelections, PPE_SELECTION_CODE_SET);
+  if (pe.length) merged.ppeSelections = pe;
+  else delete merged.ppeSelections;
+
+  const sh = selectionCodesForMerge(form.socialHistorySelections, SOCIAL_HISTORY_CODE_SET);
+  if (sh.length) merged.socialHistorySelections = sh;
+  else delete merged.socialHistorySelections;
+
+  const ms = selectionCodesForMerge(form.medicationSummarySelections, MED_SUMMARY_CODE_SET);
+  if (ms.length) merged.medicationSummarySelections = ms;
+  else delete merged.medicationSummarySelections;
+
+  const ad = selectionCodesForMerge(form.allergyDetailSelections, ALLERGY_DETAIL_CODE_SET);
+  if (ad.length) merged.allergyDetailSelections = ad;
+  else delete merged.allergyDetailSelections;
+
+  const nc = selectionCodesForMerge(form.nursingCareSelections, NURSING_CARE_CODE_SET);
+  if (nc.length) merged.nursingCareSelections = nc;
+  else delete merged.nursingCareSelections;
 }
 
 function traumaLevelFromStorage(v: unknown): ErTraumaLevel {
@@ -387,10 +501,28 @@ export function erTriageV1FormFromVitalsJson(vitalsJson: unknown): ErTriageV1For
     stimulantUse: stringFromStorage(g("stimulantUse")),
     opioidHeroinUse: stringFromStorage(g("opioidHeroinUse")),
     historySocialComments: stringFromStorage(g("historySocialComments")),
+
+    sourceRoutingSelections: selectionCodesFromStorage(g("sourceRoutingSelections"), SOURCE_ROUTING_CODE_SET),
+    ppeSelections: selectionCodesFromStorage(g("ppeSelections"), PPE_SELECTION_CODE_SET),
+    socialHistorySelections: selectionCodesFromStorage(g("socialHistorySelections"), SOCIAL_HISTORY_CODE_SET),
+    medicationSummarySelections: selectionCodesFromStorage(
+      g("medicationSummarySelections"),
+      MED_SUMMARY_CODE_SET
+    ),
+    allergyDetailSelections: selectionCodesFromStorage(g("allergyDetailSelections"), ALLERGY_DETAIL_CODE_SET),
+    nursingCareSelections: selectionCodesFromStorage(g("nursingCareSelections"), NURSING_CARE_CODE_SET),
   };
 }
 
-type ErTriageV1FlatKey = Exclude<keyof ErTriageV1Form, "traumaActivation">;
+export type ErTriageV1StructuredSelectionKey =
+  | "sourceRoutingSelections"
+  | "ppeSelections"
+  | "socialHistorySelections"
+  | "medicationSummarySelections"
+  | "allergyDetailSelections"
+  | "nursingCareSelections";
+
+type ErTriageV1FlatKey = Exclude<keyof ErTriageV1Form, "traumaActivation" | ErTriageV1StructuredSelectionKey>;
 
 const FLAT_FORM_KEYS: ErTriageV1FlatKey[] = [
   "triageNarrative",
@@ -562,6 +694,8 @@ export function mergeMedoraErTriageV1Blob(previousVitalsJson: unknown, form: ErT
     merged.traumaActivation = taStored;
   }
 
+  applyStructuredSelectionsToMerged(merged, form);
+
   return Object.keys(merged).length > 0 ? merged : null;
 }
 
@@ -575,10 +709,20 @@ function traumaActivationHasAnyContent(ta: ErTraumaActivationForm): boolean {
   );
 }
 
+const STRUCTURED_SELECTION_KEYS: ErTriageV1StructuredSelectionKey[] = [
+  "sourceRoutingSelections",
+  "ppeSelections",
+  "socialHistorySelections",
+  "medicationSummarySelections",
+  "allergyDetailSelections",
+  "nursingCareSelections",
+];
+
 /** True if any known V1 field is non-empty in the form (for badges / summary). */
 export function erTriageV1FormHasAnyContent(form: ErTriageV1Form): boolean {
   if (traumaActivationHasAnyContent(form.traumaActivation)) return true;
-  return FLAT_FORM_KEYS.some((k) => !isEmptyString(form[k]));
+  if (FLAT_FORM_KEYS.some((k) => !isEmptyString(form[k]))) return true;
+  return STRUCTURED_SELECTION_KEYS.some((k) => form[k].length > 0);
 }
 
 /** ER trauma protocol assist (orders panel): visible only for EMERGENCY + trauma activation on triage. */

@@ -3,9 +3,22 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
-import type { ErAbcOption, ErTraumaActivationCriterionId, ErTraumaLevel, ErTriageV1Form, ErYesNoUnknown } from "./medoraErTriageV1";
+import type {
+  ErAbcOption,
+  ErTraumaActivationCriterionId,
+  ErTraumaLevel,
+  ErTriageV1Form,
+  ErTriageV1StructuredSelectionKey,
+  ErYesNoUnknown,
+} from "./medoraErTriageV1";
 import {
   ER_TRAUMA_ACTIVATION_CRITERIA_IDS,
+  ER_TRIAGE_ALLERGY_CHIP_DEFS,
+  ER_TRIAGE_MEDS_CHIP_DEFS,
+  ER_TRIAGE_NURSING_CHIP_DEFS,
+  ER_TRIAGE_PPE_CHIP_DEFS,
+  ER_TRIAGE_ROUTING_CHIP_DEFS,
+  ER_TRIAGE_SOCIAL_CHIP_DEFS,
   appendIfNotPresent,
   emptyErTraumaActivationForm,
   erTriageV1FormHasAnyContent,
@@ -97,41 +110,32 @@ function ErTriageDocChipRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-const ROUTING_CHIP_KEYS = [
-  "chipsRoutingSelf",
-  "chipsRoutingAmbulance",
-  "chipsRoutingWalkIn",
-  "chipsRoutingTransfer",
-  "chipsRoutingOther",
-] as const;
+type ErTriageChipTextKey =
+  | "referralSource"
+  | "ppeNote"
+  | "historySocialComments"
+  | "medicationsSummary"
+  | "additionalAllergyInfo"
+  | "nursingCareNote";
 
-const PPE_CHIP_KEYS = [
-  "chipsPpeMask",
-  "chipsPpeGloves",
-  "chipsPpeIsolation",
-  "chipsPpeContact",
-  "chipsPpeAirborne",
-] as const;
-
-const SOCIAL_CHIP_KEYS = [
-  "chipsSocialSmoker",
-  "chipsSocialFormerSmoker",
-  "chipsSocialAlcohol",
-  "chipsSocialCannabis",
-  "chipsSocialOpioid",
-  "chipsSocialStimulant",
-] as const;
-
-const MEDS_CHIP_KEYS = ["chipsMedsNone", "chipsMedsUnknown", "chipsMedsPolypharmacy"] as const;
-
-const ALLERGY_CHIP_KEYS = ["chipsAllergyNkda", "chipsAllergyFood", "chipsAllergyDrug", "chipsAllergyLatex"] as const;
-
-const NURSING_CHIP_KEYS = [
-  "chipsNursingContinuousMonitor",
-  "chipsNursingCardiacMonitor",
-  "chipsNursingOxygen",
-  "chipsNursingIvAccess",
-] as const;
+function toggleStructuredTriageChip(
+  patchErV1: (p: Partial<ErTriageV1Form>) => void,
+  er: ErTriageV1Form,
+  selectionKey: ErTriageV1StructuredSelectionKey,
+  textKey: ErTriageChipTextKey,
+  code: string,
+  label: string
+): void {
+  const current = er[selectionKey];
+  if (current.includes(code)) {
+    patchErV1({ [selectionKey]: current.filter((c) => c !== code) } as Partial<ErTriageV1Form>);
+    return;
+  }
+  patchErV1({
+    [selectionKey]: [...current, code],
+    [textKey]: appendIfNotPresent(er[textKey], label),
+  } as Partial<ErTriageV1Form>);
+}
 
 function painOptions(dash: string): { value: string; label: string }[] {
   const o: { value: string; label: string }[] = [{ value: "", label: dash }];
@@ -276,14 +280,17 @@ export function EmergencyTriageV1Sections({
             />
             <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
-              {PPE_CHIP_KEYS.map((k) => {
-                const label = t(`erTriage.v1.${k}`);
+              {ER_TRIAGE_PPE_CHIP_DEFS.map((def) => {
+                const label = t(`erTriage.v1.${def.i18nKey}`);
                 return (
                   <ErTriageDocChip
-                    key={k}
+                    key={def.code}
                     label={label}
+                    active={er.ppeSelections.includes(def.code)}
                     disabled={formDisabled}
-                    onClick={() => patchErV1({ ppeNote: appendIfNotPresent(er.ppeNote, label) })}
+                    onClick={() =>
+                      toggleStructuredTriageChip(patchErV1, er, "ppeSelections", "ppeNote", def.code, label)
+                    }
                   />
                 );
               })}
@@ -400,15 +407,23 @@ export function EmergencyTriageV1Sections({
               />
               <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
               <ErTriageDocChipRow>
-                {ROUTING_CHIP_KEYS.map((k) => {
-                  const label = t(`erTriage.v1.${k}`);
+                {ER_TRIAGE_ROUTING_CHIP_DEFS.map((def) => {
+                  const label = t(`erTriage.v1.${def.i18nKey}`);
                   return (
                     <ErTriageDocChip
-                      key={k}
+                      key={def.code}
                       label={label}
+                      active={er.sourceRoutingSelections.includes(def.code)}
                       disabled={formDisabled}
                       onClick={() =>
-                        patchErV1({ referralSource: appendIfNotPresent(er.referralSource, label) })
+                        toggleStructuredTriageChip(
+                          patchErV1,
+                          er,
+                          "sourceRoutingSelections",
+                          "referralSource",
+                          def.code,
+                          label
+                        )
                       }
                     />
                   );
@@ -591,15 +606,23 @@ export function EmergencyTriageV1Sections({
             />
             <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
-              {NURSING_CHIP_KEYS.map((k) => {
-                const label = t(`erTriage.v1.${k}`);
+              {ER_TRIAGE_NURSING_CHIP_DEFS.map((def) => {
+                const label = t(`erTriage.v1.${def.i18nKey}`);
                 return (
                   <ErTriageDocChip
-                    key={k}
+                    key={def.code}
                     label={label}
+                    active={er.nursingCareSelections.includes(def.code)}
                     disabled={formDisabled}
                     onClick={() =>
-                      patchErV1({ nursingCareNote: appendIfNotPresent(er.nursingCareNote, label) })
+                      toggleStructuredTriageChip(
+                        patchErV1,
+                        er,
+                        "nursingCareSelections",
+                        "nursingCareNote",
+                        def.code,
+                        label
+                      )
                     }
                   />
                 );
@@ -682,15 +705,23 @@ export function EmergencyTriageV1Sections({
             />
             <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
-              {MEDS_CHIP_KEYS.map((k) => {
-                const label = t(`erTriage.v1.${k}`);
+              {ER_TRIAGE_MEDS_CHIP_DEFS.map((def) => {
+                const label = t(`erTriage.v1.${def.i18nKey}`);
                 return (
                   <ErTriageDocChip
-                    key={k}
+                    key={def.code}
                     label={label}
+                    active={er.medicationSummarySelections.includes(def.code)}
                     disabled={formDisabled}
                     onClick={() =>
-                      patchErV1({ medicationsSummary: appendIfNotPresent(er.medicationsSummary, label) })
+                      toggleStructuredTriageChip(
+                        patchErV1,
+                        er,
+                        "medicationSummarySelections",
+                        "medicationsSummary",
+                        def.code,
+                        label
+                      )
                     }
                   />
                 );
@@ -710,17 +741,23 @@ export function EmergencyTriageV1Sections({
             />
             <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
-              {ALLERGY_CHIP_KEYS.map((k) => {
-                const label = t(`erTriage.v1.${k}`);
+              {ER_TRIAGE_ALLERGY_CHIP_DEFS.map((def) => {
+                const label = t(`erTriage.v1.${def.i18nKey}`);
                 return (
                   <ErTriageDocChip
-                    key={k}
+                    key={def.code}
                     label={label}
+                    active={er.allergyDetailSelections.includes(def.code)}
                     disabled={formDisabled}
                     onClick={() =>
-                      patchErV1({
-                        additionalAllergyInfo: appendIfNotPresent(er.additionalAllergyInfo, label),
-                      })
+                      toggleStructuredTriageChip(
+                        patchErV1,
+                        er,
+                        "allergyDetailSelections",
+                        "additionalAllergyInfo",
+                        def.code,
+                        label
+                      )
                     }
                   />
                 );
@@ -871,17 +908,23 @@ export function EmergencyTriageV1Sections({
             />
             <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
-              {SOCIAL_CHIP_KEYS.map((k) => {
-                const label = t(`erTriage.v1.${k}`);
+              {ER_TRIAGE_SOCIAL_CHIP_DEFS.map((def) => {
+                const label = t(`erTriage.v1.${def.i18nKey}`);
                 return (
                   <ErTriageDocChip
-                    key={k}
+                    key={def.code}
                     label={label}
+                    active={er.socialHistorySelections.includes(def.code)}
                     disabled={formDisabled}
                     onClick={() =>
-                      patchErV1({
-                        historySocialComments: appendIfNotPresent(er.historySocialComments, label),
-                      })
+                      toggleStructuredTriageChip(
+                        patchErV1,
+                        er,
+                        "socialHistorySelections",
+                        "historySocialComments",
+                        def.code,
+                        label
+                      )
                     }
                   />
                 );
