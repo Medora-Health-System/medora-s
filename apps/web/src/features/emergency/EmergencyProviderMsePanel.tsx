@@ -31,6 +31,51 @@ import {
   getErPhysicalExamTemplatePreset,
   type ErPhysicalExamTemplateId,
 } from "./erPhysicalExamTemplatePresets";
+import { appendIfNotPresent } from "./medoraErTriageV1";
+
+/** HPI quick chips — fragments only; appended to `hpiNarrative` via `appendIfNotPresent`. */
+const HPI_CHIP_ROWS: readonly { categoryKey: string; fragmentKeys: readonly string[] }[] = [
+  {
+    categoryKey: "catLocation",
+    fragmentKeys: ["locChestPain", "locAbdominalPain", "locHeadache", "locFlankPain", "locLimbPain", "locBackPain"],
+  },
+  {
+    categoryKey: "catTiming",
+    fragmentKeys: [
+      "timStartedToday",
+      "timSuddenOnset",
+      "timGradualOnset",
+      "timChronicOrRecurrent",
+      "timWorsening",
+      "timImproving",
+    ],
+  },
+  {
+    categoryKey: "catQuality",
+    fragmentKeys: ["qualSharp", "qualPressureLike", "qualBurning", "qualAching", "qualThrobbing", "qualStabbing"],
+  },
+  {
+    categoryKey: "catAssociated",
+    fragmentKeys: ["assocSob", "assocNausea", "assocVomiting", "assocFever", "assocDizziness", "assocDiaphoresis"],
+  },
+] as const;
+
+const hpiChipHintStyle: React.CSSProperties = {
+  margin: "6px 0 0 0",
+  fontSize: 11,
+  color: "#94a3b8",
+  fontWeight: 500,
+  lineHeight: 1.4,
+};
+
+const hpiChipCategoryStyle: React.CSSProperties = {
+  margin: "8px 0 0 0",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "#64748b",
+};
 
 type EncounterLite = {
   id: string;
@@ -196,6 +241,12 @@ export function EmergencyProviderMsePanel({
   const patchForm = useCallback((patch: Partial<ErProviderMseForm>) => {
     setForm((f) => ({ ...f, ...patch }));
   }, []);
+
+  const appendHpiChipFragment = useCallback((fragmentI18nKey: string) => {
+    const fragment = t(fragmentI18nKey).trim();
+    if (!fragment) return;
+    setForm((f) => ({ ...f, hpiNarrative: appendIfNotPresent(f.hpiNarrative, fragment) }));
+  }, [t]);
 
   const assistApplicable = useMemo(() => {
     if (!mseAssistContext || formDisabled) return false;
@@ -457,6 +508,50 @@ export function EmergencyProviderMsePanel({
                 <div>
                   <label style={labelStyle}>{t("erMseProviderPanel.labelHpi")}</label>
                   {ta(3, "hpiNarrative")}
+                  <p style={hpiChipHintStyle}>{t("erMseHpiChips.hint")}</p>
+                  {HPI_CHIP_ROWS.map((row) => (
+                    <div key={row.categoryKey}>
+                      <p style={hpiChipCategoryStyle}>{t(`erMseHpiChips.${row.categoryKey}`)}</p>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 6,
+                          marginTop: 4,
+                          alignItems: "center",
+                        }}
+                      >
+                        {row.fragmentKeys.map((fk) => {
+                          const msgKey = `erMseHpiChips.${fk}`;
+                          return (
+                            <button
+                              key={fk}
+                              type="button"
+                              disabled={formDisabled}
+                              onClick={() => appendHpiChipFragment(msgKey)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                padding: "4px 10px",
+                                borderRadius: 9999,
+                                border: "1px solid #e2e8f0",
+                                background: formDisabled ? "#f1f5f9" : "#f8fafc",
+                                color: formDisabled ? "#94a3b8" : "#334155",
+                                fontSize: 12,
+                                cursor: formDisabled ? "not-allowed" : "pointer",
+                                lineHeight: 1.3,
+                                fontFamily: "inherit",
+                                WebkitTapHighlightColor: "transparent",
+                                userSelect: "none",
+                              }}
+                            >
+                              {t(msgKey)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div style={grid2}>
                   <div>
