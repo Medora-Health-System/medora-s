@@ -6619,6 +6619,8 @@ export default {
     infusionStopping: "Stopping infusion…",
     infusionAltMarActions: "Refused / unavailable / prescriber change",
     infusionActionError: "Infusion action could not be completed. Try again or contact support.",
+    errInfusionUseStartStop:
+      "This line is a bag or IV antibiotic infusion: use “Start infusion” / “Stop infusion” (not one-step administered).",
     historyTitle: "Administration history",
     offlineNotice:
       "This administration was saved on this device and is pending sync with the server. It is not yet confirmed on the server.",

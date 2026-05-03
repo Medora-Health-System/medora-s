@@ -21,6 +21,7 @@ import {
   computeAdvancedMedicationSafetyForSingleLine,
   mergeAdvancedMedicationLineWithDraft,
   isMedicationInfusionCandidate,
+  type MedicationInfusionCandidateInput,
   type AdvancedMedicationSafetyLine,
   type MedicationSafetyCatalogInput,
   type MedicationSafetyWarning,
@@ -267,6 +268,8 @@ export function MedicationAdministrationTab({
     orderedQuantity: number | null;
     /** When true, MAR modal hides one-step “administered” (perfusion uses start/stop). */
     hideAdministeredAction?: boolean;
+    /** Same input as open-orders infusion classifier — blocks accidental MAR “administered” for bags/IV abx. */
+    infusionClassifyPayload?: MedicationInfusionCandidateInput;
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
@@ -401,6 +404,7 @@ export function MedicationAdministrationTab({
       orderId: string;
       orderItemId: string;
       isInfusionLifecycleMed: boolean;
+      infusionClassifyPayload: MedicationInfusionCandidateInput;
       label: string;
       routeHint: string;
       ndcHint: string;
@@ -431,16 +435,20 @@ export function MedicationAdministrationTab({
         const routeSnap = medicationRouteSnapshotForInfusionCheck(itemRec);
         const catM = it.catalogMedication;
         const catRow = catM && typeof catM === "object" ? (catM as Record<string, unknown>) : null;
+        const fulfillment = String(it.medicationFulfillmentIntent ?? "ADMINISTER_CHART");
+        const rawClassText = medicationInfusionClassificationText(itemRec).trim();
+        const medicationLabelForClass = (rawClassText || label.trim()).trim() || null;
+        const infusionClassifyPayload: MedicationInfusionCandidateInput = {
+          route: routeSnap.trim() || null,
+          medicationLabel: medicationLabelForClass,
+          code: typeof catRow?.code === "string" ? catRow.code : null,
+          genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
+          metadata: null,
+        };
         const isInfusionLifecycleMed =
           String(it.catalogItemType ?? "") === "MEDICATION" &&
-          String(it.medicationFulfillmentIntent ?? "") === "ADMINISTER_CHART" &&
-          isMedicationInfusionCandidate({
-            route: routeSnap.trim() || null,
-            medicationLabel: medicationInfusionClassificationText(itemRec) || null,
-            code: typeof catRow?.code === "string" ? catRow.code : null,
-            genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
-            metadata: null,
-          });
+          fulfillment === "ADMINISTER_CHART" &&
+          isMedicationInfusionCandidate(infusionClassifyPayload);
         const rawQ = it.quantity;
         const orderedQuantity =
           typeof rawQ === "number" && Number.isFinite(rawQ)
@@ -455,6 +463,7 @@ export function MedicationAdministrationTab({
           orderId,
           orderItemId: it.id,
           isInfusionLifecycleMed,
+          infusionClassifyPayload,
           label,
           authorityLine: formatOrderAuthority(order as Record<string, unknown>, t),
           attributionLines: formatOrderAttributionLines(order as Record<string, unknown>, t, language),
@@ -529,6 +538,7 @@ export function MedicationAdministrationTab({
       billingUnitHint: row.billingUnitHint,
       orderedQuantity: row.orderedQuantity,
       hideAdministeredAction: hideAdmin,
+      infusionClassifyPayload: row.infusionClassifyPayload,
     });
     setModalSubmitError(null);
     setModalAction(hideAdmin ? "refused" : "administered");
@@ -566,6 +576,14 @@ export function MedicationAdministrationTab({
       !marAllergySafetyAck
     ) {
       setModalSubmitError(t("marTab.errAllergyAckRequired"));
+      return;
+    }
+    if (
+      modalAction === "administered" &&
+      modalItem.infusionClassifyPayload &&
+      isMedicationInfusionCandidate(modalItem.infusionClassifyPayload)
+    ) {
+      setModalSubmitError(t("marTab.errInfusionUseStartStop"));
       return;
     }
     setSubmitting(true);

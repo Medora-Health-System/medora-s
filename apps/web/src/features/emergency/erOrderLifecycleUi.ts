@@ -99,9 +99,17 @@ export function medicationRouteSnapshotForInfusionCheck(item: Record<string, unk
 export function medicationInfusionClassificationText(item: Record<string, unknown>): string {
   const cat = item.catalogMedication;
   const c = cat && typeof cat === "object" ? (cat as Record<string, unknown>) : null;
+  const strengthRaw = item.strength;
+  const strengthStr =
+    typeof strengthRaw === "string"
+      ? strengthRaw.trim()
+      : strengthRaw != null && String(strengthRaw).trim() !== ""
+        ? String(strengthRaw).trim()
+        : "";
   const parts = [
     item.manualLabel,
     item.manualSecondaryText,
+    strengthStr,
     c?.displayNameEn,
     c?.name,
     c?.genericName,

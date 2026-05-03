@@ -6609,6 +6609,8 @@ export default {
     infusionStopping: "Arrêt de la perfusion…",
     infusionAltMarActions: "Refus / indisponible / changement prescripteur",
     infusionActionError: "Action sur la perfusion impossible. Réessayez ou contactez le support.",
+    errInfusionUseStartStop:
+      "Cette ligne est une perfusion (soluté ou antibiotique IV) : utilisez « Démarrer la perfusion » / « Arrêter la perfusion », et non l’administration en une étape.",
     historyTitle: "Historique des enregistrements",
     offlineNotice:
       "L'administration a été enregistrée sur cet appareil et est en attente de synchronisation avec le serveur. Elle n'est pas encore confirmée côté serveur.",
