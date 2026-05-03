@@ -108,19 +108,6 @@ function marOrderItemToSafetyCatalogInput(it: OrderItemApi, displayLabel: string
 
 const RECENT_MS = 24 * 60 * 60 * 1000;
 
-/** MAR infusion “Last action” column: readable shell (aligned with Medora panel tokens). */
-const MAR_INFUSION_LAST_ACTION_SHELL: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 14,
-  minWidth: 0,
-  padding: "12px 14px",
-  borderRadius: 12,
-  border: "1px solid #e2e8f0",
-  backgroundColor: "#f8fafc",
-  boxSizing: "border-box",
-};
-
 const MAR_INFUSION_STATUS_BADGE_ACTIVE: React.CSSProperties = {
   alignSelf: "flex-start",
   padding: "5px 12px",
@@ -145,29 +132,23 @@ const MAR_INFUSION_STATUS_BADGE_COMPLETED: React.CSSProperties = {
   border: "1px solid #5eead4",
 };
 
-const MAR_INFUSION_META_LINE_ACTIVE: React.CSSProperties = {
-  fontSize: 13,
-  color: "#0c4a6e",
-  lineHeight: 1.5,
-  overflowWrap: "anywhere",
-  wordBreak: "break-word",
-};
-
-const MAR_INFUSION_META_LINE_COMPLETED: React.CSSProperties = {
-  fontSize: 13,
-  color: "#134e4a",
-  lineHeight: 1.5,
-  overflowWrap: "anywhere",
-  wordBreak: "break-word",
-};
-
-const MAR_INFUSION_ACTIONS_STACK: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
+const MAR_TABLE_METRIC_CELL: React.CSSProperties = {
+  padding: "10px 8px",
+  fontSize: 12,
+  verticalAlign: "top",
   minWidth: 0,
-  paddingTop: 4,
-  borderTop: "1px solid #e2e8f0",
+  width: "9%",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+  lineHeight: 1.35,
+  color: "#334155",
+};
+
+const MAR_TABLE_CONTROLS_CELL: React.CSSProperties = {
+  padding: "10px 8px",
+  verticalAlign: "top",
+  minWidth: 0,
+  width: "11%",
 };
 
 type MarOrderEventRow = {
@@ -776,7 +757,7 @@ export function MedicationAdministrationTab({
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              minWidth: 720,
+              minWidth: 1040,
               backgroundColor: "white",
               borderRadius: 8,
               border: "1px solid #eee",
@@ -793,12 +774,27 @@ export function MedicationAdministrationTab({
                     padding: "10px 8px",
                     textAlign: "left",
                     fontSize: 12,
-                    minWidth: 200,
-                    width: "28%",
+                    minWidth: 120,
+                    width: "11%",
                     verticalAlign: "bottom",
                   }}
                 >
                   {t("marTab.columnLastAction")}
+                </th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 100, width: "9%" }}>
+                  {t("marTab.columnMarStarted")}
+                </th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 100, width: "9%" }}>
+                  {t("marTab.columnMarStopped")}
+                </th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 100, width: "10%" }}>
+                  {t("marTab.columnMarPerformedBy")}
+                </th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 88, width: "8%" }}>
+                  {t("marTab.columnMarElapsed")}
+                </th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 120, width: "11%" }}>
+                  {t("marTab.columnMarControls")}
                 </th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnTitle")}</th>
               </tr>
@@ -825,10 +821,147 @@ export function MedicationAdministrationTab({
                 const activeMarInfusion = infusionTimeline.active;
                 const completedMarInfusion = infusionTimeline.lastCompleted;
 
-                let statusCell: React.ReactNode;
+                const marDashCell = (
+                  <span style={{ fontSize: 12, color: "#94a3b8" }}>{t("common.dash")}</span>
+                );
+
+                let marLastAction: React.ReactNode;
+                let marStarted: React.ReactNode = marDashCell;
+                let marStopped: React.ReactNode = marDashCell;
+                let marPerformer: React.ReactNode = marDashCell;
+                let marElapsed: React.ReactNode = marDashCell;
+                let marControls: React.ReactNode;
+
+                const infusionControlsStackStyle: React.CSSProperties = {
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  minWidth: 0,
+                  width: "100%",
+                };
+
+                const infusionBusyKeyOrder = resolvedOrderIdForInfusion || row.orderItemId;
+                const infusionBusyStart =
+                  infusionBusy === `${infusionBusyKeyOrder}:${row.orderItemId}:start`;
+                const infusionBusyStop =
+                  infusionBusy === `${infusionBusyKeyOrder}:${row.orderItemId}:stop`;
+                const primaryInfusionDisabled =
+                  !isOpen || submitting || marRowLocked || infusionBusyStart || infusionBusyStop;
+
+                const infusionControlsEl = (
+                  <div style={infusionControlsStackStyle}>
+                    {!activeMarInfusion ? (
+                      <button
+                        type="button"
+                        disabled={primaryInfusionDisabled}
+                        onClick={() =>
+                          void runMarInfusion(
+                            row.orderItemId,
+                            resolvedOrderIdForInfusion || row.orderItemId,
+                            "start"
+                          )
+                        }
+                        style={{
+                          padding: "8px 10px",
+                          fontSize: 13,
+                          minHeight: 40,
+                          width: "100%",
+                          minWidth: 0,
+                          boxSizing: "border-box",
+                          backgroundColor: isOpen && !marRowLocked ? "#1565c0" : "#bdbdbd",
+                          color: "white",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
+                          fontWeight: 600,
+                          whiteSpace: "normal",
+                        }}
+                      >
+                        {infusionBusyStart ? t("marTab.infusionStarting") : t("marTab.startInfusion")}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={primaryInfusionDisabled}
+                        onClick={() =>
+                          void runMarInfusion(
+                            row.orderItemId,
+                            resolvedOrderIdForInfusion || row.orderItemId,
+                            "stop"
+                          )
+                        }
+                        style={{
+                          padding: "8px 10px",
+                          fontSize: 13,
+                          minHeight: 40,
+                          width: "100%",
+                          minWidth: 0,
+                          boxSizing: "border-box",
+                          backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
+                          color: "white",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
+                          fontWeight: 600,
+                          whiteSpace: "normal",
+                        }}
+                      >
+                        {infusionBusyStop ? t("marTab.infusionStopping") : t("marTab.stopInfusion")}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!isOpen || submitting || marRowLocked}
+                      onClick={() => openModal(row, { hideAdministeredAction: true })}
+                      style={{
+                        padding: "6px 8px",
+                        fontSize: 11,
+                        minHeight: 36,
+                        width: "100%",
+                        minWidth: 0,
+                        boxSizing: "border-box",
+                        backgroundColor: "white",
+                        color: "#1565c0",
+                        border: "1px solid #90caf9",
+                        borderRadius: 6,
+                        cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
+                        fontWeight: 600,
+                        whiteSpace: "normal",
+                      }}
+                    >
+                      {t("marTab.infusionAltMarActions")}
+                    </button>
+                  </div>
+                );
+
+                const administerControlEl = (
+                  <button
+                    type="button"
+                    disabled={!isOpen || submitting || marRowLocked}
+                    onClick={() => openModal(row)}
+                    style={{
+                      padding: "8px 10px",
+                      fontSize: 13,
+                      minHeight: 40,
+                      width: "100%",
+                      minWidth: 0,
+                      maxWidth: 200,
+                      boxSizing: "border-box",
+                      backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
+                      fontWeight: 600,
+                      whiteSpace: "normal",
+                    }}
+                  >
+                    {t("marTab.administer")}
+                  </button>
+                );
 
                 if (latest?.pendingSync) {
-                  statusCell = (
+                  marLastAction = (
                     <span
                       style={{
                         padding: "4px 8px",
@@ -842,6 +975,8 @@ export function MedicationAdministrationTab({
                       {t("marTab.statusPendingSync")}
                     </span>
                   );
+                  marStarted = marStopped = marPerformer = marElapsed = marDashCell;
+                  marControls = row.isInfusionLifecycleMed ? infusionControlsEl : administerControlEl;
                 } else if (row.isInfusionLifecycleMed && activeMarInfusion) {
                   const startedMs = activeMarInfusion.infusionStartedAtIso
                     ? new Date(activeMarInfusion.infusionStartedAtIso).getTime()
@@ -858,28 +993,31 @@ export function MedicationAdministrationTab({
                     (x): x is string => typeof x === "string" && Boolean(x.trim())
                   );
                   const byJoined = byParts.join(t("infusionTimeline.infusionTimelineDivider"));
-                  statusCell = (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-                      <span style={MAR_INFUSION_STATUS_BADGE_ACTIVE}>
-                        {t("erEmergencyOrders.infusionInProgress")}
-                      </span>
-                      {startedAtStr ? (
-                        <div style={MAR_INFUSION_META_LINE_ACTIVE}>
-                          {t("erEmergencyOrders.infusionStartedAtLabel").replace("{at}", startedAtStr)}
-                        </div>
-                      ) : null}
-                      {byJoined ? (
-                        <div style={MAR_INFUSION_META_LINE_ACTIVE}>
-                          {t("erEmergencyOrders.infusionStartedByOnly").replace("{by}", byJoined)}
-                        </div>
-                      ) : null}
-                      {elapsedInner ? (
-                        <div style={MAR_INFUSION_META_LINE_ACTIVE}>
-                          {t("marTab.infusionElapsedLabel").replace("{elapsed}", elapsedInner)}
-                        </div>
-                      ) : null}
-                    </div>
+                  marLastAction = (
+                    <span style={MAR_INFUSION_STATUS_BADGE_ACTIVE}>
+                      {t("erEmergencyOrders.infusionInProgress")}
+                    </span>
                   );
+                  marStarted = startedAtStr ? (
+                    <span style={{ fontSize: 12, color: "#334155" }}>{startedAtStr}</span>
+                  ) : (
+                    marDashCell
+                  );
+                  marStopped = marDashCell;
+                  marPerformer = byJoined ? (
+                    <span style={{ fontSize: 12, color: "#334155", overflowWrap: "anywhere" }}>{byJoined}</span>
+                  ) : (
+                    marDashCell
+                  );
+                  marElapsed =
+                    elapsedInner != null ? (
+                      <span style={{ fontSize: 12, color: "#334155" }}>
+                        {t("marTab.infusionElapsedLabel").replace("{elapsed}", elapsedInner)}
+                      </span>
+                    ) : (
+                      marDashCell
+                    );
+                  marControls = infusionControlsEl;
                 } else if (row.isInfusionLifecycleMed && completedMarInfusion && !activeMarInfusion) {
                   const lc = completedMarInfusion;
                   const startAt =
@@ -918,33 +1056,37 @@ export function MedicationAdministrationTab({
                           stopByParts.join(t("infusionTimeline.infusionTimelineDivider"))
                         )
                       : t("common.dash");
-                  statusCell = (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-                      <span style={MAR_INFUSION_STATUS_BADGE_COMPLETED}>
-                        {t("infusionTimeline.infusionCompleted")}
-                      </span>
-                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>
-                        {t("infusionTimeline.infusionStartedAt").replace("{at}", startAt)}
-                      </div>
-                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>
-                        {t("infusionTimeline.infusionStoppedAt").replace("{at}", stopAt)}
-                      </div>
-                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>{durLine}</div>
-                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>{startByLine}</div>
-                      <div style={MAR_INFUSION_META_LINE_COMPLETED}>{stopByLine}</div>
+                  marLastAction = (
+                    <span style={MAR_INFUSION_STATUS_BADGE_COMPLETED}>
+                      {t("infusionTimeline.infusionCompleted")}
+                    </span>
+                  );
+                  marStarted = <span style={{ fontSize: 12, color: "#334155" }}>{startAt}</span>;
+                  marStopped = <span style={{ fontSize: 12, color: "#334155" }}>{stopAt}</span>;
+                  marPerformer = (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                      <span style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere" }}>{startByLine}</span>
+                      <span style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere" }}>{stopByLine}</span>
                     </div>
                   );
+                  marElapsed = (
+                    <span style={{ fontSize: 12, color: "#334155", overflowWrap: "anywhere" }}>{durLine}</span>
+                  );
+                  marControls = marDashCell;
                 } else if (marSaysAdministered) {
-                  statusCell = <span>🟢 {t("marTab.statusAdministered")}</span>;
+                  marLastAction = <span>🟢 {t("marTab.statusAdministered")}</span>;
+                  marControls = row.isInfusionLifecycleMed ? infusionControlsEl : administerControlEl;
                 } else if (latest && !marSaysAdministered) {
-                  statusCell = (
+                  marLastAction = (
                     <span>
                       🟠 {actionLabel(marActionResolved as MarAction, t)}
                       {recentWindow ? ` · ${t("marTab.statusRecentLabel")}` : ""}
                     </span>
                   );
+                  marControls = row.isInfusionLifecycleMed ? infusionControlsEl : administerControlEl;
                 } else {
-                  statusCell = <span>🔴 {t("marTab.statusPending")}</span>;
+                  marLastAction = <span>🔴 {t("marTab.statusPending")}</span>;
+                  marControls = row.isInfusionLifecycleMed ? infusionControlsEl : administerControlEl;
                 }
 
                 const timeCell = latest
@@ -993,14 +1135,6 @@ export function MedicationAdministrationTab({
                 }
                 const titleCell = titleCellParts.length > 0 ? titleCellParts.join(" · ") : "—";
 
-                const infusionBusyKeyOrder = resolvedOrderIdForInfusion || row.orderItemId;
-                const infusionBusyStart =
-                  infusionBusy === `${infusionBusyKeyOrder}:${row.orderItemId}:start`;
-                const infusionBusyStop =
-                  infusionBusy === `${infusionBusyKeyOrder}:${row.orderItemId}:stop`;
-                const primaryInfusionDisabled =
-                  !isOpen || submitting || marRowLocked || infusionBusyStart || infusionBusyStop;
-
                 return (
                   <tr
                     key={row.orderItemId}
@@ -1048,131 +1182,22 @@ export function MedicationAdministrationTab({
                     </td>
                     <td
                       style={{
-                        padding: "12px 8px",
-                        fontSize: 14,
+                        padding: "10px 8px",
+                        fontSize: 12,
                         verticalAlign: "top",
                         minWidth: 0,
-                        width: "28%",
-                        overflow: "hidden",
+                        width: "11%",
+                        overflowWrap: "anywhere",
+                        wordBreak: "break-word",
                       }}
                     >
-                      {row.isInfusionLifecycleMed ? (
-                        <div style={MAR_INFUSION_LAST_ACTION_SHELL}>
-                          <div style={{ minWidth: 0 }}>{statusCell}</div>
-                          <div style={MAR_INFUSION_ACTIONS_STACK}>
-                            {!activeMarInfusion ? (
-                              <button
-                                type="button"
-                                disabled={primaryInfusionDisabled}
-                                onClick={() =>
-                                  void runMarInfusion(
-                                    row.orderItemId,
-                                    resolvedOrderIdForInfusion || row.orderItemId,
-                                    "start"
-                                  )
-                                }
-                                style={{
-                                  padding: "10px 14px",
-                                  fontSize: 14,
-                                  minHeight: 44,
-                                  width: "100%",
-                                  minWidth: 0,
-                                  boxSizing: "border-box",
-                                  backgroundColor: isOpen && !marRowLocked ? "#1565c0" : "#bdbdbd",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: 6,
-                                  cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
-                                  fontWeight: 600,
-                                  whiteSpace: "normal",
-                                }}
-                              >
-                                {infusionBusyStart
-                                  ? t("marTab.infusionStarting")
-                                  : t("marTab.startInfusion")}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={primaryInfusionDisabled}
-                                onClick={() =>
-                                  void runMarInfusion(
-                                    row.orderItemId,
-                                    resolvedOrderIdForInfusion || row.orderItemId,
-                                    "stop"
-                                  )
-                                }
-                                style={{
-                                  padding: "10px 14px",
-                                  fontSize: 14,
-                                  minHeight: 44,
-                                  width: "100%",
-                                  minWidth: 0,
-                                  boxSizing: "border-box",
-                                  backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: 6,
-                                  cursor: primaryInfusionDisabled ? "not-allowed" : "pointer",
-                                  fontWeight: 600,
-                                  whiteSpace: "normal",
-                                }}
-                              >
-                                {infusionBusyStop
-                                  ? t("marTab.infusionStopping")
-                                  : t("marTab.stopInfusion")}
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              disabled={!isOpen || submitting || marRowLocked}
-                              onClick={() => openModal(row, { hideAdministeredAction: true })}
-                              style={{
-                                padding: "8px 10px",
-                                fontSize: 12,
-                                minHeight: 40,
-                                width: "100%",
-                                minWidth: 0,
-                                boxSizing: "border-box",
-                                backgroundColor: "white",
-                                color: "#1565c0",
-                                border: "1px solid #90caf9",
-                                borderRadius: 6,
-                                cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
-                                fontWeight: 600,
-                                whiteSpace: "normal",
-                              }}
-                            >
-                              {t("marTab.infusionAltMarActions")}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={{ marginBottom: 8, minWidth: 0 }}>{statusCell}</div>
-                          <button
-                            type="button"
-                            disabled={!isOpen || submitting || marRowLocked}
-                            onClick={() => openModal(row)}
-                            style={{
-                              padding: "10px 14px",
-                              fontSize: 14,
-                              minHeight: 44,
-                              width: "100%",
-                              maxWidth: 200,
-                              backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
-                              color: "white",
-                              border: "none",
-                              borderRadius: 6,
-                              cursor: isOpen && !marRowLocked ? "pointer" : "not-allowed",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {t("marTab.administer")}
-                          </button>
-                        </>
-                      )}
+                      {marLastAction}
                     </td>
+                    <td style={MAR_TABLE_METRIC_CELL}>{marStarted}</td>
+                    <td style={MAR_TABLE_METRIC_CELL}>{marStopped}</td>
+                    <td style={MAR_TABLE_METRIC_CELL}>{marPerformer}</td>
+                    <td style={MAR_TABLE_METRIC_CELL}>{marElapsed}</td>
+                    <td style={MAR_TABLE_CONTROLS_CELL}>{marControls}</td>
                     <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
                       {titleCell}
                     </td>
