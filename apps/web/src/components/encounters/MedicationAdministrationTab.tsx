@@ -132,15 +132,22 @@ const MAR_INFUSION_STATUS_BADGE_COMPLETED: React.CSSProperties = {
   border: "1px solid #5eead4",
 };
 
+/** MAR table: min width matches colgroup sum so columns stay readable; horizontal scroll when viewport is narrower. */
+const MAR_TABLE_MIN_WIDTH_PX = 1630;
+
+/** Prefer normal word boundaries; avoid `anywhere` / aggressive `break-word` on attribution prose. */
+const MAR_CELL_WRAP_LONG_TEXT: React.CSSProperties = {
+  overflowWrap: "break-word",
+  wordBreak: "normal",
+  lineHeight: 1.35,
+};
+
 const MAR_TABLE_METRIC_CELL: React.CSSProperties = {
   padding: "10px 8px",
   fontSize: 12,
   verticalAlign: "top",
   minWidth: 0,
-  width: "9%",
-  overflowWrap: "anywhere",
-  wordBreak: "break-word",
-  lineHeight: 1.35,
+  ...MAR_CELL_WRAP_LONG_TEXT,
   color: "#334155",
 };
 
@@ -148,7 +155,6 @@ const MAR_TABLE_CONTROLS_CELL: React.CSSProperties = {
   padding: "10px 8px",
   verticalAlign: "top",
   minWidth: 0,
-  width: "11%",
 };
 
 type MarOrderEventRow = {
@@ -693,7 +699,15 @@ export function MedicationAdministrationTab({
   const nowMs = Date.now();
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div
+      style={{
+        width: "100%",
+        maxWidth: "none",
+        minWidth: 0,
+        alignSelf: "stretch",
+        boxSizing: "border-box",
+      }}
+    >
       {error ? (
         <p style={{ color: "#c62828", fontSize: 14, marginTop: 0 }} role="alert">
           {error}
@@ -736,7 +750,7 @@ export function MedicationAdministrationTab({
         >
           <div style={{ fontWeight: 800, marginBottom: 6 }}>{t("marTab.allergyDocTitle")}</div>
           <div style={{ marginBottom: 8, fontWeight: 600 }}>{t("marTab.allergyTopBannerLead")}</div>
-          <div style={{ overflowWrap: "anywhere" }}>
+          <div style={MAR_CELL_WRAP_LONG_TEXT}>
             {marAllergyDocSummary.length > 320 ? `${marAllergyDocSummary.slice(0, 320)}…` : marAllergyDocSummary}
           </div>
         </div>
@@ -752,50 +766,54 @@ export function MedicationAdministrationTab({
       ) : taskRows.length === 0 ? (
         <p style={{ color: "#666", fontSize: 14 }}>{t("marTab.emptyTasks")}</p>
       ) : (
-        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "none",
+            minWidth: 0,
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           <table
             style={{
               width: "100%",
+              minWidth: MAR_TABLE_MIN_WIDTH_PX,
+              tableLayout: "fixed",
               borderCollapse: "collapse",
-              minWidth: 1040,
               backgroundColor: "white",
               borderRadius: 8,
               border: "1px solid #eee",
             }}
           >
+            <colgroup>
+              <col style={{ width: 90 }} />
+              <col style={{ width: 180 }} />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 180 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 180 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 180 }} />
+              <col style={{ width: 120 }} />
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd", backgroundColor: "#f5f5f5" }}>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnCategory")}</th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnIssued")}</th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnWhen")}</th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnOrderLine")}</th>
-                <th
-                  style={{
-                    padding: "10px 8px",
-                    textAlign: "left",
-                    fontSize: 12,
-                    minWidth: 120,
-                    width: "11%",
-                    verticalAlign: "bottom",
-                  }}
-                >
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, verticalAlign: "bottom" }}>
                   {t("marTab.columnLastAction")}
                 </th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 100, width: "9%" }}>
-                  {t("marTab.columnMarStarted")}
-                </th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 100, width: "9%" }}>
-                  {t("marTab.columnMarStopped")}
-                </th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 100, width: "10%" }}>
-                  {t("marTab.columnMarPerformedBy")}
-                </th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 88, width: "8%" }}>
-                  {t("marTab.columnMarElapsed")}
-                </th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, minWidth: 120, width: "11%" }}>
-                  {t("marTab.columnMarControls")}
-                </th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarStarted")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarStopped")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarPerformedBy")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarElapsed")}</th>
+                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarControls")}</th>
                 <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnTitle")}</th>
               </tr>
             </thead>
@@ -945,7 +963,6 @@ export function MedicationAdministrationTab({
                       minHeight: 40,
                       width: "100%",
                       minWidth: 0,
-                      maxWidth: 200,
                       boxSizing: "border-box",
                       backgroundColor: isOpen && !marRowLocked ? "#2e7d32" : "#bdbdbd",
                       color: "white",
@@ -1005,7 +1022,7 @@ export function MedicationAdministrationTab({
                   );
                   marStopped = marDashCell;
                   marPerformer = byJoined ? (
-                    <span style={{ fontSize: 12, color: "#334155", overflowWrap: "anywhere" }}>{byJoined}</span>
+                    <span style={{ fontSize: 12, color: "#334155", ...MAR_CELL_WRAP_LONG_TEXT }}>{byJoined}</span>
                   ) : (
                     marDashCell
                   );
@@ -1065,12 +1082,12 @@ export function MedicationAdministrationTab({
                   marStopped = <span style={{ fontSize: 12, color: "#334155" }}>{stopAt}</span>;
                   marPerformer = (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-                      <span style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere" }}>{startByLine}</span>
-                      <span style={{ fontSize: 11, color: "#475569", overflowWrap: "anywhere" }}>{stopByLine}</span>
+                      <span style={{ fontSize: 11, color: "#475569", ...MAR_CELL_WRAP_LONG_TEXT }}>{startByLine}</span>
+                      <span style={{ fontSize: 11, color: "#475569", ...MAR_CELL_WRAP_LONG_TEXT }}>{stopByLine}</span>
                     </div>
                   );
                   marElapsed = (
-                    <span style={{ fontSize: 12, color: "#334155", overflowWrap: "anywhere" }}>{durLine}</span>
+                    <span style={{ fontSize: 12, color: "#334155", ...MAR_CELL_WRAP_LONG_TEXT }}>{durLine}</span>
                   );
                   marControls = marDashCell;
                 } else if (marSaysAdministered) {
@@ -1147,7 +1164,7 @@ export function MedicationAdministrationTab({
                     <td style={{ padding: "12px 8px", fontSize: 13, color: "#334155", fontWeight: 600 }}>
                       {t("marTab.columnCategoryValue")}
                     </td>
-                    <td style={{ padding: "12px 8px", fontSize: 13, wordBreak: "break-word", color: "#64748b" }}>
+                    <td style={{ padding: "12px 8px", fontSize: 13, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
                       {issuedCell}
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 13, color: "#424242" }}>
@@ -1167,7 +1184,7 @@ export function MedicationAdministrationTab({
                         </div>
                       ) : null}
                     </td>
-                    <td style={{ padding: "12px 8px", fontSize: 14, wordBreak: "break-word" }}>
+                    <td style={{ padding: "12px 8px", fontSize: 14, ...MAR_CELL_WRAP_LONG_TEXT }}>
                       <div style={{ fontWeight: 600 }}>{displayName}</div>
                       {row.routeHint ? (
                         <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
@@ -1186,9 +1203,8 @@ export function MedicationAdministrationTab({
                         fontSize: 12,
                         verticalAlign: "top",
                         minWidth: 0,
-                        width: "11%",
-                        overflowWrap: "anywhere",
-                        wordBreak: "break-word",
+                        ...MAR_CELL_WRAP_LONG_TEXT,
+                        color: "#334155",
                       }}
                     >
                       {marLastAction}
@@ -1198,7 +1214,7 @@ export function MedicationAdministrationTab({
                     <td style={MAR_TABLE_METRIC_CELL}>{marPerformer}</td>
                     <td style={MAR_TABLE_METRIC_CELL}>{marElapsed}</td>
                     <td style={MAR_TABLE_CONTROLS_CELL}>{marControls}</td>
-                    <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                    <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
                       {titleCell}
                     </td>
                   </tr>
@@ -1298,11 +1314,11 @@ export function MedicationAdministrationTab({
               {t("marTab.modalTitle")}
             </h4>
             <p style={{ margin: "0 0 12px 0", fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>{modalItem.label}</p>
-            <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>
+            <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
               {modalItem.authorityLine}
             </p>
             {modalItem.attributionLines.map((line) => (
-              <p key={line} style={{ margin: "0 0 6px 0", fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>
+              <p key={line} style={{ margin: "0 0 6px 0", fontSize: 13, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
                 {line}
               </p>
             ))}
@@ -1560,7 +1576,7 @@ export function MedicationAdministrationTab({
                 }}
               >
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("marTab.allergyDocTitle")}</div>
-                <div style={{ marginBottom: 10, overflowWrap: "anywhere" }}>
+                <div style={{ marginBottom: 10, ...MAR_CELL_WRAP_LONG_TEXT }}>
                   {marAllergyDocSummary.length > 220
                     ? `${marAllergyDocSummary.slice(0, 220)}…`
                     : marAllergyDocSummary}
