@@ -118,6 +118,39 @@ export type ErTriageV1Form = {
   nursingCareSelections: string[];
 };
 
+/**
+ * Triage V1 nursing-care fields stored under `vitalsJson.medoraErTriageV1` — edited from the
+ * nursing reassessment panel as well as triage (same JSON keys; no migration).
+ */
+export type ErTriageV1NursingCarePersistSlice = Pick<
+  ErTriageV1Form,
+  | "nursingCareNote"
+  | "nursingCareSelections"
+  | "callLightInReach"
+  | "bedLockedLow"
+  | "familyAtBedside"
+  | "inViewOfNursingStation"
+  | "patientUpdatedOnPlan"
+  | "comfortMeasuresProvided"
+  | "edCoursePpeNote"
+  | "nursingNotesAddendum"
+>;
+
+export function emptyErTriageV1NursingCarePersistSlice(): ErTriageV1NursingCarePersistSlice {
+  return {
+    nursingCareNote: "",
+    nursingCareSelections: [],
+    callLightInReach: "",
+    bedLockedLow: "",
+    familyAtBedside: "",
+    inViewOfNursingStation: "",
+    patientUpdatedOnPlan: "",
+    comfortMeasuresProvided: "",
+    edCoursePpeNote: "",
+    nursingNotesAddendum: "",
+  };
+}
+
 export function emptyErTriageV1Form(): ErTriageV1Form {
   return {
     triageNarrative: "",
@@ -514,6 +547,22 @@ export function erTriageV1FormFromVitalsJson(vitalsJson: unknown): ErTriageV1For
   };
 }
 
+export function erTriageNursingCareSliceFromVitalsJson(vitalsJson: unknown): ErTriageV1NursingCarePersistSlice {
+  const er = erTriageV1FormFromVitalsJson(vitalsJson);
+  return {
+    nursingCareNote: er.nursingCareNote,
+    nursingCareSelections: [...er.nursingCareSelections],
+    callLightInReach: er.callLightInReach,
+    bedLockedLow: er.bedLockedLow,
+    familyAtBedside: er.familyAtBedside,
+    inViewOfNursingStation: er.inViewOfNursingStation,
+    patientUpdatedOnPlan: er.patientUpdatedOnPlan,
+    comfortMeasuresProvided: er.comfortMeasuresProvided,
+    edCoursePpeNote: er.edCoursePpeNote,
+    nursingNotesAddendum: er.nursingNotesAddendum,
+  };
+}
+
 export type ErTriageV1StructuredSelectionKey =
   | "sourceRoutingSelections"
   | "ppeSelections"
@@ -697,6 +746,27 @@ export function mergeMedoraErTriageV1Blob(previousVitalsJson: unknown, form: ErT
   applyStructuredSelectionsToMerged(merged, form);
 
   return Object.keys(merged).length > 0 ? merged : null;
+}
+
+/**
+ * Updates only `medoraErTriageV1` inside `vitalsJson`, preserving all other vitals keys and
+ * unknown keys inside the ER V1 blob. Use when PATCHing triage from contexts that do not hold
+ * the full triage form (e.g. nursing reassessment).
+ */
+export function patchMedoraErTriageV1FieldsInVitalsJson(
+  previousVitalsJson: unknown,
+  erPatch: Partial<ErTriageV1Form>
+): Record<string, unknown> | null {
+  const prevForm = erTriageV1FormFromVitalsJson(previousVitalsJson);
+  const nextForm: ErTriageV1Form = { ...prevForm, ...erPatch };
+  const base =
+    previousVitalsJson && typeof previousVitalsJson === "object" && !Array.isArray(previousVitalsJson)
+      ? { ...(previousVitalsJson as Record<string, unknown>) }
+      : {};
+  const erBlob = mergeMedoraErTriageV1Blob(previousVitalsJson, nextForm);
+  if (erBlob) base[MEDORA_ER_TRIAGE_V1_KEY] = erBlob;
+  else delete base[MEDORA_ER_TRIAGE_V1_KEY];
+  return Object.keys(base).length > 0 ? base : null;
 }
 
 function traumaActivationHasAnyContent(ta: ErTraumaActivationForm): boolean {

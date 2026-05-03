@@ -18,7 +18,6 @@ import {
   ER_TRAUMA_ACTIVATION_CRITERIA_IDS,
   ER_TRIAGE_ALLERGY_CHIP_DEFS,
   ER_TRIAGE_MEDS_CHIP_DEFS,
-  ER_TRIAGE_NURSING_CHIP_DEFS,
   ER_TRIAGE_PPE_CHIP_DEFS,
   ER_TRIAGE_ROUTING_CHIP_DEFS,
   appendIfNotPresent,
@@ -814,99 +813,17 @@ export function EmergencyTriageV1Sections({
 
       <details style={detailsShell}>
         <summary style={summaryRow}>
-          <span>{t("erTriage.v1.s2Title")}</span>
+          <span>{t("erTriage.v1.safetyRoutingTitle")}</span>
         </summary>
-        <p style={help}>{t("erTriage.v1.s2Help")}</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
+        <p style={help}>{t("erTriage.v1.safetyRoutingHelp")}</p>
+        <div style={{ ...grid3, marginTop: 10 }}>
           <div>
-            <label style={labelStyle}>{t("erTriage.v1.nursingSummary")}</label>
-            <textarea
-              value={er.nursingCareNote}
-              onChange={(e) => patchErV1({ nursingCareNote: e.target.value })}
-              disabled={formDisabled}
-              rows={2}
-              maxLength={8000}
-              style={{ ...inputBase, minHeight: 56, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-            />
-            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
-            <ErTriageDocChipRow>
-              {ER_TRIAGE_NURSING_CHIP_DEFS.map((def) => {
-                const label = t(`erTriage.v1.${def.i18nKey}`);
-                return (
-                  <ErTriageDocChip
-                    key={def.code}
-                    label={label}
-                    active={er.nursingCareSelections.includes(def.code)}
-                    disabled={formDisabled}
-                    onClick={() =>
-                      toggleStructuredTriageChip(
-                        patchErV1,
-                        er,
-                        "nursingCareSelections",
-                        "nursingCareNote",
-                        def.code,
-                        label
-                      )
-                    }
-                  />
-                );
-              })}
-            </ErTriageDocChipRow>
-          </div>
-          <div style={grid3}>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.callLight")}</label>
-              {sel("callLightInReach", ynuOptions)}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.bedLow")}</label>
-              {sel("bedLockedLow", ynuOptions)}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.familyBedside")}</label>
-              {sel("familyAtBedside", ynuOptions)}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.inView")}</label>
-              {sel("inViewOfNursingStation", ynuOptions)}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.planExplained")}</label>
-              {sel("patientUpdatedOnPlan", ynuOptions)}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.comfort")}</label>
-              {sel("comfortMeasuresProvided", ynuOptions)}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.safeHome")}</label>
-              {sel("feelsSafeAtHome", ynuOptions)}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.travel14")}</label>
-              {sel("travelOutsideCountry14d", ynuOptions)}
-            </div>
+            <label style={labelStyle}>{t("erTriage.v1.safeHome")}</label>
+            {sel("feelsSafeAtHome", ynuOptions)}
           </div>
           <div>
-            <label style={labelStyle}>{t("erTriage.v1.edPpe")}</label>
-            <input
-              type="text"
-              value={er.edCoursePpeNote}
-              onChange={(e) => patchErV1({ edCoursePpeNote: e.target.value })}
-              disabled={formDisabled}
-              style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>{t("erTriage.v1.nursingAddendum")}</label>
-            <textarea
-              value={er.nursingNotesAddendum}
-              onChange={(e) => patchErV1({ nursingNotesAddendum: e.target.value })}
-              disabled={formDisabled}
-              rows={3}
-              maxLength={8000}
-              style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-            />
+            <label style={labelStyle}>{t("erTriage.v1.travel14")}</label>
+            {sel("travelOutsideCountry14d", ynuOptions)}
           </div>
         </div>
       </details>

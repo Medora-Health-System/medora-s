@@ -135,6 +135,9 @@ export const erTriageMessagesFr = {
     exceptionsPlaceholder: "Écarts par rapport à un ABC/GCS attendu…",
     s2Title: "2 — Soins infirmiers et sécurité",
     s2Help: "Repères de sécurité au box ; compléter l'évaluation infirmière structurée via le dossier si besoin.",
+    safetyRoutingTitle: "Sécurité / orientation (dépistage)",
+    safetyRoutingHelp:
+      "Éléments courts conservés au triage. La checklist détaillée de sécurité au chevet se saisit dans la réévaluation infirmière.",
     nursingSummary: "Soins / surveillance (résumé)",
     callLight: "Appel accessible",
     bedLow: "Lit verrouillé / bas",

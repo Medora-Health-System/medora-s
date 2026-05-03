@@ -6294,6 +6294,15 @@ export default {
     labelSafetyRounding: "Sécurité au lit / passage (checklist libre)",
     placeholderSafety: "Rails, risque de chute, voie, surveillance",
     labelAddendum: "Addendum",
+    triageBedsideSafetySection: "Triage — sécurité au chevet (checklist)",
+    triageBedsideSafetyHelp:
+      "Données enregistrées avec le triage (même enregistrement que l'onglet triage). À l'enregistrement de cette réévaluation, ces champs mettent à jour le triage s'ils ont été modifiés.",
+    triageBedsideLoading: "Chargement du triage…",
+    triageBedsideNoTriageRow:
+      "Aucun triage enregistré — enregistrez d'abord le triage. Les changements de la checklist n'ont pas été envoyés au serveur.",
+    triageBedsideSaveFailed: "Impossible de mettre à jour les champs de sécurité du triage.",
+    saveOkTriageBedsideFailed: "Réévaluation enregistrée. La checklist sécurité (triage) n'a pas été mise à jour : {detail}",
+    saveQueuedTriageBedsideFailed: "En attente de synchronisation. La checklist sécurité (triage) n'a pas été mise à jour : {detail}",
     traumaSummaryLabel: "Documentation trauma",
     traumaSummaryHelp: "Examen primaire / secondaire — enregistré avec le dossier (JSON).",
     traumaPrimaryAbcde: "Examen primaire (ABCDE)",

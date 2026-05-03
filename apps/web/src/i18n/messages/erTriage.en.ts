@@ -131,6 +131,8 @@ export const erTriageMessagesEn = {
     exceptionsPlaceholder: "Deviations from expected ABC/GCS…",
     s2Title: "2 — Nursing care and safety",
     s2Help: "Safety cues at bedside; use structured nursing assessment in the chart if needed.",
+    safetyRoutingTitle: "Safety / routing (screening)",
+    safetyRoutingHelp: "Short screening items kept at triage. Detailed bedside safety checklist is in Nursing reassessment.",
     nursingSummary: "Care / monitoring (summary)",
     callLight: "Call light within reach",
     bedLow: "Bed locked low",

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
+import { hasVitalsJson, MEDORA_PATIENT_VITALS_UPDATED, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -30,12 +31,21 @@ import {
   type ErAbcdeOption,
   type ErTraumaSurveyV1,
 } from "./erTraumaSurveyV1";
+import { ErTriageV1NursingCareSafetyFieldsBlock } from "./ErTriageV1NursingCareSafetyFieldsBlock";
+import {
+  emptyErTriageV1NursingCarePersistSlice,
+  erTriageNursingCareSliceFromVitalsJson,
+  patchMedoraErTriageV1FieldsInVitalsJson,
+  type ErTriageV1NursingCarePersistSlice,
+} from "./medoraErTriageV1";
 
 type EncounterLite = {
   id: string;
   status?: string | null;
+  type?: string | null;
   nursingAssessment?: unknown;
   updatedAt?: string | null;
+  patient?: { id?: string | null } | null;
 };
 
 const inputBase: React.CSSProperties = {
@@ -144,6 +154,10 @@ export function EmergencyNursingReassessmentPanel({
   );
 
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
+  const [triageNursingSlice, setTriageNursingSlice] = useState<ErTriageV1NursingCarePersistSlice>(() =>
+    emptyErTriageV1NursingCarePersistSlice()
+  );
+  const triageNursingBaselineRef = useRef(JSON.stringify(emptyErTriageV1NursingCarePersistSlice()));
   const [form, setForm] = useState<ErNursingReassessmentForm>(() =>
     erNursingReassessmentFormFromEncounter(encounter.nursingAssessment)
   );
@@ -175,9 +189,22 @@ export function EmergencyNursingReassessmentPanel({
   }, [loadTriage]);
 
   useEffect(() => {
+    if (!triage) {
+      const empty = emptyErTriageV1NursingCarePersistSlice();
+      setTriageNursingSlice(empty);
+      triageNursingBaselineRef.current = JSON.stringify(empty);
+      return;
+    }
+    const slice = erTriageNursingCareSliceFromVitalsJson(triage.vitalsJson);
+    setTriageNursingSlice(slice);
+    triageNursingBaselineRef.current = JSON.stringify(slice);
+  }, [triage?.id, triage?.updatedAt]);
+
+  useEffect(() => {
     setForm(erNursingReassessmentFormFromEncounter(encounter.nursingAssessment));
     setTraumaForm(erTraumaSurveyV1FormFromEncounter(encounter.nursingAssessment));
-  }, [encounter.nursingAssessment, encounter.updatedAt]);
+    void loadTriage();
+  }, [encounter.nursingAssessment, encounter.updatedAt, loadTriage]);
 
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
@@ -267,6 +294,10 @@ export function EmergencyNursingReassessmentPanel({
     setTraumaForm((f) => ({ ...f, ...patch }));
   }, []);
 
+  const patchTriageNursingSlice = useCallback((patch: Partial<ErTriageV1NursingCarePersistSlice>) => {
+    setTriageNursingSlice((prev) => ({ ...prev, ...patch }));
+  }, []);
+
   const handleSave = async () => {
     if (formDisabled) return;
     setSaving(true);
@@ -297,8 +328,74 @@ export function EmergencyNursingReassessmentPanel({
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+
+      const triageNursingDirty = JSON.stringify(triageNursingSlice) !== triageNursingBaselineRef.current;
+      let triageSideError: string | null = null;
+      if (triageNursingDirty) {
+        try {
+          const triLatest = await apiFetch(`/encounters/${encounterId}/triage`, { facilityId });
+          if (!triLatest || typeof triLatest !== "object" || Array.isArray(triLatest)) {
+            triageSideError = t("emergencyNursingReassessment.triageBedsideNoTriageRow");
+          } else {
+            const d = triLatest as Record<string, unknown>;
+            const newVitals = patchMedoraErTriageV1FieldsInVitalsJson(d.vitalsJson, triageNursingSlice);
+            const triPayload: Record<string, unknown> = {
+              chiefComplaint: d.chiefComplaint ?? null,
+              onsetAt: d.onsetAt ? new Date(d.onsetAt as string).toISOString() : null,
+              esi: d.esi != null && d.esi !== "" ? Number(d.esi) : null,
+              vitalsJson: newVitals,
+              strokeScreen: d.strokeScreen ?? null,
+              sepsisScreen: d.sepsisScreen ?? null,
+              triageCompleteAt: d.triageCompleteAt ? new Date(d.triageCompleteAt as string).toISOString() : null,
+            };
+            await apiFetch(`/encounters/${encounterId}/triage`, {
+              method: "PUT",
+              facilityId,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(triPayload),
+            });
+            triageNursingBaselineRef.current = JSON.stringify(triageNursingSlice);
+            const patientIdForEvent = encounter.patient?.id?.trim();
+            let supersededSnapshot: PatientTriageVitalsSnapshot | null = null;
+            if (patientIdForEvent && d.id && hasVitalsJson(d.vitalsJson)) {
+              const u = d.updatedAt;
+              supersededSnapshot = {
+                encounterId,
+                encounterType: encounter.type ?? "—",
+                triageId: String(d.id),
+                updatedAt: typeof u === "string" ? u : new Date(u as string).toISOString(),
+                triageCompleteAt: d.triageCompleteAt
+                  ? new Date(d.triageCompleteAt as string).toISOString()
+                  : null,
+                vitalsJson: { ...(d.vitalsJson as object) } as Record<string, unknown>,
+              };
+            }
+            if (patientIdForEvent && typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent(MEDORA_PATIENT_VITALS_UPDATED, {
+                  detail: { patientId: patientIdForEvent, supersededSnapshot },
+                })
+              );
+            }
+            await loadTriage();
+          }
+        } catch (e) {
+          console.error(e);
+          triageSideError =
+            normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+            t("emergencyNursingReassessment.triageBedsideSaveFailed");
+        }
+      }
+
       await onSaved();
-      setSaveInfo(queued ? t("emergencyNursingReassessment.saveQueued") : t("emergencyNursingReassessment.saveOk"));
+      if (triageSideError) {
+        const tpl = queued
+          ? t("emergencyNursingReassessment.saveQueuedTriageBedsideFailed")
+          : t("emergencyNursingReassessment.saveOkTriageBedsideFailed");
+        setSaveInfo(tpl.replace("{detail}", triageSideError));
+      } else {
+        setSaveInfo(queued ? t("emergencyNursingReassessment.saveQueued") : t("emergencyNursingReassessment.saveOk"));
+      }
     } catch (e) {
       console.error(e);
       setSaveInfo(
@@ -473,6 +570,29 @@ export function EmergencyNursingReassessmentPanel({
                           placeholder={t("emergencyNursingReassessment.placeholderBedsideStatus")}
                         />
                       </div>
+                    </div>
+
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+                      <p style={sectionHeading}>{t("emergencyNursingReassessment.triageBedsideSafetySection")}</p>
+                      <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                        {t("emergencyNursingReassessment.triageBedsideSafetyHelp")}
+                      </p>
+                      {loadingTriage ? (
+                        <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "#64748b" }}>
+                          {t("emergencyNursingReassessment.triageBedsideLoading")}
+                        </p>
+                      ) : (
+                        <div style={{ marginTop: 10 }}>
+                          <ErTriageV1NursingCareSafetyFieldsBlock
+                            slice={triageNursingSlice}
+                            onSliceChange={patchTriageNursingSlice}
+                            formDisabled={formDisabled}
+                            inputBase={inputBase}
+                            labelStyle={labelStyle}
+                            grid3={grid3}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
