@@ -126,6 +126,25 @@ export type MedicationInfusionActiveUi = {
   infusionStartedAtIso: string | null;
   /** From order-events API enrichment when present. */
   startedByDisplayName?: string | null;
+  /** From OrderEvent.metadata.performedByTitle when present. */
+  startedByTitle?: string | null;
+};
+
+export type MedicationInfusionCompletedTimelineUi = {
+  infusionSessionKey: string;
+  infusionStartedAtIso: string | null;
+  infusionStoppedAtIso: string | null;
+  durationMinutes: number | null;
+  startedByDisplayName: string | null;
+  startedByTitle: string | null;
+  stoppedByDisplayName: string | null;
+  stoppedByTitle: string | null;
+};
+
+export type MedicationInfusionTimelineResult = {
+  active: MedicationInfusionActiveUi | null;
+  /** Most recent completed session for this line (START matched with STOP), if any. */
+  lastCompleted: MedicationInfusionCompletedTimelineUi | null;
 };
 
 function parseMedicationInfusionOrderEventMetadata(metadata: unknown): {
@@ -134,22 +153,173 @@ function parseMedicationInfusionOrderEventMetadata(metadata: unknown): {
   orderItemId?: string;
   infusionSessionKey?: string;
   infusionStartedAt?: string;
+  infusionStoppedAt?: string;
+  durationMinutes?: number;
 } | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
   const m = metadata as Record<string, unknown>;
   if (m.infusionScope !== "MEDICATION_INFUSION") return null;
+  const dmRaw = m.durationMinutes;
+  let durationMinutes: number | undefined;
+  if (typeof dmRaw === "number" && Number.isFinite(dmRaw)) durationMinutes = dmRaw;
+  else if (typeof dmRaw === "string" && dmRaw.trim() !== "") {
+    const n = Number(dmRaw);
+    if (Number.isFinite(n)) durationMinutes = n;
+  }
   return {
     infusionScope: String(m.infusionScope),
     infusionAction: typeof m.infusionAction === "string" ? m.infusionAction : undefined,
     orderItemId: typeof m.orderItemId === "string" ? m.orderItemId : undefined,
     infusionSessionKey: typeof m.infusionSessionKey === "string" ? m.infusionSessionKey : undefined,
     infusionStartedAt: typeof m.infusionStartedAt === "string" ? m.infusionStartedAt : undefined,
+    infusionStoppedAt: typeof m.infusionStoppedAt === "string" ? m.infusionStoppedAt : undefined,
+    durationMinutes,
   };
+}
+
+function readInfusionPerformerFromEvent(ev: {
+  performedByDisplayName?: string | null;
+  metadata?: unknown;
+}): { display: string | null; title: string | null } {
+  const meta =
+    ev.metadata && typeof ev.metadata === "object" && !Array.isArray(ev.metadata)
+      ? (ev.metadata as Record<string, unknown>)
+      : null;
+  const fromMetaDisplay =
+    meta && typeof meta.performedByDisplayName === "string" && meta.performedByDisplayName.trim()
+      ? meta.performedByDisplayName.trim()
+      : null;
+  const fromMetaTitle =
+    meta && typeof meta.performedByTitle === "string" && meta.performedByTitle.trim()
+      ? meta.performedByTitle.trim()
+      : null;
+  const fromEv =
+    typeof ev.performedByDisplayName === "string" && ev.performedByDisplayName.trim()
+      ? ev.performedByDisplayName.trim()
+      : null;
+  return {
+    display: fromMetaDisplay || fromEv || null,
+    title: fromMetaTitle || null,
+  };
+}
+
+/** Elapsed since infusion start — plain segments for i18n templates ({h},{m},{s}). */
+export function formatInfusionElapsedParts(elapsedMs: number): { h: number; m: number; s: number } {
+  const ms = Math.max(0, elapsedMs);
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return { h, m, s };
+}
+
+/** Builds the `{elapsed}` segment then applies `infusionTimeline.infusionElapsed`. */
+/** H/M/S segment only (no outer “Elapsed” label). */
+export function formatInfusionElapsedInnerOnly(elapsedMs: number, tr: (key: string) => string): string {
+  const { h, m, s } = formatInfusionElapsedParts(elapsedMs);
+  if (h > 0) {
+    return tr("infusionTimeline.infusionElapsedH").replace("{h}", String(h)).replace("{m}", String(m));
+  }
+  if (m > 0) {
+    return tr("infusionTimeline.infusionElapsedM").replace("{m}", String(m)).replace("{s}", String(s));
+  }
+  return tr("infusionTimeline.infusionElapsedS").replace("{s}", String(s));
+}
+
+export function formatInfusionElapsedForI18n(elapsedMs: number, tr: (key: string) => string): string {
+  return tr("infusionTimeline.infusionElapsed").replace("{elapsed}", formatInfusionElapsedInnerOnly(elapsedMs, tr));
+}
+
+export function formatInfusionDurationForI18n(
+  durationMinutes: number | null | undefined,
+  tr: (key: string) => string
+): string {
+  const inner =
+    durationMinutes != null && Number.isFinite(durationMinutes) && durationMinutes >= 0
+      ? `${Math.floor(durationMinutes)} min`
+      : tr("common.dash");
+  return tr("infusionTimeline.infusionDuration").replace("{duration}", inner);
 }
 
 /**
  * Replays infusion-tagged order events for one order line (same rules as API infusion session).
- * `events` should be sorted ascending by `performedAt` for deterministic results (caller may pass unsorted).
+ * `events` may be unsorted; replay sorts by `performedAt` ascending.
+ */
+export function findMedicationInfusionTimelineFromOrderEvents(
+  events: ReadonlyArray<{
+    orderId: string;
+    eventType: string;
+    performedAt: string;
+    metadata?: unknown;
+    performedByDisplayName?: string | null;
+  }>,
+  orderId: string,
+  orderItemId: string
+): MedicationInfusionTimelineResult {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime()
+  );
+  const normOrderId = String(orderId ?? "").trim();
+  const normItemId = String(orderItemId ?? "").trim();
+  let active: MedicationInfusionActiveUi | null = null;
+  const completed: MedicationInfusionCompletedTimelineUi[] = [];
+  for (const ev of sorted) {
+    if (String(ev.orderId ?? "").trim() !== normOrderId) continue;
+    const m = parseMedicationInfusionOrderEventMetadata(ev.metadata);
+    if (!m || String(m.orderItemId ?? "").trim() !== normItemId) continue;
+    const et = String(ev.eventType ?? "").trim().toUpperCase();
+    if (m.infusionAction === "START" && et === "STARTED" && m.infusionSessionKey) {
+      const iso =
+        typeof m.infusionStartedAt === "string" && m.infusionStartedAt.trim()
+          ? m.infusionStartedAt.trim()
+          : null;
+      const p = readInfusionPerformerFromEvent(ev);
+      active = {
+        infusionSessionKey: m.infusionSessionKey,
+        infusionStartedAtIso: iso,
+        startedByDisplayName: p.display,
+        startedByTitle: p.title,
+      };
+    } else if (
+      m.infusionAction === "STOP" &&
+      et === "COMPLETED" &&
+      m.infusionSessionKey &&
+      active?.infusionSessionKey === m.infusionSessionKey
+    ) {
+      const stopP = readInfusionPerformerFromEvent(ev);
+      const stoppedIso =
+        typeof m.infusionStoppedAt === "string" && m.infusionStoppedAt.trim()
+          ? m.infusionStoppedAt.trim()
+          : ev.performedAt;
+      let duration = m.durationMinutes != null && Number.isFinite(m.durationMinutes) ? m.durationMinutes : null;
+      if (duration == null && active.infusionStartedAtIso) {
+        const a = new Date(active.infusionStartedAtIso).getTime();
+        const b = new Date(stoppedIso).getTime();
+        if (!Number.isNaN(a) && !Number.isNaN(b) && b >= a) {
+          duration = Math.max(0, Math.floor((b - a) / 60_000));
+        }
+      }
+      completed.push({
+        infusionSessionKey: m.infusionSessionKey,
+        infusionStartedAtIso: active.infusionStartedAtIso,
+        infusionStoppedAtIso: stoppedIso,
+        durationMinutes: duration,
+        startedByDisplayName: active.startedByDisplayName ?? null,
+        startedByTitle: active.startedByTitle ?? null,
+        stoppedByDisplayName: stopP.display,
+        stoppedByTitle: stopP.title,
+      });
+      active = null;
+    }
+  }
+  return {
+    active,
+    lastCompleted: completed.length > 0 ? completed[completed.length - 1]! : null,
+  };
+}
+
+/**
+ * @deprecated Prefer {@link findMedicationInfusionTimelineFromOrderEvents} when completed session UI is needed.
  */
 export function findActiveMedicationInfusionFromOrderEvents(
   events: ReadonlyArray<{
@@ -162,42 +332,12 @@ export function findActiveMedicationInfusionFromOrderEvents(
   orderId: string,
   orderItemId: string
 ): MedicationInfusionActiveUi | null {
-  const sorted = [...events].sort(
-    (a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime()
-  );
-  let active: MedicationInfusionActiveUi | null = null;
-  for (const ev of sorted) {
-    if (ev.orderId !== orderId) continue;
-    const m = parseMedicationInfusionOrderEventMetadata(ev.metadata);
-    if (!m || m.orderItemId !== orderItemId) continue;
-    if (m.infusionAction === "START" && ev.eventType === "STARTED" && m.infusionSessionKey) {
-      const iso =
-        typeof m.infusionStartedAt === "string" && m.infusionStartedAt.trim()
-          ? m.infusionStartedAt.trim()
-          : null;
-      const meta = ev.metadata;
-      const metaBy =
-        meta && typeof meta === "object" && !Array.isArray(meta)
-          ? (meta as Record<string, unknown>).performedByDisplayName
-          : undefined;
-      const fromMeta = typeof metaBy === "string" && metaBy.trim() ? metaBy.trim() : null;
-      const by =
-        (typeof ev.performedByDisplayName === "string" && ev.performedByDisplayName.trim()
-          ? ev.performedByDisplayName.trim()
-          : null) || fromMeta;
-      active = {
-        infusionSessionKey: m.infusionSessionKey,
-        infusionStartedAtIso: iso,
-        startedByDisplayName: by,
-      };
-    } else if (
-      m.infusionAction === "STOP" &&
-      ev.eventType === "COMPLETED" &&
-      m.infusionSessionKey &&
-      active?.infusionSessionKey === m.infusionSessionKey
-    ) {
-      active = null;
-    }
-  }
-  return active;
+  return findMedicationInfusionTimelineFromOrderEvents(events, orderId, orderItemId).active;
+}
+
+/** True if this completed order event row is an infusion STOP (for completed-order table). */
+export function isMedicationInfusionStopOrderEvent(ev: { eventType: string; metadata?: unknown }): boolean {
+  if (String(ev.eventType ?? "").trim().toUpperCase() !== "COMPLETED") return false;
+  const m = parseMedicationInfusionOrderEventMetadata(ev.metadata);
+  return m?.infusionAction === "STOP" && Boolean(m.orderItemId) && Boolean(m.infusionSessionKey);
 }

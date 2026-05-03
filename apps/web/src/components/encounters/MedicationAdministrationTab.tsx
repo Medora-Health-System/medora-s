@@ -28,7 +28,9 @@ import {
 } from "@medora/shared";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import {
-  findActiveMedicationInfusionFromOrderEvents,
+  findMedicationInfusionTimelineFromOrderEvents,
+  formatInfusionDurationForI18n,
+  formatInfusionElapsedInnerOnly,
   medicationInfusionClassificationText,
   medicationRouteSnapshotForInfusionCheck,
 } from "@/features/emergency/erOrderLifecycleUi";
@@ -122,7 +124,7 @@ function parseOrderEventsForMar(raw: unknown[] | null): MarOrderEventRow[] {
     .map((row) => ({
       id: String(row.id ?? ""),
       orderId: String(row.orderId ?? ""),
-      eventType: String(row.eventType ?? "") as MarOrderEventRow["eventType"],
+      eventType: String(row.eventType ?? "").trim().toUpperCase() as MarOrderEventRow["eventType"],
       performedByDisplayName:
         typeof row.performedByDisplayName === "string" ? row.performedByDisplayName : null,
       performedAt: String(row.performedAt ?? ""),
@@ -285,6 +287,12 @@ export function MedicationAdministrationTab({
   const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
   const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
+  /** Re-render periodically so infusion elapsed time updates on the MAR grid. */
+  const [, setInfusionClockTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setInfusionClockTick((n) => n + 1), 15_000);
+    return () => clearInterval(id);
+  }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -420,12 +428,20 @@ export function MedicationAdministrationTab({
     const drafts: RowDraft[] = [];
     for (const order of orders) {
       if ((order as { status?: string }).status === "CANCELLED") continue;
-      const orderId = String((order as { id?: unknown }).id ?? "");
+      const parentOrderId = String((order as { id?: unknown }).id ?? "").trim();
       const items = (order as { items?: OrderItemApi[] }).items ?? [];
       for (const it of items) {
         if (!it.id) continue;
         if (String(it.id).startsWith("local:")) continue;
         if (!isOrderItemPendingNurseMedication(it)) continue;
+        const embeddedOrderIdRaw = (it as { orderId?: unknown }).orderId;
+        const embeddedOrderId =
+          typeof embeddedOrderIdRaw === "string"
+            ? embeddedOrderIdRaw.trim()
+            : embeddedOrderIdRaw != null && String(embeddedOrderIdRaw).trim() !== ""
+              ? String(embeddedOrderIdRaw).trim()
+              : "";
+        const orderId = parentOrderId || embeddedOrderId;
         const label = getOrderItemDisplayLabelForLanguage(
           it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
           language as SupportedLanguage,
@@ -724,6 +740,18 @@ export function MedicationAdministrationTab({
                 const marRowLocked = Boolean(latest?.pendingSync || marSaysAdministered);
                 const recentWindow = latestTime > 0 && nowMs - latestTime < RECENT_MS;
 
+                const resolvedOrderIdForInfusion = String(row.orderId ?? "").trim();
+                const infusionTimeline =
+                  row.isInfusionLifecycleMed && resolvedOrderIdForInfusion
+                    ? findMedicationInfusionTimelineFromOrderEvents(
+                        marOrderEventRows,
+                        resolvedOrderIdForInfusion,
+                        row.orderItemId
+                      )
+                    : { active: null, lastCompleted: null };
+                const activeMarInfusion = infusionTimeline.active;
+                const completedMarInfusion = infusionTimeline.lastCompleted;
+
                 let statusCell: React.ReactNode;
 
                 if (latest?.pendingSync) {
@@ -740,6 +768,101 @@ export function MedicationAdministrationTab({
                     >
                       {t("marTab.statusPendingSync")}
                     </span>
+                  );
+                } else if (row.isInfusionLifecycleMed && activeMarInfusion) {
+                  const startedMs = activeMarInfusion.infusionStartedAtIso
+                    ? new Date(activeMarInfusion.infusionStartedAtIso).getTime()
+                    : NaN;
+                  const elapsedInner =
+                    !Number.isNaN(startedMs) ? formatInfusionElapsedInnerOnly(nowMs - startedMs, t) : null;
+                  const startedAtStr = activeMarInfusion.infusionStartedAtIso
+                    ? new Date(activeMarInfusion.infusionStartedAtIso).toLocaleString(dateLocale, {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    : null;
+                  const byParts = [activeMarInfusion.startedByDisplayName, activeMarInfusion.startedByTitle].filter(
+                    (x): x is string => typeof x === "string" && Boolean(x.trim())
+                  );
+                  const byJoined = byParts.join(t("infusionTimeline.infusionTimelineDivider"));
+                  statusCell = (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: "#0369a1" }}>
+                        {t("erEmergencyOrders.infusionInProgress")}
+                      </span>
+                      {startedAtStr ? (
+                        <span style={{ fontSize: 12, color: "#0c4a6e" }}>
+                          {byJoined
+                            ? t("erEmergencyOrders.infusionStartedByLine")
+                                .replace("{at}", startedAtStr)
+                                .replace("{by}", byJoined)
+                            : t("erEmergencyOrders.infusionStartedAtLabel").replace("{at}", startedAtStr)}
+                        </span>
+                      ) : byJoined ? (
+                        <span style={{ fontSize: 12, color: "#0c4a6e" }}>
+                          {t("erEmergencyOrders.infusionStartedByOnly").replace("{by}", byJoined)}
+                        </span>
+                      ) : null}
+                      {elapsedInner ? (
+                        <span style={{ fontSize: 12, color: "#0c4a6e" }}>
+                          {t("marTab.infusionElapsedLabel").replace("{elapsed}", elapsedInner)}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                } else if (row.isInfusionLifecycleMed && completedMarInfusion && !activeMarInfusion) {
+                  const lc = completedMarInfusion;
+                  const startAt =
+                    lc.infusionStartedAtIso &&
+                    !Number.isNaN(new Date(lc.infusionStartedAtIso).getTime())
+                      ? new Date(lc.infusionStartedAtIso).toLocaleString(dateLocale, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
+                      : t("common.dash");
+                  const stopAt =
+                    lc.infusionStoppedAtIso && !Number.isNaN(new Date(lc.infusionStoppedAtIso).getTime())
+                      ? new Date(lc.infusionStoppedAtIso).toLocaleString(dateLocale, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
+                      : t("common.dash");
+                  const durLine = formatInfusionDurationForI18n(lc.durationMinutes, t);
+                  const startByParts = [lc.startedByDisplayName, lc.startedByTitle].filter(
+                    (x): x is string => typeof x === "string" && Boolean(x.trim())
+                  );
+                  const stopByParts = [lc.stoppedByDisplayName, lc.stoppedByTitle].filter(
+                    (x): x is string => typeof x === "string" && Boolean(x.trim())
+                  );
+                  const startByLine =
+                    startByParts.length > 0
+                      ? t("infusionTimeline.infusionStartedBy").replace(
+                          "{by}",
+                          startByParts.join(t("infusionTimeline.infusionTimelineDivider"))
+                        )
+                      : t("common.dash");
+                  const stopByLine =
+                    stopByParts.length > 0
+                      ? t("infusionTimeline.infusionStoppedBy").replace(
+                          "{by}",
+                          stopByParts.join(t("infusionTimeline.infusionTimelineDivider"))
+                        )
+                      : t("common.dash");
+                  statusCell = (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: "#0f766e" }}>
+                        {t("infusionTimeline.infusionCompleted")}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#134e4a" }}>
+                        {t("infusionTimeline.infusionStartedAt").replace("{at}", startAt)}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#134e4a" }}>
+                        {t("infusionTimeline.infusionStoppedAt").replace("{at}", stopAt)}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#134e4a" }}>{durLine}</span>
+                      <span style={{ fontSize: 12, color: "#134e4a" }}>{startByLine}</span>
+                      <span style={{ fontSize: 12, color: "#134e4a" }}>{stopByLine}</span>
+                    </div>
                   );
                 } else if (marSaysAdministered) {
                   statusCell = <span>🟢 {t("marTab.statusAdministered")}</span>;
@@ -800,17 +923,11 @@ export function MedicationAdministrationTab({
                 }
                 const titleCell = titleCellParts.length > 0 ? titleCellParts.join(" · ") : "—";
 
-                const activeMarInfusion =
-                  row.isInfusionLifecycleMed && row.orderId
-                    ? findActiveMedicationInfusionFromOrderEvents(
-                        marOrderEventRows,
-                        row.orderId,
-                        row.orderItemId
-                      )
-                    : null;
+                const infusionBusyKeyOrder = resolvedOrderIdForInfusion || row.orderItemId;
                 const infusionBusyStart =
-                  infusionBusy === `${row.orderId}:${row.orderItemId}:start`;
-                const infusionBusyStop = infusionBusy === `${row.orderId}:${row.orderItemId}:stop`;
+                  infusionBusy === `${infusionBusyKeyOrder}:${row.orderItemId}:start`;
+                const infusionBusyStop =
+                  infusionBusy === `${infusionBusyKeyOrder}:${row.orderItemId}:stop`;
                 const primaryInfusionDisabled =
                   !isOpen || submitting || marRowLocked || infusionBusyStart || infusionBusyStop;
 
@@ -868,7 +985,11 @@ export function MedicationAdministrationTab({
                               type="button"
                               disabled={primaryInfusionDisabled}
                               onClick={() =>
-                                void runMarInfusion(row.orderItemId, row.orderId, "start")
+                                void runMarInfusion(
+                                  row.orderItemId,
+                                  resolvedOrderIdForInfusion || row.orderItemId,
+                                  "start"
+                                )
                               }
                               style={{
                                 padding: "10px 14px",
@@ -892,7 +1013,11 @@ export function MedicationAdministrationTab({
                               type="button"
                               disabled={primaryInfusionDisabled}
                               onClick={() =>
-                                void runMarInfusion(row.orderItemId, row.orderId, "stop")
+                                void runMarInfusion(
+                                  row.orderItemId,
+                                  resolvedOrderIdForInfusion || row.orderItemId,
+                                  "stop"
+                                )
                               }
                               style={{
                                 padding: "10px 14px",

@@ -12,7 +12,10 @@ import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
 import { type ErOrderDomain } from "@/features/emergency/erOrderWorkspace";
 import { TraumaProtocolAssistPanel } from "@/features/emergency/TraumaProtocolAssistPanel";
 import {
-  findActiveMedicationInfusionFromOrderEvents,
+  findMedicationInfusionTimelineFromOrderEvents,
+  formatInfusionDurationForI18n,
+  formatInfusionElapsedForI18n,
+  isMedicationInfusionStopOrderEvent,
   isOrderItemActiveForErDashboard,
   isOrderItemCancellableLineForEr,
   isOrderItemCompletedForErDashboard,
@@ -418,6 +421,12 @@ export function EmergencyErOrdersPanel({
     pendingCancelRef.current = pendingCancel;
   }, [pendingCancel]);
 
+  const [, setInfusionUiTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setInfusionUiTick((n) => n + 1), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -738,6 +747,7 @@ export function EmergencyErOrdersPanel({
     }
   };
 
+  const nowMs = Date.now();
 
   return (
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
@@ -1044,9 +1054,10 @@ export function EmergencyErOrdersPanel({
                                   genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
                                   metadata: null,
                                 });
-                              const activeInfusion = isInfusionLifecycleMed
-                                ? findActiveMedicationInfusionFromOrderEvents(parsedEvents, o.id, itemId)
-                                : null;
+                              const infusionTl = isInfusionLifecycleMed
+                                ? findMedicationInfusionTimelineFromOrderEvents(parsedEvents, o.id, itemId)
+                                : { active: null, lastCompleted: null };
+                              const activeInfusion = infusionTl.active;
 
                               const lineBtns: React.ReactNode[] = [];
                               if (isInfusionLifecycleMed && hasAnyRole(roles, "RN", "ADMIN")) {
@@ -1216,48 +1227,62 @@ export function EmergencyErOrdersPanel({
                                     }}
                                   >
                                     <div style={{ marginBottom: lineBtns.length > 0 || isInfusionLifecycleMed ? 6 : 0 }}>
-                                      {orderLineItemStatusLabel(st, t)}
-                                    </div>
-                                    {isInfusionLifecycleMed && activeInfusion ? (
-                                      <div
-                                        style={{
-                                          marginBottom: lineBtns.length > 0 ? 8 : 0,
-                                          fontSize: 11,
-                                          color: "#0369a1",
-                                          lineHeight: 1.4,
-                                        }}
-                                      >
-                                        <div style={{ fontWeight: 700 }}>{t("erEmergencyOrders.infusionInProgress")}</div>
-                                        {activeInfusion.infusionStartedAtIso ? (
-                                          <div style={{ marginTop: 2, color: "#0c4a6e" }}>
-                                            {activeInfusion.startedByDisplayName
-                                              ? t("erEmergencyOrders.infusionStartedByLine")
-                                                  .replace(
-                                                    "{at}",
-                                                    new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
-                                                      language === "fr" ? "fr-FR" : "en-US",
-                                                      { dateStyle: "short", timeStyle: "short" }
-                                                    )
-                                                  )
-                                                  .replace("{by}", activeInfusion.startedByDisplayName)
-                                              : t("erEmergencyOrders.infusionStartedAtLabel").replace(
-                                                  "{at}",
-                                                  new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
-                                                    language === "fr" ? "fr-FR" : "en-US",
-                                                    { dateStyle: "short", timeStyle: "short" }
-                                                  )
+                                      {isInfusionLifecycleMed && activeInfusion ? (
+                                        <div
+                                          style={{
+                                            fontSize: 12,
+                                            color: "#0369a1",
+                                            lineHeight: 1.45,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: 4,
+                                          }}
+                                        >
+                                          <div style={{ fontWeight: 700 }}>
+                                            {t("infusionTimeline.infusionStatusInfusing")}
+                                          </div>
+                                          {activeInfusion.infusionStartedAtIso ? (
+                                            <div style={{ color: "#0c4a6e" }}>
+                                              {t("infusionTimeline.infusionStartedAt").replace(
+                                                "{at}",
+                                                new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
+                                                  language === "fr" ? "fr-FR" : "en-US",
+                                                  { dateStyle: "short", timeStyle: "short" }
+                                                )
+                                              )}
+                                            </div>
+                                          ) : null}
+                                          {(() => {
+                                            const startedMs = activeInfusion.infusionStartedAtIso
+                                              ? new Date(activeInfusion.infusionStartedAtIso).getTime()
+                                              : NaN;
+                                            if (Number.isNaN(startedMs)) return null;
+                                            return (
+                                              <div style={{ color: "#0c4a6e" }}>
+                                                {formatInfusionElapsedForI18n(nowMs - startedMs, t)}
+                                              </div>
+                                            );
+                                          })()}
+                                          {(() => {
+                                            const byParts = [
+                                              activeInfusion.startedByDisplayName,
+                                              activeInfusion.startedByTitle,
+                                            ].filter((x): x is string => typeof x === "string" && Boolean(x.trim()));
+                                            if (!byParts.length) return null;
+                                            return (
+                                              <div style={{ color: "#0c4a6e" }}>
+                                                {t("infusionTimeline.infusionStartedBy").replace(
+                                                  "{by}",
+                                                  byParts.join(t("infusionTimeline.infusionTimelineDivider"))
                                                 )}
-                                          </div>
-                                        ) : activeInfusion.startedByDisplayName ? (
-                                          <div style={{ marginTop: 2, color: "#0c4a6e" }}>
-                                            {t("erEmergencyOrders.infusionStartedByOnly").replace(
-                                              "{by}",
-                                              activeInfusion.startedByDisplayName
-                                            )}
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    ) : null}
+                                              </div>
+                                            );
+                                          })()}
+                                        </div>
+                                      ) : (
+                                        orderLineItemStatusLabel(st, t)
+                                      )}
+                                    </div>
                                     {lineBtns.length > 0 ? (
                                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
                                     ) : null}
@@ -1395,6 +1420,28 @@ export function EmergencyErOrdersPanel({
                         const marLine = marActionOutcomeSubLabel(e.metadata, t);
                         const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
                         const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
+                        const itemIdEv = orderItemIdFromEventMetadata(e.metadata);
+                        const metaRec =
+                          e.metadata && typeof e.metadata === "object" && !Array.isArray(e.metadata)
+                            ? (e.metadata as Record<string, unknown>)
+                            : null;
+                        const stopSk =
+                          metaRec && typeof metaRec.infusionSessionKey === "string"
+                            ? metaRec.infusionSessionKey
+                            : null;
+                        let infusionStopTimeline: ReturnType<
+                          typeof findMedicationInfusionTimelineFromOrderEvents
+                        >["lastCompleted"] = null;
+                        if (isMedicationInfusionStopOrderEvent(e) && itemIdEv && e.orderId && stopSk) {
+                          const tl = findMedicationInfusionTimelineFromOrderEvents(
+                            parsedEvents,
+                            e.orderId,
+                            itemIdEv
+                          );
+                          if (tl.lastCompleted?.infusionSessionKey === stopSk) {
+                            infusionStopTimeline = tl.lastCompleted;
+                          }
+                        }
                         const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
                         const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
                         const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
@@ -1464,7 +1511,76 @@ export function EmergencyErOrdersPanel({
                                 wordBreak: "break-word",
                               }}
                             >
-                              {secondaryLine ?? t("orderEvent.completed")}
+                              {infusionStopTimeline ? (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 6,
+                                    fontSize: 12,
+                                    color: "#134e4a",
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 700, color: "#0f766e" }}>
+                                    {t("infusionTimeline.infusionCompleted")}
+                                  </span>
+                                  <span>
+                                    {t("infusionTimeline.infusionStartedAt").replace(
+                                      "{at}",
+                                      infusionStopTimeline.infusionStartedAtIso &&
+                                        !Number.isNaN(new Date(infusionStopTimeline.infusionStartedAtIso).getTime())
+                                        ? new Date(infusionStopTimeline.infusionStartedAtIso).toLocaleString(
+                                            language === "fr" ? "fr-FR" : "en-US",
+                                            { dateStyle: "short", timeStyle: "short" }
+                                          )
+                                        : t("common.dash")
+                                    )}
+                                  </span>
+                                  <span>
+                                    {t("infusionTimeline.infusionStoppedAt").replace(
+                                      "{at}",
+                                      infusionStopTimeline.infusionStoppedAtIso &&
+                                        !Number.isNaN(new Date(infusionStopTimeline.infusionStoppedAtIso).getTime())
+                                        ? new Date(infusionStopTimeline.infusionStoppedAtIso).toLocaleString(
+                                            language === "fr" ? "fr-FR" : "en-US",
+                                            { dateStyle: "short", timeStyle: "short" }
+                                          )
+                                        : t("common.dash")
+                                    )}
+                                  </span>
+                                  <span>{formatInfusionDurationForI18n(infusionStopTimeline.durationMinutes, t)}</span>
+                                  <span>
+                                    {t("infusionTimeline.infusionStartedBy").replace(
+                                      "{by}",
+                                      (() => {
+                                        const parts = [
+                                          infusionStopTimeline.startedByDisplayName,
+                                          infusionStopTimeline.startedByTitle,
+                                        ].filter((x): x is string => typeof x === "string" && Boolean(x.trim()));
+                                        return parts.length
+                                          ? parts.join(t("infusionTimeline.infusionTimelineDivider"))
+                                          : t("common.dash");
+                                      })()
+                                    )}
+                                  </span>
+                                  <span>
+                                    {t("infusionTimeline.infusionStoppedBy").replace(
+                                      "{by}",
+                                      (() => {
+                                        const parts = [
+                                          infusionStopTimeline.stoppedByDisplayName,
+                                          infusionStopTimeline.stoppedByTitle,
+                                        ].filter((x): x is string => typeof x === "string" && Boolean(x.trim()));
+                                        return parts.length
+                                          ? parts.join(t("infusionTimeline.infusionTimelineDivider"))
+                                          : t("common.dash");
+                                      })()
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                secondaryLine ?? t("orderEvent.completed")
+                              )}
                             </td>
                             <td
                               style={{
