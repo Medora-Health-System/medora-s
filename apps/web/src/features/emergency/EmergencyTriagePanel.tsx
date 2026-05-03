@@ -863,6 +863,7 @@ export function EmergencyTriagePanel({
                     grid3={grid3}
                     sectionHeading={sectionHeading}
                     patientChartHref={patientChartHref}
+                    facilityId={facilityId}
                   />
                 </div>
               </div>

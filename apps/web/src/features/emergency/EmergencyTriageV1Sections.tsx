@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
+import { searchCatalog } from "@/lib/catalogSearchApi";
+import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import type {
   ErAbcOption,
   ErTraumaActivationCriterionId,
@@ -137,6 +140,32 @@ function toggleStructuredTriageChip(
   } as Partial<ErTriageV1Form>);
 }
 
+const MED_HOME_SEARCH_MIN_CHARS = 2;
+const MED_HOME_SEARCH_DEBOUNCE_MS = 320;
+const MED_HOME_SEARCH_LIMIT = 12;
+
+/** i18n keys under `erTriage.v1.*` — append-only text for allergy details (no structured codes). */
+const ALLERGY_QUICK_ALLERGEN_I18N_KEYS = [
+  "allergyQuickPenicillin",
+  "allergyQuickSulfa",
+  "allergyQuickAspirin",
+  "allergyQuickNsaid",
+  "allergyQuickIodinatedContrast",
+  "allergyQuickPeanuts",
+  "allergyQuickShellfish",
+  "allergyQuickEggs",
+  "allergyQuickOther",
+] as const;
+
+const ALLERGY_QUICK_REACTION_I18N_KEYS = [
+  "allergyReactionRash",
+  "allergyReactionHives",
+  "allergyReactionAnaphylaxis",
+  "allergyReactionSob",
+  "allergyReactionNausea",
+  "allergyReactionUnknown",
+] as const;
+
 function painOptions(dash: string): { value: string; label: string }[] {
   const o: { value: string; label: string }[] = [{ value: "", label: dash }];
   for (let i = 0; i <= 10; i += 1) o.push({ value: String(i), label: `${i}/10` });
@@ -173,6 +202,8 @@ export type EmergencyTriageV1SectionsProps = {
   grid3: React.CSSProperties;
   sectionHeading: React.CSSProperties;
   patientChartHref?: string;
+  /** Required for home-medication catalog search (display names appended to summary only). */
+  facilityId?: string;
 };
 
 export function EmergencyTriageV1Sections({
@@ -185,8 +216,9 @@ export function EmergencyTriageV1Sections({
   grid3,
   sectionHeading,
   patientChartHref,
+  facilityId,
 }: EmergencyTriageV1SectionsProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const v1Any = erTriageV1FormHasAnyContent(er);
 
   const dash = t("erTriage.preview.emptyOption");
@@ -214,6 +246,69 @@ export function EmergencyTriageV1Sections({
   const gcsMotorOpts = useMemo(() => gcsScoreOptions(dash, 6), [dash]);
   const gcsTriad = useMemo(() => gcsTriadCompleteWithTotal(er), [er.gcsEye, er.gcsVerbal, er.gcsMotor]);
   const gcsAbnormal = gcsTriad != null && gcsTriad.total < 15;
+
+  const [medHomeSearchInput, setMedHomeSearchInput] = useState("");
+  const [medHomeSearchResults, setMedHomeSearchResults] = useState<CatalogSearchItem[]>([]);
+  const [medHomeSearchLoading, setMedHomeSearchLoading] = useState(false);
+  const medHomeSearchReq = useRef(0);
+
+  useEffect(() => {
+    if (!facilityId?.trim()) {
+      setMedHomeSearchResults([]);
+      setMedHomeSearchLoading(false);
+      return;
+    }
+    const q = medHomeSearchInput.trim();
+    if (q.length < MED_HOME_SEARCH_MIN_CHARS) {
+      setMedHomeSearchResults([]);
+      setMedHomeSearchLoading(false);
+      return;
+    }
+    setMedHomeSearchLoading(true);
+    const reqId = ++medHomeSearchReq.current;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const items = await searchCatalog(facilityId.trim(), "MEDICATION", {
+            q,
+            limit: MED_HOME_SEARCH_LIMIT,
+          });
+          if (medHomeSearchReq.current === reqId) {
+            setMedHomeSearchResults(items);
+          }
+        } catch {
+          if (medHomeSearchReq.current === reqId) {
+            setMedHomeSearchResults([]);
+          }
+        } finally {
+          if (medHomeSearchReq.current === reqId) {
+            setMedHomeSearchLoading(false);
+          }
+        }
+      })();
+    }, MED_HOME_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [medHomeSearchInput, facilityId]);
+
+  const appendMedicationFromCatalog = useCallback(
+    (item: CatalogSearchItem) => {
+      const label = getCatalogSearchItemDisplayLabel(item, language, t).trim();
+      if (!label) return;
+      patchErV1({ medicationsSummary: appendIfNotPresent(er.medicationsSummary, label) });
+      setMedHomeSearchInput("");
+      setMedHomeSearchResults([]);
+    },
+    [er.medicationsSummary, language, patchErV1, t]
+  );
+
+  const appendAllergyQuickText = useCallback(
+    (i18nSuffix: string) => {
+      const label = t(`erTriage.v1.${i18nSuffix}`).trim();
+      if (!label) return;
+      patchErV1({ additionalAllergyInfo: appendIfNotPresent(er.additionalAllergyInfo, label) });
+    },
+    [er.additionalAllergyInfo, patchErV1, t]
+  );
 
   const traumaLevelOptions: { value: ErTraumaLevel; label: string }[] = useMemo(
     () => [
@@ -727,6 +822,74 @@ export function EmergencyTriageV1Sections({
                 );
               })}
             </ErTriageDocChipRow>
+            {facilityId?.trim() ? (
+              <div style={{ marginTop: 10 }}>
+                <p style={{ ...sectionHeading, fontSize: 10 }}>{t("erTriage.v1.medsHomeMedSearchLabel")}</p>
+                <input
+                  type="search"
+                  value={medHomeSearchInput}
+                  onChange={(e) => setMedHomeSearchInput(e.target.value)}
+                  disabled={formDisabled}
+                  placeholder={t("erTriage.v1.medsHomeMedSearchPlaceholder")}
+                  autoComplete="off"
+                  style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                />
+                {medHomeSearchInput.trim().length > 0 &&
+                medHomeSearchInput.trim().length < MED_HOME_SEARCH_MIN_CHARS ? (
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                    {t("erTriage.v1.medsCatalogMinCharsHint")}
+                  </p>
+                ) : null}
+                {medHomeSearchLoading ? (
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                    {t("erTriage.v1.medsCatalogSearching")}
+                  </p>
+                ) : null}
+                {!medHomeSearchLoading &&
+                medHomeSearchInput.trim().length >= MED_HOME_SEARCH_MIN_CHARS &&
+                medHomeSearchResults.length === 0 ? (
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                    {t("erTriage.v1.medsCatalogNoResults")}
+                  </p>
+                ) : null}
+                {medHomeSearchResults.length > 0 ? (
+                  <ul
+                    style={{
+                      listStyle: "none",
+                      margin: "8px 0 0",
+                      padding: 0,
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 8,
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      backgroundColor: "#fff",
+                    }}
+                  >
+                    {medHomeSearchResults.map((item) => (
+                      <li key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <button
+                          type="button"
+                          disabled={formDisabled}
+                          onClick={() => appendMedicationFromCatalog(item)}
+                          style={{
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "8px 10px",
+                            border: "none",
+                            background: "transparent",
+                            cursor: formDisabled ? "not-allowed" : "pointer",
+                            fontSize: 13,
+                            color: "#334155",
+                          }}
+                        >
+                          {getCatalogSearchItemDisplayLabel(item, language, t)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <div>
             <label style={labelStyle}>{t("erTriage.v1.allergyExtra")}</label>
@@ -762,6 +925,29 @@ export function EmergencyTriageV1Sections({
                   />
                 );
               })}
+            </ErTriageDocChipRow>
+            <p style={{ ...chipHintStyle, marginTop: 10 }}>{t("erTriage.v1.allergyAppendSectionHint")}</p>
+            <p style={{ ...sectionHeading, fontSize: 10, marginTop: 6 }}>{t("erTriage.v1.allergenSectionTitle")}</p>
+            <ErTriageDocChipRow>
+              {ALLERGY_QUICK_ALLERGEN_I18N_KEYS.map((k) => (
+                <ErTriageDocChip
+                  key={k}
+                  label={t(`erTriage.v1.${k}`)}
+                  disabled={formDisabled}
+                  onClick={() => appendAllergyQuickText(k)}
+                />
+              ))}
+            </ErTriageDocChipRow>
+            <p style={{ ...sectionHeading, fontSize: 10, marginTop: 10 }}>{t("erTriage.v1.reactionsSectionTitle")}</p>
+            <ErTriageDocChipRow>
+              {ALLERGY_QUICK_REACTION_I18N_KEYS.map((k) => (
+                <ErTriageDocChip
+                  key={k}
+                  label={t(`erTriage.v1.${k}`)}
+                  disabled={formDisabled}
+                  onClick={() => appendAllergyQuickText(k)}
+                />
+              ))}
             </ErTriageDocChipRow>
           </div>
           <div style={grid2}>
