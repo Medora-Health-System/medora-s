@@ -166,6 +166,47 @@ const ALLERGY_QUICK_REACTION_I18N_KEYS = [
   "allergyReactionUnknown",
 ] as const;
 
+/** Past medical history quick-picks — append localized labels to `pastMedicalHistory` only. */
+const HISTORY_PMH_I18N_KEYS = [
+  "historyPmhHypertension",
+  "historyPmhDiabetes",
+  "historyPmhCad",
+  "historyPmhStrokeTia",
+  "historyPmhAsthma",
+  "historyPmhCopd",
+  "historyPmhCkd",
+  "historyPmhSeizure",
+  "historyPmhCancer",
+  "historyPmhAnticoagulant",
+  "historyPmhNoChronic",
+  "historyPmhOther",
+] as const;
+
+const HISTORY_PSH_I18N_KEYS = [
+  "historyPshAppendectomy",
+  "historyPshCholecystectomy",
+  "historyPshCsection",
+  "historyPshHysterectomy",
+  "historyPshOrthopedic",
+  "historyPshCardiacStent",
+  "historyPshAbdominal",
+  "historyPshNoPrior",
+  "historyPshOther",
+] as const;
+
+const HISTORY_FH_I18N_KEYS = [
+  "historyFhHeart",
+  "historyFhStroke",
+  "historyFhDiabetes",
+  "historyFhCancer",
+  "historyFhSuddenDeath",
+  "historyFhBloodClots",
+  "historyFhNoSignificant",
+  "historyFhUnknown",
+] as const;
+
+type ErHistoryTextField = "pastMedicalHistory" | "pastSurgicalHistory" | "familyHistory";
+
 function painOptions(dash: string): { value: string; label: string }[] {
   const o: { value: string; label: string }[] = [{ value: "", label: dash }];
   for (let i = 0; i <= 10; i += 1) o.push({ value: String(i), label: `${i}/10` });
@@ -308,6 +349,19 @@ export function EmergencyTriageV1Sections({
       patchErV1({ additionalAllergyInfo: appendIfNotPresent(er.additionalAllergyInfo, label) });
     },
     [er.additionalAllergyInfo, patchErV1, t]
+  );
+
+  const [historyPmhFilter, setHistoryPmhFilter] = useState("");
+  const [historyPshFilter, setHistoryPshFilter] = useState("");
+  const [historyFhFilter, setHistoryFhFilter] = useState("");
+
+  const appendHistoryQuick = useCallback(
+    (field: ErHistoryTextField, i18nSuffix: string) => {
+      const label = t(`erTriage.v1.${i18nSuffix}`).trim();
+      if (!label) return;
+      patchErV1({ [field]: appendIfNotPresent(er[field], label) });
+    },
+    [er.pastMedicalHistory, er.pastSurgicalHistory, er.familyHistory, patchErV1, t]
   );
 
   const traumaLevelOptions: { value: ErTraumaLevel; label: string }[] = useMemo(
@@ -1005,6 +1059,30 @@ export function EmergencyTriageV1Sections({
                 maxLength={8000}
                 style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
+              <p style={{ ...chipHintStyle, marginTop: 8 }}>{t("erTriage.v1.historyQuickPickHint")}</p>
+              <input
+                type="search"
+                value={historyPmhFilter}
+                onChange={(e) => setHistoryPmhFilter(e.target.value)}
+                disabled={formDisabled}
+                placeholder={t("erTriage.v1.historyQuickFilterPlaceholder")}
+                autoComplete="off"
+                style={{ ...inputBase, marginTop: 6, fontSize: 12, padding: "6px 8px", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+              />
+              <ErTriageDocChipRow>
+                {HISTORY_PMH_I18N_KEYS.filter((k) => {
+                  const lab = t(`erTriage.v1.${k}`).trim().toLowerCase();
+                  const q = historyPmhFilter.trim().toLowerCase();
+                  return !q || lab.includes(q);
+                }).map((k) => (
+                  <ErTriageDocChip
+                    key={k}
+                    label={t(`erTriage.v1.${k}`)}
+                    disabled={formDisabled}
+                    onClick={() => appendHistoryQuick("pastMedicalHistory", k)}
+                  />
+                ))}
+              </ErTriageDocChipRow>
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.psh")}</label>
@@ -1016,6 +1094,30 @@ export function EmergencyTriageV1Sections({
                 maxLength={8000}
                 style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
+              <p style={{ ...chipHintStyle, marginTop: 8 }}>{t("erTriage.v1.historyQuickPickHint")}</p>
+              <input
+                type="search"
+                value={historyPshFilter}
+                onChange={(e) => setHistoryPshFilter(e.target.value)}
+                disabled={formDisabled}
+                placeholder={t("erTriage.v1.historyQuickFilterPlaceholder")}
+                autoComplete="off"
+                style={{ ...inputBase, marginTop: 6, fontSize: 12, padding: "6px 8px", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+              />
+              <ErTriageDocChipRow>
+                {HISTORY_PSH_I18N_KEYS.filter((k) => {
+                  const lab = t(`erTriage.v1.${k}`).trim().toLowerCase();
+                  const q = historyPshFilter.trim().toLowerCase();
+                  return !q || lab.includes(q);
+                }).map((k) => (
+                  <ErTriageDocChip
+                    key={k}
+                    label={t(`erTriage.v1.${k}`)}
+                    disabled={formDisabled}
+                    onClick={() => appendHistoryQuick("pastSurgicalHistory", k)}
+                  />
+                ))}
+              </ErTriageDocChipRow>
             </div>
           </div>
           <div>
@@ -1028,6 +1130,30 @@ export function EmergencyTriageV1Sections({
               maxLength={4000}
               style={{ ...inputBase, minHeight: 52, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
             />
+            <p style={{ ...chipHintStyle, marginTop: 8 }}>{t("erTriage.v1.historyQuickPickHint")}</p>
+            <input
+              type="search"
+              value={historyFhFilter}
+              onChange={(e) => setHistoryFhFilter(e.target.value)}
+              disabled={formDisabled}
+              placeholder={t("erTriage.v1.historyQuickFilterPlaceholder")}
+              autoComplete="off"
+              style={{ ...inputBase, marginTop: 6, fontSize: 12, padding: "6px 8px", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+            />
+            <ErTriageDocChipRow>
+              {HISTORY_FH_I18N_KEYS.filter((k) => {
+                const lab = t(`erTriage.v1.${k}`).trim().toLowerCase();
+                const q = historyFhFilter.trim().toLowerCase();
+                return !q || lab.includes(q);
+              }).map((k) => (
+                <ErTriageDocChip
+                  key={k}
+                  label={t(`erTriage.v1.${k}`)}
+                  disabled={formDisabled}
+                  onClick={() => appendHistoryQuick("familyHistory", k)}
+                />
+              ))}
+            </ErTriageDocChipRow>
           </div>
           <div style={grid3}>
             <div>
