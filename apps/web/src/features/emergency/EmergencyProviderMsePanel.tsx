@@ -1078,30 +1078,66 @@ export function EmergencyProviderMsePanel({
               </div>
             </div>
 
-            <div
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={formDisabled || saving}
+                style={{
+                  padding: "9px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #4f46e5",
+                  backgroundColor: formDisabled ? "#f1f5f9" : "#4f46e5",
+                  color: formDisabled ? "#94a3b8" : "#fff",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: formDisabled || saving ? "not-allowed" : "pointer",
+                }}
+              >
+                {saving ? t("erMseProviderPanel.saving") : t("erMseProviderPanel.saveButton")}
+              </button>
+              {isLocked ? (
+                <span style={{ fontSize: 12, color: "#b45309" }}>{t("erMseProviderPanel.lockedDocumentation")}</span>
+              ) : null}
+              {isReadOnly ? (
+                <span style={{ fontSize: 12, color: "#64748b" }}>{t("erMseProviderPanel.readOnlyEncounter")}</span>
+              ) : null}
+            </div>
+            {handoffLockedReason ? (
+              <p
+                style={{
+                  margin: "14px 0 0 0",
+                  fontSize: 12,
+                  color: "#92400e",
+                  lineHeight: 1.45,
+                  fontWeight: 600,
+                }}
+              >
+                {handoffLockedReason === "closed"
+                  ? t("erMseProviderPanel.handoffLockedClosed")
+                  : t("erMseProviderPanel.handoffLockedSigned")}
+              </p>
+            ) : null}
+            <details
               style={{
-                marginTop: 18,
-                paddingTop: 14,
-                borderTop: "1px solid #e2e8f0",
+                marginTop: handoffLockedReason ? 10 : 14,
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 12px",
+                backgroundColor: "#fff",
               }}
             >
-              <p style={sectionHeading}>{t("erMseProviderPanel.sectionProviderHandoff")}</p>
-              {handoffLockedReason ? (
-                <p
-                  style={{
-                    margin: "0 0 10px 0",
-                    fontSize: 12,
-                    color: "#92400e",
-                    lineHeight: 1.45,
-                    fontWeight: 600,
-                  }}
-                >
-                  {handoffLockedReason === "closed"
-                    ? t("erMseProviderPanel.handoffLockedClosed")
-                    : t("erMseProviderPanel.handoffLockedSigned")}
-                </p>
-              ) : null}
-              <div style={{ maxWidth: 480, display: "flex", flexDirection: "column", gap: 10 }}>
+              <summary
+                style={{
+                  cursor: formDisabled ? "default" : "pointer",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  color: "#334155",
+                }}
+              >
+                {t("erMseProviderPanel.sectionProviderHandoff")}
+              </summary>
+              <div style={{ marginTop: 10, maxWidth: 480, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div>
                   <label style={labelStyle}>{t("erMseProviderPanel.labelHandoffRecipient")}</label>
                   <ClinicalUserRoleAutocomplete
@@ -1178,33 +1214,7 @@ export function EmergencyProviderMsePanel({
                   </p>
                 ) : null}
               </div>
-            </div>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-              <button
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={formDisabled || saving}
-                style={{
-                  padding: "9px 16px",
-                  borderRadius: 10,
-                  border: "1px solid #4f46e5",
-                  backgroundColor: formDisabled ? "#f1f5f9" : "#4f46e5",
-                  color: formDisabled ? "#94a3b8" : "#fff",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: formDisabled || saving ? "not-allowed" : "pointer",
-                }}
-              >
-                {saving ? t("erMseProviderPanel.saving") : t("erMseProviderPanel.saveButton")}
-              </button>
-              {isLocked ? (
-                <span style={{ fontSize: 12, color: "#b45309" }}>{t("erMseProviderPanel.lockedDocumentation")}</span>
-              ) : null}
-              {isReadOnly ? (
-                <span style={{ fontSize: 12, color: "#64748b" }}>{t("erMseProviderPanel.readOnlyEncounter")}</span>
-              ) : null}
-            </div>
+            </details>
           </div>
 
           <div style={resumeColumnStyle}>
