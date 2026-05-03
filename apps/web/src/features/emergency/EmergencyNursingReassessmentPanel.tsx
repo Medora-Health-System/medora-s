@@ -241,6 +241,11 @@ const NURSING_QUICK_CHIP_GROUPS: readonly {
       "rtNauseaImproved",
       "rtBreathingImproved",
       "rtProviderNotifiedOfChange",
+      "prPainUnchanged",
+      "prPainWorsened",
+      "prPainReassessedAfterIntervention",
+      "prPatientReportsTolerablePain",
+      "prProviderNotifiedUncontrolledPain",
     ],
   },
   {
@@ -253,6 +258,11 @@ const NURSING_QUICK_CHIP_GROUPS: readonly {
       "niSafetyRoundingCompleted",
       "niEducationProvided",
       "niProviderUpdated",
+      "niNonPharmacologicComfort",
+      "niIceHeatApplied",
+      "niRepositionedForComfort",
+      "niPainReassessmentCompleted",
+      "niEducationPainReporting",
     ],
   },
   {
@@ -301,6 +311,55 @@ const quickChipPillBase: React.CSSProperties = {
   WebkitTapHighlightColor: "transparent",
   userSelect: "none",
 };
+
+const PAIN_SCORE_QUICK_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+function NursingPainScoreQuickPick({
+  value,
+  formDisabled,
+  onPick,
+  t,
+}: {
+  value: string;
+  formDisabled: boolean;
+  onPick: (n: number) => void;
+  t: (key: string) => string;
+}) {
+  const nVal = value.trim() === "" ? null : parseInt(value, 10);
+  const selected = nVal !== null && !Number.isNaN(nVal) ? Math.min(10, Math.max(0, nVal)) : null;
+  return (
+    <>
+      <p style={{ ...quickChipHintStyle, marginTop: 6 }}>{t("emergencyNursingReassessment.quick.painScoreHint")}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" }}>
+        {PAIN_SCORE_QUICK_VALUES.map((n) => {
+          const isSelected = selected === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              disabled={formDisabled}
+              onClick={() => onPick(n)}
+              style={{
+                minWidth: 32,
+                justifyContent: "center",
+                ...quickChipPillBase,
+                padding: "4px 8px",
+                fontWeight: 700,
+                background: isSelected ? "#e0f2fe" : formDisabled ? "#f1f5f9" : "#f8fafc",
+                color: formDisabled ? "#94a3b8" : isSelected ? "#0369a1" : "#334155",
+                borderColor: isSelected ? "#38bdf8" : "#e2e8f0",
+                cursor: formDisabled ? "not-allowed" : "pointer",
+                opacity: formDisabled ? 0.55 : 1,
+              }}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 function NursingReassessmentQuickChips({
   field,
@@ -811,6 +870,12 @@ export function EmergencyNursingReassessmentPanel({
                           onChange={(e) => patchForm({ pain0to10: e.target.value })}
                           disabled={formDisabled}
                           style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                        />
+                        <NursingPainScoreQuickPick
+                          value={form.pain0to10}
+                          formDisabled={formDisabled}
+                          t={t}
+                          onPick={(n) => patchForm({ pain0to10: String(n) })}
                         />
                       </div>
                       <div>
