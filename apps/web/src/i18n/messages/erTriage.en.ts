@@ -64,6 +64,13 @@ export const erTriageMessagesEn = {
     readonlyLocked: "Chart signed — triage read-only.",
     linkFullTriageTab: "Triage tab (full chart)",
     templateAppliedHint: "Template applied. Review and edit before saving.",
+    safetyPromptsTitle: "Safety reminders",
+    safetyPromptsDisclaimer: "Advisory only — does not block save.",
+    safetyChestPainEcg: "Chest pain: confirm ECG/EKG documentation per protocol.",
+    safetyDocumentEcgButton: "Document ECG/EKG",
+    safetyAllergiesMissing: "Allergies not documented. Confirm NKDA or document allergies if known.",
+    safetyHighAcuityArrival:
+      "High-acuity arrival: confirm vitals, triage completion, and provider notification per protocol.",
   },
   v1: {
     badge: "Triage V1",

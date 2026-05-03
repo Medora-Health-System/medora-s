@@ -39,6 +39,7 @@ import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDisposi
 import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
 import { EmergencyIvAccessModal } from "@/features/emergency/EmergencyIvAccessModal";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
+import type { NonLacerationProcedureType } from "@/features/emergency/ProcedureDocumentBatch2Forms";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
@@ -181,6 +182,9 @@ export function EmergencyChartView() {
   const [showQuickVitals, setShowQuickVitals] = useState(false);
   const [showIvAccessModal, setShowIvAccessModal] = useState(false);
   const [showProcedureLauncherModal, setShowProcedureLauncherModal] = useState(false);
+  const [procedureLauncherInitialStep, setProcedureLauncherInitialStep] = useState<NonLacerationProcedureType | null>(
+    null
+  );
 
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
   const [loading, setLoading] = useState(true);
@@ -619,7 +623,10 @@ export function EmergencyChartView() {
                         disabled={
                           triageLoading || encounter.status !== "OPEN" || isLocked || !encounter
                         }
-                        onClick={() => setShowProcedureLauncherModal(true)}
+                        onClick={() => {
+                          setProcedureLauncherInitialStep(null);
+                          setShowProcedureLauncherModal(true);
+                        }}
                         style={{
                           alignSelf: "stretch",
                           minWidth: 44,
@@ -667,9 +674,13 @@ export function EmergencyChartView() {
                   {showProcedureLauncherModal && fid ? (
                     <EmergencyProcedureLauncherModal
                       open={showProcedureLauncherModal}
-                      onClose={() => setShowProcedureLauncherModal(false)}
+                      onClose={() => {
+                        setShowProcedureLauncherModal(false);
+                        setProcedureLauncherInitialStep(null);
+                      }}
                       encounterId={encounterId}
                       facilityId={fid}
+                      initialNonLacerationStep={procedureLauncherInitialStep}
                       onRecorded={() => setResultsRefresh((r) => r + 1)}
                     />
                   ) : null}
@@ -781,6 +792,14 @@ export function EmergencyChartView() {
                   encounter.patient?.id ? `/app/patients/${encodeURIComponent(encounter.patient.id)}` : undefined
                 }
                 onSaved={onEmbeddedEncounterUpdate}
+                onRequestDocumentEcg={
+                  canDocumentIvAccess && fid
+                    ? () => {
+                        setProcedureLauncherInitialStep("EKG");
+                        setShowProcedureLauncherModal(true);
+                      }
+                    : undefined
+                }
               />
             ) : (
               <MedoraCard leftAccentColor="#64748b" variant="default">

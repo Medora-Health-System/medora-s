@@ -65,6 +65,14 @@ export const erTriageMessagesFr = {
     readonlyLocked: "Dossier médical signé — triage en lecture seule.",
     linkFullTriageTab: "Onglet triage (dossier complet)",
     templateAppliedHint: "Modèle appliqué. Vérifiez et modifiez avant d'enregistrer.",
+    safetyPromptsTitle: "Rappels de sécurité",
+    safetyPromptsDisclaimer: "A titre informatif — n'empêche pas l'enregistrement.",
+    safetyChestPainEcg: "Douleur thoracique : confirmer la documentation ECG selon le protocole.",
+    safetyDocumentEcgButton: "Documenter l'ECG",
+    safetyAllergiesMissing:
+      "Allergies non documentées. Confirmer l'absence d'allergie connue (NKDA) ou documenter les allergies connues.",
+    safetyHighAcuityArrival:
+      "Arrivée à haute acuité : confirmer les constantes, la complétion du triage et l'information du médecin selon le protocole.",
   },
   v1: {
     badge: "Triage V1",

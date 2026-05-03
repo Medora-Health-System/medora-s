@@ -46,6 +46,12 @@ import {
   type ErChiefComplaintBilingual,
   type ErChiefComplaintTemplate,
 } from "./erChiefComplaintTemplates";
+import {
+  chiefComplaintSuggestsChestPain,
+  draftTriageHasAllergyDocumentation,
+  erTriageV1HasHighAcuityArrivalSource,
+} from "./erTriageSafetyPrompts";
+import type { VitalsJsonMergeFormInput } from "./emergencyTriageVitalsMerge";
 import type { SupportedLanguage } from "@/i18n/config";
 
 function applyTemplateBilingualIfFieldEmpty(
@@ -173,6 +179,8 @@ export function EmergencyTriagePanel({
   encounterTriageTabHref,
   patientChartHref,
   onSaved,
+  /** When set, shows a non-blocking control to open procedure documentation (e.g. ECG). */
+  onRequestDocumentEcg,
 }: {
   encounterId: string;
   facilityId: string;
@@ -182,6 +190,7 @@ export function EmergencyTriagePanel({
   /** Lien vers le dossier patient pour antécédents structurés (optionnel). */
   patientChartHref?: string;
   onSaved: () => void | Promise<void>;
+  onRequestDocumentEcg?: () => void;
 }) {
   const { t, language } = useI18n();
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
@@ -432,6 +441,36 @@ export function EmergencyTriagePanel({
     });
   }, [formData, language]);
 
+  const safetyPromptFlags = useMemo(() => {
+    const mergeInput: VitalsJsonMergeFormInput = {
+      tempC: formData.tempC,
+      hr: formData.hr,
+      rr: formData.rr,
+      bpSys: formData.bpSys,
+      bpDia: formData.bpDia,
+      spo2: formData.spo2,
+      weightKg: formData.weightKg,
+      heightCm: formData.heightCm,
+      allergyNote: formData.allergyNote,
+      erV1: formData.erV1,
+      tempInputUnit: formData.tempInputUnit,
+      weightInputUnit: formData.weightInputUnit,
+      heightInputMode: formData.heightInputMode,
+      heightFeet: formData.heightFeet,
+      heightInches: formData.heightInches,
+    };
+    return {
+      chestPainEcg: chiefComplaintSuggestsChestPain(formData.chiefComplaint),
+      allergyMissing: !draftTriageHasAllergyDocumentation(triage?.vitalsJson, mergeInput),
+      highAcuityArrival: erTriageV1HasHighAcuityArrivalSource(formData.erV1),
+    };
+  }, [formData, triage?.vitalsJson]);
+
+  const showSafetyPrompts =
+    safetyPromptFlags.chestPainEcg ||
+    safetyPromptFlags.allergyMissing ||
+    safetyPromptFlags.highAcuityArrival;
+
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -498,6 +537,71 @@ export function EmergencyTriagePanel({
               >
                 {saveInfo}
               </p>
+            ) : null}
+
+            {showSafetyPrompts ? (
+              <aside
+                aria-label={t("erTriage.panel.safetyPromptsTitle")}
+                style={{
+                  marginTop: saveInfo ? 10 : 12,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #fde68a",
+                  backgroundColor: "#fffbeb",
+                }}
+              >
+                <p style={{ ...sectionHeading, color: "#92400e", letterSpacing: "0.04em" }}>
+                  {t("erTriage.panel.safetyPromptsTitle")}
+                </p>
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#a16207", lineHeight: 1.4 }}>
+                  {t("erTriage.panel.safetyPromptsDisclaimer")}
+                </p>
+                <ul
+                  style={{
+                    margin: "10px 0 0",
+                    paddingLeft: 18,
+                    fontSize: 13,
+                    color: "#78350f",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {safetyPromptFlags.chestPainEcg ? (
+                    <li style={{ marginBottom: 8 }}>
+                      <span>{t("erTriage.panel.safetyChestPainEcg")}</span>
+                      {onRequestDocumentEcg ? (
+                        <button
+                          type="button"
+                          onClick={onRequestDocumentEcg}
+                          disabled={formDisabled}
+                          style={{
+                            display: "inline-block",
+                            marginTop: 6,
+                            marginLeft: 0,
+                            padding: "6px 12px",
+                            borderRadius: 8,
+                            border: "1px solid #d97706",
+                            backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                            color: "#92400e",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: formDisabled ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {t("erTriage.panel.safetyDocumentEcgButton")}
+                        </button>
+                      ) : null}
+                    </li>
+                  ) : null}
+                  {safetyPromptFlags.allergyMissing ? (
+                    <li style={{ marginBottom: safetyPromptFlags.highAcuityArrival ? 8 : 0 }}>
+                      {t("erTriage.panel.safetyAllergiesMissing")}
+                    </li>
+                  ) : null}
+                  {safetyPromptFlags.highAcuityArrival ? (
+                    <li style={{ margin: 0 }}>{t("erTriage.panel.safetyHighAcuityArrival")}</li>
+                  ) : null}
+                </ul>
+              </aside>
             ) : null}
 
             <div style={{ ...workspaceStyle, marginTop: 16 }}>
