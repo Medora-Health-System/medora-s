@@ -22,6 +22,10 @@ import {
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
+import {
+  loadMedicationInfusionClassificationContext,
+  shouldBlockDirectMarAdministeredForInfusionLine,
+} from "../common/medication/medication-infusion-candidate-from-order-item.util";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
@@ -50,6 +54,11 @@ function utcDayBoundsForMar(at: Date): { start: Date; end: Date } {
 
 const MAR_AUDIT_DOSE_MAX_LEN = 80;
 const MAR_AUDIT_ROUTE_MAX_LEN = 64;
+
+/** Internal callers only (e.g. infusion STOP terminal MAR). HTTP API must not set this. */
+export type MedicationAdministrationCreateServiceOptions = {
+  allowAdministeredForInfusionTerminal?: boolean;
+};
 
 /** PHI-safe dose string for `AuditLog.metadata` (numeric + unit only; no drug names). */
 function normalizedDoseForAudit(input: {
@@ -261,7 +270,8 @@ export class MedicationAdministrationService {
     encounterId: string,
     facilityId: string,
     administeredByUserId: string,
-    data: MedicationAdministrationCreateDto
+    data: MedicationAdministrationCreateDto,
+    serviceOptions?: MedicationAdministrationCreateServiceOptions
   ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
@@ -350,6 +360,23 @@ export class MedicationAdministrationService {
 
     const marActionResolved: MarClinicalAction =
       data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
+
+    if (
+      orderItemId &&
+      linkedMedicationLine &&
+      marActionResolved === "administered" &&
+      !serviceOptions?.allowAdministeredForInfusionTerminal
+    ) {
+      const { resolvedRoute, catalog } = await loadMedicationInfusionClassificationContext(
+        this.prisma,
+        linkedMedicationLine
+      );
+      if (shouldBlockDirectMarAdministeredForInfusionLine(linkedMedicationLine, catalog, resolvedRoute)) {
+        throw new BadRequestException(
+          "This medication requires infusion start/stop documentation."
+        );
+      }
+    }
 
     const administeredAtEffective = data.administeredAt ?? new Date();
     const allergySummaryForGate = getEncounterAllergyDocumentationSummary({

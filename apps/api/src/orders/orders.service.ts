@@ -31,7 +31,7 @@ import {
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
-import type { MedicationInfusionCandidateInput, MedicationInfusionStopDto, OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
+import type { MedicationInfusionStopDto, OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
 import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isMedicationInfusionCandidate } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -47,6 +47,10 @@ import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { MedicationAdministrationService } from "../medication-administration/medication-administration.service";
+import {
+  loadMedicationInfusionClassificationContext,
+  buildMedicationInfusionCandidateInputFromOrderItem,
+} from "../common/medication/medication-infusion-candidate-from-order-item.util";
 import {
   buildInfusionPerformerIdentitySnapshot,
   resolvePerformedByDisplayNameFromOrderEvent,
@@ -2124,66 +2128,6 @@ export class OrdersService {
     return active;
   }
 
-  private async loadMedicationInfusionClassificationContext(orderItem: OrderItem): Promise<{
-    resolvedRoute: string | null;
-    catalog: {
-      code: string;
-      name: string;
-      displayNameEn: string | null;
-      genericName: string | null;
-      route: string | null;
-    } | null;
-  }> {
-    let resolvedRoute = orderItem.route?.trim() || null;
-    if (!orderItem.catalogItemId) {
-      return { resolvedRoute, catalog: null };
-    }
-    const catalog = await this.prisma.catalogMedication.findUnique({
-      where: { id: orderItem.catalogItemId },
-      select: {
-        code: true,
-        name: true,
-        displayNameEn: true,
-        genericName: true,
-        route: true,
-      },
-    });
-    if (catalog?.route?.trim() && !resolvedRoute) {
-      resolvedRoute = catalog.route.trim();
-    }
-    return { resolvedRoute, catalog };
-  }
-
-  private buildMedicationInfusionCandidateInput(
-    orderItem: OrderItem,
-    catalog: {
-      code: string;
-      name: string;
-      displayNameEn: string | null;
-      genericName: string | null;
-      route: string | null;
-    } | null,
-    resolvedRoute: string | null
-  ): MedicationInfusionCandidateInput {
-    const labelParts = [
-      orderItem.manualLabel,
-      orderItem.manualSecondaryText,
-      catalog?.displayNameEn,
-      catalog?.name,
-      catalog?.genericName,
-      catalog?.code,
-    ]
-      .map((x) => (typeof x === "string" ? x.trim() : ""))
-      .filter(Boolean);
-    return {
-      route: resolvedRoute,
-      medicationLabel: labelParts.length ? labelParts.join(" ") : null,
-      code: catalog?.code ?? null,
-      genericName: catalog?.genericName ?? null,
-      metadata: null,
-    };
-  }
-
   /**
    * IVPB / infusion — Phase 1: OrderItem → IN_PROGRESS, infusion OrderEvent + audit only (no MAR, no billing).
    */
@@ -2222,8 +2166,8 @@ export class OrdersService {
       throw new BadRequestException("Ligne déjà terminée ou annulée.");
     }
 
-    const { resolvedRoute, catalog } = await this.loadMedicationInfusionClassificationContext(orderItem);
-    const candidateInput = this.buildMedicationInfusionCandidateInput(orderItem, catalog, resolvedRoute);
+    const { resolvedRoute, catalog } = await loadMedicationInfusionClassificationContext(this.prisma, orderItem);
+    const candidateInput = buildMedicationInfusionCandidateInputFromOrderItem(orderItem, catalog, resolvedRoute);
     if (!isMedicationInfusionCandidate(candidateInput)) {
       throw new BadRequestException(
         "Cette ligne n’est pas éligible à la perfusion (voie / libellé). Utilisez l’administration au lit habituelle."
@@ -2341,8 +2285,8 @@ export class OrdersService {
       throw new BadRequestException("Ligne déjà terminée ou annulée.");
     }
 
-    const { resolvedRoute, catalog } = await this.loadMedicationInfusionClassificationContext(orderItem);
-    const candidateInput = this.buildMedicationInfusionCandidateInput(orderItem, catalog, resolvedRoute);
+    const { resolvedRoute, catalog } = await loadMedicationInfusionClassificationContext(this.prisma, orderItem);
+    const candidateInput = buildMedicationInfusionCandidateInputFromOrderItem(orderItem, catalog, resolvedRoute);
     if (!isMedicationInfusionCandidate(candidateInput)) {
       throw new BadRequestException(
         "Cette ligne n’est pas éligible à la perfusion (voie / libellé). Utilisez l’administration au lit habituelle."
@@ -2407,7 +2351,8 @@ export class OrdersService {
         ...(routeForMar ? { route: routeForMar } : {}),
         notes: notesCombined,
         safetyAcknowledgedMedicationAllergies: dto.safetyAcknowledgedMedicationAllergies,
-      }
+      },
+      { allowAdministeredForInfusionTerminal: true }
     );
 
     const stoppedIso = stoppedAt.toISOString();
