@@ -1,5 +1,5 @@
-import { Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { AuditAction, Prisma } from "@prisma/client";
 import {
   catalogAuditConflictFlagCount,
   computeCatalogClassificationAuditFlags,
@@ -7,6 +7,8 @@ import {
   type CatalogClassificationAuditFlag,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { AuditService } from "../common/services/audit.service";
+import type { PatchCatalogClassificationBody } from "./dto/admin-catalog-audit-classification.dto";
 
 export type AdminCatalogAuditSummary = {
   totalMedications: number;
@@ -31,6 +33,20 @@ export type AdminCatalogAuditPayload = {
   summary: AdminCatalogAuditSummary;
   rows: AdminCatalogAuditRow[];
 };
+
+const CATALOG_AUDIT_SELECT = {
+  id: true,
+  code: true,
+  name: true,
+  displayNameEn: true,
+  displayNameFr: true,
+  genericName: true,
+  route: true,
+  administrationType: true,
+  billingClass: true,
+} as const;
+
+type CatalogMedAuditRow = Prisma.CatalogMedicationGetPayload<{ select: typeof CATALOG_AUDIT_SELECT }>;
 
 function isUnknownBillingClass(billingClass: string | null | undefined): boolean {
   const t = billingClass?.trim();
@@ -67,27 +83,20 @@ function buildLabelLowerHaystack(row: {
     .toLowerCase();
 }
 
+function normalizeDbEnumString(v: string | null | undefined): string | null {
+  if (v == null) return null;
+  const t = v.trim();
+  return t.length ? t : null;
+}
+
 @Injectable()
 export class AdminCatalogAuditService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
-  async getDashboard(facilityId: string): Promise<AdminCatalogAuditPayload> {
-    const meds = await this.prisma.catalogMedication.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        displayNameEn: true,
-        displayNameFr: true,
-        genericName: true,
-        route: true,
-        administrationType: true,
-        billingClass: true,
-      },
-      orderBy: { code: "asc" },
-    });
-
+  private async loadUsageByCatalogForFacility(facilityId: string): Promise<Map<string, number>> {
     const orderUsageRows = await this.prisma.$queryRaw<Array<{ cid: string; c: number | bigint }>>(
       Prisma.sql`
         SELECT oi."catalogItemId" AS cid, COUNT(*)::int AS c
@@ -122,13 +131,53 @@ export class AdminCatalogAuditService {
       const n = typeof r.c === "bigint" ? Number(r.c) : r.c;
       usageByCatalogId.set(r.cid, (usageByCatalogId.get(r.cid) ?? 0) + n);
     }
+    return usageByCatalogId;
+  }
 
+  private computeUnknownHighUsageThreshold(meds: CatalogMedAuditRow[], usageByCatalogId: Map<string, number>): number {
     const unknownUsagesForThreshold: number[] = [];
     for (const m of meds) {
       const u = usageByCatalogId.get(m.id) ?? 0;
       if (isUnknownBillingClass(m.billingClass)) unknownUsagesForThreshold.push(u);
     }
-    const unknownHighUsageThreshold = percentile80InclusiveThreshold(unknownUsagesForThreshold);
+    return percentile80InclusiveThreshold(unknownUsagesForThreshold);
+  }
+
+  private toAuditRow(
+    m: CatalogMedAuditRow,
+    usageByCatalogId: Map<string, number>,
+    unknownHighUsageThreshold: number
+  ): AdminCatalogAuditRow {
+    const labelLower = buildLabelLowerHaystack(m);
+    const usageCount = usageByCatalogId.get(m.id) ?? 0;
+    const flags = computeCatalogClassificationAuditFlags({
+      route: m.route,
+      administrationType: m.administrationType,
+      billingClass: m.billingClass,
+      labelLower,
+      usageCount,
+      unknownHighUsageThreshold,
+    });
+    return {
+      catalogMedicationId: m.id,
+      label: buildCatalogLabelForDisplay(m),
+      route: m.route,
+      administrationType: m.administrationType,
+      billingClass: m.billingClass,
+      flags,
+      usageCount,
+    };
+  }
+
+  async getDashboard(facilityId: string): Promise<AdminCatalogAuditPayload> {
+    const meds = await this.prisma.catalogMedication.findMany({
+      where: { isActive: true },
+      select: CATALOG_AUDIT_SELECT,
+      orderBy: { code: "asc" },
+    });
+
+    const usageByCatalogId = await this.loadUsageByCatalogForFacility(facilityId);
+    const unknownHighUsageThreshold = this.computeUnknownHighUsageThreshold(meds, usageByCatalogId);
 
     let withAdministrationType = 0;
     let withBillingClass = 0;
@@ -143,9 +192,6 @@ export class AdminCatalogAuditService {
       if (m.billingClass?.trim()) withBillingClass++;
       if (isUnknownBillingClass(m.billingClass)) unknownBillingClass++;
 
-      const labelLower = buildLabelLowerHaystack(m);
-      const usageCount = usageByCatalogId.get(m.id) ?? 0;
-
       if (
         isMedicationInfusionCandidate({
           route: m.route,
@@ -158,26 +204,9 @@ export class AdminCatalogAuditService {
         infusionCandidates++;
       }
 
-      const flags = computeCatalogClassificationAuditFlags({
-        route: m.route,
-        administrationType: m.administrationType,
-        billingClass: m.billingClass,
-        labelLower,
-        usageCount,
-        unknownHighUsageThreshold,
-      });
-
-      if (catalogAuditConflictFlagCount(flags) > 0) highRiskConflicts++;
-
-      rows.push({
-        catalogMedicationId: m.id,
-        label: buildCatalogLabelForDisplay(m),
-        route: m.route,
-        administrationType: m.administrationType,
-        billingClass: m.billingClass,
-        flags,
-        usageCount,
-      });
+      const row = this.toAuditRow(m, usageByCatalogId, unknownHighUsageThreshold);
+      if (catalogAuditConflictFlagCount(row.flags as CatalogClassificationAuditFlag[]) > 0) highRiskConflicts++;
+      rows.push(row);
     }
 
     rows.sort((a, b) => {
@@ -197,5 +226,92 @@ export class AdminCatalogAuditService {
     };
 
     return { summary, rows };
+  }
+
+  /**
+   * Phase 6C — one medication at a time; updates only classification fields; audit trail via AuditLog.
+   */
+  async patchClassification(
+    facilityId: string,
+    catalogMedicationId: string,
+    body: PatchCatalogClassificationBody,
+    userId: string,
+    ip?: string,
+    userAgent?: string
+  ): Promise<AdminCatalogAuditRow> {
+    const reviewNote = body.reviewNote;
+    const notePresent = Boolean(reviewNote);
+    const reviewNotePreview =
+      reviewNote && reviewNote.length > 0 ? reviewNote.slice(0, 120) : undefined;
+
+    let oldAdministrationType: string | null = null;
+    let oldBillingClass: string | null = null;
+    let newAdministrationType: string | null = null;
+    let newBillingClass: string | null = null;
+
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.catalogMedication.findFirst({
+        where: { id: catalogMedicationId, isActive: true },
+        select: CATALOG_AUDIT_SELECT,
+      });
+      if (!existing) {
+        throw new NotFoundException("Médicament catalogue introuvable ou inactif.");
+      }
+
+      oldAdministrationType = normalizeDbEnumString(existing.administrationType);
+      oldBillingClass = normalizeDbEnumString(existing.billingClass);
+
+      const data: Prisma.CatalogMedicationUpdateInput = {};
+      if (body.administrationType !== undefined) {
+        data.administrationType = body.administrationType;
+      }
+      if (body.billingClass !== undefined) {
+        data.billingClass = body.billingClass;
+      }
+
+      await tx.catalogMedication.update({
+        where: { id: catalogMedicationId },
+        data,
+      });
+
+      const updated = await tx.catalogMedication.findFirstOrThrow({
+        where: { id: catalogMedicationId },
+        select: CATALOG_AUDIT_SELECT,
+      });
+      newAdministrationType = normalizeDbEnumString(updated.administrationType);
+      newBillingClass = normalizeDbEnumString(updated.billingClass);
+
+      await this.audit.log(AuditAction.UPDATE, "CATALOG_MEDICATION_CLASSIFICATION", {
+        tx,
+        userId,
+        facilityId,
+        entityId: catalogMedicationId,
+        ip,
+        userAgent,
+        metadata: {
+          catalogMedicationId,
+          oldAdministrationType,
+          newAdministrationType,
+          oldBillingClass,
+          newBillingClass,
+          reviewNotePresent: notePresent,
+          ...(reviewNotePreview ? { reviewNotePreview } : {}),
+          source: "ADMIN_CATALOG_AUDIT",
+        },
+      });
+    });
+
+    const meds = await this.prisma.catalogMedication.findMany({
+      where: { isActive: true },
+      select: CATALOG_AUDIT_SELECT,
+      orderBy: { code: "asc" },
+    });
+    const usageByCatalogId = await this.loadUsageByCatalogForFacility(facilityId);
+    const unknownHighUsageThreshold = this.computeUnknownHighUsageThreshold(meds, usageByCatalogId);
+    const updatedMed = meds.find((m) => m.id === catalogMedicationId);
+    if (!updatedMed) {
+      throw new NotFoundException("Médicament catalogue introuvable après mise à jour.");
+    }
+    return this.toAuditRow(updatedMed, usageByCatalogId, unknownHighUsageThreshold);
   }
 }

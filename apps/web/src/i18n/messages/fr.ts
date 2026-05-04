@@ -1928,7 +1928,7 @@ export default {
   catalogAudit: {
     title: "Audit de classification du catalogue",
     intro:
-      "Vue en lecture seule des champs catalogue (type d’administration, classe de facturation, voie) avec indicateurs de cohérence. Tri par gravité des conflits puis utilisation dans l’établissement sélectionné.",
+      "Champs catalogue (type d’administration, classe de facturation, voie) avec indicateurs de cohérence, tri par gravité des conflits puis utilisation. Les opérateurs plateforme peuvent corriger le type d’administration et la classe de facturation par ligne (traces d’audit).",
     noPhiNote:
       "Aucun identifiant patient ni détail de consultation : libellés catalogue et volumes agrégés uniquement (lignes d’ordonnance + événements MAR liés à des lignes d’ordonnance catalogue).",
     backAdmin: "← Administration",
@@ -1943,6 +1943,44 @@ export default {
     colBillingClass: "Classe de facturation",
     colUsage: "Utilisation",
     colFlags: "Indicateurs",
+    colActions: "Actions",
+    saveSuccess: "Classification enregistrée.",
+    saveError: "L’enregistrement a échoué.",
+    correction: {
+      open: "Revoir / corriger",
+      title: "Corriger la classification catalogue",
+      intro:
+        "Seuls le type d’administration et la classe de facturation peuvent être modifiés. N’inscrivez aucune donnée d’identification patient dans la note de revue.",
+      currentFlags: "Indicateurs actuels",
+      adminLabel: "Type d’administration",
+      billingLabel: "Classe de facturation",
+      reviewNote: "Note de revue (facultatif)",
+      reviewNoteHint: "500 caractères maximum. Contexte opérationnel uniquement.",
+      unsetOption: "Non défini (effacer)",
+      save: "Enregistrer",
+      cancel: "Annuler",
+      saving: "Enregistrement…",
+      warnPushInfusion: "Cette ligne est signalée : voie push/bolus avec type perfusion.",
+      warnInfusionOnPushRoute:
+        "Vous enregistrez PERFU (INFUSION) alors que la voie catalogue ressemble à une poussée IV ou un bolus. Confirmez ci-dessous si c’est volontaire.",
+      confirmInfusionOnPushAck: "Je confirme que cette classification est volontaire.",
+      warnHydrationAntibiotic: "Classe HYDRATION alors que le libellé suggère un antibiotique — vérifiez avant d’enregistrer.",
+      warnTherapeuticFluid: "Classe THERAPEUTIC alors que le libellé suggère un soluté — vérifiez avant d’enregistrer.",
+      mustAckPush: "Cochez la case pour enregistrer PERFU (INFUSION) avec une voie de type poussée/bolus.",
+      noChanges:
+        "Modifiez le type d’administration et/ou la classe de facturation pour enregistrer. La note de revue n’est conservée qu’avec une mise à jour de classification.",
+      admin_INFUSION: "Perfusion (INFUSION)",
+      admin_PUSH: "Poussée (PUSH)",
+      admin_ORAL: "Per os (ORAL)",
+      admin_IM: "Intramusculaire (IM)",
+      admin_SQ: "Sous-cutané (SQ)",
+      admin_OTHER: "Autre (OTHER)",
+      admin_UNKNOWN: "Inconnu (UNKNOWN)",
+      billing_HYDRATION: "Hydratation",
+      billing_THERAPEUTIC: "Thérapeutique",
+      billing_DRUG_SUPPLY: "Fourniture médicamenteuse",
+      billing_UNKNOWN: "Inconnu",
+    },
     summary: {
       classifiedPercent: "% classés (facturation non inconnue)",
       unknownPercent: "% facturation inconnue",

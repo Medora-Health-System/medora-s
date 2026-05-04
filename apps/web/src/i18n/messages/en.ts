@@ -1962,7 +1962,7 @@ export default {
   catalogAudit: {
     title: "Catalog classification audit",
     intro:
-      "Read-only view of medication catalog fields (administration type, billing class, route) with consistency flags. Sorted by conflict severity then usage in the selected facility.",
+      "Medication catalog fields (administration type, billing class, route) with consistency flags, sorted by conflict severity then usage. Platform operators may correct administration type and billing class from each row (audited).",
     noPhiNote:
       "No patient identifiers or encounter details: catalog labels and aggregate usage counts only (order lines + MAR events linked to catalog medication order items).",
     backAdmin: "← Administration",
@@ -1977,6 +1977,44 @@ export default {
     colBillingClass: "Billing class",
     colUsage: "Usage",
     colFlags: "Flags",
+    colActions: "Actions",
+    saveSuccess: "Classification saved.",
+    saveError: "Save failed.",
+    correction: {
+      open: "Review / correct",
+      title: "Correct catalog classification",
+      intro:
+        "Only administration type and billing class can be changed. Do not enter patient-identifiable information in the review note.",
+      currentFlags: "Current flags",
+      adminLabel: "Administration type",
+      billingLabel: "Billing class",
+      reviewNote: "Review note (optional)",
+      reviewNoteHint: "Max 500 characters. Operational context only.",
+      unsetOption: "Unset (clear to null)",
+      save: "Save",
+      cancel: "Cancel",
+      saving: "Saving…",
+      warnPushInfusion: "This row is flagged as push/bolus route with infusion administration type.",
+      warnInfusionOnPushRoute:
+        "You are saving INFUSION while the catalog route looks like IV push or bolus. Confirm below if this is intentional.",
+      confirmInfusionOnPushAck: "I confirm this classification is intentional.",
+      warnHydrationAntibiotic: "Billing class HYDRATION while the label suggests an antibiotic — verify before saving.",
+      warnTherapeuticFluid: "Billing class THERAPEUTIC while the label suggests a fluid — verify before saving.",
+      mustAckPush: "Confirm the checkbox to save INFUSION with a push/bolus-style route.",
+      noChanges:
+        "Change administration type and/or billing class to save. The review note is only stored together with a classification update.",
+      admin_INFUSION: "Infusion",
+      admin_PUSH: "Push",
+      admin_ORAL: "Oral",
+      admin_IM: "Intramuscular",
+      admin_SQ: "Subcutaneous",
+      admin_OTHER: "Other",
+      admin_UNKNOWN: "Unknown",
+      billing_HYDRATION: "Hydration",
+      billing_THERAPEUTIC: "Therapeutic",
+      billing_DRUG_SUPPLY: "Drug supply",
+      billing_UNKNOWN: "Unknown",
+    },
     summary: {
       classifiedPercent: "% classified (non-unknown billing)",
       unknownPercent: "% unknown billing",

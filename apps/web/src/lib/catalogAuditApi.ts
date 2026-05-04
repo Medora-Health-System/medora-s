@@ -43,3 +43,38 @@ export async function fetchCatalogAuditDashboard(facilityId: string): Promise<Ad
   }
   return (await parseApiResponse(res)) as AdminCatalogAuditPayload;
 }
+
+export type PatchCatalogClassificationBody = {
+  administrationType?:
+    | "INFUSION"
+    | "PUSH"
+    | "ORAL"
+    | "IM"
+    | "SQ"
+    | "OTHER"
+    | "UNKNOWN"
+    | null;
+  billingClass?: "HYDRATION" | "THERAPEUTIC" | "DRUG_SUPPLY" | "UNKNOWN" | null;
+  reviewNote?: string;
+};
+
+export async function patchCatalogClassification(
+  facilityId: string,
+  catalogMedicationId: string,
+  body: PatchCatalogClassificationBody
+): Promise<AdminCatalogAuditRow> {
+  const res = await fetch(
+    `${ADMIN_API_BASE}/catalog-audit/${encodeURIComponent(catalogMedicationId)}/classification`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "x-facility-id": facilityId },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+  }
+  return (await parseApiResponse(res)) as AdminCatalogAuditRow;
+}

@@ -86,6 +86,16 @@ function labelMatchesAny(labelLower: string, needles: readonly string[]): boolea
   return false;
 }
 
+/** Heuristic for UX warnings (Phase 6C); lowercase / trimmed label haystack. */
+export function catalogAuditLabelHasAntibioticHint(labelLower: string): boolean {
+  return labelMatchesAny(labelLower.toLowerCase(), ANTIBIOTIC_HINTS);
+}
+
+/** Heuristic for UX warnings (Phase 6C); lowercase / trimmed label haystack. */
+export function catalogAuditLabelHasFluidHint(labelLower: string): boolean {
+  return labelMatchesAny(labelLower.toLowerCase(), FLUID_HINTS);
+}
+
 export type CatalogClassificationAuditFlagInput = {
   route: string | null | undefined;
   administrationType: string | null | undefined;

@@ -20,6 +20,7 @@ import { AdminComplianceService } from "./admin-compliance.service";
 import { AdminCatalogAuditService } from "./admin-catalog-audit.service";
 import { GoLiveReadinessService } from "./go-live-readiness.service";
 import { PrismaModule } from "../prisma/prisma.module";
+import { AuditService } from "../common/services/audit.service";
 import { QueuesModule } from "../queues/queues.module";
 import { ReportsModule } from "../reports/reports.module";
 
@@ -48,6 +49,7 @@ import { ReportsModule } from "../reports/reports.module";
     SystemHealthService,
     AdminComplianceService,
     AdminCatalogAuditService,
+    AuditService,
   ],
 })
 export class AdminModule {}
