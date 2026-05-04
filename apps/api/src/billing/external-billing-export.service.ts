@@ -1,5 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { AuditAction, EncounterClinicalEventType, EncounterStatus, RoleCode } from "@prisma/client";
+import {
+  AuditAction,
+  EncounterClinicalEventType,
+  EncounterStatus,
+  OrderEventType,
+  Prisma,
+  RoleCode,
+} from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { computeEncounterBillingReadiness } from "./billing-encounter-readiness.util";
@@ -51,10 +58,61 @@ function clinicalPayloadFromProcedureEvent(payloadJson: unknown): Record<string,
   return { ...(payloadJson as Record<string, unknown>) };
 }
 
+/** Parsed from OrderEvent metadata — links STOP audit to terminal MAR row (billing evidence). */
+type InfusionStopExportEvidence = {
+  orderItemId: string;
+  infusionSessionKey: string;
+  infusionStartedAt: string;
+  infusionStoppedAt: string;
+  infusionDurationMinutes: number;
+  medicationAdministrationId: string;
+  orderEventId: string;
+  orderEventPerformedAt: string;
+  orderEventPerformedByUserId: string;
+};
+
+function parseInfusionStopExportEvidence(row: {
+  id: string;
+  performedAt: Date;
+  performedByUserId: string;
+  metadata: unknown;
+}): InfusionStopExportEvidence | null {
+  const m = row.metadata;
+  if (!m || typeof m !== "object" || Array.isArray(m)) return null;
+  const o = m as Record<string, unknown>;
+  if (o.infusionScope !== "MEDICATION_INFUSION" || o.infusionAction !== "STOP") return null;
+  const marId = typeof o.medicationAdministrationId === "string" ? o.medicationAdministrationId.trim() : "";
+  if (!marId) return null;
+  const orderItemId = typeof o.orderItemId === "string" ? o.orderItemId.trim() : "";
+  const sessionKey = typeof o.infusionSessionKey === "string" ? o.infusionSessionKey.trim() : "";
+  const started = typeof o.infusionStartedAt === "string" ? o.infusionStartedAt.trim() : "";
+  const stopped = typeof o.infusionStoppedAt === "string" ? o.infusionStoppedAt.trim() : "";
+  const dmRaw = o.durationMinutes;
+  const dm = typeof dmRaw === "number" && Number.isFinite(dmRaw) ? Math.floor(dmRaw) : NaN;
+  if (!orderItemId || !sessionKey || !started || !stopped || !Number.isFinite(dm) || dm < 0 || dm > 2880) {
+    return null;
+  }
+  return {
+    orderItemId,
+    infusionSessionKey: sessionKey,
+    infusionStartedAt: started,
+    infusionStoppedAt: stopped,
+    infusionDurationMinutes: dm,
+    medicationAdministrationId: marId,
+    orderEventId: row.id,
+    orderEventPerformedAt: row.performedAt.toISOString(),
+    orderEventPerformedByUserId: row.performedByUserId,
+  };
+}
+
 function codingInstructionForExportLine(input: {
   exportCategory: string;
   billingStatus: string;
+  infusionDurationEvidence?: boolean;
 }): string {
+  if (input.infusionDurationEvidence) {
+    return "IV infusion duration documented on MAR — assign therapeutic infusion CPT/units and drug codes per payer policy; automated infusion-minute or catalog MAR drug autobill was not applied for this stop row.";
+  }
   if (input.exportCategory === "PROCEDURE") {
     return "External billing company must assign CPT/HCPCS from licensed source.";
   }
@@ -416,7 +474,8 @@ export class ExternalBillingExportService {
     });
     if (!enc) throw new NotFoundException("Encounter not found");
 
-    const [readiness, diagnoses, orderItems, dispenses, marRows, clinicalEvents, exportRows] = await Promise.all([
+    const [readiness, diagnoses, orderItems, dispenses, marRows, clinicalEvents, orderInfusionStopEvents, exportRows] =
+      await Promise.all([
       computeEncounterBillingReadiness(this.prisma, facilityId, encounterId),
       this.prisma.diagnosis.findMany({
         where: { encounterId, facilityId, status: "ACTIVE" },
@@ -458,8 +517,26 @@ export class ExternalBillingExportService {
         orderBy: { createdAt: "asc" },
         include: { createdBy: { select: { id: true, firstName: true, lastName: true, billingTaxonomyCode: true } } },
       }),
+      this.prisma.orderEvent.findMany({
+        where: {
+          facilityId,
+          encounterId,
+          eventType: OrderEventType.COMPLETED,
+          AND: [
+            { metadata: { path: ["infusionScope"], equals: "MEDICATION_INFUSION" } } as Prisma.OrderEventWhereInput,
+            { metadata: { path: ["infusionAction"], equals: "STOP" } } as Prisma.OrderEventWhereInput,
+          ],
+        },
+        select: { id: true, metadata: true, performedAt: true, performedByUserId: true },
+      }),
       this.billingService.getEncounterBillingExportRows(facilityId, encounterId),
     ]);
+
+    const infusionStopEvidenceByMarId = new Map<string, InfusionStopExportEvidence>();
+    for (const ev of orderInfusionStopEvents) {
+      const parsed = parseInfusionStopExportEvidence(ev);
+      if (parsed) infusionStopEvidenceByMarId.set(parsed.medicationAdministrationId, parsed);
+    }
 
     const exportRowByOrderItemId = new Map(
       exportRows.filter((r) => !r.orderItemId.startsWith("proc-doc_")).map((r) => [r.orderItemId, r])
@@ -622,6 +699,7 @@ export class ExternalBillingExportService {
 
     for (const m of marRows) {
       const u = m.administeredBy;
+      const infusionSnap = infusionStopEvidenceByMarId.get(m.id);
       const clinicalPayload: Record<string, unknown> = {
         administrationId: m.id,
         doseValue: m.doseValue != null ? String(m.doseValue) : null,
@@ -632,6 +710,25 @@ export class ExternalBillingExportService {
         ndc11Snapshot: m.ndc11Snapshot,
         orderItemId: m.orderItemId,
       };
+      if (infusionSnap) {
+        clinicalPayload.infusionDurationEvidence = {
+          medicationAdministrationId: m.id,
+          orderItemId: infusionSnap.orderItemId,
+          infusionSessionKey: infusionSnap.infusionSessionKey,
+          infusionStartedAt: infusionSnap.infusionStartedAt,
+          infusionStoppedAt: infusionSnap.infusionStoppedAt,
+          infusionDurationMinutes: infusionSnap.infusionDurationMinutes,
+          orderEventId: infusionSnap.orderEventId,
+          orderEventPerformedAt: infusionSnap.orderEventPerformedAt,
+          orderEventPerformedByUserId: infusionSnap.orderEventPerformedByUserId,
+        };
+        clinicalPayload.infusionDurationBillingManualReview = true;
+      }
+      const infusionEvidence = Boolean(infusionSnap);
+      const marSummaryParts = [m.medicationLabelSnapshot ?? "MAR"];
+      if (infusionSnap) {
+        marSummaryParts.push(`Infusion ${infusionSnap.infusionDurationMinutes} min`);
+      }
       pushLine({
         lineJson: {
           lineId: `mar_${m.id}`,
@@ -651,6 +748,7 @@ export class ExternalBillingExportService {
           codingInstruction: codingInstructionForExportLine({
             exportCategory: "MAR",
             billingStatus: "candidate_only",
+            infusionDurationEvidence: infusionEvidence,
           }),
           clinicalPayload,
         },
@@ -669,8 +767,9 @@ export class ExternalBillingExportService {
           coding_instruction: codingInstructionForExportLine({
             exportCategory: "MAR",
             billingStatus: "candidate_only",
+            infusionDurationEvidence: infusionEvidence,
           }),
-          clinical_summary: (m.medicationLabelSnapshot ?? "MAR").slice(0, 300),
+          clinical_summary: marSummaryParts.filter(Boolean).join(" — ").slice(0, 300),
           clinical_payload_json: jsonStable(clinicalPayload),
         },
       });

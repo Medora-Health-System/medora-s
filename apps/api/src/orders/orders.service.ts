@@ -2346,6 +2346,9 @@ export class OrdersService {
       requestorRoleCodes
     );
 
+    const stoppedIso = stoppedAt.toISOString();
+    const startedIso = active.startedAt.toISOString();
+
     const marRow = await this.medicationAdministration.create(
       orderItem.order.encounterId,
       facilityId,
@@ -2358,11 +2361,19 @@ export class OrdersService {
         notes: notesCombined,
         safetyAcknowledgedMedicationAllergies: dto.safetyAcknowledgedMedicationAllergies,
       },
-      { allowAdministeredForInfusionTerminal: true }
+      {
+        allowAdministeredForInfusionTerminal: true,
+        skipAutoMedicationCatalogBilling: true,
+        infusionBillingEvidence: {
+          infusionSessionKey: active.sessionKey,
+          infusionStartedAtIso: startedIso,
+          infusionStoppedAtIso: stoppedIso,
+          infusionDurationMinutes: durationMinutes,
+          orderItemId,
+        },
+      }
     );
 
-    const stoppedIso = stoppedAt.toISOString();
-    const startedIso = active.startedAt.toISOString();
     const stopMetaRaw: Record<string, unknown> = {
       infusionScope: "MEDICATION_INFUSION",
       infusionAction: "STOP",

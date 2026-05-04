@@ -80,6 +80,20 @@ export type BillingCaptureItem = {
   quantityUnit?: string | null;
   createdAt: string;
   createdByUserId?: string | null;
+  /**
+   * IVPB / infusion duration evidence (billing review — not a substitute for payer-specific infusion CPT/units).
+   * Populated from documented infusion STOP + MAR terminal row; omit for non-infusion administrations.
+   */
+  billingOrderItemId?: string | null;
+  infusionSessionKey?: string | null;
+  infusionStartedAt?: string | null;
+  infusionStoppedAt?: string | null;
+  infusionDurationMinutes?: number | null;
+  /**
+   * When true, automated catalog MAR drug billing (HCPCS + route-derived companion CPT) must not stand in
+   * for therapeutic infusion time coding — biller assigns appropriate codes/units.
+   */
+  infusionDurationBillingManualReview?: boolean;
 };
 
 export type BillingCaptureV1Stored = {
@@ -236,6 +250,19 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
       const quantityUnit = trimStr(r.quantityUnit, 32);
       item.quantityUnit = quantityUnit ?? null;
     }
+    const boi = trimStr(r.billingOrderItemId, 64);
+    if (boi) item.billingOrderItemId = boi;
+    const isk = trimStr(r.infusionSessionKey, 64);
+    if (isk) item.infusionSessionKey = isk;
+    const isa = readIso(r.infusionStartedAt);
+    if (isa) item.infusionStartedAt = isa;
+    const isoStop = readIso(r.infusionStoppedAt);
+    if (isoStop) item.infusionStoppedAt = isoStop;
+    if (typeof r.infusionDurationMinutes === "number" && Number.isFinite(r.infusionDurationMinutes)) {
+      const dm = Math.floor(r.infusionDurationMinutes);
+      if (dm >= 0 && dm <= 2880) item.infusionDurationMinutes = dm;
+    }
+    if (r.infusionDurationBillingManualReview === true) item.infusionDurationBillingManualReview = true;
     items.push(item);
   }
   return { version: BILLING_CAPTURE_VERSION, items: items.slice(0, MAX_ITEMS) };
@@ -398,7 +425,25 @@ export function buildMedicationAdministrationCandidate(params: {
   billingQuantity?: number | null;
   quantityUnit?: string | null;
   createdByUserId?: string | null;
+  billingOrderItemId?: string | null;
+  infusionSessionKey?: string | null;
+  infusionStartedAt?: string | null;
+  infusionStoppedAt?: string | null;
+  infusionDurationMinutes?: number | null;
+  infusionDurationBillingManualReview?: boolean;
 }): BillingCaptureItem {
+  const manualReview = params.infusionDurationBillingManualReview === true;
+  const noteParts = [`Administration candidate — ${params.medicationLabel}`];
+  if (manualReview) {
+    noteParts.push(
+      "IV infusion stop — duration evidence on record; therapeutic infusion coding and units require manual payer review (no automated infusion CPT/minute assignment)."
+    );
+  }
+  const dm =
+    params.infusionDurationMinutes != null && Number.isFinite(params.infusionDurationMinutes)
+      ? Math.floor(Number(params.infusionDurationMinutes))
+      : null;
+  const dmSafe = dm != null && dm >= 0 && dm <= 2880 ? dm : null;
   return {
     id: newBillingCaptureItemId(),
     encounterId: params.encounterId,
@@ -408,7 +453,7 @@ export function buildMedicationAdministrationCandidate(params: {
     sourceId: params.administrationId,
     billClass: "facility",
     status: "needs_review",
-    note: `Administration candidate — ${params.medicationLabel}`.slice(0, MAX_NOTE),
+    note: noteParts.join(" — ").slice(0, MAX_NOTE),
     ndc11: params.ndc11?.trim() || null,
     ndcDisplay: params.ndcDisplay?.trim() || null,
     doseValue: params.doseValue != null && params.doseValue >= 0 ? params.doseValue : null,
@@ -422,6 +467,12 @@ export function buildMedicationAdministrationCandidate(params: {
     serviceDate: params.atIso,
     createdAt: params.atIso,
     createdByUserId: params.createdByUserId ?? undefined,
+    billingOrderItemId: params.billingOrderItemId?.trim() || null,
+    infusionSessionKey: params.infusionSessionKey?.trim() || null,
+    infusionStartedAt: params.infusionStartedAt?.trim() ? params.infusionStartedAt.trim().slice(0, 40) : null,
+    infusionStoppedAt: params.infusionStoppedAt?.trim() ? params.infusionStoppedAt.trim().slice(0, 40) : null,
+    infusionDurationMinutes: dmSafe,
+    infusionDurationBillingManualReview: manualReview ? true : undefined,
   };
 }
 

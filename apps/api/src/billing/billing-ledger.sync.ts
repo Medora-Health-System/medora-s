@@ -112,6 +112,12 @@ export async function upsertBillingEventFromCaptureItem(db: BillingDb, item: Bil
     administeredQuantity: item.administeredQuantity ?? null,
     billingQuantity: item.billingQuantity ?? null,
     quantityUnit: item.quantityUnit?.trim() ?? null,
+    billingOrderItemId: item.billingOrderItemId?.trim() ?? null,
+    infusionSessionKey: item.infusionSessionKey?.trim() ?? null,
+    infusionStartedAt: item.infusionStartedAt?.trim() ?? null,
+    infusionStoppedAt: item.infusionStoppedAt?.trim() ?? null,
+    infusionDurationMinutes: item.infusionDurationMinutes ?? null,
+    infusionDurationBillingManualReview: item.infusionDurationBillingManualReview === true,
   };
 
   try {

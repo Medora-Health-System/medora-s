@@ -58,6 +58,16 @@ const MAR_AUDIT_ROUTE_MAX_LEN = 64;
 /** Internal callers only (e.g. infusion STOP terminal MAR). HTTP API must not set this. */
 export type MedicationAdministrationCreateServiceOptions = {
   allowAdministeredForInfusionTerminal?: boolean;
+  /** When true, skip `tryAutoMedicationAdministrationBilling` (catalog HCPCS / route CPT companion) — infusion time coding is manual. */
+  skipAutoMedicationCatalogBilling?: boolean;
+  /** Structured billing evidence for infusion STOP terminal MAR (not persisted on MAR row). */
+  infusionBillingEvidence?: {
+    infusionSessionKey: string;
+    infusionStartedAtIso: string;
+    infusionStoppedAtIso: string;
+    infusionDurationMinutes: number;
+    orderItemId: string;
+  };
 };
 
 /** PHI-safe dose string for `AuditLog.metadata` (numeric + unit only; no drug names). */
@@ -562,6 +572,8 @@ export class MedicationAdministrationService {
         : new Date().toISOString();
     const medLabel = created.medicationLabelSnapshot?.trim() || "Medication";
     if (marActionResolved === "administered") {
+      const ev = serviceOptions?.infusionBillingEvidence;
+      const infusionManualReview = Boolean(ev);
       await appendBillingCaptureCandidate(
         this.prisma,
         encounterId,
@@ -582,13 +594,21 @@ export class MedicationAdministrationService {
           billingQuantity: created.billingQuantity != null ? Number(created.billingQuantity) : null,
           quantityUnit: created.quantityUnit,
           createdByUserId: administeredByUserId,
+          billingOrderItemId: created.orderItemId?.trim() || orderItemId?.trim() || null,
+          infusionSessionKey: ev?.infusionSessionKey ?? null,
+          infusionStartedAt: ev?.infusionStartedAtIso ?? null,
+          infusionStoppedAt: ev?.infusionStoppedAtIso ?? null,
+          infusionDurationMinutes: ev?.infusionDurationMinutes ?? null,
+          infusionDurationBillingManualReview: infusionManualReview ? true : undefined,
         })
       );
 
-      void tryAutoMedicationAdministrationBilling(this.prisma, {
-        facilityId,
-        medicationAdministrationId: created.id,
-      });
+      if (!serviceOptions?.skipAutoMedicationCatalogBilling) {
+        void tryAutoMedicationAdministrationBilling(this.prisma, {
+          facilityId,
+          medicationAdministrationId: created.id,
+        });
+      }
     }
 
     return created;
