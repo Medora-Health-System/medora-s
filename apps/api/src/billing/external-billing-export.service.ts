@@ -12,6 +12,7 @@ import { AuditService } from "../common/services/audit.service";
 import { computeEncounterBillingReadiness } from "./billing-encounter-readiness.util";
 import { BillingService, getAutoBillDecision } from "./billing.service";
 import {
+  type InfusionBillingReviewDecision,
   type InfusionBillingSuggestion,
   displayNameFrForDocumentedProcedureType,
   medoraCodeForDocumentedProcedureType,
@@ -541,6 +542,7 @@ export class ExternalBillingExportService {
     }
 
     const infusionBillingSuggestionByMarId = new Map<string, InfusionBillingSuggestion>();
+    const infusionBillingReviewDecisionByMarId = new Map<string, InfusionBillingReviewDecision>();
     for (const cap of readBillingCaptureV1(enc.billingCaptureJson).items) {
       if (
         cap.sourceType === "MEDICATION_ADMINISTRATION" &&
@@ -548,6 +550,13 @@ export class ExternalBillingExportService {
         cap.infusionBillingSuggestion
       ) {
         infusionBillingSuggestionByMarId.set(cap.sourceId.trim(), cap.infusionBillingSuggestion);
+      }
+      if (
+        cap.sourceType === "MEDICATION_ADMINISTRATION" &&
+        cap.sourceId?.trim() &&
+        cap.infusionBillingReviewDecision
+      ) {
+        infusionBillingReviewDecisionByMarId.set(cap.sourceId.trim(), cap.infusionBillingReviewDecision);
       }
     }
 
@@ -742,6 +751,13 @@ export class ExternalBillingExportService {
         clinicalPayload.infusionBillingSuggestion = captureSuggestion;
         clinicalPayload.manualReviewRequired = captureSuggestion.manualReviewRequired;
         clinicalPayload.warnings = captureSuggestion.warnings;
+      }
+      const captureReview = infusionBillingReviewDecisionByMarId.get(m.id);
+      if (captureReview) {
+        clinicalPayload.infusionBillingReviewDecision = captureReview;
+        if (captureReview.approvedUnits) {
+          clinicalPayload.infusionBillingApprovedUnits = captureReview.approvedUnits;
+        }
       }
       const infusionEvidence = Boolean(infusionSnap);
       const marSummaryParts = [m.medicationLabelSnapshot ?? "MAR"];

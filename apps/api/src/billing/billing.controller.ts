@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpException,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -18,6 +20,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { BillingService } from "./billing.service";
 import { ExternalBillingExportService } from "./external-billing-export.service";
 import { queueMedoraAlert } from "../common/logging/medoraAlert";
+import { patchInfusionBillingReviewBodySchema } from "./dto/infusion-billing-review.dto";
 
 function parseAllowOpen(raw: string | string[] | undefined): boolean {
   if (raw == null) return false;
@@ -73,6 +76,38 @@ export class BillingController {
   async getEncounterBillingReviewDecisions(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.billingService.getEncounterBillingReviewDecisions(facilityId, encounterId);
+  }
+
+  /** Phase 7 — infusion billing suggestion review (capture JSON + audit); no claim submission. */
+  @Patch("billing/encounters/:encounterId/infusion-review/:captureItemId")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  async patchEncounterInfusionBillingReview(
+    @Param("encounterId") encounterId: string,
+    @Param("captureItemId") captureItemId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentication required");
+    const parsed = patchInfusionBillingReviewBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const ip = typeof req.ip === "string" && req.ip ? req.ip : undefined;
+    const uaRaw = req.headers["user-agent"];
+    const userAgent = typeof uaRaw === "string" ? uaRaw : undefined;
+    return this.billingService.patchEncounterInfusionBillingReview(
+      facilityId,
+      encounterId,
+      captureItemId,
+      parsed.data,
+      userId,
+      ip,
+      userAgent
+    );
   }
 
   @Post("billing/manual-review/:orderItemId/decision")

@@ -7,13 +7,20 @@ import {
   EncounterStatus,
 } from "@prisma/client";
 import {
+  BILLING_CAPTURE_VERSION,
   DOCUMENTED_PROCEDURE_CPT_PENDING_EVIDENCE,
   DOCUMENTED_PROCEDURE_REVIEW_REASON,
   displayNameFrForDocumentedProcedureType,
   medoraCodeForDocumentedProcedureType,
+  readBillingCaptureV1,
+  type BillingCaptureItem,
+  type InfusionBillingReviewDecision,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
+import { throwEncounterConcurrentModification } from "../encounters/encounter-concurrency.util";
+import { upsertBillingEventFromCaptureItem } from "./billing-ledger.sync";
+import type { PatchInfusionBillingReviewBody } from "./dto/infusion-billing-review.dto";
 import type {
   BillingAutoBillDecisionDto,
   BillingExportRowDto,
@@ -31,6 +38,82 @@ import type {
 export const MANUAL_BILLING_REVIEW_UNRESOLVED_MESSAGE = "Manual billing review unresolved for this encounter.";
 
 const BILLING_REVIEW_DECISION_AUDIT_ENTITY = "BILLING_REVIEW_DECISION";
+
+function infusionBillingCaptureItemHasEvidence(item: BillingCaptureItem): boolean {
+  if (item.infusionStartedAt?.trim() && item.infusionStoppedAt?.trim()) return true;
+  if (
+    item.infusionDurationMinutes != null &&
+    Number.isFinite(item.infusionDurationMinutes) &&
+    item.infusionDurationMinutes >= 0
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function buildInfusionBillingReviewDecision(
+  item: BillingCaptureItem,
+  body: PatchInfusionBillingReviewBody,
+  reviewerId: string
+): InfusionBillingReviewDecision {
+  const sug = item.infusionBillingSuggestion!;
+  const snap: NonNullable<InfusionBillingReviewDecision["suggestedUnitsSnapshot"]> = {
+    initialHour: sug.suggestedUnits.initialHour ?? null,
+    additionalHoursOrIntervals: sug.suggestedUnits.additionalHoursOrIntervals ?? null,
+  };
+  const reviewedAt = new Date().toISOString();
+  const note = body.reviewerNote;
+
+  if (body.status === "REJECTED") {
+    return {
+      status: "REJECTED",
+      suggestedUnitsSnapshot: snap,
+      reviewerNote: note,
+      reviewedByUserId: reviewerId,
+      reviewedAt,
+    };
+  }
+
+  if (body.status === "APPROVED") {
+    const billingClassFinal = body.billingClassFinal ?? sug.billingClass;
+    const initialHour =
+      body.approvedInitialHour !== undefined ? body.approvedInitialHour : sug.suggestedUnits.initialHour;
+    const additionalHoursOrIntervals =
+      body.approvedAdditionalHoursOrIntervals !== undefined
+        ? body.approvedAdditionalHoursOrIntervals
+        : sug.suggestedUnits.additionalHoursOrIntervals;
+    const approvedUnits: NonNullable<InfusionBillingReviewDecision["approvedUnits"]> = {};
+    if (initialHour !== undefined && initialHour !== null) approvedUnits.initialHour = initialHour;
+    if (additionalHoursOrIntervals !== undefined && additionalHoursOrIntervals !== null) {
+      approvedUnits.additionalHoursOrIntervals = additionalHoursOrIntervals;
+    }
+    return {
+      status: "APPROVED",
+      billingClassFinal,
+      approvedUnits,
+      suggestedUnitsSnapshot: snap,
+      ...(note ? { reviewerNote: note } : {}),
+      reviewedByUserId: reviewerId,
+      reviewedAt,
+    };
+  }
+
+  const billingClassFinal = body.billingClassFinal ?? sug.billingClass;
+  const approvedUnits: NonNullable<InfusionBillingReviewDecision["approvedUnits"]> = {};
+  if (body.approvedInitialHour !== undefined) approvedUnits.initialHour = body.approvedInitialHour;
+  if (body.approvedAdditionalHoursOrIntervals !== undefined) {
+    approvedUnits.additionalHoursOrIntervals = body.approvedAdditionalHoursOrIntervals;
+  }
+  return {
+    status: "ADJUSTED",
+    billingClassFinal,
+    approvedUnits,
+    suggestedUnitsSnapshot: snap,
+    reviewerNote: note!,
+    reviewedByUserId: reviewerId,
+    reviewedAt,
+  };
+}
 
 export type BillingReadinessClassifierInput = {
   category: BillingReadinessCategory;
@@ -578,6 +661,93 @@ export class BillingService {
       include: { reviewer: { select: { firstName: true, lastName: true, email: true } } },
     });
     return toBillingReviewDecisionDto(withReviewer)!;
+  }
+
+  /**
+   * Phase 7 — record biller decision on infusion suggestion (capture JSON + ledger metadata + audit).
+   * Does not submit claims or auto-assign payer CPT.
+   */
+  async patchEncounterInfusionBillingReview(
+    facilityId: string,
+    encounterId: string,
+    captureItemId: string,
+    body: PatchInfusionBillingReviewBody,
+    reviewerId: string,
+    ip?: string,
+    userAgent?: string
+  ): Promise<{ item: BillingCaptureItem }> {
+    if (!reviewerId) throw new ForbiddenException("Authentication required");
+
+    let resultItem!: BillingCaptureItem;
+
+    await this.prisma.$transaction(async (tx) => {
+      const enc = await tx.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+        select: { id: true, billingCaptureJson: true, version: true },
+      });
+      if (!enc) throw new NotFoundException("Encounter not found");
+
+      const stored = readBillingCaptureV1(enc.billingCaptureJson);
+      const idx = stored.items.findIndex((it) => it.id === captureItemId);
+      if (idx < 0) throw new NotFoundException("Billing capture item not found");
+
+      const item = stored.items[idx]!;
+      if (item.sourceType !== "MEDICATION_ADMINISTRATION") {
+        throw new BadRequestException("Capture item is not a medication administration line");
+      }
+      if (!item.infusionBillingSuggestion) {
+        throw new BadRequestException("No infusion billing suggestion on this capture item");
+      }
+      if (!infusionBillingCaptureItemHasEvidence(item)) {
+        throw new BadRequestException("Infusion duration evidence is required before review");
+      }
+      if (item.encounterId?.trim() && item.encounterId.trim() !== encounterId) {
+        throw new BadRequestException("captureItemId does not belong to this encounter");
+      }
+
+      const oldDecision = item.infusionBillingReviewDecision ?? null;
+      const decision = buildInfusionBillingReviewDecision(item, body, reviewerId);
+      const nextItem: BillingCaptureItem = { ...item, infusionBillingReviewDecision: decision };
+      const nextItems = stored.items.map((it) => (it.id === captureItemId ? nextItem : it));
+      const merged = { version: BILLING_CAPTURE_VERSION, items: nextItems };
+
+      const u = await tx.encounter.updateMany({
+        where: { id: encounterId, facilityId, version: enc.version },
+        data: {
+          billingCaptureJson: merged as unknown as Prisma.InputJsonValue,
+          version: { increment: 1 },
+        },
+      });
+      if (u.count === 0) throwEncounterConcurrentModification();
+
+      await upsertBillingEventFromCaptureItem(tx, nextItem);
+
+      await this.audit.log(AuditAction.UPDATE, "INFUSION_BILLING_REVIEW", {
+        tx,
+        userId: reviewerId,
+        facilityId,
+        encounterId,
+        entityId: captureItemId,
+        ip,
+        userAgent,
+        metadata: {
+          encounterId,
+          captureItemId,
+          medicationAdministrationId: item.sourceId?.trim() ?? null,
+          oldDecisionStatus: oldDecision?.status ?? null,
+          newDecisionStatus: decision.status,
+          billingClassFinal: decision.billingClassFinal ?? null,
+          approvedUnits: decision.approvedUnits ?? null,
+          reviewerNotePresent: Boolean(decision.reviewerNote?.trim()),
+          source: "BILLING_INFUSION_REVIEW",
+        },
+        critical: true,
+      });
+
+      resultItem = nextItem;
+    });
+
+    return { item: resultItem };
   }
 
   private procedureClinicalEventToBillingExportRow(ev: {

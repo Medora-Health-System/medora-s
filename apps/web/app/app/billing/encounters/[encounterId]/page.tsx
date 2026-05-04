@@ -7,7 +7,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import type { BillingCaptureItem } from "@medora/shared";
+import type { BillingCaptureItem, InfusionBillingReviewDecision } from "@medora/shared";
 import {
   billingLedgerRowHasUsableCode,
   billingLedgerRowIsInformationalNonBillable,
@@ -868,9 +868,14 @@ export default function BillingEncounterLedgerPage() {
   const [autoBillDecisionWarning, setAutoBillDecisionWarning] = useState<string | null>(null);
   const [manualReviewGate, setManualReviewGate] = useState<ManualReviewGatePayload | null>(null);
   const [billingReviewDecisions, setBillingReviewDecisions] = useState<BillingReviewDecision[]>([]);
+  type InfusionFieldRow = { note: string; billing: string; init: string; add: string };
+  const [infusionFields, setInfusionFields] = useState<Record<string, InfusionFieldRow>>({});
+  const [infusionSavingId, setInfusionSavingId] = useState<string | null>(null);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
+  const canEditInfusionBillingReview =
+    roles.includes("BILLING") || roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
   const canFinalizeBilling = roles.includes("BILLING") || roles.includes("ADMIN");
   const canViewExportJson = roles.includes("BILLING") || roles.includes("ADMIN");
   const submissionGateBlockers = claimExport?.summary.claimBlockers ?? [];
@@ -1287,6 +1292,69 @@ export default function BillingEncounterLedgerPage() {
     );
   }, [data]);
 
+  useEffect(() => {
+    const next: Record<string, InfusionFieldRow> = {};
+    for (const row of infusionBillingReviewRows) {
+      const sug = row.infusionBillingSuggestion!;
+      next[row.id] = {
+        note: "",
+        billing: sug.billingClass,
+        init: sug.suggestedUnits.initialHour != null ? String(sug.suggestedUnits.initialHour) : "",
+        add:
+          sug.suggestedUnits.additionalHoursOrIntervals != null
+            ? String(sug.suggestedUnits.additionalHoursOrIntervals)
+            : "",
+      };
+    }
+    setInfusionFields(next);
+  }, [infusionBillingReviewRows]);
+
+  const submitInfusionReview = useCallback(
+    async (captureItemId: string, status: "APPROVED" | "REJECTED" | "ADJUSTED") => {
+      if (!facilityId) return;
+      const f = infusionFields[captureItemId];
+      if (!f) return;
+      if ((status === "REJECTED" || status === "ADJUSTED") && !f.note.trim()) {
+        setToast(null);
+        setActionError(t("billingPage.infusionReviewNoteRequired"));
+        return;
+      }
+      setInfusionSavingId(captureItemId);
+      setActionError(null);
+      setToast(null);
+      try {
+        const body: Record<string, unknown> = { status };
+        const note = f.note.trim();
+        if (note) body.reviewerNote = note;
+        if (status !== "REJECTED") {
+          body.billingClassFinal = f.billing;
+          if (f.init.trim() !== "") {
+            const ih = parseInt(f.init, 10);
+            if (!Number.isNaN(ih)) body.approvedInitialHour = ih;
+          }
+          if (f.add.trim() !== "") {
+            const ah = parseInt(f.add, 10);
+            if (!Number.isNaN(ah)) body.approvedAdditionalHoursOrIntervals = ah;
+          }
+        }
+        await apiFetch(`/billing/encounters/${encounterId}/infusion-review/${encodeURIComponent(captureItemId)}`, {
+          facilityId,
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        setToast(t("billingPage.infusionReviewSaved"));
+        await load();
+      } catch (e: unknown) {
+        const raw = e instanceof Error && e.message ? e.message : "";
+        setActionError(normalizeUserFacingError(raw, language) || t("billingPage.infusionReviewSaveError"));
+      } finally {
+        setInfusionSavingId(null);
+      }
+    },
+    [facilityId, encounterId, infusionFields, language, load, t]
+  );
+
   const markReviewed = async (billingEventId: string) => {
     if (!facilityId) return;
     setMarkingId(billingEventId);
@@ -1564,6 +1632,19 @@ export default function BillingEncounterLedgerPage() {
                 row.infusionDurationMinutes != null && Number.isFinite(row.infusionDurationMinutes)
                   ? String(row.infusionDurationMinutes)
                   : "—";
+              const dec = row.infusionBillingReviewDecision as InfusionBillingReviewDecision | undefined;
+              const f =
+                infusionFields[row.id] ??
+                ({
+                  note: "",
+                  billing: sug.billingClass,
+                  init: sug.suggestedUnits.initialHour != null ? String(sug.suggestedUnits.initialHour) : "",
+                  add:
+                    sug.suggestedUnits.additionalHoursOrIntervals != null
+                      ? String(sug.suggestedUnits.additionalHoursOrIntervals)
+                      : "",
+                } satisfies InfusionFieldRow);
+              const saving = infusionSavingId === row.id;
               return (
                 <li
                   key={row.id}
@@ -1595,6 +1676,16 @@ export default function BillingEncounterLedgerPage() {
                   </div>
                   <div style={{ color: "#475569", marginBottom: 4 }}>
                     <strong>{t("billingPage.infusionBillingReviewDuration")}:</strong> {dm}
+                    {row.infusionStartedAt ? (
+                      <span style={{ marginLeft: 8, fontSize: 12 }}>
+                        · {t("billingPage.infusionReviewStarted")}: {row.infusionStartedAt}
+                      </span>
+                    ) : null}
+                    {row.infusionStoppedAt ? (
+                      <span style={{ marginLeft: 8, fontSize: 12 }}>
+                        · {t("billingPage.infusionReviewStopped")}: {row.infusionStoppedAt}
+                      </span>
+                    ) : null}
                   </div>
                   <div style={{ color: "#475569", marginBottom: 4 }}>
                     <strong>{t("billingPage.infusionBillingReviewClass")}:</strong>{" "}
@@ -1618,6 +1709,162 @@ export default function BillingEncounterLedgerPage() {
                           <li key={wi}>{w}</li>
                         ))}
                       </ul>
+                    </div>
+                  ) : null}
+                  {dec ? (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 8,
+                        borderRadius: 6,
+                        background: "#eef2ff",
+                        border: "1px solid #c7d2fe",
+                        color: "#312e81",
+                      }}
+                    >
+                      <strong>{t("billingPage.infusionReviewDecisionTitle")}:</strong>{" "}
+                      {t(`billingPage.infusionReviewDecision_${dec.status}` as const)}
+                      {dec.billingClassFinal ? (
+                        <span style={{ marginLeft: 8 }}>
+                          · {t("billingPage.infusionReviewFinalClass")}: {infusionBillingClassLabelFr(t, dec.billingClassFinal)}
+                        </span>
+                      ) : null}
+                      {dec.approvedUnits?.initialHour != null || dec.approvedUnits?.additionalHoursOrIntervals != null ? (
+                        <span style={{ display: "block", marginTop: 4, fontSize: 12 }}>
+                          {t("billingPage.infusionReviewApprovedUnits")}:{" "}
+                          {dec.approvedUnits?.initialHour != null ? `${t("billingPage.infusionBillingReviewUnitsInitial")} ${dec.approvedUnits.initialHour}` : ""}
+                          {dec.approvedUnits?.additionalHoursOrIntervals != null
+                            ? ` · ${t("billingPage.infusionBillingReviewUnitsAdditional")} ${dec.approvedUnits.additionalHoursOrIntervals}`
+                            : ""}
+                        </span>
+                      ) : null}
+                      {dec.reviewerNote ? (
+                        <div style={{ marginTop: 4, fontSize: 12 }}>{dec.reviewerNote}</div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {canEditInfusionBillingReview ? (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #e2e8f0" }}>
+                      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))" }}>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                          <span style={{ fontWeight: 600 }}>{t("billingPage.infusionReviewBillingClassOverride")}</span>
+                          <select
+                            value={f.billing}
+                            disabled={saving}
+                            onChange={(e) =>
+                              setInfusionFields((prev) => ({
+                                ...prev,
+                                [row.id]: { ...f, billing: e.target.value },
+                              }))
+                            }
+                            style={{ padding: 6, borderRadius: 6, border: "1px solid #cbd5e1" }}
+                          >
+                            <option value="HYDRATION">{t("billingPage.infusionBillingClass_HYDRATION")}</option>
+                            <option value="THERAPEUTIC">{t("billingPage.infusionBillingClass_THERAPEUTIC")}</option>
+                            <option value="UNKNOWN">{t("billingPage.infusionBillingClass_UNKNOWN")}</option>
+                          </select>
+                        </label>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                          <span style={{ fontWeight: 600 }}>{t("billingPage.infusionReviewUnitsInitialOverride")}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={48}
+                            value={f.init}
+                            disabled={saving}
+                            onChange={(e) =>
+                              setInfusionFields((prev) => ({
+                                ...prev,
+                                [row.id]: { ...f, init: e.target.value },
+                              }))
+                            }
+                            style={{ padding: 6, borderRadius: 6, border: "1px solid #cbd5e1" }}
+                          />
+                        </label>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                          <span style={{ fontWeight: 600 }}>{t("billingPage.infusionReviewUnitsAdditionalOverride")}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={48}
+                            value={f.add}
+                            disabled={saving}
+                            onChange={(e) =>
+                              setInfusionFields((prev) => ({
+                                ...prev,
+                                [row.id]: { ...f, add: e.target.value },
+                              }))
+                            }
+                            style={{ padding: 6, borderRadius: 6, border: "1px solid #cbd5e1" }}
+                          />
+                        </label>
+                      </div>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, marginTop: 8 }}>
+                        <span style={{ fontWeight: 600 }}>{t("billingPage.infusionReviewNoteLabel")}</span>
+                        <textarea
+                          value={f.note}
+                          maxLength={500}
+                          rows={2}
+                          disabled={saving}
+                          onChange={(e) =>
+                            setInfusionFields((prev) => ({
+                              ...prev,
+                              [row.id]: { ...f, note: e.target.value },
+                            }))
+                          }
+                          style={{ padding: 6, borderRadius: 6, border: "1px solid #cbd5e1", resize: "vertical" }}
+                        />
+                      </label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => void submitInfusionReview(row.id, "APPROVED")}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 6,
+                            border: "none",
+                            background: "#166534",
+                            color: "#fff",
+                            fontWeight: 600,
+                            cursor: saving ? "wait" : "pointer",
+                          }}
+                        >
+                          {t("billingPage.infusionReviewApprove")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => void submitInfusionReview(row.id, "ADJUSTED")}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #334155",
+                            background: "#fff",
+                            fontWeight: 600,
+                            cursor: saving ? "wait" : "pointer",
+                          }}
+                        >
+                          {t("billingPage.infusionReviewAdjust")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => void submitInfusionReview(row.id, "REJECTED")}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #991b1b",
+                            background: "#fef2f2",
+                            color: "#991b1b",
+                            fontWeight: 600,
+                            cursor: saving ? "wait" : "pointer",
+                          }}
+                        >
+                          {t("billingPage.infusionReviewReject")}
+                        </button>
+                      </div>
+                      <p style={{ margin: "8px 0 0", fontSize: 11, color: "#64748b" }}>{t("billingPage.infusionReviewHint")}</p>
                     </div>
                   ) : null}
                 </li>

@@ -8,6 +8,26 @@ import type { InfusionBillingSuggestion } from "./infusionBillingRules.js";
 
 export const BILLING_CAPTURE_VERSION = 1 as const;
 
+/** Phase 7 — biller review of infusion billing suggestions (JSON on `BillingCaptureItem`). */
+export type InfusionBillingReviewDecisionStatus = "APPROVED" | "REJECTED" | "ADJUSTED";
+
+export type InfusionBillingReviewDecision = {
+  status: InfusionBillingReviewDecisionStatus;
+  billingClassFinal?: "HYDRATION" | "THERAPEUTIC" | "UNKNOWN";
+  approvedUnits?: {
+    initialHour?: number;
+    additionalHoursOrIntervals?: number;
+  };
+  /** Snapshot of suggested units at decision time (audit / export). */
+  suggestedUnitsSnapshot?: {
+    initialHour?: number | null;
+    additionalHoursOrIntervals?: number | null;
+  };
+  reviewerNote?: string;
+  reviewedByUserId: string;
+  reviewedAt: string;
+};
+
 /** Origin of a billing line candidate (extensible). */
 export type BillingCaptureSourceType =
   | "DIAGNOSIS"
@@ -101,6 +121,8 @@ export type BillingCaptureItem = {
    * Suggestions only; `manualReviewRequired` is always true inside the object.
    */
   infusionBillingSuggestion?: InfusionBillingSuggestion | null;
+  /** Phase 7 — controlled approval / rejection / adjustment (never auto-submitted). */
+  infusionBillingReviewDecision?: InfusionBillingReviewDecision | null;
 };
 
 export type BillingCaptureV1Stored = {
@@ -113,6 +135,7 @@ const MAX_NOTE = 4000;
 const MAX_CODES = 40;
 const MAX_WARNINGS = 32;
 const MAX_WARNING_LEN = 512;
+const MAX_INFUSION_REVIEW_NOTE = 500;
 
 function trimStr(v: unknown, max: number): string | undefined {
   if (typeof v !== "string") return undefined;
@@ -158,6 +181,69 @@ function readInfusionBillingSuggestion(raw: unknown): InfusionBillingSuggestion 
     suggestedUnits,
     warnings,
   };
+}
+
+function readInfusionBillingReviewDecision(raw: unknown): InfusionBillingReviewDecision | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const o = raw as Record<string, unknown>;
+  const st = trimStr(String(o.status ?? ""), 16);
+  if (st !== "APPROVED" && st !== "REJECTED" && st !== "ADJUSTED") return undefined;
+  const reviewedByUserId = trimStr(o.reviewedByUserId, 64);
+  const reviewedAt = trimStr(o.reviewedAt, 40);
+  if (!reviewedByUserId || !reviewedAt) return undefined;
+
+  let billingClassFinal: InfusionBillingReviewDecision["billingClassFinal"];
+  const bcf = trimStr(String(o.billingClassFinal ?? ""), 16);
+  if (bcf === "HYDRATION" || bcf === "THERAPEUTIC" || bcf === "UNKNOWN") billingClassFinal = bcf;
+
+  const approvedUnits: InfusionBillingReviewDecision["approvedUnits"] = {};
+  const auRaw = o.approvedUnits;
+  if (auRaw && typeof auRaw === "object" && !Array.isArray(auRaw)) {
+    const au = auRaw as Record<string, unknown>;
+    if (typeof au.initialHour === "number" && Number.isFinite(au.initialHour) && au.initialHour >= 0 && au.initialHour <= 48) {
+      approvedUnits.initialHour = Math.floor(au.initialHour);
+    }
+    if (
+      typeof au.additionalHoursOrIntervals === "number" &&
+      Number.isFinite(au.additionalHoursOrIntervals) &&
+      au.additionalHoursOrIntervals >= 0 &&
+      au.additionalHoursOrIntervals <= 48
+    ) {
+      approvedUnits.additionalHoursOrIntervals = Math.floor(au.additionalHoursOrIntervals);
+    }
+  }
+
+  let suggestedUnitsSnapshot: InfusionBillingReviewDecision["suggestedUnitsSnapshot"];
+  const suSnap = o.suggestedUnitsSnapshot;
+  if (suSnap && typeof suSnap === "object" && !Array.isArray(suSnap)) {
+    const su = suSnap as Record<string, unknown>;
+    suggestedUnitsSnapshot = {};
+    if (typeof su.initialHour === "number" && Number.isFinite(su.initialHour)) {
+      suggestedUnitsSnapshot.initialHour = Math.floor(su.initialHour);
+    } else if (su.initialHour === null) {
+      suggestedUnitsSnapshot.initialHour = null;
+    }
+    if (typeof su.additionalHoursOrIntervals === "number" && Number.isFinite(su.additionalHoursOrIntervals)) {
+      suggestedUnitsSnapshot.additionalHoursOrIntervals = Math.floor(su.additionalHoursOrIntervals);
+    } else if (su.additionalHoursOrIntervals === null) {
+      suggestedUnitsSnapshot.additionalHoursOrIntervals = null;
+    }
+    if (Object.keys(suggestedUnitsSnapshot).length === 0) suggestedUnitsSnapshot = undefined;
+  }
+
+  const noteRaw = typeof o.reviewerNote === "string" ? o.reviewerNote.trim() : "";
+  const reviewerNote = noteRaw ? noteRaw.slice(0, MAX_INFUSION_REVIEW_NOTE) : undefined;
+
+  const out: InfusionBillingReviewDecision = {
+    status: st,
+    reviewedByUserId,
+    reviewedAt,
+  };
+  if (billingClassFinal) out.billingClassFinal = billingClassFinal;
+  if (Object.keys(approvedUnits).length) out.approvedUnits = approvedUnits;
+  if (suggestedUnitsSnapshot) out.suggestedUnitsSnapshot = suggestedUnitsSnapshot;
+  if (reviewerNote) out.reviewerNote = reviewerNote;
+  return out;
 }
 
 export function emptyBillingCaptureV1(): BillingCaptureV1Stored {
@@ -309,6 +395,8 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
     if (r.infusionDurationBillingManualReview === true) item.infusionDurationBillingManualReview = true;
     const ibs = readInfusionBillingSuggestion(r.infusionBillingSuggestion);
     if (ibs) item.infusionBillingSuggestion = ibs;
+    const ibrd = readInfusionBillingReviewDecision(r.infusionBillingReviewDecision);
+    if (ibrd) item.infusionBillingReviewDecision = ibrd;
     items.push(item);
   }
   return { version: BILLING_CAPTURE_VERSION, items: items.slice(0, MAX_ITEMS) };
