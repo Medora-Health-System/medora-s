@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
+import type { BillingCaptureItem } from "@medora/shared";
 import {
   billingLedgerRowHasUsableCode,
   billingLedgerRowIsInformationalNonBillable,
@@ -418,6 +419,7 @@ type SummaryPayload = {
     billingFinalizationStatus?: string;
     billingFinalizedAt?: string | null;
     billingReopenedAt?: string | null;
+    billingCaptureJson?: unknown;
     patient: { firstName?: string; lastName?: string; mrn?: string | null };
   };
   readiness: ReadinessPayload;
@@ -463,6 +465,12 @@ function billingPageKey(t: (k: string) => string, suffix: string): string {
   const k = `billingPage.${suffix}`;
   const v = t(k);
   return v === k ? suffix : v;
+}
+
+function infusionBillingClassLabelFr(t: (k: string) => string, cls: string): string {
+  if (cls === "HYDRATION") return t("billingPage.infusionBillingClass_HYDRATION");
+  if (cls === "THERAPEUTIC") return t("billingPage.infusionBillingClass_THERAPEUTIC");
+  return t("billingPage.infusionBillingClass_UNKNOWN");
 }
 
 function billingReadinessStatusForLedgerRow(
@@ -1270,6 +1278,15 @@ export default function BillingEncounterLedgerPage() {
     void load();
   }, [load]);
 
+  const infusionBillingReviewRows: BillingCaptureItem[] = useMemo(() => {
+    if (!data?.encounter) return [];
+    const raw = data.encounter.billingCaptureJson;
+    const normalized = readBillingCaptureV1(raw);
+    return normalized.items.filter(
+      (it) => it.sourceType === "MEDICATION_ADMINISTRATION" && it.infusionBillingSuggestion
+    );
+  }, [data]);
+
   const markReviewed = async (billingEventId: string) => {
     if (!facilityId) return;
     setMarkingId(billingEventId);
@@ -1521,6 +1538,92 @@ export default function BillingEncounterLedgerPage() {
           <Link href="/app/billing/manual-review" style={{ display: "inline-block", marginTop: 8, color: "#92400e", fontWeight: 700 }}>
             {t("billingPage.manualReviewGateOpenQueue")}
           </Link>
+        </div>
+      ) : null}
+
+      {!loading && !error && data && infusionBillingReviewRows.length > 0 ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            borderRadius: 8,
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+          }}
+        >
+          <h2 style={{ margin: "0 0 6px", fontSize: 16 }}>{t("billingPage.infusionBillingReviewTitle")}</h2>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>
+            {t("billingPage.infusionBillingReviewSubtitle")}
+          </p>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+            {infusionBillingReviewRows.map((row) => {
+              const sug = row.infusionBillingSuggestion!;
+              const fromNote = row.note?.replace(/^Administration candidate —\s*/i, "").trim().split(" — ")[0];
+              const med = row.catalogLabel?.trim() || fromNote || row.note?.trim() || "—";
+              const dm =
+                row.infusionDurationMinutes != null && Number.isFinite(row.infusionDurationMinutes)
+                  ? String(row.infusionDurationMinutes)
+                  : "—";
+              return (
+                <li
+                  key={row.id}
+                  style={{
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                    fontSize: 13,
+                  }}
+                >
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontWeight: 700 }}>{t("billingPage.infusionBillingReviewMedication")}</span>
+                    <span style={{ color: "#334155" }}>{med}</span>
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: 9999,
+                        background: "#fffbeb",
+                        color: "#92400e",
+                        border: "1px solid #fde68a",
+                      }}
+                    >
+                      {t("billingPage.infusionBillingReviewBadge")}
+                    </span>
+                  </div>
+                  <div style={{ color: "#475569", marginBottom: 4 }}>
+                    <strong>{t("billingPage.infusionBillingReviewDuration")}:</strong> {dm}
+                  </div>
+                  <div style={{ color: "#475569", marginBottom: 4 }}>
+                    <strong>{t("billingPage.infusionBillingReviewClass")}:</strong>{" "}
+                    {infusionBillingClassLabelFr(t, sug.billingClass)}
+                  </div>
+                  <div style={{ color: "#475569", marginBottom: 4 }}>
+                    <strong>{t("billingPage.infusionBillingReviewUnitsInitial")}:</strong>{" "}
+                    {sug.suggestedUnits.initialHour != null ? String(sug.suggestedUnits.initialHour) : "—"}
+                  </div>
+                  <div style={{ color: "#475569", marginBottom: 4 }}>
+                    <strong>{t("billingPage.infusionBillingReviewUnitsAdditional")}:</strong>{" "}
+                    {sug.suggestedUnits.additionalHoursOrIntervals != null
+                      ? String(sug.suggestedUnits.additionalHoursOrIntervals)
+                      : "—"}
+                  </div>
+                  {sug.warnings.length > 0 ? (
+                    <div style={{ marginTop: 6 }}>
+                      <strong>{t("billingPage.infusionBillingReviewWarnings")}</strong>
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 18, color: "#92400e" }}>
+                        {sug.warnings.map((w, wi) => (
+                          <li key={wi}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ) : null}
 

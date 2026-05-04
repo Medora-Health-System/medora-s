@@ -19,6 +19,7 @@ import {
   isInvalidTechnicalOrderDisplayLabel,
   normalizeNdc,
   resolveMedicationMarActionFromStorage,
+  suggestInfusionBilling,
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
@@ -574,6 +575,24 @@ export class MedicationAdministrationService {
     if (marActionResolved === "administered") {
       const ev = serviceOptions?.infusionBillingEvidence;
       const infusionManualReview = Boolean(ev);
+      let infusionRoute: string | undefined;
+      let catalogTherapeuticClass: string | null = null;
+      let catalogCodeForBilling: string | null = null;
+      if (linkedMedicationLine) {
+        const ctx = await loadMedicationInfusionClassificationContext(this.prisma, linkedMedicationLine);
+        infusionRoute = ctx.resolvedRoute ?? undefined;
+        catalogTherapeuticClass = ctx.catalog?.therapeuticClass?.trim() ?? null;
+        catalogCodeForBilling = ctx.catalog?.code ?? null;
+      }
+      const infusionBillingSuggestion = ev
+        ? suggestInfusionBilling({
+            infusionDurationMinutes: ev.infusionDurationMinutes,
+            medicationLabel: medLabel,
+            route: infusionRoute ?? created.route ?? undefined,
+            catalogBillingClass: catalogTherapeuticClass,
+            catalogCode: catalogCodeForBilling,
+          })
+        : undefined;
       await appendBillingCaptureCandidate(
         this.prisma,
         encounterId,
@@ -600,6 +619,7 @@ export class MedicationAdministrationService {
           infusionStoppedAt: ev?.infusionStoppedAtIso ?? null,
           infusionDurationMinutes: ev?.infusionDurationMinutes ?? null,
           infusionDurationBillingManualReview: infusionManualReview ? true : undefined,
+          infusionBillingSuggestion: infusionBillingSuggestion ?? undefined,
         })
       );
 

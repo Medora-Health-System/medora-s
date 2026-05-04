@@ -118,6 +118,7 @@ export async function upsertBillingEventFromCaptureItem(db: BillingDb, item: Bil
     infusionStoppedAt: item.infusionStoppedAt?.trim() ?? null,
     infusionDurationMinutes: item.infusionDurationMinutes ?? null,
     infusionDurationBillingManualReview: item.infusionDurationBillingManualReview === true,
+    infusionBillingSuggestion: item.infusionBillingSuggestion ?? null,
   };
 
   try {

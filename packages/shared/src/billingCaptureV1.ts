@@ -4,6 +4,8 @@
  * Codes are user-entered or interface slots only.
  */
 
+import type { InfusionBillingSuggestion } from "./infusionBillingRules.js";
+
 export const BILLING_CAPTURE_VERSION = 1 as const;
 
 /** Origin of a billing line candidate (extensible). */
@@ -94,6 +96,11 @@ export type BillingCaptureItem = {
    * for therapeutic infusion time coding — biller assigns appropriate codes/units.
    */
   infusionDurationBillingManualReview?: boolean;
+  /**
+   * Phase 5 — hydration vs therapeutic vs unknown + conservative unit hints.
+   * Suggestions only; `manualReviewRequired` is always true inside the object.
+   */
+  infusionBillingSuggestion?: InfusionBillingSuggestion | null;
 };
 
 export type BillingCaptureV1Stored = {
@@ -104,6 +111,8 @@ export type BillingCaptureV1Stored = {
 const MAX_ITEMS = 500;
 const MAX_NOTE = 4000;
 const MAX_CODES = 40;
+const MAX_WARNINGS = 32;
+const MAX_WARNING_LEN = 512;
 
 function trimStr(v: unknown, max: number): string | undefined {
   if (typeof v !== "string") return undefined;
@@ -114,6 +123,41 @@ function trimStr(v: unknown, max: number): string | undefined {
 
 function readIso(v: unknown): string | undefined {
   return trimStr(v, 40);
+}
+
+function readInfusionBillingSuggestion(raw: unknown): InfusionBillingSuggestion | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const o = raw as Record<string, unknown>;
+  const bcRaw = trimStr(String(o.billingClass ?? ""), 16);
+  if (bcRaw !== "HYDRATION" && bcRaw !== "THERAPEUTIC" && bcRaw !== "UNKNOWN") return undefined;
+  const suRaw = o.suggestedUnits;
+  const suggestedUnits: InfusionBillingSuggestion["suggestedUnits"] = {};
+  if (suRaw && typeof suRaw === "object" && !Array.isArray(suRaw)) {
+    const su = suRaw as Record<string, unknown>;
+    if (typeof su.initialHour === "number" && Number.isFinite(su.initialHour) && su.initialHour >= 0 && su.initialHour <= 48) {
+      suggestedUnits.initialHour = Math.floor(su.initialHour);
+    }
+    if (
+      typeof su.additionalHoursOrIntervals === "number" &&
+      Number.isFinite(su.additionalHoursOrIntervals) &&
+      su.additionalHoursOrIntervals >= 0 &&
+      su.additionalHoursOrIntervals <= 48
+    ) {
+      suggestedUnits.additionalHoursOrIntervals = Math.floor(su.additionalHoursOrIntervals);
+    }
+  }
+  const warnings = Array.isArray(o.warnings)
+    ? o.warnings
+        .filter((w): w is string => typeof w === "string" && w.trim().length > 0)
+        .map((w) => w.trim().slice(0, MAX_WARNING_LEN))
+        .slice(0, MAX_WARNINGS)
+    : [];
+  return {
+    billingClass: bcRaw,
+    manualReviewRequired: true,
+    suggestedUnits,
+    warnings,
+  };
 }
 
 export function emptyBillingCaptureV1(): BillingCaptureV1Stored {
@@ -263,6 +307,8 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
       if (dm >= 0 && dm <= 2880) item.infusionDurationMinutes = dm;
     }
     if (r.infusionDurationBillingManualReview === true) item.infusionDurationBillingManualReview = true;
+    const ibs = readInfusionBillingSuggestion(r.infusionBillingSuggestion);
+    if (ibs) item.infusionBillingSuggestion = ibs;
     items.push(item);
   }
   return { version: BILLING_CAPTURE_VERSION, items: items.slice(0, MAX_ITEMS) };
@@ -431,6 +477,7 @@ export function buildMedicationAdministrationCandidate(params: {
   infusionStoppedAt?: string | null;
   infusionDurationMinutes?: number | null;
   infusionDurationBillingManualReview?: boolean;
+  infusionBillingSuggestion?: InfusionBillingSuggestion | null;
 }): BillingCaptureItem {
   const manualReview = params.infusionDurationBillingManualReview === true;
   const noteParts = [`Administration candidate — ${params.medicationLabel}`];
@@ -473,6 +520,7 @@ export function buildMedicationAdministrationCandidate(params: {
     infusionStoppedAt: params.infusionStoppedAt?.trim() ? params.infusionStoppedAt.trim().slice(0, 40) : null,
     infusionDurationMinutes: dmSafe,
     infusionDurationBillingManualReview: manualReview ? true : undefined,
+    infusionBillingSuggestion: params.infusionBillingSuggestion ?? undefined,
   };
 }
 

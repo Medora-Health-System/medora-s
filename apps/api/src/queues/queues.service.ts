@@ -375,6 +375,7 @@ export class QueuesService {
         billingReopenedAt: true,
         billingReopenedByUserId: true,
         billingReadinessSnapshotJson: true,
+        billingCaptureJson: true,
         patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
       },
     });

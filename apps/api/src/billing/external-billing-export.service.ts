@@ -12,8 +12,10 @@ import { AuditService } from "../common/services/audit.service";
 import { computeEncounterBillingReadiness } from "./billing-encounter-readiness.util";
 import { BillingService, getAutoBillDecision } from "./billing.service";
 import {
+  type InfusionBillingSuggestion,
   displayNameFrForDocumentedProcedureType,
   medoraCodeForDocumentedProcedureType,
+  readBillingCaptureV1,
 } from "@medora/shared";
 
 const EXPORT_SCHEMA_VERSION = "medora_external_billing_v1" as const;
@@ -538,6 +540,17 @@ export class ExternalBillingExportService {
       if (parsed) infusionStopEvidenceByMarId.set(parsed.medicationAdministrationId, parsed);
     }
 
+    const infusionBillingSuggestionByMarId = new Map<string, InfusionBillingSuggestion>();
+    for (const cap of readBillingCaptureV1(enc.billingCaptureJson).items) {
+      if (
+        cap.sourceType === "MEDICATION_ADMINISTRATION" &&
+        cap.sourceId?.trim() &&
+        cap.infusionBillingSuggestion
+      ) {
+        infusionBillingSuggestionByMarId.set(cap.sourceId.trim(), cap.infusionBillingSuggestion);
+      }
+    }
+
     const exportRowByOrderItemId = new Map(
       exportRows.filter((r) => !r.orderItemId.startsWith("proc-doc_")).map((r) => [r.orderItemId, r])
     );
@@ -723,6 +736,12 @@ export class ExternalBillingExportService {
           orderEventPerformedByUserId: infusionSnap.orderEventPerformedByUserId,
         };
         clinicalPayload.infusionDurationBillingManualReview = true;
+      }
+      const captureSuggestion = infusionBillingSuggestionByMarId.get(m.id);
+      if (captureSuggestion) {
+        clinicalPayload.infusionBillingSuggestion = captureSuggestion;
+        clinicalPayload.manualReviewRequired = captureSuggestion.manualReviewRequired;
+        clinicalPayload.warnings = captureSuggestion.warnings;
       }
       const infusionEvidence = Boolean(infusionSnap);
       const marSummaryParts = [m.medicationLabelSnapshot ?? "MAR"];

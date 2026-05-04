@@ -21,6 +21,7 @@ const nsCatalog: MedicationInfusionCatalogSlice = {
   genericName: "sodium chloride",
   route: "IVP",
   strength: null,
+  therapeuticClass: null,
 };
 
 const ceftriaxoneCatalog: MedicationInfusionCatalogSlice = {
@@ -30,6 +31,7 @@ const ceftriaxoneCatalog: MedicationInfusionCatalogSlice = {
   genericName: "ceftriaxone",
   route: "injectable",
   strength: "1 g",
+  therapeuticClass: null,
 };
 
 describe("shouldBlockDirectMarAdministeredForInfusionLine", () => {
@@ -53,6 +55,7 @@ describe("shouldBlockDirectMarAdministeredForInfusionLine", () => {
       genericName: "morphine",
       route: "IVP",
       strength: "2 mg",
+      therapeuticClass: null,
     };
     expect(shouldBlockDirectMarAdministeredForInfusionLine(bedsideMed({ route: "IVP" }), cat, "IVP")).toBe(false);
   });
@@ -65,6 +68,7 @@ describe("shouldBlockDirectMarAdministeredForInfusionLine", () => {
       genericName: "ondansetron",
       route: "IVP",
       strength: null,
+      therapeuticClass: null,
     };
     expect(shouldBlockDirectMarAdministeredForInfusionLine(bedsideMed({ route: "IVP" }), cat, "IVP")).toBe(false);
   });
