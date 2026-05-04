@@ -26,6 +26,8 @@ export type CatalogSearchItem = {
     requiresDoubleSign?: boolean;
     genericName?: string;
     therapeuticClass?: string;
+    administrationType?: string;
+    billingClass?: string;
     commonAliases?: string[];
     category?: string;
     modality?: string;

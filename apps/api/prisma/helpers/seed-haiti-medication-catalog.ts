@@ -141,6 +141,8 @@ export async function seedHaitiMedicationCatalog(
       dosageForm: row.dosageForm || null,
       route: row.route || null,
       therapeuticClass: row.therapeuticClass || null,
+      administrationType: row.administrationType?.trim() || null,
+      billingClass: row.billingClass?.trim() || null,
       sortPriority: row.sortPriority ?? 0,
       isEssential: row.isEssential ?? false,
       isActive: row.isActive !== false,

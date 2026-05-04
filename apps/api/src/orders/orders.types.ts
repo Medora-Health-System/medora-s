@@ -11,6 +11,8 @@ export type CatalogMedicationEnrichment = Pick<
   | "displayNameFr"
   | "genericName"
   | "therapeuticClass"
+  | "administrationType"
+  | "billingClass"
   | "strength"
   | "dosageForm"
   | "route"

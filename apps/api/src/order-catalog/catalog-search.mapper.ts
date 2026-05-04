@@ -57,6 +57,8 @@ export function mapMedicationToCatalogSearchItem(
       requiresDoubleSign: m.requiresDoubleSign || undefined,
       genericName: m.genericName?.trim() || undefined,
       therapeuticClass: m.therapeuticClass?.trim() || undefined,
+      administrationType: m.administrationType?.trim() || undefined,
+      billingClass: m.billingClass?.trim() || undefined,
     },
   };
 }

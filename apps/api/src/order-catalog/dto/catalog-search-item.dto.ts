@@ -32,6 +32,8 @@ export type CatalogSearchItemDto = {
     /** MEDICATION: clinical / safety hints (additive). */
     genericName?: string;
     therapeuticClass?: string;
+    administrationType?: string;
+    billingClass?: string;
     commonAliases?: string[];
     category?: string;
     modality?: string;

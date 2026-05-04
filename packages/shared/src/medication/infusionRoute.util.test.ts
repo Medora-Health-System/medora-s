@@ -75,6 +75,45 @@ describe("isMedicationInfusionCandidate", () => {
     ).toBe(true);
   });
 
+  it("honors catalog administrationType INFUSION before label heuristics", () => {
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IV",
+        medicationLabel: "Vitamin C",
+        code: "VITC",
+        genericName: null,
+        catalogAdministrationType: "INFUSION",
+      })
+    ).toBe(true);
+  });
+
+  it("catalog administrationType PUSH rejects unless route is explicit infusion", () => {
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVP",
+        medicationLabel: "Morphine 2 mg",
+        catalogAdministrationType: "PUSH",
+      })
+    ).toBe(false);
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVPB",
+        medicationLabel: "Morphine 2 mg",
+        catalogAdministrationType: "PUSH",
+      })
+    ).toBe(true);
+  });
+
+  it("catalog ORAL rejects even when label looks like antibiotic", () => {
+    expect(
+      isMedicationInfusionCandidate({
+        route: "orale",
+        medicationLabel: "Ceftriaxone comprimé",
+        catalogAdministrationType: "ORAL",
+      })
+    ).toBe(false);
+  });
+
   it("rejects IV push / bolus route and PO", () => {
     expect(
       isMedicationInfusionCandidate({

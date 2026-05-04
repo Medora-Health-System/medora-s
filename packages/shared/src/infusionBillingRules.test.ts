@@ -72,4 +72,23 @@ describe("suggestInfusionBilling", () => {
     });
     expect(r.billingClass).toBe("THERAPEUTIC");
   });
+
+  it("catalog billingClass HYDRATION overrides heuristic", () => {
+    const r = suggestInfusionBilling({
+      infusionDurationMinutes: 120,
+      medicationLabel: "Custom fluid",
+      catalogMedicationBillingClass: "HYDRATION",
+    });
+    expect(r.billingClass).toBe("HYDRATION");
+  });
+
+  it("catalog DRUG_SUPPLY maps to UNKNOWN with warning", () => {
+    const r = suggestInfusionBilling({
+      infusionDurationMinutes: 60,
+      medicationLabel: "Some drug",
+      catalogMedicationBillingClass: "DRUG_SUPPLY",
+    });
+    expect(r.billingClass).toBe("UNKNOWN");
+    expect(r.warnings.some((w) => w.toLowerCase().includes("approvisionnement"))).toBe(true);
+  });
 });

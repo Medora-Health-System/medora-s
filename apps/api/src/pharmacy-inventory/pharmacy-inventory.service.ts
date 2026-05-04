@@ -81,6 +81,8 @@ export class PharmacyInventoryService {
         ndc11: true,
         ndcDisplay: true,
         billingUnitType: true,
+        administrationType: true,
+        billingClass: true,
       },
     });
   }

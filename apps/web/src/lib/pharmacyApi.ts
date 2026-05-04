@@ -29,6 +29,8 @@ export type CatalogMedication = {
   ndc11?: string | null;
   ndcDisplay?: string | null;
   billingUnitType?: string | null;
+  administrationType?: string | null;
+  billingClass?: string | null;
 };
 
 export async function searchMedications(

@@ -22,6 +22,8 @@ const nsCatalog: MedicationInfusionCatalogSlice = {
   route: "IVP",
   strength: null,
   therapeuticClass: null,
+  administrationType: null,
+  billingClass: null,
 };
 
 const ceftriaxoneCatalog: MedicationInfusionCatalogSlice = {
@@ -32,6 +34,8 @@ const ceftriaxoneCatalog: MedicationInfusionCatalogSlice = {
   route: "injectable",
   strength: "1 g",
   therapeuticClass: null,
+  administrationType: null,
+  billingClass: null,
 };
 
 describe("shouldBlockDirectMarAdministeredForInfusionLine", () => {
@@ -56,6 +60,8 @@ describe("shouldBlockDirectMarAdministeredForInfusionLine", () => {
       route: "IVP",
       strength: "2 mg",
       therapeuticClass: null,
+      administrationType: null,
+      billingClass: null,
     };
     expect(shouldBlockDirectMarAdministeredForInfusionLine(bedsideMed({ route: "IVP" }), cat, "IVP")).toBe(false);
   });
@@ -69,6 +75,8 @@ describe("shouldBlockDirectMarAdministeredForInfusionLine", () => {
       route: "IVP",
       strength: null,
       therapeuticClass: null,
+      administrationType: null,
+      billingClass: null,
     };
     expect(shouldBlockDirectMarAdministeredForInfusionLine(bedsideMed({ route: "IVP" }), cat, "IVP")).toBe(false);
   });
