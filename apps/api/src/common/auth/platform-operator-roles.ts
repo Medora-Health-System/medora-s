@@ -2,7 +2,8 @@ import { RoleCode } from "@prisma/client";
 
 /**
  * S22 — RBAC tiers for admin APIs.
- * `MEDORA_SUPER_ADMIN` is assigned only via platform operations (not the facility admin user UI).
+ * `MEDORA_SUPER_ADMIN` is not chosen from the facility Admin Users role checklist (assignable roles only);
+ * an existing active assignment at the facility is preserved when roles are PATCHed.
  */
 
 /** Facility administrators and Medora platform operators. */

@@ -2154,6 +2154,10 @@ export default {
     facilityLabelStrong: "Établissement :",
     editRolesScopeHint:
       "Seuls les rôles de cet établissement sont modifiés. Les accès dans d'autres établissements restent inchangés.",
+    editRolesPlatformRoleHint:
+      "Le super-administrateur plateforme ne s’attribue pas depuis cette liste. S’il est déjà actif pour ce compte à cet établissement, il est conservé lors de l’enregistrement des rôles.",
+    platformRolesManagedSeparately:
+      "Également sur ce compte (hors gestion par cette liste) : {roles}. Pour modifier un accès plateforme, contactez l’équipe d’exploitation Medora.",
     editRolesInactiveHint:
       "Rôles actuellement inactifs dans cet établissement : {roles}. Cochez-les pour les réactiver.",
     editRolesEffectiveLine: "Rôles effectifs (aperçu après enregistrement) : {roles}",
@@ -2206,6 +2210,7 @@ export default {
     valPasswordMin: "Le mot de passe doit contenir au moins 8 caractères.",
     roleLabels: {
       ADMIN: "Administration",
+      MEDORA_SUPER_ADMIN: "Super-administrateur plateforme",
       PROVIDER: "Médecin",
       RN: "Infirmier",
       PHARMACY: "Pharmacie",

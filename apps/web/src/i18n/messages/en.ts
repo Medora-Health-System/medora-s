@@ -2188,6 +2188,10 @@ export default {
     facilityLabelStrong: "Facility:",
     editRolesScopeHint:
       "Only roles for this facility are changed. Access at other facilities stays the same.",
+    editRolesPlatformRoleHint:
+      "Platform super-admin access is not assigned from this checklist. If the account already has it here, it is kept when you save facility roles.",
+    platformRolesManagedSeparately:
+      "Also on this account (not managed from this checklist): {roles}. Contact Medora platform operations to change platform-level access.",
     editRolesInactiveHint:
       "Roles currently inactive at this facility: {roles}. Select them to reactivate.",
     editRolesEffectiveLine: "Effective roles (after save): {roles}",
@@ -2239,6 +2243,7 @@ export default {
     valPasswordMin: "Password must be at least 8 characters.",
     roleLabels: {
       ADMIN: "Administrator",
+      MEDORA_SUPER_ADMIN: "Platform super admin",
       PROVIDER: "Provider",
       RN: "Nurse",
       PHARMACY: "Pharmacy",

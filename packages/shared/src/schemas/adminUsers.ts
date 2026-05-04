@@ -97,10 +97,8 @@ export type UpdateUserDto = UpdateAdminUserDto;
 /** PATCH /admin/users/:id/roles */
 export const updateAdminUserRolesDtoSchema = z.object({
   facilityId: z.string().uuid(),
-  roles: z
-    .array(adminUserRoleCodeSchema)
-    .min(1, "Sélectionnez au moins un rôle")
-    .transform((roles) => uniqueRoleCodes(roles)),
+  /** Facility-assignable roles only; API may merge platform-only roles (e.g. MEDORA_SUPER_ADMIN) server-side. */
+  roles: z.array(adminUserRoleCodeSchema).transform((roles) => uniqueRoleCodes(roles)),
 });
 
 export type UpdateAdminUserRolesDto = z.infer<typeof updateAdminUserRolesDtoSchema>;

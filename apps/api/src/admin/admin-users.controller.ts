@@ -72,7 +72,8 @@ export class AdminUsersController {
     const facilityId = facilityIdFromReq(req);
     const parsed = updateAdminUserRolesDtoSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+      const detail = parsed.error.issues.map((i) => i.message).filter(Boolean).join(" ");
+      throw new BadRequestException(detail || "Requête invalide : rôles non reconnus ou corps de requête invalide.", {
         cause: parsed.error,
       });
     }

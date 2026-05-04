@@ -165,10 +165,29 @@ export class AdminUsersService {
       throw new NotFoundException("Utilisateur introuvable pour cet établissement.");
     }
 
-    const roleRows = await this.prisma.role.findMany({
-      where: { code: { in: dto.roles } },
+    const activeAtFacility = await this.prisma.userRole.findMany({
+      where: { userId, facilityId: facilityIdHeader, isActive: true },
+      include: { role: true },
     });
-    if (roleRows.length !== dto.roles.length) {
+    const hadActiveSuperAdmin = activeAtFacility.some((ur) => ur.role.code === RoleCode.MEDORA_SUPER_ADMIN);
+
+    /**
+     * Facility admin UI only submits assignable clinical/facility roles (see `ADMIN_ASSIGNABLE_ROLE_CODES`).
+     * `MEDORA_SUPER_ADMIN` is platform-managed; preserve an existing active assignment so saves do not strip it.
+     */
+    const mergedRoleCodes: RoleCode[] = [...dto.roles];
+    if (hadActiveSuperAdmin && !mergedRoleCodes.includes(RoleCode.MEDORA_SUPER_ADMIN)) {
+      mergedRoleCodes.push(RoleCode.MEDORA_SUPER_ADMIN);
+    }
+
+    if (mergedRoleCodes.length === 0) {
+      throw new BadRequestException("Sélectionnez au moins un rôle pour cet établissement.");
+    }
+
+    const roleRows = await this.prisma.role.findMany({
+      where: { code: { in: mergedRoleCodes } },
+    });
+    if (roleRows.length !== mergedRoleCodes.length) {
       throw new BadRequestException("Un ou plusieurs rôles sont invalides.");
     }
 

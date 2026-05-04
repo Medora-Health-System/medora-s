@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { APP_ROLE_CODES, getLandingRouteForRoles, getLandingHomeLabel } from "@/lib/landingRoute";
+import { getLandingRouteForRoles, getLandingHomeLabel } from "@/lib/landingRoute";
 import { useFacilityAndRoles, type UserFacilityOption } from "@/hooks/useFacilityAndRoles";
-import type { CreateAdminUserDto, CreateFacilityDto } from "@medora/shared";
+import {
+  ADMIN_ASSIGNABLE_ROLE_CODES,
+  type CreateAdminUserDto,
+  type CreateFacilityDto,
+} from "@medora/shared";
 import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import {
   fetchAdminUsers,
@@ -22,9 +26,18 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 
+const ADMIN_ASSIGNABLE_SET = new Set<string>(ADMIN_ASSIGNABLE_ROLE_CODES);
+
+/** Avoid showing raw i18n keys when a label is missing. */
+function roleLabelForCode(code: string, t: (key: string) => string): string {
+  const key = `adminUsers.roleLabels.${code}`;
+  const label = t(key);
+  return label === key ? code : label;
+}
+
 function formatRoleList(codes: string[], t: (key: string) => string): string {
   if (!codes.length) return t("common.dash");
-  return codes.map((code) => t(`adminUsers.roleLabels.${code}`) || code).join(", ");
+  return codes.map((code) => roleLabelForCode(code, t)).join(", ");
 }
 
 function roleCheckboxes(
@@ -35,7 +48,7 @@ function roleCheckboxes(
 ) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {APP_ROLE_CODES.map((code) => (
+      {ADMIN_ASSIGNABLE_ROLE_CODES.map((code) => (
         <label
           key={code}
           style={{
@@ -52,7 +65,7 @@ function roleCheckboxes(
             disabled={disabled}
             onChange={() => onToggle(code)}
           />
-          <span>{t(`adminUsers.roleLabels.${code}`)}</span>
+          <span>{roleLabelForCode(code, t)}</span>
         </label>
       ))}
     </div>
@@ -1147,7 +1160,10 @@ function EditRolesModal({
   onError: (m: string) => void;
 }) {
   const { t, language } = useI18n();
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(user.roles));
+  const platformOnlyAtFacility = user.roles.filter((r) => !ADMIN_ASSIGNABLE_SET.has(r));
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(user.roles.filter((r) => ADMIN_ASSIGNABLE_SET.has(r)))
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const toggle = (code: string) => {
@@ -1159,13 +1175,14 @@ function EditRolesModal({
     });
   };
 
-  const previewPath = getLandingRouteForRoles(Array.from(selected));
+  const effectiveRoleCodes = [...new Set([...selected, ...platformOnlyAtFacility])].sort();
+  const previewPath = getLandingRouteForRoles(effectiveRoleCodes);
   const previewLabel = getLandingHomeLabel(previewPath, t);
-  const effectiveRoles = formatRoleList(Array.from(selected).sort(), t);
+  const effectiveRoles = formatRoleList(effectiveRoleCodes, t);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selected.size === 0) {
+    if (selected.size === 0 && platformOnlyAtFacility.length === 0) {
       onError(t("adminUsers.valAtLeastOneRole"));
       return;
     }
@@ -1233,6 +1250,15 @@ function EditRolesModal({
           <strong>{t("adminUsers.facilityLabelStrong")}</strong> {facilityDisplayName}
         </p>
         <p style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>{t("adminUsers.editRolesScopeHint")}</p>
+        <p style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>{t("adminUsers.editRolesPlatformRoleHint")}</p>
+        {platformOnlyAtFacility.length > 0 ? (
+          <p style={{ fontSize: 12, color: "#334155", background: "#f1f5f9", padding: 8, borderRadius: 4, marginBottom: 8 }}>
+            {t("adminUsers.platformRolesManagedSeparately").replace(
+              "{roles}",
+              formatRoleList(platformOnlyAtFacility, t)
+            )}
+          </p>
+        ) : null}
         {inactiveHint ? (
           <p style={{ fontSize: 12, color: "#856404", background: "#fff8e1", padding: 8, borderRadius: 4 }}>{inactiveHint}</p>
         ) : null}
