@@ -578,18 +578,21 @@ export class MedicationAdministrationService {
       let infusionRoute: string | undefined;
       let catalogTherapeuticClass: string | null = null;
       let catalogCodeForBilling: string | null = null;
+      let catalogMedicationBillingClass: string | null = null;
       if (linkedMedicationLine) {
         const ctx = await loadMedicationInfusionClassificationContext(this.prisma, linkedMedicationLine);
         infusionRoute = ctx.resolvedRoute ?? undefined;
         catalogTherapeuticClass = ctx.catalog?.therapeuticClass?.trim() ?? null;
         catalogCodeForBilling = ctx.catalog?.code ?? null;
+        catalogMedicationBillingClass = ctx.catalog?.billingClass?.trim() ?? null;
       }
       const infusionBillingSuggestion = ev
         ? suggestInfusionBilling({
             infusionDurationMinutes: ev.infusionDurationMinutes,
             medicationLabel: medLabel,
             route: infusionRoute ?? created.route ?? undefined,
-            catalogBillingClass: catalogTherapeuticClass,
+            catalogMedicationBillingClass,
+            catalogTherapeuticClass,
             catalogCode: catalogCodeForBilling,
           })
         : undefined;

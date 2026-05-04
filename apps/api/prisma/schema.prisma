@@ -1227,6 +1227,10 @@ model CatalogMedication {
   strength           String?
   dosageForm         String?
   route              String?
+  /// Structured administration hint: INFUSION | PUSH | ORAL | IM | SQ | OTHER | UNKNOWN (optional; null = legacy / unspecified).
+  administrationType String?  @db.VarChar(32)
+  /// Structured billing-review class: HYDRATION | THERAPEUTIC | DRUG_SUPPLY | UNKNOWN (optional; suggestions only).
+  billingClass       String?  @db.VarChar(32)
   therapeuticClass   String?
   sortPriority       Int      @default(0)
   isEssential        Boolean  @default(false)

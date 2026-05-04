@@ -1053,6 +1053,10 @@ export function EmergencyErOrdersPanel({
                                   code: typeof catRow?.code === "string" ? catRow.code : null,
                                   genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
                                   metadata: null,
+                                  catalogAdministrationType:
+                                    typeof catRow?.administrationType === "string"
+                                      ? catRow.administrationType
+                                      : null,
                                 });
                               const infusionTl = isInfusionLifecycleMed
                                 ? findMedicationInfusionTimelineFromOrderEvents(parsedEvents, o.id, itemId)

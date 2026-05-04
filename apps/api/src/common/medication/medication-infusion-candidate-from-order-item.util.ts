@@ -11,6 +11,8 @@ export type MedicationInfusionCatalogSlice = {
   strength: string | null;
   /** Optional catalog therapeutic class (billing suggestion hint only). */
   therapeuticClass: string | null;
+  administrationType: string | null;
+  billingClass: string | null;
 };
 
 type OrderItemInfusionPick = Pick<
@@ -45,6 +47,8 @@ export async function loadMedicationInfusionClassificationContext(
       route: true,
       strength: true,
       therapeuticClass: true,
+      administrationType: true,
+      billingClass: true,
     },
   });
   if (!catalog) {
@@ -79,6 +83,7 @@ export function buildMedicationInfusionCandidateInputFromOrderItem(
     code: catalog?.code ?? null,
     genericName: catalog?.genericName ?? null,
     metadata: null,
+    catalogAdministrationType: catalog?.administrationType?.trim() ?? null,
   };
 }
 

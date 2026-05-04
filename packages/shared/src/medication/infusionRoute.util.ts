@@ -3,6 +3,8 @@
  * IVP and explicit push/bolus routes must remain non-infusion so one-step MAR push flow is unchanged.
  */
 
+import { parseMedicationAdministrationType } from "./medicationCatalogClassification.js";
+
 export type MedicationInfusionCandidateInput = {
   route?: string | null;
   /** Free text: manual label, catalog names, etc. */
@@ -11,6 +13,8 @@ export type MedicationInfusionCandidateInput = {
   genericName?: string | null;
   /** Optional future payload (e.g. order extension JSON) — not persisted on OrderItem today. */
   metadata?: unknown;
+  /** Optional `CatalogMedication.administrationType` (validated in classifier). */
+  catalogAdministrationType?: string | null;
 };
 
 function normalizeClinicalText(s: string): string {
@@ -33,6 +37,13 @@ function parseAdministrationTypeUpper(metadata: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim().toUpperCase();
   return t.length ? t : null;
+}
+
+/** Route text explicitly documents infusion / IVPB (for PUSH catalog override). */
+function routeExplicitlyInfusionWording(route: string): boolean {
+  const raw = route?.trim();
+  if (!raw) return false;
+  return isIvpbInfusionRoute(raw);
 }
 
 function isRouteExcludedPoImSqSc(route: string): boolean {
@@ -215,21 +226,32 @@ function buildClassificationHaystack(input: MedicationInfusionCandidateInput): s
 
 /**
  * True when bedside medication should use infusion start/stop (vs one-step nurse complete / MAR push).
- * Uses route + catalog/manual text + optional metadata.administrationType — no DB migration.
+ * Priority: metadata.administrationType INFUSION → catalog administrationType → legacy route/label heuristics.
  */
 export function isMedicationInfusionCandidate(input: MedicationInfusionCandidateInput): boolean {
   const routeRaw = typeof input.route === "string" ? input.route.trim() : "";
+  const catalogAdmin = parseMedicationAdministrationType(input.catalogAdministrationType ?? undefined);
+  const metaAdminRaw = parseAdministrationTypeUpper(input.metadata);
+  const metaAdmin = parseMedicationAdministrationType(metaAdminRaw);
 
   if (routeRaw && isRouteExcludedPoImSqSc(routeRaw)) return false;
+
+  if (metaAdmin === "INFUSION") return true;
+
+  if (catalogAdmin === "ORAL" || catalogAdmin === "IM" || catalogAdmin === "SQ") return false;
+
+  if (catalogAdmin === "PUSH") {
+    if (routeRaw && routeExplicitlyInfusionWording(routeRaw)) return true;
+    return false;
+  }
+
+  if (catalogAdmin === "INFUSION") return true;
 
   const hay = buildClassificationHaystack(input);
   const padded = padHaystack(hay);
   const hasPadded = Boolean(padded.trim());
 
   if (hasPadded && matchesIvPushMedicationHeuristics(padded)) return false;
-
-  const adminType = parseAdministrationTypeUpper(input.metadata);
-  if (adminType === "INFUSION") return true;
 
   if (routeRaw && isIvpbInfusionRoute(routeRaw)) return true;
 

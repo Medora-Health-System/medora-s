@@ -3,14 +3,18 @@
  * No payer-specific CPT/HCPCS assignment; billers must verify all lines.
  */
 
+import { parseMedicationCatalogBillingClass } from "./medication/medicationCatalogClassification.js";
+
 export type InfusionBillingClassSuggestion = "HYDRATION" | "THERAPEUTIC" | "UNKNOWN";
 
 export type InfusionBillingSuggestionInput = {
   infusionDurationMinutes: number;
   medicationLabel?: string;
   route?: string;
-  /** Optional catalog hint (e.g. `CatalogMedication.therapeuticClass` or future billing class). */
-  catalogBillingClass?: string | null;
+  /** Optional `CatalogMedication.billingClass` (HYDRATION | THERAPEUTIC | DRUG_SUPPLY | UNKNOWN). */
+  catalogMedicationBillingClass?: string | null;
+  /** Optional `CatalogMedication.therapeuticClass` — heuristic haystack only. */
+  catalogTherapeuticClass?: string | null;
   catalogCode?: string | null;
 };
 
@@ -110,13 +114,23 @@ const HYDRATION_SUBSTRINGS: readonly string[] = [
 function normalizeCompositeLabel(input: InfusionBillingSuggestionInput): string {
   const parts = [
     input.medicationLabel,
-    input.catalogBillingClass,
+    input.catalogTherapeuticClass,
     input.catalogCode,
     input.route,
   ]
     .map((x) => (typeof x === "string" ? x.trim() : ""))
     .filter(Boolean);
   return parts.join(" ").toLowerCase();
+}
+
+function billingClassFromCatalogField(
+  raw: string | null | undefined
+): InfusionBillingClassSuggestion | "USE_HEURISTIC" | "DRUG_SUPPLY" {
+  const parsed = parseMedicationCatalogBillingClass(raw);
+  if (!parsed) return "USE_HEURISTIC";
+  if (parsed === "HYDRATION" || parsed === "THERAPEUTIC" || parsed === "UNKNOWN") return parsed;
+  if (parsed === "DRUG_SUPPLY") return "DRUG_SUPPLY";
+  return "USE_HEURISTIC";
 }
 
 function containsTherapeuticDrug(haystack: string): boolean {
@@ -181,13 +195,27 @@ export function suggestInfusionBilling(input: InfusionBillingSuggestionInput): I
     };
   }
 
-  let billingClass = classifyBillingClass(input);
+  const catalogResolved = billingClassFromCatalogField(input.catalogMedicationBillingClass);
+  let billingClass: InfusionBillingClassSuggestion;
+  if (catalogResolved === "HYDRATION" || catalogResolved === "THERAPEUTIC") {
+    billingClass = catalogResolved;
+  } else if (catalogResolved === "UNKNOWN") {
+    billingClass = "UNKNOWN";
+  } else if (catalogResolved === "DRUG_SUPPLY") {
+    billingClass = "UNKNOWN";
+    warnings.push(
+      "Classe catalogue « approvisionnement médicament » ; la distinction perfusion d’hydratation / thérapeutique relève de la revue manuelle."
+    );
+  } else {
+    billingClass = classifyBillingClass(input);
+  }
+
   const hay = normalizeCompositeLabel(input);
   if (billingClass === "UNKNOWN" && !hay.trim()) {
     warnings.push(
       "Libellé du médicament ou contexte catalogue manquant ; impossible de distinguer hydratation et perfusion thérapeutique."
     );
-  } else if (billingClass === "UNKNOWN") {
+  } else if (billingClass === "UNKNOWN" && catalogResolved === "USE_HEURISTIC") {
     warnings.push(
       "Classification hydratation / thérapeutique incertaine à partir du libellé ou du catalogue ; revue manuelle."
     );

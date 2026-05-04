@@ -151,6 +151,8 @@ const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
   displayNameFr: true,
   genericName: true,
   therapeuticClass: true,
+  administrationType: true,
+  billingClass: true,
   strength: true,
   dosageForm: true,
   route: true,

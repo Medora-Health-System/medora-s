@@ -509,6 +509,8 @@ export function MedicationAdministrationTab({
           code: typeof catRow?.code === "string" ? catRow.code : null,
           genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
           metadata: null,
+          catalogAdministrationType:
+            typeof catRow?.administrationType === "string" ? catRow.administrationType : null,
         };
         const isInfusionLifecycleMed =
           String(it.catalogItemType ?? "") === "MEDICATION" &&
