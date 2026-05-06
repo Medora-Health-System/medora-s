@@ -398,7 +398,8 @@ export class MedicationAdministrationService {
     if (
       marActionResolved === "administered" &&
       allergySummaryForGate &&
-      data.safetyAcknowledgedMedicationAllergies !== true
+      data.safetyAcknowledgedMedicationAllergies !== true &&
+      !serviceOptions?.allowAdministeredForInfusionTerminal
     ) {
       throw new BadRequestException(
         "Des allergies ou intolérances sont documentées pour cette visite. Confirmez avant d’enregistrer l’administration."
