@@ -56,6 +56,8 @@ async function main() {
   );
   const adminRole = roles.find((r) => r.code === RoleCode.ADMIN);
   if (!adminRole) throw new Error("ADMIN role missing after seed");
+  const medoraSuperAdminRole = roles.find((r) => r.code === RoleCode.MEDORA_SUPER_ADMIN);
+  if (!medoraSuperAdminRole) throw new Error("MEDORA_SUPER_ADMIN role missing after seed");
 
   // Facilities
   const facilityDR = await prisma.facility.upsert({
@@ -147,6 +149,23 @@ async function main() {
         },
         update: { isActive: true },
         create: { userId: adminUser.id, roleId: adminRole.id, facilityId }
+      })
+    )
+  );
+
+  // Platform principal keeps explicit MEDORA_SUPER_ADMIN role per facility.
+  await Promise.all(
+    [facilityDR.id, facilityHT.id].map((facilityId) =>
+      prisma.userRole.upsert({
+        where: {
+          userId_roleId_facilityId: {
+            userId: platformPrincipalUser.id,
+            roleId: medoraSuperAdminRole.id,
+            facilityId,
+          },
+        },
+        update: { isActive: true },
+        create: { userId: platformPrincipalUser.id, roleId: medoraSuperAdminRole.id, facilityId },
       })
     )
   );

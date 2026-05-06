@@ -120,6 +120,25 @@ export class AuthService {
       departmentId: ur.departmentId ?? null,
     }));
 
+    /**
+     * Safe bootstrap: guarantee platform principal visibility even if the DB role row
+     * was not assigned yet. This stays strictly scoped to the known principal email.
+     */
+    if (
+      isPlatformPrincipalAdminEmail(user.email) &&
+      facilityRoles.length > 0 &&
+      !facilityRoles.some((fr) => fr.role === "MEDORA_SUPER_ADMIN")
+    ) {
+      const base = facilityRoles[0]!;
+      facilityRoles.push({
+        facilityId: base.facilityId,
+        facilityName: base.facilityName,
+        defaultLanguage: base.defaultLanguage,
+        role: "MEDORA_SUPER_ADMIN",
+        departmentId: null,
+      });
+    }
+
     return {
       id: user.id,
       username: user.email,
