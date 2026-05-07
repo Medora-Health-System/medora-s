@@ -3,12 +3,7 @@
 import React from "react";
 import type { SupportedLanguage } from "@/i18n/config";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import {
-  formatHeightDualLine,
-  formatTemperatureDualLine,
-  formatWeightDualLine,
-  snapshotKey,
-} from "@/lib/patientVitals";
+import { formatTemperatureDualLine, snapshotKey } from "@/lib/patientVitals";
 import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useI18n } from "@/lib/i18n";
 
@@ -20,8 +15,11 @@ export type VitalSummaryReading = {
   rr: string;
   temp: string;
   spo2: string;
-  weight: string;
-  height: string;
+  /**
+   * Initials of the user who recorded vitals (e.g. "MJ"). "—" when no metadata is available
+   * on the existing triage vitals readings payload.
+   */
+  byInitials: string;
 };
 
 function dash(v: string): string {
@@ -34,7 +32,38 @@ function num(x: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Maps triage vitals snapshots to table rows (caller supplies newest-first order). */
+/**
+ * Initials helper: prefers structured first/last; if a single display name is provided, takes
+ * the first two letters (uppercase). Returns "—" when no name is available.
+ */
+export function vitalSummaryInitials(opts: {
+  firstName?: string | null;
+  lastName?: string | null;
+  displayName?: string | null;
+}): string {
+  const first = (opts.firstName ?? "").trim();
+  const last = (opts.lastName ?? "").trim();
+  if (first || last) {
+    const a = first ? first[0]!.toUpperCase() : "";
+    const b = last ? last[0]!.toUpperCase() : "";
+    const i = `${a}${b}`;
+    return i || "—";
+  }
+  const display = (opts.displayName ?? "").trim();
+  if (!display) return "—";
+  const parts = display.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0]!.toUpperCase()}${parts[parts.length - 1]![0]!.toUpperCase()}`;
+  }
+  const only = parts[0]!;
+  return only.length >= 2 ? only.slice(0, 2).toUpperCase() : only[0]!.toUpperCase();
+}
+
+/**
+ * Maps triage vitals snapshots to table rows (caller supplies newest-first order).
+ * BY initials default to "—" — the existing `/patients/:id/triage` payload (and `TriageVitalsReading`)
+ * does not carry recorder identity. If/when the snapshot type adds it, read it here without a backend change.
+ */
 export function snapshotsToVitalSummaryReadings(
   snapshotsNewestFirst: PatientTriageVitalsSnapshot[],
   language: SupportedLanguage
@@ -42,8 +71,6 @@ export function snapshotsToVitalSummaryReadings(
   return snapshotsNewestFirst.map((snap) => {
     const v = (snap.vitalsJson || {}) as Record<string, unknown>;
     const tempN = num(v.tempC);
-    const weightN = num(v.weightKg);
-    const heightN = num(v.heightCm);
     const measured = snap.triageCompleteAt ?? snap.updatedAt;
     const sys = v.bpSys;
     const dia = v.bpDia;
@@ -54,6 +81,18 @@ export function snapshotsToVitalSummaryReadings(
     const hr = v.hr != null && v.hr !== "" ? `${String(v.hr).trim()}` : "";
     const rr = v.rr != null && v.rr !== "" ? `${String(v.rr).trim()}` : "";
     const spo2 = v.spo2 != null && v.spo2 !== "" ? `${String(v.spo2).trim()}` : "";
+    /** Best-effort: if a future snapshot field carries recorder identity, surface it without backend changes. */
+    const optional = snap as unknown as {
+      recordedByDisplayName?: string | null;
+      recordedByFirstName?: string | null;
+      recordedByLastName?: string | null;
+      enteredByDisplayName?: string | null;
+    };
+    const byInitials = vitalSummaryInitials({
+      firstName: optional.recordedByFirstName,
+      lastName: optional.recordedByLastName,
+      displayName: optional.recordedByDisplayName ?? optional.enteredByDisplayName ?? null,
+    });
     return {
       id: snapshotKey(snap),
       measuredAtIso: measured,
@@ -62,8 +101,7 @@ export function snapshotsToVitalSummaryReadings(
       rr: dash(rr),
       temp: tempN != null ? formatTemperatureDualLine(tempN, language) : "—",
       spo2: dash(spo2),
-      weight: weightN != null ? formatWeightDualLine(weightN, language) : "—",
-      height: heightN != null ? formatHeightDualLine(heightN, language) : "—",
+      byInitials,
     };
   });
 }
@@ -165,7 +203,7 @@ export function VitalSummaryPanel({
         <p style={{ margin: 0, padding: "14px 12px", fontSize: 13, color: "#64748b" }}>{vs("noHistory")}</p>
       ) : (
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 460 }}>
             <thead>
               <tr>
                 <th style={th}>{vs("colTime")}</th>
@@ -175,8 +213,7 @@ export function VitalSummaryPanel({
                 <th style={th}>{vs("labels.rr")}</th>
                 <th style={th}>{vs("labels.temp")}</th>
                 <th style={th}>{vs("labels.spo2")}</th>
-                <th style={th}>{vs("labels.weight")}</th>
-                <th style={th}>{vs("labels.height")}</th>
+                <th style={th}>{vs("labels.by")}</th>
               </tr>
             </thead>
             <tbody>
@@ -211,12 +248,7 @@ export function VitalSummaryPanel({
                       {r.temp}
                     </td>
                     <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.spo2}</td>
-                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 120 }}>
-                      {r.weight}
-                    </td>
-                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 120 }}>
-                      {r.height}
-                    </td>
+                    <td style={{ ...td, fontWeight: 600, color: "#334155" }}>{r.byInitials}</td>
                   </tr>
                 );
               })}
@@ -224,6 +256,10 @@ export function VitalSummaryPanel({
           </table>
         </div>
       )}
+
+      {readings.length > 0 ? (
+        <p style={{ margin: 0, padding: "8px 12px 0", fontSize: 11, color: "#64748b" }}>{vs("byFootnote")}</p>
+      ) : null}
 
       {onViewFullHistory ? (
         <div style={{ padding: "10px 12px 12px", borderTop: readings.length ? "1px solid #f1f5f9" : undefined }}>

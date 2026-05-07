@@ -4385,6 +4385,7 @@ export default {
     viewFullHistory: "Voir l’historique complet des signes vitaux",
     close: "Fermer",
     colTime: "Heure",
+    byFootnote: "PAR = Initiales de l’utilisateur ayant saisi les signes vitaux",
     labels: {
       bp: "TA",
       hr: "FC",
@@ -4393,6 +4394,7 @@ export default {
       spo2: "SpO₂",
       weight: "Poids",
       height: "Taille",
+      by: "PAR",
     },
   },
   erQuickVitals: {

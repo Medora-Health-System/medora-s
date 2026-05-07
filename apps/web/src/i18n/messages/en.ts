@@ -4416,6 +4416,7 @@ export default {
     viewFullHistory: "View full vitals history",
     close: "Close",
     colTime: "Time",
+    byFootnote: "BY = Initials of user who entered the vitals",
     labels: {
       bp: "BP",
       hr: "HR",
@@ -4424,6 +4425,7 @@ export default {
       spo2: "SpO₂",
       weight: "Weight",
       height: "Height",
+      by: "BY",
     },
   },
   erQuickVitals: {
