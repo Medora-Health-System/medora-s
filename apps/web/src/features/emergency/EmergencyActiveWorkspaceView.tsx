@@ -891,18 +891,24 @@ export function EmergencyActiveWorkspaceView() {
                     {/**
                      * Desktop forces a stable 2-col layout (summary LEFT, quick-entry RIGHT) so the panel
                      * does not prematurely wrap inside the ED header column. Below the workspace tablet
-                     * breakpoint the row collapses to a single stacked column. Inline media query is injected
-                     * with a unique class (same pattern as MedoraCardActionsMediaStyle).
+                     * breakpoint the row collapses to a single stacked column. Summary gets the wider
+                     * track because its table has more columns (TIME → BY) and was clipping at the
+                     * earlier 0.95fr ratio. Inline media query is injected with a unique class.
                      */}
                     <style
                       dangerouslySetInnerHTML={{
                         __html: `
                           .medora-er-vitals-twocol {
                             display: grid;
-                            grid-template-columns: minmax(420px, 0.95fr) minmax(520px, 1.05fr);
+                            grid-template-columns: minmax(520px, 1.05fr) minmax(500px, 0.95fr);
                             gap: 16px;
                             align-items: start;
                             width: 100%;
+                            max-width: none;
+                            min-width: 0;
+                          }
+                          .medora-er-vitals-twocol > * {
+                            min-width: 0;
                           }
                           @media (max-width: 1023.98px) {
                             .medora-er-vitals-twocol {
@@ -913,7 +919,7 @@ export function EmergencyActiveWorkspaceView() {
                       }}
                     />
                     <div className="medora-er-vitals-twocol">
-                      <div style={{ minWidth: 0, overflowX: "auto" }}>
+                      <div style={{ minWidth: 0, maxWidth: "100%", overflowX: "auto" }}>
                         <VitalSummaryPanel
                           readings={encounterVitalSummaryReadings}
                           latestReadingId={encounterVitalSummaryReadings[0]?.id}
@@ -927,7 +933,7 @@ export function EmergencyActiveWorkspaceView() {
                           }
                         />
                       </div>
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, width: "100%", justifySelf: "stretch" }}>
                         <EmergencyQuickVitalsEditor
                           open={showQuickVitals}
                           onClose={() => setShowQuickVitals(false)}
