@@ -15,7 +15,9 @@ import {
   MedoraCardTitle,
 } from "@/components/medora-card";
 import {
+  applyStructuredNarrativeFragment,
   buildErNursingReassessmentPreviewModel,
+  buildStructuredNarrativeFragmentLines,
   ER_NURSING_AIRWAY_SELECT_OPTIONS,
   ER_NURSING_BREATHING_SELECT_OPTIONS,
   ER_NURSING_CIRCULATION_SELECT_OPTIONS,
@@ -28,6 +30,7 @@ import {
   type ErNursingReassessmentForm,
   type ErTrend,
 } from "./emergencyNursingReassessmentV1";
+import { EmergencyNursingDocumentationGrid } from "./EmergencyNursingDocumentationGrid";
 import {
   buildErTraumaSurveyV1PreviewModel,
   erTraumaSurveyV1FormFromEncounter,
@@ -52,6 +55,104 @@ type EncounterLite = {
   updatedAt?: string | null;
   patient?: { id?: string | null } | null;
 };
+
+/**
+ * Frontend-only local draft preservation (sessionStorage). NEVER autosaves to backend.
+ *
+ * Scope:
+ *   - Keyed per encounterId so draft from another patient never leaks here.
+ *   - Tab-scoped (sessionStorage clears when the tab closes; survives accidental refresh).
+ *   - Restored only when the locally-captured `lastTouched` is strictly newer than the server
+ *     `encounter.updatedAt`, so a save from another tab/user wins over a stale draft.
+ *   - Cleared explicitly on successful save AND when the user presses "Discard draft".
+ */
+const NURSING_DRAFT_STORAGE_KEY_PREFIX = "medora.erNursingReassessmentDraft.v1";
+
+type NursingReassessmentLocalDraft = {
+  form: ErNursingReassessmentForm;
+  traumaForm: ErTraumaSurveyV1;
+  triageNursingSlice: ErTriageV1NursingCarePersistSlice;
+  lastTouched: string;
+  /**
+   * User who created the draft. On shared workstations / kiosks, the next user must NEVER see the
+   * previous user's draft — we discard silently when this id mismatches the currently-authenticated
+   * user. Drafts created before this field was introduced (no `savedByUserId`) are also discarded
+   * so legacy local state cannot bypass the safety check.
+   */
+  savedByUserId: string;
+};
+
+function nursingDraftKey(encounterId: string): string {
+  return `${NURSING_DRAFT_STORAGE_KEY_PREFIX}.${encounterId}`;
+}
+
+function readNursingDraft(encounterId: string): NursingReassessmentLocalDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(nursingDraftKey(encounterId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<NursingReassessmentLocalDraft>;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      typeof parsed.lastTouched !== "string" ||
+      typeof parsed.savedByUserId !== "string" ||
+      !parsed.savedByUserId.trim() ||
+      !parsed.form ||
+      !parsed.traumaForm ||
+      !parsed.triageNursingSlice
+    ) {
+      return null;
+    }
+    return parsed as NursingReassessmentLocalDraft;
+  } catch {
+    return null;
+  }
+}
+
+function writeNursingDraft(encounterId: string, draft: NursingReassessmentLocalDraft): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(nursingDraftKey(encounterId), JSON.stringify(draft));
+  } catch {
+    /* sessionStorage may be disabled / quota exceeded — silently ignore */
+  }
+}
+
+function clearNursingDraft(encounterId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(nursingDraftKey(encounterId));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Structured field keys that participate in the auto-narrative fragment block. ANY change to one of
+ * these triggers a regeneration of the fenced "── Documentation structurée (auto) ──" block at the
+ * end of `form.narrative`. Free-text outside the markers is preserved verbatim.
+ */
+const STRUCTURED_FIELDS_FOR_NARRATIVE: ReadonlySet<keyof ErNursingReassessmentForm> = new Set<
+  keyof ErNursingReassessmentForm
+>([
+  "mentalStatus",
+  "orientation",
+  "speech",
+  "generalAppearanceCode",
+  "distressLevel",
+  "pain0to10",
+  "airway",
+  "breathing",
+  "respiratoryPattern",
+  "circulation",
+  "cardiacRhythm",
+  "skinCondition",
+  "ambulation",
+  "fallRisk",
+  "safetyRisk",
+  "trend",
+]);
 
 const inputBase: React.CSSProperties = {
   width: "100%",
@@ -461,6 +562,35 @@ export function EmergencyNursingReassessmentPanel({
   const [loadingTriage, setLoadingTriage] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
+  /** UI-visible flag: a sessionStorage draft was just restored on top of the server state. */
+  const [draftRestored, setDraftRestored] = useState(false);
+  /**
+   * Local-edit dirty marker. Set to true whenever the user (or quick-chip / structured grid) edits
+   * any field. Cleared on (a) fresh server hydration without an active draft, and (b) successful
+   * save. The session-storage persistence effect only writes when this is `true`, which prevents
+   * "echo" writes from server-side resets after save from re-creating the draft.
+   */
+  const isDirtyRef = useRef(false);
+  /** When true, the next form change is a result of a draft restore, which does not need a re-write. */
+  const skipNextDraftWriteRef = useRef(false);
+  /**
+   * Pending triage-slice draft to apply once the triage fetch completes (the bedside slice is sourced
+   * from triage GET, so we cannot restore it during the encounter-sync effect synchronously).
+   */
+  const pendingDraftSliceRef = useRef<ErTriageV1NursingCarePersistSlice | null>(null);
+  /**
+   * Currently-authenticated user id (from /api/auth/me). Drafts are scoped to this id so a shared
+   * workstation can never restore another nurse's local draft. We do not restore *any* draft until
+   * we have this id; until then we render the server state.
+   */
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  /** Most recent timestamp (epoch ms) at which the structured grid auto-rebuilt the narrative block. */
+  const [structuredAckTick, setStructuredAckTick] = useState<number>(0);
+  /**
+   * UI-visible "structured documentation updated" indicator. Set true on every structured grid
+   * change and auto-cleared after a short window so it doesn't permanently consume bedside space.
+   */
+  const [structuredAckVisible, setStructuredAckVisible] = useState(false);
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
@@ -490,15 +620,114 @@ export function EmergencyNursingReassessmentPanel({
       return;
     }
     const slice = erTriageNursingCareSliceFromVitalsJson(triage.vitalsJson);
-    setTriageNursingSlice(slice);
+    /** Baseline must always reflect the server state so the dirty-check on save is correct. */
     triageNursingBaselineRef.current = JSON.stringify(slice);
+    /** If we restored a draft, prefer the drafted slice over the freshly-fetched server slice. */
+    if (pendingDraftSliceRef.current) {
+      setTriageNursingSlice(pendingDraftSliceRef.current);
+      pendingDraftSliceRef.current = null;
+    } else {
+      setTriageNursingSlice(slice);
+    }
   }, [triage?.id, triage?.updatedAt]);
 
+  /**
+   * Capture the authenticated user id once on mount. This is required to scope sessionStorage
+   * drafts per-user (shared-workstation safety). Until this resolves, the encounter-sync effect
+   * will skip draft restoration and render server state.
+   */
   useEffect(() => {
-    setForm(erNursingReassessmentFormFromEncounter(encounter.nursingAssessment));
-    setTraumaForm(erTraumaSurveyV1FormFromEncounter(encounter.nursingAssessment));
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        const me = await parseApiResponse(res);
+        if (cancelled) return;
+        if (me && typeof me === "object" && !Array.isArray(me)) {
+          const id = (me as { userId?: unknown; id?: unknown }).userId ?? (me as { id?: unknown }).id;
+          if (typeof id === "string" && id.trim()) {
+            setCurrentUserId(id);
+          }
+        }
+      } catch {
+        /* If we cannot identify the user, we simply never restore the draft. Safe default. */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    /**
+     * Encounter-sync. On every encounter prop refresh we either (a) restore a strictly-newer local
+     * draft created by the SAME authenticated user, or (b) reset form state from the server. Drafts
+     * older than `encounter.updatedAt` are stale and discarded; drafts saved by a different user
+     * are silently discarded (shared workstation / kiosk safety).
+     */
+    const draft = readNursingDraft(encounterId);
+    const serverUpdatedAt = encounter.updatedAt ?? null;
+    const draftIsNewer =
+      !!draft && (!serverUpdatedAt || draft.lastTouched > serverUpdatedAt);
+    /**
+     * Don't peek at drafts before we know who's logged in — if /api/auth/me hasn't resolved yet,
+     * fall through to server state and let a later run (with currentUserId set) restore.
+     */
+    const userMatches = !!draft && !!currentUserId && draft.savedByUserId === currentUserId;
+    const userMismatch = !!draft && !!currentUserId && draft.savedByUserId !== currentUserId;
+    if (draft && (!draftIsNewer || userMismatch)) {
+      /** Stale OR another-user draft: silently drop. No banner, no PHI mention. */
+      clearNursingDraft(encounterId);
+    }
+    if (draftIsNewer && draft && userMatches) {
+      skipNextDraftWriteRef.current = true;
+      setForm(draft.form);
+      setTraumaForm(draft.traumaForm);
+      pendingDraftSliceRef.current = draft.triageNursingSlice;
+      setDraftRestored(true);
+      isDirtyRef.current = true;
+    } else {
+      setForm(erNursingReassessmentFormFromEncounter(encounter.nursingAssessment));
+      setTraumaForm(erTraumaSurveyV1FormFromEncounter(encounter.nursingAssessment));
+      pendingDraftSliceRef.current = null;
+      setDraftRestored(false);
+      isDirtyRef.current = false;
+    }
     void loadTriage();
-  }, [encounter.nursingAssessment, encounter.updatedAt, loadTriage]);
+  }, [encounter.nursingAssessment, encounter.updatedAt, encounterId, currentUserId, loadTriage]);
+
+  /** Persist current local edits to sessionStorage whenever the user touches anything. */
+  useEffect(() => {
+    if (!isDirtyRef.current) return;
+    if (skipNextDraftWriteRef.current) {
+      skipNextDraftWriteRef.current = false;
+      return;
+    }
+    /**
+     * Refuse to write a draft if we don't know the current user. Without a user id we cannot
+     * later prove the draft belongs to whoever opens the chart next — better to drop it.
+     */
+    if (!currentUserId) return;
+    writeNursingDraft(encounterId, {
+      form,
+      traumaForm,
+      triageNursingSlice,
+      lastTouched: new Date().toISOString(),
+      savedByUserId: currentUserId,
+    });
+  }, [encounterId, currentUserId, form, traumaForm, triageNursingSlice]);
+
+  /**
+   * Auto-hide the "structured documentation updated" indicator a few seconds after the last
+   * structured grid change so it doesn't permanently consume bedside space, but stays visible
+   * long enough for the nurse to register that the narrative was refreshed.
+   */
+  useEffect(() => {
+    if (structuredAckTick === 0) return;
+    setStructuredAckVisible(true);
+    const handle = window.setTimeout(() => setStructuredAckVisible(false), 3500);
+    return () => window.clearTimeout(handle);
+  }, [structuredAckTick]);
 
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
@@ -580,23 +809,84 @@ export function EmergencyNursingReassessmentPanel({
     };
   }, [form, traumaForm, t, language]);
 
-  const patchForm = useCallback((patch: Partial<ErNursingReassessmentForm>) => {
-    setForm((f) => ({ ...f, ...patch }));
-  }, []);
+  const patchForm = useCallback(
+    (patch: Partial<ErNursingReassessmentForm>) => {
+      isDirtyRef.current = true;
+      let touchedStructured = false;
+      setForm((f) => {
+        const merged: ErNursingReassessmentForm = { ...f, ...patch };
+        /**
+         * If any structured-grid field changed, refresh the fenced auto-fragment block at the
+         * end of the narrative WITHOUT touching free-text outside the markers. This is the
+         * "selections update narrative — but never overwrite manual edits" guarantee.
+         */
+        touchedStructured = Object.keys(patch).some((k) =>
+          STRUCTURED_FIELDS_FOR_NARRATIVE.has(k as keyof ErNursingReassessmentForm)
+        );
+        if (touchedStructured) {
+          const lines = buildStructuredNarrativeFragmentLines(merged, language);
+          merged.narrative = applyStructuredNarrativeFragment(merged.narrative, lines);
+        }
+        return merged;
+      });
+      if (touchedStructured) {
+        /** Trigger the visible "✓ Documentation structurée mise à jour" hint. */
+        setStructuredAckTick(Date.now());
+      }
+    },
+    [language]
+  );
 
-  const appendNursingQuickChip = useCallback((field: NursingReassessmentTextChipField, msgKey: string) => {
-    const fragment = t(msgKey).trim();
-    if (!fragment) return;
-    setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
-  }, [t]);
+  const appendNursingQuickChip = useCallback(
+    (field: NursingReassessmentTextChipField, msgKey: string) => {
+      const fragment = t(msgKey).trim();
+      if (!fragment) return;
+      isDirtyRef.current = true;
+      setForm((f) => ({ ...f, [field]: appendIfNotPresent(f[field], fragment) }));
+    },
+    [t]
+  );
 
   const patchTraumaForm = useCallback((patch: Partial<ErTraumaSurveyV1>) => {
+    isDirtyRef.current = true;
     setTraumaForm((f) => ({ ...f, ...patch }));
   }, []);
 
-  const patchTriageNursingSlice = useCallback((patch: Partial<ErTriageV1NursingCarePersistSlice>) => {
-    setTriageNursingSlice((prev) => ({ ...prev, ...patch }));
-  }, []);
+  const patchTriageNursingSlice = useCallback(
+    (patch: Partial<ErTriageV1NursingCarePersistSlice>) => {
+      isDirtyRef.current = true;
+      setTriageNursingSlice((prev) => ({ ...prev, ...patch }));
+    },
+    []
+  );
+
+  /**
+   * Discard the local draft and re-hydrate from the server-side encounter snapshot. This is the
+   * explicit "I don't want my unsaved changes" action the nurse can take from the restored-draft
+   * banner. It does NOT delete any persisted clinical record.
+   *
+   * UX safety: when there ARE local unsaved edits (`isDirtyRef.current === true`), prompt for
+   * confirmation so a stray bedside tap can't lose charting. When the form is clean (no edits to
+   * lose), clear silently without an interruptive prompt.
+   */
+  const handleDiscardLocalDraft = useCallback(() => {
+    if (isDirtyRef.current && typeof window !== "undefined") {
+      const ok = window.confirm(
+        t("emergencyNursingReassessment.documentationGrid.draftDiscardConfirm")
+      );
+      if (!ok) return;
+    }
+    clearNursingDraft(encounterId);
+    isDirtyRef.current = false;
+    skipNextDraftWriteRef.current = true;
+    setForm(erNursingReassessmentFormFromEncounter(encounter.nursingAssessment));
+    setTraumaForm(erTraumaSurveyV1FormFromEncounter(encounter.nursingAssessment));
+    pendingDraftSliceRef.current = null;
+    /** Re-fetch triage so the bedside slice resets from the server too. */
+    void loadTriage();
+    setDraftRestored(false);
+    setSaveInfo(t("emergencyNursingReassessment.documentationGrid.draftDiscarded"));
+  }, [encounter.nursingAssessment, encounterId, loadTriage, t]);
 
   const handleSave = async () => {
     if (formDisabled) return;
@@ -628,6 +918,15 @@ export function EmergencyNursingReassessmentPanel({
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+
+      /**
+       * Save succeeded (or was queued for offline retry) — the local draft is no longer needed.
+       * Clearing it here also prevents the next encounter-prop refresh from "restoring" the
+       * just-saved state as a draft and looping the banner.
+       */
+      isDirtyRef.current = false;
+      clearNursingDraft(encounterId);
+      setDraftRestored(false);
 
       const triageNursingDirty = JSON.stringify(triageNursingSlice) !== triageNursingBaselineRef.current;
       let triageSideError: string | null = null;
@@ -760,6 +1059,59 @@ export function EmergencyNursingReassessmentPanel({
               </p>
             ) : null}
 
+            {draftRestored ? (
+              <div
+                role="status"
+                style={{
+                  marginTop: 10,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #fcd34d",
+                  backgroundColor: "#fffbeb",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                      color: "#92400e",
+                    }}
+                  >
+                    {t("emergencyNursingReassessment.documentationGrid.draftRestoredTitle")}
+                  </p>
+                  <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#78350f", lineHeight: 1.45 }}>
+                    {t("emergencyNursingReassessment.documentationGrid.draftRestoredBody")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDiscardLocalDraft}
+                  disabled={formDisabled}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #f59e0b",
+                    backgroundColor: formDisabled ? "#fef3c7" : "#fff",
+                    color: formDisabled ? "#a16207" : "#92400e",
+                    fontWeight: 600,
+                    fontSize: 12,
+                    cursor: formDisabled ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {t("emergencyNursingReassessment.documentationGrid.draftDiscardButton")}
+                </button>
+              </div>
+            ) : null}
+
             <div
               style={{
                 marginTop: 12,
@@ -812,6 +1164,85 @@ export function EmergencyNursingReassessmentPanel({
 
             <div style={{ ...workspaceStyle, marginTop: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+                {/**
+                 * "Last updated by" banner — clinical handoff clarity at the top of the
+                 * reassessment area. Sourced from the SAME `storedSig` the structured grid
+                 * footer uses, so the two views can never disagree. Only renders when a
+                 * reassessment has actually been saved (no fake history when empty).
+                 */}
+                <div
+                  role="note"
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "#f8fafc",
+                    fontSize: 12,
+                    lineHeight: 1.4,
+                    color: "#334155",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: "#64748b",
+                    }}
+                  >
+                    {t("emergencyNursingReassessment.documentationGrid.lastUpdatedByLabel")}
+                  </span>
+                  {storedSig ? (
+                    <span style={{ fontWeight: 600, color: "#0f172a" }} title={storedSig.savedByDisplayName}>
+                      {storedSig.savedByDisplayName}
+                      <span style={{ marginLeft: 6, fontWeight: 500, color: "#475569" }}>
+                        ·{" "}
+                        {new Date(storedSig.savedAt).toLocaleString(dateLocale, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </span>
+                    </span>
+                  ) : (
+                    <span style={{ color: "#64748b" }}>
+                      {t("emergencyNursingReassessment.documentationGrid.lastUpdatedByNotRecorded")}
+                    </span>
+                  )}
+                </div>
+
+                <EmergencyNursingDocumentationGrid
+                  form={form}
+                  onPatch={patchForm}
+                  formDisabled={formDisabled}
+                  t={t}
+                  language={language}
+                  savedSignature={storedSig}
+                />
+                {structuredAckVisible ? (
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      color: "#15803d",
+                      fontWeight: 600,
+                      lineHeight: 1.45,
+                      transition: "opacity 200ms ease",
+                    }}
+                    title={t(
+                      "emergencyNursingReassessment.documentationGrid.structuredDocumentationUpdatedHint"
+                    )}
+                  >
+                    {t("emergencyNursingReassessment.documentationGrid.structuredDocumentationUpdated")}
+                  </p>
+                ) : null}
+
                 <div>
                   <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionReassess")}</p>
                   <p style={quickChipHintStyle}>{t("emergencyNursingReassessment.quick.hint")}</p>

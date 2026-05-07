@@ -47,6 +47,128 @@ export type ErTrend =
   | "provider_notified"
   | "unable_to_assess";
 
+/**
+ * Phase-2 structured nursing fields stored alongside the existing reassessment blob (no migration —
+ * `Encounter.nursingAssessment` is `Json?`). Codes are stable; legacy/unknown values normalize to "".
+ */
+export type ErMentalStatus =
+  | ""
+  | "alert"
+  | "drowsy"
+  | "confused"
+  | "agitated"
+  | "lethargic"
+  | "unresponsive"
+  | "unable_to_assess"
+  | "other";
+
+export type ErOrientation =
+  | ""
+  | "oriented_x4"
+  | "oriented_x3"
+  | "oriented_x2"
+  | "oriented_x1"
+  | "disoriented"
+  | "unable_to_assess"
+  | "other";
+
+export type ErSpeech =
+  | ""
+  | "clear"
+  | "slurred"
+  | "aphasic"
+  | "mute"
+  | "unable_to_assess"
+  | "other";
+
+export type ErRespiratoryPattern =
+  | ""
+  | "regular"
+  | "irregular"
+  | "shallow"
+  | "labored"
+  | "cheyne_stokes"
+  | "kussmaul"
+  | "unable_to_assess"
+  | "other";
+
+export type ErCardiacRhythm =
+  | ""
+  | "regular"
+  | "irregular"
+  | "tachycardic"
+  | "bradycardic"
+  | "pulseless_concern"
+  | "unable_to_assess"
+  | "other";
+
+export type ErFallRisk =
+  | ""
+  | "low"
+  | "moderate"
+  | "high"
+  | "unable_to_assess"
+  | "other";
+
+/** Phase-2b additional structured rows (JSON-only, no migration). */
+export type ErGeneralAppearanceCode =
+  | ""
+  | "well_appearing"
+  | "ill_appearing"
+  | "anxious"
+  | "comfortable"
+  | "in_pain"
+  | "lethargic"
+  | "diaphoretic"
+  | "unable_to_assess"
+  | "other";
+
+export type ErSkinCondition =
+  | ""
+  | "warm_dry_intact"
+  | "warm_diaphoretic"
+  | "cool_clammy"
+  | "pale"
+  | "flushed"
+  | "cyanotic"
+  | "jaundiced"
+  | "mottled"
+  | "wound_present"
+  | "unable_to_assess"
+  | "other";
+
+export type ErAmbulation =
+  | ""
+  | "independent"
+  | "ambulatory_with_help"
+  | "with_walker"
+  | "with_cane"
+  | "wheelchair"
+  | "bedbound"
+  | "unable_to_assess"
+  | "other";
+
+export type ErSafetyRisk =
+  | ""
+  | "none"
+  | "fall_risk"
+  | "elopement_risk"
+  | "self_harm_risk"
+  | "violence_risk"
+  | "isolation_required"
+  | "unable_to_assess"
+  | "other";
+
+export type ErDistressLevel =
+  | ""
+  | "none"
+  | "mild"
+  | "moderate"
+  | "severe"
+  | "life_threatening"
+  | "unable_to_assess"
+  | "other";
+
 export type ErNursingReassessmentForm = {
   reassessmentAt: string;
   narrative: string;
@@ -62,6 +184,19 @@ export type ErNursingReassessmentForm = {
   interventionsPerformed: string;
   safetyRoundingNote: string;
   addendum: string;
+  /** Phase-2 structured rows surfaced in the column-style documentation grid. */
+  mentalStatus: ErMentalStatus;
+  orientation: ErOrientation;
+  speech: ErSpeech;
+  respiratoryPattern: ErRespiratoryPattern;
+  cardiacRhythm: ErCardiacRhythm;
+  fallRisk: ErFallRisk;
+  /** Phase-2b additional structured rows. Free-text `generalAppearance` is preserved separately. */
+  generalAppearanceCode: ErGeneralAppearanceCode;
+  skinCondition: ErSkinCondition;
+  ambulation: ErAmbulation;
+  safetyRisk: ErSafetyRisk;
+  distressLevel: ErDistressLevel;
 };
 
 export function emptyErNursingReassessmentForm(): ErNursingReassessmentForm {
@@ -80,6 +215,17 @@ export function emptyErNursingReassessmentForm(): ErNursingReassessmentForm {
     interventionsPerformed: "",
     safetyRoundingNote: "",
     addendum: "",
+    mentalStatus: "",
+    orientation: "",
+    speech: "",
+    respiratoryPattern: "",
+    cardiacRhythm: "",
+    fallRisk: "",
+    generalAppearanceCode: "",
+    skinCondition: "",
+    ambulation: "",
+    safetyRisk: "",
+    distressLevel: "",
   };
 }
 
@@ -103,6 +249,19 @@ export type ErNursingReassessmentStored = {
   interventionsPerformed: string;
   safetyRoundingNote: string;
   addendum: string;
+  /** Phase-2 structured fields (optional; absent on legacy saves). */
+  mentalStatus?: ErMentalStatus;
+  orientation?: ErOrientation;
+  speech?: ErSpeech;
+  respiratoryPattern?: ErRespiratoryPattern;
+  cardiacRhythm?: ErCardiacRhythm;
+  fallRisk?: ErFallRisk;
+  /** Phase-2b additional structured fields. */
+  generalAppearanceCode?: ErGeneralAppearanceCode;
+  skinCondition?: ErSkinCondition;
+  ambulation?: ErAmbulation;
+  safetyRisk?: ErSafetyRisk;
+  distressLevel?: ErDistressLevel;
   signature?: ErNursingReassessmentSignature;
 };
 
@@ -169,6 +328,198 @@ const NURSING_TREND_VALUES = new Set<string>([
   "unable_to_assess",
 ]);
 
+/** Phase-2 structured option lists (clinically conservative; English codes / FR labels via i18n). */
+/**
+ * Option lists for structured nursing rows. Per the clinical-flexibility rule, every list ends
+ * with `unable_to_assess` followed by `other`, and the dropdown UI always offers a leading
+ * blank state — nurses can never be hard-forced into a specific code. `other` lets the nurse pick
+ * a clinically-meaningful "off-list" without dropping back to free-text.
+ */
+export const ER_NURSING_MENTAL_STATUS_OPTIONS: readonly ErMentalStatus[] = [
+  "alert",
+  "drowsy",
+  "confused",
+  "agitated",
+  "lethargic",
+  "unresponsive",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_ORIENTATION_OPTIONS: readonly ErOrientation[] = [
+  "oriented_x4",
+  "oriented_x3",
+  "oriented_x2",
+  "oriented_x1",
+  "disoriented",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_SPEECH_OPTIONS: readonly ErSpeech[] = [
+  "clear",
+  "slurred",
+  "aphasic",
+  "mute",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_RESPIRATORY_PATTERN_OPTIONS: readonly ErRespiratoryPattern[] = [
+  "regular",
+  "irregular",
+  "shallow",
+  "labored",
+  "cheyne_stokes",
+  "kussmaul",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_CARDIAC_RHYTHM_OPTIONS: readonly ErCardiacRhythm[] = [
+  "regular",
+  "irregular",
+  "tachycardic",
+  "bradycardic",
+  "pulseless_concern",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_FALL_RISK_OPTIONS: readonly ErFallRisk[] = [
+  "low",
+  "moderate",
+  "high",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_GENERAL_APPEARANCE_OPTIONS: readonly ErGeneralAppearanceCode[] = [
+  "well_appearing",
+  "ill_appearing",
+  "anxious",
+  "comfortable",
+  "in_pain",
+  "lethargic",
+  "diaphoretic",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_SKIN_CONDITION_OPTIONS: readonly ErSkinCondition[] = [
+  "warm_dry_intact",
+  "warm_diaphoretic",
+  "cool_clammy",
+  "pale",
+  "flushed",
+  "cyanotic",
+  "jaundiced",
+  "mottled",
+  "wound_present",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_AMBULATION_OPTIONS: readonly ErAmbulation[] = [
+  "independent",
+  "ambulatory_with_help",
+  "with_walker",
+  "with_cane",
+  "wheelchair",
+  "bedbound",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_SAFETY_RISK_OPTIONS: readonly ErSafetyRisk[] = [
+  "none",
+  "fall_risk",
+  "elopement_risk",
+  "self_harm_risk",
+  "violence_risk",
+  "isolation_required",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_DISTRESS_LEVEL_OPTIONS: readonly ErDistressLevel[] = [
+  "none",
+  "mild",
+  "moderate",
+  "severe",
+  "life_threatening",
+  "unable_to_assess",
+  "other",
+];
+
+const NURSING_MENTAL_STATUS_VALUES = new Set<string>(ER_NURSING_MENTAL_STATUS_OPTIONS);
+const NURSING_ORIENTATION_VALUES = new Set<string>(ER_NURSING_ORIENTATION_OPTIONS);
+const NURSING_SPEECH_VALUES = new Set<string>(ER_NURSING_SPEECH_OPTIONS);
+const NURSING_RESP_PATTERN_VALUES = new Set<string>(ER_NURSING_RESPIRATORY_PATTERN_OPTIONS);
+const NURSING_CARDIAC_RHYTHM_VALUES = new Set<string>(ER_NURSING_CARDIAC_RHYTHM_OPTIONS);
+const NURSING_FALL_RISK_VALUES = new Set<string>(ER_NURSING_FALL_RISK_OPTIONS);
+
+function mentalStatusFromUnknown(v: unknown): ErMentalStatus {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_MENTAL_STATUS_VALUES.has(s) ? (s as ErMentalStatus) : "";
+}
+
+function orientationFromUnknown(v: unknown): ErOrientation {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_ORIENTATION_VALUES.has(s) ? (s as ErOrientation) : "";
+}
+
+function speechFromUnknown(v: unknown): ErSpeech {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_SPEECH_VALUES.has(s) ? (s as ErSpeech) : "";
+}
+
+function respiratoryPatternFromUnknown(v: unknown): ErRespiratoryPattern {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_RESP_PATTERN_VALUES.has(s) ? (s as ErRespiratoryPattern) : "";
+}
+
+function cardiacRhythmFromUnknown(v: unknown): ErCardiacRhythm {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_CARDIAC_RHYTHM_VALUES.has(s) ? (s as ErCardiacRhythm) : "";
+}
+
+function fallRiskFromUnknown(v: unknown): ErFallRisk {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_FALL_RISK_VALUES.has(s) ? (s as ErFallRisk) : "";
+}
+
+const NURSING_GENERAL_APPEARANCE_VALUES = new Set<string>(ER_NURSING_GENERAL_APPEARANCE_OPTIONS);
+const NURSING_SKIN_CONDITION_VALUES = new Set<string>(ER_NURSING_SKIN_CONDITION_OPTIONS);
+const NURSING_AMBULATION_VALUES = new Set<string>(ER_NURSING_AMBULATION_OPTIONS);
+const NURSING_SAFETY_RISK_VALUES = new Set<string>(ER_NURSING_SAFETY_RISK_OPTIONS);
+const NURSING_DISTRESS_LEVEL_VALUES = new Set<string>(ER_NURSING_DISTRESS_LEVEL_OPTIONS);
+
+function generalAppearanceCodeFromUnknown(v: unknown): ErGeneralAppearanceCode {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_GENERAL_APPEARANCE_VALUES.has(s) ? (s as ErGeneralAppearanceCode) : "";
+}
+
+function skinConditionFromUnknown(v: unknown): ErSkinCondition {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_SKIN_CONDITION_VALUES.has(s) ? (s as ErSkinCondition) : "";
+}
+
+function ambulationFromUnknown(v: unknown): ErAmbulation {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_AMBULATION_VALUES.has(s) ? (s as ErAmbulation) : "";
+}
+
+function safetyRiskFromUnknown(v: unknown): ErSafetyRisk {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_SAFETY_RISK_VALUES.has(s) ? (s as ErSafetyRisk) : "";
+}
+
+function distressLevelFromUnknown(v: unknown): ErDistressLevel {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_DISTRESS_LEVEL_VALUES.has(s) ? (s as ErDistressLevel) : "";
+}
+
 /** Dropdown order for patient trend (legacy improved/worse normalized on load). */
 export const ER_NURSING_TREND_SELECT_OPTIONS: readonly ErTrend[] = [
   "improving",
@@ -218,6 +569,17 @@ export function erNursingReassessmentFormFromEncounter(nursingAssessment: unknow
   e.interventionsPerformed = typeof o.interventionsPerformed === "string" ? o.interventionsPerformed : "";
   e.safetyRoundingNote = typeof o.safetyRoundingNote === "string" ? o.safetyRoundingNote : "";
   e.addendum = typeof o.addendum === "string" ? o.addendum : "";
+  e.mentalStatus = mentalStatusFromUnknown(o.mentalStatus);
+  e.orientation = orientationFromUnknown(o.orientation);
+  e.speech = speechFromUnknown(o.speech);
+  e.respiratoryPattern = respiratoryPatternFromUnknown(o.respiratoryPattern);
+  e.cardiacRhythm = cardiacRhythmFromUnknown(o.cardiacRhythm);
+  e.fallRisk = fallRiskFromUnknown(o.fallRisk);
+  e.generalAppearanceCode = generalAppearanceCodeFromUnknown(o.generalAppearanceCode);
+  e.skinCondition = skinConditionFromUnknown(o.skinCondition);
+  e.ambulation = ambulationFromUnknown(o.ambulation);
+  e.safetyRisk = safetyRiskFromUnknown(o.safetyRisk);
+  e.distressLevel = distressLevelFromUnknown(o.distressLevel);
   return e;
 }
 
@@ -239,6 +601,17 @@ function formToStored(form: ErNursingReassessmentForm, signature: ErNursingReass
     interventionsPerformed: form.interventionsPerformed.trim().slice(0, 8000),
     safetyRoundingNote: form.safetyRoundingNote.trim().slice(0, 4000),
     addendum: form.addendum.trim().slice(0, 8000),
+    ...(form.mentalStatus ? { mentalStatus: form.mentalStatus } : {}),
+    ...(form.orientation ? { orientation: form.orientation } : {}),
+    ...(form.speech ? { speech: form.speech } : {}),
+    ...(form.respiratoryPattern ? { respiratoryPattern: form.respiratoryPattern } : {}),
+    ...(form.cardiacRhythm ? { cardiacRhythm: form.cardiacRhythm } : {}),
+    ...(form.fallRisk ? { fallRisk: form.fallRisk } : {}),
+    ...(form.generalAppearanceCode ? { generalAppearanceCode: form.generalAppearanceCode } : {}),
+    ...(form.skinCondition ? { skinCondition: form.skinCondition } : {}),
+    ...(form.ambulation ? { ambulation: form.ambulation } : {}),
+    ...(form.safetyRisk ? { safetyRisk: form.safetyRisk } : {}),
+    ...(form.distressLevel ? { distressLevel: form.distressLevel } : {}),
     signature,
   };
 }
@@ -259,7 +632,18 @@ export function storedHasClinicalContent(s: ErNursingReassessmentStored): boolea
       s.trend ||
       s.interventionsPerformed.trim() ||
       s.safetyRoundingNote.trim() ||
-      s.addendum.trim()
+      s.addendum.trim() ||
+      s.mentalStatus ||
+      s.orientation ||
+      s.speech ||
+      s.respiratoryPattern ||
+      s.cardiacRhythm ||
+      s.fallRisk ||
+      s.generalAppearanceCode ||
+      s.skinCondition ||
+      s.ambulation ||
+      s.safetyRisk ||
+      s.distressLevel
   );
 }
 
@@ -320,6 +704,68 @@ function abcOptionLabel(locale: SupportedLanguage, v: ErAbcOption): string {
   if (v === "circ_hypotension_concern") return i18nMessage(locale, "emergencyNursingReassessment.abcCircHypotensionConcern");
   if (v === "circ_unable_to_assess") return i18nMessage(locale, "emergencyNursingReassessment.abcCircUnableToAssess");
   return "";
+}
+
+/** Phase-2 select labels (i18n-driven). Values are stable English codes. */
+export function nursingMentalStatusLabel(locale: SupportedLanguage, v: ErMentalStatus): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.mentalStatusOptions.${v}`);
+}
+
+export function nursingOrientationLabel(locale: SupportedLanguage, v: ErOrientation): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.orientationOptions.${v}`);
+}
+
+export function nursingSpeechLabel(locale: SupportedLanguage, v: ErSpeech): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.speechOptions.${v}`);
+}
+
+export function nursingRespiratoryPatternLabel(
+  locale: SupportedLanguage,
+  v: ErRespiratoryPattern
+): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.respiratoryPatternOptions.${v}`);
+}
+
+export function nursingCardiacRhythmLabel(locale: SupportedLanguage, v: ErCardiacRhythm): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.cardiacRhythmOptions.${v}`);
+}
+
+export function nursingFallRiskLabel(locale: SupportedLanguage, v: ErFallRisk): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.fallRiskOptions.${v}`);
+}
+
+export function nursingGeneralAppearanceLabel(
+  locale: SupportedLanguage,
+  v: ErGeneralAppearanceCode
+): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.generalAppearanceOptions.${v}`);
+}
+
+export function nursingSkinConditionLabel(locale: SupportedLanguage, v: ErSkinCondition): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.skinConditionOptions.${v}`);
+}
+
+export function nursingAmbulationLabel(locale: SupportedLanguage, v: ErAmbulation): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.ambulationOptions.${v}`);
+}
+
+export function nursingSafetyRiskLabel(locale: SupportedLanguage, v: ErSafetyRisk): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.safetyRiskOptions.${v}`);
+}
+
+export function nursingDistressLevelLabel(locale: SupportedLanguage, v: ErDistressLevel): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.distressLevelOptions.${v}`);
 }
 
 function trendLineLabel(locale: SupportedLanguage, v: ErTrend): string {
@@ -390,6 +836,27 @@ export function buildErNursingReassessmentPreviewModel(
       etat.push(interpolatePreviewModel(previewModelString(locale, "linePain"), { n: String(n) }));
     }
   }
+  if (form.mentalStatus) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineMentalStatus"), {
+        value: nursingMentalStatusLabel(locale, form.mentalStatus),
+      })
+    );
+  }
+  if (form.orientation) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineOrientation"), {
+        value: nursingOrientationLabel(locale, form.orientation),
+      })
+    );
+  }
+  if (form.speech) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineSpeech"), {
+        value: nursingSpeechLabel(locale, form.speech),
+      })
+    );
+  }
   if (form.airway) {
     etat.push(
       interpolatePreviewModel(previewModelString(locale, "lineAirway"), {
@@ -404,10 +871,66 @@ export function buildErNursingReassessmentPreviewModel(
       })
     );
   }
+  if (form.respiratoryPattern) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineRespiratoryPattern"), {
+        value: nursingRespiratoryPatternLabel(locale, form.respiratoryPattern),
+      })
+    );
+  }
   if (form.circulation) {
     etat.push(
       interpolatePreviewModel(previewModelString(locale, "lineCirculation"), {
         value: abcOptionLabel(locale, form.circulation),
+      })
+    );
+  }
+  if (form.cardiacRhythm) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineCardiacRhythm"), {
+        value: nursingCardiacRhythmLabel(locale, form.cardiacRhythm),
+      })
+    );
+  }
+  if (form.fallRisk) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineFallRisk"), {
+        value: nursingFallRiskLabel(locale, form.fallRisk),
+      })
+    );
+  }
+  if (form.generalAppearanceCode) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineGeneralAppearanceCode"), {
+        value: nursingGeneralAppearanceLabel(locale, form.generalAppearanceCode),
+      })
+    );
+  }
+  if (form.skinCondition) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineSkinCondition"), {
+        value: nursingSkinConditionLabel(locale, form.skinCondition),
+      })
+    );
+  }
+  if (form.ambulation) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineAmbulation"), {
+        value: nursingAmbulationLabel(locale, form.ambulation),
+      })
+    );
+  }
+  if (form.safetyRisk) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineSafetyRisk"), {
+        value: nursingSafetyRiskLabel(locale, form.safetyRisk),
+      })
+    );
+  }
+  if (form.distressLevel) {
+    etat.push(
+      interpolatePreviewModel(previewModelString(locale, "lineDistressLevel"), {
+        value: nursingDistressLevelLabel(locale, form.distressLevel),
       })
     );
   }
@@ -502,6 +1025,134 @@ export function buildErNursingReassessmentPreviewModel(
   }
 
   return { sections, narrative };
+}
+
+/**
+ * Stable open / close markers that delimit the auto-generated structured fragment block inside the
+ * narrative. Markers are intentionally **language-stable** (not localized) so that toggling the UI
+ * locale does NOT orphan a previously-inserted block. The visible French copy stays readable to
+ * clinicians; English markers are accepted as a fallback when reading legacy notes.
+ */
+const NARRATIVE_AUTO_BLOCK_OPEN_FR = "── Documentation structurée (auto) ──";
+const NARRATIVE_AUTO_BLOCK_CLOSE_FR = "── Fin de la documentation structurée ──";
+const NARRATIVE_AUTO_BLOCK_OPEN_LEGACY_EN = "── Structured documentation (auto) ──";
+const NARRATIVE_AUTO_BLOCK_CLOSE_LEGACY_EN = "── End of structured documentation ──";
+
+const NARRATIVE_AUTO_BLOCK_OPEN_CANDIDATES = [
+  NARRATIVE_AUTO_BLOCK_OPEN_FR,
+  NARRATIVE_AUTO_BLOCK_OPEN_LEGACY_EN,
+];
+const NARRATIVE_AUTO_BLOCK_CLOSE_CANDIDATES = [
+  NARRATIVE_AUTO_BLOCK_CLOSE_FR,
+  NARRATIVE_AUTO_BLOCK_CLOSE_LEGACY_EN,
+];
+
+function findFirstIndex(haystack: string, needles: readonly string[]): { idx: number; needle: string } | null {
+  let best: { idx: number; needle: string } | null = null;
+  for (const needle of needles) {
+    const i = haystack.indexOf(needle);
+    if (i >= 0 && (!best || i < best.idx)) best = { idx: i, needle };
+  }
+  return best;
+}
+
+/**
+ * Collect the auto-fragment lines for the current structured form state. Returns lines in clinical
+ * reading order. Free-text fields (narrative, generalAppearance, bedsideStatus, vitalsSummaryNote,
+ * responseToTreatment, interventionsPerformed, safetyRoundingNote, addendum) are NEVER touched.
+ */
+export function buildStructuredNarrativeFragmentLines(
+  form: ErNursingReassessmentForm,
+  locale: SupportedLanguage
+): string[] {
+  const lines: string[] = [];
+  const push = (templateKey: string, value: string) => {
+    if (!value) return;
+    lines.push(
+      interpolatePreviewModel(previewModelString(locale, templateKey), { value })
+    );
+  };
+  if (form.mentalStatus) push("lineMentalStatus", nursingMentalStatusLabel(locale, form.mentalStatus));
+  if (form.orientation) push("lineOrientation", nursingOrientationLabel(locale, form.orientation));
+  if (form.speech) push("lineSpeech", nursingSpeechLabel(locale, form.speech));
+  if (form.generalAppearanceCode)
+    push("lineGeneralAppearanceCode", nursingGeneralAppearanceLabel(locale, form.generalAppearanceCode));
+  if (form.distressLevel)
+    push("lineDistressLevel", nursingDistressLevelLabel(locale, form.distressLevel));
+  if (form.airway) push("lineAirway", abcOptionLabel(locale, form.airway));
+  if (form.breathing) push("lineBreathing", abcOptionLabel(locale, form.breathing));
+  if (form.respiratoryPattern)
+    push("lineRespiratoryPattern", nursingRespiratoryPatternLabel(locale, form.respiratoryPattern));
+  if (form.circulation) push("lineCirculation", abcOptionLabel(locale, form.circulation));
+  if (form.cardiacRhythm)
+    push("lineCardiacRhythm", nursingCardiacRhythmLabel(locale, form.cardiacRhythm));
+  if (form.skinCondition)
+    push("lineSkinCondition", nursingSkinConditionLabel(locale, form.skinCondition));
+  if (form.ambulation) push("lineAmbulation", nursingAmbulationLabel(locale, form.ambulation));
+  if (form.fallRisk) push("lineFallRisk", nursingFallRiskLabel(locale, form.fallRisk));
+  if (form.safetyRisk) push("lineSafetyRisk", nursingSafetyRiskLabel(locale, form.safetyRisk));
+  if (form.pain0to10.trim()) {
+    const n = parseInt(form.pain0to10, 10);
+    if (!Number.isNaN(n)) {
+      lines.push(interpolatePreviewModel(previewModelString(locale, "linePain"), { n: String(n) }));
+    }
+  }
+  if (form.trend) push("lineTrend", trendLineLabel(locale, form.trend));
+  return lines;
+}
+
+/**
+ * Strip every existing auto-fragment block (FR and legacy EN markers) from the narrative.
+ *
+ * Idempotent + corruption-resistant: if multiple blocks accumulated due to prior bugs, language
+ * toggles, paste, or partial markers, this collapses them ALL away. Each iteration removes one
+ * block (open → matching close, or open → end-of-string when the close marker is missing) so a
+ * subsequent insert always lands on a clean, single-block narrative.
+ *
+ * Manual content outside any marker block is preserved verbatim and re-joined with a single blank
+ * line between fragments.
+ */
+function stripAllAutoBlocks(currentNarrative: string): string {
+  let s = currentNarrative ?? "";
+  /** Hard upper bound prevents an infinite loop on pathological input. */
+  let safety = 32;
+  while (safety-- > 0) {
+    const openHit = findFirstIndex(s, NARRATIVE_AUTO_BLOCK_OPEN_CANDIDATES);
+    if (!openHit) break;
+    const afterStart = openHit.idx + openHit.needle.length;
+    const closeHit = findFirstIndex(s.slice(afterStart), NARRATIVE_AUTO_BLOCK_CLOSE_CANDIDATES);
+    const afterEnd = closeHit ? afterStart + closeHit.idx + closeHit.needle.length : s.length;
+    const before = s.slice(0, openHit.idx).replace(/\s+$/u, "");
+    const after = s.slice(afterEnd).replace(/^\s+/u, "");
+    s = [before, after].filter((seg) => seg.length > 0).join("\n\n");
+  }
+  return s;
+}
+
+/**
+ * Re-render the auto-generated structured block inside the narrative without touching any manual
+ * edits. Strict guarantees:
+ *
+ * - The auto block markers can NEVER appear twice — every call first strips ALL pre-existing
+ *   blocks (idempotent) and only then appends a single clean block.
+ * - Manual content outside the markers is preserved verbatim.
+ * - If `lines.length === 0`, all blocks are removed and nothing is re-inserted.
+ *
+ * Pure / deterministic. The structured field state is the only auto input.
+ */
+export function applyStructuredNarrativeFragment(
+  currentNarrative: string,
+  lines: string[]
+): string {
+  const open = NARRATIVE_AUTO_BLOCK_OPEN_FR;
+  const close = NARRATIVE_AUTO_BLOCK_CLOSE_FR;
+  const cleaned = stripAllAutoBlocks(currentNarrative ?? "");
+
+  if (lines.length === 0) return cleaned;
+
+  const block = `${open}\n${lines.map((l) => `- ${l}`).join("\n")}\n${close}`;
+  if (cleaned.trim().length === 0) return block;
+  return `${cleaned.replace(/\s+$/u, "")}\n\n${block}`;
 }
 
 /** Vitals one-liner from triage GET vitalsJson (same as triage strip). */
