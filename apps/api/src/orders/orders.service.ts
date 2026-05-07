@@ -11,6 +11,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import {
   AuditAction,
+  MedicationMarAction,
   OrderItem,
   OrderItemLifecycleState,
   OrderEventOrderType,
@@ -2340,6 +2341,108 @@ export class OrdersService {
     });
     if (alreadyStopped) {
       throw new BadRequestException("Infusion already stopped");
+    }
+
+    /**
+     * If the terminal MAR row was persisted but the infusion STOP OrderEvent failed afterward
+     * (e.g. billing append conflict, network), a retry would hit the MAR duplicate window guard.
+     * Recover by writing the STOP event + audit only, reusing the existing MAR and timestamps.
+     */
+    const TERMINAL_INFUSION_MAR_NOTE_PREFIX = "Perfusion IV terminée";
+    const orphanTerminalMar = await this.prisma.medicationAdministration.findFirst({
+      where: {
+        facilityId,
+        encounterId: orderItem.order.encounterId,
+        orderItemId,
+        marAction: MedicationMarAction.administered,
+        administeredAt: { gte: active.startedAt },
+        notes: { startsWith: TERMINAL_INFUSION_MAR_NOTE_PREFIX },
+      },
+      orderBy: { administeredAt: "desc" },
+    });
+    if (orphanTerminalMar) {
+      const stopLinkedToOrphan = await this.prisma.orderEvent.findFirst({
+        where: {
+          facilityId,
+          orderId: orderItem.orderId,
+          eventType: OrderEventType.COMPLETED,
+          AND: [
+            { metadata: { path: ["infusionScope"], equals: "MEDICATION_INFUSION" } as Prisma.JsonFilter },
+            { metadata: { path: ["infusionAction"], equals: "STOP" } as Prisma.JsonFilter },
+            {
+              metadata: { path: ["medicationAdministrationId"], equals: orphanTerminalMar.id } as Prisma.JsonFilter,
+            },
+          ],
+        },
+      });
+      if (!stopLinkedToOrphan) {
+        const recoveredStoppedAt =
+          orphanTerminalMar.administeredAt instanceof Date
+            ? orphanTerminalMar.administeredAt
+            : new Date(orphanTerminalMar.administeredAt);
+        if (Number.isNaN(recoveredStoppedAt.getTime())) {
+          throw new BadRequestException("Horodatage d’arrêt invalide.");
+        }
+        if (recoveredStoppedAt.getTime() < active.startedAt.getTime()) {
+          throw new BadRequestException("L’heure d’arrêt ne peut pas précéder le début de perfusion.");
+        }
+        const recoveredDurationMinutes = Math.max(
+          0,
+          Math.floor((recoveredStoppedAt.getTime() - active.startedAt.getTime()) / 60_000)
+        );
+        const identitySnapshotRecover = await this.loadInfusionPerformerIdentitySnapshot(
+          facilityId,
+          userId,
+          requestorRoleCodes
+        );
+        const startedIsoRecover = active.startedAt.toISOString();
+        const stoppedIsoRecover = recoveredStoppedAt.toISOString();
+        const stopMetaRecoverRaw: Record<string, unknown> = {
+          infusionScope: "MEDICATION_INFUSION",
+          infusionAction: "STOP",
+          orderItemId,
+          medicationAdministrationId: orphanTerminalMar.id,
+          infusionSessionKey: active.sessionKey,
+          infusionStartedAt: startedIsoRecover,
+          infusionStoppedAt: stoppedIsoRecover,
+          durationMinutes: recoveredDurationMinutes,
+          route: routeResolved,
+          source: "IV_INFUSION",
+          ...identitySnapshotRecover,
+        };
+        const stopMetaRecover = stripUndefinedDeep(stopMetaRecoverRaw) as Prisma.InputJsonValue;
+        await this.writeOrderEvent({
+          facilityId,
+          encounterId: orderItem.order.encounterId,
+          orderId: orderItem.orderId,
+          orderType: orderItem.order.type,
+          eventType: OrderEventType.COMPLETED,
+          performedByUserId: userId,
+          metadata: stopMetaRecover,
+          roleSnapshotOverride: identitySnapshotRecover.performedByRoleSnapshot,
+        });
+        await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {
+          userId,
+          facilityId,
+          patientId: orderItem.order.encounter.patientId,
+          encounterId: orderItem.order.encounterId,
+          orderId: orderItem.orderId,
+          entityId: orderItemId,
+          ip,
+          userAgent,
+          critical: true,
+          metadata: stopMetaRecover,
+        });
+        const refreshedRecover = await this.prisma.orderItem.findFirst({
+          where: { id: orderItemId, order: { facilityId } },
+          include: { order: true },
+        });
+        return {
+          orderItem: refreshedRecover,
+          medicationAdministration: orphanTerminalMar,
+          durationMinutes: recoveredDurationMinutes,
+        };
+      }
     }
 
     const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(

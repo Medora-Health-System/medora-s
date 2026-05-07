@@ -292,7 +292,7 @@ export class MedicationAdministrationService {
       throw new NotFoundException("Encounter not found");
     }
     assertEncounterNotSigned(encounter);
-    if (encounter.status !== "OPEN") {
+    if (encounter.status !== "OPEN" && !serviceOptions?.allowAdministeredForInfusionTerminal) {
       throw new BadRequestException("La consultation doit être ouverte pour enregistrer une administration.");
     }
 
