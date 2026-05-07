@@ -17,6 +17,7 @@ import {
   CARE_LEVEL_OPTIONS_FR,
   type AdmissionFormState,
 } from "@/lib/encounterAdmission";
+import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { MedoraCard, MedoraCardIdentity, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
 import {
   buildErDispositionPreviewModel,
@@ -173,6 +174,16 @@ export function EmergencyDispositionPanel({
   const [outcomeUi, setOutcomeUi] = useState<ErDispositionOutcomeUi>("HOME");
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
+
+  /** Cancel-admission modal local state (admission decision is encounter-level, not an order). */
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSaving, setCancelSaving] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const hasSavedAdmission = useMemo(
+    () => parseAdmissionSummaryForChart(encounter.admissionSummaryJson) != null,
+    [encounter.admissionSummaryJson]
+  );
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
@@ -357,6 +368,40 @@ export function EmergencyDispositionPanel({
     }
   };
 
+  const handleCancelAdmissionConfirm = async () => {
+    if (cancelSaving) return;
+    const reason = cancelReason.trim();
+    if (reason.length < 3) {
+      setCancelError(t("emergencyDisposition.cancelAdmissionReasonRequired"));
+      return;
+    }
+    if (reason.length > 500) {
+      setCancelError(t("emergencyDisposition.cancelAdmissionReasonTooLong"));
+      return;
+    }
+    setCancelSaving(true);
+    setCancelError(null);
+    try {
+      await apiFetch(`/encounters/${encounterId}/admission/cancel`, {
+        method: "POST",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancellationReason: reason }),
+      });
+      await onSaved();
+      setCancelOpen(false);
+      setCancelReason("");
+      setSaveInfo(t("emergencyDisposition.cancelAdmissionSuccess"));
+    } catch (e) {
+      setCancelError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          t("emergencyDisposition.cancelAdmissionFailed")
+      );
+    } finally {
+      setCancelSaving(false);
+    }
+  };
+
   const medDisabled = formDisabled || !canEditMedicalDischarge;
   const nurDisabled = formDisabled || !canEditNursingDischarge;
   const outcomeDisabled = formDisabled || (!canEditMedicalDischarge && !canEditNursingDischarge);
@@ -390,6 +435,7 @@ export function EmergencyDispositionPanel({
   const showDeceasedExtra = outcomeUi === "DECEASED";
 
   return (
+    <>
     <MedoraCard leftAccentColor="#64748b" variant="default">
       <MedoraCardInner>
         <MedoraCardIdentity initials="D">
@@ -626,6 +672,43 @@ export function EmergencyDispositionPanel({
                       style={{ ...inputBase, backgroundColor: medDisabled ? "#f8fafc" : "#fff" }}
                     />
                   </div>
+                  {hasSavedAdmission && !formDisabled ? (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        paddingTop: 10,
+                        borderTop: "1px solid #f1f5f9",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCancelOpen(true);
+                          setCancelError(null);
+                          setCancelReason("");
+                        }}
+                        style={{
+                          padding: "7px 12px",
+                          borderRadius: 8,
+                          border: "1px solid #fecaca",
+                          backgroundColor: "#fff",
+                          color: "#b91c1c",
+                          fontWeight: 600,
+                          fontSize: 13,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("emergencyDisposition.cancelAdmissionButton")}
+                      </button>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        {t("emergencyDisposition.cancelAdmissionHint")}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -938,5 +1021,114 @@ export function EmergencyDispositionPanel({
         </div>
       </MedoraCardInner>
     </MedoraCard>
+    {cancelOpen ? (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("emergencyDisposition.cancelAdmissionTitle")}
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          padding: 16,
+        }}
+        onClick={() => {
+          if (!cancelSaving) setCancelOpen(false);
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            maxWidth: 460,
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.18)",
+            padding: 18,
+            boxSizing: "border-box",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+            {t("emergencyDisposition.cancelAdmissionTitle")}
+          </p>
+          <p style={{ margin: "6px 0 12px 0", fontSize: 13, color: "#475569", lineHeight: 1.45 }}>
+            {t("emergencyDisposition.cancelAdmissionBody")}
+          </p>
+          <label style={labelStyle}>{t("emergencyDisposition.cancelAdmissionReasonLabel")}</label>
+          <textarea
+            value={cancelReason}
+            onChange={(e) => {
+              setCancelReason(e.target.value);
+              if (cancelError) setCancelError(null);
+            }}
+            disabled={cancelSaving}
+            rows={3}
+            maxLength={500}
+            placeholder={t("emergencyDisposition.cancelAdmissionReasonPlaceholder")}
+            style={{
+              ...inputBase,
+              minHeight: 76,
+              resize: "vertical",
+              backgroundColor: cancelSaving ? "#f8fafc" : "#fff",
+            }}
+          />
+          {cancelError ? (
+            <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#b91c1c" }}>{cancelError}</p>
+          ) : null}
+          <div
+            style={{
+              marginTop: 14,
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setCancelOpen(false)}
+              disabled={cancelSaving}
+              style={{
+                padding: "9px 14px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: "#fff",
+                color: "#0f172a",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: cancelSaving ? "not-allowed" : "pointer",
+              }}
+            >
+              {t("emergencyDisposition.cancelAdmissionKeep")}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCancelAdmissionConfirm()}
+              disabled={cancelSaving}
+              style={{
+                padding: "9px 14px",
+                borderRadius: 10,
+                border: "1px solid #b91c1c",
+                backgroundColor: cancelSaving ? "#fecaca" : "#b91c1c",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: cancelSaving ? "not-allowed" : "pointer",
+              }}
+            >
+              {cancelSaving
+                ? t("emergencyDisposition.cancelAdmissionSaving")
+                : t("emergencyDisposition.cancelAdmissionConfirm")}
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }

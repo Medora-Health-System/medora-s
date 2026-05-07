@@ -44,6 +44,7 @@ import {
   admissionSummaryFieldsSchema,
   ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
+  type EncounterAdmissionCancelDto,
   type EncounterCloseDto,
   type EncounterCreateDto,
   type EncounterOperationalUpdateDto,
@@ -2677,6 +2678,147 @@ export class EncountersService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Clinical cancellation of a saved admission decision (in-phase, no schema change).
+   *
+   * Effect: clears `admissionSummaryJson` + `admittedAt`, leaves `Encounter.status`,
+   * `EncounterType`, and billing finalization untouched. Reason is required and persisted
+   * on the audit log; admission billing is only emitted at close, so cancelling here
+   * has no billing-side effect.
+   *
+   * Authority: ADMIN or PROVIDER (mirrors the admission save path on PATCH /encounters/:id).
+   */
+  async cancelAdmissionDecision(
+    facilityId: string,
+    encounterId: string,
+    dto: EncounterAdmissionCancelDto,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException(
+        "Authentification requise pour annuler la décision d'admission."
+      );
+    }
+
+    const reason = dto.cancellationReason.trim();
+    if (reason.length < 3) {
+      throw new BadRequestException(
+        "Le motif d'annulation est requis (3 caractères minimum)."
+      );
+    }
+    if (reason.length > 500) {
+      throw new BadRequestException(
+        "Le motif d'annulation est limité à 500 caractères."
+      );
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    assertEncounterNotSigned(encounter);
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException(
+        "L'annulation de la décision d'admission n'est possible que sur une consultation ouverte."
+      );
+    }
+
+    const adm = encounter.admissionSummaryJson;
+    const admObj =
+      adm && typeof adm === "object" && !Array.isArray(adm)
+        ? (adm as Record<string, unknown>)
+        : null;
+    if (!admObj || !admissionSummaryHasContent(admObj)) {
+      throw new BadRequestException(
+        "Aucune décision d'admission active à annuler pour cette consultation."
+      );
+    }
+
+    /** PHI-safe: capture current performer identity for audit metadata (no patient name/MRN). */
+    const performer = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      include: { role: { select: { code: true, name: true } } },
+    });
+    const roleRows = userRoles.flatMap((r) =>
+      r.role ? [{ code: String(r.role.code), name: r.role.name ?? null }] : []
+    );
+    const requestorRoleCodes = roleRows.map((r) => r.code as RoleCode);
+    if (
+      !requestorRoleCodes.includes(RoleCode.PROVIDER) &&
+      !requestorRoleCodes.includes(RoleCode.ADMIN)
+    ) {
+      throw new ForbiddenException(
+        "L'annulation de la décision d'admission est réservée aux médecins et aux administrateurs."
+      );
+    }
+    const sortedRoles = [...roleRows].sort((a, b) => a.code.localeCompare(b.code));
+    const cancelledByDisplayFr = [
+      performer?.firstName?.trim() ?? "",
+      performer?.lastName?.trim() ?? "",
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const cancelledByTitle = sortedRoles[0]?.name?.trim() || sortedRoles[0]?.code || null;
+    const cancelledByRoleSnapshot =
+      [...new Set(sortedRoles.map((r) => r.code))].join("|") || "UNKNOWN";
+
+    const cancelledAt = new Date();
+    const cancelledAtIso = cancelledAt.toISOString();
+
+    const u = await this.prisma.encounter.updateMany({
+      where: { id: encounterId, facilityId, version: encounter.version },
+      data: {
+        admissionSummaryJson: Prisma.JsonNull,
+        admittedAt: null,
+        version: { increment: 1 },
+      },
+    });
+    if (u.count === 0) throwEncounterConcurrentModification();
+
+    const updated = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      include: {
+        patient: { select: encounterDetailPatientSelect },
+        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!updated) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+      critical: true,
+      metadata: {
+        event: "ADMISSION_DECISION_CANCELLED",
+        cancellationReason: reason,
+        cancelledByUserId: userId,
+        ...(cancelledByDisplayFr ? { cancelledByDisplayFr } : {}),
+        ...(cancelledByTitle ? { cancelledByTitle } : {}),
+        cancelledByRoleSnapshot,
+        cancelledAt: cancelledAtIso,
+        source: "DISPOSITION_ORDER_CANCEL",
+      },
+    });
+
+    return toEncounterClinicResponse(updated);
   }
 }
 

@@ -6522,6 +6522,22 @@ export default {
     emtalaTriNo: "Non",
     careLevelOptions:
       "Soins généraux (salle)\nSoins intensifs\nSoins intermédiaires\nObservation\nAutre",
+    cancelAdmissionButton: "Annuler la décision d'admission",
+    cancelAdmissionHint:
+      "Efface le dossier d'admission enregistré. Motif requis et journalisé pour audit.",
+    cancelAdmissionTitle: "Annuler la décision d'admission",
+    cancelAdmissionBody:
+      "Le dossier d'admission enregistré sera effacé sur cette consultation. La consultation reste ouverte. Un motif est requis et l'action est journalisée pour audit.",
+    cancelAdmissionReasonLabel: "Motif d'annulation (obligatoire)",
+    cancelAdmissionReasonPlaceholder:
+      "Pourquoi annuler la décision d'admission ?",
+    cancelAdmissionReasonRequired: "Le motif est requis (3 caractères minimum).",
+    cancelAdmissionReasonTooLong: "Le motif est limité à 500 caractères.",
+    cancelAdmissionConfirm: "Annuler la décision",
+    cancelAdmissionSaving: "Annulation…",
+    cancelAdmissionKeep: "Garder la décision",
+    cancelAdmissionSuccess: "Décision d'admission annulée.",
+    cancelAdmissionFailed: "Impossible d'annuler la décision d'admission.",
   },
   emergencyNursingReassessment: {
     saveQueued: "En attente de synchronisation.",

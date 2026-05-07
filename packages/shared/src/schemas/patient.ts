@@ -349,6 +349,21 @@ export const encounterCloseDtoSchema = z.object({
 
 export type EncounterCloseDto = z.infer<typeof encounterCloseDtoSchema>;
 
+/**
+ * POST /encounters/:id/admission/cancel — clinical cancellation of a saved admission decision
+ * (clears `admissionSummaryJson` + `admittedAt`). Reason is mandatory and persisted in the audit log.
+ * No record is deleted; encounter status / type are not changed by this endpoint.
+ */
+export const encounterAdmissionCancelDtoSchema = z.object({
+  cancellationReason: z
+    .string()
+    .trim()
+    .min(3, "Le motif d'annulation doit comporter au moins 3 caractères.")
+    .max(500, "Le motif d'annulation est limité à 500 caractères."),
+});
+
+export type EncounterAdmissionCancelDto = z.infer<typeof encounterAdmissionCancelDtoSchema>;
+
 /** POST /encounters/:id/close-check — même charge utile que la clôture pour fusionner le dossier de sortie. */
 export const encounterCloseCheckDtoSchema = z.object({
   discharge: encounterDischargeFieldsSchema.optional(),

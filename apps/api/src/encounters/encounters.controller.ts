@@ -18,6 +18,7 @@ import { DiagnosesService } from "../diagnoses/diagnoses.service";
 import { createDiagnosisDtoSchema, reorderDiagnosesDtoSchema } from "../diagnoses/dto";
 import { appendProcedureCaptureDtoSchema } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 import {
+  encounterAdmissionCancelDtoSchema,
   encounterCloseDtoSchema,
   encounterCloseCheckDtoSchema,
   encounterCreateDtoSchema,
@@ -533,6 +534,36 @@ export class EncountersController {
     }
 
     return this.encountersService.update(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /**
+   * Clinical cancellation of a saved admission decision.
+   * Required: { cancellationReason }. No record is deleted; admission JSON + admittedAt are cleared
+   * and a critical AuditLog row is written with PHI-safe metadata (no patient name / MRN).
+   */
+  @Post("encounters/:id/admission/cancel")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async cancelAdmissionDecision(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterAdmissionCancelDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encountersService.cancelAdmissionDecision(
       facilityId,
       id,
       parsed.data,

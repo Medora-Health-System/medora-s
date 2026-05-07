@@ -6535,6 +6535,20 @@ export default {
     emtalaTriNo: "No",
     careLevelOptions:
       "General ward (bed)\nIntensive care\nIntermediate care\nObservation\nOther",
+    cancelAdmissionButton: "Cancel admission decision",
+    cancelAdmissionHint: "Clears the saved admission packet. Reason required and audit-logged.",
+    cancelAdmissionTitle: "Cancel admission decision",
+    cancelAdmissionBody:
+      "The saved admission packet will be cleared on this encounter. The encounter remains open. A reason is required and the action is audit-logged.",
+    cancelAdmissionReasonLabel: "Cancellation reason (required)",
+    cancelAdmissionReasonPlaceholder: "Why is the admission decision being cancelled?",
+    cancelAdmissionReasonRequired: "Reason is required (3 characters minimum).",
+    cancelAdmissionReasonTooLong: "Reason is limited to 500 characters.",
+    cancelAdmissionConfirm: "Cancel decision",
+    cancelAdmissionSaving: "Cancelling…",
+    cancelAdmissionKeep: "Keep decision",
+    cancelAdmissionSuccess: "Admission decision cancelled.",
+    cancelAdmissionFailed: "Unable to cancel the admission decision.",
   },
   emergencyNursingReassessment: {
     saveQueued: "Pending sync.",
