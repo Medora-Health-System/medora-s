@@ -16,6 +16,10 @@ import {
   nursingAssessmentNamespaceChanged,
 } from "../utils/clinical-event-nursing-assessment-json.util";
 import {
+  structuredReassessmentSectionsChanged,
+  structuredReassessmentSectionsCompleted,
+} from "../utils/nursing-reassessment-structured-summary.util";
+import {
   providerDocumentationSignedPayloadJson,
   providerDocumentationUnlockedPayloadJson,
 } from "../utils/clinical-event-provider-docs.util";
@@ -1001,6 +1005,25 @@ export class EncountersService {
       }
     }
 
+    /**
+     * PHI-safe structured reassessment summary for audit metadata. Surfaced ONLY when the patch
+     * touched `nursingAssessment` AND the set of structured fields actually changed. Returns the
+     * stable field codes (e.g. ["mentalStatus","skinCondition"]) — never narrative, values, or
+     * PHI. Useful for QA review / pilot oversight / documentation completeness analytics.
+     */
+    const reassessmentSectionsAuditMeta: Record<string, unknown> = {};
+    if (
+      data.nursingAssessment !== undefined &&
+      structuredReassessmentSectionsChanged(encounter.nursingAssessment, data.nursingAssessment)
+    ) {
+      reassessmentSectionsAuditMeta.reassessment = {
+        v: 1,
+        structuredSectionsCompleted: structuredReassessmentSectionsCompleted(
+          data.nursingAssessment
+        ),
+      };
+    }
+
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
       userId,
       facilityId,
@@ -1014,6 +1037,7 @@ export class EncountersService {
         ...(data.workflowState !== undefined
           ? { workflowTransition: { from: encounter.workflowState, to: data.workflowState } }
           : {}),
+        ...reassessmentSectionsAuditMeta,
       },
     });
 
