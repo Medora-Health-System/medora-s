@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { createDiagnosis } from "@/lib/chartApi";
 import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
@@ -20,8 +20,10 @@ import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
 import {
   buildVitalsTimelineNewestFirst,
   hasVitalsJson,
+  MEDORA_PATIENT_VITALS_UPDATED,
   vitalsSnapshotMeasuredAtMs,
 } from "@/lib/patientVitals";
+import { snapshotsToVitalSummaryReadings, VitalSummaryPanel } from "@/components/patients/VitalSummaryPanel";
 import {
   esiDisplayChar,
   esiLevelFromUnknown,
@@ -197,6 +199,7 @@ type ErDashboardTile = {
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
+  const router = useRouter();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
@@ -376,6 +379,29 @@ export function EmergencyActiveWorkspaceView() {
   useEffect(() => {
     void loadPatientTriageForCds();
   }, [loadPatientTriageForCds]);
+
+  /** Keep ED vitals summary aligned when vitals are saved from this workspace or elsewhere. */
+  useEffect(() => {
+    const pid = encounter?.patient?.id?.trim();
+    if (!pid) return;
+    const onVitals = (ev: Event) => {
+      const d = (ev as CustomEvent<{ patientId?: string }>).detail;
+      if (d?.patientId === pid) setTriageRefresh((r) => r + 1);
+    };
+    window.addEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitals);
+    return () => window.removeEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitals);
+  }, [encounter?.patient?.id]);
+
+  const encounterVitalSummaryReadings = useMemo(() => {
+    if (!patientVitalsTimeline || !encounterId) return [];
+    const merged = buildVitalsTimelineNewestFirst(
+      patientVitalsTimeline.latest,
+      patientVitalsTimeline.history,
+      []
+    );
+    const forEnc = merged.filter((s) => s.encounterId === encounterId && hasVitalsJson(s.vitalsJson));
+    return snapshotsToVitalSummaryReadings(forEnc, language);
+  }, [patientVitalsTimeline, encounterId, language]);
 
   const encounterVitalsSnapshotsOldestFirst = useMemo(() => {
     if (!patientVitalsTimeline) return null;
@@ -861,17 +887,43 @@ export function EmergencyActiveWorkspaceView() {
                   ) : null}
                 </div>
                 {showQuickVitals && vitalsQuickEditEnabled && fid ? (
-                  <EmergencyQuickVitalsEditor
-                    open={showQuickVitals}
-                    onClose={() => setShowQuickVitals(false)}
-                    encounterId={encounterId}
-                    facilityId={fid}
-                    patientId={patient?.id}
-                    triageSnapshot={triageSnapshot}
-                    onSaved={async () => {
-                      setTriageRefresh((r) => r + 1);
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      width: "100%",
                     }}
-                  />
+                  >
+                    <div style={{ flex: "1 1 280px", minWidth: 0, maxWidth: "100%" }}>
+                      <EmergencyQuickVitalsEditor
+                        open={showQuickVitals}
+                        onClose={() => setShowQuickVitals(false)}
+                        encounterId={encounterId}
+                        facilityId={fid}
+                        patientId={patient?.id}
+                        triageSnapshot={triageSnapshot}
+                        onSaved={async () => {
+                          setTriageRefresh((r) => r + 1);
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: "1 1 300px", minWidth: 0, maxWidth: "100%" }}>
+                      <VitalSummaryPanel
+                        readings={encounterVitalSummaryReadings}
+                        latestReadingId={encounterVitalSummaryReadings[0]?.id}
+                        onClose={() => setShowQuickVitals(false)}
+                        onViewFullHistory={
+                          patient?.id
+                            ? () => {
+                                router.push(`/app/patients/${patient.id}`);
+                              }
+                            : undefined
+                        }
+                      />
+                    </div>
+                  </div>
                 ) : null}
                 {showIvAccessModal && fid ? (
                   <EmergencyIvAccessModal

@@ -4409,6 +4409,23 @@ export default {
     errUnexpectedResponse: "Unexpected server response.",
     errCreateFailed: "Could not create the emergency encounter.",
   },
+  vitalSummary: {
+    title: "Vital summary (newest first)",
+    current: "Current",
+    noHistory: "No vitals history yet.",
+    viewFullHistory: "View full vitals history",
+    close: "Close",
+    colTime: "Time",
+    labels: {
+      bp: "BP",
+      hr: "HR",
+      rr: "RR",
+      temp: "Temp",
+      spo2: "SpO₂",
+      weight: "Weight",
+      height: "Height",
+    },
+  },
   erQuickVitals: {
     vitalsEditAria: "Edit vital signs (triage)",
     title: "Vital signs — quick entry",

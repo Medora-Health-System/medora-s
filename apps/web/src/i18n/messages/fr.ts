@@ -4378,6 +4378,23 @@ export default {
     errUnexpectedResponse: "Réponse inattendue du serveur.",
     errCreateFailed: "Impossible de créer la consultation d'urgence.",
   },
+  vitalSummary: {
+    title: "Résumé des signes vitaux (plus récent en premier)",
+    current: "Courant",
+    noHistory: "Aucun relevé de signes vitaux pour le moment.",
+    viewFullHistory: "Voir l’historique complet des signes vitaux",
+    close: "Fermer",
+    colTime: "Heure",
+    labels: {
+      bp: "TA",
+      hr: "FC",
+      rr: "FR",
+      temp: "Temp",
+      spo2: "SpO₂",
+      weight: "Poids",
+      height: "Taille",
+    },
+  },
   erQuickVitals: {
     vitalsEditAria: "Modifier les signes vitaux (triage)",
     title: "Signes vitaux — saisie rapide",
