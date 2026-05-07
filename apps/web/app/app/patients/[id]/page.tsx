@@ -304,12 +304,14 @@ export default function PatientDetailPage() {
           return [snap, ...prev];
         });
       }
-      loadPatientTriageVitals();
+      void loadPatientTriageVitals();
       void loadPatient();
+      /** Summary → clinical timeline uses `chartSummary.recentEncounters[].triage`; keep it in sync with header vitals. */
+      if (clinicalChartAccess) void loadChartSummary();
     };
     window.addEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitalsUpdated);
     return () => window.removeEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitalsUpdated);
-  }, [patientId, loadPatientTriageVitals, loadPatient]);
+  }, [patientId, loadPatientTriageVitals, loadPatient, clinicalChartAccess, loadChartSummary]);
 
   useEffect(() => {
     if (!rolesReady) return;
