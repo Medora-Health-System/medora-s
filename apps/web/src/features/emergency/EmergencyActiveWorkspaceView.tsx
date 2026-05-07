@@ -887,43 +887,61 @@ export function EmergencyActiveWorkspaceView() {
                   ) : null}
                 </div>
                 {showQuickVitals && vitalsQuickEditEnabled && fid ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "flex-start",
-                      gap: 12,
-                      width: "100%",
-                    }}
-                  >
-                    <div style={{ flex: "1 1 280px", minWidth: 0, maxWidth: "100%" }}>
-                      <EmergencyQuickVitalsEditor
-                        open={showQuickVitals}
-                        onClose={() => setShowQuickVitals(false)}
-                        encounterId={encounterId}
-                        facilityId={fid}
-                        patientId={patient?.id}
-                        triageSnapshot={triageSnapshot}
-                        onSaved={async () => {
-                          setTriageRefresh((r) => r + 1);
-                        }}
-                      />
+                  <>
+                    {/**
+                     * Desktop forces a stable 2-col layout (summary LEFT, quick-entry RIGHT) so the panel
+                     * does not prematurely wrap inside the ED header column. Below the workspace tablet
+                     * breakpoint the row collapses to a single stacked column. Inline media query is injected
+                     * with a unique class (same pattern as MedoraCardActionsMediaStyle).
+                     */}
+                    <style
+                      dangerouslySetInnerHTML={{
+                        __html: `
+                          .medora-er-vitals-twocol {
+                            display: grid;
+                            grid-template-columns: minmax(420px, 0.95fr) minmax(520px, 1.05fr);
+                            gap: 16px;
+                            align-items: start;
+                            width: 100%;
+                          }
+                          @media (max-width: 1023.98px) {
+                            .medora-er-vitals-twocol {
+                              grid-template-columns: 1fr;
+                            }
+                          }
+                        `,
+                      }}
+                    />
+                    <div className="medora-er-vitals-twocol">
+                      <div style={{ minWidth: 0, overflowX: "auto" }}>
+                        <VitalSummaryPanel
+                          readings={encounterVitalSummaryReadings}
+                          latestReadingId={encounterVitalSummaryReadings[0]?.id}
+                          onClose={() => setShowQuickVitals(false)}
+                          onViewFullHistory={
+                            patient?.id
+                              ? () => {
+                                  router.push(`/app/patients/${patient.id}`);
+                                }
+                              : undefined
+                          }
+                        />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <EmergencyQuickVitalsEditor
+                          open={showQuickVitals}
+                          onClose={() => setShowQuickVitals(false)}
+                          encounterId={encounterId}
+                          facilityId={fid}
+                          patientId={patient?.id}
+                          triageSnapshot={triageSnapshot}
+                          onSaved={async () => {
+                            setTriageRefresh((r) => r + 1);
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div style={{ flex: "1 1 300px", minWidth: 0, maxWidth: "100%" }}>
-                      <VitalSummaryPanel
-                        readings={encounterVitalSummaryReadings}
-                        latestReadingId={encounterVitalSummaryReadings[0]?.id}
-                        onClose={() => setShowQuickVitals(false)}
-                        onViewFullHistory={
-                          patient?.id
-                            ? () => {
-                                router.push(`/app/patients/${patient.id}`);
-                              }
-                            : undefined
-                        }
-                      />
-                    </div>
-                  </div>
+                  </>
                 ) : null}
                 {showIvAccessModal && fid ? (
                   <EmergencyIvAccessModal
