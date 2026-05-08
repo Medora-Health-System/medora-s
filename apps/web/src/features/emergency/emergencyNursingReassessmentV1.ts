@@ -1155,6 +1155,84 @@ export function applyStructuredNarrativeFragment(
   return `${cleaned.replace(/\s+$/u, "")}\n\n${block}`;
 }
 
+/**
+ * Read-only column captured from a `GET /encounters/:id/nursing-reassessment-events` entry. The
+ * bedside grid renders one of these per persisted historical reassessment, plus one editable
+ * draft column on the right. The type intentionally mirrors the trimmed shape returned by the
+ * API (snapshot fields are absent when the underlying save did not include them).
+ */
+export type ErNursingReassessmentEventColumn = {
+  /** Event row id, or the literal "legacy" for the back-compat single-object pre-history column. */
+  id: string;
+  /** ISO timestamp the nurse entered as the clinical reassessment time, may be null. */
+  documentedAt: string | null;
+  /** ISO timestamp the row was actually persisted (system save time). */
+  createdAt: string;
+  performerInitials: string;
+  performerDisplayName: string;
+  performerRoleTitle: string;
+  /** The reassessment snapshot at save time (loose-typed Record; renderer reads field-by-field). */
+  snapshot: Record<string, unknown> | null;
+  /** Trauma survey snapshot at save time (`erTraumaSurveyV1`), null when not co-saved. */
+  traumaSnapshot: Record<string, unknown> | null;
+};
+
+/**
+ * Build a back-compat single-column from the existing `Encounter.nursingAssessment.erNursingReassessmentV1`
+ * blob + signature, so charts saved before the append-only history landed still appear as one
+ * persisted column in the grid until the next save creates a real event row. Returns null when
+ * the encounter has no clinical content yet (no signature, no narrative, no structured fields).
+ */
+export function legacyReassessmentColumnFromEncounter(
+  nursingAssessment: unknown
+): ErNursingReassessmentEventColumn | null {
+  if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) {
+    return null;
+  }
+  const ns = (nursingAssessment as Record<string, unknown>)[ER_NURSING_REASSESSMENT_V1_KEY];
+  if (!ns || typeof ns !== "object" || Array.isArray(ns)) return null;
+  const o = ns as Record<string, unknown>;
+
+  /** Only render a legacy column when the underlying record was actually saved. */
+  const sigRaw = o.signature;
+  const sig =
+    sigRaw && typeof sigRaw === "object" && !Array.isArray(sigRaw)
+      ? (sigRaw as Record<string, unknown>)
+      : null;
+  const savedAt = sig && typeof sig.savedAt === "string" ? sig.savedAt : null;
+  const savedByDisplayName = sig && typeof sig.savedByDisplayName === "string" ? sig.savedByDisplayName : "";
+  if (!savedAt) return null;
+
+  const documentedAt = typeof o.reassessmentAt === "string" && o.reassessmentAt.trim() ? o.reassessmentAt : null;
+
+  /** Two-letter initials from displayName (mirrors backend `computeDisplayNameInitials`). */
+  const trimmed = savedByDisplayName.trim();
+  const parts = trimmed ? trimmed.split(/\s+/u) : [];
+  let initials = "";
+  if (parts.length === 1) {
+    initials = parts[0]!.slice(0, 2).toUpperCase();
+  } else if (parts.length >= 2) {
+    initials = `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase();
+  }
+
+  const traumaRaw = (nursingAssessment as Record<string, unknown>).erTraumaSurveyV1;
+  const traumaSnapshot =
+    traumaRaw && typeof traumaRaw === "object" && !Array.isArray(traumaRaw)
+      ? (traumaRaw as Record<string, unknown>)
+      : null;
+
+  return {
+    id: "legacy",
+    documentedAt,
+    createdAt: savedAt,
+    performerInitials: initials,
+    performerDisplayName: trimmed,
+    performerRoleTitle: "",
+    snapshot: o,
+    traumaSnapshot,
+  };
+}
+
 /** Vitals one-liner from triage GET vitalsJson (same as triage strip). */
 export function vitalsLineFromTriageVitalsJson(
   vitalsJson: unknown,

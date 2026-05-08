@@ -9,13 +9,22 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
 import {
+  computeDisplayNameInitials,
+  erNursingReassessmentEventPayload,
   getNursingAssessmentNamespace,
+  NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
   NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1,
+  NURSING_ASSESSMENT_NAMESPACE_ER_TRAUMA_SURVEY_V1,
   NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1,
   nursingAssessmentJsonSnapshotPayload,
   nursingAssessmentNamespaceChanged,
 } from "../utils/clinical-event-nursing-assessment-json.util";
 import {
+  extractReassessmentDocumentedAt,
+  nursingAssessmentHasBedsideSafety,
+  nursingAssessmentHasNursingInterventions,
+  nursingAssessmentHasTraumaDocumentation,
+  reassessmentNamespaceMaterialChange,
   structuredReassessmentSectionsChanged,
   structuredReassessmentSectionsCompleted,
 } from "../utils/nursing-reassessment-structured-summary.util";
@@ -989,6 +998,94 @@ export class EncountersService {
           },
         });
       }
+      /**
+       * ER nursing reassessment column lifecycle (append-only at the COLUMN level).
+       *
+       * A "column" is a single `EncounterClinicalEvent NURSING_ASSESSMENT_SAVED` row tagged with
+       * the `erNursingReassessmentV1` namespace. Within an active reassessment session, repeated
+       * saves UPDATE the most recent column's `payloadJson` in place rather than inserting a new
+       * row — this prevents timeline spam when a nurse incrementally documents the same
+       * reassessment over a few minutes. A NEW column is only opened when:
+       *
+       *   1. The frontend explicitly signals `reassessmentNewSession: true` (document-icon
+       *      "Nouvelle séance" click), OR
+       *   2. There is no existing reassessment event row yet (first save for this encounter).
+       *
+       * This honors:
+       *   - "maintain append-only history guarantees" — closed/older columns are never edited.
+       *     Only the most-recent (active) column row is mutable, and only while it remains the
+       *     active session (i.e. until the next document-icon click freezes it).
+       *   - "never erase prior persisted columns" — an UPDATE only ever touches the latest row.
+       *   - "no destructive overwrite behavior" — prior columns stay byte-identical.
+       *
+       * The signature-excluded `reassessmentNamespaceMaterialChange` gate still applies first:
+       * a save with no clinical content change touches no event row at all.
+       */
+      if (reassessmentNamespaceMaterialChange(prevFull, nextFull)) {
+        const performer = await this.resolveErNursingReassessmentPerformer(facilityId, userId);
+        const reassessmentSnapshot = getNursingAssessmentNamespace(
+          nextFull,
+          NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1
+        );
+        const traumaSnapshot = getNursingAssessmentNamespace(
+          nextFull,
+          NURSING_ASSESSMENT_NAMESPACE_ER_TRAUMA_SURVEY_V1
+        );
+        const docAtIso = extractReassessmentDocumentedAt(nextFull);
+        const documentedAt = docAtIso ? new Date(docAtIso) : null;
+        const safeDocumentedAt =
+          documentedAt && !Number.isNaN(documentedAt.getTime()) ? documentedAt : null;
+
+        const startsNewSession = data.reassessmentNewSession === true;
+        const latestSession = await this.prisma.encounterClinicalEvent.findFirst({
+          where: {
+            encounterId: encounter.id,
+            facilityId,
+            eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+            payloadJson: {
+              path: ["namespace"],
+              equals: NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true },
+        });
+
+        const payload = erNursingReassessmentEventPayload({
+          snapshot: reassessmentSnapshot,
+          traumaSnapshot,
+          documentedAt: safeDocumentedAt,
+          performerId: performer.performerId,
+          performerDisplayName: performer.performerDisplayName,
+          performerRoleTitle: performer.performerRoleTitle,
+          performerInitials: performer.performerInitials,
+        });
+
+        if (!latestSession || startsNewSession) {
+          await this.prisma.encounterClinicalEvent.create({
+            data: {
+              facilityId,
+              encounterId: encounter.id,
+              patientId: encounter.patientId,
+              eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+              payloadJson: payload,
+              createdByUserId: userId,
+            },
+          });
+        } else {
+          /**
+           * Same active session: rewrite the payloadJson on the existing latest event row.
+           * `createdAt` and `createdByUserId` stay pinned to the original session opener; the
+           * payload now carries the most-recent performer + snapshot. Note this is the only
+           * mutable code path for `EncounterClinicalEvent` rows in this flow — older sessions
+           * (any row that is no longer the latest) are never touched.
+           */
+          await this.prisma.encounterClinicalEvent.update({
+            where: { id: latestSession.id },
+            data: { payloadJson: payload },
+          });
+        }
+      }
       if (nursingAssessmentNamespaceChanged(prevFull, nextFull, ER_HANDOFF_V1_KEY)) {
         await this.prisma.encounterClinicalEvent.create({
           data: {
@@ -1007,21 +1104,55 @@ export class EncountersService {
 
     /**
      * PHI-safe structured reassessment summary for audit metadata. Surfaced ONLY when the patch
-     * touched `nursingAssessment` AND the set of structured fields actually changed. Returns the
-     * stable field codes (e.g. ["mentalStatus","skinCondition"]) — never narrative, values, or
-     * PHI. Useful for QA review / pilot oversight / documentation completeness analytics.
+     * touched `nursingAssessment` AND the reassessment namespace actually changed. Returns the
+     * stable field codes (e.g. ["mentalStatus","skinCondition"]), `columnCount` (count of saved
+     * reassessment events for this encounter), `latestDocumentedAt` (the clinical timestamp of
+     * the just-saved reassessment), and three boolean shape indicators — never narrative,
+     * values, or PHI. Used for QA review / pilot oversight / documentation completeness
+     * analytics. The column count requires one extra count() query, so we only run it when we
+     * actually wrote a column.
      */
     const reassessmentSectionsAuditMeta: Record<string, unknown> = {};
-    if (
+    const reassessmentNamespaceChangedThisPatch =
       data.nursingAssessment !== undefined &&
-      structuredReassessmentSectionsChanged(encounter.nursingAssessment, data.nursingAssessment)
-    ) {
-      reassessmentSectionsAuditMeta.reassessment = {
+      reassessmentNamespaceMaterialChange(encounter.nursingAssessment, data.nursingAssessment);
+    const sectionsChangedThisPatch =
+      data.nursingAssessment !== undefined &&
+      structuredReassessmentSectionsChanged(encounter.nursingAssessment, data.nursingAssessment);
+    if (sectionsChangedThisPatch || reassessmentNamespaceChangedThisPatch) {
+      const meta: Record<string, unknown> = {
         v: 1,
-        structuredSectionsCompleted: structuredReassessmentSectionsCompleted(
-          data.nursingAssessment
-        ),
+        structuredSectionsCompleted: structuredReassessmentSectionsCompleted(data.nursingAssessment),
       };
+      if (reassessmentNamespaceChangedThisPatch) {
+        const columnCount = await this.prisma.encounterClinicalEvent.count({
+          where: {
+            encounterId: encounter.id,
+            facilityId,
+            eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+            payloadJson: {
+              path: ["namespace"],
+              equals: NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
+            },
+          },
+        });
+        meta.columnCount = columnCount;
+        meta.latestDocumentedAt = extractReassessmentDocumentedAt(data.nursingAssessment);
+        meta.hasTraumaDocumentation = nursingAssessmentHasTraumaDocumentation(data.nursingAssessment);
+        meta.hasBedsideSafety = nursingAssessmentHasBedsideSafety(data.nursingAssessment);
+        meta.hasNursingInterventions = nursingAssessmentHasNursingInterventions(
+          data.nursingAssessment
+        );
+        /**
+         * `sessionMode` clarifies for QA / pilot oversight whether this PATCH opened a fresh
+         * reassessment column ("new") or refined the active session in place ("updated"). Empty
+         * column count rolling back to 1 right after this PATCH means it was the very first
+         * reassessment for the encounter; any other increment vs unchanged value tracks the
+         * INSERT-vs-UPDATE distinction. Field names only — never values, never PHI.
+         */
+        meta.sessionMode = data.reassessmentNewSession === true ? "new" : "updated";
+      }
+      reassessmentSectionsAuditMeta.reassessment = meta;
     }
 
     await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
@@ -1477,6 +1608,167 @@ export class EncountersService {
 
   private userDisplayName(u: { firstName: string | null; lastName: string | null }): string {
     return `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
+  }
+
+  /**
+   * Resolve performer identity (display name + role title + initials) for an ER nursing
+   * reassessment column event. RN-first ordering reflects who normally documents reassessments
+   * at the bedside; PROVIDER / ADMIN are accepted fallbacks when an RN role isn't present (e.g.
+   * a provider re-documenting nursing observations during a critical event).
+   *
+   * Returns a snapshot with `null`/empty fallbacks if the user record cannot be loaded — the
+   * event is always written; absent identity simply renders as "—" in the bedside grid.
+   */
+  private async resolveErNursingReassessmentPerformer(
+    facilityId: string,
+    userId: string | null | undefined
+  ): Promise<{
+    performerId: string | null;
+    performerDisplayName: string;
+    performerRoleTitle: string;
+    performerInitials: string;
+  }> {
+    if (!userId) {
+      return {
+        performerId: null,
+        performerDisplayName: "",
+        performerRoleTitle: "",
+        performerInitials: "",
+      };
+    }
+    const actor = await this.prisma.user.findFirst({
+      where: { id: userId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!actor) {
+      return {
+        performerId: userId,
+        performerDisplayName: "",
+        performerRoleTitle: "",
+        performerInitials: "",
+      };
+    }
+    const display = this.userDisplayName(actor) || "";
+    const initials = computeDisplayNameInitials(display);
+
+    const rows = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      select: { role: { select: { code: true } } },
+    });
+    const codes = new Set(rows.map((r) => r.role.code));
+    const order: RoleCode[] = [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN];
+    let chosen: RoleCode | null = null;
+    for (const rc of order) {
+      if (codes.has(rc)) {
+        chosen = rc;
+        break;
+      }
+    }
+    /** Stable, FR-localized title. Codes are ASCII and audit-friendly. */
+    const title =
+      chosen === RoleCode.RN
+        ? "RN"
+        : chosen === RoleCode.PROVIDER
+        ? "MD"
+        : chosen === RoleCode.ADMIN
+        ? "ADMIN"
+        : "";
+
+    return {
+      performerId: actor.id,
+      performerDisplayName: display,
+      performerRoleTitle: title,
+      performerInitials: initials,
+    };
+  }
+
+  /**
+   * List ER nursing reassessment column events for an encounter (append-only history). Filters
+   * the encounter's `NURSING_ASSESSMENT_SAVED` clinical events to those tagged with the
+   * `erNursingReassessmentV1` namespace; ignores nursingEvalV1-namespaced rows (provider intake)
+   * and other clinical event types.
+   *
+   * Performance: bounded `take`, `orderBy: createdAt desc` (matches the index on `(encounterId,
+   * createdAt)`); shape is denormalized so the bedside grid never re-resolves performer identity.
+   * Facility-scoped at every layer.
+   */
+  async listNursingReassessmentEvents(
+    facilityId: string,
+    encounterId: string,
+    limit: number = 50
+  ) {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 100);
+    const rows = await this.prisma.encounterClinicalEvent.findMany({
+      where: {
+        encounterId,
+        facilityId,
+        eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+        payloadJson: {
+          path: ["namespace"],
+          equals: NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: safeLimit,
+      include: {
+        createdBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    return {
+      entries: rows.map((r) => {
+        const raw = r.payloadJson;
+        const p =
+          raw && typeof raw === "object" && !Array.isArray(raw)
+            ? (raw as Record<string, unknown>)
+            : {};
+        const nameFromPayload =
+          typeof p.performerDisplayName === "string" && p.performerDisplayName.trim()
+            ? p.performerDisplayName.trim()
+            : "";
+        const display = nameFromPayload || this.userDisplayName(r.createdBy) || "";
+        const initials =
+          typeof p.performerInitials === "string" && p.performerInitials.trim()
+            ? p.performerInitials.trim()
+            : computeDisplayNameInitials(display);
+        const roleTitle =
+          typeof p.performerRoleTitle === "string" && p.performerRoleTitle.trim()
+            ? p.performerRoleTitle.trim()
+            : "";
+        const docAt =
+          typeof p.documentedAt === "string" && p.documentedAt.trim() ? p.documentedAt.trim() : null;
+        const performerId =
+          typeof p.performerId === "string" && p.performerId.trim() ? p.performerId.trim() : null;
+        const snapshot =
+          p.snapshot && typeof p.snapshot === "object" && !Array.isArray(p.snapshot)
+            ? (p.snapshot as Record<string, unknown>)
+            : null;
+        const traumaSnapshot =
+          p.traumaSnapshot &&
+          typeof p.traumaSnapshot === "object" &&
+          !Array.isArray(p.traumaSnapshot)
+            ? (p.traumaSnapshot as Record<string, unknown>)
+            : null;
+        return {
+          id: r.id,
+          createdAt: r.createdAt.toISOString(),
+          documentedAt: docAt,
+          performerId,
+          performerDisplayName: display,
+          performerRoleTitle: roleTitle,
+          performerInitials: initials,
+          snapshot,
+          traumaSnapshot,
+        };
+      }),
+    };
   }
 
   /**

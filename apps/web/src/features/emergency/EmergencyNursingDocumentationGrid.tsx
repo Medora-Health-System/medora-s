@@ -3,14 +3,19 @@
 /**
  * Column-style documentation grid for the ED Nursing Reassessment panel.
  *
- * Reads from / writes to the same `ErNursingReassessmentForm` state owned by the parent panel.
- * The existing PATCH /encounters/:id save handler persists the new structured rows alongside
- * the legacy fields under `Encounter.nursingAssessment.erNursingReassessmentV1` (no schema change).
+ * Renders a left → right timeline:
+ *   [persisted column #1 (oldest)] … [persisted column #N (most recent, "Actuel")] [draft (editable)]
  *
- * Today the grid renders a single "Current" column for the latest reassessment because the
- * underlying JSON shape stores only the latest record. Multi-column history is a deferred
- * Phase-2 product change (would either use `EncounterClinicalEvent NURSING_ASSESSMENT_SAVED`
- * events or an array shape in JSON).
+ * Persisted columns come from the append-only `EncounterClinicalEvent NURSING_ASSESSMENT_SAVED`
+ * history (namespace `erNursingReassessmentV1`). The draft column is bound to the editable
+ * `ErNursingReassessmentForm` state owned by the parent — every save creates a new persisted
+ * column event-row. Persisted columns are read-only by design (no edit/delete in normal flow),
+ * matching the prior architectural guidance to use append-only events for reassessment history.
+ *
+ * Backward compatibility: when there are no persisted events yet but the chart already has a
+ * saved single-object reassessment, the parent passes a synthetic `legacyColumn` so the chart's
+ * pre-history documentation still appears as one column until the next save materializes a
+ * real event row.
  */
 
 import React, { useId, useMemo } from "react";
@@ -38,6 +43,7 @@ import {
   type ErFallRisk,
   type ErGeneralAppearanceCode,
   type ErMentalStatus,
+  type ErNursingReassessmentEventColumn,
   type ErNursingReassessmentForm,
   type ErOrientation,
   type ErRespiratoryPattern,
@@ -59,6 +65,17 @@ type Props = {
   language: "en" | "fr";
   /** Most recent saved signature (read from `nursingAssessment.erNursingReassessmentV1.signature`). */
   savedSignature?: SavedSignature | null;
+  /**
+   * Read-only persisted columns from the append-only event history. Newest-first ordering as
+   * returned by the API; the grid reverses this internally so the timeline reads
+   * left-to-right oldest-to-newest with the draft column on the far right.
+   */
+  persistedColumns?: ErNursingReassessmentEventColumn[];
+  /**
+   * Synthetic single column for back-compat: passed only when the chart has saved data but no
+   * append-only event rows exist yet (pre-history charts). Always rendered first (left-most).
+   */
+  legacyColumn?: ErNursingReassessmentEventColumn | null;
 };
 
 const colorBlue = "#0284c7";
@@ -112,13 +129,15 @@ const helpStyle: React.CSSProperties = {
   lineHeight: 1.45,
 };
 
-const gridStyle: React.CSSProperties = {
-  display: "grid",
-  /** label track + one documentation column. Designed to extend with more columns when history lands. */
-  gridTemplateColumns: "minmax(140px, 200px) minmax(220px, 1fr)",
-  borderTop: `1px solid ${colorBorder}`,
-  marginTop: 10,
-};
+/**
+ * Build the grid template: one fixed label track on the left, then one track per documentation
+ * column (persisted history + 1 editable draft). Each column gets a min width so dropdowns and
+ * read-only values stay legible; horizontal scroll handles overflow when many columns exist.
+ */
+function buildGridTemplate(columnCount: number): string {
+  const cols = Math.max(1, columnCount);
+  return `minmax(140px, 200px) ${Array.from({ length: cols }, () => "minmax(220px, 1fr)").join(" ")}`;
+}
 
 const labelCell: React.CSSProperties = {
   padding: "8px 10px",
@@ -198,6 +217,66 @@ function formatColumnTime(
   };
 }
 
+/**
+ * Resolve the read-only display label for a structured row value coming from a persisted column.
+ * Each row knows its own option-key prefix so the renderer can map a stable code to the FR label
+ * the nurse originally saw at the time of the save.
+ */
+function resolveSnapshotDisplay(
+  t: TFn,
+  rowKey: StructuredRowKey,
+  rawValue: unknown
+): string {
+  if (rawValue == null) return "";
+  if (rowKey === "pain0to10") {
+    return typeof rawValue === "number" ? String(rawValue) : "";
+  }
+  if (typeof rawValue !== "string") return "";
+  if (!rawValue) return "";
+  if (rowKey === "airway" || rowKey === "breathing" || rowKey === "circulation") {
+    return nursingAbcSelectOptionLabel(t, rawValue as ErAbcOption);
+  }
+  if (rowKey === "trend") {
+    return nursingTrendOptionLabel(t, rawValue as ErTrend);
+  }
+  /** All other structured rows live under a single i18n namespace per row. */
+  const optionsKey = STRUCTURED_ROW_I18N_NS[rowKey];
+  if (!optionsKey) return rawValue;
+  return t(`emergencyNursingReassessment.${optionsKey}.${rawValue}`);
+}
+
+const STRUCTURED_ROW_I18N_NS: Partial<Record<StructuredRowKey, string>> = {
+  mentalStatus: "mentalStatusOptions",
+  orientation: "orientationOptions",
+  speech: "speechOptions",
+  generalAppearanceCode: "generalAppearanceOptions",
+  distressLevel: "distressLevelOptions",
+  respiratoryPattern: "respiratoryPatternOptions",
+  cardiacRhythm: "cardiacRhythmOptions",
+  skinCondition: "skinConditionOptions",
+  ambulation: "ambulationOptions",
+  fallRisk: "fallRiskOptions",
+  safetyRisk: "safetyRiskOptions",
+};
+
+type StructuredRowKey =
+  | "mentalStatus"
+  | "orientation"
+  | "speech"
+  | "generalAppearanceCode"
+  | "distressLevel"
+  | "pain0to10"
+  | "airway"
+  | "breathing"
+  | "respiratoryPattern"
+  | "circulation"
+  | "cardiacRhythm"
+  | "skinCondition"
+  | "ambulation"
+  | "fallRisk"
+  | "safetyRisk"
+  | "trend";
+
 export function EmergencyNursingDocumentationGrid({
   form,
   onPatch,
@@ -205,6 +284,8 @@ export function EmergencyNursingDocumentationGrid({
   t,
   language,
   savedSignature,
+  persistedColumns,
+  legacyColumn,
 }: Props) {
   const dg = (k: string) => t(`emergencyNursingReassessment.documentationGrid.${k}`);
 
@@ -227,8 +308,18 @@ export function EmergencyNursingDocumentationGrid({
   const updaterName = savedSignature?.savedByDisplayName?.trim() || "";
   const updaterInitials = displayNameInitials(updaterName);
 
+  /**
+   * Persisted columns come newest-first from the API. We render oldest-to-newest so the timeline
+   * reads naturally left-to-right; the legacy column (if any) is always the leftmost. Latest
+   * persisted column = "Actuel". The editable draft column is rendered last on the right.
+   */
+  const persistedColumnsForRender = useMemo(() => {
+    const fromEvents = (persistedColumns ?? []).slice().reverse();
+    return legacyColumn ? [legacyColumn, ...fromEvents] : fromEvents;
+  }, [persistedColumns, legacyColumn]);
+
   const rows: Array<{
-    key: string;
+    key: StructuredRowKey;
     label: string;
     value: string;
     options: { value: string; label: string }[];
@@ -445,7 +536,14 @@ export function EmergencyNursingDocumentationGrid({
         {dg("sectionHelp")}
       </p>
       <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={gridStyle}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: buildGridTemplate(persistedColumnsForRender.length + 1),
+            borderTop: `1px solid ${colorBorder}`,
+            marginTop: 10,
+          }}
+        >
           {/* Empty top-left corner cell (sticky label header). */}
           <div
             style={{
@@ -461,54 +559,102 @@ export function EmergencyNursingDocumentationGrid({
             }}
             aria-hidden
           />
-          {/* Column header (current). */}
+          {/* Persisted column headers (oldest → newest, legacy first when present). */}
+          {persistedColumnsForRender.map((col, idx) => {
+            const t1 = formatColumnTime(col.documentedAt ?? col.createdAt, language);
+            const isLatestPersisted = idx === persistedColumnsForRender.length - 1;
+            return (
+              <div
+                key={`hdr-${col.id}`}
+                style={{
+                  ...colHeaderTopBox,
+                  backgroundColor: isLatestPersisted ? "#ecfdf5" : "#f8fafc",
+                  borderRight: `1px solid ${colorBorder}`,
+                }}
+              >
+                <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
+                  {t1.time}
+                </span>
+                <span style={{ fontSize: 11, color: colorMuted }}>
+                  {t1.date || dg("columnTimePlaceholder")}
+                </span>
+                {isLatestPersisted ? (
+                  <span style={currentBadge}>{dg("columnHeaderLatest")}</span>
+                ) : null}
+              </div>
+            );
+          })}
+          {/* Draft column header (rightmost). */}
           <div style={colHeaderTopBox}>
             <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
               {columnTime.time}
             </span>
-            <span style={{ fontSize: 11, color: colorMuted }}>{columnTime.date || dg("columnTimePlaceholder")}</span>
-            {isPersistedCurrent ? <span style={currentBadge}>{dg("columnHeaderLatest")}</span> : null}
+            <span style={{ fontSize: 11, color: colorMuted }}>
+              {columnTime.date || dg("columnTimePlaceholder")}
+            </span>
+            <span
+              style={{
+                ...currentBadge,
+                backgroundColor: persistedColumnsForRender.length > 0 ? "#dbeafe" : "#dcfce7",
+                color: persistedColumnsForRender.length > 0 ? "#1d4ed8" : "#166534",
+              }}
+            >
+              {persistedColumnsForRender.length > 0
+                ? dg("columnHeaderDraft")
+                : isPersistedCurrent
+                ? dg("columnHeaderLatest")
+                : dg("columnHeaderDraft")}
+            </span>
           </div>
           {/* Rows */}
-          {rows.map((r, idx) => (
-            <React.Fragment key={r.key}>
-              <div
-                style={{
-                  ...labelCell,
-                  backgroundColor: idx % 2 === 1 ? colorRowAlt : "#fff",
-                }}
-              >
-                {r.label}
-              </div>
-              <div
-                style={{
-                  ...valueCell,
-                  backgroundColor: idx % 2 === 1 ? colorRowAlt : "#fff",
-                }}
-              >
-                <select
-                  value={r.value}
-                  onChange={(e) => r.onChange(e.target.value)}
-                  disabled={formDisabled}
-                  aria-label={r.label}
-                  aria-describedby={sectionHelpId}
-                  style={{
-                    ...selectStyle,
-                    backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-                    cursor: formDisabled ? "not-allowed" : "pointer",
-                  }}
-                >
-                  <option value="">{dg("placeholder")}</option>
-                  {r.options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </React.Fragment>
-          ))}
-          {/* Footer row: updated by */}
+          {rows.map((r, idx) => {
+            const altBg = idx % 2 === 1 ? colorRowAlt : "#fff";
+            return (
+              <React.Fragment key={r.key}>
+                <div style={{ ...labelCell, backgroundColor: altBg }}>{r.label}</div>
+                {persistedColumnsForRender.map((col) => {
+                  const raw = col.snapshot ? col.snapshot[r.key] : undefined;
+                  const display = resolveSnapshotDisplay(t, r.key, raw);
+                  return (
+                    <div
+                      key={`v-${col.id}-${r.key}`}
+                      style={{
+                        ...valueCell,
+                        backgroundColor: altBg,
+                        borderRight: `1px solid ${colorBorder}`,
+                        fontSize: 13,
+                        color: display ? "#0f172a" : "#94a3b8",
+                      }}
+                    >
+                      {display || "—"}
+                    </div>
+                  );
+                })}
+                <div style={{ ...valueCell, backgroundColor: altBg }}>
+                  <select
+                    value={r.value}
+                    onChange={(e) => r.onChange(e.target.value)}
+                    disabled={formDisabled}
+                    aria-label={r.label}
+                    aria-describedby={sectionHelpId}
+                    style={{
+                      ...selectStyle,
+                      backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                      cursor: formDisabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <option value="">{dg("placeholder")}</option>
+                    {r.options.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </React.Fragment>
+            );
+          })}
+          {/* Footer row: updated by — one entry per column. */}
           <div
             style={{
               padding: "8px 10px",
@@ -522,13 +668,43 @@ export function EmergencyNursingDocumentationGrid({
           >
             {dg("footerUpdatedBy")}
           </div>
+          {persistedColumnsForRender.map((col) => {
+            const t2 = formatColumnTime(col.createdAt, language);
+            const fullName = col.performerDisplayName.trim();
+            const initials = col.performerInitials.trim() || displayNameInitials(fullName);
+            return (
+              <div
+                key={`f-${col.id}`}
+                style={{ ...colFooterBox, borderRight: `1px solid ${colorBorder}` }}
+              >
+                {fullName ? (
+                  <>
+                    <span
+                      style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}
+                      title={fullName}
+                    >
+                      {fullName}
+                    </span>
+                    <span
+                      style={{ fontSize: 11, color: colorMuted }}
+                      title={fullName}
+                      aria-label={fullName}
+                    >
+                      {initials}
+                      {col.performerRoleTitle ? ` · ${col.performerRoleTitle}` : ""}
+                      {t2.time !== "—" ? ` · ${t2.date} ${t2.time}` : ""}
+                    </span>
+                  </>
+                ) : (
+                  <span>{dg("footerNotSavedYet")}</span>
+                )}
+              </div>
+            );
+          })}
           <div style={colFooterBox}>
             {updaterName ? (
               <>
-                <span
-                  style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}
-                  title={updaterName}
-                >
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }} title={updaterName}>
                   {updaterName}
                 </span>
                 <span

@@ -24,9 +24,11 @@ import {
   ER_NURSING_REASSESSMENT_V1_KEY,
   ER_NURSING_TREND_SELECT_OPTIONS,
   erNursingReassessmentFormFromEncounter,
+  legacyReassessmentColumnFromEncounter,
   mergeErNursingReassessmentIntoNursingAssessment,
   vitalsLineFromTriageVitalsJson,
   type ErAbcOption,
+  type ErNursingReassessmentEventColumn,
   type ErNursingReassessmentForm,
   type ErTrend,
 } from "./emergencyNursingReassessmentV1";
@@ -592,6 +594,48 @@ export function EmergencyNursingReassessmentPanel({
    */
   const [structuredAckVisible, setStructuredAckVisible] = useState(false);
 
+  /**
+   * Append-only history of persisted reassessment columns for this encounter (newest-first as
+   * returned by the API). Refreshed on mount and after every successful save. Empty until a
+   * save with the new event-writing path lands; pre-history charts are surfaced via
+   * `legacyReassessmentColumnFromEncounter` instead so existing documentation never disappears.
+   */
+  const [persistedColumns, setPersistedColumns] = useState<ErNursingReassessmentEventColumn[]>([]);
+
+  /**
+   * Synthetic single column from the existing (pre-event-history) `erNursingReassessmentV1`
+   * blob. Rendered only when the API returned no event rows yet; once the chart accumulates
+   * even one append-only event, the legacy column is suppressed (the same data is already
+   * captured on the latest event row by then).
+   */
+  const legacyColumn = useMemo<ErNursingReassessmentEventColumn | null>(() => {
+    if (persistedColumns.length > 0) return null;
+    return legacyReassessmentColumnFromEncounter(encounter.nursingAssessment);
+  }, [persistedColumns, encounter.nursingAssessment]);
+
+  /**
+   * Reassessment session lifecycle (frontend half).
+   *
+   * `nextSaveStartsNewSession` is the explicit "open a new column on next save" marker — set by
+   * the document-icon "Nouvelle séance" button and by material `reassessmentAt` changes (more
+   * than ~60 minutes from the loaded session's documentedAt). When this is `true`, the next
+   * successful save sends `reassessmentNewSession: true` to the backend and the API INSERTS a
+   * new event row. Otherwise the API UPDATEs the most recent reassessment event row in place,
+   * keeping incremental bedside edits in the same active column (no timeline spam).
+   *
+   * `loadedReassessmentAtIso` snapshots the `reassessmentAt` value the form was hydrated with,
+   * so a subsequent edit can be compared against the originally-loaded session timestamp. It's
+   * refreshed on encounter-sync and on every successful save.
+   */
+  const [nextSaveStartsNewSession, setNextSaveStartsNewSession] = useState(false);
+  const loadedReassessmentAtIsoRef = useRef<string>("");
+  /**
+   * Material-change threshold: a reassessment time edit ≥ this many minutes from the loaded
+   * value rolls into a new session automatically. Below the threshold (e.g. fixing a typo from
+   * 14:32 → 14:35) keeps the active session and the same event row.
+   */
+  const REASSESSMENT_NEW_SESSION_MINUTES = 60;
+
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
 
@@ -608,9 +652,70 @@ export function EmergencyNursingReassessmentPanel({
     }
   }, [encounterId, facilityId]);
 
+  /**
+   * Fetch the append-only nursing reassessment column history from
+   * `GET /encounters/:id/nursing-reassessment-events`. Failure is non-fatal: the grid simply
+   * falls back to the legacy single-column rendering, so a transient API hiccup never erases
+   * documentation from the nurse's view.
+   */
+  const loadPersistedColumns = useCallback(async () => {
+    try {
+      const data = await apiFetch(`/encounters/${encounterId}/nursing-reassessment-events`, {
+        facilityId,
+      });
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        const entries = (data as { entries?: unknown }).entries;
+        if (Array.isArray(entries)) {
+          /** Defensive shape mapping: only accept rows that look like event columns. */
+          const safe: ErNursingReassessmentEventColumn[] = [];
+          for (const e of entries) {
+            if (!e || typeof e !== "object" || Array.isArray(e)) continue;
+            const row = e as Record<string, unknown>;
+            const id = typeof row.id === "string" ? row.id : "";
+            if (!id) continue;
+            const createdAt = typeof row.createdAt === "string" ? row.createdAt : "";
+            if (!createdAt) continue;
+            safe.push({
+              id,
+              createdAt,
+              documentedAt:
+                typeof row.documentedAt === "string" && row.documentedAt.trim() ? row.documentedAt : null,
+              performerInitials:
+                typeof row.performerInitials === "string" ? row.performerInitials : "",
+              performerDisplayName:
+                typeof row.performerDisplayName === "string" ? row.performerDisplayName : "",
+              performerRoleTitle:
+                typeof row.performerRoleTitle === "string" ? row.performerRoleTitle : "",
+              snapshot:
+                row.snapshot && typeof row.snapshot === "object" && !Array.isArray(row.snapshot)
+                  ? (row.snapshot as Record<string, unknown>)
+                  : null,
+              traumaSnapshot:
+                row.traumaSnapshot &&
+                typeof row.traumaSnapshot === "object" &&
+                !Array.isArray(row.traumaSnapshot)
+                  ? (row.traumaSnapshot as Record<string, unknown>)
+                  : null,
+            });
+          }
+          setPersistedColumns(safe);
+          return;
+        }
+      }
+      setPersistedColumns([]);
+    } catch (e) {
+      console.error(e);
+      /** Keep prior list on failure rather than blanking the grid. */
+    }
+  }, [encounterId, facilityId]);
+
   useEffect(() => {
     void loadTriage();
   }, [loadTriage]);
+
+  useEffect(() => {
+    void loadPersistedColumns();
+  }, [loadPersistedColumns]);
 
   useEffect(() => {
     if (!triage) {
@@ -686,12 +791,23 @@ export function EmergencyNursingReassessmentPanel({
       pendingDraftSliceRef.current = draft.triageNursingSlice;
       setDraftRestored(true);
       isDirtyRef.current = true;
+      /** A draft restore alone does not start a new session; whatever the user picks next decides. */
+      loadedReassessmentAtIsoRef.current = draft.form.reassessmentAt || "";
     } else {
-      setForm(erNursingReassessmentFormFromEncounter(encounter.nursingAssessment));
+      const fresh = erNursingReassessmentFormFromEncounter(encounter.nursingAssessment);
+      setForm(fresh);
       setTraumaForm(erTraumaSurveyV1FormFromEncounter(encounter.nursingAssessment));
       pendingDraftSliceRef.current = null;
       setDraftRestored(false);
       isDirtyRef.current = false;
+      /**
+       * Re-hydration baseline for the active session. Future edits compare against this; only a
+       * material reassessmentAt drift (or the document-icon button) can flip the next save into
+       * a new column. Reset the new-session marker so a stale flag from a prior chart never
+       * rolls over into another encounter / patient.
+       */
+      loadedReassessmentAtIsoRef.current = fresh.reassessmentAt || "";
+      setNextSaveStartsNewSession(false);
     }
     void loadTriage();
   }, [encounter.nursingAssessment, encounter.updatedAt, encounterId, currentUserId, loadTriage]);
@@ -813,6 +929,7 @@ export function EmergencyNursingReassessmentPanel({
     (patch: Partial<ErNursingReassessmentForm>) => {
       isDirtyRef.current = true;
       let touchedStructured = false;
+      let materialReassessmentAtChange = false;
       setForm((f) => {
         const merged: ErNursingReassessmentForm = { ...f, ...patch };
         /**
@@ -827,11 +944,33 @@ export function EmergencyNursingReassessmentPanel({
           const lines = buildStructuredNarrativeFragmentLines(merged, language);
           merged.narrative = applyStructuredNarrativeFragment(merged.narrative, lines);
         }
+        /**
+         * Material reassessmentAt drift = "this is a different reassessment session."
+         * Threshold-gated so a small typo correction (e.g. 14:30 → 14:35) does NOT trigger a
+         * new column event. The loaded ref is the timestamp the active session was opened with;
+         * any drift beyond the threshold rolls the next save into a fresh column.
+         */
+        if (Object.prototype.hasOwnProperty.call(patch, "reassessmentAt")) {
+          const baseIso = loadedReassessmentAtIsoRef.current;
+          if (baseIso && merged.reassessmentAt && merged.reassessmentAt !== baseIso) {
+            const baseMs = Date.parse(baseIso);
+            const nextMs = Date.parse(merged.reassessmentAt);
+            if (!Number.isNaN(baseMs) && !Number.isNaN(nextMs)) {
+              const diffMin = Math.abs(nextMs - baseMs) / 60000;
+              if (diffMin >= REASSESSMENT_NEW_SESSION_MINUTES) {
+                materialReassessmentAtChange = true;
+              }
+            }
+          }
+        }
         return merged;
       });
       if (touchedStructured) {
         /** Trigger the visible "✓ Documentation structurée mise à jour" hint. */
         setStructuredAckTick(Date.now());
+      }
+      if (materialReassessmentAtChange) {
+        setNextSaveStartsNewSession(true);
       }
     },
     [language]
@@ -859,6 +998,74 @@ export function EmergencyNursingReassessmentPanel({
     },
     []
   );
+
+  /**
+   * Open a fresh reassessment session. This is the document-icon "Nouvelle séance" action.
+   *
+   * Behavior:
+   *   - If the form has unsaved edits, prompt for confirmation so a stray bedside tap cannot
+   *     silently lose typed work. Confirmed → continue. Cancelled → leave state untouched.
+   *   - Reset the structured grid rows + reassessment timestamp to "now" so the next save opens
+   *     a clean column. Free-text fields are intentionally NOT cleared — clearing nurse-typed
+   *     narrative / interventions / etc. would be destructive; nurses can clear with the
+   *     existing "Effacer la colonne" control if they really want a blank column.
+   *   - Arm `nextSaveStartsNewSession` so the next save sends `reassessmentNewSession: true` to
+   *     the API, which inserts a new event row instead of updating the active session.
+   *
+   * Append-only safety: this never touches existing event rows. Any unsaved edits to the active
+   * session are released; persisted history is unaffected.
+   */
+  const handleOpenNewReassessmentSession = useCallback(() => {
+    if (formDisabled) return;
+    if (isDirtyRef.current && typeof window !== "undefined") {
+      const ok = window.confirm(
+        t("emergencyNursingReassessment.documentationGrid.newSessionUnsavedConfirm")
+      );
+      if (!ok) return;
+    }
+    /** Default the new column's clinical timestamp to "now" (datetime-local format). */
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const localIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(
+      now.getHours()
+    )}:${pad(now.getMinutes())}`;
+    setForm((f) => {
+      const merged: ErNursingReassessmentForm = {
+        ...f,
+        reassessmentAt: localIso,
+        /** Clear structured rows so the new column doesn't accidentally inherit prior selections. */
+        mentalStatus: "",
+        orientation: "",
+        speech: "",
+        respiratoryPattern: "",
+        cardiacRhythm: "",
+        fallRisk: "",
+        generalAppearanceCode: "",
+        skinCondition: "",
+        ambulation: "",
+        safetyRisk: "",
+        distressLevel: "",
+        airway: "",
+        breathing: "",
+        circulation: "",
+        trend: "",
+        pain0to10: "",
+      };
+      /** Re-render the auto-fragment block now that all structured rows are blank. */
+      const lines = buildStructuredNarrativeFragmentLines(merged, language);
+      merged.narrative = applyStructuredNarrativeFragment(merged.narrative, lines);
+      return merged;
+    });
+    isDirtyRef.current = true;
+    setNextSaveStartsNewSession(true);
+    /**
+     * Update the loaded baseline so the user can still nudge the new session's documentedAt by
+     * a few minutes (typo correction) without re-triggering the new-session flag — they already
+     * armed it explicitly.
+     */
+    loadedReassessmentAtIsoRef.current = localIso;
+    setStructuredAckTick(Date.now());
+  }, [formDisabled, language, t]);
 
   /**
    * Discard the local draft and re-hydrate from the server-side encounter snapshot. This is the
@@ -910,11 +1117,21 @@ export function EmergencyNursingReassessmentPanel({
       };
       const mergedNav = mergeErNursingReassessmentIntoNursingAssessment(encounter.nursingAssessment, form, signature);
       const finalNav = mergeErTraumaSurveyV1IntoNursingAssessment(mergedNav, traumaForm);
+      /**
+       * Session lifecycle: the optional `reassessmentNewSession` flag tells the API whether to
+       * INSERT a new reassessment column event (true) or UPDATE the active session's row in
+       * place (false / omitted). Set by the "Nouvelle séance" button and by material
+       * reassessmentAt drift; reset to false after a successful save (next save continues the
+       * just-saved column unless the user takes another explicit action).
+       */
       const res = await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         facilityId,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nursingAssessment: finalNav }),
+        body: JSON.stringify({
+          nursingAssessment: finalNav,
+          ...(nextSaveStartsNewSession ? { reassessmentNewSession: true } : {}),
+        }),
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
@@ -985,6 +1202,18 @@ export function EmergencyNursingReassessmentPanel({
             t("emergencyNursingReassessment.triageBedsideSaveFailed");
         }
       }
+
+      /** Refresh the append-only history so the just-saved column appears as the new "Actuel". */
+      await loadPersistedColumns();
+
+      /**
+       * Lock in the just-saved session as the new active baseline. Any future edits below the
+       * material-change threshold continue updating this column; a new session must be
+       * explicitly requested again. Tracking the just-saved `reassessmentAt` (form value) keeps
+       * the comparison stable across the round-trip even when the form pre-fill is unchanged.
+       */
+      loadedReassessmentAtIsoRef.current = form.reassessmentAt || "";
+      setNextSaveStartsNewSession(false);
 
       await onSaved();
       if (triageSideError) {
@@ -1222,6 +1451,8 @@ export function EmergencyNursingReassessmentPanel({
                   t={t}
                   language={language}
                   savedSignature={storedSig}
+                  persistedColumns={persistedColumns}
+                  legacyColumn={legacyColumn}
                 />
                 {structuredAckVisible ? (
                   <p
@@ -1249,13 +1480,145 @@ export function EmergencyNursingReassessmentPanel({
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelReassessmentTime")}</label>
-                      <input
-                        type="datetime-local"
-                        value={form.reassessmentAt}
-                        onChange={(e) => patchForm({ reassessmentAt: e.target.value })}
-                        disabled={formDisabled}
-                        style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                      />
+                      {/**
+                       * Reassessment-time row.
+                       *
+                       *  [🕐 clock affordance] [datetime-local input] [📄 Nouvelle séance]
+                       *
+                       * The clock affordance is purely visual (forwards focus to the input) and
+                       * makes the "you can edit the column's documentedAt" control discoverable
+                       * at a glance. Editing the input itself is what actually changes the value;
+                       * a material drift (≥ 60 min) auto-arms the new-session marker. The
+                       * document button is the explicit "open a brand-new column" action.
+                       */}
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          aria-label={t(
+                            "emergencyNursingReassessment.documentationGrid.editDocumentedAtAriaLabel"
+                          )}
+                          title={t(
+                            "emergencyNursingReassessment.documentationGrid.editDocumentedAtAriaLabel"
+                          )}
+                          onClick={() => {
+                            if (typeof document === "undefined") return;
+                            const el = document.getElementById(
+                              "er-nursing-reassessment-at-input"
+                            ) as HTMLInputElement | null;
+                            el?.focus();
+                            try {
+                              /**
+                               * Best-effort: open the picker on supporting browsers so the
+                               * clock icon feels like a real shortcut. Safe to call when the
+                               * method isn't supported (older browsers just gain focus).
+                               */
+                              (
+                                el as unknown as { showPicker?: () => void } | null
+                              )?.showPicker?.();
+                            } catch {
+                              /* ignore */
+                            }
+                          }}
+                          disabled={formDisabled}
+                          style={{
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 10,
+                            backgroundColor: formDisabled ? "#f1f5f9" : "#fff",
+                            color: formDisabled ? "#94a3b8" : "#0369a1",
+                            cursor: formDisabled ? "not-allowed" : "pointer",
+                            padding: "8px 10px",
+                            fontSize: 16,
+                            lineHeight: 1,
+                          }}
+                        >
+                          <span aria-hidden>🕐</span>
+                        </button>
+                        <input
+                          id="er-nursing-reassessment-at-input"
+                          type="datetime-local"
+                          value={form.reassessmentAt}
+                          onChange={(e) => patchForm({ reassessmentAt: e.target.value })}
+                          disabled={formDisabled}
+                          style={{
+                            ...inputBase,
+                            flex: "1 1 220px",
+                            minWidth: 200,
+                            backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleOpenNewReassessmentSession}
+                          disabled={formDisabled}
+                          aria-label={t(
+                            "emergencyNursingReassessment.documentationGrid.newSessionButton"
+                          )}
+                          title={t(
+                            "emergencyNursingReassessment.documentationGrid.newSessionHint"
+                          )}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            border: nextSaveStartsNewSession ? "1px solid #16a34a" : "1px solid #bae6fd",
+                            borderRadius: 10,
+                            backgroundColor: nextSaveStartsNewSession
+                              ? "#dcfce7"
+                              : formDisabled
+                              ? "#f1f5f9"
+                              : "#f0f9ff",
+                            color: nextSaveStartsNewSession
+                              ? "#166534"
+                              : formDisabled
+                              ? "#94a3b8"
+                              : "#0369a1",
+                            fontWeight: 600,
+                            fontSize: 13,
+                            padding: "8px 12px",
+                            cursor: formDisabled ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          <span aria-hidden>📄</span>
+                          {t("emergencyNursingReassessment.documentationGrid.newSessionButton")}
+                        </button>
+                      </div>
+                      {nextSaveStartsNewSession ? (
+                        <p
+                          role="status"
+                          aria-live="polite"
+                          style={{
+                            margin: "6px 0 0 0",
+                            fontSize: 12,
+                            color: "#15803d",
+                            fontWeight: 600,
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {t(
+                            "emergencyNursingReassessment.documentationGrid.newSessionArmed"
+                          )}
+                        </p>
+                      ) : (
+                        <p
+                          style={{
+                            margin: "6px 0 0 0",
+                            fontSize: 11,
+                            color: "#64748b",
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {t(
+                            "emergencyNursingReassessment.documentationGrid.activeSessionHint"
+                          )}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label style={labelStyle}>{t("emergencyNursingReassessment.labelNarrative")}</label>

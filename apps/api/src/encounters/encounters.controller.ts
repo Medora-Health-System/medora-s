@@ -360,6 +360,22 @@ export class EncountersController {
     return this.encountersService.getDocumentedProcedures(facilityId, id);
   }
 
+  /**
+   * Append-only ER nursing reassessment column history. Returns the most recent saved
+   * reassessment events for the encounter (newest first), each with a denormalized performer
+   * snapshot and the reassessment + trauma JSON snapshots captured at save time. Bounded
+   * `take` (default 50, max 100); facility-scoped.
+   */
+  @Get("encounters/:id/nursing-reassessment-events")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async listNursingReassessmentEvents(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.listNursingReassessmentEvents(facilityId, id);
+  }
+
   @Post("encounters/:id/procedures/document")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.ADMIN)
   async recordProcedureDocumented(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {

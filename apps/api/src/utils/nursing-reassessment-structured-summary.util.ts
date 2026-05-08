@@ -89,3 +89,81 @@ export function structuredReassessmentSectionsChanged(
   }
   return false;
 }
+
+/**
+ * True when the `erNursingReassessmentV1` namespace changed in any clinically-material way
+ * between two `nursingAssessment` blobs. Specifically EXCLUDES the `signature` sub-object from
+ * the comparison so that clicking Save without any other change (which always re-generates
+ * `signature.savedAt`) does NOT create a duplicate column event in the append-only history.
+ */
+export function reassessmentNamespaceMaterialChange(
+  prevNursingAssessment: unknown,
+  nextNursingAssessment: unknown
+): boolean {
+  return (
+    materialReassessmentToken(prevNursingAssessment) !== materialReassessmentToken(nextNursingAssessment)
+  );
+}
+
+function materialReassessmentToken(nursingAssessment: unknown): string {
+  const ns = readReassessmentNamespace(nursingAssessment);
+  if (!ns) return "__missing__";
+  const { signature, ...rest } = ns as Record<string, unknown> & { signature?: unknown };
+  void signature;
+  try {
+    return JSON.stringify(rest);
+  } catch {
+    return "__invalid__";
+  }
+}
+
+/**
+ * Read the (clinical) `reassessmentAt` ISO timestamp from the `erNursingReassessmentV1` namespace.
+ * Returns the trimmed ISO string when present and non-empty, otherwise `null`. This is the
+ * "documentedAt" recorded by the nurse on the bedside form, distinct from the system save time.
+ */
+export function extractReassessmentDocumentedAt(nursingAssessment: unknown): string | null {
+  const ns = readReassessmentNamespace(nursingAssessment);
+  if (!ns) return null;
+  const v = ns.reassessmentAt;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t || null;
+}
+
+/**
+ * True when the `erTraumaSurveyV1` namespace in `nursingAssessment` has any non-empty value.
+ * PHI-safe: only inspects whether free-text/structured fields are non-empty, never returns the
+ * content. Used by audit metadata to expose `hasTraumaDocumentation: boolean`.
+ */
+export function nursingAssessmentHasTraumaDocumentation(nursingAssessment: unknown): boolean {
+  if (!nursingAssessment || typeof nursingAssessment !== "object" || Array.isArray(nursingAssessment)) return false;
+  const ns = (nursingAssessment as Record<string, unknown>).erTraumaSurveyV1;
+  if (!ns || typeof ns !== "object" || Array.isArray(ns)) return false;
+  for (const v of Object.values(ns as Record<string, unknown>)) {
+    if (typeof v === "string" && v.trim().length > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * True when `erNursingReassessmentV1.safetyRoundingNote` is non-empty. Boolean only — never
+ * surfaces the note content.
+ */
+export function nursingAssessmentHasBedsideSafety(nursingAssessment: unknown): boolean {
+  const ns = readReassessmentNamespace(nursingAssessment);
+  if (!ns) return false;
+  const v = ns.safetyRoundingNote;
+  return typeof v === "string" && v.trim().length > 0;
+}
+
+/**
+ * True when `erNursingReassessmentV1.interventionsPerformed` is non-empty. Boolean only — never
+ * surfaces the interventions text.
+ */
+export function nursingAssessmentHasNursingInterventions(nursingAssessment: unknown): boolean {
+  const ns = readReassessmentNamespace(nursingAssessment);
+  if (!ns) return false;
+  const v = ns.interventionsPerformed;
+  return typeof v === "string" && v.trim().length > 0;
+}
