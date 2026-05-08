@@ -3860,6 +3860,15 @@ export default {
     timelineSep: " : ",
     emptyState:
       "Aucune documentation urgences structurée ou résultat à afficher pour l'instant. Complétez le triage, les zones Soins / Évaluation / Disposition, ou ouvrez le dossier complet.",
+    nursingReassessmentHistoryTitle: "Réévaluations infirmières — historique",
+    nursingReassessmentHistorySubline:
+      "Une carte par colonne enregistrée. Chaque entrée conserve l'auteur d'origine et son horodatage.",
+    nursingReassessmentHistoryCurrent: "Actuel",
+    nursingReassessmentHistoryEmptyEntry:
+      "Aucune valeur structurée ou narrative enregistrée pour cette colonne.",
+    nursingReassessmentHistoryUnknownAuthor: "Auteur non enregistré",
+    nursingReassessmentHistoryLoadError:
+      "Historique des réévaluations indisponible pour l'instant.",
     vitalsHistoryTitle: "Signes vitaux (historique)",
     vitalsHistoryEmpty: "Aucun relevé horodaté pour cette consultation.",
     vitalsHistoryLoadError: "Historique des signes vitaux indisponible.",
@@ -5694,6 +5703,11 @@ export default {
       handoffReportGivenAt: "Compte rendu donné le",
       receivingNurse: "Infirmier(ère) réceptrice",
       handoffNote: "Note de transmission",
+      sectionNursingReassessmentHistory: "Réévaluations infirmières — historique",
+      nursingReassessmentEntryHeader: "{datetime} — {author}",
+      nursingReassessmentEntryLatestHeader: "{datetime} (Actuel) — {author}",
+      nursingReassessmentEntryEmpty:
+        "Aucune valeur structurée ou narrative enregistrée pour cette colonne.",
       sectionSignatures: "Signatures et état documentaire",
       signedProviderDocumentation: "Documentation médecin — signée par",
       addendaPresent: "Addenda au dossier",
@@ -6544,6 +6558,10 @@ export default {
     saveOk: "Réévaluation enregistrée.",
     saveFailed: "Impossible d'enregistrer.",
     signerFallback: "Professionnel",
+    crossUserNoticeWithAuthor:
+      "La dernière réévaluation a été enregistrée par {author}. Vos modifications ouvriront une nouvelle colonne pour préserver son entrée et sa signature.",
+    crossUserNoticeGeneric:
+      "La dernière réévaluation a été enregistrée par un autre intervenant. Vos modifications ouvriront une nouvelle colonne pour préserver son entrée et sa signature.",
     cardTitle: "Réévaluation infirmière (urgences)",
     cardSubline:
       "Progression et réévaluation au box — enregistrée avec le dossier de consultation. Pour l'évaluation structurée par systèmes, ouvrez le lien ci-dessous.",

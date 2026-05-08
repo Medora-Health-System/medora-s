@@ -49,6 +49,30 @@ export type ErPrintEncounter = DischargePrintEncounter & {
   }>;
 };
 
+/**
+ * Append-only nursing reassessment history input for the print packet. Built from
+ * `GET /encounters/:id/nursing-reassessment-events` entries by the caller, NOT fetched here, so
+ * the print packet stays a synchronous HTML composer with no network coupling.
+ *
+ * Optional in every consumer: when `null`/`undefined`/empty, the print output behavior is
+ * unchanged (no nursing reassessment history section). When non-empty, a compact, read-only
+ * section is rendered before signatures so the printed medical record reflects the same
+ * append-only documentation history that the bedside grid and Summary tab now show.
+ */
+export type ErPrintReassessmentEntry = {
+  /** ISO clinical reassessment time (preferred), or `null` to fall back to `savedAt`. */
+  documentedAt: string | null;
+  /** ISO server save time. Always required so the entry can be displayed/sorted. */
+  savedAt: string;
+  performerDisplayName: string;
+  performerInitials: string;
+  performerRoleTitle: string;
+  /** Compact already-truncated structured-preview lines. */
+  structuredLines: string[];
+  /** Compact already-truncated narrative excerpt; empty string when none. */
+  narrativeExcerpt: string;
+};
+
 const DISCHARGE_CORE_FIELD_LABEL_KEYS: Record<(typeof DISCHARGE_SUMMARY_CORE_STRING_KEYS)[number], string> = {
   disposition: "encounterChrome.modals.dischargeField.disposition",
   exitCondition: "encounterChrome.modals.dischargeField.exitCondition",
@@ -161,8 +185,23 @@ export function getErPrintPacketHtml(params: {
   primaryDiagnosis?: string | null;
   triageSnapshot: ErPrintTriageSnapshot;
   language: SupportedLanguage;
+  /**
+   * Optional append-only nursing reassessment history. When supplied non-empty, a compact
+   * "Réévaluations infirmières — historique" section is rendered before the signatures block,
+   * one entry block per persisted column. When omitted/empty, no section is added — the
+   * pre-existing print output is byte-identical to before this feature.
+   */
+  nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
 }): string {
-  const { patient, encounter, facilityName, primaryDiagnosis, triageSnapshot, language } = params;
+  const {
+    patient,
+    encounter,
+    facilityName,
+    primaryDiagnosis,
+    triageSnapshot,
+    language,
+    nursingReassessmentEntries,
+  } = params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
   const ageYears =
@@ -302,6 +341,15 @@ export function getErPrintPacketHtml(params: {
   body.push(h2(language, "printOutput.erPacket.sectionHandoff"));
   appendHandoffBlock(body, language, loc, handoff);
 
+  /**
+   * Reassessment history — only when caller pre-fetched and passed entries. Compact one block
+   * per persisted column with time, author, structured one-liners, and a narrative excerpt.
+   */
+  if (Array.isArray(nursingReassessmentEntries) && nursingReassessmentEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionNursingReassessmentHistory"));
+    appendNursingReassessmentHistoryBlock(body, language, loc, nursingReassessmentEntries);
+  }
+
   body.push(h2(language, "printOutput.erPacket.sectionSignatures"));
   appendSignatureBlock(body, language, loc, encounter, emtalaDerived, disSig, sortieExec);
 
@@ -420,6 +468,71 @@ function appendHandoffBlock(
   }
 }
 
+/**
+ * Compact print rendering of the append-only nursing reassessment history. One block per
+ * entry. The latest entry (first in the input array — the API returns newest-first) is tagged
+ * "Actuel" so the printed record visually distinguishes the most recent column from prior
+ * preserved columns. Each block displays:
+ *   - Time/date (clinical `documentedAt` if present, falling back to server `savedAt`).
+ *   - Performer footer: initials, full display name, role/title.
+ *   - Up to a small bounded set of structured one-liners (already truncated by the caller).
+ *   - Narrative excerpt when present.
+ *
+ * We deliberately do NOT re-truncate or re-format here — the upstream caller (Summary model)
+ * has already capped each line to the print-friendly budget, and re-trimming would risk
+ * cutting words mid-stride twice. Formatting stays plain HTML/CSS-friendly so the existing
+ * single-document print stylesheet applies without changes.
+ */
+function appendNursingReassessmentHistoryBlock(
+  body: string[],
+  language: SupportedLanguage,
+  loc: string,
+  entries: ErPrintReassessmentEntry[]
+): void {
+  entries.forEach((entry, idx) => {
+    const isLatest = idx === 0;
+    const whenIso = entry.documentedAt?.trim() || entry.savedAt;
+    const when = fmtIso(whenIso, loc) || "—";
+    const author = entry.performerDisplayName?.trim() || "—";
+    const initials = entry.performerInitials?.trim();
+    const role = entry.performerRoleTitle?.trim();
+    const initialsBadge = initials ? `[${esc(initials)}] ` : "";
+    const roleSuffix = role ? ` — ${esc(role)}` : "";
+    const headerKey = isLatest
+      ? "printOutput.erPacket.nursingReassessmentEntryLatestHeader"
+      : "printOutput.erPacket.nursingReassessmentEntryHeader";
+    const heading = printT(language, headerKey)
+      .replace("{datetime}", when)
+      .replace("{author}", `${initialsBadge}${esc(author)}${roleSuffix}`);
+    body.push(
+      `<p style="margin: 12px 0 4px 0; font-size: 13px; font-weight: 700;">${heading}</p>`
+    );
+    if (entry.structuredLines.length > 0) {
+      const items = entry.structuredLines
+        .map((ln) => `<li style="margin: 2px 0;">${esc(ln)}</li>`)
+        .join("");
+      body.push(
+        `<ul style="margin: 4px 0 4px 18px; padding: 0; font-size: 13px; line-height: 1.45;">${items}</ul>`
+      );
+    }
+    const narrative = entry.narrativeExcerpt?.trim();
+    if (narrative) {
+      body.push(
+        `<p style="margin: 4px 0; font-size: 13px; line-height: 1.45; font-style: italic;">${esc(
+          narrative
+        )}</p>`
+      );
+    }
+    if (entry.structuredLines.length === 0 && !narrative) {
+      body.push(
+        `<p style="margin: 4px 0; font-size: 13px; color: #444;">${esc(
+          printT(language, "printOutput.erPacket.nursingReassessmentEntryEmpty")
+        )}</p>`
+      );
+    }
+  });
+}
+
 function appendSignatureBlock(
   body: string[],
   language: SupportedLanguage,
@@ -500,6 +613,8 @@ export function printErPacket(params: {
   primaryDiagnosis?: string | null;
   triageSnapshot: ErPrintTriageSnapshot;
   language: SupportedLanguage;
+  /** Optional pre-fetched append-only reassessment history (see `getErPrintPacketHtml`). */
+  nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
 }): void {
   const win = window.open("", "_blank");
   if (!win) {

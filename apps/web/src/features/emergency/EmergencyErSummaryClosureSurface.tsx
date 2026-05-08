@@ -15,7 +15,11 @@ import {
   formatEncounterChromeDateTime,
   formatPatientAgeSexLine,
 } from "@/lib/encounterChromeI18n";
-import { printErPacket } from "@/features/emergency/erPrintPacket";
+import { printErPacket, type ErPrintReassessmentEntry } from "@/features/emergency/erPrintPacket";
+import {
+  buildEmergencyVisitSummaryModel,
+  type NursingReassessmentApiEntry,
+} from "@/features/emergency/emergencyVisitSummaryModel";
 import {
   dischargeModeFrToDischargeStatus,
   hydrateDischargeFormFromEncounterJson,
@@ -138,9 +142,52 @@ export function EmergencyErSummaryClosureSurface({
   const contextLine = t(contextKey);
   const showContext = contextLine !== contextKey;
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     const p = encounter.patient;
     if (!p || !encounter.createdAt) return;
+    /**
+     * Pre-fetch the append-only nursing reassessment history so the printed medical record
+     * reflects the same per-clinician columns the bedside grid and Summary tab show. Failure
+     * is non-fatal: we proceed to print without the history section, preserving the original
+     * print behavior. This stays clinician-only (RN/PROVIDER/ADMIN role gate at the API).
+     */
+    let nursingReassessmentEntries: ErPrintReassessmentEntry[] | null = null;
+    try {
+      const data = await apiFetch(`/encounters/${encounterId}/nursing-reassessment-events`, {
+        facilityId,
+      });
+      const entries =
+        data && typeof data === "object" && !Array.isArray(data)
+          ? (data as { entries?: unknown }).entries
+          : null;
+      if (Array.isArray(entries) && entries.length > 0) {
+        /**
+         * Reuse the Summary model's history builder so the print output uses the SAME
+         * structured-preview lines and narrative excerpt as the on-screen Summary card. This
+         * keeps the printed record visually consistent with what the user sees.
+         */
+        const model = buildEmergencyVisitSummaryModel(
+          encounter,
+          triageSnapshot,
+          null,
+          language,
+          entries as NursingReassessmentApiEntry[]
+        );
+        if (model.nursingReassessmentHistory.length > 0) {
+          nursingReassessmentEntries = model.nursingReassessmentHistory.map((e) => ({
+            documentedAt: e.documentedAt,
+            savedAt: e.savedAt,
+            performerDisplayName: e.performerDisplayName,
+            performerInitials: e.performerInitials,
+            performerRoleTitle: e.performerRoleTitle,
+            structuredLines: e.structuredLines,
+            narrativeExcerpt: e.narrativeExcerpt,
+          }));
+        }
+      }
+    } catch {
+      /* Non-fatal: print proceeds without the history section. */
+    }
     printErPacket({
       patient: p,
       encounter: {
@@ -158,8 +205,9 @@ export function EmergencyErSummaryClosureSurface({
       primaryDiagnosis: null,
       triageSnapshot,
       language,
+      nursingReassessmentEntries,
     });
-  }, [encounter, facilityName, language, triageSnapshot]);
+  }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot]);
 
   const executeClose = useCallback(
     async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {
@@ -362,7 +410,9 @@ export function EmergencyErSummaryClosureSurface({
         >
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={() => {
+              void handlePrint();
+            }}
             disabled={!patient || !encounter.createdAt}
             style={{
               padding: "10px 16px",

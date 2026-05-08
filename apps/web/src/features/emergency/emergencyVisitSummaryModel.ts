@@ -18,6 +18,7 @@ import {
 } from "./emergencyDispositionV1";
 import {
   buildErNursingReassessmentPreviewModel,
+  ER_NURSING_REASSESSMENT_V1_KEY,
   erNursingReassessmentFormFromEncounter,
 } from "./emergencyNursingReassessmentV1";
 import { buildErProviderMsePreviewModel, erProviderMseFormFromEncounter } from "./emergencyProviderMseV1";
@@ -44,6 +45,37 @@ export type VisitSummaryResultsBlock = {
 
 export type VisitSummaryTimelineEntry = { label: string; value: string };
 
+/**
+ * One historical nursing reassessment column rendered in the Summary tab. Each entry comes from
+ * an immutable `EncounterClinicalEvent` row (eventType `NURSING_ASSESSMENT_SAVED`, namespace
+ * `erNursingReassessmentV1`) returned by `GET /encounters/:id/nursing-reassessment-events`.
+ *
+ * The renderer shows newest-first; the entry whose `id === latestEntryId` on the parent model is
+ * tagged "Actuel". Lines are pre-flattened structured-preview output limited per entry so the
+ * Summary stays scan-friendly. `narrativeExcerpt` is the (truncated) free-text narrative when
+ * present, included separately so the UI can format it differently from structured lines.
+ */
+export type VisitSummaryReassessmentEntry = {
+  /** Event row id — stable across renders; doubles as React key. */
+  id: string;
+  /** Clinically-entered reassessment time (preferred display); `null` when not captured. */
+  documentedAt: string | null;
+  /** Server save time. Always present; used as fallback display when `documentedAt` is null. */
+  savedAt: string;
+  /** Pre-formatted display string for the time row (locale-aware). */
+  displayWhen: string;
+  /** Performer display name captured at save time (immutable on the row). */
+  performerDisplayName: string;
+  /** Performer initials (uppercase) — drives the small footer badge. */
+  performerInitials: string;
+  /** Performer role/title (e.g. "RN", "PROVIDER"); empty string when not recorded. */
+  performerRoleTitle: string;
+  /** Compact structured-preview lines (already truncated). May be empty when the entry is narrative-only. */
+  structuredLines: string[];
+  /** Free-text narrative excerpt (truncated). Empty string when no narrative was saved. */
+  narrativeExcerpt: string;
+};
+
 export type EmergencyVisitSummaryModel = {
   motifPresentation: VisitSummaryTextBlock | null;
   triageResume: VisitSummaryTextBlock | null;
@@ -55,6 +87,14 @@ export type EmergencyVisitSummaryModel = {
   handoff: VisitSummaryTextBlock | null;
   emtala: VisitSummaryTextBlock | null;
   timeline: VisitSummaryTimelineEntry[];
+  /**
+   * Append-only nursing reassessment column history (newest-first). Empty for legacy encounters
+   * with no `NURSING_ASSESSMENT_SAVED` events yet — the existing single-block `resumeInfirmier`
+   * still renders in that case so pre-history charts never lose their content.
+   */
+  nursingReassessmentHistory: VisitSummaryReassessmentEntry[];
+  /** Id of the entry to tag as "Actuel" in the UI; `null` when history is empty. */
+  nursingReassessmentLatestId: string | null;
 };
 
 const MAX_LINE = 420;
@@ -211,13 +251,110 @@ function readSignatureFromNursingBlob(
 }
 
 /**
+ * Loose-typed input shape for an entry returned by `GET /encounters/:id/nursing-reassessment-events`.
+ * Kept loose so the model stays decoupled from the API client and so unknown / null fields fall
+ * back gracefully (`displayName` / `initials` / `snapshot` may all be missing on legacy rows).
+ */
+export type NursingReassessmentApiEntry = {
+  id?: unknown;
+  createdAt?: unknown;
+  documentedAt?: unknown;
+  performerDisplayName?: unknown;
+  performerInitials?: unknown;
+  performerRoleTitle?: unknown;
+  snapshot?: unknown;
+};
+
+const HISTORY_NARRATIVE_MAX = 240;
+const HISTORY_STRUCTURED_LINES_MAX = 4;
+
+/**
+ * Build the per-entry history list rendered in the Summary tab.
+ *
+ * Each API entry is converted into a `VisitSummaryReassessmentEntry`:
+ *   - `displayWhen` prefers the clinically-entered `documentedAt`, falling back to `createdAt`.
+ *   - Structured lines come from running the snapshot through the SAME preview model used for
+ *     the existing `resumeInfirmier` block (so per-entry display is consistent with the latest
+ *     single-block view), trimmed to a small per-entry budget for scan readability.
+ *   - `narrativeExcerpt` is the truncated free-text narrative; surfaced separately so the UI can
+ *     visually distinguish nurse prose from structured fields.
+ *   - Performer fields are taken **only** from the API row's denormalized snapshot (the row's
+ *     immutable performer captured at save time) — never the current logged-in user — so prior
+ *     authors stay attributed correctly even when subsequent saves happened.
+ */
+function buildReassessmentHistoryEntries(
+  events: NursingReassessmentApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryReassessmentEntry[] {
+  const out: VisitSummaryReassessmentEntry[] = [];
+  for (const e of events) {
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = typeof e.createdAt === "string" ? e.createdAt : "";
+    if (!id || !savedAt) continue;
+    const documentedAt =
+      typeof e.documentedAt === "string" && e.documentedAt.trim() ? e.documentedAt : null;
+    const displayIso = documentedAt ?? savedAt;
+    const displayWhen = formatIsoForLocale(displayIso, locale);
+    const performerDisplayName =
+      typeof e.performerDisplayName === "string" ? e.performerDisplayName.trim() : "";
+    const performerInitials =
+      typeof e.performerInitials === "string" ? e.performerInitials.trim() : "";
+    const performerRoleTitle =
+      typeof e.performerRoleTitle === "string" ? e.performerRoleTitle.trim() : "";
+    /**
+     * Wrap the snapshot under the namespace key so the existing decoder sees the same shape it
+     * gets from a live encounter blob. Snapshots that are absent or malformed yield an empty
+     * form, which produces an empty preview (we still emit the entry — header + footer make it
+     * useful for audit even when content is sparse).
+     */
+    const wrapped =
+      e.snapshot && typeof e.snapshot === "object" && !Array.isArray(e.snapshot)
+        ? ({ [ER_NURSING_REASSESSMENT_V1_KEY]: e.snapshot } as Record<string, unknown>)
+        : null;
+    const form = erNursingReassessmentFormFromEncounter(wrapped);
+    const preview = buildErNursingReassessmentPreviewModel(form, locale);
+    const structuredLines: string[] = [];
+    for (const sec of preview.sections) {
+      if (sec.id === "empty") continue;
+      for (const ln of sec.lines) {
+        const t = ln.trim();
+        if (!t) continue;
+        structuredLines.push(trunc(t, 200));
+        if (structuredLines.length >= HISTORY_STRUCTURED_LINES_MAX) break;
+      }
+      if (structuredLines.length >= HISTORY_STRUCTURED_LINES_MAX) break;
+    }
+    const narrativeExcerpt = trunc(preview.narrative, HISTORY_NARRATIVE_MAX);
+    out.push({
+      id,
+      documentedAt,
+      savedAt,
+      displayWhen,
+      performerDisplayName,
+      performerInitials,
+      performerRoleTitle,
+      structuredLines,
+      narrativeExcerpt,
+    });
+  }
+  return out;
+}
+
+/**
  * Aggregate all ER documentation for read-only display.
+ *
+ * `nursingReassessmentEvents` is optional: when supplied (typically the entries from
+ * `GET /encounters/:id/nursing-reassessment-events`), the returned model includes a
+ * newest-first `nursingReassessmentHistory` and `nursingReassessmentLatestId`. When omitted or
+ * empty, the model still renders the existing single-block `resumeInfirmier` so legacy charts
+ * (and the still-loading state) behave exactly as before this change.
  */
 export function buildEmergencyVisitSummaryModel(
   encounter: EncounterLike,
   triage: Record<string, unknown> | null,
   resultsSnap: EncounterResultsLabRadSnapshot | null,
-  locale: SupportedLanguage
+  locale: SupportedLanguage,
+  nursingReassessmentEvents?: NursingReassessmentApiEntry[] | null
 ): EmergencyVisitSummaryModel {
   const timeline: VisitSummaryTimelineEntry[] = [];
 
@@ -492,6 +629,17 @@ export function buildEmergencyVisitSummaryModel(
     }
   }
 
+  /**
+   * Append-only nursing reassessment column history. Built from the optional API entries when
+   * provided; empty otherwise. The latest (first) entry id is what the UI tags "Actuel".
+   */
+  const nursingReassessmentHistory =
+    Array.isArray(nursingReassessmentEvents) && nursingReassessmentEvents.length > 0
+      ? buildReassessmentHistoryEntries(nursingReassessmentEvents, locale)
+      : [];
+  const nursingReassessmentLatestId =
+    nursingReassessmentHistory.length > 0 ? nursingReassessmentHistory[0].id : null;
+
   return {
     motifPresentation,
     triageResume,
@@ -502,5 +650,7 @@ export function buildEmergencyVisitSummaryModel(
     handoff,
     emtala,
     timeline,
+    nursingReassessmentHistory,
+    nursingReassessmentLatestId,
   };
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/apiClient";
 import { EncounterResultsTab, type EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
 import {
   MedoraCard,
@@ -11,7 +12,12 @@ import {
   MedoraCardTitle,
 } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
-import { buildEmergencyVisitSummaryModel, type VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
+import {
+  buildEmergencyVisitSummaryModel,
+  type NursingReassessmentApiEntry,
+  type VisitSummaryReassessmentEntry,
+  type VisitSummaryTextBlock,
+} from "./emergencyVisitSummaryModel";
 import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
 import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
@@ -70,6 +76,158 @@ function SummaryBlockCard({
   );
 }
 
+/**
+ * Read-only nursing reassessment column history card. Renders one entry block per persisted
+ * column. Each entry shows time, structured-preview lines (compact), narrative excerpt, and an
+ * immutable footer with the original performer's initials/name/role pulled from the event row's
+ * snapshot — never the current logged-in user.
+ */
+function ReassessmentHistoryCard({
+  entries,
+  latestEntryId,
+  t,
+}: {
+  entries: VisitSummaryReassessmentEntry[];
+  latestEntryId: string | null;
+  t: (k: string) => string;
+}) {
+  return (
+    <MedoraCard leftAccentColor="#0ea5e9" variant="default">
+      <MedoraCardInner>
+        <p style={sectionTitle}>{t("emergencyVisitSummaryPanel.nursingReassessmentHistoryTitle")}</p>
+        <p style={{ ...lineStyle, margin: "4px 0 8px 0", fontSize: 12, color: "#64748b" }}>
+          {t("emergencyVisitSummaryPanel.nursingReassessmentHistorySubline")}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {entries.map((entry) => {
+            const isLatest = entry.id === latestEntryId;
+            return (
+              <div
+                key={entry.id}
+                style={{
+                  borderRadius: 10,
+                  border: `1px solid ${isLatest ? "#bae6fd" : "#e2e8f0"}`,
+                  backgroundColor: isLatest ? "#f0f9ff" : "#ffffff",
+                  padding: "10px 12px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+                    {entry.displayWhen || "—"}
+                  </span>
+                  {isLatest ? (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#0369a1",
+                        backgroundColor: "#e0f2fe",
+                        border: "1px solid #bae6fd",
+                        borderRadius: 9999,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      {t("emergencyVisitSummaryPanel.nursingReassessmentHistoryCurrent")}
+                    </span>
+                  ) : null}
+                </div>
+                {entry.structuredLines.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {entry.structuredLines.map((line, i) => (
+                      <p key={i} style={{ ...lineStyle, margin: 0 }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {entry.narrativeExcerpt ? (
+                  <p
+                    style={{
+                      ...lineStyle,
+                      margin:
+                        entry.structuredLines.length > 0 ? "6px 0 0 0" : "0",
+                      color: "#475569",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    {entry.narrativeExcerpt}
+                  </p>
+                ) : null}
+                {entry.structuredLines.length === 0 && !entry.narrativeExcerpt ? (
+                  <p style={{ ...lineStyle, margin: 0, color: "#94a3b8" }}>
+                    {t("emergencyVisitSummaryPanel.nursingReassessmentHistoryEmptyEntry")}
+                  </p>
+                ) : null}
+                <div
+                  style={{
+                    marginTop: 10,
+                    paddingTop: 8,
+                    borderTop: "1px solid #e2e8f0",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 11,
+                    color: "#475569",
+                  }}
+                >
+                  <span
+                    title={entry.performerDisplayName || undefined}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      backgroundColor: "#e2e8f0",
+                      color: "#0f172a",
+                      fontSize: 10,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {entry.performerInitials || "—"}
+                  </span>
+                  <span style={{ fontWeight: 600, color: "#0f172a" }}>
+                    {entry.performerDisplayName ||
+                      t("emergencyVisitSummaryPanel.nursingReassessmentHistoryUnknownAuthor")}
+                  </span>
+                  {entry.performerRoleTitle ? (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.05em",
+                        textTransform: "uppercase",
+                        color: "#475569",
+                        backgroundColor: "#f1f5f9",
+                        borderRadius: 6,
+                        padding: "2px 6px",
+                      }}
+                    >
+                      {entry.performerRoleTitle}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </MedoraCardInner>
+    </MedoraCard>
+  );
+}
+
 export function EmergencyVisitSummaryPanel({
   encounterId,
   facilityId,
@@ -96,13 +254,54 @@ export function EmergencyVisitSummaryPanel({
   const { language, t } = useI18n();
   const [resultsSnap, setResultsSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
 
+  /**
+   * Append-only nursing reassessment column history fetched from
+   * `GET /encounters/:id/nursing-reassessment-events`. We keep a separate state slot from the
+   * derived model so a transient API failure (offline / role denied) renders gracefully: the
+   * existing latest single-block (`resumeInfirmier`) keeps working, and the history section
+   * simply doesn't appear instead of breaking the page. Refreshes alongside `resultsRefresh`
+   * so a save in the bedside panel propagates here without an extra wiring layer.
+   */
+  const [reassessmentEvents, setReassessmentEvents] = useState<NursingReassessmentApiEntry[]>([]);
+  const [reassessmentEventsLoadFailed, setReassessmentEventsLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiFetch(`/encounters/${encounterId}/nursing-reassessment-events`, {
+          facilityId,
+        });
+        if (cancelled) return;
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          const entries = (data as { entries?: unknown }).entries;
+          if (Array.isArray(entries)) {
+            setReassessmentEvents(entries as NursingReassessmentApiEntry[]);
+            setReassessmentEventsLoadFailed(false);
+            return;
+          }
+        }
+        /** Defensive: API returned an unexpected shape — treat as no history. */
+        setReassessmentEvents([]);
+        setReassessmentEventsLoadFailed(false);
+      } catch {
+        if (cancelled) return;
+        setReassessmentEvents([]);
+        setReassessmentEventsLoadFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, facilityId, resultsRefresh]);
+
   const onLabRadSnapshot = useCallback((s: EncounterResultsLabRadSnapshot) => {
     setResultsSnap(s);
   }, []);
 
   const model = useMemo(
-    () => buildEmergencyVisitSummaryModel(encounter, triageSnapshot, resultsSnap, language),
-    [encounter, triageSnapshot, resultsSnap, language]
+    () => buildEmergencyVisitSummaryModel(encounter, triageSnapshot, resultsSnap, language, reassessmentEvents),
+    [encounter, triageSnapshot, resultsSnap, language, reassessmentEvents]
   );
 
   const hasStructuredContent = useMemo(() => {
@@ -114,7 +313,8 @@ export function EmergencyVisitSummaryPanel({
         model.disposition ||
         model.handoff ||
         model.emtala ||
-        model.timeline.length > 0
+        model.timeline.length > 0 ||
+        model.nursingReassessmentHistory.length > 0
     );
   }, [model]);
 
@@ -181,6 +381,32 @@ export function EmergencyVisitSummaryPanel({
         ) : null}
         {model.triageResume ? <SummaryBlockCard accent="#b91c1c" block={model.triageResume} /> : null}
         {model.resumeInfirmier ? <SummaryBlockCard accent="#0ea5e9" block={model.resumeInfirmier} /> : null}
+        {/**
+         * Nursing reassessment history (append-only). Renders one card per persisted column,
+         * newest-first; the latest entry is tagged "Actuel". Each card carries an immutable
+         * footer (initials badge + display name + role) sourced from the row's saved snapshot,
+         * so prior clinicians' attributions never disappear when a different nurse adds a new
+         * column. Hidden entirely when there are no events yet — the legacy single-block
+         * `resumeInfirmier` above continues to render in that case.
+         */}
+        {model.nursingReassessmentHistory.length > 0 ? (
+          <ReassessmentHistoryCard
+            entries={model.nursingReassessmentHistory}
+            latestEntryId={model.nursingReassessmentLatestId}
+            t={t}
+          />
+        ) : reassessmentEventsLoadFailed ? (
+          <MedoraCard leftAccentColor="#fbbf24" variant="default">
+            <MedoraCardInner>
+              <p style={sectionTitle}>
+                {t("emergencyVisitSummaryPanel.nursingReassessmentHistoryTitle")}
+              </p>
+              <p style={{ ...lineStyle, marginTop: 8, color: "#92400e" }}>
+                {t("emergencyVisitSummaryPanel.nursingReassessmentHistoryLoadError")}
+              </p>
+            </MedoraCardInner>
+          </MedoraCard>
+        ) : null}
         {model.evaluationMedicale ? <SummaryBlockCard accent="#4f46e5" block={model.evaluationMedicale} /> : null}
 
         {model.resultats ? (

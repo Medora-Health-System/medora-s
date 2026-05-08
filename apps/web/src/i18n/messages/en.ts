@@ -3891,6 +3891,15 @@ export default {
     timelineSep: ": ",
     emptyState:
       "No structured ED documentation or results to display yet. Complete triage, Nursing / Assessment / Disposition areas, or open the full chart.",
+    nursingReassessmentHistoryTitle: "Nursing reassessments — history",
+    nursingReassessmentHistorySubline:
+      "One card per saved column. Each entry preserves the original author and timestamp.",
+    nursingReassessmentHistoryCurrent: "Current",
+    nursingReassessmentHistoryEmptyEntry:
+      "No structured or narrative content saved for this column.",
+    nursingReassessmentHistoryUnknownAuthor: "Author not recorded",
+    nursingReassessmentHistoryLoadError:
+      "Reassessment history is unavailable right now.",
     vitalsHistoryTitle: "Vitals history",
     vitalsHistoryEmpty: "No timestamped vitals rows for this encounter yet.",
     vitalsHistoryLoadError: "Vitals history unavailable.",
@@ -5717,6 +5726,11 @@ export default {
       handoffReportGivenAt: "Report given at",
       receivingNurse: "Receiving nurse",
       handoffNote: "Handoff note",
+      sectionNursingReassessmentHistory: "Nursing reassessments — history",
+      nursingReassessmentEntryHeader: "{datetime} — {author}",
+      nursingReassessmentEntryLatestHeader: "{datetime} (Current) — {author}",
+      nursingReassessmentEntryEmpty:
+        "No structured or narrative content saved for this column.",
       sectionSignatures: "Signatures and documentation status",
       signedProviderDocumentation: "Provider documentation — signed by",
       addendaPresent: "Addenda on file",
@@ -6555,6 +6569,10 @@ export default {
     saveOk: "Reassessment saved.",
     saveFailed: "Unable to save.",
     signerFallback: "Clinician",
+    crossUserNoticeWithAuthor:
+      "The last reassessment was saved by {author}. Your edits will open a new column so their entry and signature stay intact.",
+    crossUserNoticeGeneric:
+      "The last reassessment was saved by another user. Your edits will open a new column so their entry and signature stay intact.",
     cardTitle: "Nursing reassessment (ED)",
     cardSubline:
       "Ongoing reassessment at the bedside — saved with the encounter. For structured system-based assessment, use the link below.",
