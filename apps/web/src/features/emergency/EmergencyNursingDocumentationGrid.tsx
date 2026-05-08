@@ -1,48 +1,61 @@
 "use client";
 
 /**
- * Column-style documentation grid for the ED Nursing Reassessment panel — Phase-2 unified.
+ * Phase-3 column-style documentation grid for the ED Nursing Reassessment panel.
  *
- * Renders a left → right timeline:
- *   [persisted column #1 (oldest)] … [persisted column #N (most recent, "Actuel")] [draft (editable)]
+ * Layout (left → right):
+ *   [persisted column #1 (oldest)] … [persisted column #N (most recent, "Actuel")]
+ *   [draft (editable)] [+ Add column placeholder]
  *
- * Persisted columns come from the append-only `EncounterClinicalEvent NURSING_ASSESSMENT_SAVED`
- * history (namespace `erNursingReassessmentV1`). Each event row carries both the reassessment
- * snapshot and the co-saved trauma snapshot (`erTraumaSurveyV1`), so a column independently
- * preserves its own structured values, free-text, and trauma documentation.
+ * The grid renders the **structured / dropdown** rows only; every cell is a `<select>`. Free-text
+ * (narrative, addendum, response-to-treatment, interventions performed, safety rounding, vital
+ * signs note, general-appearance free text, trauma primary/secondary survey) lives in a
+ * dedicated "Notes" panel below the grid, owned by the parent. This honors the mockup's
+ * dropdown-first look without erasing clinical free-text capability.
  *
- * The draft column is bound to the editable `ErNursingReassessmentForm` + `ErTraumaSurveyV1`
- * state owned by the parent — every save creates a NEW persisted column event-row only when an
- * explicit session marker fires (clock drift ≥ 60 min or "Nouvelle séance" click); otherwise
- * the API UPDATEs the active session's row in place. Persisted columns are read-only by design
- * (no edit/delete in normal flow), matching the prior architectural guidance to use append-only
- * events for reassessment history.
+ * Rows are organized into three sections:
  *
- * Backward compatibility: when there are no persisted events yet but the chart already has a
- * saved single-object reassessment, the parent passes a synthetic `legacyColumn` so the chart's
- * pre-history documentation still appears as one column until the next save materializes a
- * real event row.
+ *   A. Primary (mockup-aligned, default expanded):
+ *      Mental Status, Orientation, Speech, Pain (NPRS), Airway Type, Resp Effort Breathing,
+ *      Resp Depth, Resp Chest Movement, Resp Pattern, Cardiac Rhythm, Cardiac Ectopy,
+ *      Skin (General), IV Access, Safety / Fall Risk.
  *
- * Phase-2 scope: every reassessment domain (head-to-toe, ABC, care/monitoring, response, trend,
- * interventions, bedside safety, narrative support, trauma primary + secondary survey, addendum)
- * renders as a row inside the same grid. Section headers group rows. Read-only cells render
- * resolved labels (selects) or text (text/textarea), clamped with internal scroll for long
- * narratives so column heights stay stable.
+ *   B. Additional (default collapsed): General Appearance code, Distress Level, Ambulation,
+ *      Safety Risk, Trend. Existing fields the mockup doesn't show; collapsed by default to
+ *      match the mockup's compactness, never deleted so prior charts keep rendering.
+ *
+ *   C. Legacy ABC (default collapsed; rendered only if any persisted column has legacy ABC
+ *      data): airway / breathing / circulation rendered from the legacy `ErAbcOption` codes.
+ *      Read-only context for older saves, never editable.
+ *
+ * Per-row collapsibility: every row label has a chevron toggle. Collapsing a row hides its
+ * cells across all columns (label remains visible) — this keeps the timeline compact when many
+ * rows are not relevant to the current case. Collapse state is local to the component (UX
+ * preference only, not persisted).
+ *
+ * Append-only history is preserved end-to-end: the grid never writes back to persisted columns,
+ * and only the rightmost editable column is bound to the parent's form state via `onPatch`.
  */
 
-import React, { useId, useMemo } from "react";
+import React, { useId, useMemo, useState } from "react";
 import type { useI18n } from "@/lib/i18n";
 import {
   ER_NURSING_AIRWAY_SELECT_OPTIONS,
+  ER_NURSING_AIRWAY_TYPE_OPTIONS,
   ER_NURSING_AMBULATION_OPTIONS,
   ER_NURSING_BREATHING_SELECT_OPTIONS,
+  ER_NURSING_CARDIAC_ECTOPY_OPTIONS,
   ER_NURSING_CARDIAC_RHYTHM_OPTIONS,
   ER_NURSING_CIRCULATION_SELECT_OPTIONS,
   ER_NURSING_DISTRESS_LEVEL_OPTIONS,
   ER_NURSING_FALL_RISK_OPTIONS,
   ER_NURSING_GENERAL_APPEARANCE_OPTIONS,
+  ER_NURSING_IV_ACCESS_OPTIONS,
   ER_NURSING_MENTAL_STATUS_OPTIONS,
   ER_NURSING_ORIENTATION_OPTIONS,
+  ER_NURSING_RESP_CHEST_MOVEMENT_OPTIONS,
+  ER_NURSING_RESP_DEPTH_OPTIONS,
+  ER_NURSING_RESP_EFFORT_OPTIONS,
   ER_NURSING_RESPIRATORY_PATTERN_OPTIONS,
   ER_NURSING_SAFETY_RISK_OPTIONS,
   ER_NURSING_SKIN_CONDITION_OPTIONS,
@@ -53,62 +66,26 @@ import {
   type ErNursingReassessmentForm,
   type ErTrend,
 } from "./emergencyNursingReassessmentV1";
-import type { ErAbcdeOption, ErTraumaSurveyV1 } from "./erTraumaSurveyV1";
 
 type TFn = ReturnType<typeof useI18n>["t"];
-
 type SavedSignature = { savedAt?: string; savedByDisplayName?: string };
 
-/**
- * Stable text-chip field codes shared with the parent panel. Importing the type directly from
- * the panel would create a render-time dependency cycle; redeclaring here keeps the grid file
- * decoupled while staying in lockstep with the panel's chip groups.
- */
-export type NursingReassessmentTextChipField =
-  | "narrative"
-  | "generalAppearance"
-  | "bedsideStatus"
-  | "responseToTreatment"
-  | "interventionsPerformed"
-  | "safetyRoundingNote"
-  | "addendum";
-
 type Props = {
-  /** Editable reassessment form state (active draft column). */
   form: ErNursingReassessmentForm;
-  /** Apply a partial patch to the reassessment form. */
   onPatch: (patch: Partial<ErNursingReassessmentForm>) => void;
-  /** Editable trauma survey state (active draft column, trauma scope). */
-  traumaForm: ErTraumaSurveyV1;
-  /** Apply a partial patch to the trauma form. */
-  onPatchTrauma: (patch: Partial<ErTraumaSurveyV1>) => void;
   formDisabled: boolean;
   t: TFn;
   language: "en" | "fr";
-  /** Most recent saved signature (read from `nursingAssessment.erNursingReassessmentV1.signature`). */
   savedSignature?: SavedSignature | null;
-  /**
-   * Read-only persisted columns from the append-only event history. Newest-first ordering as
-   * returned by the API; the grid reverses this internally so the timeline reads
-   * left-to-right oldest-to-newest with the draft column on the far right.
-   */
   persistedColumns?: ErNursingReassessmentEventColumn[];
-  /**
-   * Synthetic single column for back-compat: passed only when the chart has saved data but no
-   * append-only event rows exist yet (pre-history charts). Always rendered first (left-most).
-   */
   legacyColumn?: ErNursingReassessmentEventColumn | null;
   /**
-   * Render the chip-helper row for a free-text field (e.g. narrative, responseToTreatment).
-   * Owned by the parent so chip data + `appendNursingQuickChip` callback stay colocated with
-   * panel state. Returns `null` to skip the chip row for that field.
+   * Optional callback invoked when the nurse clicks the "+ Add column" placeholder column on
+   * the right edge of the grid. Mirrors the bottom-bar "Add current column" action — saves the
+   * draft and starts a new reassessment session. When omitted, the placeholder still renders
+   * but is non-interactive (purely visual).
    */
-  renderChipsForField?: (field: NursingReassessmentTextChipField) => React.ReactNode;
-  /**
-   * Render the 0-10 quick-pick row beside the pain-score input in the editable column. Owned
-   * by the parent for the same reason as `renderChipsForField`.
-   */
-  painQuickPickNode?: React.ReactNode;
+  onAddColumn?: () => void;
 };
 
 const colorBlue = "#0284c7";
@@ -116,7 +93,7 @@ const colorBorder = "#e2e8f0";
 const colorMuted = "#64748b";
 const colorRowAlt = "#f8fafc";
 
-/** Initials helper: FN+LN, fallback first 2 of display, fallback first letter. "—" when empty. */
+/** Two-letter initials helper. "—" when empty so columns never render an empty footer. */
 function displayNameInitials(name: string | null | undefined): string {
   const s = (name ?? "").trim();
   if (!s) return "—";
@@ -147,7 +124,7 @@ const headerBar: React.CSSProperties = {
   backgroundColor: "#f0f9ff",
 };
 
-const sectionTitleStyle: React.CSSProperties = {
+const headerTitle: React.CSSProperties = {
   margin: 0,
   fontSize: 13,
   fontWeight: 700,
@@ -155,7 +132,7 @@ const sectionTitleStyle: React.CSSProperties = {
   color: colorBlue,
 };
 
-const helpStyle: React.CSSProperties = {
+const helpText: React.CSSProperties = {
   margin: "8px 12px 0 12px",
   fontSize: 12,
   color: colorMuted,
@@ -171,11 +148,8 @@ const labelCellBase: React.CSSProperties = {
   borderRight: `1px solid ${colorBorder}`,
   backgroundColor: "#fff",
   display: "flex",
-  alignItems: "flex-start",
-  /**
-   * Sticky-left labels stay visible during horizontal scroll on narrow screens — important for
-   * orientation when the timeline accumulates many persisted columns and the user scrolls right.
-   */
+  alignItems: "center",
+  gap: 6,
   position: "sticky",
   left: 0,
   zIndex: 1,
@@ -185,7 +159,7 @@ const valueCellBase: React.CSSProperties = {
   padding: "6px 8px",
   borderBottom: `1px solid ${colorBorder}`,
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
   minWidth: 0,
 };
 
@@ -199,20 +173,6 @@ const selectStyle: React.CSSProperties = {
   color: "#0f172a",
   backgroundColor: "#fff",
   minWidth: 0,
-};
-
-const inputStyle: React.CSSProperties = {
-  ...selectStyle,
-  cursor: "text",
-};
-
-const textareaStyle: React.CSSProperties = {
-  ...selectStyle,
-  resize: "vertical",
-  minHeight: 56,
-  maxHeight: 220,
-  fontFamily: "inherit",
-  lineHeight: 1.45,
 };
 
 const colHeaderTopBox: React.CSSProperties = {
@@ -267,9 +227,22 @@ const readOnlyTextBox: React.CSSProperties = {
   lineHeight: 1.45,
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
-  /** Clamp tall narratives so column row heights remain stable; full text is reachable by scroll. */
-  maxHeight: 132,
-  overflowY: "auto",
+};
+
+const chevronButton: React.CSSProperties = {
+  background: "transparent",
+  border: 0,
+  padding: 0,
+  margin: 0,
+  width: 18,
+  height: 18,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  color: "#94a3b8",
+  fontSize: 12,
+  lineHeight: 1,
 };
 
 function formatColumnTime(
@@ -286,342 +259,217 @@ function formatColumnTime(
   };
 }
 
-/**
- * Build the grid template: one fixed label track on the left, then one track per documentation
- * column (persisted history + 1 editable draft). Each column gets a min width so dropdowns and
- * read-only values stay legible; horizontal scroll handles overflow when many columns exist.
- */
 function buildGridTemplate(columnCount: number): string {
   const cols = Math.max(1, columnCount);
-  return `minmax(180px, 220px) ${Array.from({ length: cols }, () => "minmax(260px, 1fr)").join(" ")}`;
+  return `minmax(180px, 220px) ${Array.from({ length: cols }, () => "minmax(220px, 1fr)").join(" ")}`;
 }
 
-// ── Sections + rows ──────────────────────────────────────────────────────────
+// ── Row catalog ──────────────────────────────────────────────────────────────
 
-type GridSectionId =
-  | "head_to_toe"
-  | "abc"
-  | "care_monitoring"
-  | "response_treatment"
-  | "interventions"
-  | "bedside_safety"
-  | "narrative_support"
-  | "trauma_primary"
-  | "trauma_secondary"
-  | "addendum";
+type GridSectionId = "primary" | "additional" | "legacy_abc";
 
-const SECTION_ORDER: GridSectionId[] = [
-  "head_to_toe",
-  "abc",
-  "care_monitoring",
-  "response_treatment",
-  "interventions",
-  "bedside_safety",
-  "narrative_support",
-  "trauma_primary",
-  "trauma_secondary",
-  "addendum",
-];
-
-function sectionLabel(t: TFn, sectionId: GridSectionId): string {
-  return t(`emergencyNursingReassessment.documentationGrid.sections.${sectionId}`);
-}
-
-/**
- * Cell-type taxonomy. Each row declares one cell type plus the keys / options needed to render
- * it in either editable or read-only mode. The `traumaScope: true` discriminant flips the row's
- * value source from `snapshot[key]` / `form[key]` to `traumaSnapshot[key]` / `traumaForm[key]`.
- */
-type ReassessmentSelectKey =
+type SimpleSelectKey =
   | "mentalStatus"
   | "orientation"
   | "speech"
-  | "generalAppearanceCode"
-  | "distressLevel"
   | "respiratoryPattern"
   | "cardiacRhythm"
+  | "fallRisk"
+  | "generalAppearanceCode"
   | "skinCondition"
   | "ambulation"
-  | "fallRisk"
   | "safetyRisk"
-  | "trend";
+  | "distressLevel"
+  | "airwayType"
+  | "respEffortBreathing"
+  | "respDepth"
+  | "respChestMovement"
+  | "cardiacEctopy"
+  | "ivAccess";
 
-type AbcSelectKey = "airway" | "breathing" | "circulation";
-
-type ReassessmentTextKey = "generalAppearance" | "bedsideStatus" | "vitalsSummaryNote";
-
-type ReassessmentTextareaKey =
-  | "narrative"
-  | "responseToTreatment"
-  | "interventionsPerformed"
-  | "safetyRoundingNote"
-  | "addendum";
-
-type TraumaAbcdeKey =
-  | "primaryAirway"
-  | "primaryBreathing"
-  | "primaryCirculation"
-  | "primaryDisability"
-  | "primaryExposure";
-
-type TraumaTextareaKey =
-  | "primaryNotes"
-  | "secondaryHeadFace"
-  | "secondaryNeck"
-  | "secondaryChest"
-  | "secondaryAbdomenPelvis"
-  | "secondaryBackSpine"
-  | "secondaryExtremities"
-  | "secondarySkinWounds"
-  | "secondaryNotes";
-
-type CellRowDef = { sectionId: GridSectionId; labelKey: string } & (
-  | { kind: "select"; key: Exclude<ReassessmentSelectKey, "trend">; options: readonly string[]; optionsI18nNamespace: string }
-  | { kind: "trend-select"; key: "trend"; options: readonly ErTrend[] }
-  | { kind: "abc-select"; key: AbcSelectKey; options: readonly ErAbcOption[] }
-  | { kind: "abcde-select"; key: TraumaAbcdeKey }
-  | { kind: "number-pain"; key: "pain0to10" }
-  | { kind: "text"; key: ReassessmentTextKey; placeholderKey?: string }
+type RowDef =
   | {
-      kind: "textarea";
-      key: ReassessmentTextareaKey;
-      chipFieldKey?: NursingReassessmentTextChipField;
-      placeholderKey?: string;
+      kind: "select";
+      sectionId: GridSectionId;
+      key: SimpleSelectKey;
+      options: readonly string[];
+      optionsI18nNamespace: string;
+      labelKey: string;
     }
-  | { kind: "trauma-textarea"; key: TraumaTextareaKey }
-);
+  | { kind: "trend-select"; sectionId: GridSectionId; key: "trend"; labelKey: string }
+  | {
+      kind: "abc-select";
+      sectionId: GridSectionId;
+      key: "airway" | "breathing" | "circulation";
+      options: readonly ErAbcOption[];
+      labelKey: string;
+    }
+  | { kind: "pain-select"; sectionId: GridSectionId; key: "pain0to10"; labelKey: string };
 
-const ROWS: readonly CellRowDef[] = [
-  // Head-to-toe / body systems
+const ROWS: readonly RowDef[] = [
+  // ── A. Primary (mockup-aligned, default expanded) ────────────────────────
   {
-    sectionId: "head_to_toe",
     kind: "select",
+    sectionId: "primary",
     key: "mentalStatus",
     options: ER_NURSING_MENTAL_STATUS_OPTIONS,
     optionsI18nNamespace: "mentalStatusOptions",
     labelKey: "rowMentalStatus",
   },
   {
-    sectionId: "head_to_toe",
     kind: "select",
+    sectionId: "primary",
     key: "orientation",
     options: ER_NURSING_ORIENTATION_OPTIONS,
     optionsI18nNamespace: "orientationOptions",
     labelKey: "rowOrientation",
   },
   {
-    sectionId: "head_to_toe",
     kind: "select",
+    sectionId: "primary",
     key: "speech",
     options: ER_NURSING_SPEECH_OPTIONS,
     optionsI18nNamespace: "speechOptions",
     labelKey: "rowSpeech",
   },
+  { kind: "pain-select", sectionId: "primary", key: "pain0to10", labelKey: "rowPain" },
   {
-    sectionId: "head_to_toe",
     kind: "select",
-    key: "generalAppearanceCode",
-    options: ER_NURSING_GENERAL_APPEARANCE_OPTIONS,
-    optionsI18nNamespace: "generalAppearanceOptions",
-    labelKey: "rowGeneralAppearance",
+    sectionId: "primary",
+    key: "airwayType",
+    options: ER_NURSING_AIRWAY_TYPE_OPTIONS,
+    optionsI18nNamespace: "airwayTypeOptions",
+    labelKey: "rowAirwayType",
   },
   {
-    sectionId: "head_to_toe",
-    kind: "text",
-    key: "generalAppearance",
-    labelKey: "rowGeneralAppearanceFreeText",
-  },
-  {
-    sectionId: "head_to_toe",
     kind: "select",
-    key: "distressLevel",
-    options: ER_NURSING_DISTRESS_LEVEL_OPTIONS,
-    optionsI18nNamespace: "distressLevelOptions",
-    labelKey: "rowDistressLevel",
+    sectionId: "primary",
+    key: "respEffortBreathing",
+    options: ER_NURSING_RESP_EFFORT_OPTIONS,
+    optionsI18nNamespace: "respEffortOptions",
+    labelKey: "rowRespEffortBreathing",
   },
   {
-    sectionId: "head_to_toe",
-    kind: "number-pain",
-    key: "pain0to10",
-    labelKey: "rowPain",
-  },
-  {
-    sectionId: "head_to_toe",
     kind: "select",
+    sectionId: "primary",
+    key: "respDepth",
+    options: ER_NURSING_RESP_DEPTH_OPTIONS,
+    optionsI18nNamespace: "respDepthOptions",
+    labelKey: "rowRespDepth",
+  },
+  {
+    kind: "select",
+    sectionId: "primary",
+    key: "respChestMovement",
+    options: ER_NURSING_RESP_CHEST_MOVEMENT_OPTIONS,
+    optionsI18nNamespace: "respChestMovementOptions",
+    labelKey: "rowRespChestMovement",
+  },
+  {
+    kind: "select",
+    sectionId: "primary",
     key: "respiratoryPattern",
     options: ER_NURSING_RESPIRATORY_PATTERN_OPTIONS,
     optionsI18nNamespace: "respiratoryPatternOptions",
-    labelKey: "rowRespiratoryPattern",
+    labelKey: "rowRespPattern",
   },
   {
-    sectionId: "head_to_toe",
     kind: "select",
+    sectionId: "primary",
     key: "cardiacRhythm",
     options: ER_NURSING_CARDIAC_RHYTHM_OPTIONS,
     optionsI18nNamespace: "cardiacRhythmOptions",
     labelKey: "rowCardiacRhythm",
   },
   {
-    sectionId: "head_to_toe",
     kind: "select",
+    sectionId: "primary",
+    key: "cardiacEctopy",
+    options: ER_NURSING_CARDIAC_ECTOPY_OPTIONS,
+    optionsI18nNamespace: "cardiacEctopyOptions",
+    labelKey: "rowCardiacEctopy",
+  },
+  {
+    kind: "select",
+    sectionId: "primary",
     key: "skinCondition",
     options: ER_NURSING_SKIN_CONDITION_OPTIONS,
     optionsI18nNamespace: "skinConditionOptions",
-    labelKey: "rowSkinCondition",
+    labelKey: "rowSkinGeneral",
   },
   {
-    sectionId: "head_to_toe",
     kind: "select",
+    sectionId: "primary",
+    key: "ivAccess",
+    options: ER_NURSING_IV_ACCESS_OPTIONS,
+    optionsI18nNamespace: "ivAccessOptions",
+    labelKey: "rowIvAccess",
+  },
+  {
+    kind: "select",
+    sectionId: "primary",
+    key: "fallRisk",
+    options: ER_NURSING_FALL_RISK_OPTIONS,
+    optionsI18nNamespace: "fallRiskOptions",
+    labelKey: "rowSafetyFallRisk",
+  },
+
+  // ── B. Additional (default collapsed) ───────────────────────────────────
+  {
+    kind: "select",
+    sectionId: "additional",
+    key: "generalAppearanceCode",
+    options: ER_NURSING_GENERAL_APPEARANCE_OPTIONS,
+    optionsI18nNamespace: "generalAppearanceOptions",
+    labelKey: "rowGeneralAppearance",
+  },
+  {
+    kind: "select",
+    sectionId: "additional",
+    key: "distressLevel",
+    options: ER_NURSING_DISTRESS_LEVEL_OPTIONS,
+    optionsI18nNamespace: "distressLevelOptions",
+    labelKey: "rowDistressLevel",
+  },
+  {
+    kind: "select",
+    sectionId: "additional",
     key: "ambulation",
     options: ER_NURSING_AMBULATION_OPTIONS,
     optionsI18nNamespace: "ambulationOptions",
     labelKey: "rowAmbulation",
   },
   {
-    sectionId: "head_to_toe",
     kind: "select",
-    key: "fallRisk",
-    options: ER_NURSING_FALL_RISK_OPTIONS,
-    optionsI18nNamespace: "fallRiskOptions",
-    labelKey: "rowFallRisk",
-  },
-  {
-    sectionId: "head_to_toe",
-    kind: "select",
+    sectionId: "additional",
     key: "safetyRisk",
     options: ER_NURSING_SAFETY_RISK_OPTIONS,
     optionsI18nNamespace: "safetyRiskOptions",
     labelKey: "rowSafetyRisk",
   },
+  { kind: "trend-select", sectionId: "additional", key: "trend", labelKey: "rowTrend" },
 
-  // ABC (réévaluation)
+  // ── C. Legacy ABC (default collapsed; rendered only when data exists) ───
   {
-    sectionId: "abc",
     kind: "abc-select",
+    sectionId: "legacy_abc",
     key: "airway",
     options: ER_NURSING_AIRWAY_SELECT_OPTIONS,
-    labelKey: "rowAirway",
+    labelKey: "rowAirwayLegacy",
   },
   {
-    sectionId: "abc",
     kind: "abc-select",
+    sectionId: "legacy_abc",
     key: "breathing",
     options: ER_NURSING_BREATHING_SELECT_OPTIONS,
-    labelKey: "rowBreathing",
+    labelKey: "rowBreathingLegacy",
   },
   {
-    sectionId: "abc",
     kind: "abc-select",
+    sectionId: "legacy_abc",
     key: "circulation",
     options: ER_NURSING_CIRCULATION_SELECT_OPTIONS,
-    labelKey: "rowCirculation",
-  },
-
-  // Soins / surveillance
-  {
-    sectionId: "care_monitoring",
-    kind: "text",
-    key: "bedsideStatus",
-    labelKey: "rowBedsideStatus",
-    placeholderKey: "placeholderBedsideStatus",
-  },
-
-  // Réponse au traitement
-  {
-    sectionId: "response_treatment",
-    kind: "textarea",
-    key: "responseToTreatment",
-    chipFieldKey: "responseToTreatment",
-    labelKey: "rowResponseToTreatment",
-  },
-  {
-    sectionId: "response_treatment",
-    kind: "trend-select",
-    key: "trend",
-    options: ER_NURSING_TREND_SELECT_OPTIONS,
-    labelKey: "rowTrend",
-  },
-
-  // Interventions infirmières
-  {
-    sectionId: "interventions",
-    kind: "textarea",
-    key: "interventionsPerformed",
-    chipFieldKey: "interventionsPerformed",
-    labelKey: "rowInterventionsPerformed",
-  },
-
-  // Sécurité au chevet / tournées
-  {
-    sectionId: "bedside_safety",
-    kind: "textarea",
-    key: "safetyRoundingNote",
-    chipFieldKey: "safetyRoundingNote",
-    labelKey: "rowSafetyRoundingNote",
-    placeholderKey: "placeholderSafety",
-  },
-
-  // Notes de soutien à la réévaluation
-  {
-    sectionId: "narrative_support",
-    kind: "textarea",
-    key: "narrative",
-    chipFieldKey: "narrative",
-    labelKey: "rowNarrative",
-    placeholderKey: "narrativePlaceholder",
-  },
-  {
-    sectionId: "narrative_support",
-    kind: "text",
-    key: "vitalsSummaryNote",
-    labelKey: "rowVitalsSummaryNote",
-  },
-
-  // Trauma — examen primaire (ABCDE)
-  { sectionId: "trauma_primary", kind: "abcde-select", key: "primaryAirway", labelKey: "rowAirway" },
-  { sectionId: "trauma_primary", kind: "abcde-select", key: "primaryBreathing", labelKey: "rowBreathing" },
-  { sectionId: "trauma_primary", kind: "abcde-select", key: "primaryCirculation", labelKey: "rowCirculation" },
-  { sectionId: "trauma_primary", kind: "abcde-select", key: "primaryDisability", labelKey: "rowNeurologic" },
-  { sectionId: "trauma_primary", kind: "abcde-select", key: "primaryExposure", labelKey: "rowExposure" },
-  { sectionId: "trauma_primary", kind: "trauma-textarea", key: "primaryNotes", labelKey: "rowTraumaPrimaryNotes" },
-
-  // Trauma — examen secondaire
-  { sectionId: "trauma_secondary", kind: "trauma-textarea", key: "secondaryHeadFace", labelKey: "rowHeadFace" },
-  { sectionId: "trauma_secondary", kind: "trauma-textarea", key: "secondaryNeck", labelKey: "rowNeck" },
-  { sectionId: "trauma_secondary", kind: "trauma-textarea", key: "secondaryChest", labelKey: "rowChest" },
-  {
-    sectionId: "trauma_secondary",
-    kind: "trauma-textarea",
-    key: "secondaryAbdomenPelvis",
-    labelKey: "rowAbdomenPelvis",
-  },
-  { sectionId: "trauma_secondary", kind: "trauma-textarea", key: "secondaryBackSpine", labelKey: "rowBackSpine" },
-  {
-    sectionId: "trauma_secondary",
-    kind: "trauma-textarea",
-    key: "secondaryExtremities",
-    labelKey: "rowExtremities",
-  },
-  {
-    sectionId: "trauma_secondary",
-    kind: "trauma-textarea",
-    key: "secondarySkinWounds",
-    labelKey: "rowSkinWounds",
-  },
-  {
-    sectionId: "trauma_secondary",
-    kind: "trauma-textarea",
-    key: "secondaryNotes",
-    labelKey: "rowSecondaryNotes",
-  },
-
-  // Addendum
-  {
-    sectionId: "addendum",
-    kind: "textarea",
-    key: "addendum",
-    chipFieldKey: "addendum",
-    labelKey: "rowAddendum",
+    labelKey: "rowCirculationLegacy",
   },
 ];
 
@@ -633,8 +481,7 @@ function readSnapshotString(
 ): string {
   if (!snapshot) return "";
   const v = snapshot[key];
-  if (typeof v === "string") return v;
-  return "";
+  return typeof v === "string" ? v : "";
 }
 
 function readSnapshotPain(snapshot: Record<string, unknown> | null | undefined): string {
@@ -644,16 +491,11 @@ function readSnapshotPain(snapshot: Record<string, unknown> | null | undefined):
   return "";
 }
 
-function resolveSelectLabel(
-  t: TFn,
-  optionsI18nNamespace: string,
-  rawValue: string
-): string {
+function resolveSelectLabel(t: TFn, optionsI18nNamespace: string, rawValue: string): string {
   if (!rawValue) return "";
   return t(`emergencyNursingReassessment.${optionsI18nNamespace}.${rawValue}`);
 }
 
-/** ABC option label resolver — kept inline to avoid an import cycle with the panel. */
 function nursingAbcSelectOptionLabel(t: TFn, v: ErAbcOption): string {
   if (!v) return "";
   if (v === "wnl") return t("emergencyNursingReassessment.abcOptionWnl");
@@ -694,49 +536,26 @@ function nursingTrendOptionLabel(t: TFn, v: ErTrend): string {
   return "";
 }
 
-function abcdeOptionLabel(t: TFn, v: ErAbcdeOption | string): string {
-  if (v === "normal") return t("emergencyNursingReassessment.abcdeOptionNormal");
-  if (v === "abnormal") return t("emergencyNursingReassessment.abcdeOptionAbnormal");
-  if (v === "unknown") return t("emergencyNursingReassessment.abcOptionUnknown");
-  return "";
-}
-
-/**
- * Resolve the read-only display string for a row in a persisted column. Pure: reads from the
- * appropriate snapshot (reassessment vs trauma), maps codes to FR labels via i18n, returns ""
- * when the value is missing so the caller can render `—` consistently.
- */
 function resolveReadonlyDisplay(
   t: TFn,
-  row: CellRowDef,
-  reassessmentSnapshot: Record<string, unknown> | null,
-  traumaSnapshot: Record<string, unknown> | null
+  row: RowDef,
+  snapshot: Record<string, unknown> | null
 ): string {
   switch (row.kind) {
     case "select": {
-      const v = readSnapshotString(reassessmentSnapshot, row.key);
+      const v = readSnapshotString(snapshot, row.key);
       return resolveSelectLabel(t, row.optionsI18nNamespace, v);
     }
     case "trend-select": {
-      const v = readSnapshotString(reassessmentSnapshot, row.key);
+      const v = readSnapshotString(snapshot, "trend");
       return nursingTrendOptionLabel(t, v as ErTrend);
     }
     case "abc-select": {
-      const v = readSnapshotString(reassessmentSnapshot, row.key);
+      const v = readSnapshotString(snapshot, row.key);
       return nursingAbcSelectOptionLabel(t, v as ErAbcOption);
     }
-    case "abcde-select": {
-      const v = readSnapshotString(traumaSnapshot, row.key);
-      return abcdeOptionLabel(t, v);
-    }
-    case "number-pain":
-      return readSnapshotPain(reassessmentSnapshot);
-    case "text":
-      return readSnapshotString(reassessmentSnapshot, row.key);
-    case "textarea":
-      return readSnapshotString(reassessmentSnapshot, row.key);
-    case "trauma-textarea":
-      return readSnapshotString(traumaSnapshot, row.key);
+    case "pain-select":
+      return readSnapshotPain(snapshot);
     default: {
       const _exhaustive: never = row;
       return _exhaustive;
@@ -749,26 +568,17 @@ function resolveReadonlyDisplay(
 export function EmergencyNursingDocumentationGrid({
   form,
   onPatch,
-  traumaForm,
-  onPatchTrauma,
   formDisabled,
   t,
   language,
   savedSignature,
   persistedColumns,
   legacyColumn,
-  renderChipsForField,
-  painQuickPickNode,
+  onAddColumn,
 }: Props) {
   const dg = (k: string) => t(`emergencyNursingReassessment.documentationGrid.${k}`);
 
-  /**
-   * Stable id for the section help paragraph, referenced by every `<select aria-describedby>` so
-   * screen-reader users get the documentation guidance ("structured selections refresh the auto
-   * narrative block, free-text outside is preserved") on every focusable control.
-   */
   const sectionHelpId = useId();
-  const clearHintId = useId();
 
   const columnTime = useMemo(
     () => formatColumnTime(form.reassessmentAt, language),
@@ -779,59 +589,67 @@ export function EmergencyNursingDocumentationGrid({
     [savedSignature?.savedAt, language]
   );
 
-  /** "Current" badge is shown only when the column is actually persisted (signature present). */
   const isPersistedCurrent = Boolean(savedSignature?.savedAt);
   const updaterName = savedSignature?.savedByDisplayName?.trim() || "";
   const updaterInitials = displayNameInitials(updaterName);
 
-  /**
-   * Persisted columns come newest-first from the API. We render oldest-to-newest so the timeline
-   * reads naturally left-to-right; the legacy column (if any) is always the leftmost. Latest
-   * persisted column = "Actuel". The editable draft column is rendered last on the right.
-   */
+  /** Persisted history is API-newest-first; render oldest-to-newest with legacy column leftmost. */
   const persistedColumnsForRender = useMemo(() => {
     const fromEvents = (persistedColumns ?? []).slice().reverse();
     return legacyColumn ? [legacyColumn, ...fromEvents] : fromEvents;
   }, [persistedColumns, legacyColumn]);
 
-  const totalDataColumns = persistedColumnsForRender.length + 1;
+  /**
+   * Whether any persisted column has data in the legacy ABC fields. The legacy section is
+   * suppressed entirely when no historical chart used those codes — keeps new-clinic workflows
+   * uncluttered while preserving the audit trail for older sites.
+   */
+  const hasLegacyAbcData = useMemo(() => {
+    return persistedColumnsForRender.some((col) => {
+      const a = readSnapshotString(col.snapshot, "airway");
+      const b = readSnapshotString(col.snapshot, "breathing");
+      const c = readSnapshotString(col.snapshot, "circulation");
+      return Boolean(a || b || c);
+    });
+  }, [persistedColumnsForRender]);
 
   /**
-   * "Effacer la colonne" wipes only the structured selects in the active draft column. Free-text
-   * and trauma fields are deliberately untouched: clearing nurse-typed prose is destructive and
-   * should only happen via explicit per-field edits or the "Nouvelle séance" flow above.
+   * Per-row collapse state. Default-collapsed rows: every row in the `additional` and
+   * `legacy_abc` sections so the mockup-aligned grid renders compact by default. Nurses can
+   * expand any row via its chevron; collapsed rows still preserve their form value (UX-only).
    */
-  const handleClearColumn = () => {
-    onPatch({
-      mentalStatus: "",
-      orientation: "",
-      speech: "",
-      pain0to10: "",
-      airway: "",
-      breathing: "",
-      respiratoryPattern: "",
-      circulation: "",
-      cardiacRhythm: "",
-      fallRisk: "",
-      trend: "",
-      generalAppearanceCode: "",
-      skinCondition: "",
-      ambulation: "",
-      safetyRisk: "",
-      distressLevel: "",
+  const [collapsedRows, setCollapsedRows] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const row of ROWS) {
+      if (row.sectionId !== "primary") s.add(rowId(row));
+    }
+    return s;
+  });
+  const isRowCollapsed = (row: RowDef) => collapsedRows.has(rowId(row));
+  const toggleRow = (row: RowDef) => {
+    const id = rowId(row);
+    setCollapsedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   };
 
-  // ── Editable cell renderer (active draft column only) ──────────────────────
+  const totalDataColumns = persistedColumnsForRender.length + 1; // +1 for editable draft
 
-  function renderEditableCell(row: CellRowDef): React.ReactNode {
+  // Render helpers ---------------------------------------------------------
+
+  function renderEditableCell(row: RowDef): React.ReactNode {
     switch (row.kind) {
       case "select": {
         const value = (form[row.key] as string) ?? "";
         return (
           <select
             value={value}
-            onChange={(e) => onPatch({ [row.key]: e.target.value } as Partial<ErNursingReassessmentForm>)}
+            onChange={(e) =>
+              onPatch({ [row.key]: e.target.value } as Partial<ErNursingReassessmentForm>)
+            }
             disabled={formDisabled}
             aria-label={dg(row.labelKey)}
             aria-describedby={sectionHelpId}
@@ -851,10 +669,9 @@ export function EmergencyNursingDocumentationGrid({
         );
       }
       case "trend-select": {
-        const value = form.trend;
         return (
           <select
-            value={value}
+            value={form.trend}
             onChange={(e) => onPatch({ trend: e.target.value as ErTrend })}
             disabled={formDisabled}
             aria-label={dg(row.labelKey)}
@@ -865,8 +682,8 @@ export function EmergencyNursingDocumentationGrid({
               cursor: formDisabled ? "not-allowed" : "pointer",
             }}
           >
-            <option value="">—</option>
-            {row.options.map((o) => (
+            <option value="">{dg("placeholder")}</option>
+            {ER_NURSING_TREND_SELECT_OPTIONS.map((o) => (
               <option key={o} value={o}>
                 {nursingTrendOptionLabel(t, o)}
               </option>
@@ -891,7 +708,7 @@ export function EmergencyNursingDocumentationGrid({
               cursor: formDisabled ? "not-allowed" : "pointer",
             }}
           >
-            <option value="">—</option>
+            <option value="">{dg("placeholder")}</option>
             {row.options.map((o) => (
               <option key={o} value={o}>
                 {nursingAbcSelectOptionLabel(t, o)}
@@ -900,14 +717,11 @@ export function EmergencyNursingDocumentationGrid({
           </select>
         );
       }
-      case "abcde-select": {
-        const value = traumaForm[row.key] ?? "";
+      case "pain-select": {
         return (
           <select
-            value={value}
-            onChange={(e) =>
-              onPatchTrauma({ [row.key]: e.target.value as ErAbcdeOption } as Partial<ErTraumaSurveyV1>)
-            }
+            value={form.pain0to10}
+            onChange={(e) => onPatch({ pain0to10: e.target.value })}
             disabled={formDisabled}
             aria-label={dg(row.labelKey)}
             aria-describedby={sectionHelpId}
@@ -917,90 +731,13 @@ export function EmergencyNursingDocumentationGrid({
               cursor: formDisabled ? "not-allowed" : "pointer",
             }}
           >
-            <option value="">—</option>
-            <option value="normal">{abcdeOptionLabel(t, "normal")}</option>
-            <option value="abnormal">{abcdeOptionLabel(t, "abnormal")}</option>
-            <option value="unknown">{abcdeOptionLabel(t, "unknown")}</option>
+            <option value="">{dg("placeholder")}</option>
+            {Array.from({ length: 11 }, (_, i) => String(i)).map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
-        );
-      }
-      case "number-pain": {
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-            <input
-              type="number"
-              min={0}
-              max={10}
-              value={form.pain0to10}
-              onChange={(e) => onPatch({ pain0to10: e.target.value })}
-              disabled={formDisabled}
-              aria-label={dg(row.labelKey)}
-              style={{
-                ...inputStyle,
-                backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-              }}
-            />
-            {painQuickPickNode ?? null}
-          </div>
-        );
-      }
-      case "text": {
-        const value = (form[row.key] as string) ?? "";
-        return (
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onPatch({ [row.key]: e.target.value } as Partial<ErNursingReassessmentForm>)}
-            disabled={formDisabled}
-            aria-label={dg(row.labelKey)}
-            placeholder={row.placeholderKey ? t(`emergencyNursingReassessment.${row.placeholderKey}`) : ""}
-            style={{
-              ...inputStyle,
-              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-            }}
-          />
-        );
-      }
-      case "textarea": {
-        const value = (form[row.key] as string) ?? "";
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-            <textarea
-              value={value}
-              onChange={(e) =>
-                onPatch({ [row.key]: e.target.value } as Partial<ErNursingReassessmentForm>)
-              }
-              disabled={formDisabled}
-              rows={2}
-              aria-label={dg(row.labelKey)}
-              placeholder={
-                row.placeholderKey ? t(`emergencyNursingReassessment.${row.placeholderKey}`) : ""
-              }
-              style={{
-                ...textareaStyle,
-                backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-              }}
-            />
-            {row.chipFieldKey && renderChipsForField ? renderChipsForField(row.chipFieldKey) : null}
-          </div>
-        );
-      }
-      case "trauma-textarea": {
-        const value = traumaForm[row.key] ?? "";
-        return (
-          <textarea
-            value={value}
-            onChange={(e) =>
-              onPatchTrauma({ [row.key]: e.target.value } as Partial<ErTraumaSurveyV1>)
-            }
-            disabled={formDisabled}
-            rows={2}
-            aria-label={dg(row.labelKey)}
-            style={{
-              ...textareaStyle,
-              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-            }}
-          />
         );
       }
       default: {
@@ -1015,40 +752,22 @@ export function EmergencyNursingDocumentationGrid({
   return (
     <div style={wrap}>
       <div style={headerBar}>
-        <p style={sectionTitleStyle}>{dg("sectionTitle")}</p>
-        <button
-          type="button"
-          onClick={handleClearColumn}
-          disabled={formDisabled}
-          aria-label={dg("clearColumnButton")}
-          aria-describedby={clearHintId}
-          style={{
-            padding: "5px 10px",
-            border: `1px solid ${colorBorder}`,
-            borderRadius: 8,
-            backgroundColor: formDisabled ? "#f1f5f9" : "#fff",
-            color: formDisabled ? "#94a3b8" : "#334155",
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: formDisabled ? "not-allowed" : "pointer",
-          }}
-        >
-          {dg("clearColumnButton")}
-        </button>
+        <p style={headerTitle}>{dg("sectionTitle")}</p>
       </div>
-      <p id={sectionHelpId} style={helpStyle}>
+      <p id={sectionHelpId} style={helpText}>
         {dg("sectionHelp")}
       </p>
-      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", display: "flex" }}>
         <div
           style={{
             display: "grid",
             gridTemplateColumns: buildGridTemplate(totalDataColumns),
             borderTop: `1px solid ${colorBorder}`,
             marginTop: 10,
+            flex: "1 1 auto",
           }}
         >
-          {/* Empty top-left corner cell — sticky-left so it stays under the row labels. */}
+          {/* Empty corner cell (sticky-left). */}
           <div
             style={{
               padding: "8px 10px",
@@ -1066,9 +785,9 @@ export function EmergencyNursingDocumentationGrid({
             }}
             aria-hidden
           />
-          {/* Persisted column headers (oldest → newest, legacy first when present). */}
+          {/* Persisted column headers — oldest leftmost, latest = "Actuel". */}
           {persistedColumnsForRender.map((col, idx) => {
-            const t1 = formatColumnTime(col.documentedAt ?? col.createdAt, language);
+            const headerTime = formatColumnTime(col.documentedAt ?? col.createdAt, language);
             const isLatestPersisted = idx === persistedColumnsForRender.length - 1;
             return (
               <div
@@ -1080,10 +799,10 @@ export function EmergencyNursingDocumentationGrid({
                 }}
               >
                 <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
-                  {t1.time}
+                  {headerTime.time}
                 </span>
                 <span style={{ fontSize: 11, color: colorMuted }}>
-                  {t1.date || dg("columnTimePlaceholder")}
+                  {headerTime.date || dg("columnTimePlaceholder")}
                 </span>
                 {isLatestPersisted ? (
                   <span style={currentBadge}>{dg("columnHeaderLatest")}</span>
@@ -1091,7 +810,7 @@ export function EmergencyNursingDocumentationGrid({
               </div>
             );
           })}
-          {/* Draft column header (rightmost). */}
+          {/* Draft column header (rightmost data column). */}
           <div style={colHeaderTopBox}>
             <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
               {columnTime.time}
@@ -1115,59 +834,104 @@ export function EmergencyNursingDocumentationGrid({
           </div>
 
           {/* Sections + rows */}
-          {SECTION_ORDER.map((sectionId) => {
+          {(["primary", "additional", "legacy_abc"] as const).map((sectionId) => {
+            if (sectionId === "legacy_abc" && !hasLegacyAbcData) return null;
             const sectionRows = ROWS.filter((r) => r.sectionId === sectionId);
             if (sectionRows.length === 0) return null;
             return (
               <React.Fragment key={`sec-${sectionId}`}>
                 <div style={sectionHeaderRow}>
-                  {/**
-                   * Section label is rendered inside a sticky-left inline-block so it stays
-                   * visible at the left edge during horizontal scroll while the divider line
-                   * spans the full grid width.
-                   */}
-                  <span
-                    style={{
-                      position: "sticky",
-                      left: 12,
-                      display: "inline-block",
-                    }}
-                  >
-                    {sectionLabel(t, sectionId)}
+                  <span style={{ position: "sticky", left: 12, display: "inline-block" }}>
+                    {dg(`sections.${sectionId}`)}
+                    {sectionId === "legacy_abc" ? (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          fontWeight: 500,
+                          textTransform: "none",
+                          letterSpacing: 0,
+                          color: colorMuted,
+                        }}
+                      >
+                        — {dg("legacyAbcExplain")}
+                      </span>
+                    ) : null}
                   </span>
                 </div>
                 {sectionRows.map((row, rowIdx) => {
                   const altBg = rowIdx % 2 === 1 ? colorRowAlt : "#fff";
+                  const collapsed = isRowCollapsed(row);
+                  const editableForRow = sectionId === "legacy_abc" ? null : renderEditableCell(row);
                   return (
-                    <React.Fragment key={`r-${sectionId}-${row.kind}-${row.key}`}>
+                    <React.Fragment key={`r-${rowId(row)}`}>
                       <div style={{ ...labelCellBase, backgroundColor: altBg }}>
-                        {dg(row.labelKey)}
+                        <button
+                          type="button"
+                          onClick={() => toggleRow(row)}
+                          aria-label={collapsed ? dg("expandRowAria") : dg("collapseRowAria")}
+                          aria-expanded={!collapsed}
+                          style={chevronButton}
+                        >
+                          <span aria-hidden style={{ display: "inline-block" }}>
+                            {collapsed ? "▸" : "▾"}
+                          </span>
+                        </button>
+                        <span>{dg(row.labelKey)}</span>
                       </div>
-                      {persistedColumnsForRender.map((col) => {
-                        const display = resolveReadonlyDisplay(t, row, col.snapshot, col.traumaSnapshot);
-                        return (
-                          <div
-                            key={`v-${col.id}-${row.kind}-${row.key}`}
-                            style={{
-                              ...valueCellBase,
-                              backgroundColor: altBg,
-                              borderRight: `1px solid ${colorBorder}`,
-                            }}
-                          >
-                            <div
-                              style={{
-                                ...readOnlyTextBox,
-                                color: display ? "#0f172a" : "#94a3b8",
-                              }}
-                            >
-                              {display || "—"}
-                            </div>
+                      {collapsed ? (
+                        /**
+                         * Single full-row span fills all data tracks with a thin "collapsed"
+                         * placeholder — keeps grid alignment without rendering each individual
+                         * cell when the row is hidden.
+                         */
+                        <div
+                          style={{
+                            gridColumn: `2 / span ${totalDataColumns}`,
+                            padding: "6px 10px",
+                            borderBottom: `1px solid ${colorBorder}`,
+                            fontSize: 11,
+                            color: "#cbd5e1",
+                            backgroundColor: altBg,
+                          }}
+                          aria-hidden
+                        >
+                          ···
+                        </div>
+                      ) : (
+                        <>
+                          {persistedColumnsForRender.map((col) => {
+                            const display = resolveReadonlyDisplay(t, row, col.snapshot);
+                            return (
+                              <div
+                                key={`v-${col.id}-${rowId(row)}`}
+                                style={{
+                                  ...valueCellBase,
+                                  backgroundColor: altBg,
+                                  borderRight: `1px solid ${colorBorder}`,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    ...readOnlyTextBox,
+                                    color: display ? "#0f172a" : "#94a3b8",
+                                  }}
+                                >
+                                  {display || "—"}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div style={{ ...valueCellBase, backgroundColor: altBg }}>
+                            {editableForRow ?? (
+                              <div
+                                style={{ ...readOnlyTextBox, color: "#94a3b8", fontStyle: "italic" }}
+                              >
+                                —
+                              </div>
+                            )}
                           </div>
-                        );
-                      })}
-                      <div style={{ ...valueCellBase, backgroundColor: altBg }}>
-                        {renderEditableCell(row)}
-                      </div>
+                        </>
+                      )}
                     </React.Fragment>
                   );
                 })}
@@ -1175,7 +939,7 @@ export function EmergencyNursingDocumentationGrid({
             );
           })}
 
-          {/* Footer row: updated-by per column */}
+          {/* Footer row: updater identity per column */}
           <div
             style={{
               padding: "8px 10px",
@@ -1251,19 +1015,45 @@ export function EmergencyNursingDocumentationGrid({
             )}
           </div>
         </div>
+
+        {/**
+         * "+ Add column" placeholder rendered as a single tall button to the right of the grid.
+         * Clicking it triggers the parent's `onAddColumn` handler, which mirrors the bottom-bar
+         * "Add current column" action: save the active session, then start a new column. Kept
+         * non-interactive (presentation-only) when no handler is provided so older callers
+         * continue to render correctly.
+         */}
+        <button
+          type="button"
+          onClick={onAddColumn}
+          disabled={formDisabled || !onAddColumn}
+          aria-label={dg("addColumnPlaceholderHint")}
+          title={dg("addColumnPlaceholderHint")}
+          style={{
+            flex: "0 0 auto",
+            width: 140,
+            margin: "10px 0 0 0",
+            border: `1px dashed ${colorBorder}`,
+            borderRadius: 8,
+            backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+            color: formDisabled ? "#cbd5e1" : colorMuted,
+            cursor: formDisabled || !onAddColumn ? "default" : "pointer",
+            fontSize: 13,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "10px 8px",
+            minHeight: 80,
+          }}
+        >
+          {dg("addColumnPlaceholder")}
+        </button>
       </div>
-      <p
-        id={clearHintId}
-        style={{
-          margin: 0,
-          padding: "8px 12px 10px",
-          fontSize: 11,
-          color: colorMuted,
-          lineHeight: 1.45,
-        }}
-      >
-        {dg("clearColumnHint")}
-      </p>
     </div>
   );
+}
+
+function rowId(row: RowDef): string {
+  return `${row.sectionId}:${row.kind}:${row.key}`;
 }

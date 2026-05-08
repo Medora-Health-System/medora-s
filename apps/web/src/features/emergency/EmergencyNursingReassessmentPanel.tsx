@@ -80,19 +80,19 @@ const NURSING_DRAFT_STORAGE_KEY_PREFIX = "medora.erNursingReassessmentDraft.v1";
 const FULL_COLUMN_GRID_ENABLED = true;
 
 /**
- * Conservatively keep the legacy standalone reassessment sections (narrative / general
- * appearance / pain+bedside / ABC / vitals recheck heading / response / interventions / safety
- * rounding / addendum / trauma `<details>`) RENDERING BELOW the documentation grid even after
- * the unified grid is in place. Default `false` so the duplicate workflow goes away as
- * requested. Code is retained: a single flip back to `true` restores the legacy layout if a
- * parity issue surfaces in clinical use.
+ * Phase-3: render the free-text "Notes panel" sections below the documentation grid. The grid
+ * is dropdown-only by design (mockup-aligned); free-text capability (narrative, general
+ * appearance, bedside status, response to treatment, interventions performed, safety rounding,
+ * addendum, trauma primary/secondary survey) lives in this panel so nurses retain the ability
+ * to chart non-discrete findings. Duplicates that are also in the grid (pain quick-pick, ABC
+ * select trio, trend select) have been removed to avoid double-entry and keep this panel
+ * scoped to free-text only.
  *
- * The reassessment-time row (clock icon + datetime-local + "Nouvelle séance" button) and the
- * triage bedside-safety block are NEVER gated by this flag — the time row owns the active
- * session lifecycle, and the triage block writes to a separate persistence target (triage
- * vitalsJson, not nursingAssessment).
+ * Always `true` in this PR; kept as a const so a single flip restores the Phase-1 / Phase-2
+ * layout if a clinical parity issue surfaces. The reassessment-time row (clock + datetime +
+ * "Nouvelle séance") and the triage bedside-safety block are NEVER gated by this flag.
  */
-const SHOW_LEGACY_STANDALONE_REASSESSMENT_SECTIONS = false;
+const SHOW_LEGACY_STANDALONE_REASSESSMENT_SECTIONS = true;
 
 type NursingReassessmentLocalDraft = {
   form: ErNursingReassessmentForm;
@@ -1074,6 +1074,13 @@ export function EmergencyNursingReassessmentPanel({
         circulation: "",
         trend: "",
         pain0to10: "",
+        /** Phase-3 mockup-aligned dropdowns — cleared with the rest so a fresh column starts clean. */
+        airwayType: "",
+        respEffortBreathing: "",
+        respDepth: "",
+        respChestMovement: "",
+        cardiacEctopy: "",
+        ivAccess: "",
       };
       /** Re-render the auto-fragment block now that all structured rows are blank. */
       const lines = buildStructuredNarrativeFragmentLines(merged, language);
@@ -1118,6 +1125,44 @@ export function EmergencyNursingReassessmentPanel({
     setDraftRestored(false);
     setSaveInfo(t("emergencyNursingReassessment.documentationGrid.draftDiscarded"));
   }, [encounter.nursingAssessment, encounterId, loadTriage, t]);
+
+  /**
+   * Clear the active draft's structured selects (Phase-2 + Phase-3 dropdowns) without saving.
+   * Mirrors the bottom-bar "Clear latest column" mockup action. Free-text in the Notes panel
+   * (narrative, addendum, trauma) is intentionally NOT touched here — clearing nurse-typed
+   * prose is destructive and should only be done via explicit per-field edits or the discard-
+   * draft flow above.
+   */
+  const handleClearLatestColumn = useCallback(() => {
+    if (formDisabled) return;
+    setForm((f) => ({
+      ...f,
+      mentalStatus: "",
+      orientation: "",
+      speech: "",
+      pain0to10: "",
+      airway: "",
+      breathing: "",
+      respiratoryPattern: "",
+      circulation: "",
+      cardiacRhythm: "",
+      fallRisk: "",
+      trend: "",
+      generalAppearanceCode: "",
+      skinCondition: "",
+      ambulation: "",
+      safetyRisk: "",
+      distressLevel: "",
+      airwayType: "",
+      respEffortBreathing: "",
+      respDepth: "",
+      respChestMovement: "",
+      cardiacEctopy: "",
+      ivAccess: "",
+    }));
+    isDirtyRef.current = true;
+    setStructuredAckTick(Date.now());
+  }, [formDisabled]);
 
   const handleSave = async () => {
     if (formDisabled) return;
@@ -1471,30 +1516,13 @@ export function EmergencyNursingReassessmentPanel({
                 <EmergencyNursingDocumentationGrid
                   form={form}
                   onPatch={patchForm}
-                  traumaForm={traumaForm}
-                  onPatchTrauma={patchTraumaForm}
                   formDisabled={formDisabled}
                   t={t}
                   language={language}
                   savedSignature={storedSig}
                   persistedColumns={persistedColumns}
                   legacyColumn={legacyColumn}
-                  renderChipsForField={(field) => (
-                    <NursingReassessmentQuickChips
-                      field={field}
-                      formDisabled={formDisabled}
-                      t={t}
-                      onChip={appendNursingQuickChip}
-                    />
-                  )}
-                  painQuickPickNode={
-                    <NursingPainScoreQuickPick
-                      value={form.pain0to10}
-                      formDisabled={formDisabled}
-                      t={t}
-                      onPick={(n) => patchForm({ pain0to10: String(n) })}
-                    />
-                  }
+                  onAddColumn={handleOpenNewReassessmentSession}
                 />
                 {structuredAckVisible ? (
                   <p
@@ -1697,42 +1725,22 @@ export function EmergencyNursingReassessmentPanel({
                             onChip={appendNursingQuickChip}
                           />
                         </div>
-                        <div style={grid2}>
-                          <div>
-                            <label style={labelStyle}>{t("emergencyNursingReassessment.labelPain")}</label>
-                            <input
-                              type="number"
-                              min={0}
-                              max={10}
-                              value={form.pain0to10}
-                              onChange={(e) => patchForm({ pain0to10: e.target.value })}
-                              disabled={formDisabled}
-                              style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                            />
-                            <NursingPainScoreQuickPick
-                              value={form.pain0to10}
-                              formDisabled={formDisabled}
-                              t={t}
-                              onPick={(n) => patchForm({ pain0to10: String(n) })}
-                            />
-                          </div>
-                          <div>
-                            <label style={labelStyle}>{t("emergencyNursingReassessment.labelBedsideStatus")}</label>
-                            <input
-                              type="text"
-                              value={form.bedsideStatus}
-                              onChange={(e) => patchForm({ bedsideStatus: e.target.value })}
-                              disabled={formDisabled}
-                              style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                              placeholder={t("emergencyNursingReassessment.placeholderBedsideStatus")}
-                            />
-                            <NursingReassessmentQuickChips
-                              field="bedsideStatus"
-                              formDisabled={formDisabled}
-                              t={t}
-                              onChip={appendNursingQuickChip}
-                            />
-                          </div>
+                        <div>
+                          <label style={labelStyle}>{t("emergencyNursingReassessment.labelBedsideStatus")}</label>
+                          <input
+                            type="text"
+                            value={form.bedsideStatus}
+                            onChange={(e) => patchForm({ bedsideStatus: e.target.value })}
+                            disabled={formDisabled}
+                            style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                            placeholder={t("emergencyNursingReassessment.placeholderBedsideStatus")}
+                          />
+                          <NursingReassessmentQuickChips
+                            field="bedsideStatus"
+                            formDisabled={formDisabled}
+                            t={t}
+                            onChip={appendNursingQuickChip}
+                          />
                         </div>
                       </>
                     ) : null}
@@ -1765,112 +1773,6 @@ export function EmergencyNursingReassessmentPanel({
                 {SHOW_LEGACY_STANDALONE_REASSESSMENT_SECTIONS ? (
                   <>
                 <div>
-                  <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionAbc")}</p>
-                  <p style={quickChipHintStyle}>{t("emergencyNursingReassessment.abcQuickHint")}</p>
-                  <div style={{ marginTop: 10, ...grid3 }}>
-                    <div>
-                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelAirway")}</label>
-                      <NursingAbcSelect
-                        value={form.airway}
-                        options={ER_NURSING_AIRWAY_SELECT_OPTIONS}
-                        onChange={(v) => patchForm({ airway: v })}
-                        disabled={formDisabled}
-                        t={t}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelBreathing")}</label>
-                      <NursingAbcSelect
-                        value={form.breathing}
-                        options={ER_NURSING_BREATHING_SELECT_OPTIONS}
-                        onChange={(v) => patchForm({ breathing: v })}
-                        disabled={formDisabled}
-                        t={t}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelCirculation")}</label>
-                      <NursingAbcSelect
-                        value={form.circulation}
-                        options={ER_NURSING_CIRCULATION_SELECT_OPTIONS}
-                        onChange={(v) => patchForm({ circulation: v })}
-                        disabled={formDisabled}
-                        t={t}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
-                    <button
-                      type="button"
-                      disabled={formDisabled}
-                      onClick={() => applyAbcStableFillEmpty()}
-                      style={{
-                        ...quickChipPillBase,
-                        cursor: formDisabled ? "not-allowed" : "pointer",
-                        opacity: formDisabled ? 0.55 : 1,
-                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
-                        color: formDisabled ? "#94a3b8" : "#334155",
-                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
-                      }}
-                    >
-                      {t("emergencyNursingReassessment.abcChipAbcStable")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={formDisabled}
-                      onClick={() => patchForm({ airway: "air_patent" })}
-                      style={{
-                        ...quickChipPillBase,
-                        cursor: formDisabled ? "not-allowed" : "pointer",
-                        opacity: formDisabled ? 0.55 : 1,
-                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
-                        color: formDisabled ? "#94a3b8" : "#334155",
-                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
-                      }}
-                    >
-                      {t("emergencyNursingReassessment.abcChipAirwayPatent")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={formDisabled}
-                      onClick={() => patchForm({ breathing: "br_even_unlabored" })}
-                      style={{
-                        ...quickChipPillBase,
-                        cursor: formDisabled ? "not-allowed" : "pointer",
-                        opacity: formDisabled ? 0.55 : 1,
-                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
-                        color: formDisabled ? "#94a3b8" : "#334155",
-                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
-                      }}
-                    >
-                      {t("emergencyNursingReassessment.abcChipBreathingUnlabored")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={formDisabled}
-                      onClick={() => patchForm({ circulation: "circ_warm_perfused" })}
-                      style={{
-                        ...quickChipPillBase,
-                        cursor: formDisabled ? "not-allowed" : "pointer",
-                        opacity: formDisabled ? 0.55 : 1,
-                        background: formDisabled ? "#f1f5f9" : "#f8fafc",
-                        color: formDisabled ? "#94a3b8" : "#334155",
-                        borderColor: formDisabled ? "#e2e8f0" : "#e2e8f0",
-                      }}
-                    >
-                      {t("emergencyNursingReassessment.abcChipCirculationStable")}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionVitalsRecheck")}</p>
-                  <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                    {t("emergencyNursingReassessment.vitalsRecheckHelp")}
-                  </p>
-                </div>
-
-                <div>
                   <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionResponse")}</p>
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
@@ -1888,22 +1790,6 @@ export function EmergencyNursingReassessmentPanel({
                         t={t}
                         onChip={appendNursingQuickChip}
                       />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelPatientTrend")}</label>
-                      <select
-                        value={form.trend}
-                        onChange={(e) => patchForm({ trend: e.target.value as ErTrend })}
-                        disabled={formDisabled}
-                        style={{ ...inputBase, cursor: formDisabled ? "not-allowed" : "pointer", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-                      >
-                        <option value="">—</option>
-                        {ER_NURSING_TREND_SELECT_OPTIONS.map((code) => (
-                          <option key={code} value={code}>
-                            {nursingTrendSelectLabel(t, code)}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                 </div>
@@ -2110,24 +1996,112 @@ export function EmergencyNursingReassessmentPanel({
                   </>
                 ) : null}
 
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                  <button
-                    type="button"
-                    onClick={() => void handleSave()}
-                    disabled={formDisabled || saving}
+                {/**
+                 * Mockup-aligned bottom action bar. Three actions, ordered for clinical clarity:
+                 *
+                 *  - "Effacer la colonne actuelle" (secondary): wipes the structured selects of
+                 *    the active draft only. Free-text in the Notes panel above is intentionally
+                 *    NOT touched.
+                 *  - "Enregistrer (séance active)" (secondary): saves WITHOUT starting a new
+                 *    column — preserves Phase-1 in-place lifecycle for incremental edits.
+                 *  - "Ajouter la colonne actuelle" (primary): arms the new-session marker, then
+                 *    saves; produces a brand-new immutable column in the timeline. The mockup's
+                 *    headline call-to-action.
+                 */}
+                <div
+                  style={{
+                    marginTop: 4,
+                    paddingTop: 14,
+                    borderTop: "1px solid #e2e8f0",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <p
                     style={{
-                      padding: "10px 18px",
-                      borderRadius: 10,
-                      border: "1px solid #0ea5e9",
-                      backgroundColor: formDisabled ? "#f1f5f9" : "#0ea5e9",
-                      color: formDisabled ? "#94a3b8" : "#fff",
-                      fontWeight: 600,
-                      fontSize: 14,
-                      cursor: formDisabled || saving ? "not-allowed" : "pointer",
+                      margin: 0,
+                      fontSize: 12,
+                      color: "#64748b",
+                      lineHeight: 1.45,
+                      flex: "1 1 240px",
                     }}
                   >
-                    {saving ? t("emergencyNursingReassessment.saveButtonSaving") : t("emergencyNursingReassessment.saveButton")}
-                  </button>
+                    {t("emergencyNursingReassessment.documentationGrid.bottomBarStatus")}
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={handleClearLatestColumn}
+                      disabled={formDisabled || saving}
+                      aria-label={t(
+                        "emergencyNursingReassessment.documentationGrid.clearLatestColumnButtonAria"
+                      )}
+                      title={t(
+                        "emergencyNursingReassessment.documentationGrid.clearLatestColumnButtonAria"
+                      )}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: formDisabled ? "#f1f5f9" : "#fff",
+                        color: formDisabled ? "#94a3b8" : "#475569",
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: formDisabled || saving ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {t("emergencyNursingReassessment.documentationGrid.clearLatestColumnButton")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleSave()}
+                      disabled={formDisabled || saving}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        border: "1px solid #cbd5e1",
+                        backgroundColor: formDisabled ? "#f1f5f9" : "#f8fafc",
+                        color: formDisabled ? "#94a3b8" : "#334155",
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: formDisabled || saving ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {saving
+                        ? t("emergencyNursingReassessment.saveButtonSaving")
+                        : t("emergencyNursingReassessment.saveButton")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formDisabled || saving) return;
+                        setNextSaveStartsNewSession(true);
+                        void handleSave();
+                      }}
+                      disabled={formDisabled || saving}
+                      aria-label={t(
+                        "emergencyNursingReassessment.documentationGrid.addCurrentColumnButtonAria"
+                      )}
+                      title={t(
+                        "emergencyNursingReassessment.documentationGrid.addCurrentColumnButtonAria"
+                      )}
+                      style={{
+                        padding: "10px 18px",
+                        borderRadius: 10,
+                        border: "1px solid #0ea5e9",
+                        backgroundColor: formDisabled ? "#f1f5f9" : "#0ea5e9",
+                        color: formDisabled ? "#94a3b8" : "#fff",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        cursor: formDisabled || saving ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {t("emergencyNursingReassessment.documentationGrid.addCurrentColumnButton")}
+                    </button>
+                  </div>
                 </div>
               </div>
 

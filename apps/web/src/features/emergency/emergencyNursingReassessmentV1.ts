@@ -169,6 +169,72 @@ export type ErDistressLevel =
   | "unable_to_assess"
   | "other";
 
+/**
+ * Phase-3 mockup-aligned structured rows. These split the prior `ErAbcOption` macro-codes
+ * (`air_patent`, `br_even_unlabored`, `circ_warm_perfused`, …) into finer-grained dropdowns that
+ * match the bedside flowsheet vocabulary: airway type / respiratory effort / depth / chest
+ * movement, plus cardiac ectopy, generalised skin and IV access. Saved alongside the existing
+ * `airway`/`breathing`/`circulation` fields so old records keep rendering and a slow rollout
+ * remains possible. JSON-additive — no Prisma migration.
+ */
+export type ErAirwayType =
+  | ""
+  | "natural"
+  | "oral_airway"
+  | "nasal_airway"
+  | "intubated"
+  | "tracheostomy"
+  | "unable_to_assess"
+  | "other";
+
+export type ErRespEffort =
+  | ""
+  | "unlabored"
+  | "mild_distress"
+  | "moderate_distress"
+  | "severe_distress"
+  | "unable_to_assess"
+  | "other";
+
+export type ErRespDepth =
+  | ""
+  | "normal"
+  | "shallow"
+  | "deep"
+  | "unable_to_assess"
+  | "other";
+
+export type ErRespChestMovement =
+  | ""
+  | "symmetrical"
+  | "asymmetrical"
+  | "paradoxical"
+  | "unable_to_assess"
+  | "other";
+
+export type ErCardiacEctopy =
+  | ""
+  | "none"
+  | "pacs"
+  | "pvcs"
+  | "couplets"
+  | "runs_vt"
+  | "unable_to_assess"
+  | "other";
+
+export type ErIvAccess =
+  | ""
+  | "none"
+  | "peripheral_18g"
+  | "peripheral_20g"
+  | "peripheral_22g"
+  | "central_line"
+  | "intraosseous"
+  | "port"
+  | "saline_lock"
+  | "unable_to_assess"
+  | "other";
+
 export type ErNursingReassessmentForm = {
   reassessmentAt: string;
   narrative: string;
@@ -197,6 +263,17 @@ export type ErNursingReassessmentForm = {
   ambulation: ErAmbulation;
   safetyRisk: ErSafetyRisk;
   distressLevel: ErDistressLevel;
+  /**
+   * Phase-3 mockup-aligned structured rows. These coexist with `airway`/`breathing`/`circulation`
+   * (legacy `ErAbcOption` codes) — both render in the grid; new entries go through these
+   * finer-grained fields, while older records keep rendering through the legacy ones.
+   */
+  airwayType: ErAirwayType;
+  respEffortBreathing: ErRespEffort;
+  respDepth: ErRespDepth;
+  respChestMovement: ErRespChestMovement;
+  cardiacEctopy: ErCardiacEctopy;
+  ivAccess: ErIvAccess;
 };
 
 export function emptyErNursingReassessmentForm(): ErNursingReassessmentForm {
@@ -226,6 +303,12 @@ export function emptyErNursingReassessmentForm(): ErNursingReassessmentForm {
     ambulation: "",
     safetyRisk: "",
     distressLevel: "",
+    airwayType: "",
+    respEffortBreathing: "",
+    respDepth: "",
+    respChestMovement: "",
+    cardiacEctopy: "",
+    ivAccess: "",
   };
 }
 
@@ -262,6 +345,13 @@ export type ErNursingReassessmentStored = {
   ambulation?: ErAmbulation;
   safetyRisk?: ErSafetyRisk;
   distressLevel?: ErDistressLevel;
+  /** Phase-3 mockup-aligned structured fields (optional; absent on older saves). */
+  airwayType?: ErAirwayType;
+  respEffortBreathing?: ErRespEffort;
+  respDepth?: ErRespDepth;
+  respChestMovement?: ErRespChestMovement;
+  cardiacEctopy?: ErCardiacEctopy;
+  ivAccess?: ErIvAccess;
   signature?: ErNursingReassessmentSignature;
 };
 
@@ -520,6 +610,105 @@ function distressLevelFromUnknown(v: unknown): ErDistressLevel {
   return s && NURSING_DISTRESS_LEVEL_VALUES.has(s) ? (s as ErDistressLevel) : "";
 }
 
+/**
+ * Phase-3 mockup-aligned option lists. Every list ends with `unable_to_assess` then `other`,
+ * and the dropdown UI offers a leading blank state so nurses are never hard-forced into a code.
+ */
+export const ER_NURSING_AIRWAY_TYPE_OPTIONS: readonly ErAirwayType[] = [
+  "natural",
+  "oral_airway",
+  "nasal_airway",
+  "intubated",
+  "tracheostomy",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_RESP_EFFORT_OPTIONS: readonly ErRespEffort[] = [
+  "unlabored",
+  "mild_distress",
+  "moderate_distress",
+  "severe_distress",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_RESP_DEPTH_OPTIONS: readonly ErRespDepth[] = [
+  "normal",
+  "shallow",
+  "deep",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_RESP_CHEST_MOVEMENT_OPTIONS: readonly ErRespChestMovement[] = [
+  "symmetrical",
+  "asymmetrical",
+  "paradoxical",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_CARDIAC_ECTOPY_OPTIONS: readonly ErCardiacEctopy[] = [
+  "none",
+  "pacs",
+  "pvcs",
+  "couplets",
+  "runs_vt",
+  "unable_to_assess",
+  "other",
+];
+
+export const ER_NURSING_IV_ACCESS_OPTIONS: readonly ErIvAccess[] = [
+  "none",
+  "peripheral_18g",
+  "peripheral_20g",
+  "peripheral_22g",
+  "central_line",
+  "intraosseous",
+  "port",
+  "saline_lock",
+  "unable_to_assess",
+  "other",
+];
+
+const NURSING_AIRWAY_TYPE_VALUES = new Set<string>(ER_NURSING_AIRWAY_TYPE_OPTIONS);
+const NURSING_RESP_EFFORT_VALUES = new Set<string>(ER_NURSING_RESP_EFFORT_OPTIONS);
+const NURSING_RESP_DEPTH_VALUES = new Set<string>(ER_NURSING_RESP_DEPTH_OPTIONS);
+const NURSING_RESP_CHEST_MOVEMENT_VALUES = new Set<string>(ER_NURSING_RESP_CHEST_MOVEMENT_OPTIONS);
+const NURSING_CARDIAC_ECTOPY_VALUES = new Set<string>(ER_NURSING_CARDIAC_ECTOPY_OPTIONS);
+const NURSING_IV_ACCESS_VALUES = new Set<string>(ER_NURSING_IV_ACCESS_OPTIONS);
+
+function airwayTypeFromUnknown(v: unknown): ErAirwayType {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_AIRWAY_TYPE_VALUES.has(s) ? (s as ErAirwayType) : "";
+}
+
+function respEffortFromUnknown(v: unknown): ErRespEffort {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_RESP_EFFORT_VALUES.has(s) ? (s as ErRespEffort) : "";
+}
+
+function respDepthFromUnknown(v: unknown): ErRespDepth {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_RESP_DEPTH_VALUES.has(s) ? (s as ErRespDepth) : "";
+}
+
+function respChestMovementFromUnknown(v: unknown): ErRespChestMovement {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_RESP_CHEST_MOVEMENT_VALUES.has(s) ? (s as ErRespChestMovement) : "";
+}
+
+function cardiacEctopyFromUnknown(v: unknown): ErCardiacEctopy {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_CARDIAC_ECTOPY_VALUES.has(s) ? (s as ErCardiacEctopy) : "";
+}
+
+function ivAccessFromUnknown(v: unknown): ErIvAccess {
+  const s = typeof v === "string" ? v : "";
+  return s && NURSING_IV_ACCESS_VALUES.has(s) ? (s as ErIvAccess) : "";
+}
+
 /** Dropdown order for patient trend (legacy improved/worse normalized on load). */
 export const ER_NURSING_TREND_SELECT_OPTIONS: readonly ErTrend[] = [
   "improving",
@@ -580,6 +769,12 @@ export function erNursingReassessmentFormFromEncounter(nursingAssessment: unknow
   e.ambulation = ambulationFromUnknown(o.ambulation);
   e.safetyRisk = safetyRiskFromUnknown(o.safetyRisk);
   e.distressLevel = distressLevelFromUnknown(o.distressLevel);
+  e.airwayType = airwayTypeFromUnknown(o.airwayType);
+  e.respEffortBreathing = respEffortFromUnknown(o.respEffortBreathing);
+  e.respDepth = respDepthFromUnknown(o.respDepth);
+  e.respChestMovement = respChestMovementFromUnknown(o.respChestMovement);
+  e.cardiacEctopy = cardiacEctopyFromUnknown(o.cardiacEctopy);
+  e.ivAccess = ivAccessFromUnknown(o.ivAccess);
   return e;
 }
 
@@ -612,6 +807,12 @@ function formToStored(form: ErNursingReassessmentForm, signature: ErNursingReass
     ...(form.ambulation ? { ambulation: form.ambulation } : {}),
     ...(form.safetyRisk ? { safetyRisk: form.safetyRisk } : {}),
     ...(form.distressLevel ? { distressLevel: form.distressLevel } : {}),
+    ...(form.airwayType ? { airwayType: form.airwayType } : {}),
+    ...(form.respEffortBreathing ? { respEffortBreathing: form.respEffortBreathing } : {}),
+    ...(form.respDepth ? { respDepth: form.respDepth } : {}),
+    ...(form.respChestMovement ? { respChestMovement: form.respChestMovement } : {}),
+    ...(form.cardiacEctopy ? { cardiacEctopy: form.cardiacEctopy } : {}),
+    ...(form.ivAccess ? { ivAccess: form.ivAccess } : {}),
     signature,
   };
 }
@@ -643,7 +844,13 @@ export function storedHasClinicalContent(s: ErNursingReassessmentStored): boolea
       s.skinCondition ||
       s.ambulation ||
       s.safetyRisk ||
-      s.distressLevel
+      s.distressLevel ||
+      s.airwayType ||
+      s.respEffortBreathing ||
+      s.respDepth ||
+      s.respChestMovement ||
+      s.cardiacEctopy ||
+      s.ivAccess
   );
 }
 
@@ -766,6 +973,40 @@ export function nursingSafetyRiskLabel(locale: SupportedLanguage, v: ErSafetyRis
 export function nursingDistressLevelLabel(locale: SupportedLanguage, v: ErDistressLevel): string {
   if (!v) return "";
   return i18nMessage(locale, `emergencyNursingReassessment.distressLevelOptions.${v}`);
+}
+
+/** Phase-3 label resolvers for the mockup-aligned dropdowns (i18n-driven). */
+export function nursingAirwayTypeLabel(locale: SupportedLanguage, v: ErAirwayType): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.airwayTypeOptions.${v}`);
+}
+
+export function nursingRespEffortLabel(locale: SupportedLanguage, v: ErRespEffort): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.respEffortOptions.${v}`);
+}
+
+export function nursingRespDepthLabel(locale: SupportedLanguage, v: ErRespDepth): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.respDepthOptions.${v}`);
+}
+
+export function nursingRespChestMovementLabel(
+  locale: SupportedLanguage,
+  v: ErRespChestMovement
+): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.respChestMovementOptions.${v}`);
+}
+
+export function nursingCardiacEctopyLabel(locale: SupportedLanguage, v: ErCardiacEctopy): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.cardiacEctopyOptions.${v}`);
+}
+
+export function nursingIvAccessLabel(locale: SupportedLanguage, v: ErIvAccess): string {
+  if (!v) return "";
+  return i18nMessage(locale, `emergencyNursingReassessment.ivAccessOptions.${v}`);
 }
 
 function trendLineLabel(locale: SupportedLanguage, v: ErTrend): string {
@@ -1079,15 +1320,24 @@ export function buildStructuredNarrativeFragmentLines(
     push("lineGeneralAppearanceCode", nursingGeneralAppearanceLabel(locale, form.generalAppearanceCode));
   if (form.distressLevel)
     push("lineDistressLevel", nursingDistressLevelLabel(locale, form.distressLevel));
+  if (form.airwayType) push("lineAirwayType", nursingAirwayTypeLabel(locale, form.airwayType));
   if (form.airway) push("lineAirway", abcOptionLabel(locale, form.airway));
+  if (form.respEffortBreathing)
+    push("lineRespEffortBreathing", nursingRespEffortLabel(locale, form.respEffortBreathing));
   if (form.breathing) push("lineBreathing", abcOptionLabel(locale, form.breathing));
+  if (form.respDepth) push("lineRespDepth", nursingRespDepthLabel(locale, form.respDepth));
+  if (form.respChestMovement)
+    push("lineRespChestMovement", nursingRespChestMovementLabel(locale, form.respChestMovement));
   if (form.respiratoryPattern)
     push("lineRespiratoryPattern", nursingRespiratoryPatternLabel(locale, form.respiratoryPattern));
   if (form.circulation) push("lineCirculation", abcOptionLabel(locale, form.circulation));
   if (form.cardiacRhythm)
     push("lineCardiacRhythm", nursingCardiacRhythmLabel(locale, form.cardiacRhythm));
+  if (form.cardiacEctopy)
+    push("lineCardiacEctopy", nursingCardiacEctopyLabel(locale, form.cardiacEctopy));
   if (form.skinCondition)
     push("lineSkinCondition", nursingSkinConditionLabel(locale, form.skinCondition));
+  if (form.ivAccess) push("lineIvAccess", nursingIvAccessLabel(locale, form.ivAccess));
   if (form.ambulation) push("lineAmbulation", nursingAmbulationLabel(locale, form.ambulation));
   if (form.fallRisk) push("lineFallRisk", nursingFallRiskLabel(locale, form.fallRisk));
   if (form.safetyRisk) push("lineSafetyRisk", nursingSafetyRiskLabel(locale, form.safetyRisk));

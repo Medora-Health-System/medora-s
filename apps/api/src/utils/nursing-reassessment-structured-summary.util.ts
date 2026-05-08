@@ -37,6 +37,17 @@ const STRUCTURED_FIELD_KEYS = [
   "ambulation",
   "safetyRisk",
   "distressLevel",
+  /**
+   * Phase-3 mockup-aligned structured fields. JSON-additive (no Prisma migration). Listed here
+   * so the `structuredSectionsCompleted` audit metadata correctly reports new entries; values
+   * themselves are never returned, only field names.
+   */
+  "airwayType",
+  "respEffortBreathing",
+  "respDepth",
+  "respChestMovement",
+  "cardiacEctopy",
+  "ivAccess",
 ] as const;
 
 export type StructuredReassessmentSectionKey = (typeof STRUCTURED_FIELD_KEYS)[number];
