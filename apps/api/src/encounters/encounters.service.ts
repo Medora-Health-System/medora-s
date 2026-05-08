@@ -965,6 +965,15 @@ export class EncountersService {
       }
     }
 
+    /**
+     * Outcome of the ER reassessment column lifecycle for this PATCH (set inside the
+     * `data.nursingAssessment !== undefined && userId` block below). Used downstream to enrich
+     * the PHI-safe audit metadata with the actual session mode. Stays `null` when the patch
+     * didn't touch the reassessment namespace materially.
+     */
+    let reassessmentColumnSessionMode: "new" | "updated" | "auto-new" | null = null;
+    let reassessmentAutoNewReason: "different_user" | "stale_session" | null = null;
+
     if (data.nursingAssessment !== undefined && userId) {
       const prevFull = encounter.nursingAssessment;
       const nextFull = data.nursingAssessment;
@@ -1048,7 +1057,8 @@ export class EncountersService {
             },
           },
           orderBy: { createdAt: "desc" },
-          select: { id: true },
+          /** Ownership + age fields drive the identity+recency guard below. */
+          select: { id: true, createdByUserId: true, createdAt: true },
         });
 
         const payload = erNursingReassessmentEventPayload({
@@ -1061,7 +1071,53 @@ export class EncountersService {
           performerInitials: performer.performerInitials,
         });
 
-        if (!latestSession || startsNewSession) {
+        /**
+         * Identity + recency guard for the UPDATE branch (P1 safety hot-fix).
+         *
+         * Without this guard, ANY save by a different authenticated user would silently rewrite
+         * the prior column's `payloadJson` — replacing the prior nurse's snapshot, performer
+         * name, initials, role, and trauma documentation. That is unacceptable for an EMR
+         * append-only audit guarantee.
+         *
+         * The UPDATE branch is now allowed ONLY when ALL of the following hold:
+         *   1. There is an existing latest session row.
+         *   2. `data.reassessmentNewSession !== true` (the caller did not explicitly request a
+         *      new column — explicit-new always inserts).
+         *   3. `latestSession.createdByUserId === userId` (the row's original creator is the
+         *      current saver — same nurse continuing their own session).
+         *   4. `latestSession.createdAt` is within the recency window (currently 60 minutes;
+         *      mirrors the frontend `REASSESSMENT_NEW_SESSION_MINUTES` so a session left open
+         *      from earlier in the shift still auto-opens a new column).
+         *   5. Same namespace (already enforced by the where clause above; the explicit equality
+         *      below is belt-and-braces against future query refactors).
+         *
+         * In every other case — different user, stale session, or explicit-new — we INSERT a
+         * new immutable column row. Prior rows are NEVER touched. Cross-user / stale auto-new
+         * inserts are tagged with `sessionMode: "auto-new"` in the audit metadata so QA can
+         * distinguish them from explicit user-initiated new sessions.
+         */
+        const REASSESSMENT_RECENCY_WINDOW_MS = 60 * 60 * 1000;
+        const sameOwner =
+          !!latestSession && !!userId && latestSession.createdByUserId === userId;
+        const recent =
+          !!latestSession &&
+          Date.now() - latestSession.createdAt.getTime() < REASSESSMENT_RECENCY_WINDOW_MS;
+        const canUpdateInPlace =
+          !!latestSession && !startsNewSession && sameOwner && recent;
+
+        if (canUpdateInPlace) {
+          /**
+           * Same active session, same user, recent: rewrite the payloadJson on the existing
+           * latest event row. `createdAt` and `createdByUserId` stay pinned. This is the only
+           * mutable code path for `EncounterClinicalEvent` rows in this flow — older sessions,
+           * different-user rows, and stale rows are never touched.
+           */
+          await this.prisma.encounterClinicalEvent.update({
+            where: { id: latestSession.id },
+            data: { payloadJson: payload },
+          });
+          reassessmentColumnSessionMode = "updated";
+        } else {
           await this.prisma.encounterClinicalEvent.create({
             data: {
               facilityId,
@@ -1072,18 +1128,20 @@ export class EncountersService {
               createdByUserId: userId,
             },
           });
-        } else {
-          /**
-           * Same active session: rewrite the payloadJson on the existing latest event row.
-           * `createdAt` and `createdByUserId` stay pinned to the original session opener; the
-           * payload now carries the most-recent performer + snapshot. Note this is the only
-           * mutable code path for `EncounterClinicalEvent` rows in this flow — older sessions
-           * (any row that is no longer the latest) are never touched.
-           */
-          await this.prisma.encounterClinicalEvent.update({
-            where: { id: latestSession.id },
-            data: { payloadJson: payload },
-          });
+          if (!latestSession) {
+            /** First reassessment for this encounter — counts as "new" (the original session). */
+            reassessmentColumnSessionMode = "new";
+          } else if (startsNewSession) {
+            reassessmentColumnSessionMode = "new";
+          } else {
+            /**
+             * Auto-fall-through: a different user is saving OR the same user's session is
+             * stale (older than the recency window). Either way, the prior column is preserved
+             * unchanged and a new column is opened automatically.
+             */
+            reassessmentColumnSessionMode = "auto-new";
+            reassessmentAutoNewReason = !sameOwner ? "different_user" : "stale_session";
+          }
         }
       }
       if (nursingAssessmentNamespaceChanged(prevFull, nextFull, ER_HANDOFF_V1_KEY)) {
@@ -1145,12 +1203,22 @@ export class EncountersService {
         );
         /**
          * `sessionMode` clarifies for QA / pilot oversight whether this PATCH opened a fresh
-         * reassessment column ("new") or refined the active session in place ("updated"). Empty
-         * column count rolling back to 1 right after this PATCH means it was the very first
-         * reassessment for the encounter; any other increment vs unchanged value tracks the
-         * INSERT-vs-UPDATE distinction. Field names only — never values, never PHI.
+         * reassessment column ("new"), refined the active session in place ("updated"), or
+         * auto-opened a new column because the prior latest row belongs to a different user OR
+         * is older than the recency window ("auto-new"). The auto-new tag protects against the
+         * silent cross-user overwrite issue and is observable in audit metadata only — no PHI.
+         *
+         * Falls back to the prior simple binary when the lifecycle didn't run (defensive; the
+         * lifecycle should always run when the namespace changed materially, but this keeps the
+         * audit log complete even in edge cases).
          */
-        meta.sessionMode = data.reassessmentNewSession === true ? "new" : "updated";
+        meta.sessionMode =
+          reassessmentColumnSessionMode ??
+          (data.reassessmentNewSession === true ? "new" : "updated");
+        if (reassessmentAutoNewReason) {
+          /** Stable enum string. Field name only — no PHI, never narrative. */
+          meta.autoNewReason = reassessmentAutoNewReason;
+        }
       }
       reassessmentSectionsAuditMeta.reassessment = meta;
     }
@@ -1760,6 +1828,15 @@ export class EncountersService {
           id: r.id,
           createdAt: r.createdAt.toISOString(),
           documentedAt: docAt,
+          /**
+           * Immutable row creator. Used by the bedside grid to detect when the latest persisted
+           * column belongs to a different authenticated user — in which case the panel resets
+           * its draft to empty and auto-arms `reassessmentNewSession` so the next save creates
+           * a brand-new column instead of attempting to mutate someone else's row. Distinct
+           * from `performerId` (which reflects whoever last wrote the payload before the
+           * identity guard locked the UPDATE branch in apps/api/src/encounters/encounters.service.ts).
+           */
+          createdByUserId: r.createdByUserId,
           performerId,
           performerDisplayName: display,
           performerRoleTitle: roleTitle,

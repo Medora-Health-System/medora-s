@@ -18,6 +18,7 @@ import {
   applyStructuredNarrativeFragment,
   buildErNursingReassessmentPreviewModel,
   buildStructuredNarrativeFragmentLines,
+  emptyErNursingReassessmentForm,
   ER_NURSING_AIRWAY_SELECT_OPTIONS,
   ER_NURSING_BREATHING_SELECT_OPTIONS,
   ER_NURSING_CIRCULATION_SELECT_OPTIONS,
@@ -35,6 +36,7 @@ import {
 import { EmergencyNursingDocumentationGrid } from "./EmergencyNursingDocumentationGrid";
 import {
   buildErTraumaSurveyV1PreviewModel,
+  emptyErTraumaSurveyV1Form,
   erTraumaSurveyV1FormFromEncounter,
   mergeErTraumaSurveyV1IntoNursingAssessment,
   type ErAbcdeOption,
@@ -660,6 +662,22 @@ export function EmergencyNursingReassessmentPanel({
    */
   const REASSESSMENT_NEW_SESSION_MINUTES = 60;
 
+  /**
+   * Visible notice driven by the cross-user safety guard: when the latest persisted reassessment
+   * column was created by a different authenticated user, the panel resets the active draft to
+   * empty and arms a new session so the next save will INSERT a fresh column rather than appear
+   * to "continue" someone else's work. The notice surfaces the prior author's display name (if
+   * known from the event payload) so the bedside nurse understands why the form is empty.
+   *
+   * `null` means no cross-user guard is active. `priorAuthorDisplayName` may be empty when the
+   * event row didn't capture it; the i18n template handles that case with a generic fallback.
+   *
+   * The guard runs only once per (encounter, currentUserId) pair to avoid clobbering the user's
+   * in-progress edits — `crossUserGuardAppliedRef` records the encounter id last guarded.
+   */
+  const [crossUserNotice, setCrossUserNotice] = useState<{ priorAuthorDisplayName: string } | null>(null);
+  const crossUserGuardAppliedRef = useRef<string | null>(null);
+
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
 
@@ -702,6 +720,17 @@ export function EmergencyNursingReassessmentPanel({
             safe.push({
               id,
               createdAt,
+              /**
+               * Row-level immutable creator id. Unknown / missing values are mapped to `null`
+               * so the cross-user guard fails-open (i.e. it does not falsely accuse the
+               * current user of being a different user when the field is absent — typical for
+               * older event rows written before the field was exposed). The backend now writes
+               * this on every new save.
+               */
+              createdByUserId:
+                typeof row.createdByUserId === "string" && row.createdByUserId.trim()
+                  ? row.createdByUserId
+                  : null,
               documentedAt:
                 typeof row.documentedAt === "string" && row.documentedAt.trim() ? row.documentedAt : null,
               performerInitials:
@@ -835,6 +864,71 @@ export function EmergencyNursingReassessmentPanel({
     }
     void loadTriage();
   }, [encounter.nursingAssessment, encounter.updatedAt, encounterId, currentUserId, loadTriage]);
+
+  /**
+   * Cross-user safety guard.
+   *
+   * The bedside grid loads its append-only column history asynchronously
+   * (`loadPersistedColumns` → `setPersistedColumns`). Once both the latest persisted columns and
+   * the current authenticated user id are available, check whether the most recent column was
+   * created by a different user. If so:
+   *
+   *   1. Reset the active draft form and trauma form to empty (do NOT pre-fill from the
+   *      existing `encounter.nursingAssessment` flat blob — that blob mirrors the latest column,
+   *      i.e. the OTHER user's content, and pre-filling it would visually re-attribute their
+   *      documentation to the new nurse).
+   *   2. Arm `nextSaveStartsNewSession = true` so the very next save sends the
+   *      `reassessmentNewSession: true` flag and the API inserts a brand-new column. The
+   *      backend identity guard would also force this on its own, but doing it here makes the
+   *      UX consistent (the action bar / banner reflects "new column" intent).
+   *   3. Surface a small notice with the prior author's display name so the nurse understands
+   *      why the form started empty.
+   *
+   * Re-entrancy: the guard is applied at most once per (encounterId, currentUserId, latestColumnId)
+   * tuple. Once the user starts editing or another user's column appears, the guard re-arms.
+   * In-flight edits are protected: when `isDirtyRef.current === true`, we skip the reset to avoid
+   * clobbering active bedside work — a save will then trigger the backend's own identity guard
+   * which will auto-insert a new column on the server side regardless.
+   */
+  useEffect(() => {
+    if (!currentUserId) return;
+    if (persistedColumns.length === 0) {
+      crossUserGuardAppliedRef.current = null;
+      setCrossUserNotice(null);
+      return;
+    }
+    /** Newest persisted column drives the comparison (the API returns newest-first). */
+    const latest = persistedColumns[0];
+    const ownerId = latest.createdByUserId;
+    /**
+     * `null` ownerId means we can't prove ownership (legacy / pre-migration rows). Be lenient:
+     * skip the guard rather than silently discard the user's view, since the safer behavior in
+     * that ambiguous case is to let the backend's identity guard handle save-time correctness.
+     */
+    if (!ownerId) {
+      crossUserGuardAppliedRef.current = null;
+      setCrossUserNotice(null);
+      return;
+    }
+    if (ownerId === currentUserId) {
+      /** Same user — no guard needed. Clear any prior notice from a stale state. */
+      crossUserGuardAppliedRef.current = null;
+      setCrossUserNotice(null);
+      return;
+    }
+    /** Cross-user latest column. Apply guard at most once per (encounter, latest column id). */
+    const guardKey = `${encounterId}:${latest.id}`;
+    if (crossUserGuardAppliedRef.current === guardKey) return;
+    /** Don't clobber active in-progress bedside edits — the backend will still do the right thing. */
+    if (isDirtyRef.current) return;
+    crossUserGuardAppliedRef.current = guardKey;
+    /** Reset draft to empty so the new nurse starts a clean column with their own identity. */
+    setForm(emptyErNursingReassessmentForm());
+    setTraumaForm(emptyErTraumaSurveyV1Form());
+    setNextSaveStartsNewSession(true);
+    loadedReassessmentAtIsoRef.current = "";
+    setCrossUserNotice({ priorAuthorDisplayName: latest.performerDisplayName ?? "" });
+  }, [currentUserId, persistedColumns, encounterId]);
 
   /** Persist current local edits to sessionStorage whenever the user touches anything. */
   useEffect(() => {
@@ -1164,8 +1258,20 @@ export function EmergencyNursingReassessmentPanel({
     setStructuredAckTick(Date.now());
   }, [formDisabled]);
 
-  const handleSave = async () => {
+  /**
+   * Save the current reassessment.
+   *
+   * `forceNewSession` lets the caller bypass the asynchronous `setNextSaveStartsNewSession(true)`
+   * → `void handleSave()` race that affected the "Add current column" button (Phase-3 regression):
+   * because React batches state updates, calling the setter immediately before `handleSave()` did
+   * not actually flip `nextSaveStartsNewSession` in time, so the PATCH body omitted the
+   * `reassessmentNewSession: true` marker and the backend took the (now-guarded) UPDATE path
+   * instead of inserting a new column. Callers that must guarantee a new column should pass
+   * `{ forceNewSession: true }` rather than relying on the setter timing.
+   */
+  const handleSave = async (opts?: { forceNewSession?: boolean }) => {
     if (formDisabled) return;
+    const forceNewSession = opts?.forceNewSession === true;
     setSaving(true);
     setSaveInfo(null);
     try {
@@ -1189,17 +1295,25 @@ export function EmergencyNursingReassessmentPanel({
       /**
        * Session lifecycle: the optional `reassessmentNewSession` flag tells the API whether to
        * INSERT a new reassessment column event (true) or UPDATE the active session's row in
-       * place (false / omitted). Set by the "Nouvelle séance" button and by material
-       * reassessmentAt drift; reset to false after a successful save (next save continues the
-       * just-saved column unless the user takes another explicit action).
+       * place (false / omitted). Set by the "Nouvelle séance" button, by material
+       * reassessmentAt drift, by explicit `forceNewSession`, and by the cross-user safety guard
+       * (when the latest persisted column belongs to a different user, we always start fresh).
+       * Reset to false after a successful save (next save continues the just-saved column
+       * unless the user takes another explicit action).
+       *
+       * Backend mirror: an identity+recency guard in `apps/api/src/encounters/encounters.service.ts`
+       * also auto-falls-through to INSERT when the latest event row was created by a different
+       * user OR is older than the recency window, regardless of this flag. The flag is the
+       * "user explicitly asked for a new column" signal; the backend guard is the safety net.
        */
+      const startsNewSession = forceNewSession || nextSaveStartsNewSession;
       const res = await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         facilityId,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nursingAssessment: finalNav,
-          ...(nextSaveStartsNewSession ? { reassessmentNewSession: true } : {}),
+          ...(startsNewSession ? { reassessmentNewSession: true } : {}),
         }),
       });
       const queued =
@@ -1274,6 +1388,13 @@ export function EmergencyNursingReassessmentPanel({
 
       /** Refresh the append-only history so the just-saved column appears as the new "Actuel". */
       await loadPersistedColumns();
+      /**
+       * Clear the cross-user notice — the brand-new column we just inserted is owned by the
+       * current user, so the guard no longer applies. Without this, the warning banner could
+       * linger until the next encounter prop refresh.
+       */
+      setCrossUserNotice(null);
+      crossUserGuardAppliedRef.current = null;
 
       /**
        * Lock in the just-saved session as the new active baseline. Any future edits below the
@@ -1512,6 +1633,44 @@ export function EmergencyNursingReassessmentPanel({
                     </span>
                   )}
                 </div>
+
+                {/**
+                 * Cross-user safety notice. Visible only when the cross-user guard reset the
+                 * active draft because the latest persisted column was created by a different
+                 * authenticated user. Communicates intent ("you'll be saving a new column") and
+                 * surfaces the prior author's name so the bedside nurse understands why the
+                 * form started empty. Plain inline notice — no modal — to avoid blocking
+                 * bedside charting.
+                 */}
+                {crossUserNotice ? (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fcd34d",
+                      backgroundColor: "#fffbeb",
+                      color: "#92400e",
+                      fontSize: 12,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>•</span>
+                    <span>
+                      {(() => {
+                        const author = crossUserNotice.priorAuthorDisplayName?.trim();
+                        const tpl = author
+                          ? t("emergencyNursingReassessment.crossUserNoticeWithAuthor")
+                          : t("emergencyNursingReassessment.crossUserNoticeGeneric");
+                        return author ? tpl.replace("{author}", author) : tpl;
+                      })()}
+                    </span>
+                  </div>
+                ) : null}
 
                 <EmergencyNursingDocumentationGrid
                   form={form}
@@ -2078,8 +2237,16 @@ export function EmergencyNursingReassessmentPanel({
                       type="button"
                       onClick={() => {
                         if (formDisabled || saving) return;
-                        setNextSaveStartsNewSession(true);
-                        void handleSave();
+                        /**
+                         * Use `forceNewSession: true` instead of relying on
+                         * `setNextSaveStartsNewSession(true)` immediately before `handleSave()`.
+                         * The setter is asynchronous (state update batched), so the previous
+                         * implementation's PATCH body could omit `reassessmentNewSession: true`
+                         * — causing the backend to UPDATE the prior column instead of inserting
+                         * a fresh one. Passing the flag through the function arg sidesteps the
+                         * race entirely.
+                         */
+                        void handleSave({ forceNewSession: true });
                       }}
                       disabled={formDisabled || saving}
                       aria-label={t(

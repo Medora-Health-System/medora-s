@@ -1418,6 +1418,14 @@ export type ErNursingReassessmentEventColumn = {
   documentedAt: string | null;
   /** ISO timestamp the row was actually persisted (system save time). */
   createdAt: string;
+  /**
+   * Immutable user id of the row's original creator (the saver who opened this column). Used to
+   * detect cross-user latest-column situations: when the panel's authenticated user differs from
+   * `createdByUserId` of the most recent persisted column, the panel resets the active draft and
+   * arms a new session so the next save inserts a brand-new column instead of attempting to
+   * update someone else's row. `null` for the legacy single-object column (pre-history saves).
+   */
+  createdByUserId: string | null;
   performerInitials: string;
   performerDisplayName: string;
   performerRoleTitle: string;
@@ -1475,6 +1483,8 @@ export function legacyReassessmentColumnFromEncounter(
     id: "legacy",
     documentedAt,
     createdAt: savedAt,
+    /** Pre-history saves don't carry a userId; null disables the cross-user guard for legacy. */
+    createdByUserId: null,
     performerInitials: initials,
     performerDisplayName: trimmed,
     performerRoleTitle: "",
