@@ -13,6 +13,10 @@ import {
   dischargeSummarySnapshotChanged,
 } from "../utils/clinical-event-discharge-summary.util";
 import {
+  admissionSummarySavedEventPayload,
+  admissionSummarySnapshotChanged,
+} from "../utils/clinical-event-admission-summary.util";
+import {
   computeDisplayNameInitials,
   erNursingReassessmentEventPayload,
   getNursingAssessmentNamespace,
@@ -1188,7 +1192,7 @@ export class EncountersService {
         data.dischargeSummaryJson
       );
       if (dischargeChanged) {
-        const performer = await this.resolveDischargeSummaryPerformer(facilityId, userId);
+        const performer = await this.resolveSummaryDocumentPerformer(facilityId, userId);
         await this.prisma.encounterClinicalEvent.create({
           data: {
             facilityId,
@@ -1197,6 +1201,60 @@ export class EncountersService {
             eventType: EncounterClinicalEventType.DISCHARGE_SUMMARY_SAVED,
             payloadJson: dischargeSummarySavedEventPayload({
               snapshot: data.dischargeSummaryJson,
+              savedAt: new Date(),
+              performerId: performer.performerId,
+              performerDisplayName: performer.performerDisplayName,
+              performerRoleTitle: performer.performerRoleTitle,
+              performerInitials: performer.performerInitials,
+            }),
+            createdByUserId: userId,
+          },
+        });
+      }
+    }
+
+    /**
+     * Append-only ADMISSION_SUMMARY_SAVED event lifecycle (multi-user safety, S15B).
+     *
+     * Pre-existing behavior: PATCH replaces `Encounter.admissionSummaryJson` in place — last
+     * writer wins, prior content is lost, and no historical row preserves the previous author or
+     * snapshot. Admission decisions are inpatient-care-defining clinical documentation; silent
+     * overwrite by a second saver is unsafe.
+     *
+     * New behavior: every PATCH that materially changes the admission JSON writes an INSERT-only
+     * EncounterClinicalEvent row with the (validated/normalized) snapshot at save time and a
+     * denormalized performer identity snapshot. The flat-blob `admissionSummaryJson` is still
+     * updated in place so existing Summary / print readers continue to render the latest view
+     * unchanged.
+     *
+     * The snapshot used here is the post-validation value (`updateData.admissionSummaryJson`),
+     * which is exactly what hits the DB — so unknown-key stripping by the Zod schema does not
+     * cause false-positive "change" events.
+     *
+     * Out of scope for this PR: the dedicated `cancelAdmissionDecision` path, which already has
+     * its own audit log + reason + performer; it can be migrated to also emit an event in a
+     * follow-up if a pre-clear snapshot is needed.
+     *
+     * INSERT-only by design: there is no UPDATE branch and no caller path mutates these rows. A
+     * non-material PATCH (no content change) does not write an event, to avoid timeline noise.
+     */
+    if (data.admissionSummaryJson !== undefined && userId) {
+      const nextAdmissionForEvent =
+        updateData.admissionSummaryJson === undefined ? null : updateData.admissionSummaryJson;
+      const admissionChanged = admissionSummarySnapshotChanged(
+        encounter.admissionSummaryJson,
+        nextAdmissionForEvent
+      );
+      if (admissionChanged) {
+        const performer = await this.resolveSummaryDocumentPerformer(facilityId, userId);
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.ADMISSION_SUMMARY_SAVED,
+            payloadJson: admissionSummarySavedEventPayload({
+              snapshot: nextAdmissionForEvent,
               savedAt: new Date(),
               performerId: performer.performerId,
               performerDisplayName: performer.performerDisplayName,
@@ -1800,16 +1858,17 @@ export class EncountersService {
   }
 
   /**
-   * Resolve performer identity (display name + role title + initials) for a DISCHARGE_SUMMARY_SAVED
-   * clinical event. Discharge instructions are typically authored / co-authored by the provider
-   * (medical instructions) and the RN (nursing-discharge instructions), so PROVIDER is preferred
-   * first; RN and ADMIN are accepted fallbacks. The chosen role is denormalized into the event row
-   * so historical signatures survive future user renames or role changes.
+   * Resolve performer identity (display name + role title + initials) for a summary-document
+   * clinical event (DISCHARGE_SUMMARY_SAVED, ADMISSION_SUMMARY_SAVED). Both documents are
+   * typically authored / co-authored by the provider (medical content) and the RN (nursing
+   * content), so PROVIDER is preferred first; RN and ADMIN are accepted fallbacks. The chosen
+   * role is denormalized into the event row so historical signatures survive future user renames
+   * or role changes.
    *
    * Returns a snapshot with `null`/empty fallbacks if the user record cannot be loaded — the event
    * row is still written; absent identity simply renders as "—" in any future history view.
    */
-  private async resolveDischargeSummaryPerformer(
+  private async resolveSummaryDocumentPerformer(
     facilityId: string,
     userId: string | null | undefined
   ): Promise<{
@@ -2859,7 +2918,7 @@ export class EncountersService {
       mergedDischarge !== undefined &&
       dischargeSummarySnapshotChanged(encounter.dischargeSummaryJson, mergedDischarge);
     const dischargeSummaryPerformer = dischargeChangedForClose
-      ? await this.resolveDischargeSummaryPerformer(facilityId, userId)
+      ? await this.resolveSummaryDocumentPerformer(facilityId, userId)
       : null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
