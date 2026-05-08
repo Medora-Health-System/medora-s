@@ -9,6 +9,10 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
 import {
+  dischargeSummarySavedEventPayload,
+  dischargeSummarySnapshotChanged,
+} from "../utils/clinical-event-discharge-summary.util";
+import {
   computeDisplayNameInitials,
   erNursingReassessmentEventPayload,
   getNursingAssessmentNamespace,
@@ -1161,6 +1165,51 @@ export class EncountersService {
     }
 
     /**
+     * Append-only DISCHARGE_SUMMARY_SAVED event lifecycle (multi-user safety, S15A).
+     *
+     * Pre-existing behavior: PATCH replaces `Encounter.dischargeSummaryJson` in place — last
+     * writer wins, prior content is lost, and no historical row preserves the previous author or
+     * snapshot. This is the highest-risk overwrite path for patient-facing legal documents
+     * (discharge instructions, medication reconciliation, follow-up).
+     *
+     * New behavior: every PATCH that materially changes the discharge JSON writes an INSERT-only
+     * EncounterClinicalEvent row with the full snapshot at save time and a denormalized performer
+     * identity snapshot. The flat-blob `dischargeSummaryJson` is still updated in place so
+     * existing Summary / print readers continue to render the latest view unchanged.
+     *
+     * INSERT-only by design: there is no UPDATE branch and no caller path mutates these rows. A
+     * non-material PATCH (no content change) does not write an event, to avoid timeline noise.
+     * Failure to resolve performer identity does not block the event — it just records empty
+     * identity fields, identical to the existing nursing-reassessment behavior.
+     */
+    if (data.dischargeSummaryJson !== undefined && userId) {
+      const dischargeChanged = dischargeSummarySnapshotChanged(
+        encounter.dischargeSummaryJson,
+        data.dischargeSummaryJson
+      );
+      if (dischargeChanged) {
+        const performer = await this.resolveDischargeSummaryPerformer(facilityId, userId);
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.DISCHARGE_SUMMARY_SAVED,
+            payloadJson: dischargeSummarySavedEventPayload({
+              snapshot: data.dischargeSummaryJson,
+              savedAt: new Date(),
+              performerId: performer.performerId,
+              performerDisplayName: performer.performerDisplayName,
+              performerRoleTitle: performer.performerRoleTitle,
+              performerInitials: performer.performerInitials,
+            }),
+            createdByUserId: userId,
+          },
+        });
+      }
+    }
+
+    /**
      * PHI-safe structured reassessment summary for audit metadata. Surfaced ONLY when the patch
      * touched `nursingAssessment` AND the reassessment namespace actually changed. Returns the
      * stable field codes (e.g. ["mentalStatus","skinCondition"]), `columnCount` (count of saved
@@ -1738,6 +1787,78 @@ export class EncountersService {
         ? "RN"
         : chosen === RoleCode.PROVIDER
         ? "MD"
+        : chosen === RoleCode.ADMIN
+        ? "ADMIN"
+        : "";
+
+    return {
+      performerId: actor.id,
+      performerDisplayName: display,
+      performerRoleTitle: title,
+      performerInitials: initials,
+    };
+  }
+
+  /**
+   * Resolve performer identity (display name + role title + initials) for a DISCHARGE_SUMMARY_SAVED
+   * clinical event. Discharge instructions are typically authored / co-authored by the provider
+   * (medical instructions) and the RN (nursing-discharge instructions), so PROVIDER is preferred
+   * first; RN and ADMIN are accepted fallbacks. The chosen role is denormalized into the event row
+   * so historical signatures survive future user renames or role changes.
+   *
+   * Returns a snapshot with `null`/empty fallbacks if the user record cannot be loaded — the event
+   * row is still written; absent identity simply renders as "—" in any future history view.
+   */
+  private async resolveDischargeSummaryPerformer(
+    facilityId: string,
+    userId: string | null | undefined
+  ): Promise<{
+    performerId: string | null;
+    performerDisplayName: string;
+    performerRoleTitle: string;
+    performerInitials: string;
+  }> {
+    if (!userId) {
+      return {
+        performerId: null,
+        performerDisplayName: "",
+        performerRoleTitle: "",
+        performerInitials: "",
+      };
+    }
+    const actor = await this.prisma.user.findFirst({
+      where: { id: userId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!actor) {
+      return {
+        performerId: userId,
+        performerDisplayName: "",
+        performerRoleTitle: "",
+        performerInitials: "",
+      };
+    }
+    const display = this.userDisplayName(actor) || "";
+    const initials = computeDisplayNameInitials(display);
+
+    const rows = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      select: { role: { select: { code: true } } },
+    });
+    const codes = new Set(rows.map((r) => r.role.code));
+    const order: RoleCode[] = [RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN];
+    let chosen: RoleCode | null = null;
+    for (const rc of order) {
+      if (codes.has(rc)) {
+        chosen = rc;
+        break;
+      }
+    }
+    const title =
+      chosen === RoleCode.PROVIDER
+        ? "MD"
+        : chosen === RoleCode.RN
+        ? "RN"
         : chosen === RoleCode.ADMIN
         ? "ADMIN"
         : "";
@@ -2722,6 +2843,25 @@ export class EncountersService {
       createdByUserId: userId,
     });
 
+    /**
+     * Append-only DISCHARGE_SUMMARY_SAVED event for close() (multi-user safety, S15A).
+     *
+     * The close path is the most common save site for discharge content. We emit one INSERT-only
+     * event per close call when the discharge JSON materially changed vs. the encounter's
+     * pre-close blob. Performer identity is resolved BEFORE the transaction (the user/role reads
+     * are stable for this short window) so the transaction stays compact; the INSERT itself runs
+     * inside the same `$transaction` as the encounter update so a discharge save and its history
+     * row commit atomically. INSERT-only by design — no UPDATE branch and no caller mutates these
+     * rows.
+     */
+    const dischargeChangedForClose =
+      !!userId &&
+      mergedDischarge !== undefined &&
+      dischargeSummarySnapshotChanged(encounter.dischargeSummaryJson, mergedDischarge);
+    const dischargeSummaryPerformer = dischargeChangedForClose
+      ? await this.resolveDischargeSummaryPerformer(facilityId, userId)
+      : null;
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const dispositionEnriched = await enrichBillingCaptureItem(tx, dispositionCandidate);
       closePayload.billingCaptureJson = upsertBillingCaptureItem(encounter.billingCaptureJson, dispositionEnriched);
@@ -2797,6 +2937,25 @@ export class EncountersService {
         critical: true,
         tx,
       });
+      if (dischargeChangedForClose && dischargeSummaryPerformer && userId) {
+        await tx.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.DISCHARGE_SUMMARY_SAVED,
+            payloadJson: dischargeSummarySavedEventPayload({
+              snapshot: mergedDischarge,
+              savedAt: new Date(),
+              performerId: dischargeSummaryPerformer.performerId,
+              performerDisplayName: dischargeSummaryPerformer.performerDisplayName,
+              performerRoleTitle: dischargeSummaryPerformer.performerRoleTitle,
+              performerInitials: dischargeSummaryPerformer.performerInitials,
+            }),
+            createdByUserId: userId,
+          },
+        });
+      }
       const row = await tx.encounter.findFirst({
         where: { id, facilityId },
         include: {
