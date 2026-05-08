@@ -264,6 +264,7 @@ enum EncounterClinicalEventType {
   PROCEDURE_DOCUMENTED
   DISCHARGE_SUMMARY_SAVED
   ADMISSION_SUMMARY_SAVED
+  DISPOSITION_SUPPLEMENT_SAVED
 }
 
 /// Closed-loop line-item lifecycle (distinct from legacy `OrderStatus` values like RESULTED / VERIFIED).

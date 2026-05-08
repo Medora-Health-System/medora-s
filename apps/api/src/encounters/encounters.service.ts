@@ -17,6 +17,11 @@ import {
   admissionSummarySnapshotChanged,
 } from "../utils/clinical-event-admission-summary.util";
 import {
+  dispositionSupplementSavedEventPayload,
+  dispositionSupplementSnapshotChanged,
+  getDispositionSupplementSnapshot,
+} from "../utils/clinical-event-disposition-supplement.util";
+import {
   computeDisplayNameInitials,
   erNursingReassessmentEventPayload,
   getNursingAssessmentNamespace,
@@ -1162,6 +1167,49 @@ export class EncountersService {
             payloadJson: handoffNursingEncounterPayload(
               getNursingAssessmentNamespace(nextFull, ER_HANDOFF_V1_KEY)
             ),
+            createdByUserId: userId,
+          },
+        });
+      }
+
+      /**
+       * Append-only DISPOSITION_SUPPLEMENT_SAVED event lifecycle (multi-user safety, S15C).
+       *
+       * Pre-existing behavior: PATCH replaces the full `Encounter.nursingAssessment` JSON in
+       * place — the `erDispositionV1` namespace inside (LWBS narrative, transfer handoff note,
+       * AMA risks discussed, deceased note, signature) is silently overwritten when a second
+       * user saves. AMA / LWBS / transfer / deceased narratives are legal documentation; silent
+       * overwrite by a second saver is unsafe.
+       *
+       * New behavior: every PATCH that materially changes the disposition supplement namespace
+       * writes an INSERT-only EncounterClinicalEvent row with the deep-cloned snapshot at save
+       * time and a denormalized performer identity snapshot. The flat-blob `nursingAssessment`
+       * is still merged in place by the frontend and saved as before — Summary / print readers
+       * continue to render the latest view unchanged.
+       *
+       * Material-change detection EXCLUDES the auto-stamped `signature` sub-object so that a
+       * "click Save with no edits" does NOT emit a redundant event row (the signature is always
+       * re-stamped on save). The signature IS preserved INSIDE `payloadJson.snapshot` so the
+       * event row carries the full immutable record of who signed and when.
+       *
+       * INSERT-only by design: there is no UPDATE branch and no caller path mutates these rows.
+       */
+      if (dispositionSupplementSnapshotChanged(prevFull, nextFull)) {
+        const performer = await this.resolveSummaryDocumentPerformer(facilityId, userId);
+        await this.prisma.encounterClinicalEvent.create({
+          data: {
+            facilityId,
+            encounterId: encounter.id,
+            patientId: encounter.patientId,
+            eventType: EncounterClinicalEventType.DISPOSITION_SUPPLEMENT_SAVED,
+            payloadJson: dispositionSupplementSavedEventPayload({
+              snapshot: getDispositionSupplementSnapshot(nextFull),
+              savedAt: new Date(),
+              performerId: performer.performerId,
+              performerDisplayName: performer.performerDisplayName,
+              performerRoleTitle: performer.performerRoleTitle,
+              performerInitials: performer.performerInitials,
+            }),
             createdByUserId: userId,
           },
         });
