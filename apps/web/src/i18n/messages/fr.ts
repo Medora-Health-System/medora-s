@@ -6788,6 +6788,16 @@ export default {
         "Votre sélection a actualisé le bloc structuré au bas de la note narrative. Le texte libre en dehors du bloc est préservé.",
       lastUpdatedByLabel: "Dernière mise à jour par",
       lastUpdatedByNotRecorded: "Aucune réévaluation enregistrée pour cette consultation.",
+      newSessionButton: "Nouvelle séance",
+      newSessionHint:
+        "Ouvre une nouvelle colonne de réévaluation au prochain enregistrement. Les colonnes précédentes restent intactes.",
+      newSessionArmed:
+        "✓ Nouvelle séance armée — le prochain enregistrement créera une nouvelle colonne.",
+      newSessionUnsavedConfirm:
+        "Des modifications non enregistrées sont en cours. Voulez-vous vraiment commencer une nouvelle séance ? Les sélections structurées seront effacées (le texte libre est conservé).",
+      activeSessionHint:
+        "Les enregistrements suivants mettent à jour la séance active. Cliquez sur Nouvelle séance pour ouvrir une nouvelle colonne, ou modifiez l'heure de plus de 60 min pour démarrer automatiquement une nouvelle séance.",
+      editDocumentedAtAriaLabel: "Modifier l'heure de la réévaluation",
     },
     generalAppearanceOptions: {
       well_appearing: "Apparence rassurante",

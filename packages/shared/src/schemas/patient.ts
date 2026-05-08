@@ -278,6 +278,14 @@ export const encounterUpdateDtoSchema = z.object({
   followUpDate: z.coerce.date().optional().nullable(),
   /** Structured nursing assessment (e.g. Évaluation infirmière sections) */
   nursingAssessment: z.any().optional().nullable(),
+  /**
+   * Frontend-controlled session marker for ER nursing reassessment column writes. When `true`,
+   * the next material change to `nursingAssessment.erNursingReassessmentV1` opens a NEW
+   * append-only column event (locks the prior session). When omitted / false, the backend
+   * UPDATEs the most recent reassessment event row in place — i.e. continues the active
+   * session — to avoid timeline spam from incremental bedside edits.
+   */
+  reassessmentNewSession: z.boolean().optional(),
   dischargeSummaryJson: z.any().optional().nullable(),
   /** Décision d'admission structurée (JSON) — `admittedAt` défini côté API à la 1re sauvegarde */
   admissionSummaryJson: z.any().optional().nullable(),

@@ -6797,6 +6797,15 @@ export default {
         "Your selection refreshed the structured block at the bottom of the narrative. Free-text outside the block is preserved.",
       lastUpdatedByLabel: "Last updated by",
       lastUpdatedByNotRecorded: "No reassessment saved yet for this encounter.",
+      newSessionButton: "New session",
+      newSessionHint:
+        "Opens a new reassessment column on the next save. Prior columns remain unchanged.",
+      newSessionArmed: "✓ New session armed — the next save will create a new column.",
+      newSessionUnsavedConfirm:
+        "You have unsaved changes. Start a new reassessment session anyway? Structured selections will be cleared (free-text is preserved).",
+      activeSessionHint:
+        "Subsequent saves update the active session. Click New session to open a new column, or change the time by more than 60 min to start a new session automatically.",
+      editDocumentedAtAriaLabel: "Edit reassessment time",
     },
     generalAppearanceOptions: {
       well_appearing: "Well-appearing",
