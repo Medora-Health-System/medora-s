@@ -463,57 +463,68 @@ export function EmergencyErSummaryClosureSurface({
       ) : null}
 
       {open ? (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 10,
-            alignItems: "center",
-            padding: "12px 14px",
-            borderRadius: 12,
-            border: "1px solid #e2e8f0",
-            backgroundColor: "#fff",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              void handlePrint();
-            }}
-            disabled={!patient || !encounter.createdAt}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div
             style={{
-              padding: "10px 16px",
-              borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              backgroundColor: patient && encounter.createdAt ? "#fff" : "#f1f5f9",
-              color: patient && encounter.createdAt ? "#334155" : "#94a3b8",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+              alignItems: "center",
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#fff",
             }}
           >
-            {t("emergencyDisposition.printChart")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAckDispositionSafety(false);
-              setShowCloseModal(true);
-            }}
-            disabled={closing}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 10,
-              border: "1px solid #fecaca",
-              backgroundColor: "#fef2f2",
-              color: "#991b1b",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: closing ? "wait" : "pointer",
-            }}
-          >
-            {t("emergencyErClosure.endEncounter")}
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                void handlePrint();
+              }}
+              disabled={!patient || !encounter.createdAt}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                backgroundColor: patient && encounter.createdAt ? "#fff" : "#f1f5f9",
+                color: patient && encounter.createdAt ? "#334155" : "#94a3b8",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
+              }}
+            >
+              {t("emergencyDisposition.printChart")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAckDispositionSafety(false);
+                setShowCloseModal(true);
+              }}
+              disabled={closing}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "1px solid #fecaca",
+                backgroundColor: "#fef2f2",
+                color: "#991b1b",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: closing ? "wait" : "pointer",
+              }}
+            >
+              {t("emergencyErClosure.endEncounter")}
+            </button>
+          </div>
+          {/**
+           * Phase 4 — UX boundary clarification: this print emits the disposition-focused ER
+           * packet (current `printErPacket`/`getErPrintPacketHtml`). It is NOT a full chart
+           * export. The hint disambiguates ER packet vs. patient record vs. discharge summary
+           * for clinicians without changing the underlying print payload.
+           */}
+          <p style={{ margin: "0 4px", fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+            {t("emergencyDisposition.printErPacketHint")}
+          </p>
         </div>
       ) : (
         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("emergencyErClosure.encounterAlreadyClosed")}</p>

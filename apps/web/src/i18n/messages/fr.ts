@@ -6509,7 +6509,9 @@ export default {
     cardTitle: "Disposition (urgences)",
     cardSubline:
       "Décision médicale d'orientation — enregistrée dans le dossier partagé. L'exécution infirmière (sortie, impression, confirmation) se fait dans la section « Exécution équipe » sous cette disposition.",
-    printChart: "Imprimer le dossier",
+    printChart: "Imprimer le dossier d'urgence",
+    printErPacketHint:
+      "Ce dossier résume la visite aux urgences et la disposition. Ce n'est pas le dossier patient complet.",
     summaryClosureLink: "Résumé et clôture",
     inpatientBanner:
       "Cette consultation est liée à une hospitalisation (type dossier). Vérifiez le dossier complet pour le détail administratif et clinique.",

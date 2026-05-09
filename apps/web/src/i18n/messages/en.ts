@@ -6522,7 +6522,9 @@ export default {
     cardTitle: "Disposition (ED)",
     cardSubline:
       "Medical disposition decision — saved to the shared chart. Nursing execution (discharge, print, confirmation) is under “Team execution” below this disposition.",
-    printChart: "Print chart",
+    printChart: "Print ER packet",
+    printErPacketHint:
+      "This packet summarizes the ER visit and disposition. It is not the complete patient record.",
     summaryClosureLink: "Summary & closure",
     inpatientBanner:
       "This encounter is linked to an inpatient stay. Open the full chart for administrative and clinical detail.",
