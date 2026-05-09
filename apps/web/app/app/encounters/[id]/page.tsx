@@ -238,18 +238,37 @@ export default function EncounterDetailPage() {
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
 
-  /** Aligné sur GET /encounters/:id — lab / imagerie / pharmacie : files et actions ligne, pas cette page. */
+  /** Aligné sur GET /encounters/:id — lecture seule pour LAB/RADIOLOGY (workflow technicien). */
   const canViewEncounterDetail =
     roles.includes("FRONT_DESK") ||
     roles.includes("RN") ||
     roles.includes("PROVIDER") ||
     roles.includes("ADMIN") ||
-    roles.includes("BILLING");
+    roles.includes("BILLING") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY");
+
+  /**
+   * Lab/Radiology techniciens : accès dossier en lecture seule. Aucun écrit clinique
+   * (triage, soins, MSE, sortie/clôture, MAR, prescription) n'est exposé pour ces rôles.
+   */
+  const isReadOnlyTechnicianViewer =
+    (roles.includes("LAB") || roles.includes("RADIOLOGY")) &&
+    !roles.includes("RN") &&
+    !roles.includes("PROVIDER") &&
+    !roles.includes("ADMIN");
 
   const canFetchEncounterTriage =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   /** Aligné sur GET /encounters/:encounterId/orders (lecture ordres). */
   const canFetchEncounterOrders =
+    roles.includes("RN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("ADMIN") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY");
+  /** Aligné sur POST /orders/:id/result/acknowledge (RN, PROVIDER, ADMIN). LAB/RADIOLOGY exclus. */
+  const canAcknowledgeResults =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const canFetchPatientDiagnosesList = canFetchEncounterTriage;
   /** Matches POST /encounters/:id/diagnoses roles (RN, provider, admin). */
@@ -811,20 +830,29 @@ export default function EncounterDetailPage() {
 
   /** Must run before any early return — same hook order on loading / error / ready paths (React #310). */
   const tabs = useMemo(
-    () => [
-      { id: "summary", label: t("encounterChrome.tabs.summary") },
-      { id: "triage", label: t("encounterChrome.tabs.triage") },
-      ...(showNursingTab ? [{ id: "nursing", label: t("encounterChrome.tabs.nursing") }] : []),
-      { id: "clinic", label: t("encounterChrome.tabs.clinic") },
-      { id: "diagnostics", label: t("encounterChrome.tabs.diagnostics") },
-      { id: "orders", label: t("encounterChrome.tabs.orders") },
-      ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
-      { id: "results", label: t("encounterChrome.tabs.results") },
-      { id: "notes", label: t("encounterChrome.tabs.notes") },
-      { id: "pathways", label: t("encounterChrome.tabs.pathways") },
-      { id: "history", label: t("encounterChrome.tabs.history") },
-    ],
-    [t, showNursingTab, canFetchMarTab]
+    () =>
+      isReadOnlyTechnicianViewer
+        ? [
+            { id: "summary", label: t("encounterChrome.tabs.summary") },
+            { id: "triage", label: t("encounterChrome.tabs.triage") },
+            { id: "orders", label: t("encounterChrome.tabs.orders") },
+            { id: "results", label: t("encounterChrome.tabs.results") },
+            { id: "history", label: t("encounterChrome.tabs.history") },
+          ]
+        : [
+            { id: "summary", label: t("encounterChrome.tabs.summary") },
+            { id: "triage", label: t("encounterChrome.tabs.triage") },
+            ...(showNursingTab ? [{ id: "nursing", label: t("encounterChrome.tabs.nursing") }] : []),
+            { id: "clinic", label: t("encounterChrome.tabs.clinic") },
+            { id: "diagnostics", label: t("encounterChrome.tabs.diagnostics") },
+            { id: "orders", label: t("encounterChrome.tabs.orders") },
+            ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
+            { id: "results", label: t("encounterChrome.tabs.results") },
+            { id: "notes", label: t("encounterChrome.tabs.notes") },
+            { id: "pathways", label: t("encounterChrome.tabs.pathways") },
+            { id: "history", label: t("encounterChrome.tabs.history") },
+          ],
+    [t, showNursingTab, canFetchMarTab, isReadOnlyTechnicianViewer]
   );
 
   const handleDocumentationDeficiencyNavigate = useCallback((code: string) => {
@@ -1703,6 +1731,7 @@ export default function EncounterDetailPage() {
               encounterId={encounterId}
               facilityId={facilityId}
               refreshToken={encounterResultsRefresh}
+              canAcknowledgeResults={canAcknowledgeResults}
             />
           )}
           {activeTab === "history" && (

@@ -120,7 +120,14 @@ export class EncountersController {
   }
 
   @Get("patients/:patientId/encounters")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK
+  )
   async findByPatient(
     @Param("patientId") patientId: string,
     @Query() query: Record<string, string>,
@@ -258,6 +265,8 @@ export class EncountersController {
     RoleCode.PROVIDER,
     RoleCode.BILLING,
     RoleCode.PHARMACY,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
     RoleCode.ADMIN
   )
   async getAuditTimeline(@Param("id") id: string, @Req() req: any) {
@@ -280,6 +289,8 @@ export class EncountersController {
     RoleCode.RN,
     RoleCode.PROVIDER,
     RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
     RoleCode.ADMIN
   )
   async getVitalsHistory(@Param("id") id: string, @Req() req: any) {
@@ -296,6 +307,8 @@ export class EncountersController {
     RoleCode.RN,
     RoleCode.PROVIDER,
     RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
     RoleCode.ADMIN
   )
   async getClinicalTimeline(@Param("id") id: string, @Query("limit") limit: string | undefined, @Req() req: any) {
@@ -308,7 +321,13 @@ export class EncountersController {
   }
 
   @Get("encounters/:id/clinical-documentation-events")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.ADMIN
+  )
   async listClinicalDocumentationEvents(
     @Param("id") id: string,
     @Query("types") types: string | undefined,
@@ -381,7 +400,13 @@ export class EncountersController {
    * `take` (default 50, max 100); facility-scoped.
    */
   @Get("encounters/:id/nursing-reassessment-events")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.ADMIN
+  )
   async listNursingReassessmentEvents(@Param("id") id: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -410,6 +435,8 @@ export class EncountersController {
     RoleCode.RN,
     RoleCode.PROVIDER,
     RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
     RoleCode.ADMIN
   )
   async getDispositionReadiness(@Param("id") id: string, @Req() req: any) {
@@ -426,6 +453,8 @@ export class EncountersController {
     RoleCode.RN,
     RoleCode.PROVIDER,
     RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
     RoleCode.ADMIN
   )
   async findOne(@Param("id") id: string, @Req() req: any) {

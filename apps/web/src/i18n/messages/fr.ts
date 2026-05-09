@@ -3690,6 +3690,10 @@ export default {
     encounterResultsIntro:
       "Résultats liés à cette consultation (laboratoire et imagerie). Les mêmes données sont visibles dans le dossier patient (onglet « Résultats »).",
     encounterResultsPendingSync: "En attente de synchronisation — affichage local sur cet appareil uniquement.",
+    encounterResultsAcknowledgeButton: "Accuser réception",
+    encounterResultsAckBusy: "Enregistrement…",
+    encounterResultsAcknowledged: "Réception accusée par le clinicien.",
+    encounterResultsAckFailed: "Impossible d'accuser réception du résultat. Réessayez.",
     clinicalResultTitleFallback: "Examen",
   },
   pharmacyWorklistPage: {

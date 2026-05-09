@@ -78,6 +78,8 @@ export function EncounterResultsTab({
   compactResultViewer = false,
   /** Si true et aucune ligne : pas de grand bloc « aucun résultat » (le parent affiche déjà le résumé). */
   suppressEmptyDetailPlaceholder = false,
+  /** Si true : affiche un bouton « Accuser réception » par résultat non encore accusé (RN/PROVIDER/ADMIN seulement). */
+  canAcknowledgeResults = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -90,6 +92,7 @@ export function EncounterResultsTab({
   embeddedDetailList?: boolean;
   compactResultViewer?: boolean;
   suppressEmptyDetailPlaceholder?: boolean;
+  canAcknowledgeResults?: boolean;
 }) {
   const { t, language } = useI18n();
   const [orders, setOrders] = useState<any[]>([]);
@@ -97,6 +100,11 @@ export function EncounterResultsTab({
   /** true si le GET commandes a échoué et qu’aucun cache exploitable n’était disponible (ids manquants pour fusion locale). */
   const [ordersLoadFailedNoCache, setOrdersLoadFailedNoCache] = useState(false);
   const [pendingResultByItemId, setPendingResultByItemId] = useState<Map<string, PendingLocalResult>>(() => new Map());
+  /** clé busy de l'item en cours d'accusé réception (empêche double-clic + relance). */
+  const [ackBusyItemId, setAckBusyItemId] = useState<string | null>(null);
+  const [ackError, setAckError] = useState<string | null>(null);
+  /** Compteur local pour relancer le GET commandes après accusé réception sans recharger toute la page. */
+  const [localAckTick, setLocalAckTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,7 +134,27 @@ export function EncounterResultsTab({
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId, refreshToken]);
+  }, [encounterId, facilityId, refreshToken, localAckTick]);
+
+  const onAcknowledge = async (orderItemId: string) => {
+    setAckBusyItemId(orderItemId);
+    setAckError(null);
+    try {
+      await apiFetch(`/orders/${orderItemId}/result/acknowledge`, {
+        method: "POST",
+        facilityId,
+      });
+      setLocalAckTick((x) => x + 1);
+    } catch (e) {
+      setAckError(
+        e instanceof Error && e.message
+          ? e.message
+          : t("patientChartUi.encounterResultsAckFailed")
+      );
+    } finally {
+      setAckBusyItemId(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -238,6 +266,22 @@ export function EncounterResultsTab({
           <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{t("patientChartUi.encounterResultsIntro")}</p>
         </div>
       ) : null}
+      {ackError ? (
+        <div
+          role="alert"
+          style={{
+            padding: "10px 14px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#991b1b",
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            borderRadius: 12,
+          }}
+        >
+          {ackError}
+        </div>
+      ) : null}
       {rows.map(({ item, pendingSync }) => {
         const v = clinicalResultFromOrderItemLike({
           displayLabel: getOrderItemDisplayLabelForLanguage(item, language, t),
@@ -246,6 +290,16 @@ export function EncounterResultsTab({
           result: item.result,
           emptyTitleFallback: t("patientChartUi.clinicalResultTitleFallback"),
         });
+        const acknowledgedAt =
+          item.result && typeof item.result === "object"
+            ? (item.result as { acknowledgedByProviderAt?: string | null }).acknowledgedByProviderAt
+            : null;
+        const showAckButton =
+          canAcknowledgeResults &&
+          !pendingSync &&
+          item.status === "RESULTED" &&
+          !acknowledgedAt;
+        const ackBusy = ackBusyItemId === item.id;
         return (
           <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {pendingSync ? (
@@ -276,6 +330,41 @@ export function EncounterResultsTab({
                 catalogItemType={v.catalogItemType}
                 compact={compactResultViewer}
               />
+              {acknowledgedAt && !pendingSync ? (
+                <p
+                  style={{
+                    margin: "10px 0 0 0",
+                    fontSize: 11,
+                    color: "#15803d",
+                    fontWeight: 600,
+                  }}
+                >
+                  {t("patientChartUi.encounterResultsAcknowledged")}
+                </p>
+              ) : null}
+              {showAckButton ? (
+                <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={() => void onAcknowledge(item.id)}
+                    disabled={ackBusy}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      background: ackBusy ? "#f1f5f9" : "#fff",
+                      color: "#0f172a",
+                      cursor: ackBusy ? "default" : "pointer",
+                    }}
+                  >
+                    {ackBusy
+                      ? t("patientChartUi.encounterResultsAckBusy")
+                      : t("patientChartUi.encounterResultsAcknowledgeButton")}
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         );

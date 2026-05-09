@@ -238,9 +238,22 @@ export function EmergencyActiveWorkspaceView() {
     roles.includes("RN") ||
     roles.includes("PROVIDER") ||
     roles.includes("ADMIN") ||
-    roles.includes("BILLING");
+    roles.includes("BILLING") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY");
 
   const canFetchEncounterTriage =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  /** Lab/Radiology techniciens : accès workspace urgences en lecture seule (workflow technicien). */
+  const isReadOnlyTechnicianViewer =
+    (roles.includes("LAB") || roles.includes("RADIOLOGY")) &&
+    !roles.includes("RN") &&
+    !roles.includes("PROVIDER") &&
+    !roles.includes("ADMIN");
+
+  /** Aligné sur POST /orders/:id/result/acknowledge (RN, PROVIDER, ADMIN). LAB/RADIOLOGY exclus. */
+  const canAcknowledgeResults =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
 
   const showNursingTab =
@@ -1221,7 +1234,12 @@ export function EmergencyActiveWorkspaceView() {
           ) : null}
 
           {activeSection === "results" ? (
-            <EmergencyResultsPanel encounterId={encounterId} facilityId={fid} refreshToken={resultsRefresh} />
+            <EmergencyResultsPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              refreshToken={resultsRefresh}
+              canAcknowledgeResults={canAcknowledgeResults}
+            />
           ) : null}
 
           {activeSection === "mar" && canFetchMarTab ? (

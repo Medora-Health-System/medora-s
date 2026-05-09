@@ -42,7 +42,7 @@ export class OrdersController {
   }
 
   @Post("encounters/:encounterId/orders")
-  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
+  @Roles("RN", "PROVIDER", "PHARMACY", "ADMIN")
   async create(@Param("encounterId") encounterId: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     const userId = req.user?.userId;
@@ -105,7 +105,7 @@ export class OrdersController {
   }
 
   @Get("encounters/:encounterId/orders")
-  @Roles("RN", "PROVIDER", "ADMIN")
+  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "ADMIN")
   async findByEncounter(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {

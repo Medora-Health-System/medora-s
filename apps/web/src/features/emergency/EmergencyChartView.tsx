@@ -199,9 +199,22 @@ export function EmergencyChartView() {
     roles.includes("RN") ||
     roles.includes("PROVIDER") ||
     roles.includes("ADMIN") ||
-    roles.includes("BILLING");
+    roles.includes("BILLING") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY");
 
   const canFetchEncounterTriage =
+    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  /** Lab/Radiology techniciens : accès dossier urgences en lecture seule (workflow technicien). */
+  const isReadOnlyTechnicianViewer =
+    (roles.includes("LAB") || roles.includes("RADIOLOGY")) &&
+    !roles.includes("RN") &&
+    !roles.includes("PROVIDER") &&
+    !roles.includes("ADMIN");
+
+  /** Aligné sur POST /orders/:id/result/acknowledge (RN, PROVIDER, ADMIN). LAB/RADIOLOGY exclus. */
+  const canAcknowledgeResults =
     roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
 
   const showNursingTab =
@@ -850,7 +863,12 @@ export function EmergencyChartView() {
             <h2 id="section-results" style={sectionTitle}>
               {t("emergencyWorkspace.sectionTitle.results")}
             </h2>
-            <EmergencyResultsPanel encounterId={encounterId} facilityId={fid} refreshToken={resultsRefresh} />
+            <EmergencyResultsPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              refreshToken={resultsRefresh}
+              canAcknowledgeResults={canAcknowledgeResults}
+            />
           </section>
 
           <section aria-labelledby="section-mar">

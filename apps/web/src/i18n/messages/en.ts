@@ -3721,6 +3721,10 @@ export default {
     encounterResultsIntro:
       "Results for this encounter (laboratory and imaging). The same data is visible on the patient chart (Results tab).",
     encounterResultsPendingSync: "Pending sync — local display on this device only.",
+    encounterResultsAcknowledgeButton: "Acknowledge",
+    encounterResultsAckBusy: "Saving…",
+    encounterResultsAcknowledged: "Acknowledged by clinician.",
+    encounterResultsAckFailed: "Could not acknowledge result. Please retry.",
     clinicalResultTitleFallback: "Test or study",
   },
   pharmacyWorklistPage: {

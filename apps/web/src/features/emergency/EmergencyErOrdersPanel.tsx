@@ -749,10 +749,13 @@ export function EmergencyErOrdersPanel({
 
   const nowMs = Date.now();
 
+  /** Quels rôles peuvent ouvrir une commande depuis ce panneau : prescripteurs (PROVIDER/ADMIN) + RN (ordres infirmiers / verbaux). LAB/RADIOLOGY/PHARMACY/FRONT_DESK/BILLING : non. */
+  const canOpenOrderQuickActions = canPrescribe || hasAnyRole(roles, "RN");
+
   return (
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
       <MedoraCardInner>
-        {roles !== undefined ? (
+        {roles !== undefined && canOpenOrderQuickActions ? (
           <TraumaProtocolAssistPanel
             encounterId={encounterId}
             facilityId={facilityId}
@@ -785,29 +788,31 @@ export function EmergencyErOrdersPanel({
                 alignItems: "stretch",
               }}
             >
-            <div
-              style={{
-                flex: "1 1 200px",
-                minWidth: 0,
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 8,
-                alignContent: "start",
-              }}
-            >
-              <button type="button" onClick={() => openModal("LAB")} style={btn}>
-                {t("erEmergencyOrders.quickLab")}
-              </button>
-              <button type="button" onClick={() => openModal("IMAGING")} style={btn}>
-                {t("erEmergencyOrders.quickImaging")}
-              </button>
-              <button type="button" onClick={() => openModal("MEDICATION")} style={btn}>
-                {t("erEmergencyOrders.quickMedication")}
-              </button>
-              <button type="button" onClick={() => openModal("CARE")} style={btn}>
-                {t("erEmergencyOrders.quickCare")}
-              </button>
-            </div>
+            {canOpenOrderQuickActions ? (
+              <div
+                style={{
+                  flex: "1 1 200px",
+                  minWidth: 0,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                  alignContent: "start",
+                }}
+              >
+                <button type="button" onClick={() => openModal("LAB")} style={btn}>
+                  {t("erEmergencyOrders.quickLab")}
+                </button>
+                <button type="button" onClick={() => openModal("IMAGING")} style={btn}>
+                  {t("erEmergencyOrders.quickImaging")}
+                </button>
+                <button type="button" onClick={() => openModal("MEDICATION")} style={btn}>
+                  {t("erEmergencyOrders.quickMedication")}
+                </button>
+                <button type="button" onClick={() => openModal("CARE")} style={btn}>
+                  {t("erEmergencyOrders.quickCare")}
+                </button>
+              </div>
+            ) : null}
 
             <div
               style={{

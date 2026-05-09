@@ -144,10 +144,13 @@ export function EmergencyResultsPanel({
   encounterId,
   facilityId,
   refreshToken,
+  canAcknowledgeResults = false,
 }: {
   encounterId: string;
   facilityId: string;
   refreshToken: number;
+  /** Si true : affiche un bouton « Accuser réception » par résultat non encore accusé (RN/PROVIDER/ADMIN). */
+  canAcknowledgeResults?: boolean;
 }) {
   const { t, language } = useI18n();
   const [snap, setSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
@@ -252,6 +255,7 @@ export function EmergencyResultsPanel({
             embeddedDetailList
             compactResultViewer
             suppressEmptyDetailPlaceholder
+            canAcknowledgeResults={canAcknowledgeResults}
           />
         </div>
       </MedoraCardInner>
