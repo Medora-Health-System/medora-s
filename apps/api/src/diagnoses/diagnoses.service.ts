@@ -8,7 +8,10 @@ import { PrismaService } from "../prisma/prisma.service";
 import { logBreakGlassAccessIfApplicable } from "../common/break-glass/break-glass-audit.helper";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
-import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
+} from "../encounters/encounter-sign-lock.util";
 import {
   buildDiagnosisCandidate,
   type DiagnosisBillingCodeSource,
@@ -131,6 +134,7 @@ export class DiagnosesService {
       throw new NotFoundException("Encounter not found");
     }
 
+    assertEncounterOpenForClinicalMutation(encounter);
     assertEncounterNotSigned(encounter);
 
     let code = dto.code?.trim() ?? "";
@@ -290,6 +294,7 @@ export class DiagnosesService {
     if (!enc) {
       throw new NotFoundException("Encounter not found");
     }
+    assertEncounterOpenForClinicalMutation(enc);
     assertEncounterNotSigned(enc);
 
     const data: Prisma.DiagnosisUpdateInput = {};
@@ -415,6 +420,7 @@ export class DiagnosesService {
     if (!enc) {
       throw new NotFoundException("Encounter not found");
     }
+    assertEncounterOpenForClinicalMutation(enc);
     assertEncounterNotSigned(enc);
 
     const rows = await this.prisma.diagnosis.findMany({
@@ -492,6 +498,7 @@ export class DiagnosesService {
     if (!enc) {
       throw new NotFoundException("Encounter not found");
     }
+    assertEncounterOpenForClinicalMutation(enc);
     assertEncounterNotSigned(enc);
 
     const resolvedDate = new Date();

@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
+} from "../encounters/encounter-sign-lock.util";
 import {
   AuditAction,
   PathwayType,
@@ -212,6 +215,7 @@ export class PathwaysService {
       throw new BadRequestException("Only active pathways can be paused");
     }
 
+    assertEncounterOpenForClinicalMutation(pathway.encounter);
     assertEncounterNotSigned(pathway.encounter);
 
     const updated = await this.prisma.pathwaySession.update({
@@ -252,6 +256,7 @@ export class PathwaysService {
       throw new NotFoundException("Pathway not found");
     }
 
+    assertEncounterOpenForClinicalMutation(pathway.encounter);
     assertEncounterNotSigned(pathway.encounter);
 
     return this.prisma.pathwaySession.update({
@@ -355,6 +360,7 @@ export class PathwaysService {
       throw new NotFoundException("Milestone not found");
     }
 
+    assertEncounterOpenForClinicalMutation(pathway.encounter);
     assertEncounterNotSigned(pathway.encounter);
 
     const fromStatus = milestone.status;

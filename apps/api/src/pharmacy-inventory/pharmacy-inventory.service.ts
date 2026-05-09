@@ -15,7 +15,10 @@ import {
   type Prisma,
 } from "@prisma/client";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
-import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
+} from "../encounters/encounter-sign-lock.util";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import type {
   CreateInventoryItemDto,
@@ -298,6 +301,7 @@ export class PharmacyInventoryService {
       throw new BadRequestException("Encounter not found or does not match patient/facility");
     }
 
+    assertEncounterOpenForClinicalMutation(encounter);
     assertEncounterNotSigned(encounter);
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -438,6 +442,7 @@ export class PharmacyInventoryService {
     if (!orderItem) {
       throw new NotFoundException("Ligne d'ordonnance introuvable.");
     }
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {

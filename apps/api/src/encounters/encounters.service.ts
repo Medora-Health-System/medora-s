@@ -3220,6 +3220,14 @@ export class EncountersService {
       throw new NotFoundException("Encounter not found");
     }
 
+    /**
+     * Phase 2 — post-close mutation hardening: intake fields capture clinical arrival
+     * state (arrivalAt, modeOfArrival, initialChiefComplaint, initialAcuity, initialRoom).
+     * Once the encounter is CLOSED, these are part of the historical legal chart and must
+     * not be silently rewritten.
+     */
+    assertEncounterOpenForClinicalMutation(encounter);
+
     const payload = {
       facilityId,
       arrivalAt: data.arrivalAt ?? null,

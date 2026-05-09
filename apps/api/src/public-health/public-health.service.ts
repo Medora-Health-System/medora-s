@@ -16,7 +16,10 @@ import {
 } from "@prisma/client";
 import { patientFullNameFromPatient, patientPrimaryIdentifierFromPatient } from "../common/patient-identity";
 import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
-import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
+} from "../encounters/encounter-sign-lock.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { buildVaccineAdministrationCandidate } from "@medora/shared";
 import { DiseaseCaseReviewStatus, ReviewerLevel } from "../mspp/mspp.constants";
@@ -397,6 +400,7 @@ export class PublicHealthService {
           "Encounter not found or does not match patient/facility"
         );
       }
+      assertEncounterOpenForClinicalMutation(enc);
       assertEncounterNotSigned(enc);
     }
 
@@ -572,6 +576,7 @@ export class PublicHealthService {
           "Encounter not found or does not match facility/patient"
         );
       }
+      assertEncounterOpenForClinicalMutation(enc);
       assertEncounterNotSigned(enc);
     }
 
