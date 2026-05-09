@@ -314,18 +314,19 @@ export default function RadWorklistPage() {
   };
 
   const renderActions = (order: any, item: any) => {
-    if (orderIsCancelled(order)) {
+    const encounterHref = order.encounterId ? `/app/encounters/${order.encounterId}` : null;
+    if (orderIsCancelled(order) || worklistItemIsTerminal(item.status)) {
       return (
-        <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
-          {t("common.view")}
-        </Link>
-      );
-    }
-    if (worklistItemIsTerminal(item.status)) {
-      return (
-        <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
-          {t("common.view")}
-        </Link>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch", width: "100%" }}>
+          <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
+            {t("common.view")}
+          </Link>
+          {encounterHref ? (
+            <Link href={encounterHref} style={btnGhost}>
+              {t("worklistDepartments.shared.openEncounter")}
+            </Link>
+          ) : null}
+        </div>
       );
     }
     return (
@@ -350,6 +351,11 @@ export default function RadWorklistPage() {
         <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
           {t("common.view")}
         </Link>
+        {encounterHref ? (
+          <Link href={encounterHref} style={btnGhost}>
+            {t("worklistDepartments.shared.openEncounter")}
+          </Link>
+        ) : null}
       </div>
     );
   };

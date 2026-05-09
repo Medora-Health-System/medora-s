@@ -10,7 +10,13 @@ export class WorklistsController {
   constructor(private readonly worklistsService: WorklistsService) {}
 
   @Get("lab")
-  @RequireRoles(RoleCode.LAB, RoleCode.ADMIN)
+  /**
+   * RN read-only inclusion: nurses can browse the lab dept queue and acknowledge
+   * resulted reports from the encounter chart. RN cannot finalize lab results
+   * (PUT /orders/:id/result) and cannot perform LAB tech ack/start/complete
+   * (`assertAckOrStartActor` rejects RN for LAB_TEST).
+   */
+  @RequireRoles(RoleCode.LAB, RoleCode.RN, RoleCode.ADMIN)
   async getLabWorklist(@Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
@@ -95,6 +96,20 @@ export default function DepartmentOrderDetail({
   const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const highlightLineId = searchParams.get("ligne") || "";
+  const { roles } = useFacilityAndRoles();
+
+  /**
+   * Acteur autorisé à exécuter les actions worklist du département (accusé / démarrage /
+   * clôture, saisie de résultats). RN consulte la file labo en lecture seule (pas de
+   * finalisation, pas de soumission de résultats — backend rejette dans tous les cas).
+   */
+  const viewerIsDeptActor = useMemo(() => {
+    if (roles.includes("ADMIN")) return true;
+    if (kind === "lab") return roles.includes("LAB");
+    if (kind === "radiology") return roles.includes("RADIOLOGY");
+    if (kind === "pharmacy") return roles.includes("PHARMACY");
+    return false;
+  }, [roles, kind]);
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -378,6 +393,7 @@ export default function DepartmentOrderDetail({
             facilityId={facilityId}
             order={order}
             parentOrderCancelled={parentOrderCancelled}
+            viewerIsDeptActor={viewerIsDeptActor}
             onReload={load}
             onAck={handleAck}
             onStart={handleStart}
@@ -539,6 +555,7 @@ function LineCard({
   facilityId,
   order,
   parentOrderCancelled,
+  viewerIsDeptActor,
   onReload,
   onAck,
   onStart,
@@ -558,6 +575,8 @@ function LineCard({
   facilityId: string;
   order: any;
   parentOrderCancelled: boolean;
+  /** false pour RN consultant la file labo (lecture seule) ; backend rejette quoi qu'il en soit. */
+  viewerIsDeptActor: boolean;
   onReload: () => Promise<void>;
   onAck: (id: string) => Promise<void>;
   onStart: (id: string) => Promise<void>;
@@ -577,7 +596,7 @@ function LineCard({
     setCritical(!!item.result?.criticalValue);
   }, [item.id, item.result?.resultText, item.result?.criticalValue]);
 
-  const canResult = kind === "lab" || kind === "radiology";
+  const canResult = (kind === "lab" || kind === "radiology") && viewerIsDeptActor;
   const existingAtt = attachmentsFromResultDataAll(item.result?.resultData).filter(
     (a) => a.dataBase64 && String(a.dataBase64).length > 0
   );
@@ -597,17 +616,17 @@ function LineCard({
 
   const workflowButtons = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-      {(item.status === "PLACED" || item.status === "PENDING" || item.status === "SIGNED") && (
+      {viewerIsDeptActor && (item.status === "PLACED" || item.status === "PENDING" || item.status === "SIGNED") && (
         <button type="button" onClick={() => onAck(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
           {t("orderDetail.ackReceive")}
         </button>
       )}
-      {item.status === "ACKNOWLEDGED" && (
+      {viewerIsDeptActor && item.status === "ACKNOWLEDGED" && (
         <button type="button" onClick={() => onStart(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
           {t("orderDetail.startExam")}
         </button>
       )}
-      {item.status === "IN_PROGRESS" && !(kind === "pharmacy" && !isAlreadyDispensed(item)) && (
+      {viewerIsDeptActor && item.status === "IN_PROGRESS" && !(kind === "pharmacy" && !isAlreadyDispensed(item)) && (
         <button type="button" onClick={() => onComplete(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
           {t("orderDetail.completeExam")}
         </button>

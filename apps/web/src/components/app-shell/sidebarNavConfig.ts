@@ -145,7 +145,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
   },
   { href: "/app/follow-ups", labelKey: "nav.followUps", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
   { href: "/app/rad-worklist", labelKey: "nav.radWorklist", roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
-  { href: "/app/lab-worklist", labelKey: "nav.labWorklist", roles: ["LAB", "ADMIN"], group: "examens", accent: "purple" },
+  { href: "/app/lab-worklist", labelKey: "nav.labWorklist", roles: ["LAB", "RN", "ADMIN"], group: "examens", accent: "purple" },
   { href: "/app/pharmacy", labelKey: "nav.pharmacyQueue", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
   { href: "/app/pharmacy-worklist", labelKey: "nav.pharmacyWorklist", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
   {

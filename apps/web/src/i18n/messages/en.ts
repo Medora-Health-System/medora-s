@@ -138,6 +138,7 @@ export default {
       worklistActionStartFailed: "Unable to start",
       worklistActionCompleteFailed: "Unable to complete",
       visitLink: "Encounter",
+      openEncounter: "Open encounter",
     },
     lab: {
       title: "Lab queue",

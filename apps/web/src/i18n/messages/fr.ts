@@ -53,6 +53,7 @@ export default {
       worklistActionStartFailed: "Impossible de démarrer",
       worklistActionCompleteFailed: "Impossible de terminer",
       visitLink: "Consultation",
+      openEncounter: "Ouvrir la consultation",
     },
     lab: {
       title: "File laboratoire",

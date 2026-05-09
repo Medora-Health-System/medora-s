@@ -128,7 +128,7 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/pharmacy/expiring", roles: ["ADMIN", "PHARMACY"] },
   { prefix: "/app/pharmacy-worklist", roles: ["ADMIN", "PHARMACY"] },
   { prefix: "/app/pharmacy", roles: ["ADMIN", "PHARMACY"] },
-  { prefix: "/app/lab-worklist", roles: ["ADMIN", "LAB"] },
+  { prefix: "/app/lab-worklist", roles: ["ADMIN", "LAB", "RN"] },
   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },

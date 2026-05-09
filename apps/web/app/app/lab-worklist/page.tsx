@@ -172,7 +172,7 @@ function PendingEncounterPatientBlock({
 
 export default function LabWorklistPage() {
   const { t, language } = useI18n();
-  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, ready, roles } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
   const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
@@ -180,6 +180,13 @@ export default function LabWorklistPage() {
   /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  /**
+   * Workflow d’équipe LAB : accusé / démarrage / clôture sont réservés aux techniciens labo.
+   * Le service `assertAckOrStartActor` rejette RN sur LAB_TEST, donc on cache les boutons
+   * pour les infirmiers qui consultent la file en lecture seule (vue partagée).
+   */
+  const isLabTechActor = roles.includes("LAB") || roles.includes("ADMIN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -314,42 +321,50 @@ export default function LabWorklistPage() {
   };
 
   const renderActions = (order: any, item: any) => {
-    if (orderIsCancelled(order)) {
+    const encounterHref = order.encounterId ? `/app/encounters/${order.encounterId}` : null;
+    if (orderIsCancelled(order) || worklistItemIsTerminal(item.status)) {
       return (
-        <Link href={`/app/lab-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
-          {t("common.view")}
-        </Link>
-      );
-    }
-    if (worklistItemIsTerminal(item.status)) {
-      return (
-        <Link href={`/app/lab-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
-          {t("common.view")}
-        </Link>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch", width: "100%" }}>
+          <Link href={`/app/lab-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
+            {t("common.view")}
+          </Link>
+          {encounterHref ? (
+            <Link href={encounterHref} style={btnGhost}>
+              {t("worklistDepartments.shared.openEncounter")}
+            </Link>
+          ) : null}
+        </div>
       );
     }
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch", width: "100%" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          {worklistItemNeedsAcknowledge(item.status) && (
-            <button type="button" onClick={() => void handleAcknowledge(item.id)} style={btnGhost}>
-              {t("worklistDepartments.shared.acknowledge")}
-            </button>
-          )}
-          {item.status === "ACKNOWLEDGED" && (
-            <button type="button" onClick={() => void handleStart(item.id)} style={btnGhost}>
-              {t("worklistDepartments.shared.start")}
-            </button>
-          )}
-          {item.status === "IN_PROGRESS" && (
-            <button type="button" onClick={() => void handleComplete(item.id)} style={btnGhost}>
-              {t("worklistDepartments.shared.complete")}
-            </button>
-          )}
-        </div>
+        {isLabTechActor ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            {worklistItemNeedsAcknowledge(item.status) && (
+              <button type="button" onClick={() => void handleAcknowledge(item.id)} style={btnGhost}>
+                {t("worklistDepartments.shared.acknowledge")}
+              </button>
+            )}
+            {item.status === "ACKNOWLEDGED" && (
+              <button type="button" onClick={() => void handleStart(item.id)} style={btnGhost}>
+                {t("worklistDepartments.shared.start")}
+              </button>
+            )}
+            {item.status === "IN_PROGRESS" && (
+              <button type="button" onClick={() => void handleComplete(item.id)} style={btnGhost}>
+                {t("worklistDepartments.shared.complete")}
+              </button>
+            )}
+          </div>
+        ) : null}
         <Link href={`/app/lab-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
           {t("common.view")}
         </Link>
+        {encounterHref ? (
+          <Link href={encounterHref} style={btnGhost}>
+            {t("worklistDepartments.shared.openEncounter")}
+          </Link>
+        ) : null}
       </div>
     );
   };
