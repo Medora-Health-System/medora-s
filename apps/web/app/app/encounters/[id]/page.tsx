@@ -52,6 +52,7 @@ import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentT
 import { mergeVitalsJsonForSave } from "@/features/emergency/emergencyTriageVitalsMerge";
 import { triagePreviewSliceFromTriageGet } from "@/features/emergency/emergencyTriageDocPreview";
 import { erTriageV1FormFromVitalsJson } from "@/features/emergency/medoraErTriageV1";
+import { isTriageStaleConflictError } from "@/features/emergency/triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
 import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds } from "@medora/shared";
 import {
@@ -3511,6 +3512,13 @@ function TriageVitalsTab({
         heightInches: formData.heightInches,
       });
 
+      const lastKnownTriageUpdatedAt =
+        triage?.updatedAt
+          ? typeof triage.updatedAt === "string"
+            ? triage.updatedAt
+            : new Date(triage.updatedAt).toISOString()
+          : null;
+
       const payload: any = {
         chiefComplaint: formData.chiefComplaint || null,
         onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
@@ -3519,6 +3527,7 @@ function TriageVitalsTab({
         strokeScreen: strokeScreenParsed,
         sepsisScreen: sepsisScreenParsed,
         triageCompleteAt: formData.triageCompleteAt ? new Date(formData.triageCompleteAt).toISOString() : null,
+        lastKnownTriageUpdatedAt,
       };
 
       const res = await apiFetch(`/encounters/${encounter.id}/triage`, {
@@ -3567,7 +3576,15 @@ function TriageVitalsTab({
       });
     } catch (error) {
       console.error("Save error:", error);
-      setSaveFeedback({ text: t("encounterTriageTab.saveFailed"), isError: true });
+      if (isTriageStaleConflictError(error)) {
+        /**
+         * Stale-token 409: another user saved between our load and save. Local form state is
+         * preserved so the clinician keeps their draft; they refresh and re-apply if needed.
+         */
+        setSaveFeedback({ text: t("erTriage.panel.staleConflict"), isError: true });
+      } else {
+        setSaveFeedback({ text: t("encounterTriageTab.saveFailed"), isError: true });
+      }
     } finally {
       setSaving(false);
     }

@@ -50,6 +50,7 @@ import {
   patchMedoraErTriageV1FieldsInVitalsJson,
   type ErTriageV1NursingCarePersistSlice,
 } from "./medoraErTriageV1";
+import { isTriageStaleConflictError } from "./triageConcurrency";
 
 type EncounterLite = {
   id: string;
@@ -1338,6 +1339,12 @@ export function EmergencyNursingReassessmentPanel({
           } else {
             const d = triLatest as Record<string, unknown>;
             const newVitals = patchMedoraErTriageV1FieldsInVitalsJson(d.vitalsJson, triageNursingSlice);
+            const lastKnownTriageUpdatedAt =
+              typeof d.updatedAt === "string"
+                ? d.updatedAt
+                : d.updatedAt
+                  ? new Date(d.updatedAt as string).toISOString()
+                  : null;
             const triPayload: Record<string, unknown> = {
               chiefComplaint: d.chiefComplaint ?? null,
               onsetAt: d.onsetAt ? new Date(d.onsetAt as string).toISOString() : null,
@@ -1346,6 +1353,7 @@ export function EmergencyNursingReassessmentPanel({
               strokeScreen: d.strokeScreen ?? null,
               sepsisScreen: d.sepsisScreen ?? null,
               triageCompleteAt: d.triageCompleteAt ? new Date(d.triageCompleteAt as string).toISOString() : null,
+              lastKnownTriageUpdatedAt,
             };
             await apiFetch(`/encounters/${encounterId}/triage`, {
               method: "PUT",
@@ -1380,9 +1388,19 @@ export function EmergencyNursingReassessmentPanel({
           }
         } catch (e) {
           console.error(e);
-          triageSideError =
-            normalizeUserFacingError(e instanceof Error ? e.message : null) ||
-            t("emergencyNursingReassessment.triageBedsideSaveFailed");
+          if (isTriageStaleConflictError(e)) {
+            /**
+             * Stale-token 409 on the optional triage bedside side-write: the nursing
+             * reassessment write itself already succeeded above. We surface the same shared
+             * refresh prompt so the nurse knows the bedside slice did not land and can
+             * reapply after refresh; their reassessment column is preserved.
+             */
+            triageSideError = t("erTriage.panel.staleConflict");
+          } else {
+            triageSideError =
+              normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+              t("emergencyNursingReassessment.triageBedsideSaveFailed");
+          }
         }
       }
 

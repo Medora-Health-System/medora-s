@@ -20,6 +20,7 @@ import {
 } from "./emergencyTriageDocPreview";
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
 import { erTriageV1FormFromVitalsJson } from "./medoraErTriageV1";
+import { isTriageStaleConflictError } from "./triageConcurrency";
 
 const inputBase: React.CSSProperties = {
   width: "100%",
@@ -158,6 +159,13 @@ export function EmergencyQuickVitalsEditor({
       const strokeScreenParsed = Object.keys(strokeJson).length > 0 ? strokeJson : null;
       const sepsisScreenParsed = Object.keys(sepsisJson).length > 0 ? sepsisJson : null;
 
+      const lastKnownTriageUpdatedAt =
+        typeof latest.updatedAt === "string"
+          ? latest.updatedAt
+          : latest.updatedAt
+            ? new Date(latest.updatedAt as string).toISOString()
+            : null;
+
       const payload: Record<string, unknown> = {
         chiefComplaint: (latest.chiefComplaint as string | undefined)?.trim() || null,
         onsetAt: latest.onsetAt ? new Date(latest.onsetAt as string).toISOString() : null,
@@ -168,6 +176,7 @@ export function EmergencyQuickVitalsEditor({
         triageCompleteAt: latest.triageCompleteAt
           ? new Date(latest.triageCompleteAt as string).toISOString()
           : null,
+        lastKnownTriageUpdatedAt,
       };
 
       const res = await apiFetch(`/encounters/${encounterId}/triage`, {
@@ -203,9 +212,19 @@ export function EmergencyQuickVitalsEditor({
       onClose();
     } catch (e) {
       console.error(e);
-      setMsg(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erQuickVitals.saveError")
-      );
+      if (isTriageStaleConflictError(e)) {
+        /**
+         * Stale-token 409: extremely unlikely on this path because we re-fetch latest right
+         * before saving and vitals-only saves bypass the server guard, but if a concurrent
+         * non-vitals edit slips between our re-fetch and our PUT we still surface the
+         * refresh prompt instead of a generic save error. Local draft is preserved.
+         */
+        setMsg(t("erTriage.panel.staleConflict"));
+      } else {
+        setMsg(
+          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erQuickVitals.saveError")
+        );
+      }
     } finally {
       setSaving(false);
     }

@@ -9,6 +9,8 @@ export const erTriageMessagesFr = {
     saveQueued: "En attente de synchronisation",
     saveOk: "Triage enregistré",
     saveError: "Impossible d'enregistrer le triage.",
+    staleConflict:
+      "Le triage a été mis à jour par un autre utilisateur. Actualisez avant d'enregistrer pour éviter d'écraser ses modifications.",
     updatedLine: "Dernière mise à jour par {user} — {datetime}",
     sectionPlainteGravite: "Plainte et gravité",
     motifPrincipal: "Motif principal",

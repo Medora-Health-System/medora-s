@@ -10,6 +10,7 @@ import {
 } from "../utils/clinical-event-triage-assessment.util";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import { throwTriageConcurrentModification } from "./triage-concurrency.util";
 
 @Injectable()
 export class TriageService {
@@ -134,6 +135,16 @@ export class TriageService {
       strokeScreen?: any;
       sepsisScreen?: any;
       triageCompleteAt?: Date | null;
+      /**
+       * Optional optimistic-concurrency token (ISO string of the `Triage.updatedAt` the caller
+       * loaded). When present AND the save would materially change non-vitals flat fields AND
+       * the existing row's `updatedAt` no longer matches, we reject with 409. Vitals-only saves
+       * and no-op saves bypass this guard so append-only vitals history is never blocked.
+       * Older clients that don't send the token still work — the server simply doesn't enforce
+       * the check (additive rollout). First-save (no existing triage row) also bypasses the
+       * check because there is no prior content to overwrite.
+       */
+      lastKnownTriageUpdatedAt?: string | null;
     },
     userId?: string,
     ip?: string,
@@ -153,6 +164,54 @@ export class TriageService {
     const existing = await this.prisma.triage.findUnique({
       where: { encounterId },
     });
+
+    /**
+     * Optimistic-concurrency guard for non-vitals triage flat fields (multi-user safety).
+     *
+     * Pre-existing behavior: triage upsert is a single-row last-writer-wins operation. Two
+     * users opening the same triage and saving in parallel could silently overwrite each
+     * other's `chiefComplaint`, `esi`, `strokeScreen`, `sepsisScreen`, `onsetAt`, or
+     * `triageCompleteAt`. ESI and screening flags are clinical-priority drivers — silent
+     * overwrite is unsafe.
+     *
+     * New behavior: when the caller sends `lastKnownTriageUpdatedAt` AND a triage row already
+     * exists AND the candidate save would materially change non-vitals flat fields AND the
+     * stored `updatedAt` no longer matches the token, we throw a 409 with code
+     * `TRIAGE_CONCURRENT_MODIFICATION`. The frontend prompts the user to refresh; the local
+     * draft is preserved so no work is lost.
+     *
+     * Vitals are intentionally excluded from this check — they already have an append-only
+     * history (`TriageVitalsReading` + `VITALS_RECORDED`) and merging is done by the caller
+     * against the latest server state. A vitals-only save (no flat-field change) skips the
+     * guard so the quick-vitals editor and re-fetched bedside flow continue to work even when
+     * a token mismatch would otherwise trip.
+     *
+     * No-op saves (no flat-field change) also skip the guard to avoid spurious 409s on a
+     * client that simply re-saves the loaded form.
+     *
+     * No schema/migration changes: `Triage.updatedAt` (`@updatedAt`) already exists.
+     */
+    if (existing && typeof data.lastKnownTriageUpdatedAt === "string" && data.lastKnownTriageUpdatedAt.trim()) {
+      const candidateNext = {
+        chiefComplaint:
+          data.chiefComplaint !== undefined ? data.chiefComplaint : existing.chiefComplaint,
+        esi: data.esi !== undefined ? data.esi : existing.esi,
+        onsetAt: data.onsetAt !== undefined ? data.onsetAt : existing.onsetAt,
+        strokeScreen:
+          data.strokeScreen !== undefined ? data.strokeScreen : existing.strokeScreen,
+        sepsisScreen:
+          data.sepsisScreen !== undefined ? data.sepsisScreen : existing.sepsisScreen,
+        triageCompleteAt:
+          data.triageCompleteAt !== undefined ? data.triageCompleteAt : existing.triageCompleteAt,
+      };
+      const flatFieldsChanging = triageAssessmentSnapshotChanged(existing, candidateNext);
+      if (flatFieldsChanging) {
+        const existingIso = existing.updatedAt.toISOString();
+        if (existingIso !== data.lastKnownTriageUpdatedAt.trim()) {
+          throwTriageConcurrentModification();
+        }
+      }
+    }
 
     const triageData: any = {
       encounterId,

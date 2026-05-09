@@ -9,6 +9,8 @@ export const erTriageMessagesEn = {
     saveQueued: "Saved locally. Pending sync.",
     saveOk: "Triage saved",
     saveError: "Could not save triage.",
+    staleConflict:
+      "Triage was updated by another user. Refresh before saving to avoid overwriting their changes.",
     updatedLine: "Last updated by {user} — {datetime}",
     sectionPlainteGravite: "Chief complaint and acuity",
     motifPrincipal: "Chief complaint",

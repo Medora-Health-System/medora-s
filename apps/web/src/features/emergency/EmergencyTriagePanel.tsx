@@ -34,6 +34,7 @@ import {
 } from "./emergencyTriageDocPreview";
 import { EmergencyTriageV1Sections } from "./EmergencyTriageV1Sections";
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
+import { isTriageStaleConflictError } from "./triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
 import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds } from "@medora/shared";
 import {
@@ -343,6 +344,13 @@ export function EmergencyTriagePanel({
     try {
       const vitalsMerged = mergeVitalsJsonForSave(triage?.vitalsJson, formData);
 
+      const lastKnownTriageUpdatedAt =
+        triage?.updatedAt && typeof triage.updatedAt === "string"
+          ? triage.updatedAt
+          : triage?.updatedAt
+            ? new Date(triage.updatedAt as string).toISOString()
+            : null;
+
       const payload: Record<string, unknown> = {
         chiefComplaint: formData.chiefComplaint.trim() || null,
         onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
@@ -351,6 +359,7 @@ export function EmergencyTriagePanel({
         strokeScreen: strokeScreenParsed,
         sepsisScreen: sepsisScreenParsed,
         triageCompleteAt: formData.triageCompleteAt ? new Date(formData.triageCompleteAt).toISOString() : null,
+        lastKnownTriageUpdatedAt,
       };
 
       const res = await apiFetch(`/encounters/${encounter.id}/triage`, {
@@ -397,9 +406,18 @@ export function EmergencyTriagePanel({
       setSaveInfo(baseMsg);
     } catch (e) {
       console.error(e);
-      setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erTriage.panel.saveError")
-      );
+      if (isTriageStaleConflictError(e)) {
+        /**
+         * Stale-token 409: another user saved triage between our load and save. The local form
+         * state is intentionally NOT reset — the clinician keeps their draft. They reload to
+         * fetch the latest server state, then re-apply their changes if still relevant.
+         */
+        setSaveInfo(t("erTriage.panel.staleConflict"));
+      } else {
+        setSaveInfo(
+          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erTriage.panel.saveError")
+        );
+      }
     } finally {
       setSaving(false);
     }

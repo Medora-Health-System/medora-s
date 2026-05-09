@@ -43,6 +43,10 @@ export class TriageController {
         strokeScreen: body.strokeScreen,
         sepsisScreen: body.sepsisScreen,
         triageCompleteAt: body.triageCompleteAt ? new Date(body.triageCompleteAt) : null,
+        lastKnownTriageUpdatedAt:
+          typeof body.lastKnownTriageUpdatedAt === "string"
+            ? body.lastKnownTriageUpdatedAt
+            : null,
       },
       req.user?.userId,
       req.ip,
