@@ -384,7 +384,53 @@ function buildReassessmentHistoryEntries(
       narrativeExcerpt,
     });
   }
+  /**
+   * Order newest-first by **effective clinical timestamp** so the Summary's "Actuel" entry
+   * matches the flowsheet header logic (which already renders `documentedAt ?? createdAt`).
+   *
+   * The append-only events endpoint returns rows ordered by system `createdAt: desc`. That
+   * ordering can diverge from the clinical timeline because the only mutable code path on the
+   * backend — same-user, same-session, in-place UPDATE within the recency window
+   * (`apps/api/src/encounters/encounters.service.ts`) — leaves `createdAt` pinned at the row's
+   * original save time while advancing `documentedAt` (the nurse-entered reassessmentAt). A row
+   * opened earlier can therefore carry a later clinical timestamp than a row opened later, and
+   * picking `[0]` straight from API order would tag the wrong entry as "Actuel".
+   *
+   * Tie-break by `savedAt` so two rows with no `documentedAt` keep their server-time ordering.
+   * Stable across renders because both fields come directly from the immutable event payload.
+   *
+   * Append-only safety: this is a pure read-side reorder of an in-memory array. No event row is
+   * mutated, deleted, or re-attributed; performer identity stays bound to its row.
+   */
+  out.sort((a, b) => {
+    const aMs = effectiveReassessmentTimestampMs(a.documentedAt, a.savedAt);
+    const bMs = effectiveReassessmentTimestampMs(b.documentedAt, b.savedAt);
+    if (aMs === bMs) return 0;
+    return bMs - aMs;
+  });
   return out;
+}
+
+/**
+ * Resolve the comparable millisecond timestamp for a reassessment history entry, preferring the
+ * clinically-entered `documentedAt` and falling back to the server `savedAt` (= row `createdAt`).
+ * Unparseable / missing values sort to the bottom (`-Infinity`) so they never falsely steal the
+ * "Actuel" slot from a row with a real timestamp. Mirrors the display fallback chain used by the
+ * history card and by the bedside flowsheet header.
+ */
+function effectiveReassessmentTimestampMs(
+  documentedAt: string | null,
+  savedAt: string
+): number {
+  const candidates = [documentedAt, savedAt];
+  for (const c of candidates) {
+    if (typeof c !== "string") continue;
+    const trimmed = c.trim();
+    if (!trimmed) continue;
+    const ms = Date.parse(trimmed);
+    if (!Number.isNaN(ms)) return ms;
+  }
+  return Number.NEGATIVE_INFINITY;
 }
 
 function payloadSnapshot(entry: ClinicalDocumentationEventApiEntry): Record<string, unknown> | null {
