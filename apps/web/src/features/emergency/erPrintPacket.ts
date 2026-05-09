@@ -196,6 +196,10 @@ export function getErPrintPacketHtml(params: {
   nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
   providerMseEntries?: ErPrintDocumentationHistoryEntry[] | null;
   handoffEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  dischargeSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  admissionSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  dispositionSupplementEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  triageAssessmentEntries?: ErPrintDocumentationHistoryEntry[] | null;
 }): string {
   const {
     patient,
@@ -207,6 +211,10 @@ export function getErPrintPacketHtml(params: {
     nursingReassessmentEntries,
     providerMseEntries,
     handoffEntries,
+    dischargeSummaryEntries,
+    admissionSummaryEntries,
+    dispositionSupplementEntries,
+    triageAssessmentEntries,
   } = params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
@@ -285,6 +293,15 @@ export function getErPrintPacketHtml(params: {
   }
   body.push(`</div>`);
 
+  if (Array.isArray(triageAssessmentEntries) && triageAssessmentEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionTriageAssessmentHistory"));
+    appendDocumentationHistoryBlock(body, language, loc, triageAssessmentEntries, {
+      entryHeaderKey: "printOutput.erPacket.triageAssessmentEntryHeader",
+      entryLatestHeaderKey: "printOutput.erPacket.triageAssessmentEntryLatestHeader",
+      emptyKey: "printOutput.erPacket.triageAssessmentEntryEmpty",
+    });
+  }
+
   if (outcome === "ADMISSION") {
     body.push(h2(language, "printOutput.erPacket.sectionAdmissionClinical"));
     if (adm) {
@@ -346,6 +363,33 @@ export function getErPrintPacketHtml(params: {
 
   body.push(h2(language, "printOutput.erPacket.sectionHandoff"));
   appendHandoffBlock(body, language, loc, handoff);
+
+  if (Array.isArray(dischargeSummaryEntries) && dischargeSummaryEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionDischargeSummaryHistory"));
+    appendDocumentationHistoryBlock(body, language, loc, dischargeSummaryEntries, {
+      entryHeaderKey: "printOutput.erPacket.dischargeSummaryEntryHeader",
+      entryLatestHeaderKey: "printOutput.erPacket.dischargeSummaryEntryLatestHeader",
+      emptyKey: "printOutput.erPacket.dischargeSummaryEntryEmpty",
+    });
+  }
+
+  if (Array.isArray(admissionSummaryEntries) && admissionSummaryEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionAdmissionSummaryHistory"));
+    appendDocumentationHistoryBlock(body, language, loc, admissionSummaryEntries, {
+      entryHeaderKey: "printOutput.erPacket.admissionSummaryEntryHeader",
+      entryLatestHeaderKey: "printOutput.erPacket.admissionSummaryEntryLatestHeader",
+      emptyKey: "printOutput.erPacket.admissionSummaryEntryEmpty",
+    });
+  }
+
+  if (Array.isArray(dispositionSupplementEntries) && dispositionSupplementEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionDispositionSupplementHistory"));
+    appendDocumentationHistoryBlock(body, language, loc, dispositionSupplementEntries, {
+      entryHeaderKey: "printOutput.erPacket.dispositionSupplementEntryHeader",
+      entryLatestHeaderKey: "printOutput.erPacket.dispositionSupplementEntryLatestHeader",
+      emptyKey: "printOutput.erPacket.dispositionSupplementEntryEmpty",
+    });
+  }
 
   if (Array.isArray(providerMseEntries) && providerMseEntries.length > 0) {
     body.push(h2(language, "printOutput.erPacket.sectionProviderMseHistory"));
@@ -683,6 +727,10 @@ export function printErPacket(params: {
   nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
   providerMseEntries?: ErPrintDocumentationHistoryEntry[] | null;
   handoffEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  dischargeSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  admissionSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  dispositionSupplementEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  triageAssessmentEntries?: ErPrintDocumentationHistoryEntry[] | null;
 }): void {
   const win = window.open("", "_blank");
   if (!win) {

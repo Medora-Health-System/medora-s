@@ -3906,6 +3906,18 @@ export default {
     handoffHistoryTitle: "Nursing handoffs — history",
     handoffHistorySubline:
       "Each entry preserves the original author and saved time.",
+    dischargeSummaryHistoryTitle: "Discharge — history",
+    dischargeSummaryHistorySubline:
+      "Saved discharge record versions, newest first.",
+    admissionSummaryHistoryTitle: "Admission — history",
+    admissionSummaryHistorySubline:
+      "Saved admission record versions, newest first.",
+    dispositionSupplementHistoryTitle: "Disposition supplement — history",
+    dispositionSupplementHistorySubline:
+      "Supplemental disposition notes preserved with their original author.",
+    triageAssessmentHistoryTitle: "Triage — history",
+    triageAssessmentHistorySubline:
+      "Non-vitals triage changes preserved with their original author.",
     documentationHistoryCurrent: "Current",
     documentationHistoryEmptyEntry:
       "No structured or narrative content saved for this entry.",
@@ -5745,6 +5757,22 @@ export default {
       handoffHistoryEntryHeader: "{datetime} — {author}",
       handoffHistoryEntryLatestHeader: "{datetime} (Current) — {author}",
       handoffHistoryEntryEmpty: "No structured or narrative content saved for this handoff.",
+      sectionDischargeSummaryHistory: "Discharge — history",
+      dischargeSummaryEntryHeader: "{datetime} — {author}",
+      dischargeSummaryEntryLatestHeader: "{datetime} (Current) — {author}",
+      dischargeSummaryEntryEmpty: "No structured content saved for this discharge version.",
+      sectionAdmissionSummaryHistory: "Admission — history",
+      admissionSummaryEntryHeader: "{datetime} — {author}",
+      admissionSummaryEntryLatestHeader: "{datetime} (Current) — {author}",
+      admissionSummaryEntryEmpty: "No structured content saved for this admission version.",
+      sectionDispositionSupplementHistory: "Disposition supplement — history",
+      dispositionSupplementEntryHeader: "{datetime} — {author}",
+      dispositionSupplementEntryLatestHeader: "{datetime} (Current) — {author}",
+      dispositionSupplementEntryEmpty: "No supplemental note saved for this version.",
+      sectionTriageAssessmentHistory: "Triage — history",
+      triageAssessmentEntryHeader: "{datetime} — {author}",
+      triageAssessmentEntryLatestHeader: "{datetime} (Current) — {author}",
+      triageAssessmentEntryEmpty: "No triage content saved for this version.",
       sectionNursingReassessmentHistory: "Nursing reassessments — history",
       nursingReassessmentEntryHeader: "{datetime} — {author}",
       nursingReassessmentEntryLatestHeader: "{datetime} (Current) — {author}",

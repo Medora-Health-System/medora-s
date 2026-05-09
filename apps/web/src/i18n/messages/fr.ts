@@ -3875,6 +3875,18 @@ export default {
     handoffHistoryTitle: "Passations infirmières — historique",
     handoffHistorySubline:
       "Chaque entrée conserve l'auteur d'origine et l'heure enregistrée.",
+    dischargeSummaryHistoryTitle: "Sortie — historique",
+    dischargeSummaryHistorySubline:
+      "Versions enregistrées du dossier de sortie, de la plus récente à la plus ancienne.",
+    admissionSummaryHistoryTitle: "Admission — historique",
+    admissionSummaryHistorySubline:
+      "Versions enregistrées du dossier d'admission, de la plus récente à la plus ancienne.",
+    dispositionSupplementHistoryTitle: "Disposition — historique complémentaire",
+    dispositionSupplementHistorySubline:
+      "Notes complémentaires de disposition conservées avec leur auteur d'origine.",
+    triageAssessmentHistoryTitle: "Triage — historique",
+    triageAssessmentHistorySubline:
+      "Changements de triage hors signes vitaux, conservés avec leur auteur d'origine.",
     documentationHistoryCurrent: "Actuel",
     documentationHistoryEmptyEntry:
       "Aucune valeur structurée ou narrative enregistrée pour cette entrée.",
@@ -5722,6 +5734,22 @@ export default {
       handoffHistoryEntryHeader: "{datetime} — {author}",
       handoffHistoryEntryLatestHeader: "{datetime} (Actuel) — {author}",
       handoffHistoryEntryEmpty: "Aucune valeur structurée ou narrative enregistrée pour cette passation.",
+      sectionDischargeSummaryHistory: "Sortie — historique",
+      dischargeSummaryEntryHeader: "{datetime} — {author}",
+      dischargeSummaryEntryLatestHeader: "{datetime} (Actuel) — {author}",
+      dischargeSummaryEntryEmpty: "Aucune valeur structurée enregistrée pour cette version de sortie.",
+      sectionAdmissionSummaryHistory: "Admission — historique",
+      admissionSummaryEntryHeader: "{datetime} — {author}",
+      admissionSummaryEntryLatestHeader: "{datetime} (Actuel) — {author}",
+      admissionSummaryEntryEmpty: "Aucune valeur structurée enregistrée pour cette version d'admission.",
+      sectionDispositionSupplementHistory: "Disposition — historique complémentaire",
+      dispositionSupplementEntryHeader: "{datetime} — {author}",
+      dispositionSupplementEntryLatestHeader: "{datetime} (Actuel) — {author}",
+      dispositionSupplementEntryEmpty: "Aucune note complémentaire enregistrée pour cette version.",
+      sectionTriageAssessmentHistory: "Triage — historique",
+      triageAssessmentEntryHeader: "{datetime} — {author}",
+      triageAssessmentEntryLatestHeader: "{datetime} (Actuel) — {author}",
+      triageAssessmentEntryEmpty: "Aucune valeur de triage enregistrée pour cette version.",
       sectionNursingReassessmentHistory: "Réévaluations infirmières — historique",
       nursingReassessmentEntryHeader: "{datetime} — {author}",
       nursingReassessmentEntryLatestHeader: "{datetime} (Actuel) — {author}",

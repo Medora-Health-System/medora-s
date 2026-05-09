@@ -159,6 +159,10 @@ export function EmergencyErSummaryClosureSurface({
     let nursingReassessmentEntries: ErPrintReassessmentEntry[] | null = null;
     let providerMseEntries: ErPrintDocumentationHistoryEntry[] | null = null;
     let handoffEntries: ErPrintDocumentationHistoryEntry[] | null = null;
+    let dischargeSummaryEntries: ErPrintDocumentationHistoryEntry[] | null = null;
+    let admissionSummaryEntries: ErPrintDocumentationHistoryEntry[] | null = null;
+    let dispositionSupplementEntries: ErPrintDocumentationHistoryEntry[] | null = null;
+    let triageAssessmentEntries: ErPrintDocumentationHistoryEntry[] | null = null;
     try {
       const data = await apiFetch(`/encounters/${encounterId}/nursing-reassessment-events`, {
         facilityId,
@@ -197,7 +201,7 @@ export function EmergencyErSummaryClosureSurface({
     }
     try {
       const data = await apiFetch(
-        `/encounters/${encounterId}/clinical-documentation-events?types=PROVIDER_MSE_SAVED,HANDOFF_NURSING`,
+        `/encounters/${encounterId}/clinical-documentation-events?types=PROVIDER_MSE_SAVED,HANDOFF_NURSING,DISCHARGE_SUMMARY_SAVED,ADMISSION_SUMMARY_SAVED,DISPOSITION_SUPPLEMENT_SAVED,TRIAGE_ASSESSMENT_SAVED`,
         { facilityId }
       );
       const entries =
@@ -213,8 +217,8 @@ export function EmergencyErSummaryClosureSurface({
           null,
           entries as ClinicalDocumentationEventApiEntry[]
         );
-        if (model.providerMseHistory.length > 0) {
-          providerMseEntries = model.providerMseHistory.map((e) => ({
+        const toPrintEntries = (history: typeof model.providerMseHistory): ErPrintDocumentationHistoryEntry[] =>
+          history.map((e) => ({
             documentedAt: e.documentedAt,
             savedAt: e.savedAt,
             performerDisplayName: e.performerDisplayName,
@@ -223,21 +227,27 @@ export function EmergencyErSummaryClosureSurface({
             structuredLines: e.structuredLines,
             narrativeExcerpt: e.narrativeExcerpt,
           }));
+        if (model.providerMseHistory.length > 0) {
+          providerMseEntries = toPrintEntries(model.providerMseHistory);
         }
         if (model.handoffHistory.length > 0) {
-          handoffEntries = model.handoffHistory.map((e) => ({
-            documentedAt: e.documentedAt,
-            savedAt: e.savedAt,
-            performerDisplayName: e.performerDisplayName,
-            performerInitials: e.performerInitials,
-            performerRoleTitle: e.performerRoleTitle,
-            structuredLines: e.structuredLines,
-            narrativeExcerpt: e.narrativeExcerpt,
-          }));
+          handoffEntries = toPrintEntries(model.handoffHistory);
+        }
+        if (model.dischargeSummaryHistory.length > 0) {
+          dischargeSummaryEntries = toPrintEntries(model.dischargeSummaryHistory);
+        }
+        if (model.admissionSummaryHistory.length > 0) {
+          admissionSummaryEntries = toPrintEntries(model.admissionSummaryHistory);
+        }
+        if (model.dispositionSupplementHistory.length > 0) {
+          dispositionSupplementEntries = toPrintEntries(model.dispositionSupplementHistory);
+        }
+        if (model.triageAssessmentHistory.length > 0) {
+          triageAssessmentEntries = toPrintEntries(model.triageAssessmentHistory);
         }
       }
     } catch {
-      /* Non-fatal: print proceeds without Provider MSE / handoff history sections. */
+      /* Non-fatal: print proceeds without documentation history sections. */
     }
     printErPacket({
       patient: p,
@@ -259,6 +269,10 @@ export function EmergencyErSummaryClosureSurface({
       nursingReassessmentEntries,
       providerMseEntries,
       handoffEntries,
+      dischargeSummaryEntries,
+      admissionSummaryEntries,
+      dispositionSupplementEntries,
+      triageAssessmentEntries,
     });
   }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot]);
 

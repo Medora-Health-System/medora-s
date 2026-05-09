@@ -82,7 +82,13 @@ export type VisitSummaryReassessmentEntry = {
 
 export type VisitSummaryDocumentationHistoryEntry = {
   id: string;
-  eventType: "PROVIDER_MSE_SAVED" | "HANDOFF_NURSING";
+  eventType:
+    | "PROVIDER_MSE_SAVED"
+    | "HANDOFF_NURSING"
+    | "DISCHARGE_SUMMARY_SAVED"
+    | "ADMISSION_SUMMARY_SAVED"
+    | "DISPOSITION_SUPPLEMENT_SAVED"
+    | "TRIAGE_ASSESSMENT_SAVED";
   documentedAt: string | null;
   savedAt: string;
   displayWhen: string;
@@ -116,6 +122,14 @@ export type EmergencyVisitSummaryModel = {
   providerMseLatestId: string | null;
   handoffHistory: VisitSummaryDocumentationHistoryEntry[];
   handoffLatestId: string | null;
+  dischargeSummaryHistory: VisitSummaryDocumentationHistoryEntry[];
+  dischargeSummaryLatestId: string | null;
+  admissionSummaryHistory: VisitSummaryDocumentationHistoryEntry[];
+  admissionSummaryLatestId: string | null;
+  dispositionSupplementHistory: VisitSummaryDocumentationHistoryEntry[];
+  dispositionSupplementLatestId: string | null;
+  triageAssessmentHistory: VisitSummaryDocumentationHistoryEntry[];
+  triageAssessmentLatestId: string | null;
 };
 
 const MAX_LINE = 420;
@@ -374,14 +388,22 @@ function buildReassessmentHistoryEntries(
 }
 
 function payloadSnapshot(entry: ClinicalDocumentationEventApiEntry): Record<string, unknown> | null {
-  const payload =
-    entry.payloadJson && typeof entry.payloadJson === "object" && !Array.isArray(entry.payloadJson)
-      ? (entry.payloadJson as Record<string, unknown>)
-      : null;
+  const payload = payloadObject(entry);
   const snapshot = payload?.snapshot;
   return snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
     ? (snapshot as Record<string, unknown>)
     : null;
+}
+
+function payloadObject(entry: ClinicalDocumentationEventApiEntry): Record<string, unknown> | null {
+  return entry.payloadJson && typeof entry.payloadJson === "object" && !Array.isArray(entry.payloadJson)
+    ? (entry.payloadJson as Record<string, unknown>)
+    : null;
+}
+
+function payloadSavedAt(entry: ClinicalDocumentationEventApiEntry): string | null {
+  const payload = payloadObject(entry);
+  return typeof payload?.savedAt === "string" && payload.savedAt.trim() ? payload.savedAt.trim() : null;
 }
 
 function createdByDisplayName(entry: ClinicalDocumentationEventApiEntry): string {
@@ -449,6 +471,24 @@ function buildHandoffLinesFromStored(
     hLines.push(interpolate(vs(locale, "handoffLineNote"), { text: trunc(hf.handoffNote, 360) }));
   }
   return hLines;
+}
+
+function structuredLinesFromSections(
+  sections: { id: string; lines: string[] }[],
+  maxLines = HISTORY_STRUCTURED_LINES_MAX
+): string[] {
+  const structuredLines: string[] = [];
+  for (const sec of sections) {
+    if (sec.id === "empty") continue;
+    for (const ln of sec.lines) {
+      const t = ln.trim();
+      if (!t) continue;
+      structuredLines.push(trunc(t, 200));
+      if (structuredLines.length >= maxLines) break;
+    }
+    if (structuredLines.length >= maxLines) break;
+  }
+  return structuredLines;
 }
 
 function buildProviderMseHistoryEntries(
@@ -529,6 +569,173 @@ function buildHandoffHistoryEntries(
       performerRoleTitle: performer.roleTitle,
       structuredLines: buildHandoffLinesFromStored(hf, locale).slice(0, HISTORY_STRUCTURED_LINES_MAX),
       narrativeExcerpt: trunc(hf.handoffNote ?? "", HISTORY_NARRATIVE_MAX),
+    });
+  }
+  return out;
+}
+
+function buildDischargeSummaryHistoryEntries(
+  events: ClinicalDocumentationEventApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryDocumentationHistoryEntry[] {
+  const out: VisitSummaryDocumentationHistoryEntry[] = [];
+  const emptyAdmission = hydrateAdmissionFormFromEncounterJson(null, "");
+  const emptySupplement = erDispositionSupplementFromEncounter(null);
+  for (const e of events) {
+    if (e.eventType !== "DISCHARGE_SUMMARY_SAVED") continue;
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = payloadSavedAt(e) ?? (typeof e.createdAt === "string" ? e.createdAt : "");
+    if (!id || !savedAt) continue;
+    const snapshot = payloadSnapshot(e);
+    const dischargeForm = hydrateDischargeFormFromEncounterJson(snapshot);
+    const outcome = inferOutcomeUiFromForms(dischargeForm.dischargeMode, emptySupplement);
+    const modeLabel = localizedErDischargeModeLabel(dischargeForm.dischargeMode, emptySupplement, locale);
+    const preview = buildErDispositionPreviewModel(
+      dischargeForm,
+      emptyAdmission,
+      emptySupplement,
+      outcome,
+      dispositionPreviewLabelsFromLocale(locale),
+      modeLabel
+    );
+    const performer = performerFromEntry(e, snapshot);
+    out.push({
+      id,
+      eventType: "DISCHARGE_SUMMARY_SAVED",
+      documentedAt: savedAt,
+      savedAt,
+      displayWhen: formatIsoForLocale(savedAt, locale),
+      performerDisplayName: performer.displayName,
+      performerInitials: performer.initials,
+      performerRoleTitle: performer.roleTitle,
+      structuredLines: structuredLinesFromSections(preview.sections),
+      narrativeExcerpt: trunc(preview.headline, HISTORY_NARRATIVE_MAX),
+    });
+  }
+  return out;
+}
+
+function buildAdmissionSummaryHistoryEntries(
+  events: ClinicalDocumentationEventApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryDocumentationHistoryEntry[] {
+  const out: VisitSummaryDocumentationHistoryEntry[] = [];
+  const emptyDischarge = hydrateDischargeFormFromEncounterJson(null);
+  const emptySupplement = erDispositionSupplementFromEncounter(null);
+  for (const e of events) {
+    if (e.eventType !== "ADMISSION_SUMMARY_SAVED") continue;
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = payloadSavedAt(e) ?? (typeof e.createdAt === "string" ? e.createdAt : "");
+    if (!id || !savedAt) continue;
+    const snapshot = payloadSnapshot(e);
+    const admissionForm = hydrateAdmissionFormFromEncounterJson(snapshot, "");
+    const preview = buildErDispositionPreviewModel(
+      emptyDischarge,
+      admissionForm,
+      emptySupplement,
+      "ADMISSION",
+      dispositionPreviewLabelsFromLocale(locale),
+      ""
+    );
+    const performer = performerFromEntry(e, snapshot);
+    out.push({
+      id,
+      eventType: "ADMISSION_SUMMARY_SAVED",
+      documentedAt: savedAt,
+      savedAt,
+      displayWhen: formatIsoForLocale(savedAt, locale),
+      performerDisplayName: performer.displayName,
+      performerInitials: performer.initials,
+      performerRoleTitle: performer.roleTitle,
+      structuredLines: structuredLinesFromSections(preview.sections),
+      narrativeExcerpt: trunc(preview.headline, HISTORY_NARRATIVE_MAX),
+    });
+  }
+  return out;
+}
+
+function buildDispositionSupplementHistoryEntries(
+  events: ClinicalDocumentationEventApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryDocumentationHistoryEntry[] {
+  const out: VisitSummaryDocumentationHistoryEntry[] = [];
+  const emptyDischarge = hydrateDischargeFormFromEncounterJson(null);
+  const emptyAdmission = hydrateAdmissionFormFromEncounterJson(null, "");
+  for (const e of events) {
+    if (e.eventType !== "DISPOSITION_SUPPLEMENT_SAVED") continue;
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = payloadSavedAt(e) ?? (typeof e.createdAt === "string" ? e.createdAt : "");
+    if (!id || !savedAt) continue;
+    const snapshot = payloadSnapshot(e);
+    const wrapped = snapshot ? ({ erDispositionV1: snapshot } as Record<string, unknown>) : null;
+    const supplement = erDispositionSupplementFromEncounter(wrapped);
+    const preview = buildErDispositionPreviewModel(
+      emptyDischarge,
+      emptyAdmission,
+      supplement,
+      "OTHER",
+      dispositionPreviewLabelsFromLocale(locale),
+      ""
+    );
+    const signature =
+      snapshot?.signature && typeof snapshot.signature === "object" && !Array.isArray(snapshot.signature)
+        ? (snapshot.signature as Record<string, unknown>)
+        : null;
+    const documentedAt =
+      typeof signature?.savedAt === "string" && signature.savedAt.trim() ? signature.savedAt.trim() : savedAt;
+    const performer = performerFromEntry(e, snapshot);
+    out.push({
+      id,
+      eventType: "DISPOSITION_SUPPLEMENT_SAVED",
+      documentedAt,
+      savedAt,
+      displayWhen: formatIsoForLocale(documentedAt, locale),
+      performerDisplayName: performer.displayName,
+      performerInitials: performer.initials,
+      performerRoleTitle: performer.roleTitle,
+      structuredLines: structuredLinesFromSections(preview.sections),
+      narrativeExcerpt: trunc(preview.headline, HISTORY_NARRATIVE_MAX),
+    });
+  }
+  return out;
+}
+
+function buildTriageAssessmentHistoryEntries(
+  events: ClinicalDocumentationEventApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryDocumentationHistoryEntry[] {
+  const out: VisitSummaryDocumentationHistoryEntry[] = [];
+  for (const e of events) {
+    if (e.eventType !== "TRIAGE_ASSESSMENT_SAVED") continue;
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = payloadSavedAt(e) ?? (typeof e.createdAt === "string" ? e.createdAt : "");
+    if (!id || !savedAt) continue;
+    const snapshot = payloadSnapshot(e);
+    const parsed = triagePreviewSliceFromTriageGet(snapshot, locale);
+    const performer = performerFromEntry(e, snapshot);
+    let structuredLines: string[] = [];
+    let narrativeExcerpt = "";
+    if (parsed) {
+      const preview = buildTriageDocumentationPreviewModel(parsed.slice, {
+        strokeScreen: snapshot?.strokeScreen,
+        sepsisScreen: snapshot?.sepsisScreen,
+        erV1: parsed.er,
+        locale,
+      });
+      structuredLines = structuredLinesFromSections(preview.sections);
+      narrativeExcerpt = trunc(preview.narrative, HISTORY_NARRATIVE_MAX);
+    }
+    out.push({
+      id,
+      eventType: "TRIAGE_ASSESSMENT_SAVED",
+      documentedAt: savedAt,
+      savedAt,
+      displayWhen: formatIsoForLocale(savedAt, locale),
+      performerDisplayName: performer.displayName,
+      performerInitials: performer.initials,
+      performerRoleTitle: performer.roleTitle,
+      structuredLines,
+      narrativeExcerpt,
     });
   }
   return out;
@@ -819,6 +1026,15 @@ export function buildEmergencyVisitSummaryModel(
   const providerMseLatestId = providerMseHistory.length > 0 ? providerMseHistory[0].id : null;
   const handoffHistory = buildHandoffHistoryEntries(documentationEvents, locale);
   const handoffLatestId = handoffHistory.length > 0 ? handoffHistory[0].id : null;
+  const dischargeSummaryHistory = buildDischargeSummaryHistoryEntries(documentationEvents, locale);
+  const dischargeSummaryLatestId = dischargeSummaryHistory.length > 0 ? dischargeSummaryHistory[0].id : null;
+  const admissionSummaryHistory = buildAdmissionSummaryHistoryEntries(documentationEvents, locale);
+  const admissionSummaryLatestId = admissionSummaryHistory.length > 0 ? admissionSummaryHistory[0].id : null;
+  const dispositionSupplementHistory = buildDispositionSupplementHistoryEntries(documentationEvents, locale);
+  const dispositionSupplementLatestId =
+    dispositionSupplementHistory.length > 0 ? dispositionSupplementHistory[0].id : null;
+  const triageAssessmentHistory = buildTriageAssessmentHistoryEntries(documentationEvents, locale);
+  const triageAssessmentLatestId = triageAssessmentHistory.length > 0 ? triageAssessmentHistory[0].id : null;
 
   return {
     motifPresentation,
@@ -836,5 +1052,13 @@ export function buildEmergencyVisitSummaryModel(
     providerMseLatestId,
     handoffHistory,
     handoffLatestId,
+    dischargeSummaryHistory,
+    dischargeSummaryLatestId,
+    admissionSummaryHistory,
+    admissionSummaryLatestId,
+    dispositionSupplementHistory,
+    dispositionSupplementLatestId,
+    triageAssessmentHistory,
+    triageAssessmentLatestId,
   };
 }

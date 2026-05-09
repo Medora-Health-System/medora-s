@@ -445,7 +445,7 @@ export function EmergencyVisitSummaryPanel({
     (async () => {
       try {
         const data = await apiFetch(
-          `/encounters/${encounterId}/clinical-documentation-events?types=PROVIDER_MSE_SAVED,HANDOFF_NURSING`,
+          `/encounters/${encounterId}/clinical-documentation-events?types=PROVIDER_MSE_SAVED,HANDOFF_NURSING,DISCHARGE_SUMMARY_SAVED,ADMISSION_SUMMARY_SAVED,DISPOSITION_SUPPLEMENT_SAVED,TRIAGE_ASSESSMENT_SAVED`,
           { facilityId }
         );
         if (cancelled) return;
@@ -493,7 +493,11 @@ export function EmergencyVisitSummaryPanel({
         model.timeline.length > 0 ||
         model.nursingReassessmentHistory.length > 0 ||
         model.providerMseHistory.length > 0 ||
-        model.handoffHistory.length > 0
+        model.handoffHistory.length > 0 ||
+        model.dischargeSummaryHistory.length > 0 ||
+        model.admissionSummaryHistory.length > 0 ||
+        model.dispositionSupplementHistory.length > 0 ||
+        model.triageAssessmentHistory.length > 0
     );
   }, [model]);
 
@@ -559,6 +563,16 @@ export function EmergencyVisitSummaryPanel({
           <SummaryBlockCard accent="#2563eb" block={model.motifPresentation} />
         ) : null}
         {model.triageResume ? <SummaryBlockCard accent="#b91c1c" block={model.triageResume} /> : null}
+        {model.triageAssessmentHistory.length > 0 ? (
+          <DocumentationHistoryCard
+            accent="#b91c1c"
+            entries={model.triageAssessmentHistory}
+            latestEntryId={model.triageAssessmentLatestId}
+            title={t("emergencyVisitSummaryPanel.triageAssessmentHistoryTitle")}
+            subline={t("emergencyVisitSummaryPanel.triageAssessmentHistorySubline")}
+            t={t}
+          />
+        ) : null}
         {model.resumeInfirmier ? <SummaryBlockCard accent="#0ea5e9" block={model.resumeInfirmier} /> : null}
         {/**
          * Nursing reassessment history (append-only). Renders one card per persisted column,
@@ -643,6 +657,36 @@ export function EmergencyVisitSummaryPanel({
         ) : null}
 
         {model.disposition ? <SummaryBlockCard accent="#64748b" block={model.disposition} /> : null}
+        {model.dischargeSummaryHistory.length > 0 ? (
+          <DocumentationHistoryCard
+            accent="#64748b"
+            entries={model.dischargeSummaryHistory}
+            latestEntryId={model.dischargeSummaryLatestId}
+            title={t("emergencyVisitSummaryPanel.dischargeSummaryHistoryTitle")}
+            subline={t("emergencyVisitSummaryPanel.dischargeSummaryHistorySubline")}
+            t={t}
+          />
+        ) : null}
+        {model.admissionSummaryHistory.length > 0 ? (
+          <DocumentationHistoryCard
+            accent="#64748b"
+            entries={model.admissionSummaryHistory}
+            latestEntryId={model.admissionSummaryLatestId}
+            title={t("emergencyVisitSummaryPanel.admissionSummaryHistoryTitle")}
+            subline={t("emergencyVisitSummaryPanel.admissionSummaryHistorySubline")}
+            t={t}
+          />
+        ) : null}
+        {model.dispositionSupplementHistory.length > 0 ? (
+          <DocumentationHistoryCard
+            accent="#64748b"
+            entries={model.dispositionSupplementHistory}
+            latestEntryId={model.dispositionSupplementLatestId}
+            title={t("emergencyVisitSummaryPanel.dispositionSupplementHistoryTitle")}
+            subline={t("emergencyVisitSummaryPanel.dispositionSupplementHistorySubline")}
+            t={t}
+          />
+        ) : null}
         {model.handoff ? <SummaryBlockCard accent="#0d9488" block={model.handoff} /> : null}
         {model.handoffHistory.length > 0 ? (
           <DocumentationHistoryCard

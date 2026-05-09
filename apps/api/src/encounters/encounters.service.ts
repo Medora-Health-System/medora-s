@@ -1832,6 +1832,10 @@ export class EncountersService {
     const allowed = new Set<EncounterClinicalEventType>([
       EncounterClinicalEventType.PROVIDER_MSE_SAVED,
       EncounterClinicalEventType.HANDOFF_NURSING,
+      EncounterClinicalEventType.DISCHARGE_SUMMARY_SAVED,
+      EncounterClinicalEventType.ADMISSION_SUMMARY_SAVED,
+      EncounterClinicalEventType.DISPOSITION_SUPPLEMENT_SAVED,
+      EncounterClinicalEventType.TRIAGE_ASSESSMENT_SAVED,
     ]);
     const requested = String(typesRaw ?? "")
       .split(",")
