@@ -83,19 +83,31 @@ const NURSING_DRAFT_STORAGE_KEY_PREFIX = "medora.erNursingReassessmentDraft.v1";
 const FULL_COLUMN_GRID_ENABLED = true;
 
 /**
- * Phase-3: render the free-text "Notes panel" sections below the documentation grid. The grid
- * is dropdown-only by design (mockup-aligned); free-text capability (narrative, general
- * appearance, bedside status, response to treatment, interventions performed, safety rounding,
- * addendum, trauma primary/secondary survey) lives in this panel so nurses retain the ability
- * to chart non-discrete findings. Duplicates that are also in the grid (pain quick-pick, ABC
- * select trio, trend select) have been removed to avoid double-entry and keep this panel
- * scoped to free-text only.
+ * Phase-4: the free-text "Notes panel" sections (narrative, general appearance, bedside status,
+ * response to treatment, interventions performed, safety rounding, addendum, trauma primary/
+ * secondary survey) used to render as standalone form blocks below the documentation grid.
+ * They are now ALL surfaced as rows inside `EmergencyNursingDocumentationGrid` (the dedicated
+ * `care_safety`, `bedside_safety`, `trauma_primary`, `trauma_secondary` sections), so all
+ * documentation lives in the column board — except the bottom reassessment narrative summary
+ * which intentionally remains as a single textarea per design.
  *
- * Always `true` in this PR; kept as a const so a single flip restores the Phase-1 / Phase-2
- * layout if a clinical parity issue surfaces. The reassessment-time row (clock + datetime +
- * "Nouvelle séance") and the triage bedside-safety block are NEVER gated by this flag.
+ * Kept as a const so a single flip restores the legacy Phase-3 layout if a clinical parity
+ * issue surfaces in the field. The reassessment-time row (clock + datetime + "Nouvelle
+ * séance") is NEVER gated by this flag.
  */
-const SHOW_LEGACY_STANDALONE_REASSESSMENT_SECTIONS = true;
+const SHOW_LEGACY_STANDALONE_REASSESSMENT_SECTIONS = false;
+
+/**
+ * Phase-4: the standalone Triage Bedside Safety block (call light, bed locked, family at
+ * bedside, in view of desk, plan explained, comfort measures, PPE, nursing notes addendum,
+ * nursing care note) is now rendered inside the documentation grid as the `bedside_safety`
+ * section. It still binds to the same `triageNursingSlice` and is persisted by the existing
+ * triage side-write flow — no save semantics change.
+ *
+ * Kept as a const so a single flip restores the standalone block if a clinical parity issue
+ * surfaces in the field.
+ */
+const SHOW_STANDALONE_TRIAGE_BEDSIDE_SAFETY_BLOCK = false;
 
 type NursingReassessmentLocalDraft = {
   form: ErNursingReassessmentForm;
@@ -1700,6 +1712,11 @@ export function EmergencyNursingReassessmentPanel({
                   persistedColumns={persistedColumns}
                   legacyColumn={legacyColumn}
                   onAddColumn={handleOpenNewReassessmentSession}
+                  traumaForm={traumaForm}
+                  onPatchTrauma={patchTraumaForm}
+                  triageNursingSlice={triageNursingSlice}
+                  onPatchTriageSlice={patchTriageNursingSlice}
+                  triageSliceLoading={loadingTriage}
                 />
                 {structuredAckVisible ? (
                   <p
@@ -1724,9 +1741,9 @@ export function EmergencyNursingReassessmentPanel({
                 <div>
                   <p style={sectionHeading}>{t("emergencyNursingReassessment.sectionReassess")}</p>
                   <p style={quickChipHintStyle}>{t("emergencyNursingReassessment.quick.hint")}</p>
-                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
                     <div>
-                      <label style={labelStyle}>{t("emergencyNursingReassessment.labelReassessmentTime")}</label>
+                      <label style={{ ...labelStyle, marginBottom: 2 }}>{t("emergencyNursingReassessment.labelReassessmentTime")}</label>
                       {/**
                        * Reassessment-time row.
                        *
@@ -1922,28 +1939,30 @@ export function EmergencyNursingReassessmentPanel({
                       </>
                     ) : null}
 
-                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
-                      <p style={sectionHeading}>{t("emergencyNursingReassessment.triageBedsideSafetySection")}</p>
-                      <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                        {t("emergencyNursingReassessment.triageBedsideSafetyHelp")}
-                      </p>
-                      {loadingTriage ? (
-                        <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "#64748b" }}>
-                          {t("emergencyNursingReassessment.triageBedsideLoading")}
+                    {SHOW_STANDALONE_TRIAGE_BEDSIDE_SAFETY_BLOCK ? (
+                      <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+                        <p style={sectionHeading}>{t("emergencyNursingReassessment.triageBedsideSafetySection")}</p>
+                        <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                          {t("emergencyNursingReassessment.triageBedsideSafetyHelp")}
                         </p>
-                      ) : (
-                        <div style={{ marginTop: 10 }}>
-                          <ErTriageV1NursingCareSafetyFieldsBlock
-                            slice={triageNursingSlice}
-                            onSliceChange={patchTriageNursingSlice}
-                            formDisabled={formDisabled}
-                            inputBase={inputBase}
-                            labelStyle={labelStyle}
-                            grid3={grid3}
-                          />
-                        </div>
-                      )}
-                    </div>
+                        {loadingTriage ? (
+                          <p style={{ margin: "10px 0 0 0", fontSize: 13, color: "#64748b" }}>
+                            {t("emergencyNursingReassessment.triageBedsideLoading")}
+                          </p>
+                        ) : (
+                          <div style={{ marginTop: 10 }}>
+                            <ErTriageV1NursingCareSafetyFieldsBlock
+                              slice={triageNursingSlice}
+                              onSliceChange={patchTriageNursingSlice}
+                              formDisabled={formDisabled}
+                              inputBase={inputBase}
+                              labelStyle={labelStyle}
+                              grid3={grid3}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -2187,12 +2206,14 @@ export function EmergencyNursingReassessmentPanel({
                  */}
                 <div
                   style={{
-                    marginTop: 4,
-                    paddingTop: 14,
+                    marginTop: 0,
+                    padding: "8px 10px",
                     borderTop: "1px solid #e2e8f0",
+                    borderBottom: "1px solid #e2e8f0",
+                    backgroundColor: "#f8fafc",
                     display: "flex",
                     flexWrap: "wrap",
-                    gap: 10,
+                    gap: 8,
                     alignItems: "center",
                     justifyContent: "space-between",
                   }}
@@ -2200,15 +2221,15 @@ export function EmergencyNursingReassessmentPanel({
                   <p
                     style={{
                       margin: 0,
-                      fontSize: 12,
+                      fontSize: 11,
                       color: "#64748b",
-                      lineHeight: 1.45,
-                      flex: "1 1 240px",
+                      lineHeight: 1.4,
+                      flex: "1 1 200px",
                     }}
                   >
                     {t("emergencyNursingReassessment.documentationGrid.bottomBarStatus")}
                   </p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                     <button
                       type="button"
                       onClick={handleClearLatestColumn}
@@ -2220,13 +2241,13 @@ export function EmergencyNursingReassessmentPanel({
                         "emergencyNursingReassessment.documentationGrid.clearLatestColumnButtonAria"
                       )}
                       style={{
-                        padding: "10px 14px",
-                        borderRadius: 10,
+                        padding: "6px 10px",
+                        borderRadius: 6,
                         border: "1px solid #e2e8f0",
                         backgroundColor: formDisabled ? "#f1f5f9" : "#fff",
                         color: formDisabled ? "#94a3b8" : "#475569",
                         fontWeight: 600,
-                        fontSize: 13,
+                        fontSize: 12,
                         cursor: formDisabled || saving ? "not-allowed" : "pointer",
                       }}
                     >
@@ -2237,13 +2258,13 @@ export function EmergencyNursingReassessmentPanel({
                       onClick={() => void handleSave()}
                       disabled={formDisabled || saving}
                       style={{
-                        padding: "10px 14px",
-                        borderRadius: 10,
+                        padding: "6px 10px",
+                        borderRadius: 6,
                         border: "1px solid #cbd5e1",
-                        backgroundColor: formDisabled ? "#f1f5f9" : "#f8fafc",
+                        backgroundColor: formDisabled ? "#f1f5f9" : "#fff",
                         color: formDisabled ? "#94a3b8" : "#334155",
                         fontWeight: 600,
-                        fontSize: 13,
+                        fontSize: 12,
                         cursor: formDisabled || saving ? "not-allowed" : "pointer",
                       }}
                     >
@@ -2274,13 +2295,13 @@ export function EmergencyNursingReassessmentPanel({
                         "emergencyNursingReassessment.documentationGrid.addCurrentColumnButtonAria"
                       )}
                       style={{
-                        padding: "10px 18px",
-                        borderRadius: 10,
+                        padding: "6px 14px",
+                        borderRadius: 6,
                         border: "1px solid #0ea5e9",
                         backgroundColor: formDisabled ? "#f1f5f9" : "#0ea5e9",
                         color: formDisabled ? "#94a3b8" : "#fff",
                         fontWeight: 700,
-                        fontSize: 14,
+                        fontSize: 13,
                         cursor: formDisabled || saving ? "not-allowed" : "pointer",
                       }}
                     >
@@ -2357,6 +2378,68 @@ export function EmergencyNursingReassessmentPanel({
                   )}
                 </div>
               </div>
+            </div>
+
+            {/**
+             * Bottom-of-page reassessment narrative summary.
+             *
+             * This is the ONLY major non-column documentation area by design. All structured
+             * fields and free-text rows now live inside the column board above; the narrative
+             * here is the running clinical summary the nurse reviews and edits before saving.
+             * The auto-generated "── Documentation structurée (auto) ──" fenced block is still
+             * refreshed by the structured selects via `applyStructuredNarrativeFragment`, and
+             * any prose the nurse types outside the fenced markers is preserved verbatim
+             * across saves. The textarea binds to `form.narrative` — same field as before, so
+             * persistence and history are unchanged. Visually flat (top + bottom border only)
+             * to match the flowsheet aesthetic and avoid the "card below another card" feel.
+             */}
+            <div
+              style={{
+                marginTop: 0,
+                padding: "10px 12px",
+                borderTop: "1px solid #e2e8f0",
+                backgroundColor: "#fff",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "#334155",
+                }}
+              >
+                {t("emergencyNursingReassessment.narrativeSummarySectionTitle")}
+              </p>
+              <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.4 }}>
+                {t("emergencyNursingReassessment.narrativeSummarySectionHint")}
+              </p>
+              <textarea
+                value={form.narrative}
+                onChange={(e) => patchForm({ narrative: e.target.value })}
+                disabled={formDisabled}
+                rows={4}
+                maxLength={8000}
+                style={{
+                  ...inputBase,
+                  resize: "vertical",
+                  minHeight: 96,
+                  marginTop: 2,
+                  backgroundColor: formDisabled ? "#f8fafc" : "#fff",
+                }}
+                placeholder={t("emergencyNursingReassessment.narrativePlaceholder")}
+              />
+              <NursingReassessmentQuickChips
+                field="narrative"
+                formDisabled={formDisabled}
+                t={t}
+                onChip={appendNursingQuickChip}
+              />
             </div>
           </>
         )}

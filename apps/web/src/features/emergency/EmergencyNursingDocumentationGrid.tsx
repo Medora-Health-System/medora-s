@@ -66,6 +66,11 @@ import {
   type ErNursingReassessmentForm,
   type ErTrend,
 } from "./emergencyNursingReassessmentV1";
+import type { ErAbcdeOption, ErTraumaSurveyV1 } from "./erTraumaSurveyV1";
+import type {
+  ErTriageV1NursingCarePersistSlice,
+  ErYesNoUnknown,
+} from "./medoraErTriageV1";
 
 type TFn = ReturnType<typeof useI18n>["t"];
 type SavedSignature = { savedAt?: string; savedByDisplayName?: string };
@@ -86,12 +91,51 @@ type Props = {
    * but is non-interactive (purely visual).
    */
   onAddColumn?: () => void;
+  /**
+   * Optional trauma-survey form bound to the rightmost (active draft) column. When provided,
+   * the grid renders a `trauma_primary` and `trauma_secondary` section so trauma rows live
+   * inside the column board instead of as a standalone section below. Past columns surface
+   * trauma data when the persisted event row carries a `traumaSnapshot`; otherwise the cell
+   * renders "—" — no historical trauma row is mutated. Append-only safety preserved.
+   */
+  traumaForm?: ErTraumaSurveyV1;
+  onPatchTrauma?: (patch: Partial<ErTraumaSurveyV1>) => void;
+  /**
+   * Optional triage bedside-safety slice bound to the rightmost (active draft) column. When
+   * provided, the grid renders a `bedside_safety` section so the call-light / bed-low /
+   * family-at-bedside / in-view / plan-explained / comfort-measures / PPE / nursing-notes
+   * fields live inside the column board instead of as a standalone block. These fields live
+   * on the encounter's triage row (single, latest-only) — they're saved by the parent's
+   * existing triage side-write flow. Past columns therefore display "—" because no per-column
+   * history exists for these fields; this is intentional, preserves current save semantics,
+   * and avoids any schema change.
+   */
+  triageNursingSlice?: ErTriageV1NursingCarePersistSlice;
+  onPatchTriageSlice?: (patch: Partial<ErTriageV1NursingCarePersistSlice>) => void;
+  triageSliceLoading?: boolean;
 };
 
 const colorBlue = "#0284c7";
 const colorBorder = "#e2e8f0";
 const colorMuted = "#64748b";
 const colorRowAlt = "#f8fafc";
+/**
+ * Subtle tint applied to every cell of the active draft column so it visually behaves as one
+ * continuous editable column (per the screenshot pattern). Past columns keep `#fff` /
+ * `colorRowAlt` so they read as historical/frozen. Tint is intentionally light enough to
+ * preserve readability across long shifts and to not fight the alt-row striping.
+ */
+const colorActiveTint = "#f0f9ff";
+/** Identical to `colorActiveTint` but slightly tinted alt-row variant for visual rhythm. */
+const colorActiveTintAlt = "#e0f2fe";
+
+/**
+ * Dense uniform row height used by the flowsheet layout. Every label cell, value cell, and
+ * input control inherits this minimum so dropdown rows and free-text rows align across all
+ * columns. Multi-line textareas can grow vertically (resize: vertical), in which case CSS
+ * grid expands the row height for ALL cells of that row — alignment is preserved.
+ */
+const ROW_MIN_HEIGHT = 30;
 
 /** Two-letter initials helper. "—" when empty so columns never render an empty footer. */
 function displayNameInitials(name: string | null | undefined): string {
@@ -105,11 +149,16 @@ function displayNameInitials(name: string | null | undefined): string {
   return only.length >= 2 ? only.slice(0, 2).toUpperCase() : only[0]!.toUpperCase();
 }
 
+/**
+ * Flowsheet-style outer wrapper: top + bottom border only so the grid feels embedded into the
+ * page rather than floating as a card. Inner cells carry the rest of the borders (right edges
+ * between columns, bottom edges between rows). Background is `#fff` so the alt-row + active-
+ * column tints remain visible.
+ */
 const wrap: React.CSSProperties = {
-  border: `1px solid ${colorBorder}`,
-  borderRadius: 12,
+  borderTop: `1px solid ${colorBorder}`,
+  borderBottom: `1px solid ${colorBorder}`,
   backgroundColor: "#fff",
-  overflow: "hidden",
   width: "100%",
   boxSizing: "border-box",
 };
@@ -119,29 +168,30 @@ const headerBar: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 8,
-  padding: "10px 12px",
+  padding: "6px 12px",
   borderBottom: `1px solid ${colorBorder}`,
-  backgroundColor: "#f0f9ff",
+  backgroundColor: "#f8fafc",
 };
 
 const headerTitle: React.CSSProperties = {
   margin: 0,
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 700,
-  letterSpacing: "0.02em",
-  color: colorBlue,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "#334155",
 };
 
 const helpText: React.CSSProperties = {
-  margin: "8px 12px 0 12px",
-  fontSize: 12,
+  margin: "4px 12px",
+  fontSize: 11,
   color: colorMuted,
-  lineHeight: 1.45,
+  lineHeight: 1.4,
 };
 
 const labelCellBase: React.CSSProperties = {
-  padding: "8px 10px",
-  fontSize: 12,
+  padding: "4px 10px",
+  fontSize: 11,
   fontWeight: 600,
   color: "#334155",
   borderBottom: `1px solid ${colorBorder}`,
@@ -153,31 +203,40 @@ const labelCellBase: React.CSSProperties = {
   position: "sticky",
   left: 0,
   zIndex: 1,
+  minHeight: ROW_MIN_HEIGHT,
 };
 
 const valueCellBase: React.CSSProperties = {
-  padding: "6px 8px",
+  padding: 0,
   borderBottom: `1px solid ${colorBorder}`,
+  borderRight: `1px solid ${colorBorder}`,
   display: "flex",
-  alignItems: "center",
+  alignItems: "stretch",
   minWidth: 0,
+  minHeight: ROW_MIN_HEIGHT,
 };
 
+/**
+ * Borderless flush-cell input style — the wrapping `valueCellBase` provides the cell border;
+ * the input itself blends into the cell (transparent background, no border, no radius). This
+ * is the single biggest visual change to remove the "form widget inside a card" feel.
+ */
 const selectStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  padding: "7px 10px",
-  border: `1px solid ${colorBorder}`,
-  borderRadius: 8,
-  fontSize: 13,
+  padding: "4px 8px",
+  border: 0,
+  borderRadius: 0,
+  fontSize: 12,
   color: "#0f172a",
-  backgroundColor: "#fff",
+  backgroundColor: "transparent",
   minWidth: 0,
 };
 
 const colHeaderTopBox: React.CSSProperties = {
-  padding: "8px 10px",
+  padding: "6px 10px",
   borderBottom: `1px solid ${colorBorder}`,
+  borderRight: `1px solid ${colorBorder}`,
   backgroundColor: "#f8fafc",
   display: "flex",
   flexDirection: "column",
@@ -185,9 +244,12 @@ const colHeaderTopBox: React.CSSProperties = {
 };
 
 const colFooterBox: React.CSSProperties = {
-  padding: "8px 10px",
+  padding: "6px 10px",
   fontSize: 11,
   color: colorMuted,
+  borderRight: `1px solid ${colorBorder}`,
+  borderTop: `1px solid ${colorBorder}`,
+  backgroundColor: "#fff",
   display: "flex",
   flexDirection: "column",
   gap: 2,
@@ -209,10 +271,10 @@ const currentBadge: React.CSSProperties = {
 
 const sectionHeaderRow: React.CSSProperties = {
   gridColumn: "1 / -1",
-  padding: "10px 12px 6px 12px",
+  padding: "6px 12px 4px 12px",
   borderTop: `1px solid ${colorBorder}`,
   borderBottom: `1px solid #f1f5f9`,
-  backgroundColor: "#f8fafc",
+  backgroundColor: "#f1f5f9",
   fontSize: 10,
   fontWeight: 700,
   letterSpacing: "0.08em",
@@ -222,9 +284,10 @@ const sectionHeaderRow: React.CSSProperties = {
 
 const readOnlyTextBox: React.CSSProperties = {
   width: "100%",
-  fontSize: 13,
+  padding: "4px 8px",
+  fontSize: 12,
   color: "#0f172a",
-  lineHeight: 1.45,
+  lineHeight: 1.35,
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
 };
@@ -259,14 +322,29 @@ function formatColumnTime(
   };
 }
 
-function buildGridTemplate(columnCount: number): string {
-  const cols = Math.max(1, columnCount);
-  return `minmax(180px, 220px) ${Array.from({ length: cols }, () => "minmax(220px, 1fr)").join(" ")}`;
+/**
+ * Build the CSS-grid track template for the flowsheet:
+ *   [sticky label track] [N data tracks] [ghost "+ Add column" track]
+ * Sticky label track is fixed so the row labels never collapse below readability. Data tracks
+ * use a tight min/1fr distribution to keep the spreadsheet dense; the ghost track is narrower
+ * because it only carries the "+ Add column" affordance (no body content).
+ */
+function buildGridTemplate(dataColumnCount: number): string {
+  const cols = Math.max(1, dataColumnCount);
+  const dataTracks = Array.from({ length: cols }, () => "minmax(160px, 1fr)").join(" ");
+  return `minmax(160px, 200px) ${dataTracks} minmax(110px, 130px)`;
 }
 
 // ── Row catalog ──────────────────────────────────────────────────────────────
 
-type GridSectionId = "primary" | "additional" | "legacy_abc";
+type GridSectionId =
+  | "primary"
+  | "additional"
+  | "care_safety"
+  | "bedside_safety"
+  | "trauma_primary"
+  | "trauma_secondary"
+  | "legacy_abc";
 
 type SimpleSelectKey =
   | "mentalStatus"
@@ -287,6 +365,65 @@ type SimpleSelectKey =
   | "cardiacEctopy"
   | "ivAccess";
 
+/**
+ * Free-text reassessment-snapshot keys (per-column history available via
+ * `ErNursingReassessmentStored`). Past columns render the saved string read-only; the active
+ * column renders an `<input>` or `<textarea>` bound to the form. Keeping them in the grid
+ * preserves clinical free-text capability while removing the duplicate standalone sections.
+ */
+type FreeTextSnapshotKey =
+  | "responseToTreatment"
+  | "interventionsPerformed"
+  | "safetyRoundingNote"
+  | "addendum"
+  | "bedsideStatus"
+  | "generalAppearance"
+  | "vitalsSummaryNote";
+
+/**
+ * Trauma A/B/C/D/E rows. Past columns can show data when the persisted event row carries a
+ * `traumaSnapshot`; otherwise "—". Active draft column binds to `traumaForm`.
+ */
+type TraumaAbcdeKey =
+  | "primaryAirway"
+  | "primaryBreathing"
+  | "primaryCirculation"
+  | "primaryDisability"
+  | "primaryExposure";
+
+/**
+ * Trauma free-text rows (primary notes + secondary survey body regions). Past columns surface
+ * data when `traumaSnapshot` carries the field; otherwise "—". Active column binds to
+ * `traumaForm`.
+ */
+type TraumaTextKey =
+  | "primaryNotes"
+  | "secondaryHeadFace"
+  | "secondaryNeck"
+  | "secondaryChest"
+  | "secondaryAbdomenPelvis"
+  | "secondaryBackSpine"
+  | "secondaryExtremities"
+  | "secondarySkinWounds"
+  | "secondaryNotes";
+
+/**
+ * Triage bedside-safety Yes/No/Unknown rows. These live on the triage row (encounter-singleton),
+ * NOT in the per-column history — past columns render "—" by design. The active draft column
+ * binds to the parent-provided `triageNursingSlice` and patches via `onPatchTriageSlice`; the
+ * parent's existing triage side-write flow persists changes alongside the reassessment save.
+ */
+type TriageYnuKey =
+  | "callLightInReach"
+  | "bedLockedLow"
+  | "familyAtBedside"
+  | "inViewOfNursingStation"
+  | "patientUpdatedOnPlan"
+  | "comfortMeasuresProvided";
+
+/** Triage free-text rows (PPE / ED course note + nursing notes addendum + nursing care note). */
+type TriageTextKey = "edCoursePpeNote" | "nursingNotesAddendum" | "nursingCareNote";
+
 type RowDef =
   | {
       kind: "select";
@@ -304,7 +441,24 @@ type RowDef =
       options: readonly ErAbcOption[];
       labelKey: string;
     }
-  | { kind: "pain-select"; sectionId: GridSectionId; key: "pain0to10"; labelKey: string };
+  | { kind: "pain-select"; sectionId: GridSectionId; key: "pain0to10"; labelKey: string }
+  | {
+      kind: "free-text";
+      sectionId: GridSectionId;
+      key: FreeTextSnapshotKey;
+      labelKey: string;
+      multiline: boolean;
+    }
+  | { kind: "trauma-abcde"; sectionId: GridSectionId; key: TraumaAbcdeKey; labelKey: string }
+  | { kind: "trauma-text"; sectionId: GridSectionId; key: TraumaTextKey; labelKey: string }
+  | { kind: "triage-ynu"; sectionId: GridSectionId; key: TriageYnuKey; labelKey: string }
+  | {
+      kind: "triage-text";
+      sectionId: GridSectionId;
+      key: TriageTextKey;
+      labelKey: string;
+      multiline: boolean;
+    };
 
 const ROWS: readonly RowDef[] = [
   // ── A. Primary (mockup-aligned, default expanded) ────────────────────────
@@ -449,7 +603,226 @@ const ROWS: readonly RowDef[] = [
   },
   { kind: "trend-select", sectionId: "additional", key: "trend", labelKey: "rowTrend" },
 
-  // ── C. Legacy ABC (default collapsed; rendered only when data exists) ───
+  // ── C. Care / safety free-text rows (default collapsed) ──────────────────
+  /**
+   * These rows replace the previous standalone "Response", "Care / safety", and "Addendum"
+   * sections that lived below the grid. Their values still serialize into the same
+   * `ErNursingReassessmentStored` snapshot — no schema change — so per-column history Just
+   * Works for past columns. The active column renders a small `<textarea>` (multi-line) or
+   * `<input>` (single-line) bound to `form[key]`.
+   */
+  {
+    kind: "free-text",
+    sectionId: "care_safety",
+    key: "responseToTreatment",
+    labelKey: "rowResponseToTreatment",
+    multiline: true,
+  },
+  {
+    kind: "free-text",
+    sectionId: "care_safety",
+    key: "interventionsPerformed",
+    labelKey: "rowInterventionsPerformed",
+    multiline: true,
+  },
+  {
+    kind: "free-text",
+    sectionId: "care_safety",
+    key: "safetyRoundingNote",
+    labelKey: "rowSafetyRoundingNote",
+    multiline: true,
+  },
+  {
+    kind: "free-text",
+    sectionId: "care_safety",
+    key: "addendum",
+    labelKey: "rowAddendum",
+    multiline: true,
+  },
+  {
+    kind: "free-text",
+    sectionId: "care_safety",
+    key: "bedsideStatus",
+    labelKey: "rowBedsideStatus",
+    multiline: false,
+  },
+  {
+    kind: "free-text",
+    sectionId: "care_safety",
+    key: "generalAppearance",
+    labelKey: "rowGeneralAppearanceFreeText",
+    multiline: false,
+  },
+  {
+    kind: "free-text",
+    sectionId: "care_safety",
+    key: "vitalsSummaryNote",
+    labelKey: "rowVitalsSummaryNote",
+    multiline: false,
+  },
+
+  // ── D. Bedside safety (triage slice; active column only — no per-column history) ────
+  /**
+   * Triage bedside-safety Y/N/U fields and free-text notes. Rendered active-column-only
+   * because their storage is on the encounter's triage row, which is encounter-singleton.
+   * Past columns intentionally render "—" — surfacing the latest triage value across every
+   * historical column would misrepresent prior charting. The active-column save path is
+   * unchanged (the parent already runs a triage side-write after the reassessment save).
+   */
+  {
+    kind: "triage-ynu",
+    sectionId: "bedside_safety",
+    key: "callLightInReach",
+    labelKey: "rowCallLightInReach",
+  },
+  {
+    kind: "triage-ynu",
+    sectionId: "bedside_safety",
+    key: "bedLockedLow",
+    labelKey: "rowBedLockedLow",
+  },
+  {
+    kind: "triage-ynu",
+    sectionId: "bedside_safety",
+    key: "familyAtBedside",
+    labelKey: "rowFamilyAtBedside",
+  },
+  {
+    kind: "triage-ynu",
+    sectionId: "bedside_safety",
+    key: "inViewOfNursingStation",
+    labelKey: "rowInViewOfDesk",
+  },
+  {
+    kind: "triage-ynu",
+    sectionId: "bedside_safety",
+    key: "patientUpdatedOnPlan",
+    labelKey: "rowPlanExplained",
+  },
+  {
+    kind: "triage-ynu",
+    sectionId: "bedside_safety",
+    key: "comfortMeasuresProvided",
+    labelKey: "rowComfortMeasures",
+  },
+  {
+    kind: "triage-text",
+    sectionId: "bedside_safety",
+    key: "nursingCareNote",
+    labelKey: "rowNursingCareNote",
+    multiline: true,
+  },
+  {
+    kind: "triage-text",
+    sectionId: "bedside_safety",
+    key: "edCoursePpeNote",
+    labelKey: "rowEdPpe",
+    multiline: false,
+  },
+  {
+    kind: "triage-text",
+    sectionId: "bedside_safety",
+    key: "nursingNotesAddendum",
+    labelKey: "rowNursingNotesAddendum",
+    multiline: true,
+  },
+
+  // ── E. Trauma — primary survey (default collapsed) ───────────────────────
+  /**
+   * Trauma fields render in the column board too. Past columns surface trauma data when the
+   * persisted reassessment event carries a `traumaSnapshot` (the API includes it when the
+   * trauma blob co-saved at the time); otherwise the cell shows "—". The active draft column
+   * binds to the parent-provided `traumaForm`. Append-only safety preserved — no historical
+   * `traumaSnapshot` is mutated.
+   */
+  {
+    kind: "trauma-abcde",
+    sectionId: "trauma_primary",
+    key: "primaryAirway",
+    labelKey: "rowAirwayPrimary",
+  },
+  {
+    kind: "trauma-abcde",
+    sectionId: "trauma_primary",
+    key: "primaryBreathing",
+    labelKey: "rowBreathingPrimary",
+  },
+  {
+    kind: "trauma-abcde",
+    sectionId: "trauma_primary",
+    key: "primaryCirculation",
+    labelKey: "rowCirculationPrimary",
+  },
+  {
+    kind: "trauma-abcde",
+    sectionId: "trauma_primary",
+    key: "primaryDisability",
+    labelKey: "rowNeurologic",
+  },
+  {
+    kind: "trauma-abcde",
+    sectionId: "trauma_primary",
+    key: "primaryExposure",
+    labelKey: "rowExposure",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_primary",
+    key: "primaryNotes",
+    labelKey: "rowTraumaPrimaryNotes",
+  },
+
+  // ── F. Trauma — secondary survey (default collapsed) ─────────────────────
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondaryHeadFace",
+    labelKey: "rowHeadFace",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondaryNeck",
+    labelKey: "rowNeck",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondaryChest",
+    labelKey: "rowChest",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondaryAbdomenPelvis",
+    labelKey: "rowAbdomenPelvis",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondaryBackSpine",
+    labelKey: "rowBackSpine",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondaryExtremities",
+    labelKey: "rowExtremities",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondarySkinWounds",
+    labelKey: "rowSkinWounds",
+  },
+  {
+    kind: "trauma-text",
+    sectionId: "trauma_secondary",
+    key: "secondaryNotes",
+    labelKey: "rowSecondaryNotes",
+  },
+
+  // ── G. Legacy ABC (default collapsed; rendered only when data exists) ───
   {
     kind: "abc-select",
     sectionId: "legacy_abc",
@@ -536,10 +909,35 @@ function nursingTrendOptionLabel(t: TFn, v: ErTrend): string {
   return "";
 }
 
+/**
+ * Map a stored ErAbcdeOption (`normal` / `abnormal` / `unknown`) to its localized label. Used
+ * for read-only past-column display of trauma A/B/C/D/E rows.
+ */
+function nursingAbcdeOptionLabel(t: TFn, v: ErAbcdeOption): string {
+  if (!v) return "";
+  if (v === "normal") return t("emergencyNursingReassessment.abcdeOptionNormal");
+  if (v === "abnormal") return t("emergencyNursingReassessment.abcdeOptionAbnormal");
+  if (v === "unknown") return t("emergencyNursingReassessment.abcOptionUnknown");
+  return "";
+}
+
+/**
+ * Map a stored Yes/No/Unknown triage value to its localized label. Reuses the existing
+ * `erTriage.preview.*` keys so we do not duplicate option translations.
+ */
+function triageYnuOptionLabel(t: TFn, v: ErYesNoUnknown): string {
+  if (!v) return "";
+  if (v === "yes") return t("erTriage.preview.ynuYes");
+  if (v === "no") return t("erTriage.preview.ynuNo");
+  if (v === "unknown") return t("erTriage.preview.ynuUnknown");
+  return "";
+}
+
 function resolveReadonlyDisplay(
   t: TFn,
   row: RowDef,
-  snapshot: Record<string, unknown> | null
+  snapshot: Record<string, unknown> | null,
+  traumaSnapshot: Record<string, unknown> | null
 ): string {
   switch (row.kind) {
     case "select": {
@@ -556,6 +954,27 @@ function resolveReadonlyDisplay(
     }
     case "pain-select":
       return readSnapshotPain(snapshot);
+    case "free-text": {
+      /** Past-column free text: render the saved string verbatim (truncated by the cell). */
+      return readSnapshotString(snapshot, row.key);
+    }
+    case "trauma-abcde": {
+      const v = readSnapshotString(traumaSnapshot, row.key);
+      return nursingAbcdeOptionLabel(t, v as ErAbcdeOption);
+    }
+    case "trauma-text": {
+      return readSnapshotString(traumaSnapshot, row.key);
+    }
+    case "triage-ynu":
+    case "triage-text": {
+      /**
+       * Triage bedside-safety fields are encounter-singleton — there is no per-column
+       * historical trace. Rendering the latest live value across every past column would
+       * misrepresent prior charting, so past cells remain "—". The active draft column binds
+       * to the parent-provided slice and shows the live value.
+       */
+      return "";
+    }
     default: {
       const _exhaustive: never = row;
       return _exhaustive;
@@ -575,6 +994,11 @@ export function EmergencyNursingDocumentationGrid({
   persistedColumns,
   legacyColumn,
   onAddColumn,
+  traumaForm,
+  onPatchTrauma,
+  triageNursingSlice,
+  onPatchTriageSlice,
+  triageSliceLoading,
 }: Props) {
   const dg = (k: string) => t(`emergencyNursingReassessment.documentationGrid.${k}`);
 
@@ -614,9 +1038,10 @@ export function EmergencyNursingDocumentationGrid({
   }, [persistedColumnsForRender]);
 
   /**
-   * Per-row collapse state. Default-collapsed rows: every row in the `additional` and
-   * `legacy_abc` sections so the mockup-aligned grid renders compact by default. Nurses can
-   * expand any row via its chevron; collapsed rows still preserve their form value (UX-only).
+   * Per-row collapse state. Default-collapsed rows: every row outside the `primary` section.
+   * Care/safety, bedside-safety, trauma, and additional sections start collapsed so the
+   * mockup-aligned compact bedside view is preserved; nurses expand any row via its chevron.
+   * Collapsed rows still preserve their form value (UX-only).
    */
   const [collapsedRows, setCollapsedRows] = useState<Set<string>>(() => {
     const s = new Set<string>();
@@ -640,7 +1065,17 @@ export function EmergencyNursingDocumentationGrid({
 
   // Render helpers ---------------------------------------------------------
 
+  /**
+   * Editable cells render borderless inputs that fill the wrapping cell — the cell border
+   * (from `valueCellBase`) is the only visible chrome. This is the central change that turns
+   * the grid into a continuous flowsheet rather than a card grid. Inputs inherit the cell
+   * background (transparent), so the active-column tint applied by the cell wrapper shows
+   * through.
+   */
   function renderEditableCell(row: RowDef): React.ReactNode {
+    const disabledStyle: React.CSSProperties = formDisabled
+      ? { color: "#94a3b8", cursor: "not-allowed" }
+      : {};
     switch (row.kind) {
       case "select": {
         const value = (form[row.key] as string) ?? "";
@@ -655,8 +1090,8 @@ export function EmergencyNursingDocumentationGrid({
             aria-describedby={sectionHelpId}
             style={{
               ...selectStyle,
-              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
               cursor: formDisabled ? "not-allowed" : "pointer",
+              ...disabledStyle,
             }}
           >
             <option value="">{dg("placeholder")}</option>
@@ -678,8 +1113,8 @@ export function EmergencyNursingDocumentationGrid({
             aria-describedby={sectionHelpId}
             style={{
               ...selectStyle,
-              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
               cursor: formDisabled ? "not-allowed" : "pointer",
+              ...disabledStyle,
             }}
           >
             <option value="">{dg("placeholder")}</option>
@@ -704,8 +1139,8 @@ export function EmergencyNursingDocumentationGrid({
             aria-describedby={sectionHelpId}
             style={{
               ...selectStyle,
-              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
               cursor: formDisabled ? "not-allowed" : "pointer",
+              ...disabledStyle,
             }}
           >
             <option value="">{dg("placeholder")}</option>
@@ -727,8 +1162,8 @@ export function EmergencyNursingDocumentationGrid({
             aria-describedby={sectionHelpId}
             style={{
               ...selectStyle,
-              backgroundColor: formDisabled ? "#f8fafc" : "#fff",
               cursor: formDisabled ? "not-allowed" : "pointer",
+              ...disabledStyle,
             }}
           >
             <option value="">{dg("placeholder")}</option>
@@ -740,6 +1175,160 @@ export function EmergencyNursingDocumentationGrid({
           </select>
         );
       }
+      case "free-text": {
+        const value = (form[row.key] as string) ?? "";
+        const commonStyle: React.CSSProperties = {
+          ...selectStyle,
+          cursor: formDisabled ? "not-allowed" : "text",
+          ...disabledStyle,
+        };
+        if (row.multiline) {
+          return (
+            <textarea
+              value={value}
+              onChange={(e) =>
+                onPatch({ [row.key]: e.target.value } as Partial<ErNursingReassessmentForm>)
+              }
+              disabled={formDisabled}
+              rows={1}
+              aria-label={dg(row.labelKey)}
+              aria-describedby={sectionHelpId}
+              style={{ ...commonStyle, minHeight: ROW_MIN_HEIGHT, resize: "vertical" }}
+            />
+          );
+        }
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) =>
+              onPatch({ [row.key]: e.target.value } as Partial<ErNursingReassessmentForm>)
+            }
+            disabled={formDisabled}
+            aria-label={dg(row.labelKey)}
+            aria-describedby={sectionHelpId}
+            style={commonStyle}
+          />
+        );
+      }
+      case "trauma-abcde": {
+        if (!traumaForm || !onPatchTrauma) return null;
+        const value: ErAbcdeOption = (traumaForm[row.key] as ErAbcdeOption) || "";
+        return (
+          <select
+            value={value}
+            onChange={(e) =>
+              onPatchTrauma({ [row.key]: e.target.value as ErAbcdeOption } as Partial<ErTraumaSurveyV1>)
+            }
+            disabled={formDisabled}
+            aria-label={dg(row.labelKey)}
+            aria-describedby={sectionHelpId}
+            style={{
+              ...selectStyle,
+              cursor: formDisabled ? "not-allowed" : "pointer",
+              ...disabledStyle,
+            }}
+          >
+            <option value="">{dg("placeholder")}</option>
+            <option value="normal">{t("emergencyNursingReassessment.abcdeOptionNormal")}</option>
+            <option value="abnormal">{t("emergencyNursingReassessment.abcdeOptionAbnormal")}</option>
+            <option value="unknown">{t("emergencyNursingReassessment.abcOptionUnknown")}</option>
+          </select>
+        );
+      }
+      case "trauma-text": {
+        if (!traumaForm || !onPatchTrauma) return null;
+        const value = (traumaForm[row.key] as string) ?? "";
+        return (
+          <textarea
+            value={value}
+            onChange={(e) =>
+              onPatchTrauma({ [row.key]: e.target.value } as Partial<ErTraumaSurveyV1>)
+            }
+            disabled={formDisabled}
+            rows={1}
+            aria-label={dg(row.labelKey)}
+            aria-describedby={sectionHelpId}
+            style={{
+              ...selectStyle,
+              cursor: formDisabled ? "not-allowed" : "text",
+              minHeight: ROW_MIN_HEIGHT,
+              resize: "vertical",
+              ...disabledStyle,
+            }}
+          />
+        );
+      }
+      case "triage-ynu": {
+        if (!triageNursingSlice || !onPatchTriageSlice) return null;
+        const value: ErYesNoUnknown = (triageNursingSlice[row.key] as ErYesNoUnknown) || "";
+        const triageDisabled = formDisabled || triageSliceLoading === true;
+        return (
+          <select
+            value={value}
+            onChange={(e) =>
+              onPatchTriageSlice({
+                [row.key]: e.target.value as ErYesNoUnknown,
+              } as Partial<ErTriageV1NursingCarePersistSlice>)
+            }
+            disabled={triageDisabled}
+            aria-label={dg(row.labelKey)}
+            aria-describedby={sectionHelpId}
+            style={{
+              ...selectStyle,
+              cursor: triageDisabled ? "not-allowed" : "pointer",
+              ...(triageDisabled ? { color: "#94a3b8" } : {}),
+            }}
+          >
+            <option value="">{dg("placeholder")}</option>
+            <option value="yes">{t("erTriage.preview.ynuYes")}</option>
+            <option value="no">{t("erTriage.preview.ynuNo")}</option>
+            <option value="unknown">{t("erTriage.preview.ynuUnknown")}</option>
+          </select>
+        );
+      }
+      case "triage-text": {
+        if (!triageNursingSlice || !onPatchTriageSlice) return null;
+        const value = (triageNursingSlice[row.key] as string) ?? "";
+        const triageDisabled = formDisabled || triageSliceLoading === true;
+        const commonStyle: React.CSSProperties = {
+          ...selectStyle,
+          cursor: triageDisabled ? "not-allowed" : "text",
+          ...(triageDisabled ? { color: "#94a3b8" } : {}),
+        };
+        if (row.multiline) {
+          return (
+            <textarea
+              value={value}
+              onChange={(e) =>
+                onPatchTriageSlice({
+                  [row.key]: e.target.value,
+                } as Partial<ErTriageV1NursingCarePersistSlice>)
+              }
+              disabled={triageDisabled}
+              rows={1}
+              aria-label={dg(row.labelKey)}
+              aria-describedby={sectionHelpId}
+              style={{ ...commonStyle, minHeight: ROW_MIN_HEIGHT, resize: "vertical" }}
+            />
+          );
+        }
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) =>
+              onPatchTriageSlice({
+                [row.key]: e.target.value,
+              } as Partial<ErTriageV1NursingCarePersistSlice>)
+            }
+            disabled={triageDisabled}
+            aria-label={dg(row.labelKey)}
+            aria-describedby={sectionHelpId}
+            style={commonStyle}
+          />
+        );
+      }
       default: {
         const _exhaustive: never = row;
         return _exhaustive;
@@ -749,6 +1338,17 @@ export function EmergencyNursingDocumentationGrid({
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Whether the active draft has any non-default content. Drives the "DRAFT" vs "CURRENT"
+   * badge and the active-column tint intensity. Free-text fields are considered "started" via
+   * trim() so an empty-with-only-whitespace value is still treated as empty.
+   */
+  const ghostColumnEnabled = Boolean(onAddColumn) && !formDisabled;
+
+  /** Compute background for an active-column cell; alternating-row-aware so striping reads. */
+  const activeBg = (rowIdx: number): string =>
+    rowIdx % 2 === 1 ? colorActiveTintAlt : colorActiveTint;
+
   return (
     <div style={wrap}>
       <div style={headerBar}>
@@ -757,23 +1357,21 @@ export function EmergencyNursingDocumentationGrid({
       <p id={sectionHelpId} style={helpText}>
         {dg("sectionHelp")}
       </p>
-      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", display: "flex" }}>
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <div
           style={{
             display: "grid",
             gridTemplateColumns: buildGridTemplate(totalDataColumns),
             borderTop: `1px solid ${colorBorder}`,
-            marginTop: 10,
-            flex: "1 1 auto",
           }}
         >
           {/* Empty corner cell (sticky-left). */}
           <div
             style={{
-              padding: "8px 10px",
+              padding: "6px 10px",
               borderBottom: `1px solid ${colorBorder}`,
               borderRight: `1px solid ${colorBorder}`,
-              backgroundColor: "#fff",
+              backgroundColor: "#f8fafc",
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: "0.06em",
@@ -782,6 +1380,7 @@ export function EmergencyNursingDocumentationGrid({
               position: "sticky",
               left: 0,
               zIndex: 2,
+              minHeight: 56,
             }}
             aria-hidden
           />
@@ -795,10 +1394,9 @@ export function EmergencyNursingDocumentationGrid({
                 style={{
                   ...colHeaderTopBox,
                   backgroundColor: isLatestPersisted ? "#ecfdf5" : "#f8fafc",
-                  borderRight: `1px solid ${colorBorder}`,
                 }}
               >
-                <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
                   {headerTime.time}
                 </span>
                 <span style={{ fontSize: 11, color: colorMuted }}>
@@ -810,9 +1408,21 @@ export function EmergencyNursingDocumentationGrid({
               </div>
             );
           })}
-          {/* Draft column header (rightmost data column). */}
-          <div style={colHeaderTopBox}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
+          {/**
+           * Draft column header — tinted to match the active-column body cells. Right border
+           * removed so the dashed left border on the ghost column header is the only visible
+           * boundary between active and ghost (avoids a doubled solid + dashed 2px line).
+           */}
+          <div
+            style={{
+              ...colHeaderTopBox,
+              borderRight: 0,
+              backgroundColor: persistedColumnsForRender.length > 0
+                ? colorActiveTintAlt
+                : "#dcfce7",
+            }}
+          >
+            <span style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", lineHeight: 1.1 }}>
               {columnTime.time}
             </span>
             <span style={{ fontSize: 11, color: colorMuted }}>
@@ -832,10 +1442,71 @@ export function EmergencyNursingDocumentationGrid({
                 : dg("columnHeaderDraft")}
             </span>
           </div>
+          {/**
+           * Ghost "+ Add column" header — clickable cell INSIDE the grid that mirrors the
+           * bottom-bar "Add current column" action. Kept as a quiet dashed cell so it reads
+           * as a placeholder column rather than a primary action; the bottom action bar
+           * remains the primary path.
+           */}
+          <button
+            type="button"
+            onClick={onAddColumn}
+            disabled={!ghostColumnEnabled}
+            aria-label={dg("addColumnPlaceholderHint")}
+            title={dg("addColumnPlaceholderHint")}
+            style={{
+              ...colHeaderTopBox,
+              borderRight: 0,
+              borderLeft: `1px dashed ${colorBorder}`,
+              backgroundColor: "#fff",
+              color: ghostColumnEnabled ? colorMuted : "#cbd5e1",
+              cursor: ghostColumnEnabled ? "pointer" : "not-allowed",
+              fontWeight: 600,
+              fontSize: 12,
+              textAlign: "center",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {dg("addColumnPlaceholder")}
+          </button>
 
           {/* Sections + rows */}
-          {(["primary", "additional", "legacy_abc"] as const).map((sectionId) => {
+          {(
+            [
+              "primary",
+              "additional",
+              "care_safety",
+              "bedside_safety",
+              "trauma_primary",
+              "trauma_secondary",
+              "legacy_abc",
+            ] as const
+          ).map((sectionId) => {
             if (sectionId === "legacy_abc" && !hasLegacyAbcData) return null;
+            /**
+             * Trauma rows cannot be authored without `traumaForm` + `onPatchTrauma`. Hide the
+             * whole trauma sections from older callers that don't pass those props so we don't
+             * render dead read-only-only rows. Past-column display still works through the
+             * `traumaSnapshot` resolver when present.
+             */
+            if (
+              (sectionId === "trauma_primary" || sectionId === "trauma_secondary") &&
+              (!traumaForm || !onPatchTrauma)
+            ) {
+              return null;
+            }
+            /**
+             * Bedside-safety rows likewise require a triage slice + patch handler. Hide the
+             * section entirely when the parent doesn't pass them so the standalone-block
+             * fallback keeps working without surfacing inert cells in the grid.
+             */
+            if (
+              sectionId === "bedside_safety" &&
+              (!triageNursingSlice || !onPatchTriageSlice)
+            ) {
+              return null;
+            }
             const sectionRows = ROWS.filter((r) => r.sectionId === sectionId);
             if (sectionRows.length === 0) return null;
             return (
@@ -880,14 +1551,13 @@ export function EmergencyNursingDocumentationGrid({
                       </div>
                       {collapsed ? (
                         /**
-                         * Single full-row span fills all data tracks with a thin "collapsed"
-                         * placeholder — keeps grid alignment without rendering each individual
-                         * cell when the row is hidden.
+                         * Single full-row span fills all data tracks (incl. ghost) with a
+                         * thin "collapsed" placeholder. `+ 1` accounts for the ghost track.
                          */
                         <div
                           style={{
-                            gridColumn: `2 / span ${totalDataColumns}`,
-                            padding: "6px 10px",
+                            gridColumn: `2 / span ${totalDataColumns + 1}`,
+                            padding: "4px 10px",
                             borderBottom: `1px solid ${colorBorder}`,
                             fontSize: 11,
                             color: "#cbd5e1",
@@ -900,14 +1570,18 @@ export function EmergencyNursingDocumentationGrid({
                       ) : (
                         <>
                           {persistedColumnsForRender.map((col) => {
-                            const display = resolveReadonlyDisplay(t, row, col.snapshot);
+                            const display = resolveReadonlyDisplay(
+                              t,
+                              row,
+                              col.snapshot,
+                              col.traumaSnapshot
+                            );
                             return (
                               <div
                                 key={`v-${col.id}-${rowId(row)}`}
                                 style={{
                                   ...valueCellBase,
                                   backgroundColor: altBg,
-                                  borderRight: `1px solid ${colorBorder}`,
                                 }}
                               >
                                 <div
@@ -921,7 +1595,20 @@ export function EmergencyNursingDocumentationGrid({
                               </div>
                             );
                           })}
-                          <div style={{ ...valueCellBase, backgroundColor: altBg }}>
+                          {/**
+                           * Active draft column cell — tinted via `activeBg(rowIdx)` so the
+                           * entire active column reads as one continuous editable strip. The
+                           * editable input inherits the cell background (transparent), so
+                           * the tint shows through the borderless flush input. Right border
+                           * removed; the ghost column's dashed left border is the boundary.
+                           */}
+                          <div
+                            style={{
+                              ...valueCellBase,
+                              borderRight: 0,
+                              backgroundColor: activeBg(rowIdx),
+                            }}
+                          >
                             {editableForRow ?? (
                               <div
                                 style={{ ...readOnlyTextBox, color: "#94a3b8", fontStyle: "italic" }}
@@ -930,6 +1617,20 @@ export function EmergencyNursingDocumentationGrid({
                               </div>
                             )}
                           </div>
+                          {/**
+                           * Ghost-column body cell. Empty by design — the column exists only
+                           * so the "+ Add column" header has somewhere to anchor visually.
+                           * Dashed left border ties it to the header.
+                           */}
+                          <div
+                            aria-hidden
+                            style={{
+                              ...valueCellBase,
+                              borderRight: 0,
+                              borderLeft: `1px dashed ${colorBorder}`,
+                              backgroundColor: "#fff",
+                            }}
+                          />
                         </>
                       )}
                     </React.Fragment>
@@ -942,7 +1643,7 @@ export function EmergencyNursingDocumentationGrid({
           {/* Footer row: updater identity per column */}
           <div
             style={{
-              padding: "8px 10px",
+              padding: "6px 10px",
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: "0.06em",
@@ -954,6 +1655,8 @@ export function EmergencyNursingDocumentationGrid({
               position: "sticky",
               left: 0,
               zIndex: 1,
+              display: "flex",
+              alignItems: "center",
             }}
           >
             {dg("footerUpdatedBy")}
@@ -963,24 +1666,17 @@ export function EmergencyNursingDocumentationGrid({
             const fullName = col.performerDisplayName.trim();
             const initials = col.performerInitials.trim() || displayNameInitials(fullName);
             return (
-              <div
-                key={`f-${col.id}`}
-                style={{
-                  ...colFooterBox,
-                  borderRight: `1px solid ${colorBorder}`,
-                  borderTop: `1px solid ${colorBorder}`,
-                }}
-              >
+              <div key={`f-${col.id}`} style={colFooterBox}>
                 {fullName ? (
                   <>
                     <span
-                      style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}
+                      style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}
                       title={fullName}
                     >
                       {fullName}
                     </span>
                     <span
-                      style={{ fontSize: 11, color: colorMuted }}
+                      style={{ fontSize: 10, color: colorMuted }}
                       title={fullName}
                       aria-label={fullName}
                     >
@@ -995,14 +1691,25 @@ export function EmergencyNursingDocumentationGrid({
               </div>
             );
           })}
-          <div style={{ ...colFooterBox, borderTop: `1px solid ${colorBorder}` }}>
+          {/**
+           * Active-column footer — tinted to match the active-column body. Right border
+           * removed for the same reason as the active body cells: the ghost column's dashed
+           * left border is the boundary.
+           */}
+          <div
+            style={{
+              ...colFooterBox,
+              borderRight: 0,
+              backgroundColor: colorActiveTint,
+            }}
+          >
             {updaterName ? (
               <>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }} title={updaterName}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#334155" }} title={updaterName}>
                   {updaterName}
                 </span>
                 <span
-                  style={{ fontSize: 11, color: colorMuted }}
+                  style={{ fontSize: 10, color: colorMuted }}
                   title={updaterName}
                   aria-label={updaterName}
                 >
@@ -1014,41 +1721,18 @@ export function EmergencyNursingDocumentationGrid({
               <span>{dg("footerNotSavedYet")}</span>
             )}
           </div>
+          {/** Ghost-column footer cell — empty placeholder. */}
+          <div
+            aria-hidden
+            style={{
+              ...colFooterBox,
+              borderRight: 0,
+              borderLeft: `1px dashed ${colorBorder}`,
+              backgroundColor: "#fff",
+            }}
+          />
         </div>
 
-        {/**
-         * "+ Add column" placeholder rendered as a single tall button to the right of the grid.
-         * Clicking it triggers the parent's `onAddColumn` handler, which mirrors the bottom-bar
-         * "Add current column" action: save the active session, then start a new column. Kept
-         * non-interactive (presentation-only) when no handler is provided so older callers
-         * continue to render correctly.
-         */}
-        <button
-          type="button"
-          onClick={onAddColumn}
-          disabled={formDisabled || !onAddColumn}
-          aria-label={dg("addColumnPlaceholderHint")}
-          title={dg("addColumnPlaceholderHint")}
-          style={{
-            flex: "0 0 auto",
-            width: 140,
-            margin: "10px 0 0 0",
-            border: `1px dashed ${colorBorder}`,
-            borderRadius: 8,
-            backgroundColor: formDisabled ? "#f8fafc" : "#fff",
-            color: formDisabled ? "#cbd5e1" : colorMuted,
-            cursor: formDisabled || !onAddColumn ? "default" : "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "10px 8px",
-            minHeight: 80,
-          }}
-        >
-          {dg("addColumnPlaceholder")}
-        </button>
       </div>
     </div>
   );
