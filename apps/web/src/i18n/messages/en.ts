@@ -3900,6 +3900,17 @@ export default {
     nursingReassessmentHistoryUnknownAuthor: "Author not recorded",
     nursingReassessmentHistoryLoadError:
       "Reassessment history is unavailable right now.",
+    providerMseHistoryTitle: "Provider MSE — history",
+    providerMseHistorySubline:
+      "Read-only saved entries, newest first.",
+    handoffHistoryTitle: "Nursing handoffs — history",
+    handoffHistorySubline:
+      "Each entry preserves the original author and saved time.",
+    documentationHistoryCurrent: "Current",
+    documentationHistoryEmptyEntry:
+      "No structured or narrative content saved for this entry.",
+    documentationHistoryUnknownAuthor: "Author not recorded",
+    documentationHistoryLoadError: "Documentation history is unavailable right now.",
     vitalsHistoryTitle: "Vitals history",
     vitalsHistoryEmpty: "No timestamped vitals rows for this encounter yet.",
     vitalsHistoryLoadError: "Vitals history unavailable.",
@@ -5726,6 +5737,14 @@ export default {
       handoffReportGivenAt: "Report given at",
       receivingNurse: "Receiving nurse",
       handoffNote: "Handoff note",
+      sectionProviderMseHistory: "Provider MSE — history",
+      providerMseEntryHeader: "{datetime} — {author}",
+      providerMseEntryLatestHeader: "{datetime} (Current) — {author}",
+      providerMseEntryEmpty: "No structured or narrative content saved for this entry.",
+      sectionHandoffHistory: "Nursing handoffs — history",
+      handoffHistoryEntryHeader: "{datetime} — {author}",
+      handoffHistoryEntryLatestHeader: "{datetime} (Current) — {author}",
+      handoffHistoryEntryEmpty: "No structured or narrative content saved for this handoff.",
       sectionNursingReassessmentHistory: "Nursing reassessments — history",
       nursingReassessmentEntryHeader: "{datetime} — {author}",
       nursingReassessmentEntryLatestHeader: "{datetime} (Current) — {author}",

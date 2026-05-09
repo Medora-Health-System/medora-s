@@ -1820,6 +1820,110 @@ export class EncountersService {
     }));
   }
 
+  /**
+   * Read-only clinical documentation event history for Summary / print. Facility-scoped and
+   * bounded; no event mutation or save-flow coupling.
+   */
+  async listClinicalDocumentationEvents(
+    facilityId: string,
+    encounterId: string,
+    typesRaw?: string
+  ) {
+    const allowed = new Set<EncounterClinicalEventType>([
+      EncounterClinicalEventType.PROVIDER_MSE_SAVED,
+      EncounterClinicalEventType.HANDOFF_NURSING,
+    ]);
+    const requested = String(typesRaw ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const types =
+      requested.length > 0
+        ? requested.map((t) => {
+            if (!allowed.has(t as EncounterClinicalEventType)) {
+              throw new BadRequestException("Type d'événement clinique non autorisé.");
+            }
+            return t as EncounterClinicalEventType;
+          })
+        : Array.from(allowed);
+
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const rows = await this.prisma.encounterClinicalEvent.findMany({
+      where: {
+        encounterId,
+        facilityId,
+        eventType: { in: types },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: {
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    return {
+      entries: rows.map((r) => {
+        const raw = r.payloadJson;
+        const payload =
+          raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+        const snapshot =
+          payload.snapshot && typeof payload.snapshot === "object" && !Array.isArray(payload.snapshot)
+            ? (payload.snapshot as Record<string, unknown>)
+            : {};
+        const signature =
+          snapshot.signature && typeof snapshot.signature === "object" && !Array.isArray(snapshot.signature)
+            ? (snapshot.signature as Record<string, unknown>)
+            : {};
+        const displayFromPayload =
+          typeof payload.performerDisplayName === "string" && payload.performerDisplayName.trim()
+            ? payload.performerDisplayName.trim()
+            : "";
+        const displayFromSignature =
+          typeof signature.savedByDisplayName === "string" && signature.savedByDisplayName.trim()
+            ? signature.savedByDisplayName.trim()
+            : "";
+        const displayFromHandoff =
+          typeof snapshot.handoffLastSavedByDisplayName === "string" &&
+          snapshot.handoffLastSavedByDisplayName.trim()
+            ? snapshot.handoffLastSavedByDisplayName.trim()
+            : "";
+        const createdByDisplayName = this.userDisplayName(r.createdBy) || "";
+        const performerDisplayName =
+          displayFromPayload || displayFromSignature || displayFromHandoff || createdByDisplayName;
+        const performerInitials =
+          typeof payload.performerInitials === "string" && payload.performerInitials.trim()
+            ? payload.performerInitials.trim()
+            : computeDisplayNameInitials(performerDisplayName);
+        const performerRoleTitle =
+          typeof payload.performerRoleTitle === "string" && payload.performerRoleTitle.trim()
+            ? payload.performerRoleTitle.trim()
+            : "";
+
+        return {
+          id: r.id,
+          eventType: r.eventType,
+          createdAt: r.createdAt.toISOString(),
+          createdByUserId: r.createdByUserId,
+          createdBy: {
+            userId: r.createdByUserId,
+            displayName: createdByDisplayName || null,
+          },
+          performerDisplayName: performerDisplayName || null,
+          performerInitials,
+          performerRoleTitle,
+          payloadJson: r.payloadJson,
+        };
+      }),
+    };
+  }
+
   private parseOptionalIsoDate(input: string | undefined, fieldLabelFr: string): string | null {
     if (input == null || !String(input).trim()) return null;
     const d = new Date(String(input).trim());

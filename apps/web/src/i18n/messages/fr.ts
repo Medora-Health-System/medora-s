@@ -3869,6 +3869,17 @@ export default {
     nursingReassessmentHistoryUnknownAuthor: "Auteur non enregistré",
     nursingReassessmentHistoryLoadError:
       "Historique des réévaluations indisponible pour l'instant.",
+    providerMseHistoryTitle: "Examen médical — historique",
+    providerMseHistorySubline:
+      "Entrées enregistrées en lecture seule, de la plus récente à la plus ancienne.",
+    handoffHistoryTitle: "Passations infirmières — historique",
+    handoffHistorySubline:
+      "Chaque entrée conserve l'auteur d'origine et l'heure enregistrée.",
+    documentationHistoryCurrent: "Actuel",
+    documentationHistoryEmptyEntry:
+      "Aucune valeur structurée ou narrative enregistrée pour cette entrée.",
+    documentationHistoryUnknownAuthor: "Auteur non enregistré",
+    documentationHistoryLoadError: "Historique documentaire indisponible pour l'instant.",
     vitalsHistoryTitle: "Signes vitaux (historique)",
     vitalsHistoryEmpty: "Aucun relevé horodaté pour cette consultation.",
     vitalsHistoryLoadError: "Historique des signes vitaux indisponible.",
@@ -5703,6 +5714,14 @@ export default {
       handoffReportGivenAt: "Compte rendu donné le",
       receivingNurse: "Infirmier(ère) réceptrice",
       handoffNote: "Note de transmission",
+      sectionProviderMseHistory: "Examen médical — historique",
+      providerMseEntryHeader: "{datetime} — {author}",
+      providerMseEntryLatestHeader: "{datetime} (Actuel) — {author}",
+      providerMseEntryEmpty: "Aucune valeur structurée ou narrative enregistrée pour cette entrée.",
+      sectionHandoffHistory: "Passations infirmières — historique",
+      handoffHistoryEntryHeader: "{datetime} — {author}",
+      handoffHistoryEntryLatestHeader: "{datetime} (Actuel) — {author}",
+      handoffHistoryEntryEmpty: "Aucune valeur structurée ou narrative enregistrée pour cette passation.",
       sectionNursingReassessmentHistory: "Réévaluations infirmières — historique",
       nursingReassessmentEntryHeader: "{datetime} — {author}",
       nursingReassessmentEntryLatestHeader: "{datetime} (Actuel) — {author}",

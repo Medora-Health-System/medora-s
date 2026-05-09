@@ -73,6 +73,8 @@ export type ErPrintReassessmentEntry = {
   narrativeExcerpt: string;
 };
 
+export type ErPrintDocumentationHistoryEntry = ErPrintReassessmentEntry;
+
 const DISCHARGE_CORE_FIELD_LABEL_KEYS: Record<(typeof DISCHARGE_SUMMARY_CORE_STRING_KEYS)[number], string> = {
   disposition: "encounterChrome.modals.dischargeField.disposition",
   exitCondition: "encounterChrome.modals.dischargeField.exitCondition",
@@ -192,6 +194,8 @@ export function getErPrintPacketHtml(params: {
    * pre-existing print output is byte-identical to before this feature.
    */
   nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
+  providerMseEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  handoffEntries?: ErPrintDocumentationHistoryEntry[] | null;
 }): string {
   const {
     patient,
@@ -201,6 +205,8 @@ export function getErPrintPacketHtml(params: {
     triageSnapshot,
     language,
     nursingReassessmentEntries,
+    providerMseEntries,
+    handoffEntries,
   } = params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
@@ -340,6 +346,24 @@ export function getErPrintPacketHtml(params: {
 
   body.push(h2(language, "printOutput.erPacket.sectionHandoff"));
   appendHandoffBlock(body, language, loc, handoff);
+
+  if (Array.isArray(providerMseEntries) && providerMseEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionProviderMseHistory"));
+    appendDocumentationHistoryBlock(body, language, loc, providerMseEntries, {
+      entryHeaderKey: "printOutput.erPacket.providerMseEntryHeader",
+      entryLatestHeaderKey: "printOutput.erPacket.providerMseEntryLatestHeader",
+      emptyKey: "printOutput.erPacket.providerMseEntryEmpty",
+    });
+  }
+
+  if (Array.isArray(handoffEntries) && handoffEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionHandoffHistory"));
+    appendDocumentationHistoryBlock(body, language, loc, handoffEntries, {
+      entryHeaderKey: "printOutput.erPacket.handoffHistoryEntryHeader",
+      entryLatestHeaderKey: "printOutput.erPacket.handoffHistoryEntryLatestHeader",
+      emptyKey: "printOutput.erPacket.handoffHistoryEntryEmpty",
+    });
+  }
 
   /**
    * Reassessment history — only when caller pre-fetched and passed entries. Compact one block
@@ -533,6 +557,48 @@ function appendNursingReassessmentHistoryBlock(
   });
 }
 
+function appendDocumentationHistoryBlock(
+  body: string[],
+  language: SupportedLanguage,
+  loc: string,
+  entries: ErPrintDocumentationHistoryEntry[],
+  keys: { entryHeaderKey: string; entryLatestHeaderKey: string; emptyKey: string }
+): void {
+  entries.forEach((entry, idx) => {
+    const isLatest = idx === 0;
+    const whenIso = entry.documentedAt?.trim() || entry.savedAt;
+    const when = fmtIso(whenIso, loc) || "—";
+    const author = entry.performerDisplayName?.trim() || "—";
+    const initials = entry.performerInitials?.trim();
+    const role = entry.performerRoleTitle?.trim();
+    const initialsBadge = initials ? `[${esc(initials)}] ` : "";
+    const roleSuffix = role ? ` — ${esc(role)}` : "";
+    const heading = printT(language, isLatest ? keys.entryLatestHeaderKey : keys.entryHeaderKey)
+      .replace("{datetime}", when)
+      .replace("{author}", `${initialsBadge}${esc(author)}${roleSuffix}`);
+    body.push(`<p style="margin: 12px 0 4px 0; font-size: 13px; font-weight: 700;">${heading}</p>`);
+    if (entry.structuredLines.length > 0) {
+      const items = entry.structuredLines
+        .map((ln) => `<li style="margin: 2px 0;">${esc(ln)}</li>`)
+        .join("");
+      body.push(
+        `<ul style="margin: 4px 0 4px 18px; padding: 0; font-size: 13px; line-height: 1.45;">${items}</ul>`
+      );
+    }
+    const narrative = entry.narrativeExcerpt?.trim();
+    if (narrative) {
+      body.push(
+        `<p style="margin: 4px 0; font-size: 13px; line-height: 1.45; font-style: italic;">${esc(
+          narrative
+        )}</p>`
+      );
+    }
+    if (entry.structuredLines.length === 0 && !narrative) {
+      body.push(`<p style="margin: 4px 0; font-size: 13px; color: #444;">${esc(printT(language, keys.emptyKey))}</p>`);
+    }
+  });
+}
+
 function appendSignatureBlock(
   body: string[],
   language: SupportedLanguage,
@@ -615,6 +681,8 @@ export function printErPacket(params: {
   language: SupportedLanguage;
   /** Optional pre-fetched append-only reassessment history (see `getErPrintPacketHtml`). */
   nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
+  providerMseEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  handoffEntries?: ErPrintDocumentationHistoryEntry[] | null;
 }): void {
   const win = window.open("", "_blank");
   if (!win) {

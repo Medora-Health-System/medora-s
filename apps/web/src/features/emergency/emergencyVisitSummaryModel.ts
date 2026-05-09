@@ -21,13 +21,17 @@ import {
   ER_NURSING_REASSESSMENT_V1_KEY,
   erNursingReassessmentFormFromEncounter,
 } from "./emergencyNursingReassessmentV1";
-import { buildErProviderMsePreviewModel, erProviderMseFormFromEncounter } from "./emergencyProviderMseV1";
+import {
+  buildErProviderMsePreviewModel,
+  ER_PROVIDER_MSE_V1_KEY,
+  erProviderMseFormFromEncounter,
+} from "./emergencyProviderMseV1";
 import type { SupportedLanguage } from "@/i18n/config";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
 import { deriveEmtalaStateFromEncounter } from "./erEmtalaV1";
-import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
+import { ER_HANDOFF_V1_KEY, readErHandoffV1FromNursingAssessment } from "@medora/shared";
 
 export type VisitSummaryTextBlock = {
   title: string;
@@ -76,6 +80,19 @@ export type VisitSummaryReassessmentEntry = {
   narrativeExcerpt: string;
 };
 
+export type VisitSummaryDocumentationHistoryEntry = {
+  id: string;
+  eventType: "PROVIDER_MSE_SAVED" | "HANDOFF_NURSING";
+  documentedAt: string | null;
+  savedAt: string;
+  displayWhen: string;
+  performerDisplayName: string;
+  performerInitials: string;
+  performerRoleTitle: string;
+  structuredLines: string[];
+  narrativeExcerpt: string;
+};
+
 export type EmergencyVisitSummaryModel = {
   motifPresentation: VisitSummaryTextBlock | null;
   triageResume: VisitSummaryTextBlock | null;
@@ -95,6 +112,10 @@ export type EmergencyVisitSummaryModel = {
   nursingReassessmentHistory: VisitSummaryReassessmentEntry[];
   /** Id of the entry to tag as "Actuel" in the UI; `null` when history is empty. */
   nursingReassessmentLatestId: string | null;
+  providerMseHistory: VisitSummaryDocumentationHistoryEntry[];
+  providerMseLatestId: string | null;
+  handoffHistory: VisitSummaryDocumentationHistoryEntry[];
+  handoffLatestId: string | null;
 };
 
 const MAX_LINE = 420;
@@ -265,6 +286,18 @@ export type NursingReassessmentApiEntry = {
   snapshot?: unknown;
 };
 
+export type ClinicalDocumentationEventApiEntry = {
+  id?: unknown;
+  eventType?: unknown;
+  createdAt?: unknown;
+  createdByUserId?: unknown;
+  createdBy?: unknown;
+  performerDisplayName?: unknown;
+  performerInitials?: unknown;
+  performerRoleTitle?: unknown;
+  payloadJson?: unknown;
+};
+
 const HISTORY_NARRATIVE_MAX = 240;
 const HISTORY_STRUCTURED_LINES_MAX = 4;
 
@@ -340,6 +373,167 @@ function buildReassessmentHistoryEntries(
   return out;
 }
 
+function payloadSnapshot(entry: ClinicalDocumentationEventApiEntry): Record<string, unknown> | null {
+  const payload =
+    entry.payloadJson && typeof entry.payloadJson === "object" && !Array.isArray(entry.payloadJson)
+      ? (entry.payloadJson as Record<string, unknown>)
+      : null;
+  const snapshot = payload?.snapshot;
+  return snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+    ? (snapshot as Record<string, unknown>)
+    : null;
+}
+
+function createdByDisplayName(entry: ClinicalDocumentationEventApiEntry): string {
+  const createdBy =
+    entry.createdBy && typeof entry.createdBy === "object" && !Array.isArray(entry.createdBy)
+      ? (entry.createdBy as Record<string, unknown>)
+      : null;
+  const displayName = createdBy?.displayName;
+  return typeof displayName === "string" ? displayName.trim() : "";
+}
+
+function performerFromEntry(
+  entry: ClinicalDocumentationEventApiEntry,
+  snapshot: Record<string, unknown> | null
+): { displayName: string; initials: string; roleTitle: string } {
+  const signature =
+    snapshot?.signature && typeof snapshot.signature === "object" && !Array.isArray(snapshot.signature)
+      ? (snapshot.signature as Record<string, unknown>)
+      : null;
+  const display =
+    (typeof entry.performerDisplayName === "string" && entry.performerDisplayName.trim()) ||
+    (typeof signature?.savedByDisplayName === "string" && signature.savedByDisplayName.trim()) ||
+    (typeof snapshot?.handoffLastSavedByDisplayName === "string" && snapshot.handoffLastSavedByDisplayName.trim()) ||
+    createdByDisplayName(entry);
+  const initials =
+    typeof entry.performerInitials === "string" && entry.performerInitials.trim()
+      ? entry.performerInitials.trim()
+      : display
+        .split(/\s+/u)
+        .filter(Boolean)
+        .map((p) => p[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+  return {
+    displayName: display,
+    initials,
+    roleTitle: typeof entry.performerRoleTitle === "string" ? entry.performerRoleTitle.trim() : "",
+  };
+}
+
+function buildHandoffLinesFromStored(
+  hf: ReturnType<typeof readErHandoffV1FromNursingAssessment>,
+  locale: SupportedLanguage
+): string[] {
+  const yn = (v: boolean) => (locale === "en" ? (v ? "Yes" : "No") : v ? "Oui" : "Non");
+  const hLines: string[] = [];
+  if (hf.receivingNurseName?.trim()) {
+    hLines.push(interpolate(vs(locale, "handoffLineReceivingNurse"), { name: trunc(hf.receivingNurseName, 200) }));
+  }
+  if (hf.reportGiven === true || hf.reportGiven === false) {
+    hLines.push(interpolate(vs(locale, "handoffLineReportGiven"), { value: yn(hf.reportGiven) }));
+  }
+  if (hf.reportGivenAt?.trim()) {
+    hLines.push(
+      interpolate(vs(locale, "handoffLineReportAt"), {
+        datetime: formatIsoForLocale(hf.reportGivenAt, locale),
+      })
+    );
+  }
+  if (hf.readyForInpatientTransfer === true || hf.readyForInpatientTransfer === false) {
+    hLines.push(interpolate(vs(locale, "handoffLineReady"), { value: yn(hf.readyForInpatientTransfer) }));
+  }
+  if (hf.handoffNote?.trim()) {
+    hLines.push(interpolate(vs(locale, "handoffLineNote"), { text: trunc(hf.handoffNote, 360) }));
+  }
+  return hLines;
+}
+
+function buildProviderMseHistoryEntries(
+  events: ClinicalDocumentationEventApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryDocumentationHistoryEntry[] {
+  const out: VisitSummaryDocumentationHistoryEntry[] = [];
+  for (const e of events) {
+    if (e.eventType !== "PROVIDER_MSE_SAVED") continue;
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = typeof e.createdAt === "string" ? e.createdAt : "";
+    if (!id || !savedAt) continue;
+    const snapshot = payloadSnapshot(e);
+    const signature =
+      snapshot?.signature && typeof snapshot.signature === "object" && !Array.isArray(snapshot.signature)
+        ? (snapshot.signature as Record<string, unknown>)
+        : null;
+    const documentedAt =
+      typeof signature?.savedAt === "string" && signature.savedAt.trim() ? signature.savedAt.trim() : null;
+    const wrapped = snapshot ? ({ [ER_PROVIDER_MSE_V1_KEY]: snapshot } as Record<string, unknown>) : null;
+    const preview = buildErProviderMsePreviewModel(erProviderMseFormFromEncounter(wrapped), locale);
+    const structuredLines: string[] = [];
+    for (const sec of preview.sections) {
+      if (sec.id === "empty") continue;
+      for (const ln of sec.lines) {
+        const t = ln.trim();
+        if (!t) continue;
+        structuredLines.push(trunc(t, 200));
+        if (structuredLines.length >= HISTORY_STRUCTURED_LINES_MAX) break;
+      }
+      if (structuredLines.length >= HISTORY_STRUCTURED_LINES_MAX) break;
+    }
+    const performer = performerFromEntry(e, snapshot);
+    out.push({
+      id,
+      eventType: "PROVIDER_MSE_SAVED",
+      documentedAt,
+      savedAt,
+      displayWhen: formatIsoForLocale(documentedAt ?? savedAt, locale),
+      performerDisplayName: performer.displayName,
+      performerInitials: performer.initials,
+      performerRoleTitle: performer.roleTitle,
+      structuredLines,
+      narrativeExcerpt: trunc(preview.oneLineSummary, HISTORY_NARRATIVE_MAX),
+    });
+  }
+  return out;
+}
+
+function buildHandoffHistoryEntries(
+  events: ClinicalDocumentationEventApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryDocumentationHistoryEntry[] {
+  const out: VisitSummaryDocumentationHistoryEntry[] = [];
+  for (const e of events) {
+    if (e.eventType !== "HANDOFF_NURSING") continue;
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = typeof e.createdAt === "string" ? e.createdAt : "";
+    if (!id || !savedAt) continue;
+    const snapshot = payloadSnapshot(e);
+    const documentedAt =
+      typeof snapshot?.handoffLastSavedAt === "string" && snapshot.handoffLastSavedAt.trim()
+        ? snapshot.handoffLastSavedAt.trim()
+        : typeof snapshot?.reportGivenAt === "string" && snapshot.reportGivenAt.trim()
+          ? snapshot.reportGivenAt.trim()
+          : null;
+    const wrapped = snapshot ? ({ [ER_HANDOFF_V1_KEY]: snapshot } as Record<string, unknown>) : null;
+    const hf = readErHandoffV1FromNursingAssessment(wrapped);
+    const performer = performerFromEntry(e, snapshot);
+    out.push({
+      id,
+      eventType: "HANDOFF_NURSING",
+      documentedAt,
+      savedAt,
+      displayWhen: formatIsoForLocale(documentedAt ?? savedAt, locale),
+      performerDisplayName: performer.displayName,
+      performerInitials: performer.initials,
+      performerRoleTitle: performer.roleTitle,
+      structuredLines: buildHandoffLinesFromStored(hf, locale).slice(0, HISTORY_STRUCTURED_LINES_MAX),
+      narrativeExcerpt: trunc(hf.handoffNote ?? "", HISTORY_NARRATIVE_MAX),
+    });
+  }
+  return out;
+}
+
 /**
  * Aggregate all ER documentation for read-only display.
  *
@@ -354,7 +548,8 @@ export function buildEmergencyVisitSummaryModel(
   triage: Record<string, unknown> | null,
   resultsSnap: EncounterResultsLabRadSnapshot | null,
   locale: SupportedLanguage,
-  nursingReassessmentEvents?: NursingReassessmentApiEntry[] | null
+  nursingReassessmentEvents?: NursingReassessmentApiEntry[] | null,
+  clinicalDocumentationEvents?: ClinicalDocumentationEventApiEntry[] | null
 ): EmergencyVisitSummaryModel {
   const timeline: VisitSummaryTimelineEntry[] = [];
 
@@ -603,27 +798,7 @@ export function buildEmergencyVisitSummaryModel(
   let handoff: VisitSummaryTextBlock | null = null;
   if ((encounter.type ?? "").trim() === "EMERGENCY") {
     const hf = readErHandoffV1FromNursingAssessment(encounter.nursingAssessment);
-    const yn = (v: boolean) => (locale === "en" ? (v ? "Yes" : "No") : v ? "Oui" : "Non");
-    const hLines: string[] = [];
-    if (hf.receivingNurseName?.trim()) {
-      hLines.push(interpolate(vs(locale, "handoffLineReceivingNurse"), { name: trunc(hf.receivingNurseName, 200) }));
-    }
-    if (hf.reportGiven === true || hf.reportGiven === false) {
-      hLines.push(interpolate(vs(locale, "handoffLineReportGiven"), { value: yn(hf.reportGiven) }));
-    }
-    if (hf.reportGivenAt?.trim()) {
-      hLines.push(
-        interpolate(vs(locale, "handoffLineReportAt"), {
-          datetime: formatIsoForLocale(hf.reportGivenAt, locale),
-        })
-      );
-    }
-    if (hf.readyForInpatientTransfer === true || hf.readyForInpatientTransfer === false) {
-      hLines.push(interpolate(vs(locale, "handoffLineReady"), { value: yn(hf.readyForInpatientTransfer) }));
-    }
-    if (hf.handoffNote?.trim()) {
-      hLines.push(interpolate(vs(locale, "handoffLineNote"), { text: trunc(hf.handoffNote, 360) }));
-    }
+    const hLines = buildHandoffLinesFromStored(hf, locale);
     if (hLines.length) {
       handoff = { title: vs(locale, "handoffBlockTitle"), lines: hLines };
     }
@@ -639,18 +814,27 @@ export function buildEmergencyVisitSummaryModel(
       : [];
   const nursingReassessmentLatestId =
     nursingReassessmentHistory.length > 0 ? nursingReassessmentHistory[0].id : null;
+  const documentationEvents = Array.isArray(clinicalDocumentationEvents) ? clinicalDocumentationEvents : [];
+  const providerMseHistory = buildProviderMseHistoryEntries(documentationEvents, locale);
+  const providerMseLatestId = providerMseHistory.length > 0 ? providerMseHistory[0].id : null;
+  const handoffHistory = buildHandoffHistoryEntries(documentationEvents, locale);
+  const handoffLatestId = handoffHistory.length > 0 ? handoffHistory[0].id : null;
 
   return {
     motifPresentation,
     triageResume,
     resumeInfirmier,
-    evaluationMedicale,
+    evaluationMedicale: providerMseHistory.length > 0 ? null : evaluationMedicale,
     resultats,
     disposition,
-    handoff,
+    handoff: handoffHistory.length > 0 ? null : handoff,
     emtala,
     timeline,
     nursingReassessmentHistory,
     nursingReassessmentLatestId,
+    providerMseHistory,
+    providerMseLatestId,
+    handoffHistory,
+    handoffLatestId,
   };
 }

@@ -307,6 +307,20 @@ export class EncountersController {
     return this.encountersService.getClinicalTimeline(facilityId, id, parsed);
   }
 
+  @Get("encounters/:id/clinical-documentation-events")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async listClinicalDocumentationEvents(
+    @Param("id") id: string,
+    @Query("types") types: string | undefined,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.listClinicalDocumentationEvents(facilityId, id, types);
+  }
+
   @Get("encounters/:id/iv-access")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.ADMIN)
   async getIvAccess(@Param("id") id: string, @Req() req: any) {

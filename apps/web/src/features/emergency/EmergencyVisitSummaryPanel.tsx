@@ -14,7 +14,9 @@ import {
 import { useI18n } from "@/lib/i18n";
 import {
   buildEmergencyVisitSummaryModel,
+  type ClinicalDocumentationEventApiEntry,
   type NursingReassessmentApiEntry,
+  type VisitSummaryDocumentationHistoryEntry,
   type VisitSummaryReassessmentEntry,
   type VisitSummaryTextBlock,
 } from "./emergencyVisitSummaryModel";
@@ -228,6 +230,148 @@ function ReassessmentHistoryCard({
   );
 }
 
+function DocumentationHistoryCard({
+  accent,
+  entries,
+  latestEntryId,
+  title,
+  subline,
+  t,
+}: {
+  accent: string;
+  entries: VisitSummaryDocumentationHistoryEntry[];
+  latestEntryId: string | null;
+  title: string;
+  subline: string;
+  t: (k: string) => string;
+}) {
+  return (
+    <MedoraCard leftAccentColor={accent} variant="default">
+      <MedoraCardInner>
+        <p style={sectionTitle}>{title}</p>
+        <p style={{ ...lineStyle, margin: "4px 0 8px 0", fontSize: 12, color: "#64748b" }}>
+          {subline}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {entries.map((entry) => {
+            const isLatest = entry.id === latestEntryId;
+            return (
+              <div
+                key={entry.id}
+                style={{
+                  borderRadius: 10,
+                  border: `1px solid ${isLatest ? "#c7d2fe" : "#e2e8f0"}`,
+                  backgroundColor: isLatest ? "#eef2ff" : "#ffffff",
+                  padding: "10px 12px",
+                }}
+              >
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+                    {entry.displayWhen || "—"}
+                  </span>
+                  {isLatest ? (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#3730a3",
+                        backgroundColor: "#e0e7ff",
+                        border: "1px solid #c7d2fe",
+                        borderRadius: 9999,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      {t("emergencyVisitSummaryPanel.documentationHistoryCurrent")}
+                    </span>
+                  ) : null}
+                </div>
+                {entry.structuredLines.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {entry.structuredLines.map((line, i) => (
+                      <p key={i} style={{ ...lineStyle, margin: 0 }}>
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {entry.narrativeExcerpt ? (
+                  <p
+                    style={{
+                      ...lineStyle,
+                      margin: entry.structuredLines.length > 0 ? "6px 0 0 0" : "0",
+                      color: "#475569",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    {entry.narrativeExcerpt}
+                  </p>
+                ) : null}
+                {entry.structuredLines.length === 0 && !entry.narrativeExcerpt ? (
+                  <p style={{ ...lineStyle, margin: 0, color: "#94a3b8" }}>
+                    {t("emergencyVisitSummaryPanel.documentationHistoryEmptyEntry")}
+                  </p>
+                ) : null}
+                <div
+                  style={{
+                    marginTop: 10,
+                    paddingTop: 8,
+                    borderTop: "1px solid #e2e8f0",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 11,
+                    color: "#475569",
+                  }}
+                >
+                  <span
+                    title={entry.performerDisplayName || undefined}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      backgroundColor: "#e2e8f0",
+                      color: "#0f172a",
+                      fontSize: 10,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {entry.performerInitials || "—"}
+                  </span>
+                  <span style={{ fontWeight: 600, color: "#0f172a" }}>
+                    {entry.performerDisplayName || t("emergencyVisitSummaryPanel.documentationHistoryUnknownAuthor")}
+                  </span>
+                  {entry.performerRoleTitle ? (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.05em",
+                        textTransform: "uppercase",
+                        color: "#475569",
+                        backgroundColor: "#f1f5f9",
+                        borderRadius: 6,
+                        padding: "2px 6px",
+                      }}
+                    >
+                      {entry.performerRoleTitle}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </MedoraCardInner>
+    </MedoraCard>
+  );
+}
+
 export function EmergencyVisitSummaryPanel({
   encounterId,
   facilityId,
@@ -264,6 +408,7 @@ export function EmergencyVisitSummaryPanel({
    */
   const [reassessmentEvents, setReassessmentEvents] = useState<NursingReassessmentApiEntry[]>([]);
   const [reassessmentEventsLoadFailed, setReassessmentEventsLoadFailed] = useState(false);
+  const [documentationEvents, setDocumentationEvents] = useState<ClinicalDocumentationEventApiEntry[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -295,13 +440,45 @@ export function EmergencyVisitSummaryPanel({
     };
   }, [encounterId, facilityId, resultsRefresh]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiFetch(
+          `/encounters/${encounterId}/clinical-documentation-events?types=PROVIDER_MSE_SAVED,HANDOFF_NURSING`,
+          { facilityId }
+        );
+        if (cancelled) return;
+        const entries =
+          data && typeof data === "object" && !Array.isArray(data)
+            ? (data as { entries?: unknown }).entries
+            : null;
+        setDocumentationEvents(Array.isArray(entries) ? (entries as ClinicalDocumentationEventApiEntry[]) : []);
+      } catch {
+        if (cancelled) return;
+        setDocumentationEvents([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, facilityId, resultsRefresh]);
+
   const onLabRadSnapshot = useCallback((s: EncounterResultsLabRadSnapshot) => {
     setResultsSnap(s);
   }, []);
 
   const model = useMemo(
-    () => buildEmergencyVisitSummaryModel(encounter, triageSnapshot, resultsSnap, language, reassessmentEvents),
-    [encounter, triageSnapshot, resultsSnap, language, reassessmentEvents]
+    () =>
+      buildEmergencyVisitSummaryModel(
+        encounter,
+        triageSnapshot,
+        resultsSnap,
+        language,
+        reassessmentEvents,
+        documentationEvents
+      ),
+    [encounter, triageSnapshot, resultsSnap, language, reassessmentEvents, documentationEvents]
   );
 
   const hasStructuredContent = useMemo(() => {
@@ -314,7 +491,9 @@ export function EmergencyVisitSummaryPanel({
         model.handoff ||
         model.emtala ||
         model.timeline.length > 0 ||
-        model.nursingReassessmentHistory.length > 0
+        model.nursingReassessmentHistory.length > 0 ||
+        model.providerMseHistory.length > 0 ||
+        model.handoffHistory.length > 0
     );
   }, [model]);
 
@@ -408,6 +587,16 @@ export function EmergencyVisitSummaryPanel({
           </MedoraCard>
         ) : null}
         {model.evaluationMedicale ? <SummaryBlockCard accent="#4f46e5" block={model.evaluationMedicale} /> : null}
+        {model.providerMseHistory.length > 0 ? (
+          <DocumentationHistoryCard
+            accent="#4f46e5"
+            entries={model.providerMseHistory}
+            latestEntryId={model.providerMseLatestId}
+            title={t("emergencyVisitSummaryPanel.providerMseHistoryTitle")}
+            subline={t("emergencyVisitSummaryPanel.providerMseHistorySubline")}
+            t={t}
+          />
+        ) : null}
 
         {model.resultats ? (
           <MedoraCard leftAccentColor="#6366f1" variant="default">
@@ -455,6 +644,16 @@ export function EmergencyVisitSummaryPanel({
 
         {model.disposition ? <SummaryBlockCard accent="#64748b" block={model.disposition} /> : null}
         {model.handoff ? <SummaryBlockCard accent="#0d9488" block={model.handoff} /> : null}
+        {model.handoffHistory.length > 0 ? (
+          <DocumentationHistoryCard
+            accent="#0d9488"
+            entries={model.handoffHistory}
+            latestEntryId={model.handoffLatestId}
+            title={t("emergencyVisitSummaryPanel.handoffHistoryTitle")}
+            subline={t("emergencyVisitSummaryPanel.handoffHistorySubline")}
+            t={t}
+          />
+        ) : null}
         {model.emtala ? <SummaryBlockCard accent="#0e7490" block={model.emtala} /> : null}
 
         {model.timeline.length > 0 ? (

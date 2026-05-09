@@ -15,9 +15,14 @@ import {
   formatEncounterChromeDateTime,
   formatPatientAgeSexLine,
 } from "@/lib/encounterChromeI18n";
-import { printErPacket, type ErPrintReassessmentEntry } from "@/features/emergency/erPrintPacket";
+import {
+  printErPacket,
+  type ErPrintDocumentationHistoryEntry,
+  type ErPrintReassessmentEntry,
+} from "@/features/emergency/erPrintPacket";
 import {
   buildEmergencyVisitSummaryModel,
+  type ClinicalDocumentationEventApiEntry,
   type NursingReassessmentApiEntry,
 } from "@/features/emergency/emergencyVisitSummaryModel";
 import {
@@ -152,6 +157,8 @@ export function EmergencyErSummaryClosureSurface({
      * print behavior. This stays clinician-only (RN/PROVIDER/ADMIN role gate at the API).
      */
     let nursingReassessmentEntries: ErPrintReassessmentEntry[] | null = null;
+    let providerMseEntries: ErPrintDocumentationHistoryEntry[] | null = null;
+    let handoffEntries: ErPrintDocumentationHistoryEntry[] | null = null;
     try {
       const data = await apiFetch(`/encounters/${encounterId}/nursing-reassessment-events`, {
         facilityId,
@@ -188,6 +195,50 @@ export function EmergencyErSummaryClosureSurface({
     } catch {
       /* Non-fatal: print proceeds without the history section. */
     }
+    try {
+      const data = await apiFetch(
+        `/encounters/${encounterId}/clinical-documentation-events?types=PROVIDER_MSE_SAVED,HANDOFF_NURSING`,
+        { facilityId }
+      );
+      const entries =
+        data && typeof data === "object" && !Array.isArray(data)
+          ? (data as { entries?: unknown }).entries
+          : null;
+      if (Array.isArray(entries) && entries.length > 0) {
+        const model = buildEmergencyVisitSummaryModel(
+          encounter,
+          triageSnapshot,
+          null,
+          language,
+          null,
+          entries as ClinicalDocumentationEventApiEntry[]
+        );
+        if (model.providerMseHistory.length > 0) {
+          providerMseEntries = model.providerMseHistory.map((e) => ({
+            documentedAt: e.documentedAt,
+            savedAt: e.savedAt,
+            performerDisplayName: e.performerDisplayName,
+            performerInitials: e.performerInitials,
+            performerRoleTitle: e.performerRoleTitle,
+            structuredLines: e.structuredLines,
+            narrativeExcerpt: e.narrativeExcerpt,
+          }));
+        }
+        if (model.handoffHistory.length > 0) {
+          handoffEntries = model.handoffHistory.map((e) => ({
+            documentedAt: e.documentedAt,
+            savedAt: e.savedAt,
+            performerDisplayName: e.performerDisplayName,
+            performerInitials: e.performerInitials,
+            performerRoleTitle: e.performerRoleTitle,
+            structuredLines: e.structuredLines,
+            narrativeExcerpt: e.narrativeExcerpt,
+          }));
+        }
+      }
+    } catch {
+      /* Non-fatal: print proceeds without Provider MSE / handoff history sections. */
+    }
     printErPacket({
       patient: p,
       encounter: {
@@ -206,6 +257,8 @@ export function EmergencyErSummaryClosureSurface({
       triageSnapshot,
       language,
       nursingReassessmentEntries,
+      providerMseEntries,
+      handoffEntries,
     });
   }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot]);
 
