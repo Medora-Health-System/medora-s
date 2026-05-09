@@ -9,7 +9,10 @@ import {
   triageAssessmentSnapshotChanged,
 } from "../utils/clinical-event-triage-assessment.util";
 import { hasNonEmptyVitalsJson } from "../utils/patient-sex-map";
-import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
+} from "../encounters/encounter-sign-lock.util";
 import { throwTriageConcurrentModification } from "./triage-concurrency.util";
 
 @Injectable()
@@ -159,6 +162,7 @@ export class TriageService {
       throw new NotFoundException("Encounter not found");
     }
 
+    assertEncounterOpenForClinicalMutation(encounter);
     assertEncounterNotSigned(encounter);
 
     const existing = await this.prisma.triage.findUnique({

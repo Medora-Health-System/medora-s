@@ -12,7 +12,10 @@ import { AuditAction, OrderStatus, RoleCode } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
-import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
+} from "../encounters/encounter-sign-lock.util";
 import {
   tryAutoImagingResultBillingAfterVerify,
   tryAutoLabResultBillingAfterVerify,
@@ -141,6 +144,7 @@ export class ResultsService {
       throw new NotFoundException("Ligne de commande introuvable.");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
 
@@ -368,6 +372,7 @@ export class ResultsService {
       throw new NotFoundException("Résultat introuvable pour cette ligne.");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
 
@@ -457,6 +462,7 @@ export class ResultsService {
       throw new NotFoundException("Résultat introuvable pour cette ligne.");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
 
@@ -551,6 +557,7 @@ export class ResultsService {
       throw new NotFoundException("Analyse introuvable ou non laboratoire.");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
 

@@ -24,7 +24,10 @@ import {
 import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
-import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
+import {
+  assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
+} from "../encounters/encounter-sign-lock.util";
 import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { logError as medoraLogError } from "../common/logging/medoraLogger";
 import {
@@ -1329,6 +1332,7 @@ export class OrdersService {
       throw new NotFoundException("Order not found");
     }
 
+    assertEncounterOpenForClinicalMutation(order.encounter);
     assertEncounterNotSigned(order.encounter);
 
     const updateData: { status?: OrderStatus; priority?: OrderPriority; notes?: string | null } = {};
@@ -1473,6 +1477,7 @@ export class OrdersService {
       throw new NotFoundException("Order not found");
     }
 
+    assertEncounterOpenForClinicalMutation(order.encounter);
     assertEncounterNotSigned(order.encounter);
 
     assertCanTransition(order.status, "CANCELLED");
@@ -1629,6 +1634,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
 
@@ -1770,6 +1776,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
@@ -1842,6 +1849,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
@@ -1915,6 +1923,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     if (isMedicationAdministerChart(orderItem)) {
@@ -2003,6 +2012,7 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
 
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {
@@ -2148,6 +2158,7 @@ export class OrdersService {
     if (!orderItem) {
       throw new NotFoundException("Order item not found");
     }
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {
@@ -2272,6 +2283,7 @@ export class OrdersService {
     if (!orderItem) {
       throw new NotFoundException("Order item not found");
     }
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     if (orderItem.catalogItemType !== "MEDICATION") {

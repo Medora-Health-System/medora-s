@@ -32,6 +32,8 @@ function makeVancomycinIvpbOrderItem(status: OrderStatus = OrderStatus.PLACED) {
       encounter: {
         id: "enc-1",
         patientId: "pat-1",
+        status: "OPEN",
+        workflowState: "IN_TREATMENT",
         providerDocumentationStatus: null,
       },
     },

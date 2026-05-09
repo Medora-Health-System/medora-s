@@ -64,6 +64,7 @@ import { assertValidEncounterWorkflowTransition } from "../common/workflow/encou
 import {
   SIGNED_ENCOUNTER_MUTATION_BLOCKED_FR,
   assertEncounterNotSigned,
+  assertEncounterOpenForClinicalMutation,
   assertOperationalUpdateAllowedWhenSigned,
 } from "./encounter-sign-lock.util";
 import {
@@ -505,6 +506,13 @@ export class EncountersService {
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
     }
+
+    /**
+     * Phase 1 — post-close mutation hardening: an addendum may only be appended while
+     * the encounter is still OPEN. Once the encounter is CLOSED, the chart is terminal;
+     * future post-close amendments require an explicit, audited workflow (out of scope).
+     */
+    assertEncounterOpenForClinicalMutation(encounter);
 
     if (encounter.providerDocumentationStatus !== "SIGNED") {
       throw new BadRequestException(

@@ -3041,7 +3041,7 @@ function ClinicVisitTab({
           ))}
         </div>
       ) : null}
-      {docSigned && canSignProviderDocumentation ? (
+      {docSigned && canSignProviderDocumentation && !readOnly ? (
         <div style={{ ...clinicShell, padding: "16px 18px" }}>
           <h4 style={{ marginTop: 0, marginBottom: 10, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
             {t("encounterClinicTab.addendumSectionTitle")}
