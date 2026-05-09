@@ -249,6 +249,13 @@ export type ErNursingReassessmentForm = {
   trend: ErTrend;
   interventionsPerformed: string;
   safetyRoundingNote: string;
+  /**
+   * Care / monitoring summary — additive JSON-only field. Stores the chip-multi serialization
+   * (one selected option label per line) for the "Care / monitoring summary" row inside the
+   * column grid. Backwards-compatible: legacy events without this key just render `""`. Not
+   * a schema change — `Encounter.nursingAssessment` is `Json?`.
+   */
+  careMonitoringSummary: string;
   addendum: string;
   /** Phase-2 structured rows surfaced in the column-style documentation grid. */
   mentalStatus: ErMentalStatus;
@@ -291,6 +298,7 @@ export function emptyErNursingReassessmentForm(): ErNursingReassessmentForm {
     trend: "",
     interventionsPerformed: "",
     safetyRoundingNote: "",
+    careMonitoringSummary: "",
     addendum: "",
     mentalStatus: "",
     orientation: "",
@@ -331,6 +339,8 @@ export type ErNursingReassessmentStored = {
   trend: ErTrend;
   interventionsPerformed: string;
   safetyRoundingNote: string;
+  /** Optional — present on saves made after the chip-multi flowsheet rollout. */
+  careMonitoringSummary?: string;
   addendum: string;
   /** Phase-2 structured fields (optional; absent on legacy saves). */
   mentalStatus?: ErMentalStatus;
@@ -757,6 +767,7 @@ export function erNursingReassessmentFormFromEncounter(nursingAssessment: unknow
   e.trend = trendFromUnknown(o.trend);
   e.interventionsPerformed = typeof o.interventionsPerformed === "string" ? o.interventionsPerformed : "";
   e.safetyRoundingNote = typeof o.safetyRoundingNote === "string" ? o.safetyRoundingNote : "";
+  e.careMonitoringSummary = typeof o.careMonitoringSummary === "string" ? o.careMonitoringSummary : "";
   e.addendum = typeof o.addendum === "string" ? o.addendum : "";
   e.mentalStatus = mentalStatusFromUnknown(o.mentalStatus);
   e.orientation = orientationFromUnknown(o.orientation);
@@ -795,6 +806,9 @@ function formToStored(form: ErNursingReassessmentForm, signature: ErNursingReass
     trend: form.trend,
     interventionsPerformed: form.interventionsPerformed.trim().slice(0, 8000),
     safetyRoundingNote: form.safetyRoundingNote.trim().slice(0, 4000),
+    ...(form.careMonitoringSummary.trim()
+      ? { careMonitoringSummary: form.careMonitoringSummary.trim().slice(0, 4000) }
+      : {}),
     addendum: form.addendum.trim().slice(0, 8000),
     ...(form.mentalStatus ? { mentalStatus: form.mentalStatus } : {}),
     ...(form.orientation ? { orientation: form.orientation } : {}),
@@ -833,6 +847,7 @@ export function storedHasClinicalContent(s: ErNursingReassessmentStored): boolea
       s.trend ||
       s.interventionsPerformed.trim() ||
       s.safetyRoundingNote.trim() ||
+      (s.careMonitoringSummary ?? "").trim() ||
       s.addendum.trim() ||
       s.mentalStatus ||
       s.orientation ||
@@ -1215,6 +1230,12 @@ export function buildErNursingReassessmentPreviewModel(
   if (intv) soins.push(interpolatePreviewModel(previewModelString(locale, "lineInterventions"), { text: intv }));
   const safe = form.safetyRoundingNote.trim();
   if (safe) soins.push(interpolatePreviewModel(previewModelString(locale, "lineSafetyRounding"), { text: safe }));
+  const cms = form.careMonitoringSummary.trim();
+  if (cms) {
+    soins.push(
+      interpolatePreviewModel(previewModelString(locale, "lineCareMonitoringSummary"), { text: cms })
+    );
+  }
   if (soins.length) {
     sections.push({ id: "soins", title: previewModelString(locale, "sectionCareSafety"), lines: soins });
   }

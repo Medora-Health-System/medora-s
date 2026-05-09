@@ -292,6 +292,26 @@ const readOnlyTextBox: React.CSSProperties = {
   wordBreak: "break-word",
 };
 
+/**
+ * Compact chip button used by chip-multi rows. Sized small enough that ~12 chips wrap into 2-3
+ * lines inside a 160px–1fr column, while remaining tap-target friendly on touch (>= 22px tall
+ * via `padding`). Selection state styling is applied inline at the call-site so we can
+ * differentiate active / disabled visuals without duplicating the base style.
+ */
+const chipButtonStyle: React.CSSProperties = {
+  border: "1px solid #cbd5e1",
+  borderRadius: 6,
+  padding: "2px 8px",
+  fontSize: 11,
+  fontWeight: 500,
+  lineHeight: 1.3,
+  whiteSpace: "nowrap",
+  textAlign: "left",
+  maxWidth: "100%",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
 const chevronButton: React.CSSProperties = {
   background: "transparent",
   border: 0,
@@ -370,6 +390,9 @@ type SimpleSelectKey =
  * `ErNursingReassessmentStored`). Past columns render the saved string read-only; the active
  * column renders an `<input>` or `<textarea>` bound to the form. Keeping them in the grid
  * preserves clinical free-text capability while removing the duplicate standalone sections.
+ *
+ * `careMonitoringSummary` is additive (Phase-3+ rollout). Legacy events without it render `""`
+ * in past columns — same as any other historically-absent free-text field.
  */
 type FreeTextSnapshotKey =
   | "responseToTreatment"
@@ -378,7 +401,8 @@ type FreeTextSnapshotKey =
   | "addendum"
   | "bedsideStatus"
   | "generalAppearance"
-  | "vitalsSummaryNote";
+  | "vitalsSummaryNote"
+  | "careMonitoringSummary";
 
 /**
  * Trauma A/B/C/D/E rows. Past columns can show data when the persisted event row carries a
@@ -424,6 +448,55 @@ type TriageYnuKey =
 /** Triage free-text rows (PPE / ED course note + nursing notes addendum + nursing care note). */
 type TriageTextKey = "edCoursePpeNote" | "nursingNotesAddendum" | "nursingCareNote";
 
+/**
+ * Multi-chip-toggle row.
+ *
+ * Each chip is a clickable button that toggles its localized label's presence in the
+ * underlying free-text storage field. The stored string is the source of truth — chip
+ * selection is derived on every render by line-by-line membership against the current
+ * stored value (split by `\n`, trim each, equality compare against the chip's localized
+ * label). Historical/legacy free-text content is preserved verbatim; chips simply do not
+ * highlight when the saved string contains custom prose.
+ *
+ * `backend` selects which form pipe the chip writes to:
+ *   - `"form"`    → `form[key]` via `onPatch`            (per-column history via reassessment snapshot)
+ *   - `"trauma"`  → `traumaForm[key]` via `onPatchTrauma` (per-column history via traumaSnapshot)
+ *   - `"triage"`  → `triageNursingSlice[key]` via `onPatchTriageSlice` (encounter-singleton — past
+ *                   columns render "—")
+ *
+ * The `"Other / see narrative"` option is just another chip; selecting it toggles a stable
+ * localized phrase in the stored string — there is no separate inline free-text widget,
+ * keeping the row visually compact and aligned with the flowsheet aesthetic.
+ */
+type ChipMultiRow =
+  | {
+      kind: "chip-multi";
+      backend: "form";
+      sectionId: GridSectionId;
+      key: FreeTextSnapshotKey;
+      labelKey: string;
+      options: readonly string[];
+      optionsI18nNamespace: string;
+    }
+  | {
+      kind: "chip-multi";
+      backend: "trauma";
+      sectionId: GridSectionId;
+      key: TraumaTextKey;
+      labelKey: string;
+      options: readonly string[];
+      optionsI18nNamespace: string;
+    }
+  | {
+      kind: "chip-multi";
+      backend: "triage";
+      sectionId: GridSectionId;
+      key: TriageTextKey;
+      labelKey: string;
+      options: readonly string[];
+      optionsI18nNamespace: string;
+    };
+
 type RowDef =
   | {
       kind: "select";
@@ -458,7 +531,197 @@ type RowDef =
       key: TriageTextKey;
       labelKey: string;
       multiline: boolean;
-    };
+    }
+  | ChipMultiRow;
+
+// ── Chip-multi option catalogs ──────────────────────────────────────────────
+//
+// Internal codes (snake_case, English-stable) used as i18n keys; the UI ALWAYS resolves them
+// via `t()` to the localized label before showing or storing them. The phrase actually written
+// to the JSON snapshot is the localized label string, joined by `\n`. Adding new codes is
+// safe — past saves just won't surface them as chips.
+//
+// `other_see_narrative` is included on every list (per the task spec). When a row needs no
+// catch-all (e.g. trauma fields where notes belong in the trauma-text "notes" row), it can
+// still be useful as a quick affordance to defer to the bottom narrative.
+
+const RESPONSE_TO_TREATMENT_OPTIONS: readonly string[] = [
+  "improved_after_treatment",
+  "no_change_after_treatment",
+  "symptoms_worsened",
+  "pain_improved",
+  "pain_unchanged",
+  "pain_worsened",
+  "breathing_improved",
+  "nausea_improved",
+  "reassessed_after_intervention",
+  "provider_notified_of_change",
+  "provider_notified_uncontrolled_pain",
+  "tolerable_pain_level",
+  "other_see_narrative",
+];
+
+const INTERVENTIONS_PERFORMED_OPTIONS: readonly string[] = [
+  "iv_access_assessed",
+  "medication_administered_per_mar",
+  "oxygen_applied",
+  "patient_repositioned",
+  "safety_rounding_completed",
+  "education_provided",
+  "provider_updated",
+  "non_pharmacologic_comfort_measures",
+  "ice_heat_applied",
+  "repositioned_for_comfort",
+  "pain_reassessment_completed",
+  "education_pain_reporting",
+  "other_see_narrative",
+];
+
+const BEDSIDE_STATUS_OPTIONS: readonly string[] = [
+  "supine",
+  "sitting_upright",
+  "ambulatory_with_assistance",
+  "family_at_bedside",
+  "call_light_within_reach",
+  "side_rails_up",
+  "resting_comfortably",
+  "awaiting_provider_reassessment",
+  "awaiting_results",
+  "other_see_narrative",
+];
+
+const CARE_MONITORING_SUMMARY_OPTIONS: readonly string[] = [
+  "continuous_monitoring",
+  "cardiac_monitor",
+  "oxygen_therapy",
+  "iv_access_established",
+  "fall_precautions",
+  "comfort_measures",
+  "pain_reassessment",
+  "intake_output_monitored",
+  "patient_education_reinforced",
+  "provider_updated",
+  "other_see_narrative",
+];
+
+const ED_PPE_OPTIONS: readonly string[] = [
+  "standard_precautions",
+  "gloves_used",
+  "mask_used",
+  "eye_protection_used",
+  "gown_used",
+  "isolation_precautions",
+  "hand_hygiene_performed",
+  "ppe_not_indicated",
+  "other_see_narrative",
+];
+
+const TRAUMA_HEAD_FACE_OPTIONS: readonly string[] = [
+  "no_visible_trauma",
+  "abrasion",
+  "laceration",
+  "contusion",
+  "swelling",
+  "tenderness",
+  "bleeding_controlled",
+  "pupils_equal_reactive",
+  "facial_asymmetry",
+  "other_see_narrative",
+];
+
+const TRAUMA_NECK_OPTIONS: readonly string[] = [
+  "no_tenderness",
+  "midline_tenderness",
+  "c_collar_in_place",
+  "rom_intact",
+  "limited_rom",
+  "trachea_midline",
+  "no_jvd",
+  "swelling",
+  "other_see_narrative",
+];
+
+const TRAUMA_CHEST_OPTIONS: readonly string[] = [
+  "equal_chest_rise",
+  "clear_breath_sounds",
+  "chest_wall_tenderness",
+  "contusion",
+  "crepitus",
+  "diminished_breath_sounds",
+  "labored_respirations",
+  "no_visible_trauma",
+  "other_see_narrative",
+];
+
+const TRAUMA_ABDOMEN_PELVIS_OPTIONS: readonly string[] = [
+  "soft",
+  "non_tender",
+  "tenderness",
+  "distended",
+  "guarding",
+  "rebound_tenderness",
+  "pelvis_stable",
+  "pelvic_tenderness",
+  "no_visible_trauma",
+  "other_see_narrative",
+];
+
+const TRAUMA_BACK_SPINE_OPTIONS: readonly string[] = [
+  "no_tenderness",
+  "midline_tenderness",
+  "paraspinal_tenderness",
+  "no_step_off",
+  "step_off_noted",
+  "full_rom",
+  "limited_rom",
+  "no_visible_trauma",
+  "other_see_narrative",
+];
+
+const TRAUMA_EXTREMITIES_OPTIONS: readonly string[] = [
+  "no_deformity",
+  "deformity",
+  "swelling",
+  "tenderness",
+  "distal_pulses_intact",
+  "sensation_intact",
+  "motor_intact",
+  "limited_rom",
+  "full_rom",
+  "cap_refill_under_2_sec",
+  "other_see_narrative",
+];
+
+const TRAUMA_SKIN_WOUNDS_OPTIONS: readonly string[] = [
+  "skin_intact",
+  "abrasion",
+  "laceration",
+  "contusion",
+  "puncture_wound",
+  "burn",
+  "bleeding_controlled",
+  "dressing_applied",
+  "wound_cleansed",
+  "other_see_narrative",
+];
+
+/**
+ * i18n namespace prefix for chip-multi options. Each chip option is resolved as
+ * `emergencyNursingReassessment.{namespace}.{code}`. Namespaces are scoped under
+ * `documentationGrid.options.*` so they live alongside the grid-specific copy.
+ */
+const CHIP_NS_RESPONSE = "documentationGrid.options.responseToTreatmentOptions";
+const CHIP_NS_INTERVENTIONS = "documentationGrid.options.interventionsPerformedOptions";
+const CHIP_NS_BEDSIDE = "documentationGrid.options.bedsideStatusOptions";
+const CHIP_NS_CARE_MONITORING = "documentationGrid.options.careMonitoringSummaryOptions";
+const CHIP_NS_ED_PPE = "documentationGrid.options.edPpeOptions";
+const CHIP_NS_TRAUMA_HEAD_FACE = "documentationGrid.options.traumaHeadFaceOptions";
+const CHIP_NS_TRAUMA_NECK = "documentationGrid.options.traumaNeckOptions";
+const CHIP_NS_TRAUMA_CHEST = "documentationGrid.options.traumaChestOptions";
+const CHIP_NS_TRAUMA_ABDOMEN_PELVIS = "documentationGrid.options.traumaAbdomenPelvisOptions";
+const CHIP_NS_TRAUMA_BACK_SPINE = "documentationGrid.options.traumaBackSpineOptions";
+const CHIP_NS_TRAUMA_EXTREMITIES = "documentationGrid.options.traumaExtremitiesOptions";
+const CHIP_NS_TRAUMA_SKIN_WOUNDS = "documentationGrid.options.traumaSkinWoundsOptions";
 
 const ROWS: readonly RowDef[] = [
   // ── A. Primary (mockup-aligned, default expanded) ────────────────────────
@@ -603,27 +866,61 @@ const ROWS: readonly RowDef[] = [
   },
   { kind: "trend-select", sectionId: "additional", key: "trend", labelKey: "rowTrend" },
 
-  // ── C. Care / safety free-text rows (default collapsed) ──────────────────
+  // ── C. Care / safety rows (default collapsed) ────────────────────────────
   /**
    * These rows replace the previous standalone "Response", "Care / safety", and "Addendum"
    * sections that lived below the grid. Their values still serialize into the same
    * `ErNursingReassessmentStored` snapshot — no schema change — so per-column history Just
-   * Works for past columns. The active column renders a small `<textarea>` (multi-line) or
-   * `<input>` (single-line) bound to `form[key]`.
+   * Works for past columns.
+   *
+   * Chip-multi rows (response / interventions / bedside / monitoring) compose the stored
+   * string from clickable, localized chip labels (one selected option per line). Free-text
+   * rows (rounding note, addendum) remain narrative because their content is intrinsically
+   * prose, not enumerable.
+   *
+   * Removed (duplicates / unused):
+   *   - `rowGeneralAppearanceFreeText` (`generalAppearance`) — the structured "Apparence
+   *     générale" already lives under Additional Assessment.
+   *   - `rowVitalsSummaryNote` (`vitalsSummaryNote`) — vitals are recorded via the dedicated
+   *     vitals editor; this row was redundant.
+   *   The underlying snapshot fields are kept on the stored type so legacy events still load
+   *   without data loss; they just no longer surface as their own row.
    */
   {
-    kind: "free-text",
+    kind: "chip-multi",
+    backend: "form",
     sectionId: "care_safety",
     key: "responseToTreatment",
     labelKey: "rowResponseToTreatment",
-    multiline: true,
+    options: RESPONSE_TO_TREATMENT_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_RESPONSE,
   },
   {
-    kind: "free-text",
+    kind: "chip-multi",
+    backend: "form",
     sectionId: "care_safety",
     key: "interventionsPerformed",
     labelKey: "rowInterventionsPerformed",
-    multiline: true,
+    options: INTERVENTIONS_PERFORMED_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_INTERVENTIONS,
+  },
+  {
+    kind: "chip-multi",
+    backend: "form",
+    sectionId: "care_safety",
+    key: "bedsideStatus",
+    labelKey: "rowBedsideStatus",
+    options: BEDSIDE_STATUS_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_BEDSIDE,
+  },
+  {
+    kind: "chip-multi",
+    backend: "form",
+    sectionId: "care_safety",
+    key: "careMonitoringSummary",
+    labelKey: "rowCareMonitoringSummary",
+    options: CARE_MONITORING_SUMMARY_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_CARE_MONITORING,
   },
   {
     kind: "free-text",
@@ -638,27 +935,6 @@ const ROWS: readonly RowDef[] = [
     key: "addendum",
     labelKey: "rowAddendum",
     multiline: true,
-  },
-  {
-    kind: "free-text",
-    sectionId: "care_safety",
-    key: "bedsideStatus",
-    labelKey: "rowBedsideStatus",
-    multiline: false,
-  },
-  {
-    kind: "free-text",
-    sectionId: "care_safety",
-    key: "generalAppearance",
-    labelKey: "rowGeneralAppearanceFreeText",
-    multiline: false,
-  },
-  {
-    kind: "free-text",
-    sectionId: "care_safety",
-    key: "vitalsSummaryNote",
-    labelKey: "rowVitalsSummaryNote",
-    multiline: false,
   },
 
   // ── D. Bedside safety (triage slice; active column only — no per-column history) ────
@@ -713,11 +989,13 @@ const ROWS: readonly RowDef[] = [
     multiline: true,
   },
   {
-    kind: "triage-text",
+    kind: "chip-multi",
+    backend: "triage",
     sectionId: "bedside_safety",
     key: "edCoursePpeNote",
     labelKey: "rowEdPpe",
-    multiline: false,
+    options: ED_PPE_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_ED_PPE,
   },
   {
     kind: "triage-text",
@@ -773,47 +1051,74 @@ const ROWS: readonly RowDef[] = [
   },
 
   // ── F. Trauma — secondary survey (default collapsed) ─────────────────────
+  /**
+   * Body-region rows are chip-multi so common findings (no visible trauma / abrasion /
+   * tenderness / etc.) are one click away. The trailing "Notes" row stays free-text so the
+   * nurse can capture region-specific narrative detail. Storage is the same trauma-text
+   * fields; past columns surface chip labels verbatim from `traumaSnapshot`.
+   */
   {
-    kind: "trauma-text",
+    kind: "chip-multi",
+    backend: "trauma",
     sectionId: "trauma_secondary",
     key: "secondaryHeadFace",
     labelKey: "rowHeadFace",
+    options: TRAUMA_HEAD_FACE_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_TRAUMA_HEAD_FACE,
   },
   {
-    kind: "trauma-text",
+    kind: "chip-multi",
+    backend: "trauma",
     sectionId: "trauma_secondary",
     key: "secondaryNeck",
     labelKey: "rowNeck",
+    options: TRAUMA_NECK_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_TRAUMA_NECK,
   },
   {
-    kind: "trauma-text",
+    kind: "chip-multi",
+    backend: "trauma",
     sectionId: "trauma_secondary",
     key: "secondaryChest",
     labelKey: "rowChest",
+    options: TRAUMA_CHEST_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_TRAUMA_CHEST,
   },
   {
-    kind: "trauma-text",
+    kind: "chip-multi",
+    backend: "trauma",
     sectionId: "trauma_secondary",
     key: "secondaryAbdomenPelvis",
     labelKey: "rowAbdomenPelvis",
+    options: TRAUMA_ABDOMEN_PELVIS_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_TRAUMA_ABDOMEN_PELVIS,
   },
   {
-    kind: "trauma-text",
+    kind: "chip-multi",
+    backend: "trauma",
     sectionId: "trauma_secondary",
     key: "secondaryBackSpine",
     labelKey: "rowBackSpine",
+    options: TRAUMA_BACK_SPINE_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_TRAUMA_BACK_SPINE,
   },
   {
-    kind: "trauma-text",
+    kind: "chip-multi",
+    backend: "trauma",
     sectionId: "trauma_secondary",
     key: "secondaryExtremities",
     labelKey: "rowExtremities",
+    options: TRAUMA_EXTREMITIES_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_TRAUMA_EXTREMITIES,
   },
   {
-    kind: "trauma-text",
+    kind: "chip-multi",
+    backend: "trauma",
     sectionId: "trauma_secondary",
     key: "secondarySkinWounds",
     labelKey: "rowSkinWounds",
+    options: TRAUMA_SKIN_WOUNDS_OPTIONS,
+    optionsI18nNamespace: CHIP_NS_TRAUMA_SKIN_WOUNDS,
   },
   {
     kind: "trauma-text",
@@ -867,6 +1172,54 @@ function readSnapshotPain(snapshot: Record<string, unknown> | null | undefined):
 function resolveSelectLabel(t: TFn, optionsI18nNamespace: string, rawValue: string): string {
   if (!rawValue) return "";
   return t(`emergencyNursingReassessment.${optionsI18nNamespace}.${rawValue}`);
+}
+
+/**
+ * Resolve the localized label for a chip-multi option. Same lookup pattern as `resolveSelectLabel`
+ * (namespace path under `emergencyNursingReassessment.*`). A chip is rendered with this string,
+ * AND the same string is what gets written to the underlying free-text field — so chip presence
+ * detection stays language-stable for the active locale.
+ */
+function resolveChipLabel(t: TFn, namespace: string, code: string): string {
+  if (!code) return "";
+  return t(`emergencyNursingReassessment.${namespace}.${code}`);
+}
+
+/**
+ * Pure helper: split a stored chip-multi string into trimmed, non-empty lines. Used by both the
+ * read path (chip toggle state) and the toggle-off write path. `\n` is the only separator we
+ * write, but we accept `\r\n` defensively for cross-platform clipboard pastes.
+ */
+function chipMultiLines(stored: string | undefined): string[] {
+  if (!stored) return [];
+  return stored
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Toggle a chip's localized label inside the stored chip-multi string. Idempotent and
+ * order-preserving:
+ *   - If `nextSelected` is `true` and the label is absent, the label is appended at the end
+ *     (preserves the order of any pre-existing lines).
+ *   - If `nextSelected` is `false`, every line whose trimmed value equals the label is removed
+ *     (handles dupes from pre-rollout data without losing other content).
+ *
+ * Lines that DON'T match any chip label are preserved verbatim — this protects legacy free-text
+ * content (e.g. the nurse may have typed "patient stable" in a prior chart) from being wiped.
+ */
+function toggleChipInStored(
+  stored: string,
+  label: string,
+  nextSelected: boolean
+): string {
+  const trimmedLabel = label.trim();
+  if (!trimmedLabel) return stored;
+  const lines = chipMultiLines(stored);
+  const without = lines.filter((line) => line !== trimmedLabel);
+  const next = nextSelected ? [...without, trimmedLabel] : without;
+  return next.join("\n");
 }
 
 function nursingAbcSelectOptionLabel(t: TFn, v: ErAbcOption): string {
@@ -974,6 +1327,17 @@ function resolveReadonlyDisplay(
        * to the parent-provided slice and shows the live value.
        */
       return "";
+    }
+    case "chip-multi": {
+      /**
+       * Chip-multi past columns: render the stored string verbatim (each chip label on its
+       * own line). The cell preserves whitespace via `whitespace: pre-wrap`, so multi-line
+       * content reads cleanly. Triage-backed chip-multi rows still return "" for past
+       * columns — same encounter-singleton rationale as `triage-text` above.
+       */
+      if (row.backend === "triage") return "";
+      const src = row.backend === "form" ? snapshot : traumaSnapshot;
+      return readSnapshotString(src, row.key);
     }
     default: {
       const _exhaustive: never = row;
@@ -1327,6 +1691,85 @@ export function EmergencyNursingDocumentationGrid({
             aria-describedby={sectionHelpId}
             style={commonStyle}
           />
+        );
+      }
+      case "chip-multi": {
+        /**
+         * Resolve the stored string for the row's backend. Triage-backed chip-multi rows
+         * require the parent's triage slice to be provided; without it the row renders "—"
+         * (mirrors the existing `triage-text` fallback for older callers).
+         */
+        let stored = "";
+        let chipDisabled = formDisabled;
+        let writeChange: ((next: string) => void) | null = null;
+        if (row.backend === "form") {
+          stored = (form[row.key] as string) ?? "";
+          writeChange = (next) =>
+            onPatch({ [row.key]: next } as Partial<ErNursingReassessmentForm>);
+        } else if (row.backend === "trauma") {
+          if (!traumaForm || !onPatchTrauma) return null;
+          stored = (traumaForm[row.key] as string) ?? "";
+          writeChange = (next) =>
+            onPatchTrauma({ [row.key]: next } as Partial<ErTraumaSurveyV1>);
+        } else {
+          if (!triageNursingSlice || !onPatchTriageSlice) return null;
+          stored = (triageNursingSlice[row.key] as string) ?? "";
+          chipDisabled = chipDisabled || triageSliceLoading === true;
+          writeChange = (next) =>
+            onPatchTriageSlice({
+              [row.key]: next,
+            } as Partial<ErTriageV1NursingCarePersistSlice>);
+        }
+        const lines = chipMultiLines(stored);
+        const lineSet = new Set(lines);
+        return (
+          <div
+            role="group"
+            aria-label={dg(row.labelKey)}
+            aria-describedby={sectionHelpId}
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 4,
+              padding: "4px 6px",
+              minWidth: 0,
+              alignContent: "flex-start",
+            }}
+          >
+            {row.options.map((code) => {
+              const label = resolveChipLabel(t, row.optionsI18nNamespace, code);
+              if (!label) return null;
+              const selected = lineSet.has(label);
+              return (
+                <button
+                  type="button"
+                  key={code}
+                  onClick={() => {
+                    if (chipDisabled || !writeChange) return;
+                    writeChange(toggleChipInStored(stored, label, !selected));
+                  }}
+                  disabled={chipDisabled}
+                  aria-pressed={selected}
+                  title={label}
+                  style={{
+                    ...chipButtonStyle,
+                    backgroundColor: selected
+                      ? chipDisabled
+                        ? "#cbd5e1"
+                        : "#0ea5e9"
+                      : chipDisabled
+                      ? "#f1f5f9"
+                      : "#fff",
+                    color: selected ? "#fff" : chipDisabled ? "#94a3b8" : "#334155",
+                    borderColor: selected ? "#0ea5e9" : "#cbd5e1",
+                    cursor: chipDisabled ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         );
       }
       default: {
