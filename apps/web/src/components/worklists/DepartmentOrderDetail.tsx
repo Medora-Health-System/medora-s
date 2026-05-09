@@ -96,12 +96,12 @@ export default function DepartmentOrderDetail({
   const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const highlightLineId = searchParams.get("ligne") || "";
-  const { roles } = useFacilityAndRoles();
+  const { roles, allowRnLabResultSubmission } = useFacilityAndRoles();
 
   /**
    * Acteur autorisé à exécuter les actions worklist du département (accusé / démarrage /
-   * clôture, saisie de résultats). RN consulte la file labo en lecture seule (pas de
-   * finalisation, pas de soumission de résultats — backend rejette dans tous les cas).
+   * clôture, dispense pharmacie). Inchangé — RN n'est jamais inclus ici, même sous la
+   * politique Phase 1 : `assertAckOrStartActor` rejette RN sur LAB_TEST.
    */
   const viewerIsDeptActor = useMemo(() => {
     if (roles.includes("ADMIN")) return true;
@@ -110,6 +110,21 @@ export default function DepartmentOrderDetail({
     if (kind === "pharmacy") return roles.includes("PHARMACY");
     return false;
   }, [roles, kind]);
+
+  /**
+   * Phase 1 — saisie de résultat de **laboratoire** par un infirmier sous politique
+   * d'établissement. N'élargit que la saisie de résultat ; n'ouvre pas l'imagerie,
+   * la vérification, la création de commandes, ni les boutons d'accusé / démarrage.
+   */
+  const rnCanSubmitLabResult = useMemo(() => {
+    if (kind !== "lab") return false;
+    if (!allowRnLabResultSubmission) return false;
+    if (!roles.includes("RN")) return false;
+    if (roles.includes("LAB") || roles.includes("RADIOLOGY") || roles.includes("ADMIN")) {
+      return false;
+    }
+    return true;
+  }, [kind, allowRnLabResultSubmission, roles]);
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -394,6 +409,7 @@ export default function DepartmentOrderDetail({
             order={order}
             parentOrderCancelled={parentOrderCancelled}
             viewerIsDeptActor={viewerIsDeptActor}
+            rnCanSubmitLabResult={rnCanSubmitLabResult}
             onReload={load}
             onAck={handleAck}
             onStart={handleStart}
@@ -556,6 +572,7 @@ function LineCard({
   order,
   parentOrderCancelled,
   viewerIsDeptActor,
+  rnCanSubmitLabResult,
   onReload,
   onAck,
   onStart,
@@ -577,6 +594,12 @@ function LineCard({
   parentOrderCancelled: boolean;
   /** false pour RN consultant la file labo (lecture seule) ; backend rejette quoi qu'il en soit. */
   viewerIsDeptActor: boolean;
+  /**
+   * Phase 1 — true uniquement quand `Facility.allowRnLabResultSubmission === true`,
+   * que la file est `lab`, et que l'utilisateur est RN sans rôle technicien. Autorise
+   * uniquement la saisie de résultat ; pas d'accusé/démarrage/clôture.
+   */
+  rnCanSubmitLabResult: boolean;
   onReload: () => Promise<void>;
   onAck: (id: string) => Promise<void>;
   onStart: (id: string) => Promise<void>;
@@ -596,7 +619,15 @@ function LineCard({
     setCritical(!!item.result?.criticalValue);
   }, [item.id, item.result?.resultText, item.result?.criticalValue]);
 
-  const canResult = (kind === "lab" || kind === "radiology") && viewerIsDeptActor;
+  /**
+   * Saisie de résultat autorisée :
+   * - LAB / RADIOLOGY / ADMIN sur leur file (existant) ; ou
+   * - RN sur la file `lab` quand l'établissement a opté pour la politique Phase 1.
+   * Le bouton de vérification provider et la file imagerie restent inchangés.
+   */
+  const canResult =
+    ((kind === "lab" || kind === "radiology") && viewerIsDeptActor) ||
+    (kind === "lab" && rnCanSubmitLabResult);
   const existingAtt = attachmentsFromResultDataAll(item.result?.resultData).filter(
     (a) => a.dataBase64 && String(a.dataBase64).length > 0
   );

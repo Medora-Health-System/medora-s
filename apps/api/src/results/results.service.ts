@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, OrderStatus } from "@prisma/client";
+import { AuditAction, OrderStatus, RoleCode } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
@@ -92,7 +98,13 @@ export class ResultsService {
     },
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    /**
+     * Phase 1 — RN-only callers are gated by `Facility.allowRnLabResultSubmission` AND
+     * `OrderItem.catalogItemType === "LAB_TEST"`. Empty/undefined falls back to legacy
+     * behavior (decorator-trusted) so internal callers remain compatible.
+     */
+    actorRoles?: RoleCode[]
   ) {
     const hasIncomingPayload =
       data.resultText !== undefined ||
@@ -131,6 +143,42 @@ export class ResultsService {
 
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
+
+    /**
+     * Phase 1 facility-scoped RN policy.
+     *
+     * Apply ONLY when caller has RN and lacks LAB / RADIOLOGY / ADMIN. Users with both RN
+     * and a department role keep the existing department-based path (no policy gate),
+     * which is consistent with how `OrdersController.create` discriminates roles.
+     *
+     * RN-only callers are restricted to `LAB_TEST` and require the facility opt-in.
+     * No imaging submission. No verification. No order creation. No MAR.
+     */
+    const rolesList = actorRoles ?? [];
+    const callerIsRnOnly =
+      rolesList.includes(RoleCode.RN) &&
+      !rolesList.includes(RoleCode.LAB) &&
+      !rolesList.includes(RoleCode.RADIOLOGY) &&
+      !rolesList.includes(RoleCode.ADMIN);
+
+    let rnFacilityPolicySubmission = false;
+    if (callerIsRnOnly) {
+      if (orderItem.catalogItemType !== "LAB_TEST") {
+        throw new ForbiddenException(
+          "Saisie de résultat non autorisée pour ce rôle. Seuls les résultats de laboratoire peuvent être saisis dans le cadre de la politique infirmière."
+        );
+      }
+      const facility = await this.prisma.facility.findUnique({
+        where: { id: facilityId },
+        select: { allowRnLabResultSubmission: true },
+      });
+      if (!facility?.allowRnLabResultSubmission) {
+        throw new ForbiddenException(
+          "Cet établissement n'autorise pas la saisie de résultats de laboratoire par les infirmiers."
+        );
+      }
+      rnFacilityPolicySubmission = true;
+    }
 
     const existingResult = await this.prisma.result.findUnique({
       where: { orderItemId },
@@ -251,7 +299,21 @@ export class ResultsService {
       entityId: result.id,
       ip,
       userAgent,
-      metadata: { criticalValue: data.criticalValue, orderItemId },
+      metadata: {
+        criticalValue: data.criticalValue,
+        orderItemId,
+        /**
+         * Phase 1 traceability for RN submissions under the facility policy. `actorRole` is
+         * already injected by the audit ALS context (RolesGuard sets `request.userRole`),
+         * so we add only the policy/result-type fields here. No PHI in metadata.
+         */
+        ...(rnFacilityPolicySubmission
+          ? {
+              facilityPolicy: "allowRnLabResultSubmission",
+              resultType: "LAB_TEST",
+            }
+          : {}),
+      },
     });
 
     if (shouldStampVerification && orderItem.catalogItemType === "LAB_TEST") {

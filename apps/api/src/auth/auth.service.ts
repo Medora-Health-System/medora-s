@@ -86,7 +86,13 @@ export class AuthService {
           where: { isActive: true, facility: { isActive: true } },
           include: {
             role: true,
-            facility: { select: { name: true, defaultLanguage: true } },
+            facility: {
+              select: {
+                name: true,
+                defaultLanguage: true,
+                allowRnLabResultSubmission: true,
+              },
+            },
           },
         },
       },
@@ -118,6 +124,12 @@ export class AuthService {
       defaultLanguage: ur.facility?.defaultLanguage ?? "fr",
       role: ur.role.code,
       departmentId: ur.departmentId ?? null,
+      /**
+       * Phase 1 — facility-scoped clinical policy mirror. Frontend uses this to gate the
+       * RN lab-result entry UI; backend (`ResultsService.updateResult`) is still the sole
+       * enforcer. Field stays `undefined` when missing so old clients keep working.
+       */
+      allowRnLabResultSubmission: ur.facility?.allowRnLabResultSubmission ?? false,
     }));
 
     /**
@@ -136,6 +148,7 @@ export class AuthService {
         defaultLanguage: base.defaultLanguage,
         role: "MEDORA_SUPER_ADMIN",
         departmentId: null,
+        allowRnLabResultSubmission: base.allowRnLabResultSubmission,
       });
     }
 

@@ -15,6 +15,12 @@ export type FacilityRoleDto = {
   defaultLanguage: string;
   role: string;
   departmentId: string | null;
+  /**
+   * Phase 1 — freestanding-ER policy mirror : autorise la saisie d'un résultat de
+   * `LAB_TEST` par un infirmier (RN) sur cet établissement. Optionnel pour rétrocompatibilité ;
+   * le serveur reste seul juge — l'UI ne fait que masquer les contrôles quand `false` / absent.
+   */
+  allowRnLabResultSubmission?: boolean;
 };
 
 /** Détection mode national MSPP vs accès établissement (lecture seule ; RBAC inchangé). */

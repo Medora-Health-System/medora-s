@@ -31,6 +31,12 @@ export function useFacilityAndRoles() {
   const [hasFacilityAccess, setHasFacilityAccess] = useState(false);
   /** True if any `facilityRoles` row has `MEDORA_SUPER_ADMIN` (not scoped to active facility cookie). */
   const [isPlatformOperator, setIsPlatformOperator] = useState(false);
+  /**
+   * Phase 1 — facility-scoped clinical policy mirror. Backend remains the sole enforcer; this
+   * is used purely to decide whether the RN lab-result entry UI should be shown for the
+   * **active** facility. Defaults to `false` when missing from `/auth/me`.
+   */
+  const [allowRnLabResultSubmission, setAllowRnLabResultSubmission] = useState(false);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     setCanCreateFacilities(d.canCreateFacilities === true);
@@ -54,6 +60,7 @@ export function useFacilityAndRoles() {
       setRoles([]);
       setFacilities([]);
       setIsPlatformOperator(false);
+      setAllowRnLabResultSubmission(false);
       setReady(true);
       return;
     }
@@ -62,7 +69,12 @@ export function useFacilityAndRoles() {
     }
     setFacilityId(String(fid));
     const fidKey = String(fid);
-    const frsTyped = (d.facilityRoles as { facilityId?: string; role?: string }[]) ?? [];
+    const frsTyped =
+      (d.facilityRoles as {
+        facilityId?: string;
+        role?: string;
+        allowRnLabResultSubmission?: boolean;
+      }[]) ?? [];
     setIsPlatformOperator(frsTyped.some((fr) => fr.role === "MEDORA_SUPER_ADMIN"));
     const r =
       frsTyped
@@ -70,6 +82,9 @@ export function useFacilityAndRoles() {
         .map((fr) => fr.role)
         .filter((role): role is string => typeof role === "string") ?? [];
     setRoles(r);
+    /** Read the facility-scoped policy from any matching role row (server emits it on every entry). */
+    const activePolicyRow = frsTyped.find((fr) => String(fr.facilityId) === fidKey);
+    setAllowRnLabResultSubmission(activePolicyRow?.allowRnLabResultSubmission === true);
     const map = new Map<string, string>();
     for (const fr of (d.facilityRoles as { facilityId?: string; facilityName?: string }[]) ?? []) {
       const id = String(fr.facilityId);
@@ -96,6 +111,7 @@ export function useFacilityAndRoles() {
         applySessionFromMe(d);
       } catch {
         setIsPlatformOperator(false);
+        setAllowRnLabResultSubmission(false);
         setReady(true);
       }
     })();
@@ -167,5 +183,7 @@ export function useFacilityAndRoles() {
     hasFacilityAccess,
     isMsppOnlyUser,
     canPrescribe,
+    /** Phase 1 — `Facility.allowRnLabResultSubmission` for the **active** facility. */
+    allowRnLabResultSubmission,
   };
 }

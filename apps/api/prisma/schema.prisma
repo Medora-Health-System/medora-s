@@ -367,6 +367,10 @@ model Facility {
   timezone                 String
   defaultLanguage          String   @default("fr")
   isActive                 Boolean  @default(true)
+  /// Phase 1 — freestanding-ER policy: when true, RN may submit `LAB_TEST` results at this facility.
+  /// Default false preserves existing safe behavior (LAB/RADIOLOGY/ADMIN only). Never grants RN
+  /// imaging submission, provider verification, order creation, or other LAB-role privileges.
+  allowRnLabResultSubmission Boolean @default(false)
   /// Phase 7 — institutional / UB-style claim billing identity (optional).
   billingLegalName         String?
   billingNpi               String?
