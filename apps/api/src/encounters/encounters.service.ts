@@ -832,33 +832,47 @@ export class EncountersService {
         }
         return toEncounterClinicResponse(unchanged);
       }
-      const u = await this.prisma.encounter.updateMany({
-        where: { id, facilityId, version: encounter.version },
-        data: {
-          ...(updateData as Prisma.EncounterUpdateInput),
-          version: { increment: 1 },
-        },
-      });
-      if (u.count === 0) throwEncounterConcurrentModification();
-      const updated = await this.prisma.encounter.findFirst({
-        where: { id, facilityId },
-        include: {
-          patient: { select: encounterDetailPatientSelect },
-          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-        },
-      });
-      if (!updated) {
-        throw new NotFoundException("Encounter not found");
-      }
-      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
-        userId,
-        facilityId,
-        patientId: encounter.patientId,
-        encounterId: encounter.id,
-        entityId: encounter.id,
-        ip,
-        userAgent,
-        metadata: data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : undefined,
+      /**
+       * Phase 3 — PATCH/CLOSE transaction consistency: SIGNED-but-OPEN allowlist branch.
+       *
+       * Wraps the optimistic-locked updateMany + read-after-write + audit log in a single
+       * Prisma transaction so the encounter mutation and its forensic ENCOUNTER_UPDATE row
+       * commit together or roll back together. `critical: true` matches the policy used by
+       * close()/sign/unlock; in tx-mode the audit write is fail-closed regardless of
+       * AUDIT_FAILURE_MODE because audit failure throws and Prisma rolls back the tx.
+       */
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const u = await tx.encounter.updateMany({
+          where: { id, facilityId, version: encounter.version },
+          data: {
+            ...(updateData as Prisma.EncounterUpdateInput),
+            version: { increment: 1 },
+          },
+        });
+        if (u.count === 0) throwEncounterConcurrentModification();
+        const row = await tx.encounter.findFirst({
+          where: { id, facilityId },
+          include: {
+            patient: { select: encounterDetailPatientSelect },
+            physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+          },
+        });
+        if (!row) {
+          throw new NotFoundException("Encounter not found");
+        }
+        await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+          userId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId: encounter.id,
+          entityId: encounter.id,
+          ip,
+          userAgent,
+          metadata: data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : undefined,
+          critical: true,
+          tx,
+        });
+        return row;
       });
       return toEncounterClinicResponse(updated);
     }
@@ -945,311 +959,360 @@ export class EncountersService {
       updateData.workflowState = data.workflowState;
     }
 
-    const u = await this.prisma.encounter.updateMany({
-      where: { id, facilityId, version: encounter.version },
-      data: {
-        ...(updateData as Prisma.EncounterUpdateInput),
-        version: { increment: 1 },
-      },
-    });
-    if (u.count === 0) throwEncounterConcurrentModification();
-    const updated = await this.prisma.encounter.findFirst({
-      where: { id, facilityId },
-      include: {
-        patient: { select: encounterDetailPatientSelect },
-        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
-    if (!updated) {
-      throw new NotFoundException("Encounter not found");
-    }
+    /**
+     * Phase 3 — PATCH/CLOSE transaction consistency.
+     *
+     * Pre-compute change flags and pre-resolve performer identities BEFORE opening the
+     * Prisma transaction. The performer helpers issue read-only `User` / `UserRole` queries
+     * that are stable for the duration of this request — running them outside the tx keeps
+     * the tx body compact and avoids holding a connection while resolving identity. Change
+     * flags are pure JSON diffs against the pre-update `encounter` row (already loaded above)
+     * so they are deterministic and need no DB access.
+     */
+    const nursingAssessmentTouched = data.nursingAssessment !== undefined && !!userId;
+    const prevNursingAssessment = encounter.nursingAssessment;
+    const nextNursingAssessment = data.nursingAssessment;
+    const mseChanged =
+      nursingAssessmentTouched &&
+      nursingAssessmentNamespaceChanged(
+        prevNursingAssessment,
+        nextNursingAssessment,
+        NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1
+      );
+    const nursingEvalChanged =
+      nursingAssessmentTouched &&
+      nursingAssessmentNamespaceChanged(
+        prevNursingAssessment,
+        nextNursingAssessment,
+        NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1
+      );
+    const reassessmentChanged =
+      nursingAssessmentTouched &&
+      reassessmentNamespaceMaterialChange(prevNursingAssessment, nextNursingAssessment);
+    const handoffChanged =
+      nursingAssessmentTouched &&
+      nursingAssessmentNamespaceChanged(
+        prevNursingAssessment,
+        nextNursingAssessment,
+        ER_HANDOFF_V1_KEY
+      );
+    const dispositionChanged =
+      nursingAssessmentTouched &&
+      dispositionSupplementSnapshotChanged(prevNursingAssessment, nextNursingAssessment);
+    const dischargeSummaryTouched = data.dischargeSummaryJson !== undefined && !!userId;
+    const dischargeChanged =
+      dischargeSummaryTouched &&
+      dischargeSummarySnapshotChanged(
+        encounter.dischargeSummaryJson,
+        data.dischargeSummaryJson
+      );
+    const admissionSummaryTouched = data.admissionSummaryJson !== undefined && !!userId;
+    const nextAdmissionForEvent =
+      updateData.admissionSummaryJson === undefined ? null : updateData.admissionSummaryJson;
+    const admissionChanged =
+      admissionSummaryTouched &&
+      admissionSummarySnapshotChanged(encounter.admissionSummaryJson, nextAdmissionForEvent);
+    const sectionsChangedThisPatch =
+      data.nursingAssessment !== undefined &&
+      structuredReassessmentSectionsChanged(encounter.nursingAssessment, data.nursingAssessment);
 
-    if (data.vitals !== undefined && hasNonEmptyVitalsJson(data.vitals)) {
-      await this.prisma.patient.update({
-        where: { id: encounter.patientId },
-        data: {
-          latestVitalsJson: data.vitals as object,
-          latestVitalsAt: new Date(),
-        },
-      });
-      if (userId) {
-        await this.prisma.encounterClinicalEvent.create({
-          data: {
-            facilityId,
-            encounterId: encounter.id,
-            patientId: encounter.patientId,
-            eventType: EncounterClinicalEventType.VITALS_RECORDED,
-            payloadJson: buildVitalsRecordedPayloadJson(data.vitals, "ENCOUNTER_CHART"),
-            createdByUserId: userId,
-          },
-        });
-      }
-    }
+    /** Pre-resolve performers only when their event will actually write — no wasted reads. */
+    const reassessmentPerformer = reassessmentChanged
+      ? await this.resolveErNursingReassessmentPerformer(facilityId, userId)
+      : null;
+    const dispositionPerformer = dispositionChanged
+      ? await this.resolveSummaryDocumentPerformer(facilityId, userId)
+      : null;
+    const dischargePerformer = dischargeChanged
+      ? await this.resolveSummaryDocumentPerformer(facilityId, userId)
+      : null;
+    const admissionPerformer = admissionChanged
+      ? await this.resolveSummaryDocumentPerformer(facilityId, userId)
+      : null;
 
     /**
      * Outcome of the ER reassessment column lifecycle for this PATCH (set inside the
-     * `data.nursingAssessment !== undefined && userId` block below). Used downstream to enrich
-     * the PHI-safe audit metadata with the actual session mode. Stays `null` when the patch
-     * didn't touch the reassessment namespace materially.
+     * transaction). Used downstream to enrich the PHI-safe audit metadata with the actual
+     * session mode. Stays `null` when the patch didn't touch the reassessment namespace
+     * materially.
      */
     let reassessmentColumnSessionMode: "new" | "updated" | "auto-new" | null = null;
     let reassessmentAutoNewReason: "different_user" | "stale_session" | null = null;
 
-    if (data.nursingAssessment !== undefined && userId) {
-      const prevFull = encounter.nursingAssessment;
-      const nextFull = data.nursingAssessment;
-      if (nursingAssessmentNamespaceChanged(prevFull, nextFull, NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1)) {
-        await this.prisma.encounterClinicalEvent.create({
-          data: {
-            facilityId,
-            encounterId: encounter.id,
-            patientId: encounter.patientId,
-            eventType: EncounterClinicalEventType.PROVIDER_MSE_SAVED,
-            payloadJson: nursingAssessmentJsonSnapshotPayload(
-              NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1,
-              getNursingAssessmentNamespace(nextFull, NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1)
-            ),
-            createdByUserId: userId,
-          },
-        });
+    /**
+     * The transaction below covers the encounter mutation, every paired clinical event write
+     * (vitals, MSE, nursing eval, ER reassessment column lifecycle, handoff, disposition
+     * supplement, discharge summary, admission summary), the column-count read for PHI-safe
+     * audit metadata, and the ENCOUNTER_UPDATE audit row. They commit together or roll back
+     * together, so the mutable latest-state pointer (`Encounter.*`) and the append-only
+     * history rows (`EncounterClinicalEvent`) cannot drift apart on a partial failure.
+     *
+     * Audit policy: `critical: true` matches close()/sign/unlock/MAR/order-create. In tx-mode
+     * the audit write is fail-closed regardless of `AUDIT_FAILURE_MODE` because audit failure
+     * throws inside the tx and Prisma rolls back the clinical mutation.
+     */
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.encounter.updateMany({
+        where: { id, facilityId, version: encounter.version },
+        data: {
+          ...(updateData as Prisma.EncounterUpdateInput),
+          version: { increment: 1 },
+        },
+      });
+      if (u.count === 0) throwEncounterConcurrentModification();
+      const row = await tx.encounter.findFirst({
+        where: { id, facilityId },
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      if (!row) {
+        throw new NotFoundException("Encounter not found");
       }
-      if (nursingAssessmentNamespaceChanged(prevFull, nextFull, NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1)) {
-        await this.prisma.encounterClinicalEvent.create({
-          data: {
-            facilityId,
-            encounterId: encounter.id,
-            patientId: encounter.patientId,
-            eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
-            payloadJson: nursingAssessmentJsonSnapshotPayload(
-              NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1,
-              getNursingAssessmentNamespace(nextFull, NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1)
-            ),
-            createdByUserId: userId,
-          },
-        });
-      }
-      /**
-       * ER nursing reassessment column lifecycle (append-only at the COLUMN level).
-       *
-       * A "column" is a single `EncounterClinicalEvent NURSING_ASSESSMENT_SAVED` row tagged with
-       * the `erNursingReassessmentV1` namespace. Within an active reassessment session, repeated
-       * saves UPDATE the most recent column's `payloadJson` in place rather than inserting a new
-       * row — this prevents timeline spam when a nurse incrementally documents the same
-       * reassessment over a few minutes. A NEW column is only opened when:
-       *
-       *   1. The frontend explicitly signals `reassessmentNewSession: true` (document-icon
-       *      "Nouvelle séance" click), OR
-       *   2. There is no existing reassessment event row yet (first save for this encounter).
-       *
-       * This honors:
-       *   - "maintain append-only history guarantees" — closed/older columns are never edited.
-       *     Only the most-recent (active) column row is mutable, and only while it remains the
-       *     active session (i.e. until the next document-icon click freezes it).
-       *   - "never erase prior persisted columns" — an UPDATE only ever touches the latest row.
-       *   - "no destructive overwrite behavior" — prior columns stay byte-identical.
-       *
-       * The signature-excluded `reassessmentNamespaceMaterialChange` gate still applies first:
-       * a save with no clinical content change touches no event row at all.
-       */
-      if (reassessmentNamespaceMaterialChange(prevFull, nextFull)) {
-        const performer = await this.resolveErNursingReassessmentPerformer(facilityId, userId);
-        const reassessmentSnapshot = getNursingAssessmentNamespace(
-          nextFull,
-          NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1
-        );
-        const traumaSnapshot = getNursingAssessmentNamespace(
-          nextFull,
-          NURSING_ASSESSMENT_NAMESPACE_ER_TRAUMA_SURVEY_V1
-        );
-        const docAtIso = extractReassessmentDocumentedAt(nextFull);
-        const documentedAt = docAtIso ? new Date(docAtIso) : null;
-        const safeDocumentedAt =
-          documentedAt && !Number.isNaN(documentedAt.getTime()) ? documentedAt : null;
 
-        const startsNewSession = data.reassessmentNewSession === true;
-        const latestSession = await this.prisma.encounterClinicalEvent.findFirst({
-          where: {
-            encounterId: encounter.id,
-            facilityId,
-            eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
-            payloadJson: {
-              path: ["namespace"],
-              equals: NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
+      if (data.vitals !== undefined && hasNonEmptyVitalsJson(data.vitals)) {
+        await tx.patient.update({
+          where: { id: encounter.patientId },
+          data: {
+            latestVitalsJson: data.vitals as object,
+            latestVitalsAt: new Date(),
+          },
+        });
+        if (userId) {
+          await tx.encounterClinicalEvent.create({
+            data: {
+              facilityId,
+              encounterId: encounter.id,
+              patientId: encounter.patientId,
+              eventType: EncounterClinicalEventType.VITALS_RECORDED,
+              payloadJson: buildVitalsRecordedPayloadJson(data.vitals, "ENCOUNTER_CHART"),
+              createdByUserId: userId,
             },
-          },
-          orderBy: { createdAt: "desc" },
-          /** Ownership + age fields drive the identity+recency guard below. */
-          select: { id: true, createdByUserId: true, createdAt: true },
-        });
-
-        const payload = erNursingReassessmentEventPayload({
-          snapshot: reassessmentSnapshot,
-          traumaSnapshot,
-          documentedAt: safeDocumentedAt,
-          performerId: performer.performerId,
-          performerDisplayName: performer.performerDisplayName,
-          performerRoleTitle: performer.performerRoleTitle,
-          performerInitials: performer.performerInitials,
-        });
-
-        /**
-         * Identity + recency guard for the UPDATE branch (P1 safety hot-fix).
-         *
-         * Without this guard, ANY save by a different authenticated user would silently rewrite
-         * the prior column's `payloadJson` — replacing the prior nurse's snapshot, performer
-         * name, initials, role, and trauma documentation. That is unacceptable for an EMR
-         * append-only audit guarantee.
-         *
-         * The UPDATE branch is now allowed ONLY when ALL of the following hold:
-         *   1. There is an existing latest session row.
-         *   2. `data.reassessmentNewSession !== true` (the caller did not explicitly request a
-         *      new column — explicit-new always inserts).
-         *   3. `latestSession.createdByUserId === userId` (the row's original creator is the
-         *      current saver — same nurse continuing their own session).
-         *   4. `latestSession.createdAt` is within the recency window (currently 60 minutes;
-         *      mirrors the frontend `REASSESSMENT_NEW_SESSION_MINUTES` so a session left open
-         *      from earlier in the shift still auto-opens a new column).
-         *   5. Same namespace (already enforced by the where clause above; the explicit equality
-         *      below is belt-and-braces against future query refactors).
-         *
-         * In every other case — different user, stale session, or explicit-new — we INSERT a
-         * new immutable column row. Prior rows are NEVER touched. Cross-user / stale auto-new
-         * inserts are tagged with `sessionMode: "auto-new"` in the audit metadata so QA can
-         * distinguish them from explicit user-initiated new sessions.
-         */
-        const REASSESSMENT_RECENCY_WINDOW_MS = 60 * 60 * 1000;
-        const sameOwner =
-          !!latestSession && !!userId && latestSession.createdByUserId === userId;
-        const recent =
-          !!latestSession &&
-          Date.now() - latestSession.createdAt.getTime() < REASSESSMENT_RECENCY_WINDOW_MS;
-        const canUpdateInPlace =
-          !!latestSession && !startsNewSession && sameOwner && recent;
-
-        if (canUpdateInPlace) {
-          /**
-           * Same active session, same user, recent: rewrite the payloadJson on the existing
-           * latest event row. `createdAt` and `createdByUserId` stay pinned. This is the only
-           * mutable code path for `EncounterClinicalEvent` rows in this flow — older sessions,
-           * different-user rows, and stale rows are never touched.
-           */
-          await this.prisma.encounterClinicalEvent.update({
-            where: { id: latestSession.id },
-            data: { payloadJson: payload },
           });
-          reassessmentColumnSessionMode = "updated";
-        } else {
-          await this.prisma.encounterClinicalEvent.create({
+        }
+      }
+
+      if (nursingAssessmentTouched) {
+        const nextFull = nextNursingAssessment;
+        if (mseChanged) {
+          await tx.encounterClinicalEvent.create({
+            data: {
+              facilityId,
+              encounterId: encounter.id,
+              patientId: encounter.patientId,
+              eventType: EncounterClinicalEventType.PROVIDER_MSE_SAVED,
+              payloadJson: nursingAssessmentJsonSnapshotPayload(
+                NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1,
+                getNursingAssessmentNamespace(nextFull, NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1)
+              ),
+              createdByUserId: userId,
+            },
+          });
+        }
+        if (nursingEvalChanged) {
+          await tx.encounterClinicalEvent.create({
             data: {
               facilityId,
               encounterId: encounter.id,
               patientId: encounter.patientId,
               eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
-              payloadJson: payload,
+              payloadJson: nursingAssessmentJsonSnapshotPayload(
+                NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1,
+                getNursingAssessmentNamespace(nextFull, NURSING_ASSESSMENT_NAMESPACE_NURSING_EVAL_V1)
+              ),
               createdByUserId: userId,
             },
           });
-          if (!latestSession) {
-            /** First reassessment for this encounter — counts as "new" (the original session). */
-            reassessmentColumnSessionMode = "new";
-          } else if (startsNewSession) {
-            reassessmentColumnSessionMode = "new";
-          } else {
+        }
+        /**
+         * ER nursing reassessment column lifecycle (append-only at the COLUMN level).
+         *
+         * A "column" is a single `EncounterClinicalEvent NURSING_ASSESSMENT_SAVED` row tagged
+         * with the `erNursingReassessmentV1` namespace. Within an active reassessment session,
+         * repeated saves UPDATE the most recent column's `payloadJson` in place rather than
+         * inserting a new row — this prevents timeline spam when a nurse incrementally
+         * documents the same reassessment over a few minutes. A NEW column is only opened when:
+         *
+         *   1. The frontend explicitly signals `reassessmentNewSession: true` (document-icon
+         *      "Nouvelle séance" click), OR
+         *   2. There is no existing reassessment event row yet (first save for this encounter).
+         *
+         * This honors:
+         *   - "maintain append-only history guarantees" — closed/older columns are never
+         *     edited. Only the most-recent (active) column row is mutable, and only while it
+         *     remains the active session.
+         *   - "never erase prior persisted columns" — an UPDATE only ever touches the latest
+         *     row.
+         *   - "no destructive overwrite behavior" — prior columns stay byte-identical.
+         *
+         * The signature-excluded `reassessmentNamespaceMaterialChange` gate still applies
+         * first: a save with no clinical content change touches no event row at all.
+         */
+        if (reassessmentChanged && reassessmentPerformer) {
+          const reassessmentSnapshot = getNursingAssessmentNamespace(
+            nextFull,
+            NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1
+          );
+          const traumaSnapshot = getNursingAssessmentNamespace(
+            nextFull,
+            NURSING_ASSESSMENT_NAMESPACE_ER_TRAUMA_SURVEY_V1
+          );
+          const docAtIso = extractReassessmentDocumentedAt(nextFull);
+          const documentedAt = docAtIso ? new Date(docAtIso) : null;
+          const safeDocumentedAt =
+            documentedAt && !Number.isNaN(documentedAt.getTime()) ? documentedAt : null;
+
+          const startsNewSession = data.reassessmentNewSession === true;
+          const latestSession = await tx.encounterClinicalEvent.findFirst({
+            where: {
+              encounterId: encounter.id,
+              facilityId,
+              eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+              payloadJson: {
+                path: ["namespace"],
+                equals: NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            /** Ownership + age fields drive the identity+recency guard below. */
+            select: { id: true, createdByUserId: true, createdAt: true },
+          });
+
+          const payload = erNursingReassessmentEventPayload({
+            snapshot: reassessmentSnapshot,
+            traumaSnapshot,
+            documentedAt: safeDocumentedAt,
+            performerId: reassessmentPerformer.performerId,
+            performerDisplayName: reassessmentPerformer.performerDisplayName,
+            performerRoleTitle: reassessmentPerformer.performerRoleTitle,
+            performerInitials: reassessmentPerformer.performerInitials,
+          });
+
+          /**
+           * Identity + recency guard for the UPDATE branch (P1 safety hot-fix).
+           *
+           * Without this guard, ANY save by a different authenticated user would silently
+           * rewrite the prior column's `payloadJson` — replacing the prior nurse's snapshot,
+           * performer name, initials, role, and trauma documentation. That is unacceptable
+           * for an EMR append-only audit guarantee.
+           *
+           * The UPDATE branch is allowed ONLY when ALL of the following hold:
+           *   1. There is an existing latest session row.
+           *   2. `data.reassessmentNewSession !== true` (the caller did not explicitly request
+           *      a new column — explicit-new always inserts).
+           *   3. `latestSession.createdByUserId === userId` (the row's original creator is the
+           *      current saver — same nurse continuing their own session).
+           *   4. `latestSession.createdAt` is within the recency window (currently 60 minutes;
+           *      mirrors the frontend `REASSESSMENT_NEW_SESSION_MINUTES`).
+           *   5. Same namespace (already enforced by the where clause above).
+           *
+           * In every other case — different user, stale session, or explicit-new — we INSERT
+           * a new immutable column row. Prior rows are NEVER touched.
+           */
+          const REASSESSMENT_RECENCY_WINDOW_MS = 60 * 60 * 1000;
+          const sameOwner =
+            !!latestSession && !!userId && latestSession.createdByUserId === userId;
+          const recent =
+            !!latestSession &&
+            Date.now() - latestSession.createdAt.getTime() < REASSESSMENT_RECENCY_WINDOW_MS;
+          const canUpdateInPlace =
+            !!latestSession && !startsNewSession && sameOwner && recent;
+
+          if (canUpdateInPlace) {
             /**
-             * Auto-fall-through: a different user is saving OR the same user's session is
-             * stale (older than the recency window). Either way, the prior column is preserved
-             * unchanged and a new column is opened automatically.
+             * Same active session, same user, recent: rewrite the payloadJson on the existing
+             * latest event row. `createdAt` and `createdByUserId` stay pinned. This is the
+             * only mutable code path for `EncounterClinicalEvent` rows in this flow.
              */
-            reassessmentColumnSessionMode = "auto-new";
-            reassessmentAutoNewReason = !sameOwner ? "different_user" : "stale_session";
+            await tx.encounterClinicalEvent.update({
+              where: { id: latestSession.id },
+              data: { payloadJson: payload },
+            });
+            reassessmentColumnSessionMode = "updated";
+          } else {
+            await tx.encounterClinicalEvent.create({
+              data: {
+                facilityId,
+                encounterId: encounter.id,
+                patientId: encounter.patientId,
+                eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+                payloadJson: payload,
+                createdByUserId: userId,
+              },
+            });
+            if (!latestSession) {
+              /** First reassessment for this encounter — counts as "new". */
+              reassessmentColumnSessionMode = "new";
+            } else if (startsNewSession) {
+              reassessmentColumnSessionMode = "new";
+            } else {
+              /**
+               * Auto-fall-through: a different user is saving OR the same user's session is
+               * stale. Either way, the prior column is preserved unchanged and a new column
+               * is opened automatically.
+               */
+              reassessmentColumnSessionMode = "auto-new";
+              reassessmentAutoNewReason = !sameOwner ? "different_user" : "stale_session";
+            }
           }
         }
-      }
-      if (nursingAssessmentNamespaceChanged(prevFull, nextFull, ER_HANDOFF_V1_KEY)) {
-        await this.prisma.encounterClinicalEvent.create({
-          data: {
-            facilityId,
-            encounterId: encounter.id,
-            patientId: encounter.patientId,
-            eventType: EncounterClinicalEventType.HANDOFF_NURSING,
-            payloadJson: handoffNursingEncounterPayload(
-              getNursingAssessmentNamespace(nextFull, ER_HANDOFF_V1_KEY)
-            ),
-            createdByUserId: userId,
-          },
-        });
+        if (handoffChanged) {
+          await tx.encounterClinicalEvent.create({
+            data: {
+              facilityId,
+              encounterId: encounter.id,
+              patientId: encounter.patientId,
+              eventType: EncounterClinicalEventType.HANDOFF_NURSING,
+              payloadJson: handoffNursingEncounterPayload(
+                getNursingAssessmentNamespace(nextFull, ER_HANDOFF_V1_KEY)
+              ),
+              createdByUserId: userId,
+            },
+          });
+        }
+
+        /**
+         * Append-only DISPOSITION_SUPPLEMENT_SAVED event lifecycle (multi-user safety, S15C).
+         *
+         * Material-change detection EXCLUDES the auto-stamped `signature` sub-object so that a
+         * "click Save with no edits" does NOT emit a redundant event row. The signature IS
+         * preserved INSIDE `payloadJson.snapshot` so the event row carries the full immutable
+         * record of who signed and when.
+         *
+         * INSERT-only by design: there is no UPDATE branch and no caller mutates these rows.
+         */
+        if (dispositionChanged && dispositionPerformer) {
+          await tx.encounterClinicalEvent.create({
+            data: {
+              facilityId,
+              encounterId: encounter.id,
+              patientId: encounter.patientId,
+              eventType: EncounterClinicalEventType.DISPOSITION_SUPPLEMENT_SAVED,
+              payloadJson: dispositionSupplementSavedEventPayload({
+                snapshot: getDispositionSupplementSnapshot(nextFull),
+                savedAt: new Date(),
+                performerId: dispositionPerformer.performerId,
+                performerDisplayName: dispositionPerformer.performerDisplayName,
+                performerRoleTitle: dispositionPerformer.performerRoleTitle,
+                performerInitials: dispositionPerformer.performerInitials,
+              }),
+              createdByUserId: userId,
+            },
+          });
+        }
       }
 
       /**
-       * Append-only DISPOSITION_SUPPLEMENT_SAVED event lifecycle (multi-user safety, S15C).
+       * Append-only DISCHARGE_SUMMARY_SAVED event lifecycle (multi-user safety, S15A).
        *
-       * Pre-existing behavior: PATCH replaces the full `Encounter.nursingAssessment` JSON in
-       * place — the `erDispositionV1` namespace inside (LWBS narrative, transfer handoff note,
-       * AMA risks discussed, deceased note, signature) is silently overwritten when a second
-       * user saves. AMA / LWBS / transfer / deceased narratives are legal documentation; silent
-       * overwrite by a second saver is unsafe.
-       *
-       * New behavior: every PATCH that materially changes the disposition supplement namespace
-       * writes an INSERT-only EncounterClinicalEvent row with the deep-cloned snapshot at save
-       * time and a denormalized performer identity snapshot. The flat-blob `nursingAssessment`
-       * is still merged in place by the frontend and saved as before — Summary / print readers
-       * continue to render the latest view unchanged.
-       *
-       * Material-change detection EXCLUDES the auto-stamped `signature` sub-object so that a
-       * "click Save with no edits" does NOT emit a redundant event row (the signature is always
-       * re-stamped on save). The signature IS preserved INSIDE `payloadJson.snapshot` so the
-       * event row carries the full immutable record of who signed and when.
-       *
-       * INSERT-only by design: there is no UPDATE branch and no caller path mutates these rows.
+       * INSERT-only by design: there is no UPDATE branch and no caller mutates these rows. A
+       * non-material PATCH (no content change) does not write an event, to avoid timeline
+       * noise. Failure to resolve performer identity does not block the event — empty fields
+       * just render as "—" in any future history view.
        */
-      if (dispositionSupplementSnapshotChanged(prevFull, nextFull)) {
-        const performer = await this.resolveSummaryDocumentPerformer(facilityId, userId);
-        await this.prisma.encounterClinicalEvent.create({
-          data: {
-            facilityId,
-            encounterId: encounter.id,
-            patientId: encounter.patientId,
-            eventType: EncounterClinicalEventType.DISPOSITION_SUPPLEMENT_SAVED,
-            payloadJson: dispositionSupplementSavedEventPayload({
-              snapshot: getDispositionSupplementSnapshot(nextFull),
-              savedAt: new Date(),
-              performerId: performer.performerId,
-              performerDisplayName: performer.performerDisplayName,
-              performerRoleTitle: performer.performerRoleTitle,
-              performerInitials: performer.performerInitials,
-            }),
-            createdByUserId: userId,
-          },
-        });
-      }
-    }
-
-    /**
-     * Append-only DISCHARGE_SUMMARY_SAVED event lifecycle (multi-user safety, S15A).
-     *
-     * Pre-existing behavior: PATCH replaces `Encounter.dischargeSummaryJson` in place — last
-     * writer wins, prior content is lost, and no historical row preserves the previous author or
-     * snapshot. This is the highest-risk overwrite path for patient-facing legal documents
-     * (discharge instructions, medication reconciliation, follow-up).
-     *
-     * New behavior: every PATCH that materially changes the discharge JSON writes an INSERT-only
-     * EncounterClinicalEvent row with the full snapshot at save time and a denormalized performer
-     * identity snapshot. The flat-blob `dischargeSummaryJson` is still updated in place so
-     * existing Summary / print readers continue to render the latest view unchanged.
-     *
-     * INSERT-only by design: there is no UPDATE branch and no caller path mutates these rows. A
-     * non-material PATCH (no content change) does not write an event, to avoid timeline noise.
-     * Failure to resolve performer identity does not block the event — it just records empty
-     * identity fields, identical to the existing nursing-reassessment behavior.
-     */
-    if (data.dischargeSummaryJson !== undefined && userId) {
-      const dischargeChanged = dischargeSummarySnapshotChanged(
-        encounter.dischargeSummaryJson,
-        data.dischargeSummaryJson
-      );
-      if (dischargeChanged) {
-        const performer = await this.resolveSummaryDocumentPerformer(facilityId, userId);
-        await this.prisma.encounterClinicalEvent.create({
+      if (dischargeChanged && dischargePerformer) {
+        await tx.encounterClinicalEvent.create({
           data: {
             facilityId,
             encounterId: encounter.id,
@@ -1258,52 +1321,27 @@ export class EncountersService {
             payloadJson: dischargeSummarySavedEventPayload({
               snapshot: data.dischargeSummaryJson,
               savedAt: new Date(),
-              performerId: performer.performerId,
-              performerDisplayName: performer.performerDisplayName,
-              performerRoleTitle: performer.performerRoleTitle,
-              performerInitials: performer.performerInitials,
+              performerId: dischargePerformer.performerId,
+              performerDisplayName: dischargePerformer.performerDisplayName,
+              performerRoleTitle: dischargePerformer.performerRoleTitle,
+              performerInitials: dischargePerformer.performerInitials,
             }),
             createdByUserId: userId,
           },
         });
       }
-    }
 
-    /**
-     * Append-only ADMISSION_SUMMARY_SAVED event lifecycle (multi-user safety, S15B).
-     *
-     * Pre-existing behavior: PATCH replaces `Encounter.admissionSummaryJson` in place — last
-     * writer wins, prior content is lost, and no historical row preserves the previous author or
-     * snapshot. Admission decisions are inpatient-care-defining clinical documentation; silent
-     * overwrite by a second saver is unsafe.
-     *
-     * New behavior: every PATCH that materially changes the admission JSON writes an INSERT-only
-     * EncounterClinicalEvent row with the (validated/normalized) snapshot at save time and a
-     * denormalized performer identity snapshot. The flat-blob `admissionSummaryJson` is still
-     * updated in place so existing Summary / print readers continue to render the latest view
-     * unchanged.
-     *
-     * The snapshot used here is the post-validation value (`updateData.admissionSummaryJson`),
-     * which is exactly what hits the DB — so unknown-key stripping by the Zod schema does not
-     * cause false-positive "change" events.
-     *
-     * Out of scope for this PR: the dedicated `cancelAdmissionDecision` path, which already has
-     * its own audit log + reason + performer; it can be migrated to also emit an event in a
-     * follow-up if a pre-clear snapshot is needed.
-     *
-     * INSERT-only by design: there is no UPDATE branch and no caller path mutates these rows. A
-     * non-material PATCH (no content change) does not write an event, to avoid timeline noise.
-     */
-    if (data.admissionSummaryJson !== undefined && userId) {
-      const nextAdmissionForEvent =
-        updateData.admissionSummaryJson === undefined ? null : updateData.admissionSummaryJson;
-      const admissionChanged = admissionSummarySnapshotChanged(
-        encounter.admissionSummaryJson,
-        nextAdmissionForEvent
-      );
-      if (admissionChanged) {
-        const performer = await this.resolveSummaryDocumentPerformer(facilityId, userId);
-        await this.prisma.encounterClinicalEvent.create({
+      /**
+       * Append-only ADMISSION_SUMMARY_SAVED event lifecycle (multi-user safety, S15B).
+       *
+       * The snapshot used here is the post-validation value (`updateData.admissionSummaryJson`),
+       * which is exactly what hits the DB — so unknown-key stripping by the Zod schema does
+       * not cause false-positive "change" events.
+       *
+       * INSERT-only by design.
+       */
+      if (admissionChanged && admissionPerformer) {
+        await tx.encounterClinicalEvent.create({
           data: {
             facilityId,
             encounterId: encounter.id,
@@ -1312,95 +1350,84 @@ export class EncountersService {
             payloadJson: admissionSummarySavedEventPayload({
               snapshot: nextAdmissionForEvent,
               savedAt: new Date(),
-              performerId: performer.performerId,
-              performerDisplayName: performer.performerDisplayName,
-              performerRoleTitle: performer.performerRoleTitle,
-              performerInitials: performer.performerInitials,
+              performerId: admissionPerformer.performerId,
+              performerDisplayName: admissionPerformer.performerDisplayName,
+              performerRoleTitle: admissionPerformer.performerRoleTitle,
+              performerInitials: admissionPerformer.performerInitials,
             }),
             createdByUserId: userId,
           },
         });
       }
-    }
 
-    /**
-     * PHI-safe structured reassessment summary for audit metadata. Surfaced ONLY when the patch
-     * touched `nursingAssessment` AND the reassessment namespace actually changed. Returns the
-     * stable field codes (e.g. ["mentalStatus","skinCondition"]), `columnCount` (count of saved
-     * reassessment events for this encounter), `latestDocumentedAt` (the clinical timestamp of
-     * the just-saved reassessment), and three boolean shape indicators — never narrative,
-     * values, or PHI. Used for QA review / pilot oversight / documentation completeness
-     * analytics. The column count requires one extra count() query, so we only run it when we
-     * actually wrote a column.
-     */
-    const reassessmentSectionsAuditMeta: Record<string, unknown> = {};
-    const reassessmentNamespaceChangedThisPatch =
-      data.nursingAssessment !== undefined &&
-      reassessmentNamespaceMaterialChange(encounter.nursingAssessment, data.nursingAssessment);
-    const sectionsChangedThisPatch =
-      data.nursingAssessment !== undefined &&
-      structuredReassessmentSectionsChanged(encounter.nursingAssessment, data.nursingAssessment);
-    if (sectionsChangedThisPatch || reassessmentNamespaceChangedThisPatch) {
-      const meta: Record<string, unknown> = {
-        v: 1,
-        structuredSectionsCompleted: structuredReassessmentSectionsCompleted(data.nursingAssessment),
-      };
-      if (reassessmentNamespaceChangedThisPatch) {
-        const columnCount = await this.prisma.encounterClinicalEvent.count({
-          where: {
-            encounterId: encounter.id,
-            facilityId,
-            eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
-            payloadJson: {
-              path: ["namespace"],
-              equals: NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
+      /**
+       * PHI-safe structured reassessment summary for audit metadata. Surfaced ONLY when the
+       * patch touched `nursingAssessment` AND the reassessment namespace actually changed.
+       * `columnCount` runs against `tx` so it includes the row we just wrote (or skipped, if
+       * we took the controlled UPDATE branch). Returns stable field codes only — no PHI.
+       */
+      const reassessmentSectionsAuditMeta: Record<string, unknown> = {};
+      if (sectionsChangedThisPatch || reassessmentChanged) {
+        const meta: Record<string, unknown> = {
+          v: 1,
+          structuredSectionsCompleted: structuredReassessmentSectionsCompleted(data.nursingAssessment),
+        };
+        if (reassessmentChanged) {
+          const columnCount = await tx.encounterClinicalEvent.count({
+            where: {
+              encounterId: encounter.id,
+              facilityId,
+              eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+              payloadJson: {
+                path: ["namespace"],
+                equals: NURSING_ASSESSMENT_NAMESPACE_ER_NURSING_REASSESSMENT_V1,
+              },
             },
-          },
-        });
-        meta.columnCount = columnCount;
-        meta.latestDocumentedAt = extractReassessmentDocumentedAt(data.nursingAssessment);
-        meta.hasTraumaDocumentation = nursingAssessmentHasTraumaDocumentation(data.nursingAssessment);
-        meta.hasBedsideSafety = nursingAssessmentHasBedsideSafety(data.nursingAssessment);
-        meta.hasNursingInterventions = nursingAssessmentHasNursingInterventions(
-          data.nursingAssessment
-        );
-        /**
-         * `sessionMode` clarifies for QA / pilot oversight whether this PATCH opened a fresh
-         * reassessment column ("new"), refined the active session in place ("updated"), or
-         * auto-opened a new column because the prior latest row belongs to a different user OR
-         * is older than the recency window ("auto-new"). The auto-new tag protects against the
-         * silent cross-user overwrite issue and is observable in audit metadata only — no PHI.
-         *
-         * Falls back to the prior simple binary when the lifecycle didn't run (defensive; the
-         * lifecycle should always run when the namespace changed materially, but this keeps the
-         * audit log complete even in edge cases).
-         */
-        meta.sessionMode =
-          reassessmentColumnSessionMode ??
-          (data.reassessmentNewSession === true ? "new" : "updated");
-        if (reassessmentAutoNewReason) {
-          /** Stable enum string. Field name only — no PHI, never narrative. */
-          meta.autoNewReason = reassessmentAutoNewReason;
+          });
+          meta.columnCount = columnCount;
+          meta.latestDocumentedAt = extractReassessmentDocumentedAt(data.nursingAssessment);
+          meta.hasTraumaDocumentation = nursingAssessmentHasTraumaDocumentation(data.nursingAssessment);
+          meta.hasBedsideSafety = nursingAssessmentHasBedsideSafety(data.nursingAssessment);
+          meta.hasNursingInterventions = nursingAssessmentHasNursingInterventions(
+            data.nursingAssessment
+          );
+          /**
+           * `sessionMode` clarifies for QA / pilot oversight whether this PATCH opened a fresh
+           * column ("new"), refined the active session in place ("updated"), or auto-opened a
+           * new column ("auto-new"). Falls back to the prior simple binary if the lifecycle
+           * didn't run (defensive; no PHI either way).
+           */
+          meta.sessionMode =
+            reassessmentColumnSessionMode ??
+            (data.reassessmentNewSession === true ? "new" : "updated");
+          if (reassessmentAutoNewReason) {
+            /** Stable enum string. Field name only — no PHI. */
+            meta.autoNewReason = reassessmentAutoNewReason;
+          }
         }
+        reassessmentSectionsAuditMeta.reassessment = meta;
       }
-      reassessmentSectionsAuditMeta.reassessment = meta;
-    }
 
-    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
-      userId,
-      facilityId,
-      patientId: encounter.patientId,
-      encounterId: encounter.id,
-      entityId: encounter.id,
-      ip,
-      userAgent,
-      metadata: {
-        ...(data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : {}),
-        ...(data.workflowState !== undefined
-          ? { workflowTransition: { from: encounter.workflowState, to: data.workflowState } }
-          : {}),
-        ...reassessmentSectionsAuditMeta,
-      },
+      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        metadata: {
+          ...(data.billingCaptureJson !== undefined ? { billingCaptureJsonUpdated: true } : {}),
+          ...(data.workflowState !== undefined
+            ? { workflowTransition: { from: encounter.workflowState, to: data.workflowState } }
+            : {}),
+          ...reassessmentSectionsAuditMeta,
+        },
+        critical: true,
+        tx,
+      });
+
+      return row;
     });
 
     if (data.dischargeSummaryJson !== undefined) {
