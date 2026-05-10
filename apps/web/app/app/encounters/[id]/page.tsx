@@ -19,6 +19,7 @@ import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyP
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
+import { printEncounterChartLivePreview } from "@/components/encounters/EncounterChartLivePreview";
 import { getOrderItemChartLabel, isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import {
   medicationLineClinicallyExecuted,
@@ -625,6 +626,25 @@ export default function EncounterDetailPage() {
       language,
     });
   }, [encounter, facilityId, facilities, quickPrimaryDiagnosis, pendingDischarge, language]);
+
+  /**
+   * Phase 5C — encounter-level live chart preview. Composes a printable view
+   * from existing read endpoints only (no new backend, no snapshot, no audit
+   * action). Mirrors the popup-blocker-safe lifecycle of `printDischarge` /
+   * `printErPacket` / `printPatientChart`.
+   */
+  const handlePrintEncounterChartPreview = useCallback(() => {
+    if (!encounter || !facilityId) return;
+    const facilityName = facilities.find((f) => f.id === facilityId)?.name ?? null;
+    void printEncounterChartLivePreview({
+      encounter,
+      triage: quickTriage,
+      orders: quickOrders,
+      facilityId,
+      facilityName,
+      language,
+    });
+  }, [encounter, facilityId, facilities, quickTriage, quickOrders, language]);
 
   useEffect(() => {
     if (!encounter?.id || !encounter?.patient?.id) return;
@@ -1660,6 +1680,9 @@ export default function EncounterDetailPage() {
               encounter={encounter}
               showPrintDischarge={showPrintDischarge}
               onPrintDischarge={handlePrintDischarge}
+              onPrintEncounterPreview={
+                canFetchEncounterTriage ? handlePrintEncounterChartPreview : undefined
+              }
             />
           )}
           {activeTab === "clinic" && (
@@ -2355,10 +2378,13 @@ function EncounterSummaryTab({
   encounter,
   showPrintDischarge,
   onPrintDischarge,
+  onPrintEncounterPreview,
 }: {
   encounter: any;
   showPrintDischarge: boolean;
   onPrintDischarge: () => void;
+  /** Phase 5C — encounter-level live chart preview action; gated by chart-read RBAC. */
+  onPrintEncounterPreview?: () => void;
 }) {
   const { t, language } = useI18n();
   const reason = encounter.visitReason || encounter.chiefComplaint;
@@ -2531,6 +2557,50 @@ function EncounterSummaryTab({
               {t("encounterChrome.summaryTab.admissionIncompleteHint")}
             </p>
           )}
+        </div>
+      )}
+      {onPrintEncounterPreview && (
+        <div style={summaryCard}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 8,
+            }}
+          >
+            <strong style={{ fontSize: 15, color: "#0f172a" }}>
+              {t("encounterChrome.summaryTab.encounterChartPreviewSection")}
+            </strong>
+            <button
+              type="button"
+              onClick={onPrintEncounterPreview}
+              style={{
+                padding: "8px 14px",
+                fontSize: 13,
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                background: "#fff",
+                color: "#0f172a",
+                cursor: "pointer",
+                fontWeight: 600,
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+              }}
+            >
+              {t("encounterChrome.summaryTab.printEncounterChartPreview")}
+            </button>
+          </div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              color: "#757575",
+              lineHeight: 1.45,
+            }}
+          >
+            {t("encounterChrome.summaryTab.printEncounterChartPreviewHint")}
+          </p>
         </div>
       )}
       {showPrintDischarge && (
