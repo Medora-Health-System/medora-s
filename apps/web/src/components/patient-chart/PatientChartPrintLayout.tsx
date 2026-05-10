@@ -1,6 +1,6 @@
 /**
- * Browser print of patient chart (chart summary + follow-ups).
- * Data already loaded — no fetch.
+ * Browser print of patient chart preview (chart summary + follow-ups).
+ * Live preview only — not a finalized legal export. Data already loaded — no fetch.
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
@@ -176,7 +176,8 @@ function isResultLike(it: ChartSummaryOrderItem, lang: SupportedLanguage): boole
 }
 
 /**
- * HTML for patient chart print (identity, vitals, history, diagnoses, results, medications, discharge, follow-ups).
+ * HTML for patient chart preview print (identity, vitals, history, diagnoses, results, medications, discharge, follow-ups).
+ * Live preview — not a finalized legal export.
  */
 export function getPatientChartPrintHtml(params: {
   chartSummary: ChartSummary;

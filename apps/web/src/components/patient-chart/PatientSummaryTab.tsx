@@ -164,7 +164,7 @@ export function PatientSummaryTab({
   followUpsLoading: boolean;
   onRefreshFollowUps: () => void;
   onAddFollowUp: () => void;
-  /** Impression dossier (données déjà chargées) — en-tête du fil chronologique */
+  /** Live chart preview print (data already loaded) — header of clinical timeline section */
   onPrintMedicalRecord?: () => void;
 }) {
   const { t, language } = useI18n();
@@ -216,22 +216,43 @@ export function PatientSummaryTab({
         title={t("patientChartUi.summaryTimelineTitle")}
         action={
           onPrintMedicalRecord ? (
-            <button
-              type="button"
-              onClick={onPrintMedicalRecord}
+            <div
               style={{
-                padding: "8px 14px",
-                border: "1px solid #000",
-                borderRadius: 4,
-                background: "#fff",
-                color: "#000",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 13,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                gap: 6,
+                maxWidth: 340,
               }}
             >
-              {t("patientChartUi.summaryPrintMedicalRecord")}
-            </button>
+              <button
+                type="button"
+                onClick={onPrintMedicalRecord}
+                style={{
+                  padding: "8px 14px",
+                  border: "1px solid #000",
+                  borderRadius: 4,
+                  background: "#fff",
+                  color: "#000",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 13,
+                }}
+              >
+                {t("patientChartUi.summaryPrintPatientChartPreview")}
+              </button>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 11,
+                  color: "#757575",
+                  lineHeight: 1.35,
+                  textAlign: "right",
+                }}
+              >
+                {t("patientChartUi.summaryPrintPatientChartPreviewHint")}
+              </p>
+            </div>
           ) : undefined
         }
       >

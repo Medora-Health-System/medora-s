@@ -3635,7 +3635,9 @@ export default {
     summaryRefreshing: "Actualisation…",
     summaryUpdatedPrefix: "Mise à jour :",
     summaryTimelineTitle: "Fil chronologique clinique (par consultation)",
-    summaryPrintMedicalRecord: "Imprimer le dossier",
+    summaryPrintPatientChartPreview: "Imprimer l'aperçu du dossier patient",
+    summaryPrintPatientChartPreviewHint:
+      "Cet aperçu en direct résume les données disponibles du dossier. Ce n’est pas une exportation légale finalisée.",
     summaryTimelineIntro:
       "Synthèse par visite : signes vitaux d'accueil, évaluation infirmière, ordres, résultats, dispensation et résumé de sortie lorsque disponibles. Du plus récent au plus ancien.",
     summaryVitalsTitle: "Signes vitaux récents",
@@ -5796,8 +5798,8 @@ export default {
       medicationFallback: "Médicament (libellé non renseigné)",
     },
     patientChart: {
-      htmlTitlePrefix: "Dossier médical",
-      title: "Dossier médical",
+      htmlTitlePrefix: "Aperçu du dossier patient",
+      title: "Aperçu du dossier patient",
       establishment: "Établissement",
       sectionIdentity: "Identité patient",
       name: "Nom",

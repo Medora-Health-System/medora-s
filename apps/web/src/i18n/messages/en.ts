@@ -3666,7 +3666,9 @@ export default {
     summaryRefreshing: "Refreshing…",
     summaryUpdatedPrefix: "Updated:",
     summaryTimelineTitle: "Clinical timeline (by encounter)",
-    summaryPrintMedicalRecord: "Print medical record",
+    summaryPrintPatientChartPreview: "Print patient chart preview",
+    summaryPrintPatientChartPreviewHint:
+      "This live preview summarizes available chart data. It is not a finalized legal record export.",
     summaryTimelineIntro:
       "Per-visit snapshot: intake vitals, nursing assessment, orders, results, dispensing, and discharge summary when available. Newest first.",
     summaryVitalsTitle: "Recent vital signs",
@@ -5819,8 +5821,8 @@ export default {
       medicationFallback: "Medication (label not set)",
     },
     patientChart: {
-      htmlTitlePrefix: "Medical record",
-      title: "Medical record",
+      htmlTitlePrefix: "Patient chart preview",
+      title: "Patient chart preview",
       establishment: "Facility",
       sectionIdentity: "Patient demographics",
       name: "Name",
