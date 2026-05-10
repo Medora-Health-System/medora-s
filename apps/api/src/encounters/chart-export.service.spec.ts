@@ -1,5 +1,5 @@
 /**
- * Phase 5D — chart-export.service unit tests.
+ * Phase 5D / 5E — chart-export.service unit tests.
  *
  * Validates the invariants explicitly required by the phase brief:
  *  - 200/manifest path returns for closed encounter (livePreview: false).
@@ -13,6 +13,7 @@ import { NotFoundException } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import {
   EncounterChartExportService,
+  ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS,
   ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
 } from "./chart-export.service";
 
@@ -127,18 +128,41 @@ describe("EncounterChartExportService.getManifest", () => {
     expect(meta).toEqual(
       expect.objectContaining({
         chartExport: true,
+        exportFormat: "json",
         manifestVersion: ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
         livePreview: false,
         encounterStatus: "CLOSED",
+        deferredDomainCount: expect.any(Number),
       })
     );
+
+    // includedDomainCount is derived from the manifest, not hardcoded.
+    const expectedIncluded = ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS.filter(
+      (k) => manifest[k] !== null && typeof manifest[k] !== "undefined"
+    ).length;
+    expect(meta.includedDomainCount).toBe(expectedIncluded);
+    expect(meta.includedDomainCount).toBeLessThanOrEqual(
+      ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS.length
+    );
+
     // PHI-safe: no patient identity / clinical text in metadata.
-    const PHI_FORBIDDEN = ["firstName", "lastName", "mrn", "globalMrn", "dob", "chiefComplaint"];
+    const PHI_FORBIDDEN = [
+      "firstName",
+      "lastName",
+      "mrn",
+      "globalMrn",
+      "dob",
+      "chiefComplaint",
+      "resultText",
+      "diagnosis",
+      "diagnosisCode",
+      "diagnosisDescription",
+    ];
     for (const key of PHI_FORBIDDEN) {
       expect(meta).not.toHaveProperty(key);
     }
     const metaJson = JSON.stringify(meta);
-    expect(metaJson).not.toMatch(/John|Doe|MRN-123|Chest pain/);
+    expect(metaJson).not.toMatch(/John|Doe|MRN-123|Chest pain|GMRN-XYZ|1980-05-04/);
   });
 
   it("returns the manifest with livePreview=true for an OPEN encounter (does not throw 409)", async () => {
@@ -151,8 +175,30 @@ describe("EncounterChartExportService.getManifest", () => {
     expect(manifest.livePreview).toBe(true);
     expect(manifest.encounter.status).toBe("OPEN");
     expect((audit.log as AnyMock).mock.calls[0][2].metadata).toEqual(
-      expect.objectContaining({ livePreview: true, encounterStatus: "OPEN" })
+      expect.objectContaining({
+        livePreview: true,
+        encounterStatus: "OPEN",
+        exportFormat: "json",
+      })
     );
+  });
+
+  it("records exportFormat html in PHI-safe audit metadata when requested", async () => {
+    const prisma = makePrismaMock({});
+    const { service, audit } = makeService(prisma);
+
+    await service.getManifest("facility-A", "enc-1", "u", "1.1.1.1", "ua", { exportFormat: "html" });
+
+    expect((audit.log as AnyMock).mock.calls[0][2].metadata).toEqual(
+      expect.objectContaining({
+        chartExport: true,
+        exportFormat: "html",
+        manifestVersion: ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
+      })
+    );
+    const meta = (audit.log as AnyMock).mock.calls[0][2].metadata;
+    const metaJson = JSON.stringify(meta);
+    expect(metaJson).not.toMatch(/John|Doe|MRN-123/);
   });
 
   it("denies cross-facility access by returning NotFoundException (no facility/encounter existence leak)", async () => {

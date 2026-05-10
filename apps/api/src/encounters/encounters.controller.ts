@@ -7,6 +7,7 @@ import {
   Body,
   Query,
   Req,
+  Res,
   UseGuards,
   BadRequestException,
   ForbiddenException,
@@ -37,6 +38,8 @@ import {
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
 import { RoleCode } from "@prisma/client";
+import type { Response } from "express";
+import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -261,33 +264,45 @@ export class EncountersController {
   }
 
   /**
-   * Phase 5D — read-only chart export manifest. Returns a deterministic JSON
-   * payload composed from existing read endpoints / Prisma reads, with no
-   * persistence (no `EncounterChartExport` table yet) and no PDF rendering.
+   * Phase 5D / 5E — read-only encounter chart export.
    *
-   * RBAC narrowed to PROVIDER + ADMIN — chart export is a clinician-grade
-   * activity. RN / LAB / RADIOLOGY have read access to individual chart
-   * sections via the existing Phase 5C live preview; widening this manifest
-   * route is deferred to Phase 5F when ROI policy lands.
+   * - `?format=json` (default): JSON manifest (`application/json` via Nest defaults).
+   * - `?format=html`: same manifest composed server-side, then rendered to HTML
+   *   (`text/html; charset=utf-8`). No second data path, no PDF, no persistence.
    *
-   * OPEN encounters return the manifest with `livePreview: true` (safer for
-   * handoff/teaching workflows than a 409); CLOSED encounters return
-   * `livePreview: false`. Audit logs `CHART_ACCESS` with PHI-safe metadata.
+   * RBAC: PROVIDER + ADMIN. Audit: `CHART_ACCESS` with PHI-safe metadata including
+   * `exportFormat: "json" | "html"`.
    */
   @Get("encounters/:id/chart-export")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
-  async getChartExport(@Param("id") id: string, @Req() req: any) {
+  async getChartExport(
+    @Param("id") id: string,
+    @Query("format") formatRaw: string | undefined,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response
+  ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
-    return this.chartExportService.getManifest(
+    const fmt = (formatRaw ?? "json").trim().toLowerCase();
+    if (fmt !== "json" && fmt !== "html") {
+      throw new BadRequestException('Invalid format. Use "json" (default) or "html".');
+    }
+    const exportFormat = fmt === "html" ? "html" : "json";
+    const manifest = await this.chartExportService.getManifest(
       facilityId,
       id,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      { exportFormat }
     );
+    if (exportFormat === "html") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return renderEncounterChartExportHtml(manifest);
+    }
+    return manifest;
   }
 
   @Get("encounters/:id/audit-timeline")

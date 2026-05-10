@@ -54,6 +54,34 @@ const CLINICAL_DOC_EVENT_TYPES: EncounterClinicalEventType[] = [
 
 export const ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION = "encounter-chart-export-v1" as const;
 
+/**
+ * Authoritative list of clinical-data domain keys included in the export manifest.
+ *
+ * Used to derive `includedDomainCount` for the PHI-safe `CHART_ACCESS` audit metadata
+ * (no hardcoded number). Adding or removing a manifest section requires updating this
+ * list, which keeps the audit metric honest as the manifest evolves.
+ *
+ * Excludes envelope/header keys (`manifestVersion`, `generatedAt`, `livePreview`,
+ * `caps`, `facility`, `deferredDomains`) — those are not "clinical domains".
+ */
+export const ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS = [
+  "encounter",
+  "patient",
+  "triage",
+  "vitalsHistory",
+  "diagnoses",
+  "documentationHistory",
+  "orders",
+  "results",
+  "medicationAdministrations",
+  "procedures",
+  "ivAccess",
+  "clinicalTimeline",
+  "auditTimelineSummary",
+  "followUps",
+] as const;
+type IncludedDomainKey = (typeof ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS)[number];
+
 type AnyRecord = Record<string, unknown>;
 
 function asObjectOrNull(input: unknown): AnyRecord | null {
@@ -298,6 +326,11 @@ export type ChartExportManifest = {
   deferredDomains: Array<{ domain: string; reason: string }>;
 };
 
+export type ChartExportRequestOptions = {
+  /** Defaults to `json`. HTML uses the same manifest composition path; only the HTTP response differs. */
+  exportFormat?: "json" | "html";
+};
+
 @Injectable()
 export class EncounterChartExportService {
   constructor(
@@ -308,14 +341,18 @@ export class EncounterChartExportService {
   /**
    * Compose the manifest. Throws `NotFoundException` when the encounter does
    * not exist for `facilityId` (cross-facility reads must not leak existence).
+   *
+   * @param options.exportFormat — included in PHI-safe audit metadata (`json` | `html`).
    */
   async getManifest(
     facilityId: string,
     encounterId: string,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    options?: ChartExportRequestOptions
   ): Promise<ChartExportManifest> {
+    const exportFormat = options?.exportFormat === "html" ? "html" : "json";
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: {
@@ -875,6 +912,19 @@ export class EncounterChartExportService {
     };
 
     /**
+     * Derive `includedDomainCount` from the actual manifest. Non-null clinical
+     * domain keys count as included; nullable headers like `triage` only count
+     * when populated. This avoids drift if a domain is added/removed later.
+     */
+    const includedDomainCount = ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS.reduce<number>(
+      (acc, key: IncludedDomainKey) => {
+        const v = manifest[key];
+        return acc + (v === null || typeof v === "undefined" ? 0 : 1);
+      },
+      0
+    );
+
+    /**
      * Single PHI-safe `CHART_ACCESS` audit log. Metadata only includes counts /
      * version flags; never names, MRN, dates of birth, or clinical text.
      * Keeping `entityType: "ENCOUNTER"` makes downstream filters consistent
@@ -891,9 +941,10 @@ export class EncounterChartExportService {
       userAgent,
       metadata: {
         chartExport: true,
+        exportFormat,
         manifestVersion: ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
         livePreview,
-        includedDomainCount: 14,
+        includedDomainCount,
         deferredDomainCount: deferredDomains.length,
         clinicalTimelineCapped,
         auditTimelineCapped: auditCapped,

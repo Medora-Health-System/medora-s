@@ -1,0 +1,146 @@
+import type { ChartExportManifest } from "./chart-export.service";
+import { ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION } from "./chart-export.service";
+import { escapeHtml, renderEncounterChartExportHtml } from "./chart-export-html.util";
+
+function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExportManifest {
+  const defaults: ChartExportManifest = {
+    manifestVersion: ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
+    generatedAt: "2026-01-01T12:00:00.000Z",
+    livePreview: false,
+    caps: {
+      clinicalTimeline: 100,
+      auditTimeline: 200,
+      diagnoses: 200,
+      followUps: 100,
+    },
+    facility: { id: "fac-1", name: "Test Facility" },
+    encounter: {
+      id: "enc-1",
+      type: "EMERGENCY",
+      status: "CLOSED",
+      workflowState: "DISCHARGED",
+      visitReason: null,
+      chiefComplaint: "Test complaint",
+      roomLabel: "1",
+      physicianAssigned: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T01:00:00.000Z",
+      admittedAt: null,
+      dischargedAt: "2026-01-01T02:00:00.000Z",
+      dischargeStatus: "HOME",
+      closedByDisplayFr: "Dr Test",
+      closedAt: "2026-01-01T02:00:00.000Z",
+      nursingAssessment: null,
+      dischargeSummaryJson: null,
+      admissionSummaryJson: null,
+      treatmentPlan: null,
+      clinicianImpression: null,
+      providerNote: null,
+      providerDocumentation: { status: "SIGNED", signedAt: null, signedByDisplayFr: null },
+      providerAddenda: [],
+    },
+    patient: {
+      id: "pat-1",
+      mrn: "MRN-1",
+      globalMrn: "GM-1",
+      nationalId: null,
+      firstName: "Jane",
+      lastName: "Roe",
+      dob: "1980-01-01T00:00:00.000Z",
+      sex: "FEMALE",
+      sexAtBirth: "FEMALE",
+    },
+    triage: null,
+    vitalsHistory: { entries: [] },
+    diagnoses: { items: [], total: 0 },
+    documentationHistory: { entries: [] },
+    orders: [],
+    results: [],
+    medicationAdministrations: [],
+    procedures: { entries: [] },
+    ivAccess: { entries: [] },
+    clinicalTimeline: { items: [], capped: false },
+    auditTimelineSummary: { items: [], capped: false },
+    followUps: { items: [] },
+    deferredDomains: [{ domain: "pathways", reason: "deferred_to_phase_5f" }],
+  };
+  return { ...defaults, ...overrides };
+}
+
+describe("chart-export-html.util", () => {
+  it("escapeHtml neutralizes angle brackets and quotes", () => {
+    expect(escapeHtml(`<script>alert("x")</script>`)).toBe(
+      "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;"
+    );
+  });
+
+  it("includes live preview disclaimer when livePreview is true", () => {
+    const html = renderEncounterChartExportHtml(baseManifest({ livePreview: true }));
+    expect(html).toContain("Live preview — not a finalized legal record export");
+    expect(html).toContain("Encounter chart export (live preview)");
+  });
+
+  it("includes generated (closed) notice when livePreview is false", () => {
+    const html = renderEncounterChartExportHtml(baseManifest({ livePreview: false }));
+    expect(html).toContain("Generated encounter chart export");
+    expect(html).toContain("not an immutable legal snapshot");
+  });
+
+  it("lists deferred domains", () => {
+    const html = renderEncounterChartExportHtml(baseManifest());
+    expect(html).toContain("pathways");
+    expect(html).toContain("deferred_to_phase_5f");
+  });
+
+  it("does not embed raw unescaped script from clinical strings", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          chiefComplaint: '<img src=x onerror=alert(1)>',
+        },
+      })
+    );
+    expect(html).not.toContain("<img src=x onerror=alert(1)>");
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
+  });
+
+  it("does not include dataBase64 in HTML for result attachments (manifest has none)", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        results: [
+          {
+            orderItemId: "oi-1",
+            catalogItemType: "LAB_TEST",
+            resultText: "OK",
+            criticalValue: false,
+            verifiedAt: null,
+            acknowledgedByProviderAt: null,
+            acknowledgedByDisplayFr: null,
+            enteredByDisplayFr: null,
+            attachmentCount: 1,
+            attachmentMetadata: [{ fileName: "a.pdf", mimeType: "application/pdf", sizeBytes: 10 }],
+            resultDataKeys: ["structured"],
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      })
+    );
+    expect(html).toContain("a.pdf");
+    expect(html).not.toMatch(/dataBase64/i);
+  });
+
+  it("embeds JSON only inside escaped pre blocks", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          nursingAssessment: { evil: "</pre><script>bad</script>" },
+        },
+      })
+    );
+    expect(html).not.toContain("</pre><script>");
+    expect(html).toContain("&lt;/pre&gt;");
+  });
+});
