@@ -79,6 +79,8 @@ const fr = {
     adminAudit: "Journal d’audit",
     adminGoLive: "Préparation mise en service",
     adminExports: "Surveillance des exports",
+    adminRoi: "Dévoilement dossier (ROI)",
+    adminRoiMonitoring: "Surveillance ROI (plateforme)",
     adminBackupReadiness: "Sauvegarde et reprise",
     adminSystemHealth: "Santé système",
     adminCompliance: "Conformité et couverture d’audit",

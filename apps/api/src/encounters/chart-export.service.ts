@@ -1116,7 +1116,8 @@ export class EncounterChartExportService {
     format: "json" | "html",
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    options?: { skipRecordExportViewAudit?: boolean }
   ): Promise<{ manifest: ChartExportManifest; html?: string; row: ChartExportSnapshotSummary }> {
     const row = await this.prisma.encounterChartExport.findFirst({
       where: { id: snapshotId, encounterId, facilityId },
@@ -1147,24 +1148,29 @@ export class EncounterChartExportService {
     /**
      * Non-critical view audit. Metadata stays PHI-safe — only ids, version,
      * and hash. Patient name / MRN / DOB never appear here.
+     *
+     * Phase 5G — callers that emit `ROI_EXPORT_VIEW` (ROI-governed retrieval) set
+     * `skipRecordExportViewAudit: true` to avoid double-logging a clinical read.
      */
-    await this.audit.log(AuditAction.RECORD_EXPORT_VIEW, "ENCOUNTER_CHART_EXPORT", {
-      userId,
-      facilityId,
-      patientId: row.patientId,
-      encounterId: row.encounterId,
-      entityId: row.id,
-      ip,
-      userAgent,
-      metadata: {
-        chartExport: true,
-        snapshotId: row.id,
-        manifestVersion: row.manifestVersion,
-        manifestHash: row.manifestHash,
-        templateVersion: row.templateVersion,
-        format,
-      },
-    });
+    if (!options?.skipRecordExportViewAudit) {
+      await this.audit.log(AuditAction.RECORD_EXPORT_VIEW, "ENCOUNTER_CHART_EXPORT", {
+        userId,
+        facilityId,
+        patientId: row.patientId,
+        encounterId: row.encounterId,
+        entityId: row.id,
+        ip,
+        userAgent,
+        metadata: {
+          chartExport: true,
+          snapshotId: row.id,
+          manifestVersion: row.manifestVersion,
+          manifestHash: row.manifestHash,
+          templateVersion: row.templateVersion,
+          format,
+        },
+      });
+    }
 
     return {
       manifest,

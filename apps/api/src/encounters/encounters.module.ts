@@ -10,7 +10,7 @@ import { DiagnosesModule } from "../diagnoses/diagnoses.module";
   imports: [PrismaModule, DiagnosesModule],
   controllers: [EncountersController],
   providers: [EncountersService, EncounterChartExportService, AuditService],
-  exports: [EncountersService],
+  exports: [EncountersService, EncounterChartExportService],
 })
 export class EncountersModule {}
 

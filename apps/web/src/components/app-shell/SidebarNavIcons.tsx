@@ -37,6 +37,8 @@ const HREF_TWEMOJI_SVG: Record<string, string> = {
   "/app/reports": "1f4ca.svg",
   "/app/admin/go-live": "26a0.svg",
   "/app/admin/exports": "1f4e6.svg",
+  "/app/admin/roi": "1f510.svg",
+  "/app/admin/roi-monitoring": "1f4ca.svg",
   "/app/admin/backup-readiness": "1f4c4.svg",
   "/app/admin/system-health": "1f4ca.svg",
   "/app/admin/compliance": "1f4dc.svg",

@@ -29,6 +29,7 @@ import { FhirModule } from "./fhir/fhir.module";
 import { InsuranceModule } from "./insurance/insurance.module";
 import { BillingProcedureCodesModule } from "./billing-procedure-codes/billing-procedure-codes.module";
 import { ReportsModule } from "./reports/reports.module";
+import { RoiModule } from "./roi/roi.module";
 import { AuditContextInterceptor } from "./common/audit/audit-context.interceptor";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error-metrics.module";
@@ -71,6 +72,7 @@ const imports = [
   InsuranceModule,
   BillingProcedureCodesModule,
   ReportsModule,
+  RoiModule,
 ];
 
 @Module({
