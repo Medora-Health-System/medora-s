@@ -26,6 +26,12 @@ export type SystemHealthMetrics = {
   recent5xxCount: number;
   recentCriticalAlertsCount: number;
   recentFailedExportsCount: number;
+  jwtSecretsConfigured: boolean;
+  mfaEncryptionKeyConfigured: boolean;
+  mfaEncryptionKeyProbe: "ok" | "missing" | "invalid";
+  chartExportSigningSecretConfigured: boolean;
+  auditFailureMode: "best_effort" | "fail_closed" | "unset";
+  recentChartExportIntegrityFailureCount: number;
 };
 
 export type SystemHealthAlertStatus = {
@@ -36,12 +42,18 @@ export type SystemHealthAlertStatus = {
   canSendTest: boolean;
 };
 
+export type SystemHealthBackupReadinessSummary = {
+  status: "ready" | "attention" | "blocked";
+  generatedAt: string;
+};
+
 export type SystemHealthPayload = {
   status: SystemHealthOverallStatus;
   generatedAt: string;
   checks: SystemHealthCheck[];
   metrics: SystemHealthMetrics;
   alertStatus: SystemHealthAlertStatus;
+  backupReadiness?: SystemHealthBackupReadinessSummary;
 };
 
 export type SystemHealthTestAlertResponse = {

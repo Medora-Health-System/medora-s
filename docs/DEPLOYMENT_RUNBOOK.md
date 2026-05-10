@@ -36,25 +36,40 @@ If any check fails: **do not promote**. Fix or revert.
 
 ## 3. Required env vars (production)
 
+Canonical table with rotation notes: **`docs/ENV_PRODUCTION_CHECKLIST.md`**. Summarised here for deploy ordering.
+
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | yes | Railway-managed. |
 | `JWT_ACCESS_SECRET` | yes | Auth fails to boot otherwise. |
-| `JWT_REFRESH_SECRET` | yes | Same. |
+| `JWT_REFRESH_SECRET` | yes | Same; also used for MFA grant JWTs — rotation signs everyone out and invalidates in-flight MFA tokens. |
 | `JWT_ACCESS_TTL` | optional | Default `8h`. |
 | `JWT_REFRESH_TTL` | optional | Default `14d`. |
 | `TOKEN_ISSUER` | optional | Default `medora-s`. |
 | `NODE_ENV` | yes | `production` for prod. |
+| `CORS_ORIGINS` | **yes** | Allowed browser origins (Vercel app); see `apps/api/src/config/cors-origins.ts`. |
 | `AUDIT_FAILURE_MODE` | recommended | `fail_closed` for pilot production. |
-| `CHART_EXPORT_SIGNING_SECRET` | **yes in production** | Required to create or read signed chart export snapshots. Without it in prod, snapshot creation fails closed and signed-row reads fail integrity. |
+| `CHART_EXPORT_SIGNING_SECRET` | **yes in production** | Required to create or read signed chart export snapshots. Without it in prod, snapshot creation fails closed and signed-row reads fail integrity. **Rotation** without dual-key support breaks verification of older rows — plan with compliance. |
+| `MFA_SECRET_ENCRYPTION_KEY` | **yes in production** | Base64-encoded 32-byte key; see `apps/api/src/auth/mfa/mfa-encryption.util.ts`. **Rotation** without a migration path makes stored MFA secrets unreadable — users must re-enrol or ops runs a documented migration. |
+| `RESET_PASSWORD_BASE_URL` | yes if reset flow used | Must match the public web origin used in emails/links. |
 | `MEDORA_BACKUP_POLICY_CONFIRMED` | yes | `true` once policy signed off. |
 | `MEDORA_DATA_RETENTION_POLICY_CONFIRMED` | yes | `true` once policy signed off. |
 | `MEDORA_LAST_RESTORE_DRILL_AT` | yes during pilot | ISO timestamp; updated after each successful drill. |
 | `MEDORA_ALERT_WEBHOOK_URL` | recommended | Receives operator alerts. |
 | `MEDORA_ALERT_ENABLED` | optional | Default on. |
 | `MEDORA_EXTERNAL_BILLING_*` | feature-dependent | Only if external billing automation is part of pilot. |
+| `API_URL` / `MEDORA_API_URL` (Vercel) | **yes** | Next.js BFF target for Railway API; see `apps/web/src/lib/server/resolveApiUrl.ts`. |
 
-The full active list is the one displayed by `admin/backup-readiness` and `admin/system-health` plus secrets that those checks deliberately do not echo.
+`GET admin/system-health` reports **whether** critical secrets are configured (never values), audit failure mode label, recent chart export integrity failure count (24h), and a **summary** of backup-readiness (`status` + `generatedAt`). Full backup checklist remains `GET admin/backup-readiness`.
+
+---
+
+## 3.1 Secret and signing key rotation (pilot)
+
+- **JWT pair** — Schedule a maintenance window; expect mass sign-out and MFA re-prompts. Update Railway (API) and any other verifier simultaneously. Never rotate one secret at a time across environments that share sessions.
+- **`CHART_EXPORT_SIGNING_SECRET`** — MVP assumes a single active secret. Rotating it without restoring the old value on a clone will make historical signed snapshots fail integrity checks. Coordinate with compliance; mirror the **exact** production value on restore drills (`ER_RESTORE_DRILL_CHECKLIST.md` §0).
+- **`MFA_SECRET_ENCRYPTION_KEY`** — Do **not** change in production without a written migration (decrypt with old / re-encrypt with new, or force global MFA re-enrol). Otherwise TOTP verification fails for all enrolled users.
+- **Database** — Railway point-in-time / backups are out-of-band; restore procedure is in `ER_RESTORE_DRILL_CHECKLIST.md`. Never `migrate rollback` in prod without architecture review (`§ 5` below).
 
 ---
 

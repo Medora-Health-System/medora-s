@@ -23,6 +23,16 @@ function getAccessTokenFromRequest(req: NextRequest): string | null {
 
 const isDev = process.env.NODE_ENV !== "production";
 
+/** Consistent JSON when the Nest API is unreachable (DNS, ECONNREFUSED, timeout). No stack traces to clients. */
+function backendUnavailableResponse(requestId: string): NextResponse {
+  const res = NextResponse.json(
+    { errorCode: "BACKEND_UNAVAILABLE", message: "Service temporarily unavailable." },
+    { status: 503 }
+  );
+  if (requestId) res.headers.set("x-request-id", requestId);
+  return res;
+}
+
 function devLogProxy(msg: string, data: Record<string, unknown>) {
   if (isDev) {
     const safe: Record<string, unknown> = {};
@@ -171,12 +181,29 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     };
   };
 
-  let r = await fetch(url, buildForwardInit(accessToken!));
+  const fetchUpstream = async (init: RequestInit): Promise<Response | null> => {
+    try {
+      return await fetch(url, init);
+    } catch (e) {
+      if (isDev) {
+        console.error("[proxy] upstream unreachable", {
+          nestPath: normalized,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+      return null;
+    }
+  };
+
+  let r = await fetchUpstream(buildForwardInit(accessToken!));
+  if (!r) return backendUnavailableResponse(requestId);
 
   if (r.status === 401 && !didRefresh) {
     await refreshOnce();
     if (lastRefreshed) {
-      r = await fetch(url, buildForwardInit(accessToken!));
+      const retry = await fetchUpstream(buildForwardInit(accessToken!));
+      if (!retry) return backendUnavailableResponse(requestId);
+      r = retry;
     }
   }
 

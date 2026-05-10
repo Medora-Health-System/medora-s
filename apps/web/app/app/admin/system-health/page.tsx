@@ -135,6 +135,7 @@ export default function AdminSystemHealthPage() {
     (m.recent5xxCount > 0 ||
       m.recentFailedExportsCount > 0 ||
       m.recentCriticalAlertsCount > 0 ||
+      (m.recentChartExportIntegrityFailureCount ?? 0) > 0 ||
       data.status !== "healthy");
   const overallClarityLine = data ? translateIfPresent(t, getOverallClarityKey(data.status)) : null;
 
@@ -335,7 +336,58 @@ export default function AdminSystemHealthPage() {
               <div style={{ color: "#64748b", fontSize: 12 }}>{t("systemHealth.metricFailedExports")}</div>
               <div style={{ fontWeight: 700 }}>{m.recentFailedExportsCount}</div>
             </li>
+            <li style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#fafafa" }}>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t("systemHealth.metricJwtSecrets")}</div>
+              <div style={{ fontWeight: 700 }}>{m.jwtSecretsConfigured ? t("common.yes") : t("common.no")}</div>
+            </li>
+            <li style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#fafafa" }}>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t("systemHealth.metricMfaKey")}</div>
+              <div style={{ fontWeight: 700 }}>{m.mfaEncryptionKeyConfigured ? t("common.yes") : t("common.no")}</div>
+            </li>
+            <li style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#fafafa" }}>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t("systemHealth.metricMfaProbe")}</div>
+              <div style={{ fontWeight: 700 }}>{t(`systemHealth.mfaProbe.${m.mfaEncryptionKeyProbe}`)}</div>
+            </li>
+            <li style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#fafafa" }}>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t("systemHealth.metricChartSigning")}</div>
+              <div style={{ fontWeight: 700 }}>{m.chartExportSigningSecretConfigured ? t("common.yes") : t("common.no")}</div>
+            </li>
+            <li style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#fafafa" }}>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t("systemHealth.metricAuditMode")}</div>
+              <div style={{ fontWeight: 700 }}>
+                {t(`systemHealth.auditModeValue.${m.auditFailureMode === "fail_closed" ? "fail_closed" : m.auditFailureMode === "best_effort" ? "best_effort" : "unset"}`)}
+              </div>
+            </li>
+            <li style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#fafafa" }}>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{t("systemHealth.metricIntegrityFailures")}</div>
+              <div style={{ fontWeight: 700 }}>{m.recentChartExportIntegrityFailureCount ?? 0}</div>
+            </li>
           </ul>
+        </section>
+      ) : null}
+
+      {data?.backupReadiness ? (
+        <section style={{ marginTop: 20, border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 16px", background: "#f8fafc" }}>
+          <h2 style={{ fontSize: 16, margin: "0 0 8px 0" }}>{t("systemHealth.backupReadinessHeading")}</h2>
+          <p style={{ margin: "0 0 10px 0", fontSize: 13, color: "#64748b", maxWidth: 720, lineHeight: 1.45 }}>
+            {t("systemHealth.backupReadinessIntro")}
+          </p>
+          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 10px 0", fontSize: 14, display: "grid", gap: 6 }}>
+            <li>
+              <strong>{t("systemHealth.backupReadinessStatusLabel")}</strong>{" "}
+              {t(`systemHealth.backupReadinessOverall.${data.backupReadiness.status}`)}
+            </li>
+            <li>
+              <strong>{t("systemHealth.backupReadinessAt")}</strong>{" "}
+              {new Date(data.backupReadiness.generatedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </li>
+          </ul>
+          <Link href="/app/admin/backup-readiness" style={{ fontSize: 14, fontWeight: 600, color: "#1e3a8a" }}>
+            {t("systemHealth.backupReadinessFullLink")}
+          </Link>
         </section>
       ) : null}
 
@@ -356,6 +408,14 @@ export default function AdminSystemHealthPage() {
                 ) : null}
                 {m.recentCriticalAlertsCount > 0 ? (
                   <li>{t("systemHealth.recentLineCritical").replace("{{count}}", String(m.recentCriticalAlertsCount))}</li>
+                ) : null}
+                {(m.recentChartExportIntegrityFailureCount ?? 0) > 0 ? (
+                  <li>
+                    {t("systemHealth.recentLineIntegrity").replace(
+                      "{{count}}",
+                      String(m.recentChartExportIntegrityFailureCount ?? 0)
+                    )}
+                  </li>
                 ) : null}
               </ul>
             </div>

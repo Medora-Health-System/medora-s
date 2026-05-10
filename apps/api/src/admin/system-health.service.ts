@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
+import { AuditAction } from "@prisma/client";
 import { getMedoraAlertStatusForApi, type MedoraAlertStatusForApi } from "../common/logging/medoraAlert";
 import { PrismaService } from "../prisma/prisma.service";
 import { RecentHttpErrorMetricsService } from "../common/metrics/recent-http-error-metrics.service";
 import { auditPresetWhere } from "./audit-category.util";
+import { BackupReadinessService, type BackupReadinessOverallStatus } from "./backup-readiness.service";
 
 export type SystemHealthCheckStatus = "pass" | "warn" | "fail";
 export type SystemHealthOverallStatus = "healthy" | "degraded" | "critical";
@@ -23,6 +25,17 @@ export type SystemHealthMetrics = {
   recent5xxCount: number;
   recentCriticalAlertsCount: number;
   recentFailedExportsCount: number;
+  /** Both access and refresh secrets non-empty (values never exposed). */
+  jwtSecretsConfigured: boolean;
+  /** `MFA_SECRET_ENCRYPTION_KEY` present and decodes to 32 bytes (format probe only). */
+  mfaEncryptionKeyConfigured: boolean;
+  /** `ok` | `missing` | `invalid` — never includes secret material. */
+  mfaEncryptionKeyProbe: "ok" | "missing" | "invalid";
+  /** `CHART_EXPORT_SIGNING_SECRET` non-empty after trim. */
+  chartExportSigningSecretConfigured: boolean;
+  /** Effective mode label for operators (`unset` when env var blank → runtime defaults to best_effort). */
+  auditFailureMode: "best_effort" | "fail_closed" | "unset";
+  recentChartExportIntegrityFailureCount: number;
 };
 
 export type SystemHealthPayload = {
@@ -31,6 +44,11 @@ export type SystemHealthPayload = {
   checks: SystemHealthCheck[];
   metrics: SystemHealthMetrics;
   alertStatus: MedoraAlertStatusForApi;
+  /** Aggregated backup / retention / drill flags (same semantics as `GET admin/backup-readiness`). */
+  backupReadiness: {
+    status: BackupReadinessOverallStatus;
+    generatedAt: string;
+  };
 };
 
 const WINDOW_MS = 24 * 3600_000;
@@ -62,6 +80,34 @@ function readNodeEnvProduction(): boolean {
   return readEnvTrim("NODE_ENV").toLowerCase() === "production";
 }
 
+function readJwtSecretsConfigured(): boolean {
+  return Boolean(readEnvTrim("JWT_ACCESS_SECRET") && readEnvTrim("JWT_REFRESH_SECRET"));
+}
+
+/** Format probe only — mirrors MFA util length rules without importing crypto-heavy paths. */
+function probeMfaEncryptionKey(): "ok" | "missing" | "invalid" {
+  const raw = readEnvTrim("MFA_SECRET_ENCRYPTION_KEY");
+  if (!raw) return "missing";
+  try {
+    const buf = Buffer.from(raw, "base64");
+    if (buf.length !== 32) return "invalid";
+    return "ok";
+  } catch {
+    return "invalid";
+  }
+}
+
+function readChartExportSigningSecretConfigured(): boolean {
+  return Boolean(readEnvTrim("CHART_EXPORT_SIGNING_SECRET"));
+}
+
+function readAuditFailureModeLabel(): "best_effort" | "fail_closed" | "unset" {
+  const raw = readEnvTrim("AUDIT_FAILURE_MODE").toLowerCase();
+  if (raw === "fail_closed") return "fail_closed";
+  if (raw === "best_effort") return "best_effort";
+  return "unset";
+}
+
 function asMeta(m: unknown): Record<string, unknown> {
   if (m && typeof m === "object" && !Array.isArray(m)) return m as Record<string, unknown>;
   return {};
@@ -90,7 +136,8 @@ function deriveOverall(checks: SystemHealthCheck[]): SystemHealthOverallStatus {
 export class SystemHealthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly httpErrorMetrics: RecentHttpErrorMetricsService
+    private readonly httpErrorMetrics: RecentHttpErrorMetricsService,
+    private readonly backupReadiness: BackupReadinessService
   ) {}
 
   async getSnapshot(facilityId: string): Promise<SystemHealthPayload> {
@@ -113,7 +160,7 @@ export class SystemHealthService {
 
     const recent5xxCount = this.httpErrorMetrics.countRecent(WINDOW_MS);
 
-    const [exportAudits, criticalRows, overrideRows] = await Promise.all([
+    const [exportAudits, criticalRows, overrideRows, integrityFailureCount] = await Promise.all([
       this.prisma.auditLog.findMany({
         where: {
           createdAt: { gte: since },
@@ -137,6 +184,13 @@ export class SystemHealthService {
           ...auditPresetWhere("overrides"),
         },
       }),
+      this.prisma.auditLog.count({
+        where: {
+          facilityId,
+          createdAt: { gte: since },
+          action: AuditAction.RECORD_EXPORT_INTEGRITY_FAILURE,
+        },
+      }),
     ]);
 
     let recentFailedExportsCount = 0;
@@ -147,6 +201,13 @@ export class SystemHealthService {
     }
 
     const recentCriticalAlertsCount = criticalRows;
+    const recentChartExportIntegrityFailureCount = integrityFailureCount;
+
+    const jwtSecretsConfigured = readJwtSecretsConfigured();
+    const mfaProbe = probeMfaEncryptionKey();
+    const mfaEncryptionKeyConfigured = mfaProbe === "ok";
+    const chartExportSigningSecretConfigured = readChartExportSigningSecretConfigured();
+    const auditFailureModeLabel = readAuditFailureModeLabel();
 
     const checks: SystemHealthCheck[] = [];
 
@@ -163,6 +224,81 @@ export class SystemHealthService {
       status: nodeProduction ? "pass" : "warn",
       detail: nodeProduction ? null : "node_env_not_production",
     });
+
+    checks.push({
+      key: "jwt_secrets",
+      label: "jwt_secrets",
+      status: jwtSecretsConfigured ? "pass" : "fail",
+      detail: jwtSecretsConfigured ? null : "jwt_secret_missing",
+    });
+
+    if (nodeProduction) {
+      checks.push({
+        key: "mfa_encryption_key",
+        label: "mfa_encryption_key",
+        status: mfaEncryptionKeyConfigured ? "pass" : "fail",
+        detail: mfaEncryptionKeyConfigured
+          ? null
+          : mfaProbe === "missing"
+            ? "mfa_key_missing"
+            : "mfa_key_invalid",
+      });
+    } else {
+      checks.push({
+        key: "mfa_encryption_key",
+        label: "mfa_encryption_key",
+        status: mfaEncryptionKeyConfigured ? "pass" : "warn",
+        detail: mfaEncryptionKeyConfigured ? null : "mfa_key_dev_optional",
+      });
+    }
+
+    if (nodeProduction) {
+      checks.push({
+        key: "chart_export_signing",
+        label: "chart_export_signing",
+        status: chartExportSigningSecretConfigured ? "pass" : "fail",
+        detail: chartExportSigningSecretConfigured ? null : "chart_export_signing_missing_prod",
+      });
+    } else {
+      checks.push({
+        key: "chart_export_signing",
+        label: "chart_export_signing",
+        status: chartExportSigningSecretConfigured ? "pass" : "warn",
+        detail: chartExportSigningSecretConfigured ? null : "chart_export_signing_optional_dev",
+      });
+    }
+
+    if (nodeProduction && auditFailureModeLabel !== "fail_closed") {
+      checks.push({
+        key: "audit_failure_mode",
+        label: "audit_failure_mode",
+        status: "warn",
+        detail: auditFailureModeLabel === "unset" ? "audit_failure_mode_unset_prod" : "audit_not_fail_closed",
+      });
+    } else {
+      checks.push({
+        key: "audit_failure_mode",
+        label: "audit_failure_mode",
+        status: "pass",
+        detail: null,
+      });
+    }
+
+    if (recentChartExportIntegrityFailureCount > 0) {
+      checks.push({
+        key: "chart_export_integrity",
+        label: "chart_export_integrity",
+        status: "warn",
+        detail: "chart_integrity_failures_present",
+      });
+    } else {
+      checks.push({
+        key: "chart_export_integrity",
+        label: "chart_export_integrity",
+        status: "pass",
+        detail: null,
+      });
+    }
 
     if (alertEnabled && !alertWebhookConfigured) {
       checks.push({
@@ -281,7 +417,15 @@ export class SystemHealthService {
       recent5xxCount,
       recentCriticalAlertsCount,
       recentFailedExportsCount,
+      jwtSecretsConfigured,
+      mfaEncryptionKeyConfigured,
+      mfaEncryptionKeyProbe: mfaProbe,
+      chartExportSigningSecretConfigured,
+      auditFailureMode: auditFailureModeLabel,
+      recentChartExportIntegrityFailureCount,
     };
+
+    const backupSnap = this.backupReadiness.getSnapshot(facilityId);
 
     return {
       status: deriveOverall(checks),
@@ -289,6 +433,10 @@ export class SystemHealthService {
       checks,
       metrics,
       alertStatus: getMedoraAlertStatusForApi(),
+      backupReadiness: {
+        status: backupSnap.status,
+        generatedAt: backupSnap.generatedAt,
+      },
     };
   }
 }

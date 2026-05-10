@@ -12,7 +12,7 @@ All endpoints below require `MEDORA_SUPER_ADMIN` (platform operator) role and a 
 
 | Endpoint | Source | Purpose |
 |---|---|---|
-| `GET admin/system-health` | `admin-system-health.controller.ts` → `system-health.service.ts` | Overall status, alert webhook config, DB reachable, recent 5xx, recent failed exports, recent critical alerts. |
+| `GET admin/system-health` | `admin-system-health.controller.ts` → `system-health.service.ts` | Overall status, alert webhook config, DB reachable, recent 5xx, recent failed exports, recent critical alerts, **JWT/MFA/chart signing presence (booleans only)**, **audit failure mode label**, **chart export integrity failure count (24h, facility)**, **`backupReadiness` summary** (`status` + `generatedAt`, same semantics as backup-readiness). |
 | `GET admin/backup-readiness` | `admin-backup-readiness.controller.ts` → `backup-readiness.service.ts` | Backup policy confirmed, retention policy confirmed, last restore drill timestamp, env-derived flags. |
 | `GET admin/export-monitoring` | `admin-export-monitoring.controller.ts` | External billing automation health, recent failed exports. |
 | `POST admin/export-monitoring/retry` | same | Manual retry for the most recent failed billing export. |
@@ -28,6 +28,12 @@ Before clinic opens (or at the start of the operator’s shift), all of the foll
 
 - [ ] `admin/system-health.status === "healthy"`.
 - [ ] `admin/system-health.metrics.databaseReachable === true`.
+- [ ] `admin/system-health.metrics.jwtSecretsConfigured === true`.
+- [ ] `admin/system-health.metrics.mfaEncryptionKeyConfigured === true` (production).
+- [ ] `admin/system-health.metrics.chartExportSigningSecretConfigured === true` (production).
+- [ ] `admin/system-health.metrics.auditFailureMode === "fail_closed"` (production pilot default).
+- [ ] `admin/system-health.metrics.recentChartExportIntegrityFailureCount === 0` (or explained if non-zero — triage with SQL §3.2).
+- [ ] `admin/system-health.backupReadiness.status === "ready"` (or `attention` with justification — aligns with full `backup-readiness` page).
 - [ ] `admin/system-health.metrics.recent5xxCount` — within historical baseline.
 - [ ] `admin/backup-readiness.status === "ready"` (or `attention` with documented justification).
 - [ ] `admin/export-monitoring` — no new failures since last check.

@@ -6,6 +6,8 @@ End-to-end checklist for performing a **restore drill** on a clone of production
 
 > **Never restore directly over production unless you intend to.** Drills always run against a **clone**.
 
+Full production variable list and rotation warnings: **`docs/ENV_PRODUCTION_CHECKLIST.md`**.
+
 ---
 
 ## 0. Pre-drill inputs
