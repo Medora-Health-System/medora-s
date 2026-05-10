@@ -121,6 +121,16 @@ enum AuditAction {
   ROI_REQUEST_FULFILL
   /// Phase 5G — View of a chart export snapshot in the context of a fulfilled ROI request (governed release).
   ROI_EXPORT_VIEW
+  /// Phase 9 — Identity security / MFA lifecycle. PHI-safe metadata only (no secrets, codes, IPs unless policy allows).
+  MFA_ENROLLMENT_INIT
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_LOGIN_CHALLENGE_ISSUED
+  MFA_LOGIN_SUCCESS
+  MFA_LOGIN_FAILURE
+  MFA_RECOVERY_CODE_USED
+  MFA_RECOVERY_CODES_REGENERATED
+  MFA_RESET_BY_ADMIN
 }
 
 /// Phase 5G — category of external / formal record release request.
@@ -552,6 +562,16 @@ model User {
   passwordHash        String
   refreshTokenHash    String?
   isActive            Boolean  @default(true)
+  /// Phase 9 — TOTP-based MFA (RFC 6238). All fields additive; defaults preserve pre-MFA behavior.
+  mfaEnabled            Boolean   @default(false)
+  /// AES-256-GCM ciphertext of the base32 TOTP secret. Format: `v1:<b64Iv>:<b64Ct>:<b64Tag>`. Pending enrollment also lives here while mfaEnabled=false.
+  mfaSecretEncrypted    String?
+  mfaEnabledAt          DateTime?
+  /// JSON array `[{ hash, usedAt }]`. Argon2id hash; single-use; cleared on disable / regenerate / admin reset.
+  mfaRecoveryCodesHash  Json?
+  mfaLastVerifiedAt     DateTime?
+  /// RFC 6238 step counter (epoch / 30s) of last accepted code, used to reject replay within the same step window.
+  mfaLastUsedStep       BigInt?
   /// Plateforme : réservé au compte principal unique (`atranchant@medora.local`); tenir aligné avec les migrations (index unique partiel).
   canCreateFacilities Boolean  @default(false)
   createdAt           DateTime @default(now())

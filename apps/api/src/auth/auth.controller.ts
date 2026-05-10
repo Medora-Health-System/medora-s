@@ -57,6 +57,26 @@ export class AuthController {
       const { username, password } = parsed.data;
 
       const result = await this.auth.login(username, password, { ip: this.clientIp(req) });
+      if (result.kind === "mfa_challenge") {
+        authLog.log("auth_login_mfa_challenge_issued", {
+          userId: result.userId,
+          requestId: (req as { requestId?: string }).requestId,
+        });
+        return {
+          mfaRequired: true as const,
+          mfaChallengeToken: result.mfaChallengeToken,
+        };
+      }
+      if (result.kind === "mfa_enrollment_required") {
+        authLog.log("auth_login_mfa_enrollment_required", {
+          userId: result.userId,
+          requestId: (req as { requestId?: string }).requestId,
+        });
+        return {
+          mfaEnrollmentRequired: true as const,
+          mfaEnrollmentToken: result.mfaEnrollmentToken,
+        };
+      }
       res.cookie(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken, refreshTokenCookieOptions());
       authLog.log("auth_login_success", {
         userId: result.user.id,

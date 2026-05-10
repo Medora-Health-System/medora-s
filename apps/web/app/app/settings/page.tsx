@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
@@ -68,6 +69,12 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 500 }}>
       <h1>{t("auth.settings.title")}</h1>
+
+      <p style={{ margin: "12px 0 24px 0" }}>
+        <Link href="/app/settings/mfa" style={{ color: "#1a365d", fontWeight: 500 }}>
+          {t("auth.mfa.manageTitle")} →
+        </Link>
+      </p>
 
       <h3>{t("auth.settings.changePasswordHeading")}</h3>
 

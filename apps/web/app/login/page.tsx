@@ -7,6 +7,8 @@ import { getPostLoginDestinationForAuthUser } from "@/lib/landingRoute";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import { MfaChallengePanel } from "./MfaChallengePanel";
+import { MfaEnrollmentPanel } from "@/components/mfa/MfaEnrollmentPanel";
 import styles from "./page.module.css";
 
 const loginCopy = {
@@ -27,6 +29,16 @@ function LoginSuspenseFallback() {
   return <div style={{ padding: 48, textAlign: "center" }}>{loginCopy.suspenseLoading}</div>;
 }
 
+type AuthUserShape = {
+  facilityRoles?: { facilityId: string; role?: string }[];
+  msppRoles?: unknown;
+};
+
+type Stage =
+  | { kind: "credentials" }
+  | { kind: "mfa_challenge"; challengeToken: string }
+  | { kind: "mfa_enrollment"; enrollmentToken: string };
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,6 +47,22 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<Stage>({ kind: "credentials" });
+
+  const navigateAfterAuth = (user?: AuthUserShape) => {
+    const facilityRoles = (user?.facilityRoles ?? []) as { facilityId: string; role?: string }[];
+    const msppRolesRaw = user?.msppRoles;
+    const msppRoles = Array.isArray(msppRolesRaw)
+      ? msppRolesRaw.filter((x): x is string => typeof x === "string")
+      : [];
+    const dest = getPostLoginDestinationForAuthUser(
+      facilityRoles.map((fr) => ({ facilityId: String(fr.facilityId), role: String(fr.role ?? "") })),
+      searchParams.get("redirect"),
+      msppRoles
+    );
+    router.push(dest);
+    router.refresh();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +79,11 @@ function LoginForm() {
       const data = (await parseApiResponse(response)) as {
         error?: string;
         message?: string;
-        user?: { facilityRoles?: unknown; msppRoles?: unknown };
+        user?: AuthUserShape;
+        mfaRequired?: boolean;
+        mfaChallengeToken?: string;
+        mfaEnrollmentRequired?: boolean;
+        mfaEnrollmentToken?: string;
       } | null;
 
       if (!response.ok) {
@@ -68,22 +100,30 @@ function LoginForm() {
         return;
       }
 
-      const facilityRoles = (data?.user?.facilityRoles ?? []) as { facilityId: string; role?: string }[];
-      const msppRolesRaw = data?.user?.msppRoles;
-      const msppRoles = Array.isArray(msppRolesRaw)
-        ? msppRolesRaw.filter((x): x is string => typeof x === "string")
-        : [];
-      const dest = getPostLoginDestinationForAuthUser(
-        facilityRoles.map((fr) => ({ facilityId: String(fr.facilityId), role: String(fr.role ?? "") })),
-        searchParams.get("redirect"),
-        msppRoles
-      );
-      router.push(dest);
-      router.refresh();
-    } catch (err) {
+      if (data?.mfaRequired && data.mfaChallengeToken) {
+        setStage({ kind: "mfa_challenge", challengeToken: data.mfaChallengeToken });
+        setLoading(false);
+        setPassword("");
+        return;
+      }
+
+      if (data?.mfaEnrollmentRequired && data.mfaEnrollmentToken) {
+        setStage({ kind: "mfa_enrollment", enrollmentToken: data.mfaEnrollmentToken });
+        setLoading(false);
+        setPassword("");
+        return;
+      }
+
+      navigateAfterAuth(data?.user);
+    } catch {
       setError(loginCopy.errorNetwork);
       setLoading(false);
     }
+  };
+
+  const cancelMfa = () => {
+    setStage({ kind: "credentials" });
+    setError(null);
   };
 
   return (
@@ -109,153 +149,173 @@ function LoginForm() {
         <div
           style={{
             width: "100%",
-            maxWidth: 400,
+            maxWidth: 420,
             backgroundColor: "#fff",
             padding: "40px 40px 32px",
             borderRadius: 8,
             boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
           }}
         >
-          <h2
-            style={{
-              margin: "0 0 8px 0",
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              color: "#1e293b",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            {loginCopy.title}
-          </h2>
-          <p
-            style={{
-              margin: "0 0 28px 0",
-              fontSize: 14,
-              color: "#64748b",
-            }}
-          >
-            {loginCopy.subtitle}
-          </p>
-
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: 20 }}>
-              <label
-                htmlFor="username"
+          {stage.kind === "credentials" && (
+            <>
+              <h2
                 style={{
-                  display: "block",
-                  marginBottom: 6,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: "#334155",
-                }}
-              >
-                {loginCopy.usernameLabel}
-              </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                disabled={loading}
-                placeholder={loginCopy.usernamePlaceholder}
-                autoComplete="username"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 6,
-                  fontSize: 15,
+                  margin: "0 0 8px 0",
+                  fontSize: "1.25rem",
+                  fontWeight: 600,
                   color: "#1e293b",
-                  boxSizing: "border-box",
-                  outline: "none",
+                  letterSpacing: "-0.01em",
                 }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 8 }}>
-              <label
-                htmlFor="password"
+              >
+                {loginCopy.title}
+              </h2>
+              <p
                 style={{
-                  display: "block",
-                  marginBottom: 6,
+                  margin: "0 0 28px 0",
                   fontSize: 14,
-                  fontWeight: 500,
-                  color: "#334155",
+                  color: "#64748b",
                 }}
               >
-                {loginCopy.passwordLabel}
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 6,
-                  fontSize: 15,
-                  color: "#1e293b",
-                  boxSizing: "border-box",
-                  outline: "none",
-                }}
-              />
-            </div>
+                {loginCopy.subtitle}
+              </p>
 
-            <div style={{ marginBottom: 24, textAlign: "right" }}>
-              <Link
-                href="/mot-de-passe-oublie"
-                style={{
-                  fontSize: 13,
-                  color: "#475569",
-                  textDecoration: "none",
-                }}
-              >
-                {loginCopy.forgotPasswordLink}
-              </Link>
-            </div>
+              <form onSubmit={handleSubmit}>
+                <div style={{ marginBottom: 20 }}>
+                  <label
+                    htmlFor="username"
+                    style={{
+                      display: "block",
+                      marginBottom: 6,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: "#334155",
+                    }}
+                  >
+                    {loginCopy.usernameLabel}
+                  </label>
+                  <input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    disabled={loading}
+                    placeholder={loginCopy.usernamePlaceholder}
+                    autoComplete="username"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 6,
+                      fontSize: 15,
+                      color: "#1e293b",
+                      boxSizing: "border-box",
+                      outline: "none",
+                    }}
+                  />
+                </div>
 
-            {error && (
-              <div
-                role="alert"
-                style={{
-                  marginBottom: 20,
-                  padding: 12,
-                  backgroundColor: "#fef2f2",
-                  color: "#b91c1c",
-                  borderRadius: 6,
-                  fontSize: 14,
-                }}
-              >
-                {error}
-              </div>
-            )}
+                <div style={{ marginBottom: 8 }}>
+                  <label
+                    htmlFor="password"
+                    style={{
+                      display: "block",
+                      marginBottom: 6,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: "#334155",
+                    }}
+                  >
+                    {loginCopy.passwordLabel}
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 6,
+                      fontSize: 15,
+                      color: "#1e293b",
+                      boxSizing: "border-box",
+                      outline: "none",
+                    }}
+                  />
+                </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                backgroundColor: "#1a365d",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                fontSize: 15,
-                fontWeight: 500,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.7 : 1,
-              }}
-            >
-              {loading ? loginCopy.submitting : loginCopy.submit}
-            </button>
-          </form>
+                <div style={{ marginBottom: 24, textAlign: "right" }}>
+                  <Link
+                    href="/mot-de-passe-oublie"
+                    style={{
+                      fontSize: 13,
+                      color: "#475569",
+                      textDecoration: "none",
+                    }}
+                  >
+                    {loginCopy.forgotPasswordLink}
+                  </Link>
+                </div>
+
+                {error && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginBottom: 20,
+                      padding: 12,
+                      backgroundColor: "#fef2f2",
+                      color: "#b91c1c",
+                      borderRadius: 6,
+                      fontSize: 14,
+                    }}
+                  >
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: "#1a365d",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    fontSize: 15,
+                    fontWeight: 500,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                >
+                  {loading ? loginCopy.submitting : loginCopy.submit}
+                </button>
+              </form>
+            </>
+          )}
+
+          {stage.kind === "mfa_challenge" && (
+            <MfaChallengePanel
+              challengeToken={stage.challengeToken}
+              onSuccess={(d) => navigateAfterAuth(d.user)}
+              onCancel={cancelMfa}
+            />
+          )}
+
+          {stage.kind === "mfa_enrollment" && (
+            <MfaEnrollmentPanel
+              enrollmentToken={stage.enrollmentToken}
+              onComplete={(d) => navigateAfterAuth(d.user)}
+              onCancel={cancelMfa}
+            />
+          )}
         </div>
       </div>
     </div>

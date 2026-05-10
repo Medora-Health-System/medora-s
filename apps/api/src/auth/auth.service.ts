@@ -9,8 +9,28 @@ import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUserDto, JwtPayload } from "./types";
 import { isPlatformPrincipalAdminEmail } from "./platform-principal";
 import { FailedLoginTracker } from "./failed-login-tracker";
+import { isMfaRequiredForRoles } from "./mfa/mfa-required-roles.util";
 
 const authLog = createStructuredLogger("AuthService");
+
+/** Phase 9 — discriminated login result. */
+export type LoginResult =
+  | {
+      kind: "session";
+      accessToken: string;
+      refreshToken: string;
+      user: AuthUserDto;
+    }
+  | {
+      kind: "mfa_challenge";
+      mfaChallengeToken: string;
+      userId: string;
+    }
+  | {
+      kind: "mfa_enrollment_required";
+      mfaEnrollmentToken: string;
+      userId: string;
+    };
 
 @Injectable()
 export class AuthService {
@@ -100,6 +120,11 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException("User not found");
 
+    const mfaEnabled = (user as { mfaEnabled?: boolean }).mfaEnabled === true;
+    const mfaRequired = isMfaRequiredForRoles(
+      user.userRoles.map((ur) => ({ role: ur.role.code }))
+    );
+
     const sortedRoles = [...user.userRoles].sort((a, b) =>
       a.facilityId.localeCompare(b.facilityId, "en")
     );
@@ -164,6 +189,10 @@ export class AuthService {
         isMsppUser: msppRoles.length > 0,
         hasFacilityAccess: facilityRoles.length > 0,
       },
+      mfa: {
+        enabled: mfaEnabled,
+        required: mfaRequired,
+      },
     };
   }
 
@@ -188,14 +217,12 @@ export class AuthService {
     });
   }
 
-  async login(username: string, password: string, client?: { ip: string }) {
+  async login(username: string, password: string, client?: { ip: string }): Promise<LoginResult> {
     const ip = client?.ip ?? "0.0.0.0";
     this.failedLogin.assertIpNotLocked(ip);
 
-    // Normalize identifier
     const id = username.toLowerCase().trim();
 
-    // Fetch user by email (User model only has email, not username)
     const user = await this.prisma.user.findFirst({
       where: {
         email: id
@@ -208,7 +235,6 @@ export class AuthService {
       }
     });
 
-    // Check if user exists and has passwordHash
     if (!user || !user.passwordHash) {
       this.failedLogin.recordUnknownUser(ip);
       throw new UnauthorizedException("Invalid credentials");
@@ -216,13 +242,11 @@ export class AuthService {
 
     this.failedLogin.assertAccountNotLocked(user.email);
 
-    // Check if user is active
     if (!user.isActive) {
       this.failedLogin.recordBadPassword(ip, user.email);
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // Verify password
     const ok = await argon2.verify(user.passwordHash, password);
     if (!ok) {
       this.failedLogin.recordBadPassword(ip, user.email);
@@ -230,6 +254,25 @@ export class AuthService {
     }
 
     this.failedLogin.reset(ip, user.email);
+
+    /**
+     * Phase 9 — MFA gate. After password success the user is *not yet* fully
+     * authenticated. Decide the next step before any session is issued:
+     *   * MFA enabled            → issue a short-lived `mfa_challenge` JWT.
+     *   * MFA required by role   → issue an `mfa_enrollment` JWT.
+     *   * Otherwise              → continue with normal session issuance.
+     */
+    if (user.mfaEnabled) {
+      const mfaChallengeToken = this.signMfaGrant(user.id, user.email, "mfa_challenge", "5m");
+      return { kind: "mfa_challenge", mfaChallengeToken, userId: user.id };
+    }
+    const requiresMfa = isMfaRequiredForRoles(
+      user.userRoles.map((ur) => ({ role: ur.role.code }))
+    );
+    if (requiresMfa) {
+      const mfaEnrollmentToken = this.signMfaGrant(user.id, user.email, "mfa_enrollment", "15m");
+      return { kind: "mfa_enrollment_required", mfaEnrollmentToken, userId: user.id };
+    }
 
     const sessionId = randomUUID();
 
@@ -257,6 +300,87 @@ export class AuthService {
 
     /** Une seule session active : toute nouvelle connexion invalide les jetons refresh précédents (AuthSession + legacy User). */
     await this.revokeAllUserSessions(user.id, "superseded_by_login");
+
+    await this.prisma.authSession.create({
+      data: {
+        id: sessionId,
+        userId: user.id,
+        refreshTokenHash: refreshHash,
+        expiresAt,
+        lastUsedAt: new Date(),
+      },
+    });
+
+    const userDto = await this.buildAuthUserDto(user.id);
+    return { kind: "session", accessToken, refreshToken, user: userDto };
+  }
+
+  /** Phase 9 — sign a short-lived MFA grant JWT (challenge or enrollment). */
+  private signMfaGrant(
+    userId: string,
+    email: string,
+    type: "mfa_challenge" | "mfa_enrollment",
+    expiresIn: string
+  ): string {
+    return this.jwt.sign(
+      {
+        sub: userId,
+        username: email,
+        iss: this.issuer(),
+        type,
+        jti: randomUUID(),
+      } as unknown as Record<string, unknown>,
+      {
+        secret: this.refreshSecret(),
+        expiresIn: expiresIn as unknown as never,
+      }
+    );
+  }
+
+  /**
+   * Phase 9 — issue a full access/refresh session after a verified MFA step
+   * (login challenge OK, or first-time enrollment verification OK). Mirrors the
+   * post-password-success branch of `login()` but takes a userId directly.
+   */
+  async completeAuthAfterMfa(userId: string): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    user: AuthUserDto;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, isActive: true },
+    });
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException("Utilisateur invalide.");
+    }
+
+    const sessionId = randomUUID();
+
+    const accessPayload: JwtPayload = {
+      sub: user.id,
+      username: user.email,
+      iss: this.issuer(),
+      type: "access",
+      jti: randomUUID(),
+    };
+
+    const refreshPayload: JwtPayload = {
+      sub: user.id,
+      username: user.email,
+      iss: this.issuer(),
+      type: "refresh",
+      jti: randomUUID(),
+      sid: sessionId,
+    };
+
+    const accessToken = this.signToken(accessPayload, this.accessSecret(), this.accessTtl());
+    const refreshToken = this.signToken(refreshPayload, this.refreshSecret(), this.refreshTtl());
+    const expiresAt = this.expiryFromSignedJwt(refreshToken);
+    const refreshHash = await argon2.hash(refreshToken);
+
+    /** Single-active-session: any prior refresh tokens are invalidated. */
+    await this.revokeAllUserSessions(user.id, "superseded_by_mfa_login");
 
     await this.prisma.authSession.create({
       data: {

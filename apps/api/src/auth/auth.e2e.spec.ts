@@ -15,6 +15,12 @@ describe("Auth (e2e)", () => {
     process.env.JWT_ACCESS_TTL = "15m";
     process.env.JWT_REFRESH_TTL = "14d";
     process.env.TOKEN_ISSUER = "medora-s";
+    /**
+     * Phase 9 — keep this legacy non-MFA login path under test by overriding
+     * the default required-MFA role set so ADMIN is not forced through the
+     * enrollment branch. MFA-specific behavior is covered by dedicated specs.
+     */
+    process.env.MFA_REQUIRED_ROLES = "MEDORA_SUPER_ADMIN";
 
     const adminId = "u_admin";
     const adminEmail = "admin@medora.local";

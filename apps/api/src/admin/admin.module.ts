@@ -14,6 +14,8 @@ import { AdminComplianceController } from "./admin-compliance.controller";
 import { AdminCatalogAuditController } from "./admin-catalog-audit.controller";
 import { AdminRoiMonitoringController } from "./admin-roi-monitoring.controller";
 import { AdminExportMonitoringController } from "./admin-export-monitoring.controller";
+import { AdminMfaController } from "./admin-mfa.controller";
+import { MfaModule } from "../auth/mfa/mfa.module";
 import { AdminExportMonitoringService } from "./admin-export-monitoring.service";
 import { BackupReadinessService } from "./backup-readiness.service";
 import { SystemHealthService } from "./system-health.service";
@@ -26,7 +28,7 @@ import { QueuesModule } from "../queues/queues.module";
 import { ReportsModule } from "../reports/reports.module";
 
 @Module({
-  imports: [PrismaModule, QueuesModule, ReportsModule],
+  imports: [PrismaModule, QueuesModule, ReportsModule, MfaModule],
   controllers: [
     AdminUsersController,
     AdminFacilitiesController,
@@ -39,6 +41,7 @@ import { ReportsModule } from "../reports/reports.module";
     AdminComplianceController,
     AdminCatalogAuditController,
     AdminRoiMonitoringController,
+    AdminMfaController,
   ],
   providers: [
     AdminUsersService,

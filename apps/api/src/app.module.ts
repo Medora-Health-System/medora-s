@@ -5,6 +5,7 @@ import { ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
+import { MfaModule } from "./auth/mfa/mfa.module";
 import { PatientsModule } from "./patients/patients.module";
 import { EncountersModule } from "./encounters/encounters.module";
 import { OrdersModule } from "./orders/orders.module";
@@ -48,6 +49,7 @@ const imports = [
   }),
   PrismaModule,
   AuthModule,
+  MfaModule,
   PatientsModule,
   EncountersModule,
   OrdersModule,

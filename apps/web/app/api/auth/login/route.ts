@@ -69,7 +69,15 @@ export async function POST(request: NextRequest) {
       ));
     }
 
-    let json: { accessToken?: string; refreshToken?: string; user?: { facilityRoles?: Array<{ facilityId: string }> } };
+    let json: {
+      accessToken?: string;
+      refreshToken?: string;
+      user?: { facilityRoles?: Array<{ facilityId: string }> };
+      mfaRequired?: boolean;
+      mfaChallengeToken?: string;
+      mfaEnrollmentRequired?: boolean;
+      mfaEnrollmentToken?: string;
+    };
     try {
       json = await r.json();
     } catch {
@@ -77,6 +85,24 @@ export async function POST(request: NextRequest) {
         { error: "Réponse du serveur invalide. Réessayez plus tard." },
         { status: 502 }
       ));
+    }
+
+    /** Phase 9 — MFA branches: do NOT set session cookies; return tokens to UI for the challenge/enrollment step. */
+    if (json.mfaRequired && json.mfaChallengeToken) {
+      return withRequestId(
+        NextResponse.json({
+          mfaRequired: true,
+          mfaChallengeToken: json.mfaChallengeToken,
+        })
+      );
+    }
+    if (json.mfaEnrollmentRequired && json.mfaEnrollmentToken) {
+      return withRequestId(
+        NextResponse.json({
+          mfaEnrollmentRequired: true,
+          mfaEnrollmentToken: json.mfaEnrollmentToken,
+        })
+      );
     }
 
     const refreshFromCookie = extractRefreshTokenFromApiSetCookie(r) ?? json.refreshToken;

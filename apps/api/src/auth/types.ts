@@ -41,5 +41,11 @@ export type AuthUserDto = {
   canCreateFacilities: boolean;
   /** Contexte MSPP national (dérivé de `msppRoles` / `facilityRoles`). */
   msppContext: MsppContextDto;
+  /** Phase 9 — TOTP MFA state. */
+  mfa: {
+    enabled: boolean;
+    /** True if any active facility role requires MFA per current policy. */
+    required: boolean;
+  };
 };
 
