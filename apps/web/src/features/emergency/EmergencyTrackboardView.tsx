@@ -32,9 +32,18 @@ import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/eme
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 import {
   computeLos,
+  LOS_ESCALATION_SOFT,
   LOS_TIER_SOFT,
+  losEscalationTierFromMs,
   type LosResult,
 } from "@/features/emergency/erLengthOfStay";
+import {
+  dispositionDecisionMsFromEncounterFields,
+  formatDurationMsAsHhMm,
+  parseIsoMs,
+  reassessmentDue,
+  type TrackboardOpsPayload,
+} from "@/features/emergency/erTrackboardOperationalBadges";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -121,15 +130,21 @@ type OpenEncounterRow = {
     mrn?: string | null;
     nationalId?: string | null;
   } | null;
-  triage?: { esi?: number | null; chiefComplaint?: string | null } | null;
+  triage?: { esi?: number | null; chiefComplaint?: string | null; triageCompleteAt?: string | null } | null;
   physicianAssigned?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
   /** Phase 10A — RN currently responsible for the encounter (operational ownership). */
   nurseAssigned?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
+  physicianAssignedUserId?: string | null;
   physicianAssignedAt?: string | null;
   nurseAssignedAt?: string | null;
+  /** Phase 10B — first admission-summary save timestamp (server). */
+  admittedAt?: string | null;
+  providerDocumentationSignedAt?: string | null;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
   nursingAssessment?: unknown;
+  /** Phase 10B — read-only aggregates from `/trackboard` (no result text). */
+  trackboardOps?: TrackboardOpsPayload | null;
 };
 
 function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadgeSoft {
@@ -542,6 +557,111 @@ export function EmergencyTrackboardView() {
 
               const losTier = los?.tier ?? "normal";
               const losTileSoft = LOS_TIER_SOFT[losTier];
+
+              /** Phase 10B — minute tick + encounter list refresh drive these reminders. */
+              void losTick;
+              const nowMs = Date.now();
+              const ops: TrackboardOpsPayload = encounter.trackboardOps ?? {
+                resultsPendingCount: 0,
+                criticalResultUnacknowledged: false,
+                lastNursingReassessmentAt: null,
+                firstDispositionDocAt: null,
+              };
+              const createdMs = parseIsoMs(encounter.createdAt);
+              const hasPhys = Boolean(
+                (encounter.physicianAssigned?.id ?? "").trim() || (encounter.physicianAssignedUserId ?? "").trim()
+              );
+              const physAtMs = parseIsoMs(encounter.physicianAssignedAt);
+              const docSignedMs = parseIsoMs(encounter.providerDocumentationSignedAt ?? null);
+              /** Prefer assignment time; fallback to signed documentation when assignment clock missing (legacy rows). */
+              const providerClockRefMs = physAtMs ?? docSignedMs;
+              let providerLine: string;
+              if (hasPhys) {
+                providerLine =
+                  providerClockRefMs != null
+                    ? t("emergencyTrackboard.ops.providerAssignedAgo").replace(
+                        "{duration}",
+                        formatDurationMsAsHhMm(nowMs - providerClockRefMs)
+                      )
+                    : t("emergencyTrackboard.ops.providerAssignedNoClock");
+              } else if (createdMs != null) {
+                providerLine = t("emergencyTrackboard.ops.providerWait").replace(
+                  "{duration}",
+                  formatDurationMsAsHhMm(nowMs - createdMs)
+                );
+              } else {
+                providerLine = t("emergencyTrackboard.ops.providerPending");
+              }
+
+              const dispositionPending = dispositionBadge == null;
+              let dispositionLine: string | null = null;
+              if (dispositionPending) {
+                dispositionLine = t("emergencyTrackboard.ops.dispositionPending");
+              } else if (createdMs != null) {
+                const decisionMs = dispositionDecisionMsFromEncounterFields({
+                  admittedAtMs: parseIsoMs(encounter.admittedAt),
+                  firstDispositionDocMs: parseIsoMs(ops.firstDispositionDocAt),
+                });
+                if (decisionMs != null && decisionMs >= createdMs) {
+                  dispositionLine = t("emergencyTrackboard.ops.decisionAt").replace(
+                    "{duration}",
+                    formatDurationMsAsHhMm(decisionMs - createdMs)
+                  );
+                }
+              }
+
+              const escalationTier = los ? losEscalationTierFromMs(los.ms) : "none";
+              const reassessNeeded =
+                createdMs != null &&
+                reassessmentDue({
+                  nowMs,
+                  encounterCreatedMs: createdMs,
+                  triageCompleteMs: parseIsoMs(encounter.triage?.triageCompleteAt ?? null),
+                  lastReassessmentMs: parseIsoMs(ops.lastNursingReassessmentAt),
+                  esi: encounter.triage?.esi ?? null,
+                });
+
+              const opsChips: Array<{ key: string; text: string; soft: PriorityBadgeSoft }> = [];
+              if (ops.criticalResultUnacknowledged) {
+                opsChips.push({
+                  key: "crit",
+                  text: t("emergencyTrackboard.ops.criticalUnack"),
+                  soft: { bg: "#fef2f2", text: "#7f1d1d", border: "#dc2626" },
+                });
+              }
+              if (ops.resultsPendingCount > 0) {
+                opsChips.push({
+                  key: "res",
+                  text: t("emergencyTrackboard.ops.resultsPending").replace("{count}", String(ops.resultsPendingCount)),
+                  soft: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
+                });
+              }
+              opsChips.push({ key: "prov", text: providerLine, soft: { bg: "#f8fafc", text: "#334155", border: "#e2e8f0" } });
+              if (dispositionLine) {
+                opsChips.push({
+                  key: "disp",
+                  text: dispositionLine,
+                  soft: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
+                });
+              }
+              if (reassessNeeded) {
+                opsChips.push({
+                  key: "re",
+                  text: t("emergencyTrackboard.ops.reassessmentDue"),
+                  soft: { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
+                });
+              }
+              if (escalationTier !== "none") {
+                const escSoft = LOS_ESCALATION_SOFT[escalationTier];
+                const escLabel =
+                  escalationTier === "los_high"
+                    ? t("emergencyTrackboard.ops.losHigh")
+                    : escalationTier === "observation_watch"
+                      ? t("emergencyTrackboard.ops.observationWatch")
+                      : t("emergencyTrackboard.ops.extendedStay");
+                opsChips.push({ key: "esc", text: escLabel, soft: escSoft });
+              }
+
               return (
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
@@ -856,6 +976,25 @@ export function EmergencyTrackboardView() {
                           </>
                         }
                       />
+                      <div
+                        role="region"
+                        aria-label={t("emergencyTrackboard.ops.regionAria")}
+                        style={{
+                          marginTop: 6,
+                          paddingTop: 6,
+                          borderTop: "1px solid #f1f5f9",
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 4,
+                          alignItems: "center",
+                        }}
+                      >
+                        {opsChips.map((c) => (
+                          <MedoraCardBadge key={c.key} soft={c.soft}>
+                            {c.text}
+                          </MedoraCardBadge>
+                        ))}
+                      </div>
                     </MedoraCardInner>
                   </MedoraCard>
                 </li>

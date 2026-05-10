@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeLos, losTierFromMs, type LosResult } from "./erLengthOfStay";
+import { computeLos, losEscalationTierFromMs, losTierFromMs, type LosResult } from "./erLengthOfStay";
 
 const ARRIVAL = "2026-05-10T08:00:00.000Z";
 
@@ -54,6 +54,24 @@ describe("computeLos — Phase 10A", () => {
   it("buckets > 4h as high", () => {
     expect(at(ARRIVAL, "2026-05-10T12:00:01.000Z")?.tier).toBe("high");
     expect(at(ARRIVAL, "2026-05-10T13:30:00.000Z")?.tier).toBe("high");
+  });
+});
+
+describe("losEscalationTierFromMs — Phase 10B", () => {
+  it("returns none at or below 4h", () => {
+    expect(losEscalationTierFromMs(4 * 60 * 60 * 1000)).toBe("none");
+    expect(losEscalationTierFromMs(3 * 60 * 60 * 1000)).toBe("none");
+  });
+  it("returns los_high above 4h through 8h inclusive", () => {
+    expect(losEscalationTierFromMs(4 * 60 * 60 * 1000 + 1)).toBe("los_high");
+    expect(losEscalationTierFromMs(8 * 60 * 60 * 1000)).toBe("los_high");
+  });
+  it("returns observation_watch above 8h through 12h inclusive", () => {
+    expect(losEscalationTierFromMs(8 * 60 * 60 * 1000 + 1)).toBe("observation_watch");
+    expect(losEscalationTierFromMs(12 * 60 * 60 * 1000)).toBe("observation_watch");
+  });
+  it("returns extended_stay above 12h", () => {
+    expect(losEscalationTierFromMs(12 * 60 * 60 * 1000 + 1)).toBe("extended_stay");
   });
 });
 

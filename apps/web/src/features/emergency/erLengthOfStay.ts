@@ -12,6 +12,9 @@
  *   * attention : 2 h ≤ LOS ≤ 4 h
  *   * high      : LOS >  4 h
  *
+ * Phase 10B adds separate escalation tiers (4 h / 8 h / 12 h) for compact operational
+ * chips — see `losEscalationTierFromMs` (does not change the LOS tile buckets above).
+ *
  * No PHI. No backend persistence. Display only.
  */
 
@@ -84,3 +87,31 @@ export const LOS_TIER_SOFT = {
   attention: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
   high: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
 } as const;
+
+/**
+ * Phase 10B — operational LOS escalation (distinct from the 2 h / 4 h tile tiers).
+ * Highest tier wins. Not billing; not clinical conclusion.
+ */
+export type LosEscalationTier = "none" | "los_high" | "observation_watch" | "extended_stay";
+
+const FOUR_H_MS = 4 * 60 * 60 * 1000;
+const EIGHT_H_MS = 8 * 60 * 60 * 1000;
+const TWELVE_H_MS = 12 * 60 * 60 * 1000;
+
+export function losEscalationTierFromMs(ms: number): LosEscalationTier {
+  if (!Number.isFinite(ms) || ms <= 0) return "none";
+  if (ms > TWELVE_H_MS) return "extended_stay";
+  if (ms > EIGHT_H_MS) return "observation_watch";
+  if (ms > FOUR_H_MS) return "los_high";
+  return "none";
+}
+
+/** Soft badge styling for escalation chips (trackboard only). */
+export const LOS_ESCALATION_SOFT: Record<
+  Exclude<LosEscalationTier, "none">,
+  { bg: string; text: string; border: string }
+> = {
+  los_high: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
+  observation_watch: { bg: "#f5f3ff", text: "#5b21b6", border: "#ddd6fe" },
+  extended_stay: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+};
