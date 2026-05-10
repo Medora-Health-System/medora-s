@@ -14,6 +14,7 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { EncountersService } from "./encounters.service";
+import { EncounterChartExportService } from "./chart-export.service";
 import { DiagnosesService } from "../diagnoses/diagnoses.service";
 import { createDiagnosisDtoSchema, reorderDiagnosesDtoSchema } from "../diagnoses/dto";
 import { appendProcedureCaptureDtoSchema } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
@@ -42,7 +43,8 @@ import { RoleCode } from "@prisma/client";
 export class EncountersController {
   constructor(
     private readonly encountersService: EncountersService,
-    private readonly diagnosesService: DiagnosesService
+    private readonly diagnosesService: DiagnosesService,
+    private readonly chartExportService: EncounterChartExportService
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -256,6 +258,36 @@ export class EncountersController {
       throw new BadRequestException("Facility ID required");
     }
     return this.encountersService.listProviders(facilityId);
+  }
+
+  /**
+   * Phase 5D — read-only chart export manifest. Returns a deterministic JSON
+   * payload composed from existing read endpoints / Prisma reads, with no
+   * persistence (no `EncounterChartExport` table yet) and no PDF rendering.
+   *
+   * RBAC narrowed to PROVIDER + ADMIN — chart export is a clinician-grade
+   * activity. RN / LAB / RADIOLOGY have read access to individual chart
+   * sections via the existing Phase 5C live preview; widening this manifest
+   * route is deferred to Phase 5F when ROI policy lands.
+   *
+   * OPEN encounters return the manifest with `livePreview: true` (safer for
+   * handoff/teaching workflows than a 409); CLOSED encounters return
+   * `livePreview: false`. Audit logs `CHART_ACCESS` with PHI-safe metadata.
+   */
+  @Get("encounters/:id/chart-export")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async getChartExport(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.chartExportService.getManifest(
+      facilityId,
+      id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
   }
 
   @Get("encounters/:id/audit-timeline")
