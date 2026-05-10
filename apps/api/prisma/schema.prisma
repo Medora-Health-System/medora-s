@@ -111,6 +111,8 @@ enum AuditAction {
   RECORD_EXPORT
   /// Phase 5F — retrieval of an immutable encounter chart export snapshot (post hash verification).
   RECORD_EXPORT_VIEW
+  /// Phase 6 — chart export integrity check failed on retrieval (hash and/or HMAC signature mismatch). Critical, no PHI in metadata.
+  RECORD_EXPORT_INTEGRITY_FAILURE
   /// Phase 5G — Release of Information (ROI) request lifecycle.
   ROI_REQUEST_CREATE
   ROI_REQUEST_APPROVE
@@ -765,6 +767,8 @@ model EncounterChartExport {
   exportedByUserId String?
   manifestVersion  String
   manifestHash     String
+  /// Phase 6 — server-issued HMAC-SHA256 signature over the manifestHash, formatted as "<sigVersion>:<hex>". Nullable to support legacy snapshots created before signing was introduced; new snapshots require it in production.
+  manifestSignature String?
   manifestJson     Json
   /// "json" | "html" — format requested at creation time (informational; HTML is rendered server-side from the stored manifest).
   renderedFormat   String

@@ -341,7 +341,7 @@ describe("EncounterChartExportService.getSnapshot", () => {
     expect(html).not.toMatch(/dataBase64/i);
   });
 
-  it("throws integrity error (500) when stored hash mismatches recomputed hash", async () => {
+  it("throws integrity error (500) when stored hash mismatches recomputed hash and audits RECORD_EXPORT_INTEGRITY_FAILURE", async () => {
     const stored = makeStoredManifest();
     // Row claims the original hash, but content has been altered → mismatch.
     const realHash = sha256Hex(canonicalizeForHash(stored));
@@ -359,8 +359,30 @@ describe("EncounterChartExportService.getSnapshot", () => {
     await expect(
       service.getSnapshot("facility-A", "enc-1", "snap-1", "json")
     ).rejects.toBeInstanceOf(InternalServerErrorException);
-    // No view audit when integrity fails.
-    expect(audit.log).not.toHaveBeenCalled();
+    // Phase 6 — integrity failure now writes a critical, PHI-safe audit and
+    // never emits a successful RECORD_EXPORT_VIEW.
+    expect(audit.log).toHaveBeenCalled();
+    for (const call of (audit.log as AnyMock).mock.calls) {
+      const [action, entityType, payload] = call as [
+        AuditAction,
+        string,
+        { critical?: boolean; metadata: Record<string, unknown> }
+      ];
+      expect(action).toBe(AuditAction.RECORD_EXPORT_INTEGRITY_FAILURE);
+      expect(entityType).toBe("ENCOUNTER_CHART_EXPORT");
+      expect(payload.critical).toBe(true);
+      expect(payload.metadata).toEqual(
+        expect.objectContaining({
+          chartExport: true,
+          snapshotId: "snap-1",
+          format: "json",
+          hashMismatch: true,
+          signatureChecked: false,
+          signatureMismatch: false,
+        })
+      );
+      expect(JSON.stringify(payload.metadata)).not.toMatch(PHI_REGEX);
+    }
   });
 
   it("returns 404 when the snapshot is not visible to the facility (cross-facility)", async () => {

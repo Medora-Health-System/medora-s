@@ -19,6 +19,14 @@ import {
 } from "../patients/chart-audit-timeline.util";
 import { hashCanonicalJson, sha256Hex, canonicalizeForHash } from "./chart-export-hash.util";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
+import {
+  CHART_EXPORT_SIGNATURE_ALGORITHM,
+  CHART_EXPORT_SIGNATURE_VERSION,
+  getChartExportSigningSecret,
+  manifestSignatureVersion,
+  signManifestHash,
+  verifyManifestSignature,
+} from "./chart-export-signature.util";
 
 /**
  * Phase 5D — Backend encounter chart export manifest.
@@ -68,7 +76,12 @@ export const ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION = "encounter-chart-export-v
  */
 export const ENCOUNTER_CHART_EXPORT_TEMPLATE_VERSION = "encounter-chart-export-template-v1" as const;
 
-/** Returned to controllers / clients when the stored manifest hash no longer matches its content. */
+/**
+ * Returned to controllers / clients when the stored manifest hash no longer
+ * matches its content, or — Phase 6 — when the stored HMAC signature does
+ * not verify against the configured server secret. The single marker value
+ * keeps the controller / client behavior identical for any integrity failure.
+ */
 export const RECORD_EXPORT_INTEGRITY_MISMATCH = "RECORD_EXPORT_INTEGRITY_MISMATCH" as const;
 
 /**
@@ -1033,6 +1046,18 @@ export class EncounterChartExportService {
      */
     const storedManifest = JSON.parse(canonicalJson) as Prisma.JsonObject;
 
+    /**
+     * Phase 6 — server-side HMAC signature.
+     * Fail-closed: in production, missing `CHART_EXPORT_SIGNING_SECRET` aborts
+     * snapshot creation BEFORE any DB write, so we never persist an unsigned
+     * "official" snapshot. In non-production, the secret is optional so dev /
+     * CI workflows still function and `manifestSignature` is stored as `null`.
+     */
+    const signingSecret = getChartExportSigningSecret();
+    const manifestSignature = signingSecret
+      ? signManifestHash(signingSecret, manifestHash)
+      : null;
+
     const includedDomainCount = ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS.reduce<number>(
       (acc, key: IncludedDomainKey) => {
         const v = manifest[key];
@@ -1049,6 +1074,7 @@ export class EncounterChartExportService {
         exportedByUserId: userId ?? null,
         manifestVersion: manifest.manifestVersion,
         manifestHash,
+        manifestSignature,
         manifestJson: storedManifest,
         renderedFormat: "json",
         templateVersion: ENCOUNTER_CHART_EXPORT_TEMPLATE_VERSION,
@@ -1090,6 +1116,9 @@ export class EncounterChartExportService {
         includedDomainCount,
         deferredDomainCount: manifest.deferredDomains.length,
         encounterStatus: manifest.encounter.status,
+        signaturePresent: manifestSignature !== null,
+        signatureAlgorithm: manifestSignature ? CHART_EXPORT_SIGNATURE_ALGORITHM : null,
+        signatureVersion: manifestSignature ? CHART_EXPORT_SIGNATURE_VERSION : null,
       },
     });
 
@@ -1127,6 +1156,7 @@ export class EncounterChartExportService {
         encounterId: true,
         manifestVersion: true,
         manifestHash: true,
+        manifestSignature: true,
         manifestJson: true,
         templateVersion: true,
         createdAt: true,
@@ -1138,7 +1168,68 @@ export class EncounterChartExportService {
 
     /** Re-canonicalize the stored value (JSONB strips key order) and re-hash. */
     const recomputedHash = sha256Hex(canonicalizeForHash(row.manifestJson));
-    if (recomputedHash !== row.manifestHash) {
+    const hashOk = recomputedHash === row.manifestHash;
+
+    /**
+     * Phase 6 — verify the HMAC signature when one is stored. Pre-Phase-6
+     * snapshots have `manifestSignature: null`; we still accept them so legacy
+     * rows remain readable. New (signed) rows must verify against the current
+     * server secret. A signed row in production with a missing secret is
+     * treated as an integrity failure (we cannot prove authorship); we
+     * deliberately surface the same `RECORD_EXPORT_INTEGRITY_MISMATCH` marker
+     * regardless of cause so the API contract stays consistent.
+     */
+    let signatureChecked = false;
+    let signatureOk = true;
+    let signatureSecretAvailable = true;
+    if (row.manifestSignature) {
+      signatureChecked = true;
+      let secret: string | null = null;
+      try {
+        secret = getChartExportSigningSecret();
+      } catch {
+        signatureSecretAvailable = false;
+      }
+      signatureOk = !!secret
+        && verifyManifestSignature(secret, row.manifestHash, row.manifestSignature);
+    }
+
+    if (!hashOk || !signatureOk) {
+      /**
+       * Best-effort PHI-safe audit before raising. If the audit write itself
+       * fails, prefer surfacing the integrity error to the caller — swallow
+       * the audit error here so it does not mask the security signal.
+       */
+      try {
+        await this.audit.log(
+          AuditAction.RECORD_EXPORT_INTEGRITY_FAILURE,
+          "ENCOUNTER_CHART_EXPORT",
+          {
+            userId,
+            facilityId,
+            patientId: row.patientId,
+            encounterId: row.encounterId,
+            entityId: row.id,
+            ip,
+            userAgent,
+            critical: true,
+            metadata: {
+              chartExport: true,
+              snapshotId: row.id,
+              manifestVersion: row.manifestVersion,
+              templateVersion: row.templateVersion,
+              format,
+              hashMismatch: !hashOk,
+              signatureChecked,
+              signatureMismatch: signatureChecked && !signatureOk,
+              signatureSecretAvailable,
+              signatureVersion: manifestSignatureVersion(row.manifestSignature),
+            },
+          }
+        );
+      } catch {
+        /* audit write failure must not mask integrity error */
+      }
       throw new InternalServerErrorException(RECORD_EXPORT_INTEGRITY_MISMATCH);
     }
 
@@ -1168,6 +1259,9 @@ export class EncounterChartExportService {
           manifestHash: row.manifestHash,
           templateVersion: row.templateVersion,
           format,
+          signaturePresent: row.manifestSignature !== null,
+          signatureVerified: signatureChecked && signatureOk,
+          signatureVersion: manifestSignatureVersion(row.manifestSignature),
         },
       });
     }
