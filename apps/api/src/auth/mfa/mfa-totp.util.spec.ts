@@ -47,6 +47,14 @@ describe("mfa-totp.util", () => {
     expect(verifyTotpAndGetStep(s, "")).toBeNull();
   });
 
+  it("accepts a 6-digit code with spaces (normalized)", () => {
+    const s = generateTotpSecret();
+    const now = Date.now();
+    const code = generateCurrentTotp(s, now);
+    const spaced = `${code.slice(0, 3)} ${code.slice(3)}`;
+    expect(verifyTotpAndGetStep(s, spaced, now)).not.toBeNull();
+  });
+
   it("two different secrets do not produce mutually-valid codes (overwhelmingly)", () => {
     const a = generateTotpSecret();
     const b = generateTotpSecret();

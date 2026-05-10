@@ -7,26 +7,14 @@ import { getPostLoginDestinationForAuthUser } from "@/lib/landingRoute";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import { messageForAuthErrorCode, pickAuthErrorCodeOrLegacyMessage } from "@/lib/authApiErrorCode";
 import { MfaChallengePanel } from "./MfaChallengePanel";
 import { MfaEnrollmentPanel } from "@/components/mfa/MfaEnrollmentPanel";
 import styles from "./page.module.css";
 
-const loginCopy = {
-  suspenseLoading: "Loading...",
-  title: "Sign in",
-  subtitle: "Enter your credentials to access the chart.",
-  usernameLabel: "Email or username",
-  usernamePlaceholder: "Email or username",
-  passwordLabel: "Password",
-  forgotPasswordLink: "Forgot password?",
-  submit: "Login",
-  submitting: "Signing in...",
-  errorFallback: "Unable to sign in. Please try again.",
-  errorNetwork: "Unable to sign in. Check your connection and try again.",
-};
-
 function LoginSuspenseFallback() {
-  return <div style={{ padding: 48, textAlign: "center" }}>{loginCopy.suspenseLoading}</div>;
+  const { t } = useI18n();
+  return <div style={{ padding: 48, textAlign: "center" }}>{t("auth.login.suspenseLoading")}</div>;
 }
 
 type AuthUserShape = {
@@ -42,7 +30,7 @@ type Stage =
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { language, setLanguage } = useI18n();
+  const { language, setLanguage, t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +80,7 @@ function LoginForm() {
       });
 
       const data = (await parseApiResponse(response)) as {
+        errorCode?: string;
         error?: string;
         message?: string;
         user?: AuthUserShape;
@@ -103,15 +92,12 @@ function LoginForm() {
       } | null;
 
       if (!response.ok) {
-        const errorMessage =
-          typeof data?.error === "string"
-            ? data.error
-            : typeof data?.message === "string"
-              ? data.message
-              : "";
-        setError(
-          normalizeUserFacingError(errorMessage, language) || loginCopy.errorFallback
-        );
+        const { code, legacyMessage } = pickAuthErrorCodeOrLegacyMessage(data ?? {});
+        const mapped =
+          code != null
+            ? messageForAuthErrorCode(t, code, "auth.login.errorFallback")
+            : normalizeUserFacingError(legacyMessage, language);
+        setError(mapped || t("auth.login.errorFallback"));
         setLoading(false);
         return;
       }
@@ -134,7 +120,7 @@ function LoginForm() {
 
       navigateAfterAuth(data?.user);
     } catch {
-      setError(loginCopy.errorNetwork);
+      setError(t("auth.login.errorNetwork"));
       setLoading(false);
     }
   };
@@ -185,7 +171,7 @@ function LoginForm() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                {loginCopy.title}
+                {t("auth.login.title")}
               </h2>
               <p
                 style={{
@@ -194,7 +180,7 @@ function LoginForm() {
                   color: "#64748b",
                 }}
               >
-                {loginCopy.subtitle}
+                {t("auth.login.subtitle")}
               </p>
 
               <form onSubmit={handleSubmit}>
@@ -209,7 +195,7 @@ function LoginForm() {
                       color: "#334155",
                     }}
                   >
-                    {loginCopy.usernameLabel}
+                    {t("auth.login.usernameLabel")}
                   </label>
                   <input
                     id="username"
@@ -218,7 +204,7 @@ function LoginForm() {
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     disabled={loading}
-                    placeholder={loginCopy.usernamePlaceholder}
+                    placeholder={t("auth.login.usernamePlaceholder")}
                     autoComplete="username"
                     style={{
                       width: "100%",
@@ -244,7 +230,7 @@ function LoginForm() {
                       color: "#334155",
                     }}
                   >
-                    {loginCopy.passwordLabel}
+                    {t("auth.login.passwordLabel")}
                   </label>
                   <input
                     id="password"
@@ -277,7 +263,7 @@ function LoginForm() {
                       textDecoration: "none",
                     }}
                   >
-                    {loginCopy.forgotPasswordLink}
+                    {t("auth.login.forgotPasswordLink")}
                   </Link>
                 </div>
 
@@ -313,7 +299,7 @@ function LoginForm() {
                     opacity: loading ? 0.7 : 1,
                   }}
                 >
-                  {loading ? loginCopy.submitting : loginCopy.submit}
+                  {loading ? t("auth.login.submitting") : t("auth.login.submit")}
                 </button>
               </form>
             </>

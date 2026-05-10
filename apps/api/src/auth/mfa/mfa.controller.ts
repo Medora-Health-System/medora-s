@@ -40,7 +40,7 @@ const ENROLL_THROTTLE = { default: { limit: 20, ttl: 60_000 } };
 function userIdFromReq(req: ReqWithUser): string {
   const id = req.user?.userId;
   if (typeof id !== "string" || id.length === 0) {
-    throw new UnauthorizedException("Authentication required");
+    throw new UnauthorizedException("MFA_AUTH_REQUIRED");
   }
   return id;
 }
@@ -76,7 +76,7 @@ export class MfaController {
   @HttpCode(HttpStatus.OK)
   async enrollInit(@Body() body: unknown, @Req() req: ReqWithUser) {
     const parsed = mfaEnrollInitDtoSchema.safeParse(body ?? {});
-    if (!parsed.success) throw new BadRequestException("Données invalides.");
+    if (!parsed.success) throw new BadRequestException("INVALID_REQUEST_BODY");
     return this.mfa.beginEnrollment(userIdFromReq(req));
   }
 
@@ -96,9 +96,8 @@ export class MfaController {
   ) {
     const parsed = mfaEnrollVerifyDtoSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(
-        parsed.error.errors?.[0]?.message ?? "Code invalide."
-      );
+      const zmsg = parsed.error.errors?.[0]?.message;
+      throw new BadRequestException(typeof zmsg === "string" && zmsg.length > 0 ? zmsg : "INVALID_REQUEST_BODY");
     }
     const userId = userIdFromReq(req);
     const enroll = await this.mfa.confirmEnrollment(userId, parsed.data.code);
@@ -127,9 +126,8 @@ export class MfaController {
   ) {
     const parsed = mfaLoginVerifyDtoSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(
-        parsed.error.errors?.[0]?.message ?? "Données invalides."
-      );
+      const zmsg = parsed.error.errors?.[0]?.message;
+      throw new BadRequestException(typeof zmsg === "string" && zmsg.length > 0 ? zmsg : "INVALID_REQUEST_BODY");
     }
     const userId = userIdFromReq(req);
     const verify = await this.mfa.verifyLoginChallenge(
@@ -156,7 +154,8 @@ export class MfaController {
   async disable(@Body() body: unknown, @Req() req: ReqWithUser) {
     const parsed = mfaDisableDtoSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.errors?.[0]?.message ?? "Code invalide.");
+      const zmsg = parsed.error.errors?.[0]?.message;
+      throw new BadRequestException(typeof zmsg === "string" && zmsg.length > 0 ? zmsg : "INVALID_REQUEST_BODY");
     }
     return this.mfa.disable(userIdFromReq(req), parsed.data.code);
   }
@@ -172,7 +171,8 @@ export class MfaController {
   async regenerateRecoveryCodes(@Body() body: unknown, @Req() req: ReqWithUser) {
     const parsed = mfaRegenerateRecoveryCodesDtoSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.errors?.[0]?.message ?? "Code invalide.");
+      const zmsg = parsed.error.errors?.[0]?.message;
+      throw new BadRequestException(typeof zmsg === "string" && zmsg.length > 0 ? zmsg : "INVALID_REQUEST_BODY");
     }
     return this.mfa.regenerateRecoveryCodes(userIdFromReq(req), parsed.data.code);
   }

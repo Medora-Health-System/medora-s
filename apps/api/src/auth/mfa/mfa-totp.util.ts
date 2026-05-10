@@ -18,9 +18,20 @@ import { Secret, TOTP } from "otpauth";
 const TOTP_ALGORITHM = "SHA1";
 const TOTP_DIGITS = 6;
 const TOTP_PERIOD_SECONDS = 30;
-const TOTP_WINDOW_STEPS = 1;
+/** ±2 steps (~60s) — modest skew tolerance without weakening replay bounds materially. */
+const TOTP_WINDOW_STEPS = 2;
 
 export const MFA_TOTP_ISSUER = "Medora-S";
+
+/**
+ * Normalize user input: strip non-digits so "123 456" → "123456".
+ * Returns null unless exactly six digits remain (RFC 6238 typical TOTP).
+ */
+export function normalizeTotpCodeInput(raw: string | undefined | null): string | null {
+  if (raw == null || typeof raw !== "string") return null;
+  const digits = raw.replace(/\D/g, "");
+  return digits.length === 6 ? digits : null;
+}
 
 /** Generate a new base32 TOTP secret (160 bits, RFC 4226 §4). */
 export function generateTotpSecret(): string {
@@ -53,7 +64,9 @@ export function verifyTotpAndGetStep(
   nowMs: number = Date.now()
 ): number | null {
   if (typeof secret !== "string" || secret.length === 0) return null;
-  if (typeof token !== "string" || !/^\d{6}$/.test(token)) return null;
+  const normalized = normalizeTotpCodeInput(token);
+  if (normalized == null) return null;
+  const tokenDigits = normalized;
 
   let key: Secret;
   try {
@@ -65,7 +78,7 @@ export function verifyTotpAndGetStep(
   let delta: number | null;
   try {
     delta = TOTP.validate({
-      token,
+      token: tokenDigits,
       secret: key,
       algorithm: TOTP_ALGORITHM,
       digits: TOTP_DIGITS,

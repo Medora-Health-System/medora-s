@@ -10,6 +10,8 @@
 import React, { useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { parseApiResponse } from "@/lib/apiClient";
+import { messageForAuthErrorCode, pickAuthErrorCodeOrLegacyMessage } from "@/lib/authApiErrorCode";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 type Props = {
   challengeToken: string;
@@ -18,7 +20,7 @@ type Props = {
 };
 
 export function MfaChallengePanel({ challengeToken, onSuccess, onCancel }: Props) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [code, setCode] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [usingRecovery, setUsingRecovery] = useState(false);
@@ -41,12 +43,13 @@ export function MfaChallengePanel({ challengeToken, onSuccess, onCancel }: Props
       });
       const data = (await parseApiResponse(res)) as { user?: any; error?: string } | null;
       if (!res.ok) {
+        const d = data as { errorCode?: string; error?: string; message?: string } | null;
+        const { code, legacyMessage } = pickAuthErrorCodeOrLegacyMessage(d ?? {});
         setError(
-          typeof data?.error === "string" && data.error.length > 0
-            ? data.error
-            : res.status === 401
-              ? t("auth.mfa.errorInvalid")
-              : t("auth.mfa.errorGeneric")
+          code != null
+            ? messageForAuthErrorCode(t, code, "auth.mfa.errorInvalid")
+            : normalizeUserFacingError(legacyMessage, language) ||
+                (res.status === 401 ? t("auth.mfa.errorInvalid") : t("auth.mfa.errorGeneric"))
         );
         setLoading(false);
         return;

@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
+import { authBffErrorJson } from "@/lib/server/authBffErrorJson";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,20 +23,31 @@ export async function POST(request: NextRequest) {
       cookieStore.get("accessToken")?.value ?? cookieStore.get("medora_session")?.value ?? null;
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
-    else if (typeof body?.enrollmentToken === "string") {
-      headers["Authorization"] = `Bearer ${body.enrollmentToken}`;
+    const enrollmentTok =
+      typeof body?.enrollmentToken === "string" ? body.enrollmentToken.trim() : "";
+    /** Prefer enrollment grant over a stale session cookie (forced MFA setup after login). */
+    if (enrollmentTok.length > 0) {
+      headers["Authorization"] = `Bearer ${enrollmentTok}`;
+    } else if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
     }
 
     const r = await fetch(`${apiUrl}/auth/mfa/enroll/init`, {
       method: "POST",
       headers,
-      body: JSON.stringify({}),
+      body: JSON.stringify(enrollmentTok.length > 0 ? { enrollmentToken: enrollmentTok } : {}),
     });
-    const json = await r.json().catch(() => ({}));
+    const json = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!r.ok) {
+      const { errorCode, message } = authBffErrorJson(r.status, json, {
+        fallback401: "MFA_GRANT_INVALID",
+        fallbackOther: "AUTH_REQUEST_FAILED",
+      });
+      return NextResponse.json({ errorCode, ...(message ? { message } : {}) }, { status: r.status });
+    }
     return NextResponse.json(json, { status: r.status });
   } catch (error) {
     console.error("[mfa/enroll/init]", error);
-    return NextResponse.json({ error: "Service indisponible." }, { status: 500 });
+    return NextResponse.json({ errorCode: "SERVER_UNAVAILABLE" }, { status: 500 });
   }
 }

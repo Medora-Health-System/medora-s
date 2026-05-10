@@ -43,6 +43,7 @@ import {
   signMfaGrant,
   verifyMfaGrant,
 } from "./mfa-challenge.util";
+import { MFA_GRANT_INVALID } from "./mfa-error-codes";
 import { isMfaRequiredForRoles } from "./mfa-required-roles.util";
 
 const log = createStructuredLogger("MfaService");
@@ -52,7 +53,8 @@ export const MFA_NOT_ENABLED = "MFA_NOT_ENABLED" as const;
 export const MFA_ALREADY_ENABLED = "MFA_ALREADY_ENABLED" as const;
 export const MFA_INVALID_CODE = "MFA_INVALID_CODE" as const;
 export const MFA_REPLAY_DETECTED = "MFA_REPLAY_DETECTED" as const;
-export const MFA_GRANT_INVALID = "MFA_GRANT_INVALID" as const;
+
+export { MFA_GRANT_INVALID };
 
 export type MfaUserSnapshot = {
   userId: string;
@@ -229,7 +231,7 @@ export class MfaService {
       select: { id: true, email: true, mfaEnabled: true, isActive: true },
     });
     if (!user || !user.isActive) {
-      throw new UnauthorizedException("Utilisateur invalide.");
+      throw new UnauthorizedException("USER_INVALID");
     }
     if (user.mfaEnabled) {
       throw new ConflictException(MFA_ALREADY_ENABLED);
@@ -278,13 +280,13 @@ export class MfaService {
       select: { id: true, mfaEnabled: true, mfaSecretEncrypted: true, isActive: true },
     });
     if (!user || !user.isActive) {
-      throw new UnauthorizedException("Utilisateur invalide.");
+      throw new UnauthorizedException("USER_INVALID");
     }
     if (user.mfaEnabled) {
       throw new ConflictException(MFA_ALREADY_ENABLED);
     }
     if (!user.mfaSecretEncrypted) {
-      throw new BadRequestException("Aucune session d'inscription en cours.");
+      throw new BadRequestException("MFA_ENROLLMENT_NOT_STARTED");
     }
 
     const key = this.getEncryptionKeyOrFail();
@@ -385,7 +387,7 @@ export class MfaService {
     }
 
     if (!code) {
-      throw new BadRequestException("Code TOTP requis.");
+      throw new BadRequestException("MFA_TOTP_REQUIRED");
     }
     if (!user.mfaSecretEncrypted) {
       throw new InternalServerErrorException("Configuration MFA introuvable.");

@@ -1,17 +1,17 @@
 import { z } from "zod";
+import { normalizeTotpCodeInput } from "./mfa-totp.util";
 
+/** Strip spaces / non-digits so authenticator pastes like "123 456" validate. */
 const totpCodeSchema = z
   .string()
   .trim()
-  .regex(/^\d{6}$/, "Le code à 6 chiffres est requis.");
+  .transform((s) => normalizeTotpCodeInput(s) ?? "")
+  .refine((d) => d.length === 6, { message: "INVALID_TOTP_FORMAT" });
 
 const recoveryCodeSchema = z
   .string()
   .trim()
-  .regex(
-    /^[A-Z0-9-]{6,20}$/i,
-    "Code de récupération invalide."
-  );
+  .regex(/^[A-Z0-9-]{6,20}$/i, "RECOVERY_CODE_INVALID");
 
 export const mfaEnrollInitDtoSchema = z.object({
   /** Optional enrollment grant token (used when login forced MFA enrollment). */
@@ -27,12 +27,12 @@ export type MfaEnrollVerifyDto = z.infer<typeof mfaEnrollVerifyDtoSchema>;
 
 export const mfaLoginVerifyDtoSchema = z
   .object({
-    challengeToken: z.string().min(1, "Jeton de défi requis."),
+    challengeToken: z.string().min(1, "MFA_CHALLENGE_TOKEN_REQUIRED"),
     code: totpCodeSchema.optional(),
     recoveryCode: recoveryCodeSchema.optional(),
   })
   .refine((v) => Boolean(v.code) !== Boolean(v.recoveryCode), {
-    message: "Fournir soit un code TOTP, soit un code de récupération.",
+    message: "MFA_TOTP_OR_RECOVERY_REQUIRED",
   });
 export type MfaLoginVerifyDto = z.infer<typeof mfaLoginVerifyDtoSchema>;
 

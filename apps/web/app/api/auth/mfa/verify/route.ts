@@ -18,6 +18,7 @@ import {
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 import { extractRefreshTokenFromApiSetCookie } from "@/lib/server/extractRefreshTokenFromApiSetCookie";
+import { authBffErrorJson } from "@/lib/server/authBffErrorJson";
 
 export async function POST(request: NextRequest) {
   const requestId = request.headers.get("x-request-id")?.trim() ?? "";
@@ -38,13 +39,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      const message =
-        r.status === 401
-          ? "Code MFA invalide ou expiré."
-          : (err.message ?? err.error ?? "Échec de la vérification MFA.");
+      const err = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+      const { errorCode, message } = authBffErrorJson(r.status, err, {
+        fallback401: "MFA_INVALID_CODE",
+        fallbackOther: "AUTH_REQUEST_FAILED",
+      });
       return withRequestId(
-        NextResponse.json({ error: typeof message === "string" ? message : "Échec." }, { status: r.status })
+        NextResponse.json({ errorCode, ...(message ? { message } : {}) }, { status: r.status })
       );
     }
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
     };
     const refresh = extractRefreshTokenFromApiSetCookie(r);
     if (!json.accessToken || !refresh) {
-      return withRequestId(NextResponse.json({ error: "Réponse du serveur invalide." }, { status: 502 }));
+      return withRequestId(NextResponse.json({ errorCode: "INVALID_SERVER_RESPONSE" }, { status: 502 }));
     }
 
     const res = NextResponse.json({ user: json.user, method: json.method });
@@ -76,6 +77,6 @@ export async function POST(request: NextRequest) {
     return withRequestId(res);
   } catch (error) {
     console.error("[mfa/verify]", error);
-    return withRequestId(NextResponse.json({ error: "Service indisponible." }, { status: 500 }));
+    return withRequestId(NextResponse.json({ errorCode: "SERVER_UNAVAILABLE" }, { status: 500 }));
   }
 }

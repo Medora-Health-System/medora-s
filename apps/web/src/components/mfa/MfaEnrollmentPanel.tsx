@@ -17,6 +17,8 @@
 import React, { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { parseApiResponse } from "@/lib/apiClient";
+import { messageForAuthErrorCode, pickAuthErrorCodeOrLegacyMessage } from "@/lib/authApiErrorCode";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MfaRecoveryCodesPanel } from "./MfaRecoveryCodesPanel";
 
 type InitResponse = {
@@ -51,7 +53,7 @@ type Props = {
 };
 
 export function MfaEnrollmentPanel({ enrollmentToken, onComplete, onCancel }: Props) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   const [step, setStep] = useState<"loading" | "scan" | "codes" | "error">("loading");
   const [otpauthUri, setOtpauthUri] = useState<string | null>(null);
@@ -75,7 +77,13 @@ export function MfaEnrollmentPanel({ enrollmentToken, onComplete, onCancel }: Pr
       });
       const data = (await parseApiResponse(res)) as InitResponse | null;
       if (!res.ok || !data?.qrCodeDataUrl || !data?.otpauthUri) {
-        setBootError(typeof data?.error === "string" ? data.error : t("auth.mfa.errorGeneric"));
+        const d = data as { errorCode?: string; error?: string; message?: string } | null;
+        const { code, legacyMessage } = pickAuthErrorCodeOrLegacyMessage(d ?? {});
+        setBootError(
+          code != null
+            ? messageForAuthErrorCode(t, code, "auth.mfa.errorGeneric")
+            : normalizeUserFacingError(legacyMessage, language) || t("auth.mfa.errorGeneric")
+        );
         setStep("error");
         return;
       }
@@ -108,12 +116,13 @@ export function MfaEnrollmentPanel({ enrollmentToken, onComplete, onCancel }: Pr
       });
       const data = (await parseApiResponse(res)) as VerifyResponse | null;
       if (!res.ok) {
+        const d = data as { errorCode?: string; error?: string; message?: string } | null;
+        const { code, legacyMessage } = pickAuthErrorCodeOrLegacyMessage(d ?? {});
         setVerifyError(
-          typeof data?.error === "string" && data.error.length > 0
-            ? data.error
-            : res.status === 401
-              ? t("auth.mfa.errorInvalid")
-              : t("auth.mfa.errorGeneric")
+          code != null
+            ? messageForAuthErrorCode(t, code, "auth.mfa.errorInvalid")
+            : normalizeUserFacingError(legacyMessage, language) ||
+                (res.status === 401 ? t("auth.mfa.errorInvalid") : t("auth.mfa.errorGeneric"))
         );
         setSubmitting(false);
         return;

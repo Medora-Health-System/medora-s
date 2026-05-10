@@ -18,6 +18,7 @@ import {
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 import { extractRefreshTokenFromApiSetCookie } from "@/lib/server/extractRefreshTokenFromApiSetCookie";
+import { authBffErrorJson } from "@/lib/server/authBffErrorJson";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,24 +29,30 @@ export async function POST(request: NextRequest) {
       cookieStore.get("accessToken")?.value ?? cookieStore.get("medora_session")?.value ?? null;
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
-    else if (typeof body?.enrollmentToken === "string") {
-      headers["Authorization"] = `Bearer ${body.enrollmentToken}`;
+    const enrollmentTok =
+      typeof body?.enrollmentToken === "string" ? body.enrollmentToken.trim() : "";
+    if (enrollmentTok.length > 0) {
+      headers["Authorization"] = `Bearer ${enrollmentTok}`;
+    } else if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
     }
 
     const r = await fetch(`${apiUrl}/auth/mfa/enroll/verify`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ code: body?.code, enrollmentToken: body?.enrollmentToken }),
+      body: JSON.stringify({
+        code: body?.code,
+        ...(enrollmentTok.length > 0 ? { enrollmentToken: enrollmentTok } : {}),
+      }),
     });
 
     if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      const message =
-        r.status === 401
-          ? "Code MFA invalide ou expiré."
-          : (err.message ?? err.error ?? "Échec de l'inscription MFA.");
-      return NextResponse.json({ error: typeof message === "string" ? message : "Échec." }, { status: r.status });
+      const err = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+      const { errorCode, message } = authBffErrorJson(r.status, err, {
+        fallback401: "MFA_INVALID_CODE",
+        fallbackOther: "AUTH_REQUEST_FAILED",
+      });
+      return NextResponse.json({ errorCode, ...(message ? { message } : {}) }, { status: r.status });
     }
 
     const json = (await r.json()) as {
@@ -56,7 +63,7 @@ export async function POST(request: NextRequest) {
     };
     const refresh = extractRefreshTokenFromApiSetCookie(r);
     if (!json.accessToken || !refresh) {
-      return NextResponse.json({ error: "Réponse du serveur invalide." }, { status: 502 });
+      return NextResponse.json({ errorCode: "INVALID_SERVER_RESPONSE" }, { status: 502 });
     }
 
     const res = NextResponse.json({
@@ -81,6 +88,6 @@ export async function POST(request: NextRequest) {
     return res;
   } catch (error) {
     console.error("[mfa/enroll/verify]", error);
-    return NextResponse.json({ error: "Service indisponible." }, { status: 500 });
+    return NextResponse.json({ errorCode: "SERVER_UNAVAILABLE" }, { status: 500 });
   }
 }

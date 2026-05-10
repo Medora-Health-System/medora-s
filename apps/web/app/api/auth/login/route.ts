@@ -9,6 +9,7 @@ import {
 import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 import { extractRefreshTokenFromApiSetCookie } from "@/lib/server/extractRefreshTokenFromApiSetCookie";
+import { authBffErrorJson } from "@/lib/server/authBffErrorJson";
 
 function isNetworkError(err: unknown): boolean {
   if (err instanceof TypeError && err.message?.includes("fetch")) return true;
@@ -31,10 +32,7 @@ export async function POST(request: NextRequest) {
     const password = body.password ?? "";
 
     if (!username || !password) {
-      return withRequestId(NextResponse.json(
-        { error: "Identifiant et mot de passe requis." },
-        { status: 400 }
-      ));
+      return withRequestId(NextResponse.json({ errorCode: "INVALID_REQUEST_BODY" }, { status: 400 }));
     }
 
     let r: Response;
@@ -49,24 +47,18 @@ export async function POST(request: NextRequest) {
       });
     } catch (fetchErr) {
       console.error("Login API unreachable:", fetchErr);
-      return withRequestId(NextResponse.json(
-        { error: "Service indisponible. Vérifiez que le serveur est démarré ou contactez l'administrateur." },
-        { status: 503 }
-      ));
+      return withRequestId(NextResponse.json({ errorCode: "SERVER_UNAVAILABLE" }, { status: 503 }));
     }
 
     if (!r.ok) {
-      const errorData = await r.json().catch(() => ({ error: "Échec de la connexion" }));
-      const message =
-        r.status === 401
-          ? "Identifiants incorrects."
-          : r.status === 429
-            ? "Trop de tentatives. Réessayez plus tard."
-            : (errorData.message ?? errorData.error ?? "Échec de la connexion");
-      return withRequestId(NextResponse.json(
-        { error: typeof message === "string" ? message : "Échec de la connexion" },
-        { status: r.status }
-      ));
+      const errorData = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+      const { errorCode, message } = authBffErrorJson(r.status, errorData, {
+        fallback401: "INVALID_CREDENTIALS",
+        fallbackOther: "AUTH_REQUEST_FAILED",
+      });
+      return withRequestId(
+        NextResponse.json({ errorCode, ...(message ? { message } : {}) }, { status: r.status })
+      );
     }
 
     let json: {
@@ -83,10 +75,7 @@ export async function POST(request: NextRequest) {
     try {
       json = await r.json();
     } catch {
-      return withRequestId(NextResponse.json(
-        { error: "Réponse du serveur invalide. Réessayez plus tard." },
-        { status: 502 }
-      ));
+      return withRequestId(NextResponse.json({ errorCode: "INVALID_SERVER_RESPONSE" }, { status: 502 }));
     }
 
     /** Phase 9 — MFA branches: do NOT set session cookies; return tokens to UI for the challenge/enrollment step. */
@@ -111,10 +100,7 @@ export async function POST(request: NextRequest) {
 
     const refreshFromCookie = extractRefreshTokenFromApiSetCookie(r) ?? json.refreshToken;
     if (!json.accessToken || !refreshFromCookie) {
-      return withRequestId(NextResponse.json(
-        { error: "Réponse du serveur invalide. Réessayez plus tard." },
-        { status: 502 }
-      ));
+      return withRequestId(NextResponse.json({ errorCode: "INVALID_SERVER_RESPONSE" }, { status: 502 }));
     }
 
     const res = NextResponse.json({ user: json.user });
@@ -139,13 +125,8 @@ export async function POST(request: NextRequest) {
     return withRequestId(res);
   } catch (error) {
     console.error("Login error:", error);
-    const message = isNetworkError(error)
-      ? "Service indisponible. Vérifiez votre connexion ou contactez l'administrateur."
-      : "Une erreur inattendue s'est produite. Réessayez.";
-    return withRequestId(NextResponse.json(
-      { error: message },
-      { status: 500 }
-    ));
+    const errorCode = isNetworkError(error) ? "SERVER_UNAVAILABLE" : "UNEXPECTED_ERROR";
+    return withRequestId(NextResponse.json({ errorCode }, { status: 500 }));
   }
 }
 

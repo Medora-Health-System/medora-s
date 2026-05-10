@@ -15,6 +15,11 @@
  *   the enrollment endpoints so an already-logged-in user can enable MFA
  *   voluntarily AND a forced-enrollment user can complete enrollment.
  *
+ * **Precedence (urgent patch):** when the JSON body includes a non-empty
+ * `enrollmentToken`, it is verified **before** any `Authorization` bearer.
+ * Otherwise a stale `accessToken` cookie (still valid) would win and bind the
+ * wrong `userId` — TOTP enrollment would never match the scanned QR.
+ *
  * Both guards attach `{ userId, username, viaMfaGrant }` to `req.user`. They do
  * **not** consult `UserRole` — facility-scoped checks remain the job of
  * `RolesGuard` for endpoints that need them.
@@ -35,6 +40,7 @@ import {
   type MfaGrantPayload,
   verifyMfaGrant,
 } from "./mfa-challenge.util";
+import { MFA_GRANT_INVALID } from "./mfa-error-codes";
 
 type AccessJwtPayload = { sub: string; username: string; type: "access" | "refresh"; iss: string };
 
@@ -61,17 +67,17 @@ export class MfaChallengeGuard implements CanActivate {
     const bodyToken = (req.body as { challengeToken?: unknown } | undefined)?.challengeToken;
     const token =
       headerToken ?? (typeof bodyToken === "string" && bodyToken.length > 0 ? bodyToken : null);
-    if (!token) throw new UnauthorizedException("Jeton de défi requis.");
+    if (!token) throw new UnauthorizedException("MFA_CHALLENGE_TOKEN_REQUIRED");
 
     const refreshSecret = this.config.get<string>("JWT_REFRESH_SECRET");
     const issuer = this.config.get<string>("TOKEN_ISSUER") ?? "medora-s";
-    if (!refreshSecret) throw new UnauthorizedException("Configuration manquante.");
+    if (!refreshSecret) throw new UnauthorizedException("MFA_SERVER_MISCONFIGURED");
 
     let payload: MfaGrantPayload;
     try {
       payload = verifyMfaGrant(this.jwt, token, refreshSecret, issuer, MFA_CHALLENGE_TYPE);
     } catch {
-      throw new UnauthorizedException("Jeton de défi invalide ou expiré.");
+      throw new UnauthorizedException(MFA_GRANT_INVALID);
     }
 
     (req as Request & { user?: unknown }).user = {
@@ -94,14 +100,30 @@ export class MfaEnrollmentGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest<Request>();
 
     const headerToken = extractBearer(req);
-    const bodyToken = (req.body as { enrollmentToken?: unknown } | undefined)?.enrollmentToken;
+    const bodyRaw = req.body as { enrollmentToken?: unknown } | undefined;
+    const bodyEnrollment =
+      typeof bodyRaw?.enrollmentToken === "string" ? bodyRaw.enrollmentToken.trim() : "";
 
-    // First try the Bearer header as a normal access token.
     const accessSecret = this.config.get<string>("JWT_ACCESS_SECRET");
     const refreshSecret = this.config.get<string>("JWT_REFRESH_SECRET");
     const issuer = this.config.get<string>("TOKEN_ISSUER") ?? "medora-s";
     if (!accessSecret || !refreshSecret) {
-      throw new UnauthorizedException("Configuration manquante.");
+      throw new UnauthorizedException("MFA_SERVER_MISCONFIGURED");
+    }
+
+    // Forced enrollment: body grant must win over a stale session JWT in Authorization.
+    if (bodyEnrollment.length > 0) {
+      try {
+        const payload = verifyMfaGrant(this.jwt, bodyEnrollment, refreshSecret, issuer, MFA_ENROLLMENT_TYPE);
+        (req as Request & { user?: unknown }).user = {
+          userId: payload.sub,
+          username: payload.username,
+          viaMfaGrant: MFA_ENROLLMENT_TYPE,
+        };
+        return true;
+      } catch {
+        throw new UnauthorizedException(MFA_GRANT_INVALID);
+      }
     }
 
     if (headerToken) {
@@ -119,19 +141,18 @@ export class MfaEnrollmentGuard implements CanActivate {
           return true;
         }
       } catch {
-        // fall through and try enrollment grant
+        // fall through — header may be an enrollment JWT signed with refresh secret
       }
     }
 
-    const grantToken =
-      typeof bodyToken === "string" && bodyToken.length > 0 ? bodyToken : headerToken;
-    if (!grantToken) throw new UnauthorizedException("Jeton requis.");
+    const grantToken = headerToken;
+    if (!grantToken) throw new UnauthorizedException(MFA_GRANT_INVALID);
 
     let payload: MfaGrantPayload;
     try {
       payload = verifyMfaGrant(this.jwt, grantToken, refreshSecret, issuer, MFA_ENROLLMENT_TYPE);
     } catch {
-      throw new UnauthorizedException("Jeton invalide ou expiré.");
+      throw new UnauthorizedException(MFA_GRANT_INVALID);
     }
 
     (req as Request & { user?: unknown }).user = {
