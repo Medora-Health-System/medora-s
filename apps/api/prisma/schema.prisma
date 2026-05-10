@@ -107,6 +107,10 @@ enum AuditAction {
   BREAK_GLASS_START
   BREAK_GLASS_ACCESS
   BREAK_GLASS_END
+  /// Phase 5F — immutable encounter chart export snapshot created (manifest + SHA-256 hash persisted).
+  RECORD_EXPORT
+  /// Phase 5F — retrieval of an immutable encounter chart export snapshot (post hash verification).
+  RECORD_EXPORT_VIEW
 }
 
 /// Charge-capture ledger (Phase 1) — complements Encounter.billingCaptureJson; idempotent per source.
@@ -420,6 +424,8 @@ model Facility {
   orderEvents                    OrderEvent[]
   billingReviewDecisions         BillingReviewDecision[]
   encounterClinicalEvents        EncounterClinicalEvent[]
+  /// Phase 5F — immutable encounter chart export snapshots originating at this facility.
+  encounterChartExports          EncounterChartExport[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -543,6 +549,8 @@ model User {
   performedOrderEvents                       OrderEvent[]
   billingReviewDecisionsReviewed             BillingReviewDecision[]        @relation("BillingReviewDecisionReviewer")
   encounterClinicalEventsCreated             EncounterClinicalEvent[]       @relation("EncounterClinicalEventCreatedBy")
+  /// Phase 5F — immutable encounter chart export snapshots this user created.
+  encounterChartExportsExported              EncounterChartExport[]         @relation("EncounterChartExportExportedBy")
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -653,6 +661,8 @@ model Patient {
   billingEvents             BillingEvent[]
   billingReviewDecisions    BillingReviewDecision[]
   encounterClinicalEvents     EncounterClinicalEvent[]
+  /// Phase 5F — immutable encounter chart export snapshots tied to this patient.
+  encounterChartExports     EncounterChartExport[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -686,6 +696,47 @@ model AuditLog {
   @@index([facilityId])
   @@index([createdAt])
   @@index([encounterId])
+}
+
+/// Phase 5F — immutable encounter chart export snapshot.
+///
+/// Persists the JSON manifest exactly as composed at export time, plus a
+/// SHA-256 hash of its canonical (sorted-key) form. HTML rendering is
+/// regenerated from the stored manifest on retrieval; rendered HTML itself
+/// is not stored (template version evolves independently from content).
+///
+/// Created only for CLOSED encounters (livePreview = false). The live
+/// preview / chart-export endpoint continues to support OPEN encounters
+/// without persistence.
+///
+/// Foreign keys use `Restrict` on facility / encounter / patient so a
+/// snapshot cannot be silently invalidated by an upstream delete; the
+/// exporting user is `SetNull` to keep snapshots if a user account is
+/// later deactivated/removed.
+model EncounterChartExport {
+  id               String   @id @default(uuid())
+  facilityId       String
+  encounterId      String
+  patientId        String
+  exportedByUserId String?
+  manifestVersion  String
+  manifestHash     String
+  manifestJson     Json
+  /// "json" | "html" — format requested at creation time (informational; HTML is rendered server-side from the stored manifest).
+  renderedFormat   String
+  /// Optional template/render version (decoupled from manifestVersion). Lets HTML rendering evolve without invalidating prior snapshots.
+  templateVersion  String?
+  livePreview      Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  facility       Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter      Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  exportedByUser User?     @relation("EncounterChartExportExportedBy", fields: [exportedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, encounterId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([manifestHash])
 }
 
 model Encounter {
@@ -768,6 +819,8 @@ model Encounter {
   orderEvents               OrderEvent[]
   billingReviewDecisions    BillingReviewDecision[]
   encounterClinicalEvents   EncounterClinicalEvent[]
+  /// Phase 5F — immutable encounter chart export snapshots created from this encounter.
+  chartExports              EncounterChartExport[]
 
   @@index([facilityId])
   @@index([patientId])

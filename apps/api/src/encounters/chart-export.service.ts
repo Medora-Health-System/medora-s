@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from "@nestjs/common";
 import {
   AuditAction,
   EncounterClinicalEventType,
@@ -12,6 +17,8 @@ import {
   mapAuditLogRowToTimelineItem,
   metadataEncounterId,
 } from "../patients/chart-audit-timeline.util";
+import { hashCanonicalJson, sha256Hex, canonicalizeForHash } from "./chart-export-hash.util";
+import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
 /**
  * Phase 5D — Backend encounter chart export manifest.
@@ -53,6 +60,16 @@ const CLINICAL_DOC_EVENT_TYPES: EncounterClinicalEventType[] = [
 ];
 
 export const ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION = "encounter-chart-export-v1" as const;
+
+/**
+ * Phase 5F — independent template/render version. Bumped only when the HTML
+ * renderer (or any future format renderer) changes shape; lets us re-render
+ * old snapshots without invalidating the original `manifestHash`.
+ */
+export const ENCOUNTER_CHART_EXPORT_TEMPLATE_VERSION = "encounter-chart-export-template-v1" as const;
+
+/** Returned to controllers / clients when the stored manifest hash no longer matches its content. */
+export const RECORD_EXPORT_INTEGRITY_MISMATCH = "RECORD_EXPORT_INTEGRITY_MISMATCH" as const;
 
 /**
  * Authoritative list of clinical-data domain keys included in the export manifest.
@@ -329,6 +346,20 @@ export type ChartExportManifest = {
 export type ChartExportRequestOptions = {
   /** Defaults to `json`. HTML uses the same manifest composition path; only the HTTP response differs. */
   exportFormat?: "json" | "html";
+  /**
+   * Internal use only. When `true`, suppresses the `CHART_ACCESS` audit emission
+   * so the calling site (e.g. `createSnapshot`) can log a more specific action
+   * such as `RECORD_EXPORT` instead. Never expose this to HTTP callers.
+   */
+  skipAudit?: boolean;
+};
+
+export type ChartExportSnapshotSummary = {
+  id: string;
+  manifestVersion: string;
+  manifestHash: string;
+  templateVersion: string | null;
+  createdAt: string;
 };
 
 @Injectable()
@@ -930,28 +961,221 @@ export class EncounterChartExportService {
      * Keeping `entityType: "ENCOUNTER"` makes downstream filters consistent
      * with `ENCOUNTER_VIEW`; the manifest version + livePreview flag let us
      * distinguish chart-export reads from regular chart-summary reads.
+     *
+     * Phase 5F — `skipAudit: true` lets `createSnapshot` suppress this row and
+     * write a `RECORD_EXPORT` audit instead (one canonical action per request).
      */
-    await this.audit.log(AuditAction.CHART_ACCESS, "ENCOUNTER", {
+    if (!options?.skipAudit) {
+      await this.audit.log(AuditAction.CHART_ACCESS, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        metadata: {
+          chartExport: true,
+          exportFormat,
+          manifestVersion: ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
+          livePreview,
+          includedDomainCount,
+          deferredDomainCount: deferredDomains.length,
+          clinicalTimelineCapped,
+          auditTimelineCapped: auditCapped,
+          encounterStatus: encounter.status,
+        },
+      });
+    }
+
+    return manifest;
+  }
+
+  /**
+   * Phase 5F — create an immutable encounter chart export snapshot.
+   *
+   * Behavior:
+   *  - CLOSED-only. OPEN encounters retain the live preview path and cannot
+   *    produce a snapshot (avoids creating "immutable" records that race
+   *    with ongoing clinical writes).
+   *  - Composes the manifest via the existing `getManifest` pipeline (single
+   *    source of truth). `skipAudit: true` is set internally so we emit
+   *    exactly one audit row — `RECORD_EXPORT` — for this operation.
+   *  - Persists the canonicalized JSON manifest plus its SHA-256 hash; HTML
+   *    is intentionally NOT stored (template evolves independently).
+   *  - Emits a fail-closed `RECORD_EXPORT` audit with PHI-safe metadata.
+   *
+   * @throws ConflictException when the encounter is not CLOSED (livePreview).
+   * @throws NotFoundException when the encounter is not visible to `facilityId`.
+   */
+  async createSnapshot(
+    facilityId: string,
+    encounterId: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ): Promise<ChartExportSnapshotSummary> {
+    const manifest = await this.getManifest(facilityId, encounterId, userId, ip, userAgent, {
+      exportFormat: "json",
+      skipAudit: true,
+    });
+
+    if (manifest.livePreview || manifest.encounter.status !== EncounterStatus.CLOSED) {
+      throw new ConflictException(
+        "Encounter must be CLOSED to create an immutable chart export snapshot"
+      );
+    }
+
+    const { canonicalJson, hash: manifestHash } = hashCanonicalJson(manifest);
+    /**
+     * Persist the canonicalized form so a JSONB round-trip cannot drift the
+     * stored value relative to the hashed input. We re-hash on retrieval.
+     */
+    const storedManifest = JSON.parse(canonicalJson) as Prisma.JsonObject;
+
+    const includedDomainCount = ENCOUNTER_CHART_EXPORT_INCLUDED_DOMAIN_KEYS.reduce<number>(
+      (acc, key: IncludedDomainKey) => {
+        const v = manifest[key];
+        return acc + (v === null || typeof v === "undefined" ? 0 : 1);
+      },
+      0
+    );
+
+    const created = await this.prisma.encounterChartExport.create({
+      data: {
+        facilityId,
+        encounterId: manifest.encounter.id,
+        patientId: manifest.patient.id,
+        exportedByUserId: userId ?? null,
+        manifestVersion: manifest.manifestVersion,
+        manifestHash,
+        manifestJson: storedManifest,
+        renderedFormat: "json",
+        templateVersion: ENCOUNTER_CHART_EXPORT_TEMPLATE_VERSION,
+        livePreview: false,
+      },
+      select: {
+        id: true,
+        manifestVersion: true,
+        manifestHash: true,
+        templateVersion: true,
+        createdAt: true,
+      },
+    });
+
+    /**
+     * `critical: true` — under `AUDIT_FAILURE_MODE=fail_closed`, an audit-write
+     * failure aborts the request. The clinical row already committed by the
+     * preceding `prisma.encounterChartExport.create`, so the operator gets a
+     * 503 and a clear log; the snapshot remains queryable. This matches the
+     * existing precedent for legally significant actions.
+     */
+    await this.audit.log(AuditAction.RECORD_EXPORT, "ENCOUNTER_CHART_EXPORT", {
       userId,
       facilityId,
-      patientId: encounter.patientId,
-      encounterId: encounter.id,
-      entityId: encounter.id,
+      patientId: manifest.patient.id,
+      encounterId: manifest.encounter.id,
+      entityId: created.id,
+      ip,
+      userAgent,
+      critical: true,
+      metadata: {
+        chartExport: true,
+        snapshotId: created.id,
+        manifestVersion: manifest.manifestVersion,
+        manifestHash,
+        templateVersion: ENCOUNTER_CHART_EXPORT_TEMPLATE_VERSION,
+        format: "json",
+        livePreview: false,
+        includedDomainCount,
+        deferredDomainCount: manifest.deferredDomains.length,
+        encounterStatus: manifest.encounter.status,
+      },
+    });
+
+    return {
+      id: created.id,
+      manifestVersion: created.manifestVersion,
+      manifestHash: created.manifestHash,
+      templateVersion: created.templateVersion,
+      createdAt: created.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * Phase 5F — retrieve an immutable snapshot, verifying its hash before use.
+   *
+   * Renders HTML from the **stored** manifest (never recomputes from the live
+   * chart) so the artifact is reproducible from the row alone. A hash mismatch
+   * throws an integrity error rather than returning suspicious data silently.
+   */
+  async getSnapshot(
+    facilityId: string,
+    encounterId: string,
+    snapshotId: string,
+    format: "json" | "html",
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ): Promise<{ manifest: ChartExportManifest; html?: string; row: ChartExportSnapshotSummary }> {
+    const row = await this.prisma.encounterChartExport.findFirst({
+      where: { id: snapshotId, encounterId, facilityId },
+      select: {
+        id: true,
+        patientId: true,
+        encounterId: true,
+        manifestVersion: true,
+        manifestHash: true,
+        manifestJson: true,
+        templateVersion: true,
+        createdAt: true,
+      },
+    });
+    if (!row) {
+      throw new NotFoundException("Snapshot not found");
+    }
+
+    /** Re-canonicalize the stored value (JSONB strips key order) and re-hash. */
+    const recomputedHash = sha256Hex(canonicalizeForHash(row.manifestJson));
+    if (recomputedHash !== row.manifestHash) {
+      throw new InternalServerErrorException(RECORD_EXPORT_INTEGRITY_MISMATCH);
+    }
+
+    const manifest = row.manifestJson as unknown as ChartExportManifest;
+    const html = format === "html" ? renderEncounterChartExportHtml(manifest) : undefined;
+
+    /**
+     * Non-critical view audit. Metadata stays PHI-safe — only ids, version,
+     * and hash. Patient name / MRN / DOB never appear here.
+     */
+    await this.audit.log(AuditAction.RECORD_EXPORT_VIEW, "ENCOUNTER_CHART_EXPORT", {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      entityId: row.id,
       ip,
       userAgent,
       metadata: {
         chartExport: true,
-        exportFormat,
-        manifestVersion: ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
-        livePreview,
-        includedDomainCount,
-        deferredDomainCount: deferredDomains.length,
-        clinicalTimelineCapped,
-        auditTimelineCapped: auditCapped,
-        encounterStatus: encounter.status,
+        snapshotId: row.id,
+        manifestVersion: row.manifestVersion,
+        manifestHash: row.manifestHash,
+        templateVersion: row.templateVersion,
+        format,
       },
     });
 
-    return manifest;
+    return {
+      manifest,
+      html,
+      row: {
+        id: row.id,
+        manifestVersion: row.manifestVersion,
+        manifestHash: row.manifestHash,
+        templateVersion: row.templateVersion,
+        createdAt: row.createdAt.toISOString(),
+      },
+    };
   }
 }

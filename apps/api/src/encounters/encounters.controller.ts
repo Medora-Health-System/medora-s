@@ -305,6 +305,73 @@ export class EncountersController {
     return manifest;
   }
 
+  /**
+   * Phase 5F — create an immutable encounter chart export snapshot.
+   *
+   * CLOSED encounters only (the service raises `409 ConflictException` on OPEN /
+   * livePreview). RBAC: PROVIDER + ADMIN. Audit: `RECORD_EXPORT` (critical) with
+   * PHI-safe metadata (ids + version + hash, no names / MRN / clinical text).
+   */
+  @Post("encounters/:id/chart-export/snapshots")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async createChartExportSnapshot(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.chartExportService.createSnapshot(
+      facilityId,
+      id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /**
+   * Phase 5F — retrieve a previously created snapshot.
+   *
+   * Hash is verified before responding; mismatch returns 500 with an integrity
+   * marker. HTML is rendered from the **stored** manifest, never the live chart.
+   * Default format: `json`.
+   */
+  @Get("encounters/:id/chart-export/snapshots/:snapshotId")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async getChartExportSnapshot(
+    @Param("id") id: string,
+    @Param("snapshotId") snapshotId: string,
+    @Query("format") formatRaw: string | undefined,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const fmt = (formatRaw ?? "json").trim().toLowerCase();
+    if (fmt !== "json" && fmt !== "html") {
+      throw new BadRequestException('Invalid format. Use "json" (default) or "html".');
+    }
+    const format = fmt === "html" ? "html" : "json";
+    const result = await this.chartExportService.getSnapshot(
+      facilityId,
+      id,
+      snapshotId,
+      format,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+    if (format === "html") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return result.html;
+    }
+    return {
+      snapshot: result.row,
+      manifest: result.manifest,
+    };
+  }
+
   @Get("encounters/:id/audit-timeline")
   @RequireRoles(
     RoleCode.FRONT_DESK,
