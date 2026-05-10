@@ -111,6 +111,42 @@ enum AuditAction {
   RECORD_EXPORT
   /// Phase 5F — retrieval of an immutable encounter chart export snapshot (post hash verification).
   RECORD_EXPORT_VIEW
+  /// Phase 5G — Release of Information (ROI) request lifecycle.
+  ROI_REQUEST_CREATE
+  ROI_REQUEST_APPROVE
+  ROI_REQUEST_DENY
+  ROI_REQUEST_CANCEL
+  ROI_REQUEST_FULFILL
+  /// Phase 5G — View of a chart export snapshot in the context of a fulfilled ROI request (governed release).
+  ROI_EXPORT_VIEW
+}
+
+/// Phase 5G — category of external / formal record release request.
+enum ChartRoiRequestType {
+  PATIENT_REQUEST
+  INSURANCE
+  LEGAL
+  REGULATOR
+  INTERNAL_AUDIT
+}
+
+/// Phase 5G — ROI workflow state (strict transitions enforced in application code).
+enum ChartRoiRequestStatus {
+  DRAFT
+  APPROVED
+  FULFILLED
+  CANCELLED
+  DENIED
+}
+
+/// Phase 5G — intended delivery channel (informational until outbound transport exists).
+enum ChartRoiDeliveryMethod {
+  IN_PERSON_PICKUP
+  SECURE_PORTAL
+  COURIER
+  REGULATOR_SECURE_CHANNEL
+  INTERNAL_HANDOFF
+  OTHER
 }
 
 /// Charge-capture ledger (Phase 1) — complements Encounter.billingCaptureJson; idempotent per source.
@@ -426,6 +462,8 @@ model Facility {
   encounterClinicalEvents        EncounterClinicalEvent[]
   /// Phase 5F — immutable encounter chart export snapshots originating at this facility.
   encounterChartExports          EncounterChartExport[]
+  /// Phase 5G — Release of Information (ROI) requests for this facility.
+  chartRoiRequests               ChartRoiRequest[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -551,6 +589,10 @@ model User {
   encounterClinicalEventsCreated             EncounterClinicalEvent[]       @relation("EncounterClinicalEventCreatedBy")
   /// Phase 5F — immutable encounter chart export snapshots this user created.
   encounterChartExportsExported              EncounterChartExport[]         @relation("EncounterChartExportExportedBy")
+  /// Phase 5G — ROI workflow actor links.
+  chartRoiRequestsRequested                  ChartRoiRequest[]              @relation("ChartRoiRequestedBy")
+  chartRoiRequestsApproved                   ChartRoiRequest[]              @relation("ChartRoiApprovedBy")
+  chartRoiRequestsFulfilled                  ChartRoiRequest[]              @relation("ChartRoiFulfilledBy")
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -663,6 +705,8 @@ model Patient {
   encounterClinicalEvents     EncounterClinicalEvent[]
   /// Phase 5F — immutable encounter chart export snapshots tied to this patient.
   encounterChartExports     EncounterChartExport[]
+  /// Phase 5G — Release of Information requests for this patient.
+  chartRoiRequests          ChartRoiRequest[]
 
   @@unique([facilityId, mrn])
   @@index([facilityId])
@@ -733,10 +777,55 @@ model EncounterChartExport {
   encounter      Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
   patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
   exportedByUser User?     @relation("EncounterChartExportExportedBy", fields: [exportedByUserId], references: [id], onDelete: SetNull)
+  /// Phase 5G — ROI requests that reference this immutable snapshot (at most one active link per snapshot in practice).
+  chartRoiRequests ChartRoiRequest[]
 
   @@index([facilityId, encounterId, createdAt])
   @@index([patientId, createdAt])
   @@index([manifestHash])
+}
+
+/// Phase 5G — governed Release of Information (ROI) workflow for external record disclosure.
+///
+/// Facility-scoped. Only facility `ADMIN` users may mutate or view requests in the MVP API.
+/// Immutable chart snapshots (`EncounterChartExport`) are linked on fulfillment after approval.
+/// No outbound email / portal delivery in this phase — workflow + audit trail only.
+model ChartRoiRequest {
+  id                       String                 @id @default(uuid())
+  facilityId               String
+  patientId                String
+  encounterId              String?
+  requestedByUserId      String
+  approvedByUserId         String?
+  fulfilledByUserId        String?
+  encounterChartExportId   String?
+  requestType              ChartRoiRequestType
+  status                   ChartRoiRequestStatus  @default(DRAFT)
+  recipientName            String?
+  recipientOrganization    String?
+  deliveryMethod           ChartRoiDeliveryMethod?
+  /// Free-text purpose / scope (stored for legal traceability; never copied into audit metadata).
+  purpose                  String
+  authorizationReference   String?
+  denialReason             String?
+  cancelledReason          String?
+  createdAt                DateTime               @default(now())
+  approvedAt               DateTime?
+  fulfilledAt              DateTime?
+  cancelledAt              DateTime?
+  deniedAt                 DateTime?
+
+  facility             Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient              Patient               @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter            Encounter?            @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  requestedBy          User                  @relation("ChartRoiRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  approvedBy           User?                 @relation("ChartRoiApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  fulfilledBy          User?                 @relation("ChartRoiFulfilledBy", fields: [fulfilledByUserId], references: [id], onDelete: SetNull)
+  encounterChartExport EncounterChartExport? @relation(fields: [encounterChartExportId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, status, createdAt])
+  @@index([facilityId, patientId, createdAt])
+  @@index([encounterId])
 }
 
 model Encounter {
@@ -821,6 +910,8 @@ model Encounter {
   encounterClinicalEvents   EncounterClinicalEvent[]
   /// Phase 5F — immutable encounter chart export snapshots created from this encounter.
   chartExports              EncounterChartExport[]
+  /// Phase 5G — ROI requests scoped to this encounter (optional when request is patient-wide).
+  chartRoiRequests          ChartRoiRequest[]
 
   @@index([facilityId])
   @@index([patientId])

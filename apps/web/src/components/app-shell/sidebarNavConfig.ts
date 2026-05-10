@@ -327,6 +327,20 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     accent: "redGray",
   },
   {
+    href: "/app/admin/roi",
+    labelKey: "nav.adminRoi",
+    roles: ["ADMIN"],
+    group: "admin",
+    accent: "redGray",
+  },
+  {
+    href: "/app/admin/roi-monitoring",
+    labelKey: "nav.adminRoiMonitoring",
+    roles: ["MEDORA_SUPER_ADMIN"],
+    group: "admin",
+    accent: "redGray",
+  },
+  {
     href: "/app/admin/backup-readiness",
     labelKey: "nav.adminBackupReadiness",
     roles: ["MEDORA_SUPER_ADMIN"],

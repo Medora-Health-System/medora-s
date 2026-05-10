@@ -151,6 +151,14 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
   { prefix: "/app/fracture", roles: ["ADMIN"] },
   {
+    prefix: "/app/admin/roi",
+    roles: ["ADMIN"],
+  },
+  {
+    prefix: "/app/admin/roi-monitoring",
+    roles: ["MEDORA_SUPER_ADMIN"],
+  },
+  {
     prefix: "/app/admin/system-health",
     roles: ["MEDORA_SUPER_ADMIN"],
   },
@@ -213,6 +221,7 @@ const PLATFORM_OPERATOR_ONLY_PREFIXES = [
   "/app/admin/backup-readiness",
   "/app/admin/exports",
   "/app/admin/compliance",
+  "/app/admin/roi-monitoring",
 ] as const;
 
 function isPlatformOperatorOnlyAppPath(pathname: string): boolean {

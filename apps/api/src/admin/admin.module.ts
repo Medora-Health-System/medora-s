@@ -12,6 +12,7 @@ import { AdminBackupReadinessController } from "./admin-backup-readiness.control
 import { AdminSystemHealthController } from "./admin-system-health.controller";
 import { AdminComplianceController } from "./admin-compliance.controller";
 import { AdminCatalogAuditController } from "./admin-catalog-audit.controller";
+import { AdminRoiMonitoringController } from "./admin-roi-monitoring.controller";
 import { AdminExportMonitoringController } from "./admin-export-monitoring.controller";
 import { AdminExportMonitoringService } from "./admin-export-monitoring.service";
 import { BackupReadinessService } from "./backup-readiness.service";
@@ -37,6 +38,7 @@ import { ReportsModule } from "../reports/reports.module";
     AdminSystemHealthController,
     AdminComplianceController,
     AdminCatalogAuditController,
+    AdminRoiMonitoringController,
   ],
   providers: [
     AdminUsersService,
