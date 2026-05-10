@@ -3528,6 +3528,8 @@ export default {
     arrivalLabel: "Arrival",
     physicianShort: "Physician",
     nurseShort: "Nurse",
+    assignedPersonnelLabel: "Assigned personnel",
+    unassignedDash: "— — —",
     losShort: "LOS",
     losTooltip:
       "Estimated length of stay since the encounter was opened ('arrival'). Refreshed locally every minute.",

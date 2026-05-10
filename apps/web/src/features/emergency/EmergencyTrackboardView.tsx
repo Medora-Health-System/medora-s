@@ -9,7 +9,6 @@ import {
   formatEncounterChromeDateTime,
   formatPatientAgeSexLine,
   tEncounterStatus,
-  tEncounterType,
 } from "@/lib/encounterChromeI18n";
 import { erDispositionBadgeDisplayLabel } from "@/features/emergency/erDispositionBadgeI18n";
 import {
@@ -305,25 +304,71 @@ export function EmergencyTrackboardView() {
   return (
     <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
       <div style={{ maxWidth: 1152, margin: "0 auto" }}>
-        <header style={{ marginBottom: 24 }}>
+        {/*
+         * Phase 10A patch — compact operational header.
+         * The page name is preserved as a screen-reader-only h1 (page identity is
+         * already conveyed by the side navigation). The visible left affordance is
+         * a small "LOS" pill matching the approved mock; the ED intake link sits
+         * top-right on the same row.
+         */}
+        <header
+          style={{
+            marginBottom: 16,
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
           <h1
             style={{
-              margin: 0,
-              fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)",
-              fontWeight: 600,
-              color: "#0f172a",
+              position: "absolute",
+              width: 1,
+              height: 1,
+              padding: 0,
+              margin: -1,
+              overflow: "hidden",
+              clip: "rect(0,0,0,0)",
+              whiteSpace: "nowrap",
+              border: 0,
             }}
           >
             {t("emergencyTrackboard.title")}
           </h1>
-          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
-            {t("emergencyTrackboard.subtitle")}
-          </p>
-          <p style={{ margin: "10px 0 0 0", fontSize: 13 }}>
-            <Link href="/app/emergency/triage" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-              {t("emergencyTrackboard.triageLink")}
-            </Link>
-          </p>
+          <span
+            aria-hidden
+            title={t("emergencyTrackboard.losTooltip")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 9999,
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#0f172a",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+              letterSpacing: "0.02em",
+            }}
+          >
+            <span aria-hidden style={{ color: "#0369a1", fontSize: 12 }}>●</span>
+            {t("emergencyTrackboard.losShort")}
+          </span>
+          <Link
+            href="/app/emergency/triage"
+            style={{
+              marginLeft: "auto",
+              color: "#2563eb",
+              fontWeight: 600,
+              fontSize: 13,
+              textDecoration: "none",
+            }}
+          >
+            {t("emergencyTrackboard.triageLink")}
+          </Link>
         </header>
 
         <div
@@ -495,6 +540,8 @@ export function EmergencyTrackboardView() {
                 encounterTypeKey === EMERGENCY_TYPE &&
                 !erHandoffV1SatisfiesInpatientTransferConfirm(encounter.nursingAssessment);
 
+              const losTier = los?.tier ?? "normal";
+              const losTileSoft = LOS_TIER_SOFT[losTier];
               return (
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
@@ -506,6 +553,107 @@ export function EmergencyTrackboardView() {
                         }
                         roomLabel={t("encounterChrome.labelRoom")}
                         roomValue={room}
+                        centerLeading={
+                          los ? (
+                            <div
+                              title={`${t("emergencyTrackboard.losTooltip")} ${losTooltip}`}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 8,
+                                border: `1px solid ${losTileSoft.border}`,
+                                backgroundColor: losTileSoft.bg,
+                                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+                                textAlign: "center",
+                                minWidth: 80,
+                                maxWidth: 120,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  letterSpacing: "0.06em",
+                                  textTransform: "uppercase",
+                                  color: losTileSoft.text,
+                                  marginBottom: 1,
+                                  lineHeight: 1,
+                                  opacity: 0.85,
+                                }}
+                              >
+                                {t("emergencyTrackboard.losShort")}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  lineHeight: 1.15,
+                                  color: losTileSoft.text,
+                                  fontVariantNumeric: "tabular-nums",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {los.labelPadded}
+                              </div>
+                            </div>
+                          ) : null
+                        }
+                        centerTrailing={
+                          <div
+                            aria-label={t("emergencyTrackboard.assignedPersonnelLabel")}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 2,
+                              padding: "4px 8px",
+                              borderRadius: 8,
+                              border: "1px solid #e2e8f0",
+                              backgroundColor: "#fff",
+                              minWidth: 0,
+                              width: "100%",
+                            }}
+                          >
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: "#475569",
+                                lineHeight: 1.25,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={phys || undefined}
+                            >
+                              <span style={{ color: "#94a3b8", marginRight: 4 }}>
+                                {t("emergencyTrackboard.physicianShort")}:
+                              </span>
+                              <span style={{ color: phys ? "#0f172a" : "#94a3b8", fontWeight: phys ? 600 : 500 }}>
+                                {phys || t("emergencyTrackboard.unassignedDash")}
+                              </span>
+                            </p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: "#475569",
+                                lineHeight: 1.25,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={nurse || undefined}
+                            >
+                              <span style={{ color: "#94a3b8", marginRight: 4 }}>
+                                {t("emergencyTrackboard.nurseShort")}:
+                              </span>
+                              <span style={{ color: nurse ? "#0f172a" : "#94a3b8", fontWeight: nurse ? 600 : 500 }}>
+                                {nurse || t("emergencyTrackboard.unassignedDash")}
+                              </span>
+                            </p>
+                          </div>
+                        }
                         identity={
                           <>
                             <h2
@@ -546,44 +694,13 @@ export function EmergencyTrackboardView() {
                         }
                         right={
                           <>
-                            {phys ? (
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: 10,
-                                  fontWeight: 500,
-                                  color: "#64748b",
-                                  textAlign: "right",
-                                  lineHeight: 1.2,
-                                  maxWidth: 220,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                                title={phys}
-                              >
-                                <span style={{ color: "#94a3b8" }}>{t("emergencyTrackboard.physicianShort")}</span> {phys}
-                              </p>
-                            ) : null}
-                            {nurse ? (
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: 10,
-                                  fontWeight: 500,
-                                  color: "#64748b",
-                                  textAlign: "right",
-                                  lineHeight: 1.2,
-                                  maxWidth: 220,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                                title={nurse}
-                              >
-                                <span style={{ color: "#94a3b8" }}>{t("emergencyTrackboard.nurseShort")}</span> {nurse}
-                              </p>
-                            ) : null}
+                            {/*
+                             * Phase 10A patch — operational status chips.
+                             * Emergency Department type chip removed (page is the ER
+                             * trackboard, the chip was redundant). LOS chip removed
+                             * here as well: LOS now lives in its own tile next to
+                             * Room (centerLeading).
+                             */}
                             <div
                               style={{
                                 display: "flex",
@@ -598,9 +715,6 @@ export function EmergencyTrackboardView() {
                               >
                                 <MedoraCardBadge soft={primaryStatusSoft}>{primaryStatusLabel}</MedoraCardBadge>
                               </span>
-                              <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
-                                {tEncounterType(t, EMERGENCY_TYPE)}
-                              </MedoraCardBadge>
                               {sortieInfirmierOk ? (
                                 <span title={t("emergencyTrackboard.sortieExecTooltip")}>
                                   <MedoraCardBadge soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
@@ -615,6 +729,7 @@ export function EmergencyTrackboardView() {
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}
+                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
                             </div>
                             <div
                               style={{
@@ -626,14 +741,6 @@ export function EmergencyTrackboardView() {
                                 justifyContent: "flex-end",
                               }}
                             >
-                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
-                              {los ? (
-                                <span title={`${t("emergencyTrackboard.losTooltip")} ${losTooltip}`}>
-                                  <MedoraCardBadge soft={LOS_TIER_SOFT[los.tier]}>
-                                    {t("emergencyTrackboard.losShort")} {los.label}
-                                  </MedoraCardBadge>
-                                </span>
-                              ) : null}
                               <Link
                                 href={emergencyChartPath(encounter.id)}
                                 style={{

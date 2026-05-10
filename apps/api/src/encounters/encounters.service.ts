@@ -1797,22 +1797,31 @@ export class EncountersService {
     }
 
     const now = new Date();
-    const updateData: Prisma.EncounterUpdateInput =
+    /**
+     * IMPORTANT — `updateMany` does not support nested relation writes
+     * (e.g. `physicianAssigned: { connect: { id } }`). That form is only valid
+     * for `update` / `EncounterUpdateInput` and triggers a runtime
+     * `PrismaClientValidationError` when passed to `updateMany`.
+     *
+     * Use the unchecked input shape so we can write the FK scalar columns
+     * directly while keeping the optimistic-locking `where: { version }` guard.
+     */
+    const updateData: Prisma.EncounterUncheckedUpdateManyInput =
       kind === "provider"
         ? {
-            physicianAssigned: { connect: { id: actorUserId } },
+            physicianAssignedUserId: actorUserId,
             physicianAssignedAt: now,
             version: { increment: 1 },
           }
         : {
-            nurseAssigned: { connect: { id: actorUserId } },
+            nurseAssignedUserId: actorUserId,
             nurseAssignedAt: now,
             version: { increment: 1 },
           };
 
     const u = await this.prisma.encounter.updateMany({
       where: { id: encounterId, facilityId, version: encounter.version },
-      data: updateData as Prisma.EncounterUpdateManyMutationInput,
+      data: updateData,
     });
     if (u.count === 0) throwEncounterConcurrentModification();
 

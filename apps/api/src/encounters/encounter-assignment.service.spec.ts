@@ -75,10 +75,17 @@ describe("EncountersService — Phase 10A self-assignment", () => {
       expect((prisma as { encounter: { updateMany: AnyMock } }).encounter.updateMany).toHaveBeenCalledTimes(1);
       const updateCall = (prisma as { encounter: { updateMany: AnyMock } }).encounter.updateMany.mock.calls[0]?.[0];
       expect(updateCall.where).toMatchObject({ id: "enc-1", facilityId: "facility-A", version: 3 });
-      // The relation form is preferred (`physicianAssigned: { connect: ... }`) but we accept either.
-      const data = updateCall.data as { physicianAssigned?: { connect?: { id: string } }; physicianAssignedUserId?: string };
-      const wroteId = data.physicianAssigned?.connect?.id ?? data.physicianAssignedUserId;
-      expect(wroteId).toBe("user-1");
+      /**
+       * Phase 10A patch — `updateMany` only accepts scalar updates.
+       * The nested-relation form (`physicianAssigned: { connect: ... }`) is invalid
+       * at runtime and previously caused a 500 (`PrismaClientValidationError`).
+       * Lock in the scalar form so this regression cannot return.
+       */
+      const data = updateCall.data as Record<string, unknown>;
+      expect(data.physicianAssignedUserId).toBe("user-1");
+      expect(data.physicianAssignedAt).toBeInstanceOf(Date);
+      expect(data).not.toHaveProperty("physicianAssigned");
+      expect(data.version).toEqual({ increment: 1 });
 
       expect(audit.log).toHaveBeenCalledTimes(1);
       const auditArgs = audit.log.mock.calls[0]!;
@@ -173,9 +180,11 @@ describe("EncountersService — Phase 10A self-assignment", () => {
       await svc.selfAssignNurse("facility-A", "enc-1", "rn-1");
 
       const updateCall = (prisma as { encounter: { updateMany: AnyMock } }).encounter.updateMany.mock.calls[0]?.[0];
-      const data = updateCall.data as { nurseAssigned?: { connect?: { id: string } }; nurseAssignedUserId?: string };
-      const wroteId = data.nurseAssigned?.connect?.id ?? data.nurseAssignedUserId;
-      expect(wroteId).toBe("rn-1");
+      const data = updateCall.data as Record<string, unknown>;
+      expect(data.nurseAssignedUserId).toBe("rn-1");
+      expect(data.nurseAssignedAt).toBeInstanceOf(Date);
+      expect(data).not.toHaveProperty("nurseAssigned");
+      expect(data.version).toEqual({ increment: 1 });
 
       expect(audit.log).toHaveBeenCalledTimes(1);
       const auditArgs = audit.log.mock.calls[0]!;

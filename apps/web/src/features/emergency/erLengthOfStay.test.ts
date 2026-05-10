@@ -29,6 +29,12 @@ describe("computeLos — Phase 10A", () => {
     expect(r?.minutes).toBe(47);
   });
 
+  it("provides a padded operational label matching the trackboard tile format", () => {
+    expect(at(ARRIVAL, "2026-05-10T08:09:00.000Z")?.labelPadded).toBe("00h 09m");
+    expect(at(ARRIVAL, "2026-05-10T11:30:00.000Z")?.labelPadded).toBe("03h 30m");
+    expect(at(ARRIVAL, "2026-05-10T20:05:00.000Z")?.labelPadded).toBe("12h 05m");
+  });
+
   it("buckets < 2h as normal", () => {
     expect(at(ARRIVAL, "2026-05-10T09:59:59.000Z")?.tier).toBe("normal");
   });

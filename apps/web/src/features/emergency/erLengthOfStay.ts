@@ -24,6 +24,12 @@ export type LosResult = {
   tier: LosTier;
   /** Compact display: e.g. "0h47", "3h12", "5h08". Always 0-padded for the minutes part. */
   label: string;
+  /**
+   * Padded operational display: e.g. "00h 47m", "03h 12m", "12h 08m".
+   * Matches the trackboard tile layout (LOS tile next to Room tile).
+   * Both hours and minutes are zero-padded; trailing "m" suffix.
+   */
+  labelPadded: string;
 };
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
@@ -60,12 +66,16 @@ export function computeLos(arrivalLike: unknown, nowMs?: number): LosResult | nu
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   const label = `${hours}h${minutes.toString().padStart(2, "0")}`;
+  const labelPadded = `${hours.toString().padStart(2, "0")}h ${minutes
+    .toString()
+    .padStart(2, "0")}m`;
   return {
     ms,
     hours,
     minutes,
     tier: losTierFromMs(ms),
     label,
+    labelPadded,
   };
 }
 

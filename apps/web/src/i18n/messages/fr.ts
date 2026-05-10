@@ -3499,6 +3499,8 @@ export default {
     arrivalLabel: "Arrivée",
     physicianShort: "Médecin",
     nurseShort: "Infirmier(ère)",
+    assignedPersonnelLabel: "Affectations",
+    unassignedDash: "— — —",
     losShort: "Durée",
     losTooltip:
       "Durée de séjour estimée depuis l'ouverture du dossier (« arrivée »). Mise à jour locale toutes les minutes.",

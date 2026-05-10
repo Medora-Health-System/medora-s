@@ -49,6 +49,20 @@ export type MedoraCompactPatientCardRowProps = {
   right: React.ReactNode;
   /** Wider right column when many actions (e.g. nursing). */
   rightMaxWidth?: number;
+  /**
+   * Optional content rendered immediately *before* the room tile, in the same
+   * horizontal "tile group" position. Used by the Emergency trackboard to
+   * display a LOS tile next to the Room tile. Kept optional so existing
+   * worklists continue to render unchanged.
+   */
+  centerLeading?: React.ReactNode;
+  /**
+   * Optional content rendered immediately *after* the room tile, before the
+   * right column. Used for compact metadata blocks (e.g. assigned personnel).
+   */
+  centerTrailing?: React.ReactNode;
+  /** Optional max width for the centerTrailing block (default 200). */
+  centerTrailingMaxWidth?: number;
 };
 
 export function MedoraCompactPatientCardRow({
@@ -59,6 +73,9 @@ export function MedoraCompactPatientCardRow({
   roomValue,
   right,
   rightMaxWidth = 240,
+  centerLeading,
+  centerTrailing,
+  centerTrailingMaxWidth = 200,
 }: MedoraCompactPatientCardRowProps) {
   return (
     <div style={INNER_OFFSET}>
@@ -90,6 +107,21 @@ export function MedoraCompactPatientCardRow({
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>{identity}</div>
         </div>
+
+        {centerLeading ? (
+          <div
+            style={{
+              flex: "0 0 auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 2px",
+              alignSelf: "center",
+            }}
+          >
+            {centerLeading}
+          </div>
+        ) : null}
 
         <div
           style={{
@@ -140,6 +172,23 @@ export function MedoraCompactPatientCardRow({
             </div>
           </div>
         </div>
+
+        {centerTrailing ? (
+          <div
+            style={{
+              flex: "0 1 auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-start",
+              padding: "0 4px",
+              alignSelf: "center",
+              minWidth: 132,
+              maxWidth: centerTrailingMaxWidth,
+            }}
+          >
+            {centerTrailing}
+          </div>
+        ) : null}
 
         <div
           style={{
