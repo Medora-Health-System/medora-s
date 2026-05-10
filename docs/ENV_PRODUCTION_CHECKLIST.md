@@ -2,7 +2,7 @@
 
 Single reference for **Railway** (API + Postgres) and **Vercel** (Next.js BFF + UI) before go-live or after an incident. Values are **never** logged or returned by health endpoints; only presence/configuration flags are surfaced in `admin/system-health`.
 
-Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DRILL_CHECKLIST.md`, `docs/ER_PILOT_MONITORING_AND_INCIDENTS.md`.
+Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DRILL_CHECKLIST.md`, `docs/ER_PILOT_MONITORING_AND_INCIDENTS.md`, `docs/INTEROPERABILITY_FOUNDATION.md`.
 
 ---
 
@@ -59,6 +59,7 @@ Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DR
 | Prefix | Notes |
 |--------|--------|
 | `MEDORA_EXTERNAL_BILLING_*` | Only when external billing automation is in scope. |
+| `MEDORA_INTEROP_ENABLED` | **Reserved — Phase 11B+.** Leave **unset** or `false` until inbound HL7/FHIR/device adapters are implemented and reviewed. If set `true` early, operators may assume ingestion exists when it does not (`docs/INTEROPERABILITY_FOUNDATION.md` §9). |
 
 ---
 

@@ -1,6 +1,6 @@
 # Medora-S — Deployment Runbook
 
-Operational steps for promoting changes to staging or production during the pilot. Companion to `ER_PILOT_OPERATIONS_SOP.md` (governance) and `docs/OPS.md` (DB/migration rules).
+Operational steps for promoting changes to staging or production during the pilot. Companion to `ER_PILOT_OPERATIONS_SOP.md` (governance), `docs/OPS.md` (DB/migration rules), and `docs/INTEROPERABILITY_FOUNDATION.md` (future inbound/outbound integration boundaries — no live adapters in Phase 11B).
 
 > **Honest scope.** Deployment is **manual, single-region** (Railway API + Postgres, Vercel web). There is no blue/green, no canary, no automated rollback. Safety comes from disciplined verify + ordered apply.
 
