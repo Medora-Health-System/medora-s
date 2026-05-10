@@ -8,6 +8,27 @@ export async function fetchOpenEncounters(facilityId: string): Promise<any[]> {
   return Array.isArray(data) ? data : [];
 }
 
+/**
+ * Phase 10A — operational ER ownership self-assignment endpoints.
+ * Returns the updated encounter row from the API on success; throws on 4xx/5xx
+ * so the caller can surface the user-facing message.
+ */
+export async function assignProviderSelf(facilityId: string, encounterId: string): Promise<unknown> {
+  return apiFetch(`/encounters/${encounterId}/assign-provider/me`, {
+    method: "POST",
+    facilityId,
+    body: JSON.stringify({}),
+  });
+}
+
+export async function assignNurseSelf(facilityId: string, encounterId: string): Promise<unknown> {
+  return apiFetch(`/encounters/${encounterId}/assign-nurse/me`, {
+    method: "POST",
+    facilityId,
+    body: JSON.stringify({}),
+  });
+}
+
 /** Orders for one encounter (same payload as OrdersTab). */
 export async function fetchOrdersForEncounter(facilityId: string, encounterId: string): Promise<unknown[]> {
   const pending = await getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(() => [] as Record<string, unknown>[]);

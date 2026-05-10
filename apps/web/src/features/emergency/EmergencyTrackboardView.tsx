@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
+import { assignNurseSelf, assignProviderSelf, fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
 import { useI18n } from "@/lib/i18n";
 import {
   formatEncounterChromeDateTime,
@@ -31,6 +31,11 @@ import {
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
+import {
+  computeLos,
+  LOS_TIER_SOFT,
+  type LosResult,
+} from "@/features/emergency/erLengthOfStay";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -84,6 +89,14 @@ function physicianLabel(enc: {
   return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
 }
 
+function nurseLabel(enc: {
+  nurseAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+}): string {
+  const n = enc.nurseAssigned;
+  if (!n) return "";
+  return `${(n.firstName ?? "").trim()} ${(n.lastName ?? "").trim()}`.trim();
+}
+
 function patientNirDisplay(
   patient: { mrn?: string | null; nationalId?: string | null } | null | undefined,
   dash: string
@@ -110,7 +123,11 @@ type OpenEncounterRow = {
     nationalId?: string | null;
   } | null;
   triage?: { esi?: number | null; chiefComplaint?: string | null } | null;
-  physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+  physicianAssigned?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
+  /** Phase 10A — RN currently responsible for the encounter (operational ownership). */
+  nurseAssigned?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
+  physicianAssignedAt?: string | null;
+  nurseAssignedAt?: string | null;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
   nursingAssessment?: unknown;
@@ -146,12 +163,28 @@ function acuityLabelKey(tier: AcuityTier): "emergencyTrackboard.acuityCritical" 
 
 export function EmergencyTrackboardView() {
   const { t, language } = useI18n();
-  const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, ready, roles, userId } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [rows, setRows] = useState<OpenEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  /** Phase 10A — per-row assignment in-flight + per-row error (transient UI only). */
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
+  /**
+   * Phase 10A — minute-tick driver for LOS updates. We only need to re-render
+   * the LOS column once per minute; this avoids any extra network traffic.
+   */
+  const [losTick, setLosTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setLosTick((n) => (n + 1) % 1_000_000), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  void losTick;
+
+  const isProvider = roles.includes("PROVIDER");
+  const isNurse = roles.includes("RN");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -176,6 +209,42 @@ export function EmergencyTrackboardView() {
       setLoading(false);
     }
   }, [facilityId, t]);
+
+  const claimSelf = useCallback(
+    async (encounterId: string, kind: "provider" | "nurse") => {
+      if (!facilityId) return;
+      setAssigningId(encounterId);
+      setAssignError(null);
+      try {
+        const updated =
+          kind === "provider"
+            ? await assignProviderSelf(facilityId, encounterId)
+            : await assignNurseSelf(facilityId, encounterId);
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === encounterId
+              ? ({
+                  ...r,
+                  ...(updated && typeof updated === "object" ? (updated as Partial<OpenEncounterRow>) : {}),
+                } as OpenEncounterRow)
+              : r
+          )
+        );
+      } catch (err) {
+        const raw = err instanceof Error ? err.message : "";
+        const lc = raw.toLowerCase();
+        const message = lc.includes("ouverte") || lc.includes("open")
+          ? t("emergencyTrackboard.assignErrorClosed")
+          : lc.includes("rôle") || lc.includes("role") || lc.includes("infirm") || lc.includes("médecin")
+            ? t("emergencyTrackboard.assignErrorRole")
+            : t("emergencyTrackboard.assignErrorGeneric");
+        setAssignError({ id: encounterId, message });
+      } finally {
+        setAssigningId(null);
+      }
+    },
+    [facilityId, t]
+  );
 
   useEffect(() => {
     if (!ready || !facilityId) return;
@@ -202,7 +271,8 @@ export function EmergencyTrackboardView() {
       const cc = (encounter.triage?.chiefComplaint || encounter.chiefComplaint || "").toLowerCase();
       const room = (encounter.roomLabel ?? "").toLowerCase();
       const phys = physicianLabel(encounter).toLowerCase();
-      const blob = `${name} ${nir} ${cc} ${room} ${phys}`;
+      const nurse = nurseLabel(encounter).toLowerCase();
+      const blob = `${name} ${nir} ${cc} ${room} ${phys} ${nurse}`;
       return blob.includes(q);
     });
   }, [emergencyOnly, search, t]);
@@ -389,10 +459,23 @@ export function EmergencyTrackboardView() {
               const esiLevel = esiLevelFromUnknown(encounter.triage?.esi ?? null);
               const room = encounter.roomLabel?.trim() || dash;
               const phys = physicianLabel(encounter);
+              const nurse = nurseLabel(encounter);
+              const physId = (encounter.physicianAssigned?.id ?? "").trim();
+              const nurseId = (encounter.nurseAssigned?.id ?? "").trim();
+              const isPhysMine = Boolean(userId && physId && physId === userId);
+              const isNurseMine = Boolean(userId && nurseId && nurseId === userId);
               const nirLine = patientNirDisplay(patient, dash);
               const arrivalDisplay = encounter.createdAt
                 ? formatEncounterChromeDateTime(encounter.createdAt, language)
                 : dash;
+              /** LOS source: `Encounter.createdAt` (see erLengthOfStay.ts header). */
+              const los: LosResult | null = computeLos(encounter.createdAt);
+              const losTooltip =
+                los?.tier === "high"
+                  ? t("emergencyTrackboard.losTierHighTooltip")
+                  : los?.tier === "attention"
+                    ? t("emergencyTrackboard.losTierAttentionTooltip")
+                    : t("emergencyTrackboard.losTierNormalTooltip");
               const statusKey = (encounter.status ?? "").trim() || "OPEN";
               const encounterTypeKey = (encounter.type ?? "").trim();
               const dispositionBadge = erDispositionBadgeFromEncounterJson(encounter);
@@ -482,6 +565,25 @@ export function EmergencyTrackboardView() {
                                 <span style={{ color: "#94a3b8" }}>{t("emergencyTrackboard.physicianShort")}</span> {phys}
                               </p>
                             ) : null}
+                            {nurse ? (
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: 10,
+                                  fontWeight: 500,
+                                  color: "#64748b",
+                                  textAlign: "right",
+                                  lineHeight: 1.2,
+                                  maxWidth: 220,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                                title={nurse}
+                              >
+                                <span style={{ color: "#94a3b8" }}>{t("emergencyTrackboard.nurseShort")}</span> {nurse}
+                              </p>
+                            ) : null}
                             <div
                               style={{
                                 display: "flex",
@@ -525,6 +627,13 @@ export function EmergencyTrackboardView() {
                               }}
                             >
                               <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
+                              {los ? (
+                                <span title={`${t("emergencyTrackboard.losTooltip")} ${losTooltip}`}>
+                                  <MedoraCardBadge soft={LOS_TIER_SOFT[los.tier]}>
+                                    {t("emergencyTrackboard.losShort")} {los.label}
+                                  </MedoraCardBadge>
+                                </span>
+                              ) : null}
                               <Link
                                 href={emergencyChartPath(encounter.id)}
                                 style={{
@@ -561,7 +670,82 @@ export function EmergencyTrackboardView() {
                               >
                                 {t("common.view")}
                               </Link>
+                              {isProvider ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void claimSelf(encounter.id, "provider")}
+                                  disabled={assigningId === encounter.id || isPhysMine}
+                                  title={
+                                    isPhysMine
+                                      ? t("emergencyTrackboard.assignProviderMine")
+                                      : t("emergencyTrackboard.assignProviderMe")
+                                  }
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: isPhysMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                    backgroundColor: isPhysMine ? "#d1fae5" : "#fff",
+                                    color: isPhysMine ? "#065f46" : "#0f172a",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: assigningId === encounter.id || isPhysMine ? "default" : "pointer",
+                                  }}
+                                >
+                                  {isPhysMine
+                                    ? t("emergencyTrackboard.assignProviderMine")
+                                    : assigningId === encounter.id
+                                      ? t("emergencyTrackboard.assignSubmitting")
+                                      : t("emergencyTrackboard.assignProviderMeShort")}
+                                </button>
+                              ) : null}
+                              {isNurse ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void claimSelf(encounter.id, "nurse")}
+                                  disabled={assigningId === encounter.id || isNurseMine}
+                                  title={
+                                    isNurseMine
+                                      ? t("emergencyTrackboard.assignNurseMine")
+                                      : t("emergencyTrackboard.assignNurseMe")
+                                  }
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: isNurseMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                    backgroundColor: isNurseMine ? "#d1fae5" : "#fff",
+                                    color: isNurseMine ? "#065f46" : "#0f172a",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: assigningId === encounter.id || isNurseMine ? "default" : "pointer",
+                                  }}
+                                >
+                                  {isNurseMine
+                                    ? t("emergencyTrackboard.assignNurseMine")
+                                    : assigningId === encounter.id
+                                      ? t("emergencyTrackboard.assignSubmitting")
+                                      : t("emergencyTrackboard.assignNurseMeShort")}
+                                </button>
+                              ) : null}
                             </div>
+                            {assignError && assignError.id === encounter.id ? (
+                              <p
+                                role="alert"
+                                style={{
+                                  margin: "4px 0 0 0",
+                                  fontSize: 11,
+                                  color: "#b91c1c",
+                                  textAlign: "right",
+                                }}
+                              >
+                                {assignError.message}
+                              </p>
+                            ) : null}
                           </>
                         }
                       />

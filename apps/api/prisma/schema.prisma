@@ -121,6 +121,9 @@ enum AuditAction {
   ROI_REQUEST_FULFILL
   /// Phase 5G — View of a chart export snapshot in the context of a fulfilled ROI request (governed release).
   ROI_EXPORT_VIEW
+  /// Phase 10A — ER operational ownership: physician/nurse assignment changes (PHI-safe metadata only).
+  ENCOUNTER_ASSIGN_PROVIDER
+  ENCOUNTER_ASSIGN_NURSE
   /// Phase 9 — Identity security / MFA lifecycle. PHI-safe metadata only (no secrets, codes, IPs unless policy allows).
   MFA_ENROLLMENT_INIT
   MFA_ENABLED
@@ -588,6 +591,8 @@ model User {
   passwordResetTokens       PasswordResetToken[]
 
   encountersAsAssignedPhysician              Encounter[]                   @relation("EncounterPhysicianAssigned")
+  /// Phase 10A — operational ER ownership. RN currently responsible for the encounter.
+  encountersAsAssignedNurse                  Encounter[]                   @relation("EncounterNurseAssigned")
   encountersSignedByProvider                 Encounter[]                   @relation("EncounterSignedBy")
   encountersBillingFinalizedBy               Encounter[]                   @relation("EncounterBillingFinalizedBy")
   encountersBillingReopenedBy                Encounter[]                   @relation("EncounterBillingReopenedBy")
@@ -878,6 +883,13 @@ model Encounter {
   /// Assigned attending physician (display name only in UI; never use for nurse attribution)
   physicianAssignedUserId String?
   physicianAssigned       User?   @relation("EncounterPhysicianAssigned", fields: [physicianAssignedUserId], references: [id], onDelete: SetNull)
+  /// Phase 10A — timestamp of the most recent physician assignment (operational only).
+  physicianAssignedAt     DateTime?
+  /// Phase 10A — RN currently responsible for the encounter (operational ownership only;
+  /// never used for clinical authorship/signature/order authority).
+  nurseAssignedUserId     String?
+  nurseAssigned           User?   @relation("EncounterNurseAssigned", fields: [nurseAssignedUserId], references: [id], onDelete: SetNull)
+  nurseAssignedAt         DateTime?
   /// Structured discharge summary (French UI keys / values); saved before closing when using discharge flow
   dischargeSummaryJson    Json?
 
@@ -942,6 +954,7 @@ model Encounter {
   @@index([status])
   @@index([workflowState])
   @@index([physicianAssignedUserId])
+  @@index([nurseAssignedUserId])
   @@index([providerDocumentationSignedByUserId])
   @@index([billingFinalizationStatus])
 }

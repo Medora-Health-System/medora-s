@@ -22,6 +22,8 @@ function parseMsppContextFromMe(
 
 export function useFacilityAndRoles() {
   const [facilityId, setFacilityId] = useState<string>("");
+  /** Phase 10A — current user id (mirrors `/auth/me.id`); used for "Assigned to me" UI checks. */
+  const [userId, setUserId] = useState<string>("");
   const [roles, setRoles] = useState<string[]>([]);
   const [msppRoles, setMsppRoles] = useState<string[]>([]);
   const [facilities, setFacilities] = useState<UserFacilityOption[]>([]);
@@ -39,6 +41,8 @@ export function useFacilityAndRoles() {
   const [allowRnLabResultSubmission, setAllowRnLabResultSubmission] = useState(false);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
+    const meId = typeof d.id === "string" ? d.id : "";
+    setUserId(meId);
     setCanCreateFacilities(d.canCreateFacilities === true);
     const mspp = Array.isArray(d.msppRoles)
       ? d.msppRoles.filter((x): x is string => typeof x === "string")
@@ -164,6 +168,7 @@ export function useFacilityAndRoles() {
 
   return {
     facilityId,
+    userId,
     roles,
     msppRoles,
     facilities,

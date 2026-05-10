@@ -685,6 +685,51 @@ export class EncountersController {
     return this.encountersService.recordProviderHandoff(facilityId, id, parsed.data, req.user?.userId);
   }
 
+  /**
+   * Phase 10A — operational ER ownership.
+   *
+   * Self-assignment endpoints. The caller becomes the encounter's
+   * provider/nurse owner. Pure operational metadata: no clinical authorship,
+   * no signature, no order authority. RBAC unchanged downstream.
+   */
+  @Post("encounters/:id/assign-provider/me")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async selfAssignProvider(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    if (!req.user?.userId) {
+      throw new BadRequestException("Authentication required.");
+    }
+    return this.encountersService.selfAssignProvider(
+      facilityId,
+      id,
+      req.user.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("encounters/:id/assign-nurse/me")
+  @RequireRoles(RoleCode.RN, RoleCode.ADMIN)
+  async selfAssignNurse(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    if (!req.user?.userId) {
+      throw new BadRequestException("Authentication required.");
+    }
+    return this.encountersService.selfAssignNurse(
+      facilityId,
+      id,
+      req.user.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Patch("encounters/:id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
   async update(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {

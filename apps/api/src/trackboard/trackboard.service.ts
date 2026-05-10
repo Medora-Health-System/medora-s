@@ -34,6 +34,10 @@ export class TrackboardService {
         physicianAssigned: {
           select: { id: true, firstName: true, lastName: true },
         },
+        /** Phase 10A — RN currently responsible for the encounter (operational ownership). */
+        nurseAssigned: {
+          select: { id: true, firstName: true, lastName: true },
+        },
         triage: {
           select: {
             esi: true,

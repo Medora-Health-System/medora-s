@@ -1473,10 +1473,17 @@ export class EncountersService {
     if (data.physicianAssignedUserId !== undefined) {
       if (data.physicianAssignedUserId === null) {
         updateData.physicianAssignedUserId = null;
+        /** Phase 10A — stamp `physicianAssignedAt` consistently when ownership changes via this path. */
+        if (encounter.physicianAssignedUserId !== null) {
+          updateData.physicianAssignedAt = null;
+        }
         resolvedPhysicianId = null;
       } else {
         await this.assertProviderAtFacility(facilityId, data.physicianAssignedUserId);
         updateData.physicianAssignedUserId = data.physicianAssignedUserId;
+        if (encounter.physicianAssignedUserId !== data.physicianAssignedUserId) {
+          updateData.physicianAssignedAt = new Date();
+        }
         resolvedPhysicianId = data.physicianAssignedUserId;
       }
     }
@@ -1523,6 +1530,7 @@ export class EncountersService {
         include: {
           patient: { select: encounterDetailPatientSelect },
           physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+          nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
         },
       });
       if (!unchanged) {
@@ -1543,6 +1551,7 @@ export class EncountersService {
       include: {
         patient: { select: encounterDetailPatientSelect },
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
       },
     });
     if (!updated) {
@@ -1691,6 +1700,171 @@ export class EncountersService {
       },
     });
     return { ok: true as const };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Phase 10A — operational ER ownership (provider/nurse self-assign)  */
+  /* ------------------------------------------------------------------ */
+  /**
+   * Self-assignment is purely operational metadata.
+   * Constraints (enforced server-side):
+   *   * encounter must exist in the caller's facility
+   *   * encounter status must be OPEN (closed encounters are immutable for ownership)
+   *   * caller must hold the relevant active role at the facility (PROVIDER/RN)
+   * Audit:
+   *   * dedicated AuditAction (`ENCOUNTER_ASSIGN_PROVIDER` / `ENCOUNTER_ASSIGN_NURSE`),
+   *   * PHI-safe metadata only (ids + source enum), no patient name / MRN / complaint.
+   * RBAC:
+   *   * assignment never grants new permissions; downstream endpoints continue to
+   *     enforce their own RoleCode / ownership rules.
+   */
+  async selfAssignProvider(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    return this.applySelfAssignment("provider", facilityId, encounterId, actorUserId, ip, userAgent);
+  }
+
+  async selfAssignNurse(
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    return this.applySelfAssignment("nurse", facilityId, encounterId, actorUserId, ip, userAgent);
+  }
+
+  private async applySelfAssignment(
+    kind: "provider" | "nurse",
+    facilityId: string,
+    encounterId: string,
+    actorUserId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        id: true,
+        patientId: true,
+        status: true,
+        workflowState: true,
+        version: true,
+        physicianAssignedUserId: true,
+        nurseAssignedUserId: true,
+      },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (encounter.status !== EncounterStatus.OPEN) {
+      throw new BadRequestException(
+        "L'attribution n'est possible que sur une consultation ouverte."
+      );
+    }
+    if (encounter.workflowState === EncounterWorkflowState.CLOSED) {
+      throw new BadRequestException(
+        "L'attribution n'est possible que sur une consultation ouverte."
+      );
+    }
+
+    if (kind === "provider") {
+      await this.assertProviderAtFacility(facilityId, actorUserId);
+    } else {
+      await this.assertRnAtFacility(facilityId, actorUserId);
+    }
+
+    const previousUserId =
+      kind === "provider"
+        ? encounter.physicianAssignedUserId ?? null
+        : encounter.nurseAssignedUserId ?? null;
+
+    if (previousUserId === actorUserId) {
+      const unchanged = await this.prisma.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+        include: {
+          patient: { select: encounterDetailPatientSelect },
+          physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+          nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      if (!unchanged) throw new NotFoundException("Encounter not found");
+      return toEncounterClinicResponse(unchanged);
+    }
+
+    const now = new Date();
+    const updateData: Prisma.EncounterUpdateInput =
+      kind === "provider"
+        ? {
+            physicianAssigned: { connect: { id: actorUserId } },
+            physicianAssignedAt: now,
+            version: { increment: 1 },
+          }
+        : {
+            nurseAssigned: { connect: { id: actorUserId } },
+            nurseAssignedAt: now,
+            version: { increment: 1 },
+          };
+
+    const u = await this.prisma.encounter.updateMany({
+      where: { id: encounterId, facilityId, version: encounter.version },
+      data: updateData as Prisma.EncounterUpdateManyMutationInput,
+    });
+    if (u.count === 0) throwEncounterConcurrentModification();
+
+    const updated = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      include: {
+        patient: { select: encounterDetailPatientSelect },
+        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!updated) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    /**
+     * PHI-safe audit metadata. We only persist:
+     *   - the new and previous owner IDs
+     *   - the source ("SELF_ASSIGN")
+     *   - the assignment kind
+     * No patient name, MRN, complaint, or clinical text.
+     */
+    await this.audit.log(
+      kind === "provider"
+        ? AuditAction.ENCOUNTER_ASSIGN_PROVIDER
+        : AuditAction.ENCOUNTER_ASSIGN_NURSE,
+      "ENCOUNTER",
+      {
+        userId: actorUserId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        metadata: {
+          source: "SELF_ASSIGN" as const,
+          kind,
+          ...(kind === "provider"
+            ? {
+                assignedProviderUserId: actorUserId,
+                previousProviderUserId: previousUserId,
+              }
+            : {
+                assignedNurseUserId: actorUserId,
+                previousNurseUserId: previousUserId,
+              }),
+        },
+      }
+    );
+
+    return toEncounterClinicResponse(updated);
   }
 
   /**
