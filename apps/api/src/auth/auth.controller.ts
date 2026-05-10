@@ -65,6 +65,8 @@ export class AuthController {
         return {
           mfaRequired: true as const,
           mfaChallengeToken: result.mfaChallengeToken,
+          /** Phase 9 patch — surface the user's facility language so the MFA UI uses the correct locale. */
+          preferredLanguage: result.preferredLanguage,
         };
       }
       if (result.kind === "mfa_enrollment_required") {
@@ -75,6 +77,7 @@ export class AuthController {
         return {
           mfaEnrollmentRequired: true as const,
           mfaEnrollmentToken: result.mfaEnrollmentToken,
+          preferredLanguage: result.preferredLanguage,
         };
       }
       res.cookie(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken, refreshTokenCookieOptions());

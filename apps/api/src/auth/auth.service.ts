@@ -13,7 +13,46 @@ import { isMfaRequiredForRoles } from "./mfa/mfa-required-roles.util";
 
 const authLog = createStructuredLogger("AuthService");
 
-/** Phase 9 — discriminated login result. */
+/** Phase 9 patch — supported i18n locales mirrored from `apps/web/src/i18n/config.ts`. */
+const SUPPORTED_PREFERRED_LANGUAGES = new Set(["fr", "en"]);
+const DEFAULT_PREFERRED_LANGUAGE = "fr";
+
+/**
+ * Phase 9 patch — pick a sensible UI language for the MFA login screens.
+ *
+ * Ordering rule mirrors the BFF default-facility selection (sorted by
+ * `facilityId` ascending; first row wins) so the language matches the cookie
+ * the login route also sets. Falls back to the app default when no facility
+ * row carries a supported `defaultLanguage` value (or the user has no facility
+ * roles — e.g. MSPP-only). PHI-safe: this only reads `defaultLanguage` /
+ * `facilityId`, never patient or audit data.
+ */
+function preferredLanguageFromUserRoles(
+  userRoles: ReadonlyArray<{
+    facilityId: string;
+    facility: { defaultLanguage?: string | null } | null;
+  }>
+): string {
+  const sorted = [...userRoles].sort((a, b) => a.facilityId.localeCompare(b.facilityId, "en"));
+  for (const ur of sorted) {
+    const lang = ur.facility?.defaultLanguage?.toString().trim().toLowerCase();
+    if (lang && SUPPORTED_PREFERRED_LANGUAGES.has(lang)) {
+      return lang;
+    }
+  }
+  return DEFAULT_PREFERRED_LANGUAGE;
+}
+
+/**
+ * Phase 9 — discriminated login result.
+ *
+ * `preferredLanguage` (Phase 9 patch — language correctness) is derived from the
+ * user's primary facility (`Facility.defaultLanguage`, sorted by `facilityId`,
+ * matching the BFF default-facility selection). The MFA branches expose it so
+ * the login page can switch the i18n locale before showing
+ * MfaChallengePanel / MfaEnrollmentPanel — those screens render *before*
+ * `/auth/me` is ever called and would otherwise fall back to the app default.
+ */
 export type LoginResult =
   | {
       kind: "session";
@@ -25,11 +64,13 @@ export type LoginResult =
       kind: "mfa_challenge";
       mfaChallengeToken: string;
       userId: string;
+      preferredLanguage: string;
     }
   | {
       kind: "mfa_enrollment_required";
       mfaEnrollmentToken: string;
       userId: string;
+      preferredLanguage: string;
     };
 
 @Injectable()
@@ -262,16 +303,34 @@ export class AuthService {
      *   * MFA required by role   → issue an `mfa_enrollment` JWT.
      *   * Otherwise              → continue with normal session issuance.
      */
+    /**
+     * Phase 9 patch — language correctness.
+     * The MFA panels run before any session is issued and have no access to
+     * `/auth/me`. Surface the user's primary facility's `defaultLanguage` so
+     * the login page can switch the i18n locale for MFA screens.
+     */
+    const preferredLanguage = preferredLanguageFromUserRoles(user.userRoles);
+
     if (user.mfaEnabled) {
       const mfaChallengeToken = this.signMfaGrant(user.id, user.email, "mfa_challenge", "5m");
-      return { kind: "mfa_challenge", mfaChallengeToken, userId: user.id };
+      return {
+        kind: "mfa_challenge",
+        mfaChallengeToken,
+        userId: user.id,
+        preferredLanguage,
+      };
     }
     const requiresMfa = isMfaRequiredForRoles(
       user.userRoles.map((ur) => ({ role: ur.role.code }))
     );
     if (requiresMfa) {
       const mfaEnrollmentToken = this.signMfaGrant(user.id, user.email, "mfa_enrollment", "15m");
-      return { kind: "mfa_enrollment_required", mfaEnrollmentToken, userId: user.id };
+      return {
+        kind: "mfa_enrollment_required",
+        mfaEnrollmentToken,
+        userId: user.id,
+        preferredLanguage,
+      };
     }
 
     const sessionId = randomUUID();

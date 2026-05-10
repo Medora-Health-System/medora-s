@@ -332,10 +332,30 @@ describe("MfaService", () => {
         RoleCode.ADMIN,
       ]).next
     ).toBe("mfa_enrollment");
+    /**
+     * Phase 9 patch — universal MFA: every interactive role (including RN)
+     * now requires enrollment by default. The "full session immediately"
+     * branch only applies when the active policy excludes the user's roles
+     * (e.g. via a deliberate `MFA_REQUIRED_ROLES` override).
+     */
     expect(
       svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [
         RoleCode.RN,
       ]).next
-    ).toBe("full");
+    ).toBe("mfa_enrollment");
+
+    // With a narrow override, RN-only users skip MFA — verifies the escape hatch is still wired.
+    const previous = process.env.MFA_REQUIRED_ROLES;
+    process.env.MFA_REQUIRED_ROLES = "ADMIN";
+    try {
+      expect(
+        svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [
+          RoleCode.RN,
+        ]).next
+      ).toBe("full");
+    } finally {
+      if (previous === undefined) delete process.env.MFA_REQUIRED_ROLES;
+      else process.env.MFA_REQUIRED_ROLES = previous;
+    }
   });
 });

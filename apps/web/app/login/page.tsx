@@ -42,12 +42,27 @@ type Stage =
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { language } = useI18n();
+  const { language, setLanguage } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: "credentials" });
+
+  /**
+   * Phase 9 patch — language correctness. The MFA panels render *before* a
+   * session is issued, so they have no access to `/auth/me` or facility data.
+   * The API returns `preferredLanguage` (derived from the user's primary
+   * facility) on the MFA branches; switch the i18n locale here so the panels
+   * render in the correct language. We only switch to a supported value.
+   */
+  const applyPreferredLanguage = (lang?: string) => {
+    if (!lang) return;
+    const norm = lang.trim().toLowerCase();
+    if (norm === "fr" || norm === "en") {
+      if (norm !== language) setLanguage(norm);
+    }
+  };
 
   const navigateAfterAuth = (user?: AuthUserShape) => {
     const facilityRoles = (user?.facilityRoles ?? []) as { facilityId: string; role?: string }[];
@@ -84,6 +99,7 @@ function LoginForm() {
         mfaChallengeToken?: string;
         mfaEnrollmentRequired?: boolean;
         mfaEnrollmentToken?: string;
+        preferredLanguage?: string;
       } | null;
 
       if (!response.ok) {
@@ -101,6 +117,7 @@ function LoginForm() {
       }
 
       if (data?.mfaRequired && data.mfaChallengeToken) {
+        applyPreferredLanguage(data.preferredLanguage);
         setStage({ kind: "mfa_challenge", challengeToken: data.mfaChallengeToken });
         setLoading(false);
         setPassword("");
@@ -108,6 +125,7 @@ function LoginForm() {
       }
 
       if (data?.mfaEnrollmentRequired && data.mfaEnrollmentToken) {
+        applyPreferredLanguage(data.preferredLanguage);
         setStage({ kind: "mfa_enrollment", enrollmentToken: data.mfaEnrollmentToken });
         setLoading(false);
         setPassword("");

@@ -64,7 +64,16 @@ describe("MFA login flow (e2e)", () => {
     process.env.JWT_REFRESH_TTL = "14d";
     process.env.TOKEN_ISSUER = "medora-s";
     process.env.MFA_SECRET_ENCRYPTION_KEY = randomBytes(32).toString("base64");
-    delete process.env.MFA_REQUIRED_ROLES;
+    /**
+     * Phase 9 patch — universal MFA default. The login-flow scenarios below
+     * intentionally exercise the "non-required role" branch (RN seeded with
+     * MFA disabled gets a session and then enrolls via Bearer access token).
+     * To preserve those flows exactly, narrow the policy at the test level
+     * to ADMIN-only here. The default ("all roles") is exercised in a
+     * dedicated test ("Default policy requires MFA enrollment for every role")
+     * further down by clearing the env for that single case.
+     */
+    process.env.MFA_REQUIRED_ROLES = "ADMIN";
 
     passwordHash = await argon2.hash("MedoraAdmin123!");
 
@@ -397,7 +406,7 @@ describe("MFA login flow (e2e)", () => {
       .expect(401);
   });
 
-  it("Non-required role (RN) without MFA logs in normally", async () => {
+  it("Non-required role (RN) without MFA logs in normally (with narrow override)", async () => {
     // Reset RN's MFA fields to simulate a fresh non-MFA user
     users[rnId].mfaEnabled = false;
     users[rnId].mfaSecretEncrypted = null;
@@ -410,5 +419,86 @@ describe("MFA login flow (e2e)", () => {
     expect(res.body.accessToken).toBeTruthy();
     expect(res.body.mfaRequired).toBeUndefined();
     expect(res.body.mfaEnrollmentRequired).toBeUndefined();
+  });
+
+  /**
+   * Phase 9 patch — universal MFA default. With `MFA_REQUIRED_ROLES` unset,
+   * every interactive role (RN, LAB, RADIOLOGY, FRONT_DESK, etc.) is forced
+   * into enrollment on first login. We restore the test-suite override at the
+   * end so the remaining scenarios keep their narrow gate.
+   */
+  it("Default policy requires MFA enrollment for every role (RN, LAB, RADIOLOGY, FRONT_DESK)", async () => {
+    const previousOverride = process.env.MFA_REQUIRED_ROLES;
+    delete process.env.MFA_REQUIRED_ROLES;
+    try {
+      // Reset RN to a fresh MFA-disabled user so we exercise the enrollment branch.
+      users[rnId].mfaEnabled = false;
+      users[rnId].mfaSecretEncrypted = null;
+      users[rnId].mfaRecoveryCodesHash = null;
+      users[rnId].mfaLastUsedStep = null;
+
+      // Cycle RN through each role we care about. Same user record, so we just swap the role code.
+      const rolesToCheck = ["RN", "LAB", "RADIOLOGY", "FRONT_DESK"] as const;
+      for (const code of rolesToCheck) {
+        users[rnId].userRoles[0]!.role = { code };
+        users[rnId].mfaEnabled = false;
+        users[rnId].mfaSecretEncrypted = null;
+        users[rnId].mfaRecoveryCodesHash = null;
+        users[rnId].mfaLastUsedStep = null;
+
+        const res = await request(app.getHttpServer())
+          .post("/auth/login")
+          .send({ username: rnEmail, password: "MedoraAdmin123!" })
+          .expect(201);
+        expect(res.body.mfaEnrollmentRequired).toBe(true);
+        expect(typeof res.body.mfaEnrollmentToken).toBe("string");
+        expect(res.body.accessToken).toBeUndefined();
+        expect(res.headers["set-cookie"]).toBeUndefined();
+      }
+    } finally {
+      // Restore the suite-wide override so the rest of the test file remains valid.
+      if (previousOverride === undefined) {
+        delete process.env.MFA_REQUIRED_ROLES;
+      } else {
+        process.env.MFA_REQUIRED_ROLES = previousOverride;
+      }
+      // Restore the original role on the RN row to avoid leaking state.
+      users[rnId].userRoles[0]!.role = { code: "RN" };
+    }
+  });
+
+  /**
+   * Phase 9 patch — language correctness. The login response surfaces
+   * `preferredLanguage` from the user's primary facility's `defaultLanguage`
+   * so the MFA panels can switch the i18n locale before any session exists.
+   */
+  it("Login MFA branches expose preferredLanguage derived from the user's facility", async () => {
+    // English-language facility → MFA enrollment branch returns preferredLanguage = "en"
+    const previousLang = users[adminId].userRoles[0]!.facility.defaultLanguage;
+    users[adminId].userRoles[0]!.facility.defaultLanguage = "en";
+    // Force the enrollment branch (mfa not enabled yet for a fresh principal).
+    users[adminId].mfaEnabled = false;
+    users[adminId].mfaSecretEncrypted = null;
+    users[adminId].mfaRecoveryCodesHash = null;
+    users[adminId].mfaLastUsedStep = null;
+    try {
+      const enRes = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send({ username: adminEmail, password: "MedoraAdmin123!" })
+        .expect(201);
+      expect(enRes.body.mfaEnrollmentRequired).toBe(true);
+      expect(enRes.body.preferredLanguage).toBe("en");
+
+      // Switch the facility back to French → preferredLanguage = "fr"
+      users[adminId].userRoles[0]!.facility.defaultLanguage = "fr";
+      const frRes = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send({ username: adminEmail, password: "MedoraAdmin123!" })
+        .expect(201);
+      expect(frRes.body.mfaEnrollmentRequired).toBe(true);
+      expect(frRes.body.preferredLanguage).toBe("fr");
+    } finally {
+      users[adminId].userRoles[0]!.facility.defaultLanguage = previousLang;
+    }
   });
 });

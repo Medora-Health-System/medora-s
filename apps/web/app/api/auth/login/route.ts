@@ -77,6 +77,8 @@ export async function POST(request: NextRequest) {
       mfaChallengeToken?: string;
       mfaEnrollmentRequired?: boolean;
       mfaEnrollmentToken?: string;
+      /** Phase 9 patch — facility-derived UI language, used by MFA panels before any session is issued. */
+      preferredLanguage?: string;
     };
     try {
       json = await r.json();
@@ -93,6 +95,7 @@ export async function POST(request: NextRequest) {
         NextResponse.json({
           mfaRequired: true,
           mfaChallengeToken: json.mfaChallengeToken,
+          preferredLanguage: json.preferredLanguage,
         })
       );
     }
@@ -101,6 +104,7 @@ export async function POST(request: NextRequest) {
         NextResponse.json({
           mfaEnrollmentRequired: true,
           mfaEnrollmentToken: json.mfaEnrollmentToken,
+          preferredLanguage: json.preferredLanguage,
         })
       );
     }
