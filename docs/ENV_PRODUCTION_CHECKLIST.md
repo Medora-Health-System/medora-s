@@ -2,7 +2,7 @@
 
 Single reference for **Railway** (API + Postgres) and **Vercel** (Next.js BFF + UI) before go-live or after an incident. Values are **never** logged or returned by health endpoints; only presence/configuration flags are surfaced in `admin/system-health`.
 
-Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DRILL_CHECKLIST.md`, `docs/ER_PILOT_MONITORING_AND_INCIDENTS.md`, `docs/INTEROPERABILITY_FOUNDATION.md`.
+Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DRILL_CHECKLIST.md`, `docs/ER_PILOT_MONITORING_AND_INCIDENTS.md`, `docs/INTEROPERABILITY_FOUNDATION.md`, `docs/DEVICE_MONITOR_INTEGRATION_ARCHITECTURE.md` (device vitals — design only until adapters ship).
 
 ---
 

@@ -61,6 +61,8 @@ Mappings are **directional hints** for future adapters — not active transforms
 - **Provenance:** `sourceKind: "DEVICE"`, vendor id, device id (non-PHI where possible), effective time, correlation id.
 - **Never** auto-overwrite `Patient.latestVitalsJson` from device alone without validation policy.
 
+**Phase 11C expansion:** detailed monitor/gateway architecture, nurse validation lifecycle, and **`DeviceObservationDraft`** contracts — see **`docs/DEVICE_MONITOR_INTEGRATION_ARCHITECTURE.md`** and `apps/api/src/interop/device-monitor*.ts`.
+
 ---
 
 ## 4. Lab / radiology result feeds (future design)
