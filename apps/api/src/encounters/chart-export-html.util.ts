@@ -97,6 +97,31 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
   const phys = enc.physicianAssigned
     ? `${enc.physicianAssigned.firstName} ${enc.physicianAssigned.lastName}`.trim()
     : null;
+  const obsStay = enc.observationStay;
+  const observationStayHtml =
+    obsStay?.applicable === true
+      ? `
+    <h3>Observation stay (operational)</h3>
+    ${pAlways("Schema version", obsStay.schemaVersion)}
+    ${pAlways("Care path label", obsStay.carePathLabel ?? "—")}
+    ${pLine("LOS anchor kind", obsStay.anchorKind)}
+    ${pLine("LOS anchor time (ISO)", obsStay.anchorIso)}
+    ${pLine("Stay end time (ISO)", obsStay.stayEndIso)}
+    ${
+      obsStay.observationLosHours != null
+        ? pAlways("Duration (hours, rounded)", String(obsStay.observationLosHours))
+        : ""
+    }
+    ${
+      obsStay.observationLosMinutes != null
+        ? pAlways("Duration (whole minutes)", String(obsStay.observationLosMinutes))
+        : ""
+    }
+    ${pAlways("Overnight UTC calendar span", obsStay.overnightObservationUtcSpan ? "Yes" : "No")}
+    ${pAlways("Extended stay ≥ 24h (operational)", obsStay.extendedObservation24hPlus ? "Yes" : "No")}
+    ${pAlways("Preview clock (open encounter)", obsStay.preview ? "Yes" : "No")}
+    `
+      : "";
   const encounterBlock = `
     ${pAlways("Encounter ID", enc.id)}
     ${pAlways("Type", enc.type)}
@@ -118,6 +143,7 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
     ${pLine("Treatment plan", enc.treatmentPlan)}
     ${pLine("Clinician impression", enc.clinicianImpression)}
     ${pLine("Provider note", enc.providerNote)}
+    ${observationStayHtml}
     <h3>Nursing assessment / structured JSON</h3>
     ${enc.nursingAssessment != null ? jsonPreBlock(enc.nursingAssessment) : `<p class="muted">${esc(NO_DATA)}</p>`}
     <h3>Discharge summary JSON</h3>

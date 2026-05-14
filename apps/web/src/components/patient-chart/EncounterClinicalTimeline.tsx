@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import type { ChartSummaryEncounter, ChartSummaryOrderItem } from "@/lib/chartApi";
+import type { ObservationOperationalSnapshot } from "@medora/shared";
 import type { FollowUpRow } from "@/lib/followUpsApi";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import { useI18n } from "@/lib/i18n";
@@ -229,6 +230,35 @@ function followUpStatusLabel(status: string, t: (k: string) => string): string {
   return r !== k ? r : status;
 }
 
+function ObservationOperationalFlagList({
+  op,
+  t,
+}: {
+  op: ObservationOperationalSnapshot;
+  t: (k: string) => string;
+}) {
+  const f = op.flags;
+  const lines: string[] = [];
+  if (f.boardingOperational) lines.push(t("encounterClinicalTimeline.observationOpFlagBoarding"));
+  if (f.reassessmentOverdue) lines.push(t("encounterClinicalTimeline.observationOpFlagReassessmentOverdue"));
+  else if (f.reassessmentDue) lines.push(t("encounterClinicalTimeline.observationOpFlagReassessmentDue"));
+  if (f.readyForDischarge) lines.push(t("encounterClinicalTimeline.observationOpFlagDischargeReady"));
+  if (f.dispositionPhase) lines.push(t("encounterClinicalTimeline.observationOpFlagDisposition"));
+  if (f.resultsPending) lines.push(t("encounterClinicalTimeline.observationOpFlagResultsPending"));
+  if (f.criticalLabsUnacked) lines.push(t("encounterClinicalTimeline.observationOpFlagCriticalUnacked"));
+  if (f.assignPhysicianGap) lines.push(t("encounterClinicalTimeline.observationOpFlagAssignMd"));
+  if (f.assignRnGap) lines.push(t("encounterClinicalTimeline.observationOpFlagAssignRn"));
+  if (op.vitalsStale) lines.push(t("encounterClinicalTimeline.observationOpFlagVitalsStale"));
+  if (lines.length === 0) return null;
+  return (
+    <ul style={{ ...listStyle, marginTop: 8 }}>
+      {lines.map((line, i) => (
+        <li key={`obs-op-${i}`}>{line}</li>
+      ))}
+    </ul>
+  );
+}
+
 export function EncounterClinicalTimeline({
   encounters,
   followUps,
@@ -320,6 +350,63 @@ export function EncounterClinicalTimeline({
                       typeof enc.admittedAt === "string" ? enc.admittedAt : String(enc.admittedAt ?? "")
                     ),
                   })}
+                </div>
+              ) : null}
+              {enc.type === "INPATIENT" &&
+              (enc.observationStaySummary?.applicable || enc.observationOperational) ? (
+                <div
+                  style={{
+                    fontSize: 12,
+                    marginTop: 10,
+                    paddingTop: 8,
+                    borderTop: "1px solid #eceff1",
+                    color: "#37474f",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 6, color: "#455a64" }}>
+                    {t("encounterClinicalTimeline.sectionObservationOps")}
+                  </div>
+                  {enc.observationStaySummary?.applicable ? (
+                    <>
+                      {enc.observationStaySummary.observationLosHours != null ||
+                      enc.observationStaySummary.observationLosMinutes != null ? (
+                        <div>
+                          {fillTemplate(t("encounterClinicalTimeline.observationLosLine"), {
+                            hours:
+                              enc.observationStaySummary.observationLosHours != null
+                                ? String(enc.observationStaySummary.observationLosHours)
+                                : "—",
+                            minutes:
+                              enc.observationStaySummary.observationLosMinutes != null
+                                ? String(enc.observationStaySummary.observationLosMinutes)
+                                : "—",
+                          })}
+                        </div>
+                      ) : null}
+                      {enc.observationStaySummary.preview ? (
+                        <div style={{ fontSize: 11, color: "#795548", marginTop: 4 }}>
+                          {t("encounterClinicalTimeline.observationLosPreview")}
+                        </div>
+                      ) : null}
+                      <div style={{ fontSize: 11, color: "#546e7a", marginTop: 4 }}>
+                        {fillTemplate(t("encounterClinicalTimeline.observationOvernightUtc"), {
+                          value: enc.observationStaySummary.overnightObservationUtcSpan
+                            ? t("common.yes")
+                            : t("common.no"),
+                        })}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#546e7a", marginTop: 2 }}>
+                        {fillTemplate(t("encounterClinicalTimeline.observationExtended24h"), {
+                          value: enc.observationStaySummary.extendedObservation24hPlus
+                            ? t("common.yes")
+                            : t("common.no"),
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+                  {enc.observationOperational ? (
+                    <ObservationOperationalFlagList op={enc.observationOperational} t={t} />
+                  ) : null}
                 </div>
               ) : null}
             </div>

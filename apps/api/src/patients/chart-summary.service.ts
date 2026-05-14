@@ -4,6 +4,9 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
 import { OrdersService } from "../orders/orders.service";
+import { TrackboardService } from "../trackboard/trackboard.service";
+import { computeObservationOperationalSnapshot, computeObservationStaySummaryForExport } from "@medora/shared";
+import { emptyTrackboardOperationalAggregate } from "../trackboard/trackboard-operational.util";
 import type {
   OrderItemWithCatalogMedication,
   OrderWithEnrichedItems,
@@ -47,6 +50,8 @@ const encounterChartSelect = {
   dischargeSummaryJson: true,
   admissionSummaryJson: true,
   admittedAt: true,
+  workflowState: true,
+  nurseAssignedUserId: true,
   physicianAssigned: {
     select: { id: true, firstName: true, lastName: true },
   },
@@ -244,7 +249,8 @@ export class ChartSummaryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly ordersService: OrdersService
+    private readonly ordersService: OrdersService,
+    private readonly trackboardService: TrackboardService
   ) {}
 
   async getChartSummary(
@@ -530,6 +536,14 @@ export class ChartSummaryService {
       dispensesByEncounter.set(d.encounterId, list);
     }
 
+    const inpatientIdsForOps = encountersForChart
+      .filter((e) => e.type === "INPATIENT")
+      .map((e) => e.id);
+    const trackboardOpMap =
+      inpatientIdsForOps.length > 0
+        ? await this.trackboardService.getOperationalAggregatesForEncounterIds(facilityId, inpatientIdsForOps)
+        : new Map();
+
     const recentEncounters = encountersForChart.map((e) => {
       const tp = e.treatmentPlan?.trim();
       const treatmentPlanPreview =
@@ -577,6 +591,35 @@ export class ChartSummaryService {
           : null,
       }));
 
+      const observationStaySummary = computeObservationStaySummaryForExport({
+        encounterType: e.type,
+        admittedAt: e.admittedAt,
+        createdAt: e.createdAt,
+        dischargedAt: e.dischargedAt,
+        previewNowMs: e.type === "INPATIENT" && e.status === "OPEN" ? Date.now() : null,
+      });
+
+      const opsAgg =
+        e.type === "INPATIENT"
+          ? (trackboardOpMap.get(e.id) ?? emptyTrackboardOperationalAggregate())
+          : emptyTrackboardOperationalAggregate();
+
+      const observationOperational =
+        e.type === "INPATIENT" && e.status === "OPEN"
+          ? computeObservationOperationalSnapshot({
+              encounterType: e.type,
+              status: e.status,
+              workflowState: e.workflowState,
+              admittedAt: e.admittedAt,
+              createdAt: e.createdAt,
+              physicianAssignedUserId: e.physicianAssignedUserId,
+              nurseAssignedUserId: e.nurseAssignedUserId,
+              providerDocumentationStatus: e.providerDocumentationStatus,
+              providerDocumentationSignedAt: e.providerDocumentationSignedAt,
+              trackboardOps: opsAgg,
+            })
+          : null;
+
       return {
         id: e.id,
         type: e.type,
@@ -611,6 +654,8 @@ export class ChartSummaryService {
               esi: e.triage.esi,
             }
           : null,
+        observationStaySummary,
+        observationOperational,
       };
     });
 

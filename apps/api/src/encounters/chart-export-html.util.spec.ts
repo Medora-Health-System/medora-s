@@ -1,6 +1,7 @@
 import type { ChartExportManifest } from "./chart-export.service";
 import { ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION } from "./chart-export.service";
 import { escapeHtml, renderEncounterChartExportHtml } from "./chart-export-html.util";
+import { computeObservationStaySummaryForExport } from "@medora/shared";
 
 function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExportManifest {
   const defaults: ChartExportManifest = {
@@ -38,6 +39,12 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
       providerNote: null,
       providerDocumentation: { status: "SIGNED", signedAt: null, signedByDisplayFr: null },
       providerAddenda: [],
+      observationStay: computeObservationStaySummaryForExport({
+        encounterType: "EMERGENCY",
+        admittedAt: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        dischargedAt: "2026-01-01T02:00:00.000Z",
+      }),
     },
     patient: {
       id: "pat-1",
@@ -68,6 +75,42 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
 }
 
 describe("chart-export-html.util", () => {
+  it("includes observation stay operational block for applicable INPATIENT manifest", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          type: "INPATIENT",
+          admittedAt: "2026-01-01T08:00:00.000Z",
+          dischargedAt: "2026-01-01T20:00:00.000Z",
+          observationStay: computeObservationStaySummaryForExport({
+            encounterType: "INPATIENT",
+            admittedAt: "2026-01-01T08:00:00.000Z",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            dischargedAt: "2026-01-01T20:00:00.000Z",
+          }),
+        },
+      })
+    );
+    expect(html).toContain("Observation stay (operational)");
+    expect(html).toContain("observation_short_stay");
+    expect(html).toContain("Duration (hours, rounded)");
+    expect(html).toContain("12");
+  });
+
+  it("renders legacy manifests that omit observationStay without throwing", () => {
+    const m = baseManifest();
+    const { observationStay: _drop, ...encWithoutObs } = m.encounter;
+    expect(() =>
+      renderEncounterChartExportHtml({ ...m, encounter: encWithoutObs as ChartExportManifest["encounter"] })
+    ).not.toThrow();
+    const html = renderEncounterChartExportHtml({
+      ...m,
+      encounter: encWithoutObs as ChartExportManifest["encounter"],
+    });
+    expect(html).not.toContain("Observation stay (operational)");
+  });
+
   it("escapeHtml neutralizes angle brackets and quotes", () => {
     expect(escapeHtml(`<script>alert("x")</script>`)).toBe(
       "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;"

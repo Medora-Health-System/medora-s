@@ -59,7 +59,7 @@ export class TrackboardService {
     });
 
     const encounterIds = encounters.map((e) => e.id);
-    const opMap = await this.loadTrackboardOperationalAggregates(facilityId, encounterIds);
+    const opMap = await this.getOperationalAggregatesForEncounterIds(facilityId, encounterIds);
     const merged = mergeOperationalIntoEncounters(encounters, opMap);
     return merged.map((e) => {
       if (e.type !== EncounterType.INPATIENT) {
@@ -89,10 +89,10 @@ export class TrackboardService {
   }
 
   /**
-   * Phase 10B — facility-scoped aggregates only (counts / timestamps / booleans).
-   * Bounded to the same encounter id set returned by the list query (max 100).
+   * Phase 10B / 13C — facility-scoped aggregates (counts / timestamps / booleans).
+   * Reusable for chart summary and trackboard; bounded to the supplied id set.
    */
-  private async loadTrackboardOperationalAggregates(
+  async getOperationalAggregatesForEncounterIds(
     facilityId: string,
     encounterIds: string[]
   ): Promise<Map<string, TrackboardOperationalAggregate>> {

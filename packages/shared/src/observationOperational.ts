@@ -1,7 +1,7 @@
 /**
- * Phase 13B — Observation / short-stay operational snapshot (computed only).
- * No persistence, no billing, no disposition string changes.
- * Safe for INPATIENT (observation board) rows; returns null for other types.
+ * Phase 13B / 13C — Observation / short-stay operational snapshot and stay summaries (computed only).
+ * No persistence, no billing codes, no disposition string changes.
+ * Safe for INPATIENT (observation board) rows; returns null for other types where noted.
  */
 
 export const OBSERVATION_REASSESSMENT_DUE_MS = 2 * 60 * 60 * 1000;
@@ -189,5 +189,119 @@ export function computeObservationOperationalSnapshot(input: {
     vitalsAgeMs,
     vitalsStale,
     providerSignedAgeMs,
+  };
+}
+
+/** Schema tag for billing / export payloads (additive metadata only). */
+export const OBSERVATION_STAY_EXPORT_SCHEMA_VERSION = "medora_observation_stay_summary_v1" as const;
+
+/**
+ * Closed-stay or preview LOS for observation / short stay (`INPATIENT` only).
+ * No billing codes, no DRG, no clinical narrative — operational duration only.
+ */
+export type ObservationStaySummaryForExport = {
+  schemaVersion: typeof OBSERVATION_STAY_EXPORT_SCHEMA_VERSION;
+  applicable: boolean;
+  carePathLabel: "observation_short_stay" | null;
+  anchorKind: "admittedAt" | "createdAt" | null;
+  anchorIso: string | null;
+  stayEndIso: string | null;
+  observationLosHours: number | null;
+  observationLosMinutes: number | null;
+  overnightObservationUtcSpan: boolean;
+  extendedObservation24hPlus: boolean;
+  /** True when `stayEndIso` comes from `previewNowMs` (open encounter), not `dischargedAt`. */
+  preview: boolean;
+};
+
+/**
+ * LOS end = `dischargedAt` when set; otherwise optional `previewNowMs` (e.g. `Date.now()` for open charts).
+ */
+export function computeObservationStaySummaryForExport(input: {
+  encounterType: string;
+  admittedAt: unknown;
+  createdAt: unknown;
+  dischargedAt: unknown | null | undefined;
+  previewNowMs?: number | null;
+}): ObservationStaySummaryForExport {
+  const empty: ObservationStaySummaryForExport = {
+    schemaVersion: OBSERVATION_STAY_EXPORT_SCHEMA_VERSION,
+    applicable: false,
+    carePathLabel: null,
+    anchorKind: null,
+    anchorIso: null,
+    stayEndIso: null,
+    observationLosHours: null,
+    observationLosMinutes: null,
+    overnightObservationUtcSpan: false,
+    extendedObservation24hPlus: false,
+    preview: false,
+  };
+
+  if (input.encounterType !== "INPATIENT") {
+    return empty;
+  }
+
+  const anchor = resolveObservationLosAnchorMs({
+    admittedAt: input.admittedAt,
+    createdAt: input.createdAt,
+  });
+
+  const dischargedMs = parseIsoMs(input.dischargedAt);
+  const previewMs =
+    typeof input.previewNowMs === "number" && Number.isFinite(input.previewNowMs) ? input.previewNowMs : null;
+  const endMs = dischargedMs ?? previewMs;
+  const preview = dischargedMs == null && previewMs != null;
+
+  if (!anchor) {
+    return {
+      schemaVersion: OBSERVATION_STAY_EXPORT_SCHEMA_VERSION,
+      applicable: true,
+      carePathLabel: "observation_short_stay",
+      anchorKind: null,
+      anchorIso: null,
+      stayEndIso: endMs != null ? new Date(endMs).toISOString() : null,
+      observationLosHours: null,
+      observationLosMinutes: null,
+      overnightObservationUtcSpan: false,
+      extendedObservation24hPlus: false,
+      preview,
+    };
+  }
+
+  if (endMs == null) {
+    return {
+      schemaVersion: OBSERVATION_STAY_EXPORT_SCHEMA_VERSION,
+      applicable: true,
+      carePathLabel: "observation_short_stay",
+      anchorKind: anchor.anchorKind,
+      anchorIso: new Date(anchor.anchorMs).toISOString(),
+      stayEndIso: null,
+      observationLosHours: null,
+      observationLosMinutes: null,
+      overnightObservationUtcSpan: false,
+      extendedObservation24hPlus: false,
+      preview: false,
+    };
+  }
+
+  const losMs = Math.max(0, endMs - anchor.anchorMs);
+  const observationLosHours = Math.round((losMs / 3600000) * 100) / 100;
+  const observationLosMinutes = Math.floor(losMs / 60000);
+  const overnightObservationUtcSpan = utcYmd(anchor.anchorMs) !== utcYmd(endMs);
+  const extendedObservation24hPlus = losMs >= MS_PER_DAY;
+
+  return {
+    schemaVersion: OBSERVATION_STAY_EXPORT_SCHEMA_VERSION,
+    applicable: true,
+    carePathLabel: "observation_short_stay",
+    anchorKind: anchor.anchorKind,
+    anchorIso: new Date(anchor.anchorMs).toISOString(),
+    stayEndIso: new Date(endMs).toISOString(),
+    observationLosHours,
+    observationLosMinutes,
+    overnightObservationUtcSpan,
+    extendedObservation24hPlus,
+    preview,
   };
 }

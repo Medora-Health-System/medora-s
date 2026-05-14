@@ -1,4 +1,5 @@
 import { apiFetch } from "./apiClient";
+import type { ObservationOperationalSnapshot, ObservationStaySummaryForExport } from "@medora/shared";
 
 /** Compact order line for patient chart timeline (catalog labels embedded). */
 export type ChartSummaryOrderItem = {
@@ -124,6 +125,10 @@ export type ChartSummaryEncounter = {
     chiefComplaint: string | null;
     esi: number | null;
   } | null;
+  /** Phase 13C — additive observation stay / LOS (INPATIENT observation path). */
+  observationStaySummary?: ObservationStaySummaryForExport;
+  /** Open INPATIENT only — operational flags from shared snapshot. */
+  observationOperational?: ObservationOperationalSnapshot | null;
 };
 
 /** Ligne d’historique d’audit (dossier patient — lecture seule, V1). */

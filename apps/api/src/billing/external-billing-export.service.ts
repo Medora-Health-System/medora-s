@@ -14,6 +14,7 @@ import { BillingService, getAutoBillDecision } from "./billing.service";
 import {
   type InfusionBillingReviewDecision,
   type InfusionBillingSuggestion,
+  computeObservationStaySummaryForExport,
   displayNameFrForDocumentedProcedureType,
   medoraCodeForDocumentedProcedureType,
   readBillingCaptureV1,
@@ -922,6 +923,13 @@ export class ExternalBillingExportService {
       });
     }
 
+    const observationStay = computeObservationStaySummaryForExport({
+      encounterType: enc.type,
+      admittedAt: enc.admittedAt,
+      createdAt: enc.createdAt,
+      dischargedAt: enc.dischargedAt,
+    });
+
     const billingReadinessJson = {
       readyForExternalBilling: readiness.isReady,
       blockers: readiness.blockers.map((b) => ({
@@ -929,6 +937,7 @@ export class ExternalBillingExportService {
         message: b.detail ? `${b.code}: ${b.detail}` : b.code,
       })),
       warnings: exportWarnings,
+      observationStay,
     };
 
     const diagnosesJson = diagnoses.map((dx) => ({
@@ -980,6 +989,7 @@ export class ExternalBillingExportService {
           displayName: primaryProviderName || null,
           title: primaryProviderTitle || null,
         },
+        observationStay,
       },
       billingReadiness: billingReadinessJson,
       diagnoses: diagnosesJson,

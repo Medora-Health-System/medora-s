@@ -10,6 +10,7 @@ import {
   EncounterStatus,
   Prisma,
 } from "@prisma/client";
+import { computeObservationStaySummaryForExport, type ObservationStaySummaryForExport } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import {
@@ -207,6 +208,8 @@ export type ChartExportManifest = {
       createdAt: string;
       createdByDisplayFr: string | null;
     }>;
+    /** Phase 13C — additive operational LOS metadata for observation / short stay (INPATIENT only). Omitted on legacy stored snapshots. */
+    observationStay?: ObservationStaySummaryForExport;
   };
   patient: {
     id: string;
@@ -780,6 +783,14 @@ export class EncounterChartExportService {
       { domain: "billing", reason: "out_of_scope_for_clinical_export" },
     ];
 
+    const observationStay = computeObservationStaySummaryForExport({
+      encounterType: encounter.type as string,
+      admittedAt: encounter.admittedAt,
+      createdAt: encounter.createdAt,
+      dischargedAt: encounter.dischargedAt,
+      previewNowMs: encounter.status === EncounterStatus.OPEN ? Date.now() : null,
+    });
+
     const manifest: ChartExportManifest = {
       manifestVersion: ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
       generatedAt: new Date().toISOString(),
@@ -827,6 +838,7 @@ export class EncounterChartExportService {
           signedByDisplayFr: userDisplayFr(encounter.providerDocumentationSignedBy),
         },
         providerAddenda,
+        observationStay,
       },
       patient: {
         id: encounter.patient.id,

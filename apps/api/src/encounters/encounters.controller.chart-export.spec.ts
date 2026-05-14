@@ -29,6 +29,7 @@ import {
   ENCOUNTER_CHART_EXPORT_TEMPLATE_VERSION,
   RECORD_EXPORT_INTEGRITY_MISMATCH,
 } from "./chart-export.service";
+import { computeObservationStaySummaryForExport } from "@medora/shared";
 
 function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExportManifest {
   const base: ChartExportManifest = {
@@ -66,6 +67,12 @@ function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
       providerNote: null,
       providerDocumentation: { status: "SIGNED", signedAt: null, signedByDisplayFr: null },
       providerAddenda: [],
+      observationStay: computeObservationStaySummaryForExport({
+        encounterType: "EMERGENCY",
+        admittedAt: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        dischargedAt: null,
+      }),
     },
     patient: {
       id: "pat-1",

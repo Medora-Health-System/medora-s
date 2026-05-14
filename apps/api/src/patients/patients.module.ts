@@ -13,9 +13,10 @@ import { EncountersModule } from "../encounters/encounters.module";
 import { PublicHealthModule } from "../public-health/public-health.module";
 import { DiagnosesModule } from "../diagnoses/diagnoses.module";
 import { OrdersModule } from "../orders/orders.module";
+import { TrackboardModule } from "../trackboard/trackboard.module";
 
 @Module({
-  imports: [PrismaModule, EncountersModule, PublicHealthModule, DiagnosesModule, OrdersModule],
+  imports: [PrismaModule, EncountersModule, PublicHealthModule, DiagnosesModule, OrdersModule, TrackboardModule],
   controllers: [PatientsController, BreakGlassController],
   providers: [
     PatientsService,

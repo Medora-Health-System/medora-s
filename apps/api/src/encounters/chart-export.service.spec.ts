@@ -183,6 +183,23 @@ describe("EncounterChartExportService.getManifest", () => {
     );
   });
 
+  it("includes additive observationStay on manifest encounter for INPATIENT rows", async () => {
+    const inpatient = makeEncounterRow({
+      type: "INPATIENT",
+      admittedAt: new Date("2026-01-01T08:00:00.000Z"),
+      dischargedAt: new Date("2026-01-01T20:00:00.000Z"),
+    });
+    const prisma = makePrismaMock({ encounterRow: inpatient });
+    const { service } = makeService(prisma);
+
+    const manifest = await service.getManifest("facility-A", "enc-1");
+
+    expect(manifest.encounter.observationStay?.applicable).toBe(true);
+    expect(manifest.encounter.observationStay?.carePathLabel).toBe("observation_short_stay");
+    expect(manifest.encounter.observationStay?.observationLosHours).toBe(12);
+    expect(manifest.encounter.observationStay?.preview).toBe(false);
+  });
+
   it("records exportFormat html in PHI-safe audit metadata when requested", async () => {
     const prisma = makePrismaMock({});
     const { service, audit } = makeService(prisma);

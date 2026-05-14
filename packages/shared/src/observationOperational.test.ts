@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeObservationOperationalSnapshot,
+  computeObservationStaySummaryForExport,
   OBSERVATION_REASSESSMENT_DUE_MS,
   OBSERVATION_REASSESSMENT_OVERDUE_MS,
   OBSERVATION_VITALS_STALE_MS,
@@ -239,5 +240,54 @@ describe("computeObservationOperationalSnapshot", () => {
     });
     expect(snap?.flags.assignPhysicianGap).toBe(true);
     expect(snap?.flags.assignRnGap).toBe(true);
+  });
+});
+
+describe("computeObservationStaySummaryForExport", () => {
+  it("returns non-applicable empty shape for non-INPATIENT", () => {
+    const s = computeObservationStaySummaryForExport({
+      encounterType: "EMERGENCY",
+      admittedAt: "2024-06-01T10:00:00.000Z",
+      createdAt: "2024-06-01T08:00:00.000Z",
+      dischargedAt: "2024-06-01T18:00:00.000Z",
+    });
+    expect(s.applicable).toBe(false);
+    expect(s.carePathLabel).toBeNull();
+  });
+
+  it("computes LOS from admittedAt to dischargedAt for INPATIENT", () => {
+    const s = computeObservationStaySummaryForExport({
+      encounterType: "INPATIENT",
+      admittedAt: "2024-06-01T08:00:00.000Z",
+      createdAt: "2024-06-01T06:00:00.000Z",
+      dischargedAt: "2024-06-01T20:00:00.000Z",
+    });
+    expect(s.applicable).toBe(true);
+    expect(s.observationLosHours).toBe(12);
+    expect(s.preview).toBe(false);
+    expect(s.anchorKind).toBe("admittedAt");
+  });
+
+  it("never returns negative LOS when end precedes anchor", () => {
+    const s = computeObservationStaySummaryForExport({
+      encounterType: "INPATIENT",
+      admittedAt: "2024-06-01T20:00:00.000Z",
+      createdAt: "2024-06-01T06:00:00.000Z",
+      dischargedAt: "2024-06-01T08:00:00.000Z",
+    });
+    expect(s.observationLosMinutes).toBe(0);
+    expect(s.observationLosHours).toBe(0);
+  });
+
+  it("sets preview when using previewNowMs without discharge", () => {
+    const s = computeObservationStaySummaryForExport({
+      encounterType: "INPATIENT",
+      admittedAt: "2024-06-01T08:00:00.000Z",
+      createdAt: "2024-06-01T06:00:00.000Z",
+      dischargedAt: null,
+      previewNowMs: new Date("2024-06-01T10:00:00.000Z").getTime(),
+    });
+    expect(s.preview).toBe(true);
+    expect(s.stayEndIso).toBe("2024-06-01T10:00:00.000Z");
   });
 });
