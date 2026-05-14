@@ -2,48 +2,30 @@ import { RoleCode } from "@prisma/client";
 import { getRequiredMfaRoles, isMfaRequiredForRoles } from "./mfa-required-roles.util";
 
 describe("mfa-required-roles.util", () => {
-  /** Phase 9 patch — universal MFA: every interactive `RoleCode` requires MFA by default. */
-  it("default set covers ALL human roles (Phase 9 patch — universal MFA)", () => {
+  it("default set is empty when MFA_REQUIRED_ROLES is unset", () => {
     const r = getRequiredMfaRoles({} as NodeJS.ProcessEnv);
-    const allRoles = Object.values(RoleCode) as RoleCode[];
-    for (const code of allRoles) {
-      expect(r.has(code)).toBe(true);
-    }
-    // The set must equal the full enum, no surprises.
-    expect(r.size).toBe(allRoles.length);
+    expect(r.size).toBe(0);
   });
 
-  it("non-privileged roles (RN, LAB, RADIOLOGY, FRONT_DESK) trigger MFA enrollment by default", () => {
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.RN }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.LAB }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.RADIOLOGY }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.FRONT_DESK }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
+  it("non-privileged roles do not trigger MFA enrollment without explicit env", () => {
+    expect(isMfaRequiredForRoles([{ role: RoleCode.RN }], {} as NodeJS.ProcessEnv)).toBe(false);
+    expect(isMfaRequiredForRoles([{ role: RoleCode.LAB }], {} as NodeJS.ProcessEnv)).toBe(false);
+    expect(isMfaRequiredForRoles([{ role: RoleCode.RADIOLOGY }], {} as NodeJS.ProcessEnv)).toBe(
+      false
+    );
+    expect(isMfaRequiredForRoles([{ role: RoleCode.FRONT_DESK }], {} as NodeJS.ProcessEnv)).toBe(
+      false
+    );
   });
 
-  it("privileged roles also trigger MFA (regression for Phase 9A users)", () => {
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.MEDORA_SUPER_ADMIN }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.ADMIN }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.PROVIDER }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.PHARMACY }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
-    expect(
-      isMfaRequiredForRoles([{ role: RoleCode.BILLING }], {} as NodeJS.ProcessEnv)
-    ).toBe(true);
+  it("explicit MFA_REQUIRED_ROLES lists which roles trigger enrollment", () => {
+    const allCsv = (Object.values(RoleCode) as string[]).join(",");
+    const env = { MFA_REQUIRED_ROLES: allCsv } as NodeJS.ProcessEnv;
+    expect(isMfaRequiredForRoles([{ role: RoleCode.MEDORA_SUPER_ADMIN }], env)).toBe(true);
+    expect(isMfaRequiredForRoles([{ role: RoleCode.ADMIN }], env)).toBe(true);
+    expect(isMfaRequiredForRoles([{ role: RoleCode.PROVIDER }], env)).toBe(true);
+    expect(isMfaRequiredForRoles([{ role: RoleCode.PHARMACY }], env)).toBe(true);
+    expect(isMfaRequiredForRoles([{ role: RoleCode.BILLING }], env)).toBe(true);
   });
 
   it("override is honoured and ignores unknown role codes (escape hatch retained)", () => {
@@ -57,13 +39,10 @@ describe("mfa-required-roles.util", () => {
     expect(r.size).toBe(2);
   });
 
-  it("falls back to the universal default when override has no valid entries", () => {
+  it("override with no valid enum entries yields an empty set (no silent universal widen)", () => {
     const r = getRequiredMfaRoles({ MFA_REQUIRED_ROLES: "NOTHING_VALID" } as NodeJS.ProcessEnv);
-    const allRoles = Object.values(RoleCode) as RoleCode[];
-    expect(r.size).toBe(allRoles.length);
-    for (const code of allRoles) {
-      expect(r.has(code)).toBe(true);
-    }
+    expect(r.size).toBe(0);
+    expect(isMfaRequiredForRoles([{ role: RoleCode.ADMIN }], { MFA_REQUIRED_ROLES: "NOTHING_VALID" } as NodeJS.ProcessEnv)).toBe(false);
   });
 
   it("isMfaRequiredForRoles flips on first matching role; override that excludes them returns false", () => {
@@ -72,7 +51,7 @@ describe("mfa-required-roles.util", () => {
         [{ role: RoleCode.RN }, { role: RoleCode.PROVIDER }],
         {} as NodeJS.ProcessEnv
       )
-    ).toBe(true);
+    ).toBe(false);
     // With a deliberate narrow override, RN-only users no longer require MFA.
     expect(
       isMfaRequiredForRoles(

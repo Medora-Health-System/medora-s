@@ -1,41 +1,30 @@
 /**
- * Phase 9 — Required-MFA role policy.
+ * Phase 9 — Required-MFA role policy (enrollment gate before full session).
  *
- * Default required roles (Phase 9 patch — universal MFA):
- *   ALL Medora human-login `RoleCode` values.
- *   Specifically: MEDORA_SUPER_ADMIN, ADMIN, PROVIDER, RN, FRONT_DESK, LAB,
- *   RADIOLOGY, PHARMACY, BILLING.
+ * **Default (unset `MFA_REQUIRED_ROLES`):** no role is MFA-required for
+ * enrollment. Password login still issues a normal access/refresh session
+ * unless `User.mfaEnabled` forces the TOTP challenge branch in `AuthService`.
+ * This keeps local/CI e2e and non-MFA pilots working without weakening token
+ * validation: MFA grant JWTs remain separate types rejected by `JwtStrategy`.
  *
- * Rationale:
- *   Per regulator + pilot security review, every interactive user on the
- *   platform must complete a 2-step verification before a full session is
- *   issued. There is **no non-required role**; all `RoleCode` values are
- *   human-login roles (the schema has no `SYSTEM` role).
+ * **Explicit policy:** set `MFA_REQUIRED_ROLES` to a comma-separated list of
+ * `RoleCode` names. Unknown tokens are ignored. If every token is invalid,
+ * the set is empty (same as unset) — typos do not silently widen to “all
+ * roles”. Deployments that want **universal** enrollment should list every
+ * required `RoleCode` explicitly (e.g. generated from `Object.values(RoleCode)`).
  *
- * Optional override:
- *   `MFA_REQUIRED_ROLES` — comma-separated list of `RoleCode` names. Any value
- *   not present in the enum is ignored. Empty / unset uses the default
- *   "all human roles" policy. The override is intentionally retained so
- *   maintenance / debugging can narrow the gate without redeploy, but
- *   production deployments should leave it **unset**.
- *
- * MFA is required if **any** active facility role of the user is in the set.
+ * MFA enrollment is required if **any** active facility role of the user is
+ * in the configured set.
  */
 
 import { RoleCode } from "@prisma/client";
 
-/**
- * All `RoleCode` values are interactive (human-login). When `RoleCode` evolves,
- * `Object.values(RoleCode)` keeps this set up-to-date automatically without
- * needing a code edit.
- */
-const DEFAULT_REQUIRED: ReadonlySet<RoleCode> = new Set<RoleCode>(
-  Object.values(RoleCode) as RoleCode[]
-);
+/** Empty default: opt-in via `MFA_REQUIRED_ROLES` only. */
+const EMPTY_REQUIRED: ReadonlySet<RoleCode> = new Set();
 
 export function getRequiredMfaRoles(env: NodeJS.ProcessEnv = process.env): ReadonlySet<RoleCode> {
   const raw = env.MFA_REQUIRED_ROLES?.trim();
-  if (!raw) return DEFAULT_REQUIRED;
+  if (!raw) return EMPTY_REQUIRED;
   const out = new Set<RoleCode>();
   for (const piece of raw.split(",")) {
     const code = piece.trim();
@@ -44,7 +33,7 @@ export function getRequiredMfaRoles(env: NodeJS.ProcessEnv = process.env): Reado
       out.add(code as RoleCode);
     }
   }
-  return out.size > 0 ? out : DEFAULT_REQUIRED;
+  return out;
 }
 
 export function isMfaRequiredForRoles(

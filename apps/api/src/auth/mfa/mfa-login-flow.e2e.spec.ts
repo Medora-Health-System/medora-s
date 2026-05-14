@@ -23,6 +23,7 @@ import { randomBytes } from "node:crypto";
 
 import { AppModule } from "../../app.module";
 import { PrismaService } from "../../prisma/prisma.service";
+import { RoleCode } from "@prisma/client";
 import { generateCurrentTotp } from "./mfa-totp.util";
 import { decryptMfaSecret, getMfaEncryptionKey } from "./mfa-encryption.util";
 
@@ -65,13 +66,10 @@ describe("MFA login flow (e2e)", () => {
     process.env.TOKEN_ISSUER = "medora-s";
     process.env.MFA_SECRET_ENCRYPTION_KEY = randomBytes(32).toString("base64");
     /**
-     * Phase 9 patch — universal MFA default. The login-flow scenarios below
-     * intentionally exercise the "non-required role" branch (RN seeded with
-     * MFA disabled gets a session and then enrolls via Bearer access token).
-     * To preserve those flows exactly, narrow the policy at the test level
-     * to ADMIN-only here. The default ("all roles") is exercised in a
-     * dedicated test ("Default policy requires MFA enrollment for every role")
-     * further down by clearing the env for that single case.
+     * Narrow gate for most scenarios: only ADMIN is MFA-required for enrollment,
+     * so RN can obtain a normal session while admin exercises enrollment/challenge.
+     * A dedicated test sets `MFA_REQUIRED_ROLES` to the full `RoleCode` list to
+     * assert universal enrollment when explicitly configured.
      */
     process.env.MFA_REQUIRED_ROLES = "ADMIN";
 
@@ -422,14 +420,13 @@ describe("MFA login flow (e2e)", () => {
   });
 
   /**
-   * Phase 9 patch — universal MFA default. With `MFA_REQUIRED_ROLES` unset,
-   * every interactive role (RN, LAB, RADIOLOGY, FRONT_DESK, etc.) is forced
-   * into enrollment on first login. We restore the test-suite override at the
-   * end so the remaining scenarios keep their narrow gate.
+   * Universal enrollment when `MFA_REQUIRED_ROLES` lists every interactive
+   * `RoleCode` — explicit operator choice, not the implicit default when unset.
    */
-  it("Default policy requires MFA enrollment for every role (RN, LAB, RADIOLOGY, FRONT_DESK)", async () => {
+  it("Explicit full RoleCode list forces MFA enrollment for RN, LAB, RADIOLOGY, FRONT_DESK", async () => {
     const previousOverride = process.env.MFA_REQUIRED_ROLES;
-    delete process.env.MFA_REQUIRED_ROLES;
+    const allRolesCsv = (Object.values(RoleCode) as string[]).join(",");
+    process.env.MFA_REQUIRED_ROLES = allRolesCsv;
     try {
       // Reset RN to a fresh MFA-disabled user so we exercise the enrollment branch.
       users[rnId].mfaEnabled = false;

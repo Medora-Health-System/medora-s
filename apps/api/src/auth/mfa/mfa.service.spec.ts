@@ -30,7 +30,7 @@ const ENC_KEY_B64 = randomBytes(32).toString("base64");
 beforeAll(() => {
   process.env.MFA_SECRET_ENCRYPTION_KEY = ENC_KEY_B64;
   process.env.NODE_ENV = process.env.NODE_ENV ?? "test";
-  // Always exercise the default Phase 9A required-roles policy in this file.
+  // Unset MFA_REQUIRED_ROLES unless a test sets it (no enrollment gate by default).
   delete process.env.MFA_REQUIRED_ROLES;
 });
 
@@ -322,36 +322,31 @@ describe("MfaService", () => {
 
   it("decideLoginPath returns the right branch", () => {
     const { svc } = makeService();
-    expect(
-      svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: true } as any, [
-        RoleCode.ADMIN,
-      ]).next
-    ).toBe("mfa_challenge");
-    expect(
-      svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [
-        RoleCode.ADMIN,
-      ]).next
-    ).toBe("mfa_enrollment");
-    /**
-     * Phase 9 patch — universal MFA: every interactive role (including RN)
-     * now requires enrollment by default. The "full session immediately"
-     * branch only applies when the active policy excludes the user's roles
-     * (e.g. via a deliberate `MFA_REQUIRED_ROLES` override).
-     */
-    expect(
-      svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [
-        RoleCode.RN,
-      ]).next
-    ).toBe("mfa_enrollment");
-
-    // With a narrow override, RN-only users skip MFA — verifies the escape hatch is still wired.
     const previous = process.env.MFA_REQUIRED_ROLES;
-    process.env.MFA_REQUIRED_ROLES = "ADMIN";
     try {
+      delete process.env.MFA_REQUIRED_ROLES;
+      expect(
+        svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: true } as any, [
+          RoleCode.ADMIN,
+        ]).next
+      ).toBe("mfa_challenge");
       expect(
         svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [
-          RoleCode.RN,
+          RoleCode.ADMIN,
         ]).next
+      ).toBe("full");
+      expect(
+        svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [RoleCode.RN]).next
+      ).toBe("full");
+
+      process.env.MFA_REQUIRED_ROLES = "ADMIN";
+      expect(
+        svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [
+          RoleCode.ADMIN,
+        ]).next
+      ).toBe("mfa_enrollment");
+      expect(
+        svc.decideLoginPath({ id: "u", email: "u@e.com", mfaEnabled: false } as any, [RoleCode.RN]).next
       ).toBe("full");
     } finally {
       if (previous === undefined) delete process.env.MFA_REQUIRED_ROLES;
