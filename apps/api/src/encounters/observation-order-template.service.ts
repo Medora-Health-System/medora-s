@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditAction, RoleCode } from "@prisma/client";
+import { AuditAction, OrderEventType, RoleCode } from "@prisma/client";
 import {
   OBSERVATION_ORDER_TEMPLATE_ID,
   buildObservationTemplateCareOrderDto,
@@ -25,6 +25,8 @@ const UNKNOWN_TEMPLATE_IDS_FR =
 const NO_VALID_LINES_FR = "Sélectionnez au moins une ligne valide du modèle.";
 const NOT_INPATIENT_FR = "Ce modèle d’ordres s’applique uniquement aux hospitalisations (consultation ouverte).";
 const ROLE_BLOCKED_FR = "Seuls les médecins ou administrateurs peuvent appliquer ce modèle d’ordres.";
+const TEMPLATE_ALREADY_APPLIED_FR =
+  "Ce modèle d’observation a déjà été appliqué sur cette consultation (lot de soins actif). Utilisez l’onglet Ordres pour consulter ou annuler ce lot avant d’en créer un autre.";
 
 @Injectable()
 export class ObservationOrderTemplateService {
@@ -91,6 +93,28 @@ export class ObservationOrderTemplateService {
 
     assertEncounterOpenForClinicalMutation(encounter);
     assertEncounterNotSigned(encounter);
+
+    const existingObservationTemplateOrder = await this.prisma.order.findFirst({
+      where: {
+        encounterId,
+        facilityId,
+        type: "CARE",
+        cancelledAt: null,
+        orderEvents: {
+          some: {
+            eventType: OrderEventType.CREATED,
+            metadata: {
+              path: ["protocolName"],
+              equals: OBSERVATION_ORDER_TEMPLATE_ID,
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    if (existingObservationTemplateOrder) {
+      throw new BadRequestException(TEMPLATE_ALREADY_APPLIED_FR);
+    }
 
     const user = userId
       ? await this.prisma.user.findUnique({

@@ -1,3 +1,5 @@
+import { OBSERVATION_ORDER_TEMPLATE_ID } from "@medora/shared";
+
 export type OrderAuthoritySource = "PROVIDER_ORDER" | "VERBAL_ORDER" | "NURSING_PROTOCOL" | "PROTOCOL" | "PATHWAY";
 
 export type OrderAuthority = {
@@ -51,7 +53,16 @@ export function formatOrderAuthorityLines(
     return lines;
   }
 
-  return [t("orderAuthority.providerOrder")];
+  const lines = [t("orderAuthority.providerOrder")];
+  const protocolName = authority.protocolName?.trim();
+  if (protocolName) {
+    if (protocolName === OBSERVATION_ORDER_TEMPLATE_ID) {
+      lines.push(t("orderAuthority.observationOrderTemplateBundle"));
+    } else {
+      lines.push(t("orderAuthority.protocolName").replace("{protocolName}", protocolName));
+    }
+  }
+  return lines;
 }
 
 export function formatOrderAuthority(

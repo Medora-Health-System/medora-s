@@ -8,6 +8,11 @@ import type { OrderCreateDto, OrderItemCreateDto } from "./schemas/patient.js";
 
 export const OBSERVATION_ORDER_TEMPLATE_ID = "medora_observation_order_set_v1" as const;
 
+/** True when `protocolName` on order authority / events matches the built-in observation CARE template. */
+export function isObservationOrderTemplateProtocol(protocolName: string | null | undefined): boolean {
+  return (protocolName ?? "").trim() === OBSERVATION_ORDER_TEMPLATE_ID;
+}
+
 export const OBSERVATION_ORDER_TEMPLATE_GROUP_IDS = [
   "monitoring",
   "nursing_reassessment",

@@ -4,10 +4,17 @@ import {
   OBSERVATION_ORDER_TEMPLATE_ITEMS,
   buildObservationTemplateCareOrderDto,
   findUnknownObservationTemplateIds,
+  isObservationOrderTemplateProtocol,
   orderObservationTemplateSelection,
 } from "./observationOrderTemplate";
 
 describe("observationOrderTemplate", () => {
+  it("isObservationOrderTemplateProtocol matches template id only", () => {
+    expect(isObservationOrderTemplateProtocol(OBSERVATION_ORDER_TEMPLATE_ID)).toBe(true);
+    expect(isObservationOrderTemplateProtocol("other")).toBe(false);
+    expect(isObservationOrderTemplateProtocol(null)).toBe(false);
+  });
+
   it("orders selection in template definition order", () => {
     const ids = ["nurse_pain_q2h", "mon_vitals_q2h", "com_diet_ad_lib"];
     expect(orderObservationTemplateSelection(ids)).toEqual([

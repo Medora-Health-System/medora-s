@@ -56,7 +56,7 @@ import { triagePreviewSliceFromTriageGet } from "@/features/emergency/emergencyT
 import { erTriageV1FormFromVitalsJson } from "@/features/emergency/medoraErTriageV1";
 import { isTriageStaleConflictError } from "@/features/emergency/triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
-import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds, computeObservationOperationalSnapshot } from "@medora/shared";
+import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds, computeObservationOperationalSnapshot, isObservationOrderTemplateProtocol } from "@medora/shared";
 import {
   diagnosisDisplayFr,
   nursingAssessmentDisplayLines,
@@ -944,6 +944,14 @@ export default function EncounterDetailPage() {
     encounter?.providerDocumentationSignedAt,
   ]);
 
+  const observationTemplateAlreadyApplied = useMemo(() => {
+    return quickOrders.some((o: { type?: string; cancelledAt?: string | null; authority?: { protocolName?: string | null } }) => {
+      if (!o || o.type !== "CARE") return false;
+      if (o.cancelledAt) return false;
+      return isObservationOrderTemplateProtocol(o.authority?.protocolName ?? null);
+    });
+  }, [quickOrders]);
+
   if (!facilityId || !encounterId) {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1230,19 +1238,25 @@ export default function EncounterDetailPage() {
               ) : null}
               {canShowObservationOrderTemplateEntry ? (
                 <div style={{ marginTop: 10 }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowObservationOrderTemplateModal(true)}
-                    style={{
-                      ...quickBtn,
-                      borderColor: "#c4b5fd",
-                      background: "#faf5ff",
-                      fontWeight: 600,
-                      color: "#5b21b6",
-                    }}
-                  >
-                    {t("encounterChrome.observationOrderTemplateBannerButton")}
-                  </button>
+                  {observationTemplateAlreadyApplied ? (
+                    <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5, maxWidth: 520 }}>
+                      {t("encounterChrome.observationOrderTemplateBannerAlreadyApplied")}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowObservationOrderTemplateModal(true)}
+                      style={{
+                        ...quickBtn,
+                        borderColor: "#c4b5fd",
+                        background: "#faf5ff",
+                        fontWeight: 600,
+                        color: "#5b21b6",
+                      }}
+                    >
+                      {t("encounterChrome.observationOrderTemplateBannerButton")}
+                    </button>
+                  )}
                 </div>
               ) : null}
               {admissionBannerPreview?.admissionReason ? (
@@ -2229,6 +2243,7 @@ export default function EncounterDetailPage() {
         open={showObservationOrderTemplateModal}
         encounterId={encounterId}
         facilityId={facilityId}
+        templateAlreadyApplied={observationTemplateAlreadyApplied}
         onClose={() => setShowObservationOrderTemplateModal(false)}
         onOrdersCreated={async () => {
           await refreshQuickOrdersOnly();

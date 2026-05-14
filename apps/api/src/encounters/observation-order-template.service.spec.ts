@@ -13,6 +13,7 @@ function buildPrismaMock(opts: {
   encounter?: Record<string, unknown> | null;
   userRoles?: Array<{ role: { code: RoleCode } | null }>;
   user?: { firstName: string; lastName: string; billingNameOverride: string | null; billingNpi: string | null } | null;
+  existingObservationTemplateOrder?: { id: string } | null;
 }) {
   const encounter =
     opts.encounter === null
@@ -30,6 +31,9 @@ function buildPrismaMock(opts: {
 
   return {
     encounter: { findFirst: jest.fn().mockResolvedValue(encounter) },
+    order: {
+      findFirst: jest.fn().mockResolvedValue(opts.existingObservationTemplateOrder ?? null),
+    },
     userRole: {
       findMany: jest.fn().mockResolvedValue(opts.userRoles ?? [{ role: { code: RoleCode.PROVIDER } }]),
     },
@@ -73,6 +77,7 @@ describe("ObservationOrderTemplateService", () => {
     );
 
     expect(orders.create).toHaveBeenCalledTimes(1);
+    expect((prisma as { order: { findFirst: AnyMock } }).order.findFirst).toHaveBeenCalled();
     const createArgs = (orders.create as AnyMock).mock.calls[0]!;
     expect(createArgs[0]).toBe("enc-1");
     expect(createArgs[1]).toBe("fac-1");
@@ -90,6 +95,19 @@ describe("ObservationOrderTemplateService", () => {
     const blob = JSON.stringify(meta).toLowerCase();
     expect(blob).not.toContain("jean");
     expect(blob).not.toContain("mrn");
+  });
+
+  it("rejects second apply when observation template CARE bundle already exists (Phase 13F)", async () => {
+    const prisma = buildPrismaMock({ existingObservationTemplateOrder: { id: "ord-existing" } });
+    const orders = buildOrdersMock();
+    const audit = buildAuditMock();
+    const svc = new ObservationOrderTemplateService(prisma as never, orders as never, audit as never);
+
+    await expect(
+      svc.apply("enc-1", "fac-1", { selectedItemIds: ["mon_vitals_q2h"] }, "user-1")
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(orders.create).not.toHaveBeenCalled();
+    expect(audit.log).not.toHaveBeenCalled();
   });
 
   it("rejects unknown template ids", async () => {

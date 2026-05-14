@@ -5534,10 +5534,16 @@ export default {
     observationOvernightUtc: "UTC overnight span",
     observationExtended24h: "Stay ≥24h",
     observationOrderTemplateBannerButton: "Observation order template",
+    observationOrderTemplateBannerAlreadyApplied:
+      "Observation template already applied — the CARE bundle appears on the Orders tab.",
     observationOrderTemplate: {
       title: "Observation / short-stay order template",
       intro:
         "Select the lines to create as CARE orders. Nothing is created until you confirm. Medications and catalog tests/imaging are added from the Orders tab.",
+      alreadyAppliedWarning:
+        "This template was already applied for this encounter. To change lines, cancel the bundle on the Orders tab or add manual CARE orders.",
+      skipHint: "Closes without creating orders — you can open this template again later.",
+      cancelHint: "Closes the dialog without saving or creating orders.",
       groups: {
         monitoring: "Monitoring",
         nursing_reassessment: "Reassessment and alerts",
@@ -5551,6 +5557,13 @@ export default {
       creating: "Creating…",
       createError: "Could not create orders.",
       validationNeedOne: "Select at least one line.",
+      successTitle: "Orders created",
+      successBody:
+        "The CARE bundle was added. Find it on the Orders tab (CARE type); each line behaves like a normal order for charting and workflow.",
+      successClose: "Close",
+      successLineCount: "{count} CARE line(s) in the bundle.",
+      queuedApply:
+        "This save was queued offline. Orders will not appear until the device syncs with the server.",
     },
     labelRoom: "Room",
     labelAdmission: "Admission",
@@ -7763,6 +7776,7 @@ export default {
     pathwayProtocol: "Pathway/protocol order",
     readbackConfirmed: "Read-back confirmed",
     protocolName: "Protocol: {protocolName}",
+    observationOrderTemplateBundle: "CARE bundle — Medora observation template",
   },
   attribution: {
     orderedBy: "Ordered by {name}{role} · {datetime}",

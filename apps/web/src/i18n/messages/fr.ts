@@ -5508,10 +5508,16 @@ export default {
     observationOvernightUtc: "Passage minuit (UTC)",
     observationExtended24h: "Séjour ≥24h",
     observationOrderTemplateBannerButton: "Modèle d'ordres (observation / court séjour)",
+    observationOrderTemplateBannerAlreadyApplied:
+      "Modèle observation déjà appliqué — le lot de soins figure dans l’onglet Ordres (type Soins).",
     observationOrderTemplate: {
       title: "Modèle d'ordres — observation / court séjour",
       intro:
         "Cochez les lignes à créer comme ordres de soins. Aucun ordre n'est créé sans votre confirmation. Les médicaments et examens au catalogue s'ajoutent depuis l'onglet Ordres.",
+      alreadyAppliedWarning:
+        "Ce modèle a déjà été appliqué sur cette consultation. Pour modifier les lignes, annulez le lot dans l’onglet Ordres ou ajoutez des soins manuellement.",
+      skipHint: "Ferme sans créer d’ordre — vous pourrez rouvrir ce modèle plus tard.",
+      cancelHint: "Ferme la fenêtre sans enregistrer ni créer d’ordre.",
       groups: {
         monitoring: "Surveillance",
         nursing_reassessment: "Réévaluation et alertes",
@@ -5525,6 +5531,13 @@ export default {
       creating: "Création…",
       createError: "Impossible de créer les ordres.",
       validationNeedOne: "Cochez au moins une ligne.",
+      successTitle: "Ordres créés",
+      successBody:
+        "Le lot de soins a été ajouté. Retrouvez-le dans l’onglet Ordres (type Soins) ; chaque ligne peut être suivie comme un ordre habituel.",
+      successClose: "Fermer",
+      successLineCount: "{count} ligne(s) de soins dans le lot.",
+      queuedApply:
+        "La création a été mise en file hors ligne. Les ordres ne seront pas visibles tant que la synchronisation n'est pas terminée.",
     },
     labelRoom: "Salle",
     labelAdmission: "Admission",
@@ -7760,6 +7773,7 @@ export default {
     pathwayProtocol: "Ordre de protocole/parcours",
     readbackConfirmed: "Relecture confirmée",
     protocolName: "Protocole : {protocolName}",
+    observationOrderTemplateBundle: "Lot de soins — modèle observation Medora",
   },
   attribution: {
     orderedBy: "Saisi par {name}{role} · {datetime}",
