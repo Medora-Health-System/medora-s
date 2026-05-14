@@ -61,6 +61,7 @@ import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
 import {
   computeObservationOperationalSnapshot,
   isObservationOrderTemplateProtocol,
+  isObservationShortStayEncounter,
   mergeObservationTrackboardOpsInput,
   temperatureHintPairCelsiusFahrenheit,
   weightHintPairKgPounds,
@@ -710,7 +711,6 @@ export default function EncounterDetailPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      const offerTemplate = shouldOfferObservationOrderTemplateCareLevel(admissionForm.careLevel);
       const encAfter = await loadEncounter({ silent: true });
       setShowAdmissionModal(false);
       if (queued) {
@@ -719,7 +719,18 @@ export default function EncounterDetailPage() {
         );
         return;
       }
-      if (offerTemplate && encAfter?.type === "INPATIENT" && canPrescribe) {
+      if (!encAfter) return;
+      const parsedAfter = parseAdmissionSummaryForChart(encAfter.admissionSummaryJson);
+      const workflowAfter = isObservationShortStayEncounter({
+        type: encAfter.type,
+        status: encAfter.status,
+        admittedAt: encAfter.admittedAt,
+        admissionSummaryJson: encAfter.admissionSummaryJson,
+      });
+      const offerFromServerCare = shouldOfferObservationOrderTemplateCareLevel(parsedAfter?.careLevel);
+      const offerFromLocalCare = shouldOfferObservationOrderTemplateCareLevel(admissionForm.careLevel);
+      if (canPrescribe && workflowAfter && (offerFromServerCare || offerFromLocalCare)) {
+        await refreshQuickOrdersOnly();
         setShowObservationOrderTemplateModal(true);
       }
     } catch (e) {
@@ -932,16 +943,19 @@ export default function EncounterDetailPage() {
     [encounter?.admissionSummaryJson]
   );
 
-  /** INPATIENT + observation / short-stay care level from saved admission JSON (no new persistence). */
+  /** INPATIENT observation lane: do not gate on `careLevel` alone (see `isObservationShortStayEncounter`). */
   const observationWorkflowActive = useMemo(
     () =>
       Boolean(
         encounter &&
-          encounter.type === "INPATIENT" &&
-          encounter.status === "OPEN" &&
-          shouldOfferObservationOrderTemplateCareLevel(admissionPreviewForChrome?.careLevel)
+          isObservationShortStayEncounter({
+            type: encounter.type,
+            status: encounter.status,
+            admittedAt: encounter.admittedAt,
+            admissionSummaryJson: encounter.admissionSummaryJson,
+          })
       ),
-    [encounter, encounter?.type, encounter?.status, admissionPreviewForChrome?.careLevel]
+    [encounter, encounter?.type, encounter?.status, encounter?.admittedAt, encounter?.admissionSummaryJson]
   );
 
   const observationTrackboardOpsInput = useMemo(
@@ -1114,11 +1128,7 @@ export default function EncounterDetailPage() {
   const showConfirmInpatientTransfer =
     encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionPreviewForChrome != null;
 
-  const canShowObservationOrderTemplateEntry =
-    encounter.type === "INPATIENT" &&
-    encounter.status === "OPEN" &&
-    canPrescribe &&
-    shouldOfferObservationOrderTemplateCareLevel(admissionPreviewForChrome?.careLevel);
+  const showObservationOrdersEntry = observationWorkflowActive && canPrescribe;
 
   const quickBtn: React.CSSProperties = {
     padding: "8px 14px",
@@ -1282,27 +1292,34 @@ export default function EncounterDetailPage() {
                   ) : null}
                 </div>
               ) : null}
-              {canShowObservationOrderTemplateEntry ? (
+              {showObservationOrdersEntry ? (
                 <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowObservationOrderTemplateModal(true)}
+                    style={{
+                      ...quickBtn,
+                      borderColor: "#c4b5fd",
+                      background: "#faf5ff",
+                      fontWeight: 600,
+                      color: "#5b21b6",
+                    }}
+                  >
+                    {t("encounterChrome.observationOrderTemplateBannerButton")}
+                  </button>
                   {observationTemplateAlreadyApplied ? (
-                    <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5, maxWidth: 520 }}>
-                      {t("encounterChrome.observationOrderTemplateBannerAlreadyApplied")}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowObservationOrderTemplateModal(true)}
+                    <div
                       style={{
-                        ...quickBtn,
-                        borderColor: "#c4b5fd",
-                        background: "#faf5ff",
-                        fontWeight: 600,
-                        color: "#5b21b6",
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: "#64748b",
+                        lineHeight: 1.5,
+                        maxWidth: 520,
                       }}
                     >
-                      {t("encounterChrome.observationOrderTemplateBannerButton")}
-                    </button>
-                  )}
+                      {t("encounterChrome.observationOrderTemplateBannerAlreadyApplied")}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {admissionPreviewForChrome?.admissionReason ? (
