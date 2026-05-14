@@ -58,7 +58,10 @@ function buildAuditMock() {
 }
 
 function makeService(prisma: unknown, audit: unknown) {
-  return new EncountersService(prisma as never, audit as never);
+  const trackboard = {
+    getOperationalAggregatesForEncounterIds: jest.fn().mockResolvedValue(new Map()),
+  };
+  return new EncountersService(prisma as never, audit as never, trackboard as never);
 }
 
 describe("EncountersService — Phase 10A self-assignment", () => {

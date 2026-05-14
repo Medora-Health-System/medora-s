@@ -7,9 +7,10 @@ import { AuditService } from "../common/services/audit.service";
 import { DiagnosesModule } from "../diagnoses/diagnoses.module";
 import { OrdersModule } from "../orders/orders.module";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
+import { TrackboardModule } from "../trackboard/trackboard.module";
 
 @Module({
-  imports: [PrismaModule, DiagnosesModule, OrdersModule],
+  imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
   controllers: [EncountersController],
   providers: [EncountersService, EncounterChartExportService, ObservationOrderTemplateService, AuditService],
   exports: [EncountersService, EncounterChartExportService],

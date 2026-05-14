@@ -3,6 +3,7 @@
  */
 
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
+import { isObservationShortStayCareLevel } from "@medora/shared";
 
 export type AdmissionFormState = {
   admissionReason: string;
@@ -25,16 +26,7 @@ export const CARE_LEVEL_OPTIONS_FR: readonly string[] = [
 
 /** Phase 13E — offer observation order template when admission care level targets observation / short stay. */
 export function shouldOfferObservationOrderTemplateCareLevel(careLevel: string | null | undefined): boolean {
-  const raw = (careLevel ?? "").trim();
-  if (!raw) return false;
-  if (raw === CARE_LEVEL_OPTIONS_FR[3]) return true;
-  const lower = raw.toLowerCase();
-  return (
-    lower.includes("observation") ||
-    lower.includes("court séjour") ||
-    lower.includes("court sejour") ||
-    lower.includes("short stay")
-  );
+  return isObservationShortStayCareLevel(careLevel);
 }
 
 export function emptyAdmissionForm(): AdmissionFormState {
