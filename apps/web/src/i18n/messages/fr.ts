@@ -5639,6 +5639,51 @@ export default {
       save: "Enregistrer",
       saving: "Enregistrement…",
       saveError: "Impossible d'enregistrer la réévaluation.",
+      quickPhrases: {
+        title: "Formulations rapides",
+        reviewHint:
+          "Relire et adapter avant enregistrement — vous restez l'auteur de la note.",
+        groups: {
+          general: "Général",
+          clinical: "Contextes cliniques (modèles)",
+          disposition: "Sortie / transfert (informationnel)",
+        },
+        improvedContinue: {
+          btn: "Amélioration / poursuite",
+          text:
+            "À la réévaluation le patient semble en amélioration. Poursuite de l'observation selon le protocole local. Adapter le texte pour refléter la situation réelle.",
+        },
+        unchangedContinue: {
+          btn: "Stable / poursuite",
+          text:
+            "À la réévaluation le patient semble stable ou inchangé. Poursuite de l'observation et de la surveillance selon le plan. Adapter le texte pour refléter la situation réelle.",
+        },
+        worseningEscalation: {
+          btn: "Aggravation / informé",
+          text:
+            "À la réévaluation le patient semble en aggravation. Médecin informé. Transfert ou escalade évoqués ; aucune décision n'est consignée ici — en attente du jugement clinique et des consignes.",
+        },
+        chestPain: {
+          btn: "Modèle douleur thoracique",
+          text:
+            "Réévaluation observation douleur thoracique : surveillance et réévaluations répétées ; facteurs de risque et réponse aux soins revus. Mettre à jour la note en cas de changement.",
+        },
+        dehydration: {
+          btn: "Modèle déshydratation",
+          text:
+            "Réévaluation observation déshydratation : entrées/sorties et statut d'hydratation revus ; surveillance poursuivie selon le plan. Mettre à jour selon l'évolution.",
+        },
+        sepsisWatch: {
+          btn: "Modèle surveillance sepsis",
+          text:
+            "Réévaluation surveillance sepsis : signes vitaux et réévaluations répétés selon le protocole local. Escalader si les critères sont remplis. Texte d'aide à la documentation uniquement.",
+        },
+        readyDischarge: {
+          btn: "Prêt pour sortie (note)",
+          text:
+            "Réévaluation « prêt pour sortie » : disposition et suivi encore à finaliser avec le clinicien responsable. Ne constitue pas à elle seule un ordre de sortie.",
+        },
+      },
     },
     observationOrderTemplateBannerButton: "Modèle d'ordres (observation / court séjour)",
     observationOrderTemplateBannerAlreadyApplied:

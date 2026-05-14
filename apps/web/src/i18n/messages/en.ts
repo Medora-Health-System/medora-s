@@ -5661,6 +5661,50 @@ export default {
       save: "Save",
       saving: "Saving…",
       saveError: "Could not save reassessment.",
+      quickPhrases: {
+        title: "Quick phrases",
+        reviewHint: "Review and edit before saving — you remain the author of the note.",
+        groups: {
+          general: "General",
+          clinical: "Clinical templates",
+          disposition: "Disposition hints",
+        },
+        improvedContinue: {
+          btn: "Improved / continue",
+          text:
+            "On reassessment the patient appears improved. Plan: continue observation per local protocol. Edit as needed for accuracy.",
+        },
+        unchangedContinue: {
+          btn: "Unchanged / continue",
+          text:
+            "On reassessment the patient appears stable or unchanged. Continue observation and monitoring per plan. Edit as needed for accuracy.",
+        },
+        worseningEscalation: {
+          btn: "Worsening / notified",
+          text:
+            "On reassessment the patient appears worse. Provider notified. Transfer or escalation discussed; no decision is recorded here — awaiting clinical judgment and orders.",
+        },
+        chestPain: {
+          btn: "Chest pain template",
+          text:
+            "Chest pain observation reassessment: ongoing monitoring and serial reassessments; risk factors and response to care reviewed. Update the note if status changes.",
+        },
+        dehydration: {
+          btn: "Dehydration template",
+          text:
+            "Dehydration observation reassessment: intake/output and hydration status reviewed; monitoring continues per plan. Update as indicated.",
+        },
+        sepsisWatch: {
+          btn: "Sepsis watch template",
+          text:
+            "Sepsis-watch reassessment: repeat vitals and reassessment per local protocol. Escalate if criteria are met. This text is a documentation aid only.",
+        },
+        readyDischarge: {
+          btn: "Ready for discharge (note)",
+          text:
+            "Ready-for-discharge reassessment: disposition and follow-up still to be finalized with the responsible clinician. This is not a discharge order by itself.",
+        },
+      },
     },
     observationOrderTemplateBannerButton: "Observation order template",
     observationOrderTemplateBannerAlreadyApplied:

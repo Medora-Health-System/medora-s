@@ -1,10 +1,28 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import type { ObservationReassessmentV1Body } from "@medora/shared";
+import { insertTextAtTextareaSelection } from "@/lib/insertTextAtTextareaSelection";
+
+const OBS_REASSESS_NOTE_MAX = 2000;
+
+const QUICK_PHRASE_GROUPS = [
+  {
+    groupKey: "encounterChrome.observationReassessment.quickPhrases.groups.general",
+    phraseIds: ["improvedContinue", "unchangedContinue", "worseningEscalation"] as const,
+  },
+  {
+    groupKey: "encounterChrome.observationReassessment.quickPhrases.groups.clinical",
+    phraseIds: ["chestPain", "dehydration", "sepsisWatch"] as const,
+  },
+  {
+    groupKey: "encounterChrome.observationReassessment.quickPhrases.groups.disposition",
+    phraseIds: ["readyDischarge"] as const,
+  },
+] as const;
 
 const overlay: React.CSSProperties = {
   position: "fixed",
@@ -46,6 +64,19 @@ const chkRow: React.CSSProperties = {
   marginBottom: 6,
 };
 
+const phraseChip: React.CSSProperties = {
+  padding: "4px 8px",
+  fontSize: 11,
+  fontWeight: 600,
+  borderRadius: 8,
+  border: "1px solid #cbd5e1",
+  background: "#f8fafc",
+  color: "#334155",
+  cursor: "pointer",
+  lineHeight: 1.3,
+  textAlign: "left" as const,
+};
+
 export type ObservationReassessmentModalProps = {
   open: boolean;
   defaultRole: "PROVIDER" | "RN";
@@ -76,6 +107,7 @@ export function ObservationReassessmentModal({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const noteRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -140,6 +172,27 @@ export function ObservationReassessmentModal({
     transferConsidered,
     vitalsReviewed,
   ]);
+
+  const insertPhraseText = useCallback(
+    (phraseId: string) => {
+      const text = t(`encounterChrome.observationReassessment.quickPhrases.${phraseId}.text`);
+      const el = noteRef.current;
+      const start = el ? el.selectionStart : note.length;
+      const end = el ? el.selectionEnd : note.length;
+      const { value, caret } = insertTextAtTextareaSelection(note, start, end, text, {
+        maxLength: OBS_REASSESS_NOTE_MAX,
+      });
+      setNote(value);
+      requestAnimationFrame(() => {
+        const ta = noteRef.current;
+        if (!ta) return;
+        ta.focus();
+        const c = Math.min(caret, value.length);
+        ta.setSelectionRange(c, c);
+      });
+    },
+    [note, t]
+  );
 
   if (!open) return null;
 
@@ -240,16 +293,47 @@ export function ObservationReassessmentModal({
           </label>
         </div>
 
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ ...labelStyle, marginBottom: 4 }}>{t("encounterChrome.observationReassessment.quickPhrases.title")}</div>
+          <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#b45309", lineHeight: 1.45, fontWeight: 600 }}>
+            {t("encounterChrome.observationReassessment.quickPhrases.reviewHint")}
+          </p>
+          {QUICK_PHRASE_GROUPS.map((g) => (
+            <div key={g.groupKey} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>{t(g.groupKey)}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {g.phraseIds.map((pid) => (
+                  <button
+                    key={pid}
+                    type="button"
+                    title={t(`encounterChrome.observationReassessment.quickPhrases.${pid}.text`)}
+                    onClick={() => insertPhraseText(pid)}
+                    disabled={saving}
+                    style={{
+                      ...phraseChip,
+                      opacity: saving ? 0.55 : 1,
+                      cursor: saving ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {t(`encounterChrome.observationReassessment.quickPhrases.${pid}.btn`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div style={{ marginBottom: 14 }}>
           <label style={labelStyle} htmlFor="obsReassessNote">
             {t("encounterChrome.observationReassessment.fieldNote")}
           </label>
           <textarea
             id="obsReassessNote"
+            ref={noteRef}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            maxLength={2000}
+            rows={4}
+            maxLength={OBS_REASSESS_NOTE_MAX}
             placeholder={t("encounterChrome.observationReassessment.notePlaceholder")}
             style={{
               width: "100%",
