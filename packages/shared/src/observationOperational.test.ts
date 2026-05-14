@@ -13,6 +13,7 @@ const emptyOps = {
   resultsPendingCount: 0,
   criticalResultUnacknowledged: false,
   lastNursingReassessmentAt: null,
+  lastProviderObservationReassessmentAt: null,
   firstDispositionDocAt: null,
   lastTriageVitalsRecordedAt: null,
 };
@@ -33,6 +34,14 @@ describe("mergeObservationTrackboardOpsInput", () => {
     );
     expect(merged.lastTriageVitalsRecordedAt).toBe("2024-06-01T08:00:00.000Z");
     expect(merged.resultsPendingCount).toBe(2);
+  });
+
+  it("preserves lastProviderObservationReassessmentAt from trackboard", () => {
+    const merged = mergeObservationTrackboardOpsInput(
+      { lastProviderObservationReassessmentAt: "2024-06-01T10:00:00.000Z" },
+      undefined
+    );
+    expect(merged.lastProviderObservationReassessmentAt).toBe("2024-06-01T10:00:00.000Z");
   });
 });
 
@@ -150,6 +159,48 @@ describe("computeObservationOperationalSnapshot", () => {
     });
     expect(snap?.flags.reassessmentOverdue).toBe(true);
     expect(snap?.flags.reassessmentDue).toBe(false);
+  });
+
+  it("uses max of nursing and provider observation reassessment timestamps", () => {
+    const now = new Date("2024-06-01T14:00:00.000Z").getTime();
+    const snapOldNursing = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      workflowState: "IN_TREATMENT",
+      admittedAt: "2024-06-01T12:00:00.000Z",
+      createdAt: "2024-06-01T08:00:00.000Z",
+      physicianAssignedUserId: "p",
+      nurseAssignedUserId: "n",
+      providerDocumentationStatus: "DRAFT",
+      providerDocumentationSignedAt: null,
+      trackboardOps: {
+        ...emptyOps,
+        lastNursingReassessmentAt: "2024-06-01T08:00:00.000Z",
+        lastProviderObservationReassessmentAt: null,
+      },
+      nowMs: now,
+    });
+    expect(snapOldNursing?.flags.reassessmentOverdue).toBe(true);
+
+    const snapWithRecentProvider = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      workflowState: "IN_TREATMENT",
+      admittedAt: "2024-06-01T12:00:00.000Z",
+      createdAt: "2024-06-01T08:00:00.000Z",
+      physicianAssignedUserId: "p",
+      nurseAssignedUserId: "n",
+      providerDocumentationStatus: "DRAFT",
+      providerDocumentationSignedAt: null,
+      trackboardOps: {
+        ...emptyOps,
+        lastNursingReassessmentAt: "2024-06-01T08:00:00.000Z",
+        lastProviderObservationReassessmentAt: "2024-06-01T13:00:00.000Z",
+      },
+      nowMs: now,
+    });
+    expect(snapWithRecentProvider?.flags.reassessmentOverdue).toBe(false);
+    expect(snapWithRecentProvider?.flags.reassessmentDue).toBe(false);
   });
 
   it("marks reassessment due (not overdue) between 2h and 4h without reassessment", () => {

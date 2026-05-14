@@ -35,6 +35,7 @@ import {
   encounterProcedureDocumentDtoSchema,
   encounterUpdateDtoSchema,
   observationOrderTemplateApplyDtoSchema,
+  observationReassessmentV1BodySchema,
   rosterClinicalUserRoleQuerySchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
@@ -644,6 +645,24 @@ export class EncountersController {
     return this.observationOrderTemplateService.apply(
       id,
       facilityId,
+      dto,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("encounters/:id/observation-reassessment")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async appendObservationReassessment(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const dto = assertZodBody(observationReassessmentV1BodySchema.safeParse(body));
+    return this.encountersService.appendObservationReassessment(
+      facilityId,
+      id,
       dto,
       req.user?.userId,
       req.ip,

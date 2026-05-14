@@ -71,6 +71,7 @@ import {
   admissionSummaryFieldsSchema,
   ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
+  isObservationShortStayCareLevel,
   type EncounterAdmissionCancelDto,
   type EncounterCloseDto,
   type EncounterCreateDto,
@@ -94,10 +95,14 @@ import {
   readErHandoffV1FromNursingAssessment,
   readBillingCaptureV1,
   upsertBillingCaptureItem,
+  type ObservationReassessmentV1Body,
 } from "@medora/shared";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
+import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
 import { enrichBillingCaptureItem } from "../billing/billing-capture.enrichment";
+import { TrackboardService } from "../trackboard/trackboard.service";
+import { emptyTrackboardOperationalAggregate } from "../trackboard/trackboard-operational.util";
 import { upsertBillingEventFromCaptureItem } from "../billing/billing-ledger.sync";
 import { appendEmergencyEMBilling } from "../billing/billing-em.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
@@ -241,7 +246,8 @@ const encounterDetailPatientSelect = {
 export class EncountersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly trackboardService: TrackboardService
   ) {}
 
   async create(patientId: string, facilityId: string, data: EncounterCreateDto, userId?: string, ip?: string, userAgent?: string) {
@@ -482,9 +488,105 @@ export class EncountersService {
       providerAddenda: this.mapProviderAddendaForApi(_rawAddenda ?? []),
     };
 
+    let withTrackboard: Record<string, unknown> = withAddenda;
+    if (encounter.type === EncounterType.INPATIENT) {
+      const opMap = await this.trackboardService.getOperationalAggregatesForEncounterIds(facilityId, [
+        encounter.id,
+      ]);
+      withTrackboard = {
+        ...withAddenda,
+        trackboardOps: opMap.get(encounter.id) ?? emptyTrackboardOperationalAggregate(),
+      };
+    }
+
     return signedByDisplayFr
-      ? { ...withAddenda, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
-      : withAddenda;
+      ? { ...withTrackboard, providerDocumentationSignedByDisplayFr: signedByDisplayFr }
+      : withTrackboard;
+  }
+
+  /**
+   * Phase 13G-B — append-only observation / short-stay reassessment (`EncounterClinicalEvent`
+   * `NURSING_ASSESSMENT_SAVED` + `source: OBSERVATION_REASSESSMENT_V1`). No billing, no disposition
+   * automation, no orders.
+   */
+  async appendObservationReassessment(
+    facilityId: string,
+    encounterId: string,
+    dto: ObservationReassessmentV1Body,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise pour enregistrer une réévaluation.");
+    }
+
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        id: true,
+        patientId: true,
+        type: true,
+        status: true,
+        workflowState: true,
+        admissionSummaryJson: true,
+      },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+    assertEncounterOpenForClinicalMutation(enc);
+    if (enc.type !== EncounterType.INPATIENT) {
+      throw new BadRequestException("La réévaluation observation s'applique uniquement à une hospitalisation.");
+    }
+
+    const adm = admissionSummaryFieldsSchema.safeParse(enc.admissionSummaryJson);
+    const careLevel = adm.success ? adm.data.careLevel : undefined;
+    if (!isObservationShortStayCareLevel(careLevel ?? null)) {
+      throw new BadRequestException(
+        "Réévaluation observation : le dossier d'admission doit indiquer observation ou court séjour."
+      );
+    }
+
+    if (dto.role === "RN") {
+      await this.assertUserHasAnyClinicalRole(facilityId, userId, [RoleCode.RN, RoleCode.ADMIN]);
+    } else {
+      await this.assertUserHasAnyClinicalRole(facilityId, userId, [RoleCode.PROVIDER, RoleCode.ADMIN]);
+    }
+
+    const performer = await this.resolveErNursingReassessmentPerformer(facilityId, userId);
+    const payloadJson = observationReassessmentClinicalEventPayload(dto, performer);
+
+    const created = await this.prisma.encounterClinicalEvent.create({
+      data: {
+        facilityId,
+        encounterId: enc.id,
+        patientId: enc.patientId,
+        eventType: EncounterClinicalEventType.NURSING_ASSESSMENT_SAVED,
+        payloadJson,
+        createdByUserId: userId,
+      },
+    });
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: enc.patientId,
+      encounterId: enc.id,
+      entityId: enc.id,
+      ip,
+      userAgent,
+      metadata: {
+        observationReassessmentV1: true,
+        role: dto.role,
+      },
+    });
+
+    return {
+      ok: true as const,
+      id: created.id,
+      createdAt: created.createdAt.toISOString(),
+    };
   }
 
   async addProviderAddendum(
@@ -2999,6 +3101,19 @@ export class EncountersService {
         "L'infirmier ou l'infirmière sélectionné(e) n'est pas actif(ve) dans cet établissement."
       );
     }
+  }
+
+  private async assertUserHasAnyClinicalRole(facilityId: string, userId: string, allowed: RoleCode[]) {
+    const rows = await this.prisma.userRole.findMany({
+      where: { facilityId, userId, isActive: true },
+      select: { role: { select: { code: true } } },
+    });
+    const codes = new Set(rows.map((r) => r.role.code));
+    if (codes.has(RoleCode.ADMIN)) return;
+    for (const a of allowed) {
+      if (codes.has(a)) return;
+    }
+    throw new ForbiddenException("Rôle insuffisant pour cette action.");
   }
 
   private async validateErHandoffReceivingNurseUserId(facilityId: string, nursingAssessment: unknown) {

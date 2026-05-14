@@ -12,6 +12,7 @@ import {
   procedureTypeDisplayName,
   type ProcedurePayload,
 } from "@/lib/lacerationProcedurePayloadDisplay";
+import { OBSERVATION_REASSESSMENT_EVENT_SOURCE } from "@medora/shared";
 
 export type ClinicalTimelineApiRow = {
   id: string;
@@ -68,11 +69,40 @@ function summarizeClinicalEvent(
         label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.providerMseSaved"),
         summary: "",
       };
-    case "NURSING_ASSESSMENT_SAVED":
+    case "NURSING_ASSESSMENT_SAVED": {
+      if (payload.source === OBSERVATION_REASSESSMENT_EVENT_SOURCE) {
+        const obs = asRecord(payload.observationReassessmentV1) ?? {};
+        const roleRaw = typeof obs.role === "string" ? obs.role : "";
+        const roleLabel =
+          roleRaw === "PROVIDER"
+            ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationReassessmentRoleMd")
+            : roleRaw === "RN"
+              ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationReassessmentRoleRn")
+              : roleRaw;
+        const ps = typeof obs.patientStatus === "string" ? obs.patientStatus : "";
+        const statusLabel =
+          ps === "improved"
+            ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationStatusImproved")
+            : ps === "worsening"
+              ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationStatusWorsening")
+              : t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationStatusUnchanged");
+        const note = typeof obs.note === "string" && obs.note.trim() ? obs.note.trim() : "";
+        const summary = note
+          ? `${statusLabel} — ${note.slice(0, 160)}${note.length > 160 ? "…" : ""}`
+          : statusLabel;
+        return {
+          label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationReassessment").replace(
+            "{role}",
+            roleLabel
+          ),
+          summary,
+        };
+      }
       return {
         label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.nursingAssessmentSaved"),
         summary: "",
       };
+    }
     case "HANDOFF_PROVIDER": {
       const name = typeof payload.toDisplayName === "string" && payload.toDisplayName.trim()
         ? payload.toDisplayName.trim()

@@ -13,6 +13,8 @@ export type ObservationTrackboardOpsInput = {
   resultsPendingCount: number;
   criticalResultUnacknowledged: boolean;
   lastNursingReassessmentAt: string | null;
+  /** Phase 13G-B — last PROVIDER role observation reassessment clinical event (ISO), if any. */
+  lastProviderObservationReassessmentAt?: string | null;
   firstDispositionDocAt: string | null;
   lastTriageVitalsRecordedAt?: string | null;
 };
@@ -30,6 +32,10 @@ export function mergeObservationTrackboardOpsInput(
     criticalResultUnacknowledged: Boolean(trackboard?.criticalResultUnacknowledged),
     lastNursingReassessmentAt:
       typeof trackboard?.lastNursingReassessmentAt === "string" ? trackboard.lastNursingReassessmentAt : null,
+    lastProviderObservationReassessmentAt:
+      typeof trackboard?.lastProviderObservationReassessmentAt === "string"
+        ? trackboard.lastProviderObservationReassessmentAt
+        : null,
     firstDispositionDocAt:
       typeof trackboard?.firstDispositionDocAt === "string" ? trackboard.firstDispositionDocAt : null,
     lastTriageVitalsRecordedAt:
@@ -151,7 +157,12 @@ export function computeObservationOperationalSnapshot(input: {
   const ws = (input.workflowState ?? "").trim();
   const boardingOperational = ws === "ARRIVED" || ws === "TRIAGE";
 
-  const lastReMs = parseIsoMs(input.trackboardOps.lastNursingReassessmentAt);
+  const lastNursingReMs = parseIsoMs(input.trackboardOps.lastNursingReassessmentAt);
+  const lastProvObsReMs = parseIsoMs(input.trackboardOps.lastProviderObservationReassessmentAt ?? null);
+  const lastReMs =
+    lastNursingReMs != null && lastProvObsReMs != null
+      ? Math.max(lastNursingReMs, lastProvObsReMs)
+      : lastNursingReMs ?? lastProvObsReMs;
   let reassessmentDue = false;
   let reassessmentOverdue = false;
   if (lastReMs == null) {

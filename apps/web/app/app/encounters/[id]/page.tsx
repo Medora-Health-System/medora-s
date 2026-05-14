@@ -49,6 +49,8 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
+import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
+import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
 import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import { mergeVitalsJsonForSave } from "@/features/emergency/emergencyTriageVitalsMerge";
@@ -251,6 +253,10 @@ export default function EncounterDetailPage() {
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
   const [savingAdmission, setSavingAdmission] = useState(false);
   const [showObservationOrderTemplateModal, setShowObservationOrderTemplateModal] = useState(false);
+  const [clinicalTimelineRefresh, setClinicalTimelineRefresh] = useState(0);
+  const [observationReassessmentModalRole, setObservationReassessmentModalRole] = useState<null | "PROVIDER" | "RN">(
+    null
+  );
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
 
@@ -1072,6 +1078,12 @@ export default function EncounterDetailPage() {
   /** Dossier médical signé : saisie verrouillée (addendum et navigation restent possibles). */
   const isLocked = isEncounterLocked(encounter);
   const isRNOnly = roles.includes("RN") && !isProviderLike;
+  const canAddObsProviderReassessment =
+    observationWorkflowActive && encounter.status === "OPEN" && isProviderLike;
+  const canAddObsNursingReassessment =
+    observationWorkflowActive &&
+    encounter.status === "OPEN" &&
+    (roles.includes("RN") || roles.includes("ADMIN"));
   const canEditOperational = roles.includes("RN") || roles.includes("ADMIN");
   /** Admission depuis la consultation — réservé médecin / admin (aligné sur `canPrescribe`). */
   const canAdmitPatient = canPrescribe && encounter.status === "OPEN";
@@ -1574,7 +1586,20 @@ export default function EncounterDetailPage() {
                 setActiveTab={(tab) => setActiveTab(tab)}
                 onOpenDischarge={openDischargeThenClose}
                 showNursingTab={showNursingTab}
+                canAddProviderReassessment={canAddObsProviderReassessment}
+                canAddNursingReassessment={canAddObsNursingReassessment}
+                onOpenObservationReassessment={(role) => setObservationReassessmentModalRole(role)}
               />
+            ) : null}
+
+            {observationWorkflowActive ? (
+              <div style={{ marginTop: 12 }}>
+                <ClinicalTimeline
+                  encounterId={encounterId}
+                  facilityId={facilityId}
+                  refreshToken={clinicalTimelineRefresh}
+                />
+              </div>
             ) : null}
 
             <div style={{ marginTop: 16 }}>
@@ -2299,6 +2324,18 @@ export default function EncounterDetailPage() {
         onClose={() => setShowObservationOrderTemplateModal(false)}
         onOrdersCreated={async () => {
           await refreshQuickOrdersOnly();
+          await loadEncounter({ silent: true });
+        }}
+      />
+
+      <ObservationReassessmentModal
+        open={observationReassessmentModalRole !== null}
+        defaultRole={observationReassessmentModalRole ?? "PROVIDER"}
+        encounterId={encounterId}
+        facilityId={facilityId}
+        onClose={() => setObservationReassessmentModalRole(null)}
+        onSaved={async () => {
+          setClinicalTimelineRefresh((n) => n + 1);
           await loadEncounter({ silent: true });
         }}
       />

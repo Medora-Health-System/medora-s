@@ -74,6 +74,9 @@ export type ObservationWorkflowEncounterChromeProps = {
   setActiveTab: (tab: string) => void;
   onOpenDischarge: () => void;
   showNursingTab: boolean;
+  canAddProviderReassessment: boolean;
+  canAddNursingReassessment: boolean;
+  onOpenObservationReassessment: (role: "PROVIDER" | "RN") => void;
 };
 
 export function ObservationWorkflowEncounterChrome({
@@ -86,7 +89,16 @@ export function ObservationWorkflowEncounterChrome({
   setActiveTab,
   onOpenDischarge,
   showNursingTab,
+  canAddProviderReassessment,
+  canAddNursingReassessment,
+  onOpenObservationReassessment,
 }: ObservationWorkflowEncounterChromeProps) {
+  const providerObsAt =
+    typeof trackboardOps.lastProviderObservationReassessmentAt === "string" &&
+    trackboardOps.lastProviderObservationReassessmentAt.trim()
+      ? formatDateTime(trackboardOps.lastProviderObservationReassessmentAt)
+      : t("common.dash");
+
   const nursingAt =
     typeof trackboardOps.lastNursingReassessmentAt === "string" && trackboardOps.lastNursingReassessmentAt.trim()
       ? formatDateTime(trackboardOps.lastNursingReassessmentAt)
@@ -161,6 +173,10 @@ export function ObservationWorkflowEncounterChrome({
               <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastNursing")}:</span> {nursingAt}
             </div>
             <div>
+              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastProviderObsReassess")}:</span>{" "}
+              {providerObsAt}
+            </div>
+            <div>
               <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastProviderSigned")}:</span>{" "}
               {providerSigned}
             </div>
@@ -192,6 +208,24 @@ export function ObservationWorkflowEncounterChrome({
           <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
             {t("encounterChrome.observationWorkflow.quick.reassess")}
           </button>
+          {canAddProviderReassessment ? (
+            <button
+              type="button"
+              style={{ ...quickBtn, backgroundColor: "#eef2ff", borderColor: "#a5b4fc", color: "#3730a3" }}
+              onClick={() => onOpenObservationReassessment("PROVIDER")}
+            >
+              {t("encounterChrome.observationWorkflow.quick.addReassessmentProvider")}
+            </button>
+          ) : null}
+          {canAddNursingReassessment ? (
+            <button
+              type="button"
+              style={{ ...quickBtn, backgroundColor: "#ecfeff", borderColor: "#67e8f9", color: "#155e75" }}
+              onClick={() => onOpenObservationReassessment("RN")}
+            >
+              {t("encounterChrome.observationWorkflow.quick.addReassessmentNursing")}
+            </button>
+          ) : null}
           <button type="button" style={quickBtn} onClick={() => setActiveTab("orders")}>
             {t("encounterChrome.observationWorkflow.quick.orders")}
           </button>
