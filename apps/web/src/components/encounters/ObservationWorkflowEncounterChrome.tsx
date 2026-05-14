@@ -1,8 +1,35 @@
 "use client";
 
 import React, { useMemo } from "react";
-import type { ObservationOperationalSnapshot, ObservationTrackboardOpsInput } from "@medora/shared";
+import type {
+  ObservationOperationalBlocker,
+  ObservationOperationalSnapshot,
+  ObservationReadinessLine,
+  ObservationTrackboardOpsInput,
+} from "@medora/shared";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+
+const BLOCKER_LABEL_KEY: Record<ObservationOperationalBlocker["id"], string> = {
+  CRITICAL_RESULT_UNACKED: "encounterChrome.observationWorkflow.blockers.CRITICAL_RESULT_UNACKED",
+  VITALS_STALE: "encounterChrome.observationWorkflow.blockers.VITALS_STALE",
+  PROVIDER_REASSESSMENT_OVERDUE: "encounterChrome.observationWorkflow.blockers.PROVIDER_REASSESSMENT_OVERDUE",
+  RN_REASSESSMENT_OVERDUE: "encounterChrome.observationWorkflow.blockers.RN_REASSESSMENT_OVERDUE",
+  PROVIDER_REASSESSMENT_DUE: "encounterChrome.observationWorkflow.blockers.PROVIDER_REASSESSMENT_DUE",
+  RN_REASSESSMENT_DUE: "encounterChrome.observationWorkflow.blockers.RN_REASSESSMENT_DUE",
+  PENDING_RESULTS: "encounterChrome.observationWorkflow.blockers.PENDING_RESULTS",
+  NO_PROVIDER_ASSIGNED: "encounterChrome.observationWorkflow.blockers.NO_PROVIDER_ASSIGNED",
+  NO_RN_ASSIGNED: "encounterChrome.observationWorkflow.blockers.NO_RN_ASSIGNED",
+  LOS_ESCALATION_24H: "encounterChrome.observationWorkflow.blockers.LOS_ESCALATION_24H",
+  DISCHARGE_READY_DOC_GAP: "encounterChrome.observationWorkflow.blockers.DISCHARGE_READY_DOC_GAP",
+};
+
+const READINESS_LABEL_KEY: Record<ObservationReadinessLine["id"], string> = {
+  CONTINUE_OBSERVATION: "encounterChrome.observationWorkflow.readiness.CONTINUE_OBSERVATION",
+  NEEDS_REASSESSMENT: "encounterChrome.observationWorkflow.readiness.NEEDS_REASSESSMENT",
+  NEEDS_RESULTS_REVIEW: "encounterChrome.observationWorkflow.readiness.NEEDS_RESULTS_REVIEW",
+  READY_FOR_DISCHARGE_WORKFLOW: "encounterChrome.observationWorkflow.readiness.READY_FOR_DISCHARGE_WORKFLOW",
+  NEEDS_ESCALATION_REVIEW: "encounterChrome.observationWorkflow.readiness.NEEDS_ESCALATION_REVIEW",
+};
 
 export type ObservationWorkflowStatusTone = "green" | "yellow" | "red" | "amber";
 
@@ -13,8 +40,16 @@ export function resolveObservationWorkflowHeaderPill(
   if (flags.criticalLabsUnacked) {
     return { tone: "red", labelKey: "encounterChrome.observationWorkflow.statusPill.criticalResults" };
   }
-  if (flags.reassessmentOverdue) {
-    return { tone: "red", labelKey: "encounterChrome.observationWorkflow.statusPill.reassessmentOverdue" };
+  const po = flags.providerReassessmentOverdue;
+  const ro = flags.rnObservationReassessmentOverdue;
+  if (po || ro) {
+    if (po && ro) {
+      return { tone: "red", labelKey: "encounterChrome.observationWorkflow.statusPill.reassessmentOverdue" };
+    }
+    if (po) {
+      return { tone: "red", labelKey: "encounterChrome.observationWorkflow.statusPill.providerReassessmentOverdue" };
+    }
+    return { tone: "red", labelKey: "encounterChrome.observationWorkflow.statusPill.rnReassessmentOverdue" };
   }
   if (snapshot.vitalsStale) {
     return { tone: "red", labelKey: "encounterChrome.observationWorkflow.statusPill.vitalsStale" };
@@ -22,8 +57,16 @@ export function resolveObservationWorkflowHeaderPill(
   if (snapshot.extendedStay24h) {
     return { tone: "amber", labelKey: "encounterChrome.observationWorkflow.statusPill.extended24h" };
   }
-  if (flags.reassessmentDue) {
-    return { tone: "yellow", labelKey: "encounterChrome.observationWorkflow.statusPill.reassessmentDue" };
+  const pd = flags.providerReassessmentDue;
+  const rd = flags.rnObservationReassessmentDue;
+  if (pd || rd) {
+    if (pd && rd) {
+      return { tone: "yellow", labelKey: "encounterChrome.observationWorkflow.statusPill.reassessmentDue" };
+    }
+    if (pd) {
+      return { tone: "yellow", labelKey: "encounterChrome.observationWorkflow.statusPill.providerReassessmentDue" };
+    }
+    return { tone: "yellow", labelKey: "encounterChrome.observationWorkflow.statusPill.rnReassessmentDue" };
   }
   if (flags.resultsPending) {
     return { tone: "yellow", labelKey: "encounterChrome.observationWorkflow.statusPill.resultsPending" };
@@ -93,16 +136,13 @@ export function ObservationWorkflowEncounterChrome({
   canAddNursingReassessment,
   onOpenObservationReassessment,
 }: ObservationWorkflowEncounterChromeProps) {
-  const providerObsAt =
-    typeof trackboardOps.lastProviderObservationReassessmentAt === "string" &&
-    trackboardOps.lastProviderObservationReassessmentAt.trim()
-      ? formatDateTime(trackboardOps.lastProviderObservationReassessmentAt)
-      : t("common.dash");
+  const providerObsAt = snapshot.reassessmentLanes.provider.lastAtIso
+    ? formatDateTime(snapshot.reassessmentLanes.provider.lastAtIso)
+    : t("common.dash");
 
-  const nursingAt =
-    typeof trackboardOps.lastNursingReassessmentAt === "string" && trackboardOps.lastNursingReassessmentAt.trim()
-      ? formatDateTime(trackboardOps.lastNursingReassessmentAt)
-      : t("common.dash");
+  const rnObsAt = snapshot.reassessmentLanes.rnObservation.lastAtIso
+    ? formatDateTime(snapshot.reassessmentLanes.rnObservation.lastAtIso)
+    : t("common.dash");
 
   const providerSigned =
     String(providerDocumentationStatus ?? "").trim() === "SIGNED" &&
@@ -170,7 +210,8 @@ export function ObservationWorkflowEncounterChrome({
               ) : null}
             </div>
             <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastNursing")}:</span> {nursingAt}
+              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastRnObsReassess")}:</span>{" "}
+              {rnObsAt}
             </div>
             <div>
               <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastProviderObsReassess")}:</span>{" "}
@@ -201,6 +242,66 @@ export function ObservationWorkflowEncounterChrome({
                   {t("encounterChrome.observationWorkflow.criticalResultFlag")}
                 </span>
               ) : null}
+            </div>
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                {t("encounterChrome.observationWorkflow.reassessmentLanesTitle")}
+              </div>
+              <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+                <div>
+                  <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.laneProvider")}:</span>{" "}
+                  {snapshot.reassessmentLanes.provider.overdue
+                    ? t("encounterChrome.observationWorkflow.laneOverdue")
+                    : snapshot.reassessmentLanes.provider.due
+                      ? t("encounterChrome.observationWorkflow.laneDue")
+                      : t("encounterChrome.observationWorkflow.laneOk")}
+                </div>
+                <div>
+                  <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.laneRnObservation")}:</span>{" "}
+                  {snapshot.reassessmentLanes.rnObservation.overdue
+                    ? t("encounterChrome.observationWorkflow.laneOverdue")
+                    : snapshot.reassessmentLanes.rnObservation.due
+                      ? t("encounterChrome.observationWorkflow.laneDue")
+                      : t("encounterChrome.observationWorkflow.laneOk")}
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                {t("encounterChrome.observationWorkflow.blockersTitle")}
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
+                {snapshot.operationalBlockers.slice(0, 6).map((b) => (
+                  <li key={b.id} style={{ marginBottom: 2 }}>
+                    {t(BLOCKER_LABEL_KEY[b.id])}
+                  </li>
+                ))}
+              </ul>
+              {snapshot.operationalBlockers.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#64748b" }}>{t("encounterChrome.observationWorkflow.blockersNone")}</div>
+              ) : null}
+            </div>
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                {t("encounterChrome.observationWorkflow.readinessTitle")}
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
+                {snapshot.readinessLines.map((line) => (
+                  <li
+                    key={line.id}
+                    style={{
+                      marginBottom: 2,
+                      fontWeight: line.active ? 600 : 400,
+                      color: line.active ? "#0f172a" : "#64748b",
+                    }}
+                  >
+                    {t(READINESS_LABEL_KEY[line.id])}
+                  </li>
+                ))}
+              </ul>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
+                {t("encounterChrome.observationWorkflow.readinessFootnote")}
+              </div>
             </div>
           </div>
         </div>
@@ -280,13 +381,29 @@ export function ObservationWorkflowEncounterChrome({
             {t("encounterChrome.observationWorkflow.badges.vitalsStale")}
           </span>
         ) : null}
-        {flags.reassessmentOverdue ? (
+        {flags.providerReassessmentOverdue && flags.rnObservationReassessmentOverdue ? (
           <span style={{ ...badgeBase, backgroundColor: "#fee2e2", borderColor: "#fca5a5", color: "#991b1b" }}>
             {t("encounterChrome.observationWorkflow.badges.reassessmentOverdue")}
           </span>
-        ) : flags.reassessmentDue ? (
+        ) : flags.providerReassessmentOverdue ? (
+          <span style={{ ...badgeBase, backgroundColor: "#fee2e2", borderColor: "#fca5a5", color: "#991b1b" }}>
+            {t("encounterChrome.observationWorkflow.badges.providerReassessmentOverdue")}
+          </span>
+        ) : flags.rnObservationReassessmentOverdue ? (
+          <span style={{ ...badgeBase, backgroundColor: "#fee2e2", borderColor: "#fca5a5", color: "#991b1b" }}>
+            {t("encounterChrome.observationWorkflow.badges.rnReassessmentOverdue")}
+          </span>
+        ) : flags.providerReassessmentDue && flags.rnObservationReassessmentDue ? (
           <span style={{ ...badgeBase, backgroundColor: "#fef9c3", borderColor: "#fde047", color: "#854d0e" }}>
             {t("encounterChrome.observationWorkflow.badges.reassessmentDue")}
+          </span>
+        ) : flags.providerReassessmentDue ? (
+          <span style={{ ...badgeBase, backgroundColor: "#fef9c3", borderColor: "#fde047", color: "#854d0e" }}>
+            {t("encounterChrome.observationWorkflow.badges.providerReassessmentDue")}
+          </span>
+        ) : flags.rnObservationReassessmentDue ? (
+          <span style={{ ...badgeBase, backgroundColor: "#fef9c3", borderColor: "#fde047", color: "#854d0e" }}>
+            {t("encounterChrome.observationWorkflow.badges.rnReassessmentDue")}
           </span>
         ) : null}
         {flags.resultsPending ? (
@@ -307,6 +424,11 @@ export function ObservationWorkflowEncounterChrome({
         {flags.readyForDischarge ? (
           <span style={{ ...badgeBase, backgroundColor: "#dcfce7", borderColor: "#86efac", color: "#166534" }}>
             {t("encounterChrome.observationWorkflow.badges.readyDischarge")}
+          </span>
+        ) : null}
+        {flags.dispositionPhase ? (
+          <span style={{ ...badgeBase, backgroundColor: "#f1f5f9", borderColor: "#cbd5e1", color: "#334155" }}>
+            {t("encounterChrome.observationWorkflow.badges.disposition")}
           </span>
         ) : null}
       </div>

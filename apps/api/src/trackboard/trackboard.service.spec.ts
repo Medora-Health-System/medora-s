@@ -22,8 +22,16 @@ describe("TrackboardService — Phase 10B", () => {
       .mockResolvedValueOnce([
         { encounterId: "enc-1", resultsPendingCount: BigInt(2), criticalResultUnacknowledged: true },
       ])
-      .mockResolvedValueOnce([{ encounterId: "enc-1", lastAt: new Date("2026-05-10T10:00:00.000Z") }])
-      .mockResolvedValueOnce([{ encounterId: "enc-1", firstAt: new Date("2026-05-10T09:00:00.000Z") }]);
+      .mockResolvedValueOnce([
+        {
+          encounterId: "enc-1",
+          lastNursingAt: new Date("2026-05-10T10:00:00.000Z"),
+          lastProviderObsAt: null,
+          lastRnObservationAt: new Date("2026-05-10T09:30:00.000Z"),
+        },
+      ])
+      .mockResolvedValueOnce([{ encounterId: "enc-1", firstAt: new Date("2026-05-10T09:00:00.000Z") }])
+      .mockResolvedValueOnce([{ encounterId: "enc-1", lastAt: new Date("2026-05-10T08:00:00.000Z") }]);
 
     const prisma = {
       encounter: { findMany },
@@ -38,8 +46,10 @@ describe("TrackboardService — Phase 10B", () => {
       resultsPendingCount: 2,
       criticalResultUnacknowledged: true,
       lastNursingReassessmentAt: "2026-05-10T10:00:00.000Z",
+      lastProviderObservationReassessmentAt: null,
+      lastRnObservationReassessmentAt: "2026-05-10T09:30:00.000Z",
       firstDispositionDocAt: "2026-05-10T09:00:00.000Z",
     });
-    expect(queryRaw).toHaveBeenCalledTimes(3);
+    expect(queryRaw).toHaveBeenCalledTimes(4);
   });
 });

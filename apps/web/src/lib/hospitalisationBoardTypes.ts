@@ -10,6 +10,10 @@ export type HospitalisationBoardTrackboardOps = {
   resultsPendingCount: number;
   criticalResultUnacknowledged: boolean;
   lastNursingReassessmentAt: string | null;
+  /** Phase 13G-B — optional on encounter detail when operational aggregates are merged. */
+  lastProviderObservationReassessmentAt?: string | null;
+  /** Phase 13G-C — RN observation reassessment only (excludes ER nursing reassessment). */
+  lastRnObservationReassessmentAt?: string | null;
   firstDispositionDocAt: string | null;
   lastTriageVitalsRecordedAt?: string | null;
 };

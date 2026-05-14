@@ -80,6 +80,8 @@ export class TrackboardService {
           resultsPendingCount: ops.resultsPendingCount,
           criticalResultUnacknowledged: ops.criticalResultUnacknowledged,
           lastNursingReassessmentAt: ops.lastNursingReassessmentAt,
+          lastProviderObservationReassessmentAt: ops.lastProviderObservationReassessmentAt,
+          lastRnObservationReassessmentAt: ops.lastRnObservationReassessmentAt,
           firstDispositionDocAt: ops.firstDispositionDocAt,
           lastTriageVitalsRecordedAt: ops.lastTriageVitalsRecordedAt,
         },
@@ -140,14 +142,34 @@ export class TrackboardService {
           AND oi."status" <> 'CANCELLED'::"OrderStatus"
         GROUP BY o."encounterId"
       `),
-      this.prisma.$queryRaw<Array<{ encounterId: string; lastAt: Date }>>(Prisma.sql`
+      this.prisma.$queryRaw<
+        Array<{
+          encounterId: string;
+          lastNursingAt: Date | null;
+          lastProviderObsAt: Date | null;
+          lastRnObservationAt: Date | null;
+        }>
+      >(Prisma.sql`
         SELECT e."encounterId" AS "encounterId",
-          MAX(e."createdAt") AS "lastAt"
+          MAX(e."createdAt") FILTER (
+            WHERE e."payloadJson"->>'namespace' = 'erNursingReassessmentV1'
+            OR (
+              e."payloadJson"->>'source' = 'OBSERVATION_REASSESSMENT_V1'
+              AND (e."payloadJson"->'observationReassessmentV1'->>'role') = 'RN'
+            )
+          ) AS "lastNursingAt",
+          MAX(e."createdAt") FILTER (
+            WHERE e."payloadJson"->>'source' = 'OBSERVATION_REASSESSMENT_V1'
+              AND (e."payloadJson"->'observationReassessmentV1'->>'role') = 'PROVIDER'
+          ) AS "lastProviderObsAt",
+          MAX(e."createdAt") FILTER (
+            WHERE e."payloadJson"->>'source' = 'OBSERVATION_REASSESSMENT_V1'
+              AND (e."payloadJson"->'observationReassessmentV1'->>'role') = 'RN'
+          ) AS "lastRnObservationAt"
         FROM "EncounterClinicalEvent" e
         WHERE e."facilityId" = ${facilityId}
           AND e."encounterId" IN (${idsSql})
           AND e."eventType" = 'NURSING_ASSESSMENT_SAVED'::"EncounterClinicalEventType"
-          AND e."payloadJson"->>'namespace' = 'erNursingReassessmentV1'
         GROUP BY e."encounterId"
       `),
       this.prisma.$queryRaw<Array<{ encounterId: string; firstAt: Date }>>(Prisma.sql`
@@ -184,9 +206,21 @@ export class TrackboardService {
 
     for (const row of reassessRows) {
       const cur = map.get(row.encounterId) ?? emptyTrackboardOperationalAggregate();
+      const lastN = row.lastNursingAt;
+      const lastP = row.lastProviderObsAt;
+      const lastRnObs = row.lastRnObservationAt;
       map.set(row.encounterId, {
         ...cur,
-        lastNursingReassessmentAt: row.lastAt instanceof Date ? row.lastAt.toISOString() : new Date(row.lastAt).toISOString(),
+        lastNursingReassessmentAt:
+          lastN instanceof Date ? lastN.toISOString() : lastN ? new Date(lastN as string).toISOString() : null,
+        lastProviderObservationReassessmentAt:
+          lastP instanceof Date ? lastP.toISOString() : lastP ? new Date(lastP as string).toISOString() : null,
+        lastRnObservationReassessmentAt:
+          lastRnObs instanceof Date
+            ? lastRnObs.toISOString()
+            : lastRnObs
+              ? new Date(lastRnObs as string).toISOString()
+              : null,
       });
     }
 

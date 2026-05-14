@@ -108,16 +108,40 @@ function ObservationOpsChips({
       </MedoraCardBadge>
     );
   }
-  if (f.reassessmentOverdue) {
+  if (f.providerReassessmentOverdue && f.rnObservationReassessmentOverdue) {
     chips.push(
       <MedoraCardBadge key="ro" soft={OBS_DANGER}>
         {t("hospitalizationBoard.badgeReassessmentOverdue")}
       </MedoraCardBadge>
     );
-  } else if (f.reassessmentDue) {
+  } else if (f.providerReassessmentOverdue) {
+    chips.push(
+      <MedoraCardBadge key="ropo" soft={OBS_DANGER}>
+        {t("hospitalizationBoard.badgeProviderObsReassessmentOverdue")}
+      </MedoraCardBadge>
+    );
+  } else if (f.rnObservationReassessmentOverdue) {
+    chips.push(
+      <MedoraCardBadge key="rorn" soft={OBS_DANGER}>
+        {t("hospitalizationBoard.badgeRnObsReassessmentOverdue")}
+      </MedoraCardBadge>
+    );
+  } else if (f.providerReassessmentDue && f.rnObservationReassessmentDue) {
     chips.push(
       <MedoraCardBadge key="rd" soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeReassessmentDue")}
+      </MedoraCardBadge>
+    );
+  } else if (f.providerReassessmentDue) {
+    chips.push(
+      <MedoraCardBadge key="rdp" soft={OBS_WARN}>
+        {t("hospitalizationBoard.badgeProviderObsReassessmentDue")}
+      </MedoraCardBadge>
+    );
+  } else if (f.rnObservationReassessmentDue) {
+    chips.push(
+      <MedoraCardBadge key="rdrn" soft={OBS_WARN}>
+        {t("hospitalizationBoard.badgeRnObsReassessmentDue")}
       </MedoraCardBadge>
     );
   }

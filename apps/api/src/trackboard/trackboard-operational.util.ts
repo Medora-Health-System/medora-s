@@ -7,6 +7,10 @@ export type TrackboardOperationalAggregate = {
   resultsPendingCount: number;
   criticalResultUnacknowledged: boolean;
   lastNursingReassessmentAt: string | null;
+  /** Phase 13G-B — last PROVIDER observation reassessment event (ISO), if any. */
+  lastProviderObservationReassessmentAt: string | null;
+  /** Phase 13G-C — last RN observation reassessment only (ISO), if any. */
+  lastRnObservationReassessmentAt: string | null;
   firstDispositionDocAt: string | null;
   /** Phase 13B — latest triage vitals reading timestamp (ISO) for observation vitals-age hints. */
   lastTriageVitalsRecordedAt: string | null;
@@ -17,6 +21,8 @@ export function emptyTrackboardOperationalAggregate(): TrackboardOperationalAggr
     resultsPendingCount: 0,
     criticalResultUnacknowledged: false,
     lastNursingReassessmentAt: null,
+    lastProviderObservationReassessmentAt: null,
+    lastRnObservationReassessmentAt: null,
     firstDispositionDocAt: null,
     lastTriageVitalsRecordedAt: null,
   };

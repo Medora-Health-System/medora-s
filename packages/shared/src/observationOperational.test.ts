@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeObservationOperationalSnapshot,
+  computeObservationReassessmentLaneState,
   computeObservationStaySummaryForExport,
   mergeObservationTrackboardOpsInput,
   OBSERVATION_REASSESSMENT_DUE_MS,
@@ -14,6 +15,7 @@ const emptyOps = {
   criticalResultUnacknowledged: false,
   lastNursingReassessmentAt: null,
   lastProviderObservationReassessmentAt: null,
+  lastRnObservationReassessmentAt: null,
   firstDispositionDocAt: null,
   lastTriageVitalsRecordedAt: null,
 };
@@ -43,6 +45,14 @@ describe("mergeObservationTrackboardOpsInput", () => {
     );
     expect(merged.lastProviderObservationReassessmentAt).toBe("2024-06-01T10:00:00.000Z");
   });
+
+  it("preserves lastRnObservationReassessmentAt from trackboard", () => {
+    const merged = mergeObservationTrackboardOpsInput(
+      { lastRnObservationReassessmentAt: "2024-06-01T11:00:00.000Z" },
+      undefined
+    );
+    expect(merged.lastRnObservationReassessmentAt).toBe("2024-06-01T11:00:00.000Z");
+  });
 });
 
 describe("resolveObservationLosAnchorMs", () => {
@@ -65,6 +75,27 @@ describe("resolveObservationLosAnchorMs", () => {
 
   it("returns null when neither timestamp parses", () => {
     expect(resolveObservationLosAnchorMs({ admittedAt: "x", createdAt: null })).toBeNull();
+  });
+});
+
+describe("computeObservationReassessmentLaneState", () => {
+  const anchor = new Date("2024-06-01T12:00:00.000Z").getTime();
+
+  it("uses anchor when no event", () => {
+    const now = anchor + OBSERVATION_REASSESSMENT_OVERDUE_MS + 60_000;
+    expect(computeObservationReassessmentLaneState({ anchorMs: anchor, nowMs: now, lastEventMs: null })).toEqual({
+      due: false,
+      overdue: true,
+    });
+  });
+
+  it("uses time since last event when on or after anchor", () => {
+    const last = anchor + 60 * 60 * 1000;
+    const now = last + OBSERVATION_REASSESSMENT_DUE_MS + 30 * 60 * 1000;
+    expect(computeObservationReassessmentLaneState({ anchorMs: anchor, nowMs: now, lastEventMs: last })).toEqual({
+      due: true,
+      overdue: false,
+    });
   });
 });
 
@@ -161,9 +192,30 @@ describe("computeObservationOperationalSnapshot", () => {
     expect(snap?.flags.reassessmentDue).toBe(false);
   });
 
-  it("uses max of nursing and provider observation reassessment timestamps", () => {
+  it("13G-C: provider and RN observation reassessment lanes are independent", () => {
     const now = new Date("2024-06-01T14:00:00.000Z").getTime();
-    const snapOldNursing = computeObservationOperationalSnapshot({
+    const snapRnOverdueProviderOk = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      workflowState: "IN_TREATMENT",
+      admittedAt: "2024-06-01T06:00:00.000Z",
+      createdAt: "2024-06-01T04:00:00.000Z",
+      physicianAssignedUserId: "p",
+      nurseAssignedUserId: "n",
+      providerDocumentationStatus: "DRAFT",
+      providerDocumentationSignedAt: null,
+      trackboardOps: {
+        ...emptyOps,
+        lastRnObservationReassessmentAt: "2024-06-01T06:30:00.000Z",
+        lastProviderObservationReassessmentAt: "2024-06-01T13:30:00.000Z",
+      },
+      nowMs: now,
+    });
+    expect(snapRnOverdueProviderOk?.flags.providerReassessmentOverdue).toBe(false);
+    expect(snapRnOverdueProviderOk?.flags.rnObservationReassessmentOverdue).toBe(true);
+    expect(snapRnOverdueProviderOk?.flags.reassessmentOverdue).toBe(true);
+
+    const snapBothFresh = computeObservationOperationalSnapshot({
       encounterType: "INPATIENT",
       status: "OPEN",
       workflowState: "IN_TREATMENT",
@@ -175,32 +227,37 @@ describe("computeObservationOperationalSnapshot", () => {
       providerDocumentationSignedAt: null,
       trackboardOps: {
         ...emptyOps,
-        lastNursingReassessmentAt: "2024-06-01T08:00:00.000Z",
+        lastRnObservationReassessmentAt: "2024-06-01T13:30:00.000Z",
+        lastProviderObservationReassessmentAt: "2024-06-01T13:45:00.000Z",
+      },
+      nowMs: now,
+    });
+    expect(snapBothFresh?.flags.reassessmentOverdue).toBe(false);
+    expect(snapBothFresh?.flags.reassessmentDue).toBe(false);
+  });
+
+  it("does not use legacy lastNursingReassessmentAt for observation lane clocks", () => {
+    const now = new Date("2024-06-01T14:00:00.000Z").getTime();
+    const snap = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      workflowState: "IN_TREATMENT",
+      admittedAt: "2024-06-01T12:00:00.000Z",
+      createdAt: "2024-06-01T08:00:00.000Z",
+      physicianAssignedUserId: "p",
+      nurseAssignedUserId: "n",
+      providerDocumentationStatus: "DRAFT",
+      providerDocumentationSignedAt: null,
+      trackboardOps: {
+        ...emptyOps,
+        lastNursingReassessmentAt: "2024-06-01T13:55:00.000Z",
+        lastRnObservationReassessmentAt: null,
         lastProviderObservationReassessmentAt: null,
       },
       nowMs: now,
     });
-    expect(snapOldNursing?.flags.reassessmentOverdue).toBe(true);
-
-    const snapWithRecentProvider = computeObservationOperationalSnapshot({
-      encounterType: "INPATIENT",
-      status: "OPEN",
-      workflowState: "IN_TREATMENT",
-      admittedAt: "2024-06-01T12:00:00.000Z",
-      createdAt: "2024-06-01T08:00:00.000Z",
-      physicianAssignedUserId: "p",
-      nurseAssignedUserId: "n",
-      providerDocumentationStatus: "DRAFT",
-      providerDocumentationSignedAt: null,
-      trackboardOps: {
-        ...emptyOps,
-        lastNursingReassessmentAt: "2024-06-01T08:00:00.000Z",
-        lastProviderObservationReassessmentAt: "2024-06-01T13:00:00.000Z",
-      },
-      nowMs: now,
-    });
-    expect(snapWithRecentProvider?.flags.reassessmentOverdue).toBe(false);
-    expect(snapWithRecentProvider?.flags.reassessmentDue).toBe(false);
+    expect(snap?.flags.reassessmentOverdue).toBe(false);
+    expect(snap?.flags.reassessmentDue).toBe(true);
   });
 
   it("marks reassessment due (not overdue) between 2h and 4h without reassessment", () => {
@@ -311,6 +368,51 @@ describe("computeObservationOperationalSnapshot", () => {
     });
     expect(snap?.flags.assignPhysicianGap).toBe(true);
     expect(snap?.flags.assignRnGap).toBe(true);
+  });
+
+  it("13G-C: operational blockers sort critical before vitals and pending results", () => {
+    const t = new Date("2024-06-01T12:00:00.000Z").getTime();
+    const vitalsAt = new Date(t - OBSERVATION_VITALS_STALE_MS - 60_000).toISOString();
+    const snap = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      workflowState: "IN_TREATMENT",
+      admittedAt: new Date(t - 8 * 3600_000).toISOString(),
+      createdAt: "2024-06-01T00:00:00.000Z",
+      physicianAssignedUserId: "p",
+      nurseAssignedUserId: "n",
+      providerDocumentationStatus: "DRAFT",
+      providerDocumentationSignedAt: null,
+      trackboardOps: {
+        ...emptyOps,
+        criticalResultUnacknowledged: true,
+        resultsPendingCount: 1,
+        lastTriageVitalsRecordedAt: vitalsAt,
+      },
+      nowMs: t,
+    });
+    const ids = snap!.operationalBlockers.map((b) => b.id);
+    expect(ids[0]).toBe("CRITICAL_RESULT_UNACKED");
+    expect(ids.indexOf("VITALS_STALE")).toBeLessThan(ids.indexOf("PENDING_RESULTS"));
+  });
+
+  it("13G-C: readiness highlights discharge workflow when workflowState is DISCHARGE_READY", () => {
+    const t = new Date("2024-06-01T12:00:00.000Z").getTime();
+    const snap = computeObservationOperationalSnapshot({
+      encounterType: "INPATIENT",
+      status: "OPEN",
+      workflowState: "DISCHARGE_READY",
+      admittedAt: new Date(t - 3600_000).toISOString(),
+      createdAt: "2024-06-01T06:00:00.000Z",
+      physicianAssignedUserId: "p",
+      nurseAssignedUserId: "n",
+      providerDocumentationStatus: "SIGNED",
+      providerDocumentationSignedAt: "2024-06-01T11:00:00.000Z",
+      trackboardOps: emptyOps,
+      nowMs: t,
+    });
+    const readyLine = snap!.readinessLines.find((l) => l.id === "READY_FOR_DISCHARGE_WORKFLOW");
+    expect(readyLine?.active).toBe(true);
   });
 });
 

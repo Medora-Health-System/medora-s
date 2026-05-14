@@ -15,6 +15,11 @@ export type ObservationTrackboardOpsInput = {
   lastNursingReassessmentAt: string | null;
   /** Phase 13G-B — last PROVIDER role observation reassessment clinical event (ISO), if any. */
   lastProviderObservationReassessmentAt?: string | null;
+  /**
+   * Phase 13G-C — last RN observation reassessment only (`OBSERVATION_REASSESSMENT_V1` + role RN).
+   * Excludes ER `erNursingReassessmentV1` so observation due/overdue lanes stay accurate on INPATIENT.
+   */
+  lastRnObservationReassessmentAt?: string | null;
   firstDispositionDocAt: string | null;
   lastTriageVitalsRecordedAt?: string | null;
 };
@@ -36,6 +41,10 @@ export function mergeObservationTrackboardOpsInput(
       typeof trackboard?.lastProviderObservationReassessmentAt === "string"
         ? trackboard.lastProviderObservationReassessmentAt
         : null,
+    lastRnObservationReassessmentAt:
+      typeof trackboard?.lastRnObservationReassessmentAt === "string"
+        ? trackboard.lastRnObservationReassessmentAt
+        : null,
     firstDispositionDocAt:
       typeof trackboard?.firstDispositionDocAt === "string" ? trackboard.firstDispositionDocAt : null,
     lastTriageVitalsRecordedAt:
@@ -47,8 +56,16 @@ export function mergeObservationTrackboardOpsInput(
 export type ObservationOperationalFlags = {
   /** Early observation workflow (arrived / triage corridor). */
   boardingOperational: boolean;
+  /** Any lane (provider or RN observation) in the 2h–4h window. */
   reassessmentDue: boolean;
+  /** Any lane ≥4h since last role-specific reassessment or anchor when none. */
   reassessmentOverdue: boolean;
+  /** Provider observation reassessment lane only (13G-C). */
+  providerReassessmentDue: boolean;
+  providerReassessmentOverdue: boolean;
+  /** RN observation reassessment lane only (excludes ER namespace). */
+  rnObservationReassessmentDue: boolean;
+  rnObservationReassessmentOverdue: boolean;
   readyForDischarge: boolean;
   /** Workflow in disposition phase (transfer / discharge work-up). */
   dispositionPhase: boolean;
@@ -56,6 +73,46 @@ export type ObservationOperationalFlags = {
   assignRnGap: boolean;
   resultsPending: boolean;
   criticalLabsUnacked: boolean;
+};
+
+/** Read-only operational blocker (computed guidance, not a clinical rule). */
+export type ObservationOperationalBlocker = {
+  id: ObservationOperationalBlockerId;
+  severity: "critical" | "warning" | "info";
+  /** Lower sorts first (higher operational urgency). */
+  sortPriority: number;
+};
+
+export type ObservationOperationalBlockerId =
+  | "CRITICAL_RESULT_UNACKED"
+  | "VITALS_STALE"
+  | "PROVIDER_REASSESSMENT_OVERDUE"
+  | "RN_REASSESSMENT_OVERDUE"
+  | "PROVIDER_REASSESSMENT_DUE"
+  | "RN_REASSESSMENT_DUE"
+  | "PENDING_RESULTS"
+  | "NO_PROVIDER_ASSIGNED"
+  | "NO_RN_ASSIGNED"
+  | "LOS_ESCALATION_24H"
+  | "DISCHARGE_READY_DOC_GAP";
+
+export type ObservationReadinessLineId =
+  | "CONTINUE_OBSERVATION"
+  | "NEEDS_REASSESSMENT"
+  | "NEEDS_RESULTS_REVIEW"
+  | "READY_FOR_DISCHARGE_WORKFLOW"
+  | "NEEDS_ESCALATION_REVIEW";
+
+export type ObservationReadinessLine = {
+  id: ObservationReadinessLineId;
+  /** When true, the line is highlighted as applicable (informational). */
+  active: boolean;
+};
+
+export type ObservationReassessmentLaneState = {
+  lastAtIso: string | null;
+  due: boolean;
+  overdue: boolean;
 };
 
 export type ObservationOperationalSnapshot = {
@@ -72,6 +129,14 @@ export type ObservationOperationalSnapshot = {
   vitalsAgeMs: number | null;
   vitalsStale: boolean;
   providerSignedAgeMs: number | null;
+  /** Echo of first disposition-related clinical doc (admission/discharge summary), for read-only blockers. */
+  firstDispositionDocAt: string | null;
+  reassessmentLanes: {
+    provider: ObservationReassessmentLaneState;
+    rnObservation: ObservationReassessmentLaneState;
+  };
+  operationalBlockers: ObservationOperationalBlocker[];
+  readinessLines: ObservationReadinessLine[];
 };
 
 function parseIsoMs(v: unknown): number | null {
@@ -85,6 +150,122 @@ function parseIsoMs(v: unknown): number | null {
     return Number.isFinite(t) ? t : null;
   }
   return null;
+}
+
+/**
+ * Phase 13G-C — per-lane reassessment clock: same thresholds as legacy combined logic,
+ * but anchored independently when that lane has no event yet.
+ */
+export function computeObservationReassessmentLaneState(input: {
+  anchorMs: number;
+  nowMs: number;
+  lastEventMs: number | null;
+}): { due: boolean; overdue: boolean } {
+  const { anchorMs, nowMs, lastEventMs } = input;
+  if (lastEventMs == null) {
+    const sinceAnchor = Math.max(0, nowMs - anchorMs);
+    if (sinceAnchor >= OBSERVATION_REASSESSMENT_OVERDUE_MS) {
+      return { due: false, overdue: true };
+    }
+    if (sinceAnchor >= OBSERVATION_REASSESSMENT_DUE_MS) {
+      return { due: true, overdue: false };
+    }
+    return { due: false, overdue: false };
+  }
+  const since = Math.max(0, nowMs - lastEventMs);
+  if (since >= OBSERVATION_REASSESSMENT_OVERDUE_MS) {
+    return { due: false, overdue: true };
+  }
+  if (since >= OBSERVATION_REASSESSMENT_DUE_MS) {
+    return { due: true, overdue: false };
+  }
+  return { due: false, overdue: false };
+}
+
+function laneDisplayIso(v: string | null | undefined): string | null {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s !== "" ? s : null;
+}
+
+function buildObservationOperationalBlockers(input: {
+  flags: ObservationOperationalFlags;
+  vitalsStale: boolean;
+  extendedStay24h: boolean;
+  readyForDischarge: boolean;
+  firstDispositionDocAt: string | null;
+}): ObservationOperationalBlocker[] {
+  const out: ObservationOperationalBlocker[] = [];
+  const { flags, vitalsStale, extendedStay24h, readyForDischarge, firstDispositionDocAt } = input;
+
+  if (flags.criticalLabsUnacked) {
+    out.push({ id: "CRITICAL_RESULT_UNACKED", severity: "critical", sortPriority: 10 });
+  }
+  if (vitalsStale) {
+    out.push({ id: "VITALS_STALE", severity: "warning", sortPriority: 20 });
+  }
+  if (flags.providerReassessmentOverdue) {
+    out.push({ id: "PROVIDER_REASSESSMENT_OVERDUE", severity: "warning", sortPriority: 30 });
+  }
+  if (flags.rnObservationReassessmentOverdue) {
+    out.push({ id: "RN_REASSESSMENT_OVERDUE", severity: "warning", sortPriority: 35 });
+  }
+  if (flags.resultsPending) {
+    out.push({ id: "PENDING_RESULTS", severity: "info", sortPriority: 40 });
+  }
+  if (readyForDischarge && firstDispositionDocAt == null) {
+    out.push({ id: "DISCHARGE_READY_DOC_GAP", severity: "info", sortPriority: 45 });
+  }
+  if (extendedStay24h) {
+    out.push({ id: "LOS_ESCALATION_24H", severity: "warning", sortPriority: 50 });
+  }
+  if (flags.assignPhysicianGap) {
+    out.push({ id: "NO_PROVIDER_ASSIGNED", severity: "warning", sortPriority: 55 });
+  }
+  if (flags.assignRnGap) {
+    out.push({ id: "NO_RN_ASSIGNED", severity: "warning", sortPriority: 60 });
+  }
+  if (flags.providerReassessmentDue) {
+    out.push({ id: "PROVIDER_REASSESSMENT_DUE", severity: "info", sortPriority: 70 });
+  }
+  if (flags.rnObservationReassessmentDue) {
+    out.push({ id: "RN_REASSESSMENT_DUE", severity: "info", sortPriority: 75 });
+  }
+
+  out.sort((a, b) => a.sortPriority - b.sortPriority);
+  return out;
+}
+
+function buildObservationReadinessLines(input: {
+  flags: ObservationOperationalFlags;
+  vitalsStale: boolean;
+  extendedStay24h: boolean;
+  dispositionPhase: boolean;
+}): ObservationReadinessLine[] {
+  const { flags, vitalsStale, extendedStay24h, dispositionPhase } = input;
+  const anyReassessPressure =
+    flags.reassessmentDue ||
+    flags.reassessmentOverdue ||
+    flags.providerReassessmentDue ||
+    flags.providerReassessmentOverdue ||
+    flags.rnObservationReassessmentDue ||
+    flags.rnObservationReassessmentOverdue;
+
+  const continueObs =
+    !flags.criticalLabsUnacked &&
+    !vitalsStale &&
+    !flags.providerReassessmentOverdue &&
+    !flags.rnObservationReassessmentOverdue;
+
+  return [
+    { id: "CONTINUE_OBSERVATION", active: continueObs },
+    { id: "NEEDS_REASSESSMENT", active: anyReassessPressure },
+    { id: "NEEDS_RESULTS_REVIEW", active: flags.resultsPending },
+    { id: "READY_FOR_DISCHARGE_WORKFLOW", active: flags.readyForDischarge },
+    {
+      id: "NEEDS_ESCALATION_REVIEW",
+      active: (extendedStay24h || dispositionPhase) && !flags.readyForDischarge,
+    },
+  ];
 }
 
 function utcYmd(ms: number): string {
@@ -118,6 +299,16 @@ export function resolveObservationLosAnchorMs(input: {
     return { anchorMs: createdMs, anchorKind: "createdAt" };
   }
   return null;
+}
+
+/**
+ * Ignore reassessment timestamps before the LOS anchor (defensive; avoids skew from
+ * unrelated earlier events if clocks or data are inconsistent).
+ */
+function effectiveReassessmentEventMs(anchorMs: number, lastEventMs: number | null): number | null {
+  if (lastEventMs == null || !Number.isFinite(lastEventMs)) return null;
+  if (lastEventMs < anchorMs) return null;
+  return lastEventMs;
 }
 
 export function computeObservationOperationalSnapshot(input: {
@@ -157,29 +348,29 @@ export function computeObservationOperationalSnapshot(input: {
   const ws = (input.workflowState ?? "").trim();
   const boardingOperational = ws === "ARRIVED" || ws === "TRIAGE";
 
-  const lastNursingReMs = parseIsoMs(input.trackboardOps.lastNursingReassessmentAt);
-  const lastProvObsReMs = parseIsoMs(input.trackboardOps.lastProviderObservationReassessmentAt ?? null);
-  const lastReMs =
-    lastNursingReMs != null && lastProvObsReMs != null
-      ? Math.max(lastNursingReMs, lastProvObsReMs)
-      : lastNursingReMs ?? lastProvObsReMs;
-  let reassessmentDue = false;
-  let reassessmentOverdue = false;
-  if (lastReMs == null) {
-    if (losMs >= OBSERVATION_REASSESSMENT_OVERDUE_MS) {
-      reassessmentOverdue = true;
-    } else if (losMs >= OBSERVATION_REASSESSMENT_DUE_MS) {
-      reassessmentDue = true;
-    }
-  } else {
-    const sinceRe = Math.max(0, now - lastReMs);
-    if (sinceRe >= OBSERVATION_REASSESSMENT_OVERDUE_MS) {
-      reassessmentOverdue = true;
-    } else if (sinceRe >= OBSERVATION_REASSESSMENT_DUE_MS) {
-      reassessmentDue = true;
-    }
-  }
+  const lastRnObsReMsRaw = parseIsoMs(input.trackboardOps.lastRnObservationReassessmentAt ?? null);
+  const lastProvObsReMsRaw = parseIsoMs(input.trackboardOps.lastProviderObservationReassessmentAt ?? null);
+  const lastRnObsReMs = effectiveReassessmentEventMs(anchor.anchorMs, lastRnObsReMsRaw);
+  const lastProvObsReMs = effectiveReassessmentEventMs(anchor.anchorMs, lastProvObsReMsRaw);
 
+  const providerLane = computeObservationReassessmentLaneState({
+    anchorMs: anchor.anchorMs,
+    nowMs: now,
+    lastEventMs: lastProvObsReMs,
+  });
+  const rnLane = computeObservationReassessmentLaneState({
+    anchorMs: anchor.anchorMs,
+    nowMs: now,
+    lastEventMs: lastRnObsReMs,
+  });
+
+  const reassessmentOverdue = providerLane.overdue || rnLane.overdue;
+  const reassessmentDue = !reassessmentOverdue && (providerLane.due || rnLane.due);
+
+  const firstDispositionDocAt =
+    typeof input.trackboardOps.firstDispositionDocAt === "string"
+      ? input.trackboardOps.firstDispositionDocAt
+      : null;
   const readyForDischarge = ws === "DISCHARGE_READY";
   const dispositionPhase = ws === "DISPOSITION";
 
@@ -199,6 +390,37 @@ export function computeObservationOperationalSnapshot(input: {
       ? Math.max(0, now - signedMs)
       : null;
 
+  const flags: ObservationOperationalFlags = {
+    boardingOperational,
+    reassessmentDue,
+    reassessmentOverdue,
+    providerReassessmentDue: providerLane.due,
+    providerReassessmentOverdue: providerLane.overdue,
+    rnObservationReassessmentDue: rnLane.due,
+    rnObservationReassessmentOverdue: rnLane.overdue,
+    readyForDischarge,
+    dispositionPhase,
+    assignPhysicianGap,
+    assignRnGap,
+    resultsPending,
+    criticalLabsUnacked,
+  };
+
+  const operationalBlockers = buildObservationOperationalBlockers({
+    flags,
+    vitalsStale,
+    extendedStay24h,
+    readyForDischarge,
+    firstDispositionDocAt,
+  });
+
+  const readinessLines = buildObservationReadinessLines({
+    flags,
+    vitalsStale,
+    extendedStay24h,
+    dispositionPhase,
+  });
+
   return {
     anchorKind: anchor.anchorKind,
     anchorIso: new Date(anchor.anchorMs).toISOString(),
@@ -207,20 +429,25 @@ export function computeObservationOperationalSnapshot(input: {
     losLabelCompact: labelCompact,
     overnightUtcSpan,
     extendedStay24h,
-    flags: {
-      boardingOperational,
-      reassessmentDue,
-      reassessmentOverdue,
-      readyForDischarge,
-      dispositionPhase,
-      assignPhysicianGap,
-      assignRnGap,
-      resultsPending,
-      criticalLabsUnacked,
-    },
+    flags,
     vitalsAgeMs,
     vitalsStale,
     providerSignedAgeMs,
+    firstDispositionDocAt,
+    reassessmentLanes: {
+      provider: {
+        lastAtIso: laneDisplayIso(input.trackboardOps.lastProviderObservationReassessmentAt),
+        due: providerLane.due,
+        overdue: providerLane.overdue,
+      },
+      rnObservation: {
+        lastAtIso: laneDisplayIso(input.trackboardOps.lastRnObservationReassessmentAt),
+        due: rnLane.due,
+        overdue: rnLane.overdue,
+      },
+    },
+    operationalBlockers,
+    readinessLines,
   };
 }
 
