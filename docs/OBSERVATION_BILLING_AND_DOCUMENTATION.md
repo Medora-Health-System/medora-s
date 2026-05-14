@@ -1,5 +1,7 @@
 # Observation billing & documentation (Phase 13C)
 
+**Product & pilot packaging (Phase 13D):** [OBSERVATION_PRODUCT_READINESS.md](./OBSERVATION_PRODUCT_READINESS.md)
+
 ## Scope
 
 Medora-S treats **INPATIENT** encounters on the observation / short-stay path as **ER-adjacent, discharge-oriented care** — not enterprise inpatient hospitalization, DRG billing, or utilization review.

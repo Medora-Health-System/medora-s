@@ -325,7 +325,7 @@ export default {
     externalBillingExportSectionSubtitle:
       "Téléchargez le paquet medora_external_billing_v1 (JSON ou CSV) pour cette consultation. Ceci est distinct de l’aperçu X12 et n’est pas une soumission au clearinghouse.",
     externalBillingExportScopeNote:
-      "Par défaut, seules les consultations clôturées sont exportables. L’export d’une consultation ouverte exige les droits facturation ou admin (contrôlé par le serveur).",
+      "Par défaut, seules les consultations clôturées sont exportables. L’export d’une consultation ouverte exige les droits facturation ou admin (contrôlé par le serveur). Le JSON inclut des métadonnées d’observation (`encounter.observationStay`, `billingReadiness.observationStay`) à titre opérationnel — pas de décision de facturation automatique. Le CSV conserve les mêmes colonnes qu’auparavant (compatibilité).",
     externalBillingExportDownloadJson: "Télécharger le JSON",
     externalBillingExportDownloadCsv: "Télécharger le CSV",
     externalBillingExportBusy: "Préparation du téléchargement…",

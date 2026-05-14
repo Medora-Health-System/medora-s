@@ -6,6 +6,7 @@ Operational standard operating procedure for the controlled freestanding ER pilo
 - `ER_RESTORE_DRILL_CHECKLIST.md`
 - `DEPLOYMENT_RUNBOOK.md`
 - `ER_PILOT_SCOPE_AND_CONSTRAINTS.md`
+- `OBSERVATION_PRODUCT_READINESS.md` (observation / short-stay productization & pilot checklist — Phase 13D)
 
 This SOP is **operational and human-process oriented**. It does not describe new product features.
 

@@ -2,6 +2,8 @@
 
 Controlled pilot validation after Clinical UX Phase 2/4. Use **synthetic or de-identified** scenarios; do not record real PHI in this document.
 
+**Observation / short stay (Phase 13D):** after ER scenarios, run the pilot table in `docs/OBSERVATION_PRODUCT_READINESS.md` §8 (billing JSON, chart export, ROI).
+
 ## 1. Chest pain
 
 - [ ] RN completes triage / vitals path as designed.

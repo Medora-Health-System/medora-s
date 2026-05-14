@@ -34,6 +34,23 @@ If any check fails: **do not promote**. Fix or revert.
 
 ---
 
+## 2.1 Observation billing & chart export validation (pilot)
+
+After any deploy that touches **billing exports**, **chart export**, or **observation** shared logic, the operator (or billing super-user) runs these **manual** checks on a **closed INPATIENT** encounter used for pilot test data:
+
+1. **External billing JSON** — Download encounter JSON from Facturation → registre → export externe. Confirm:
+   - `encounter.observationStay` exists and `schemaVersion` is `medora_observation_stay_summary_v1`.
+   - For observation path, `applicable` is `true` when type is INPATIENT; `preview` is `false` on closed encounters.
+   - `billingReadiness` object includes the same `observationStay` block (additive).
+2. **External billing CSV** — Download CSV; confirm **column headers and column count** match pre–13C integrations (no new columns).
+3. **Chart export JSON** — From the encounter chart export route / admin flow, fetch JSON; confirm `encounter.observationStay` is present on newly generated manifests.
+4. **Chart export HTML** — Open HTML export; confirm “Observation stay (operational)” section appears when applicable; **legacy** snapshots without `observationStay` still render without error.
+5. **ROI** — If ROI fulfillment attaches a chart export snapshot, open delivered HTML/JSON and confirm the same observation section behavior as step 4.
+
+Reference: `docs/OBSERVATION_PRODUCT_READINESS.md` (Phase 13D) and `docs/OBSERVATION_BILLING_AND_DOCUMENTATION.md` (Phase 13C).
+
+---
+
 ## 3. Required env vars (production)
 
 Canonical table with rotation notes: **`docs/ENV_PRODUCTION_CHECKLIST.md`**. Summarised here for deploy ordering.

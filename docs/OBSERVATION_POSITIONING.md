@@ -2,6 +2,8 @@
 
 **Status:** Governance + terminology + operational alignment only.  
 **Operational workflow (Phase 13B):** see [OBSERVATION_OPERATIONAL_WORKFLOW.md](./OBSERVATION_OPERATIONAL_WORKFLOW.md).  
+**Billing & exports (Phase 13C):** see [OBSERVATION_BILLING_AND_DOCUMENTATION.md](./OBSERVATION_BILLING_AND_DOCUMENTATION.md).  
+**Product readiness & pilot (Phase 13D):** see [OBSERVATION_PRODUCT_READINESS.md](./OBSERVATION_PRODUCT_READINESS.md).  
 **Not in scope for this phase:** Inpatient feature build, encounter lifecycle changes, billing math, MAR behavior, Prisma/API field renames, persisted disposition string changes.
 
 ## 1. Terminology standard

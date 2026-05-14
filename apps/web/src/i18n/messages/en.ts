@@ -408,7 +408,7 @@ export default {
     externalBillingExportSectionSubtitle:
       "Download the medora_external_billing_v1 package (JSON or CSV) for this encounter. This is separate from the X12 preview and is not a clearinghouse submission.",
     externalBillingExportScopeNote:
-      "By default, only closed encounters export. Exporting an open encounter requires billing or admin privileges (server-enforced).",
+      "By default, only closed encounters export. Exporting an open encounter requires billing or admin privileges (server-enforced). JSON includes additive observation metadata (`encounter.observationStay`, `billingReadiness.observationStay`) for operations — not an autobilling decision. CSV columns are unchanged for backward compatibility.",
     externalBillingExportDownloadJson: "Download JSON",
     externalBillingExportDownloadCsv: "Download CSV",
     externalBillingExportBusy: "Preparing download…",

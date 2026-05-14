@@ -1,7 +1,8 @@
 # Medora-S — Observation operational workflow (Phase 13B)
 
 **Status:** Operational visibility + computed observation state only.  
-**Depends on:** [OBSERVATION_POSITIONING.md](./OBSERVATION_POSITIONING.md) (Phase 13A terminology and compatibility rules).
+**Depends on:** [OBSERVATION_POSITIONING.md](./OBSERVATION_POSITIONING.md) (Phase 13A terminology and compatibility rules).  
+**Product readiness (Phase 13D):** [OBSERVATION_PRODUCT_READINESS.md](./OBSERVATION_PRODUCT_READINESS.md).
 
 ## 1. Audit summary — what already existed
 
