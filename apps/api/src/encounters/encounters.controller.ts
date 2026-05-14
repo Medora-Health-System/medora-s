@@ -34,10 +34,13 @@ import {
   encounterIvAccessRemoveDtoSchema,
   encounterProcedureDocumentDtoSchema,
   encounterUpdateDtoSchema,
+  observationOrderTemplateApplyDtoSchema,
   rosterClinicalUserRoleQuerySchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
 import { RoleCode } from "@prisma/client";
+import { assertZodBody } from "../common/http/zod-parse";
+import { ObservationOrderTemplateService } from "./observation-order-template.service";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -47,7 +50,8 @@ export class EncountersController {
   constructor(
     private readonly encountersService: EncountersService,
     private readonly diagnosesService: DiagnosesService,
-    private readonly chartExportService: EncounterChartExportService
+    private readonly chartExportService: EncounterChartExportService,
+    private readonly observationOrderTemplateService: ObservationOrderTemplateService
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -619,6 +623,28 @@ export class EncountersController {
     return this.encountersService.signProviderDocumentation(
       facilityId,
       id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /**
+   * Phase 13E — Provider-confirmed observation CARE order template (non-medication lines).
+   * Creates a single CARE order via `OrdersService.create` (same pipeline as manual orders).
+   */
+  @Post("encounters/:id/observation-order-template/apply")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async applyObservationOrderTemplate(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const dto = assertZodBody(observationOrderTemplateApplyDtoSchema.safeParse(body));
+    return this.observationOrderTemplateService.apply(
+      id,
+      facilityId,
+      dto,
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]

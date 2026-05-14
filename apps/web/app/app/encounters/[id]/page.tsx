@@ -48,6 +48,7 @@ import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/p
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
 import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import { mergeVitalsJsonForSave } from "@/features/emergency/emergencyTriageVitalsMerge";
@@ -70,6 +71,7 @@ import {
   emptyAdmissionForm,
   formatPhysicianName,
   hydrateAdmissionFormFromEncounterJson,
+  shouldOfferObservationOrderTemplateCareLevel,
   type AdmissionFormState,
 } from "@/lib/encounterAdmission";
 import {
@@ -236,6 +238,7 @@ export default function EncounterDetailPage() {
   const [showAdmissionModal, setShowAdmissionModal] = useState(false);
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
   const [savingAdmission, setSavingAdmission] = useState(false);
+  const [showObservationOrderTemplateModal, setShowObservationOrderTemplateModal] = useState(false);
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
 
@@ -592,16 +595,18 @@ export default function EncounterDetailPage() {
     });
   }, []);
 
-  const loadEncounter = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!canViewEncounterDetail) return;
+  const loadEncounter = useCallback(async (opts?: { silent?: boolean }): Promise<any | null> => {
+    if (!canViewEncounterDetail) return null;
     if (!opts?.silent) setLoading(true);
     try {
       const data = await apiFetch(`/encounters/${encounterId}`, { facilityId });
       const enc = asApiObject(data);
       setEncounter(enc);
       if (enc) encounterHasLoadedOnceRef.current = true;
+      return enc;
     } catch (error) {
       console.error("Failed to load encounter:", error);
+      return null;
     } finally {
       if (!opts?.silent) setLoading(false);
     }
@@ -687,12 +692,17 @@ export default function EncounterDetailPage() {
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      await loadEncounter({ silent: true });
+      const offerTemplate = shouldOfferObservationOrderTemplateCareLevel(admissionForm.careLevel);
+      const encAfter = await loadEncounter({ silent: true });
       setShowAdmissionModal(false);
       if (queued) {
         alert(
           "Le dossier d'admission a été enregistré sur cet appareil et est en attente de synchronisation. Il n'est pas encore confirmé côté serveur."
         );
+        return;
+      }
+      if (offerTemplate && encAfter?.type === "INPATIENT" && canPrescribe) {
+        setShowObservationOrderTemplateModal(true);
       }
     } catch (e) {
       const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
@@ -1014,6 +1024,12 @@ export default function EncounterDetailPage() {
   const showConfirmInpatientTransfer =
     encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionBannerPreview != null;
 
+  const canShowObservationOrderTemplateEntry =
+    encounter.type === "INPATIENT" &&
+    encounter.status === "OPEN" &&
+    canPrescribe &&
+    shouldOfferObservationOrderTemplateCareLevel(admissionBannerPreview?.careLevel);
+
   const observationOpsClient = useMemo(() => {
     if (encounter.type !== "INPATIENT" || encounter.status !== "OPEN") return null;
     return computeObservationOperationalSnapshot({
@@ -1206,6 +1222,23 @@ export default function EncounterDetailPage() {
                       <span style={{ fontWeight: 600 }}>{t("encounterChrome.observationExtended24h")}</span>
                     </>
                   ) : null}
+                </div>
+              ) : null}
+              {canShowObservationOrderTemplateEntry ? (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowObservationOrderTemplateModal(true)}
+                    style={{
+                      ...quickBtn,
+                      borderColor: "#c4b5fd",
+                      background: "#faf5ff",
+                      fontWeight: 600,
+                      color: "#5b21b6",
+                    }}
+                  >
+                    {t("encounterChrome.observationOrderTemplateBannerButton")}
+                  </button>
                 </div>
               ) : null}
               {admissionBannerPreview?.admissionReason ? (
@@ -2187,6 +2220,17 @@ export default function EncounterDetailPage() {
           </div>
         </div>
       )}
+
+      <ObservationOrderTemplateModal
+        open={showObservationOrderTemplateModal}
+        encounterId={encounterId}
+        facilityId={facilityId}
+        onClose={() => setShowObservationOrderTemplateModal(false)}
+        onOrdersCreated={async () => {
+          await refreshQuickOrdersOnly();
+          await loadEncounter({ silent: true });
+        }}
+      />
 
       {showCloseConfirmModal && (
         <div
