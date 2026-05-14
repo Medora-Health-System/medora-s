@@ -56,7 +56,19 @@ import { triagePreviewSliceFromTriageGet } from "@/features/emergency/emergencyT
 import { erTriageV1FormFromVitalsJson } from "@/features/emergency/medoraErTriageV1";
 import { isTriageStaleConflictError } from "@/features/emergency/triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
-import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds, computeObservationOperationalSnapshot, isObservationOrderTemplateProtocol } from "@medora/shared";
+import {
+  computeObservationOperationalSnapshot,
+  isObservationOrderTemplateProtocol,
+  mergeObservationTrackboardOpsInput,
+  temperatureHintPairCelsiusFahrenheit,
+  weightHintPairKgPounds,
+} from "@medora/shared";
+import {
+  ObservationWorkflowActiveHeaderPill,
+  ObservationWorkflowEncounterChrome,
+  ObservationWorkflowHeaderStatusPill,
+} from "@/components/encounters/ObservationWorkflowEncounterChrome";
+import type { HospitalisationBoardTrackboardOps } from "@/lib/hospitalisationBoardTypes";
 import {
   diagnosisDisplayFr,
   nursingAssessmentDisplayLines,
@@ -908,6 +920,33 @@ export default function EncounterDetailPage() {
     }
   }, [showNursingTab]);
 
+  /** Parsed admission packet — must run before any early return (React #310). */
+  const admissionPreviewForChrome = useMemo(
+    () => parseAdmissionSummaryForChart(encounter?.admissionSummaryJson),
+    [encounter?.admissionSummaryJson]
+  );
+
+  /** INPATIENT + observation / short-stay care level from saved admission JSON (no new persistence). */
+  const observationWorkflowActive = useMemo(
+    () =>
+      Boolean(
+        encounter &&
+          encounter.type === "INPATIENT" &&
+          encounter.status === "OPEN" &&
+          shouldOfferObservationOrderTemplateCareLevel(admissionPreviewForChrome?.careLevel)
+      ),
+    [encounter, encounter?.type, encounter?.status, admissionPreviewForChrome?.careLevel]
+  );
+
+  const observationTrackboardOpsInput = useMemo(
+    () =>
+      mergeObservationTrackboardOpsInput(
+        encounter?.trackboardOps as HospitalisationBoardTrackboardOps | undefined,
+        quickTriage?.triageCompleteAt ?? quickTriage?.updatedAt ?? undefined
+      ),
+    [encounter?.trackboardOps, quickTriage?.triageCompleteAt, quickTriage?.updatedAt]
+  );
+
   /**
    * INPATIENT + OPEN observation LOS snapshot. Must run before any early return — same hook
    * count on loading / error / loaded paths (React #310).
@@ -924,15 +963,10 @@ export default function EncounterDetailPage() {
       nurseAssignedUserId: encounter.nurseAssignedUserId ?? null,
       providerDocumentationStatus: encounter.providerDocumentationStatus,
       providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
-      trackboardOps: {
-        resultsPendingCount: 0,
-        criticalResultUnacknowledged: false,
-        lastNursingReassessmentAt: null,
-        firstDispositionDocAt: null,
-        lastTriageVitalsRecordedAt: null,
-      },
+      trackboardOps: observationTrackboardOpsInput,
     });
   }, [
+    encounter,
     encounter?.type,
     encounter?.status,
     encounter?.workflowState,
@@ -942,6 +976,7 @@ export default function EncounterDetailPage() {
     encounter?.nurseAssignedUserId,
     encounter?.providerDocumentationStatus,
     encounter?.providerDocumentationSignedAt,
+    observationTrackboardOpsInput,
   ]);
 
   const observationTemplateAlreadyApplied = useMemo(() => {
@@ -1063,16 +1098,15 @@ export default function EncounterDetailPage() {
   const dischargePreviewForPrint = parseDischargeSummaryForChart(encounter.dischargeSummaryJson);
   const showPrintDischarge =
     encounter.status === "OPEN" || dischargePreviewForPrint !== null;
-  const admissionBannerPreview = parseAdmissionSummaryForChart(encounter.admissionSummaryJson);
   const showEncounterHospitalizationBanner = encounter.type === "INPATIENT";
   const showConfirmInpatientTransfer =
-    encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionBannerPreview != null;
+    encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionPreviewForChrome != null;
 
   const canShowObservationOrderTemplateEntry =
     encounter.type === "INPATIENT" &&
     encounter.status === "OPEN" &&
     canPrescribe &&
-    shouldOfferObservationOrderTemplateCareLevel(admissionBannerPreview?.careLevel);
+    shouldOfferObservationOrderTemplateCareLevel(admissionPreviewForChrome?.careLevel);
 
   const quickBtn: React.CSSProperties = {
     padding: "8px 14px",
@@ -1207,7 +1241,7 @@ export default function EncounterDetailPage() {
                     formatEncounterChromeDateTime(encounter.admittedAt, language)
                   )}
                 </div>
-              ) : admissionBannerPreview ? (
+              ) : admissionPreviewForChrome ? (
                 <div>
                   <span style={{ color: "#64748b" }}>{t("encounterChrome.admissionRecordLabel")}:</span>{" "}
                   {t("encounterChrome.admissionRecordFilled")}
@@ -1259,10 +1293,10 @@ export default function EncounterDetailPage() {
                   )}
                 </div>
               ) : null}
-              {admissionBannerPreview?.admissionReason ? (
+              {admissionPreviewForChrome?.admissionReason ? (
                 <div style={{ wordBreak: "break-word" }}>
                   <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAdmissionReason")}:</span>{" "}
-                  {admissionBannerPreview.admissionReason}
+                  {admissionPreviewForChrome.admissionReason}
                 </div>
               ) : null}
               {dischargePreviewForPrint ? (
@@ -1337,7 +1371,7 @@ export default function EncounterDetailPage() {
                     >
                       {tEncounterStatus(t, encounter.status)}
                     </span>
-                    {encounter.admittedAt || parseAdmissionSummaryForChart(encounter.admissionSummaryJson) ? (
+                    {encounter.admittedAt || admissionPreviewForChrome ? (
                       <span
                         style={{
                           padding: "2px 10px",
@@ -1358,6 +1392,9 @@ export default function EncounterDetailPage() {
                       >
                         {t("encounterChrome.patientAdmittedBadge")}
                       </span>
+                    ) : null}
+                    {observationWorkflowActive && observationOpsClient ? (
+                      <ObservationWorkflowHeaderStatusPill snapshot={observationOpsClient} t={t} />
                     ) : null}
                   </div>
                 </div>
@@ -1454,7 +1491,8 @@ export default function EncounterDetailPage() {
                 >
                   {t("encounterChrome.backToPatientChart")}
                 </Link>
-                {canAdmitPatient && (
+                {observationWorkflowActive ? <ObservationWorkflowActiveHeaderPill t={t} /> : null}
+                {canAdmitPatient && !observationWorkflowActive && (
                   <button
                     type="button"
                     onClick={() => setShowAdmissionModal(true)}
@@ -1523,6 +1561,20 @@ export default function EncounterDetailPage() {
                   onReadinessChange={handleDispositionReadiness}
                 />
               </div>
+            ) : null}
+
+            {observationWorkflowActive && observationOpsClient ? (
+              <ObservationWorkflowEncounterChrome
+                snapshot={observationOpsClient}
+                trackboardOps={observationTrackboardOpsInput}
+                providerDocumentationStatus={encounter.providerDocumentationStatus}
+                providerDocumentationSignedAt={encounter.providerDocumentationSignedAt}
+                formatDateTime={(iso) => formatEncounterChromeDateTime(iso, language)}
+                t={t}
+                setActiveTab={(tab) => setActiveTab(tab)}
+                onOpenDischarge={openDischargeThenClose}
+                showNursingTab={showNursingTab}
+              />
             ) : null}
 
             <div style={{ marginTop: 16 }}>
@@ -1676,7 +1728,7 @@ export default function EncounterDetailPage() {
                       </button>
                     </>
                   ) : null}
-                  {canAdmitPatient ? (
+                  {canAdmitPatient && !observationWorkflowActive ? (
                     <button
                       type="button"
                       style={{

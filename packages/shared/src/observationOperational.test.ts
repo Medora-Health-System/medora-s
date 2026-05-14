@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeObservationOperationalSnapshot,
   computeObservationStaySummaryForExport,
+  mergeObservationTrackboardOpsInput,
   OBSERVATION_REASSESSMENT_DUE_MS,
   OBSERVATION_REASSESSMENT_OVERDUE_MS,
   OBSERVATION_VITALS_STALE_MS,
@@ -15,6 +16,25 @@ const emptyOps = {
   firstDispositionDocAt: null,
   lastTriageVitalsRecordedAt: null,
 };
+
+describe("mergeObservationTrackboardOpsInput", () => {
+  it("prefers triageLastAt over trackboard lastTriageVitalsRecordedAt", () => {
+    const merged = mergeObservationTrackboardOpsInput(
+      { lastTriageVitalsRecordedAt: "2024-06-01T08:00:00.000Z" },
+      "2024-06-01T09:00:00.000Z"
+    );
+    expect(merged.lastTriageVitalsRecordedAt).toBe("2024-06-01T09:00:00.000Z");
+  });
+
+  it("falls back to trackboard when triage missing", () => {
+    const merged = mergeObservationTrackboardOpsInput(
+      { lastTriageVitalsRecordedAt: "2024-06-01T08:00:00.000Z", resultsPendingCount: 2 },
+      undefined
+    );
+    expect(merged.lastTriageVitalsRecordedAt).toBe("2024-06-01T08:00:00.000Z");
+    expect(merged.resultsPendingCount).toBe(2);
+  });
+});
 
 describe("resolveObservationLosAnchorMs", () => {
   it("prefers admittedAt over createdAt", () => {

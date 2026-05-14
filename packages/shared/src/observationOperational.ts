@@ -17,6 +17,27 @@ export type ObservationTrackboardOpsInput = {
   lastTriageVitalsRecordedAt?: string | null;
 };
 
+/**
+ * Merge optional trackboard payload (list/board APIs) with triage vitals timestamps for encounter-detail
+ * observation snapshots. Pure; no I/O.
+ */
+export function mergeObservationTrackboardOpsInput(
+  trackboard: Partial<ObservationTrackboardOpsInput> | null | undefined,
+  triageLastAt: string | null | undefined
+): ObservationTrackboardOpsInput {
+  return {
+    resultsPendingCount: typeof trackboard?.resultsPendingCount === "number" ? trackboard.resultsPendingCount : 0,
+    criticalResultUnacknowledged: Boolean(trackboard?.criticalResultUnacknowledged),
+    lastNursingReassessmentAt:
+      typeof trackboard?.lastNursingReassessmentAt === "string" ? trackboard.lastNursingReassessmentAt : null,
+    firstDispositionDocAt:
+      typeof trackboard?.firstDispositionDocAt === "string" ? trackboard.firstDispositionDocAt : null,
+    lastTriageVitalsRecordedAt:
+      triageLastAt ??
+      (typeof trackboard?.lastTriageVitalsRecordedAt === "string" ? trackboard.lastTriageVitalsRecordedAt : null),
+  };
+}
+
 export type ObservationOperationalFlags = {
   /** Early observation workflow (arrived / triage corridor). */
   boardingOperational: boolean;
