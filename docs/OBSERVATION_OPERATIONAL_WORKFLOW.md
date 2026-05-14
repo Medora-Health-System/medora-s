@@ -54,7 +54,7 @@
 | `packages/shared/src/observationOperational.ts` | Pure `computeObservationOperationalSnapshot`, LOS anchor resolver, thresholds, unit tests. |
 | `apps/api/src/trackboard/trackboard.service.ts` | Adds `lastTriageVitalsRecordedAt` to operational map; attaches `observationOps` for `INPATIENT` only. |
 | `apps/web/.../HospitalizationBoardView.tsx` | Renders LOS + operational chips from API payload. |
-| `apps/web/.../encounters/[id]/page.tsx` | Observation banner line (LOS + UTC overnight + ≥24h) using shared compute with **empty** trackboard ops (no vitals/reassessment counts on detail GET without extra calls). |
+| `apps/web/.../encounters/[id]/page.tsx` | Observation banner line (LOS + UTC overnight + ≥24h) via shared compute with `mergeObservationTrackboardOpsInput(encounter.trackboardOps, triageLastAt)` — **encounter detail** uses `trackboardOps` from `GET /encounters/:id` when the API returns it; triage vitals timestamps from quick triage fill `lastTriageVitalsRecordedAt` when absent on the payload. |
 
 ## 8. Billing / export / ROI impact
 

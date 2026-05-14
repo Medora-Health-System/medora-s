@@ -1,6 +1,6 @@
-# Medora-S — Observation product readiness (Phase 13D)
+# Medora-S — Observation product readiness (Phase 13D–14A)
 
-**Status:** Productization, commercial boundaries, pilot validation, and training guidance.  
+**Status:** Productization, commercial boundaries, pilot validation (§8 Phase 14A checklist), and training guidance.  
 **Depends on:** [OBSERVATION_POSITIONING.md](./OBSERVATION_POSITIONING.md) (13A), [OBSERVATION_OPERATIONAL_WORKFLOW.md](./OBSERVATION_OPERATIONAL_WORKFLOW.md) (13B), [OBSERVATION_BILLING_AND_DOCUMENTATION.md](./OBSERVATION_BILLING_AND_DOCUMENTATION.md) (13C).
 
 This document packages **Observation / short stay** as a coherent Medora capability for **freestanding ER**, **urgent care**, and **short-stay / observation** operations — without claiming full inpatient hospital EMR scope.
@@ -81,25 +81,29 @@ This document packages **Observation / short stay** as a coherent Medora capabil
 
 ---
 
-## 8. Pilot validation checklist (scenarios)
+## 8. Pilot validation checklist (scenarios) — Phase 14A
 
-Use during pilot UAT; record pass/fail and screen reference in the pilot log.
+Use during **freestanding ER / observation pilot UAT**; record pass/fail, actor, date, and screen or export reference in the pilot log.  
+**Engineering audit (automated):** `pnpm run verify:api`, `pnpm run verify:web`, `pnpm --filter @medora/web build`, `pnpm --filter @medora/shared test`, plus `DEPLOYMENT_RUNBOOK.md` §2.1 after any deploy touching billing/chart/observation shared code.
 
 | # | Scenario | Pass criteria |
-|---|----------|-----------------|
-| 1 | Chest pain observation | INPATIENT open on board; LOS visible; no errors on encounter page |
-| 2 | Dehydration observation | Same; fluids / orders visible as today |
-| 3 | Sepsis watch | Critical result path unchanged; observation ops flags don’t block ER |
-| 4 | Transfer holding | `DISPOSITION` phase shows as operational hint only; no auto-transfer |
-| 5 | Overnight monitoring | UTC overnight indicator appears when anchor and clock span UTC dates |
-| 6 | Reassessment overdue | Chip or timeline line appears per thresholds; no auto-task |
-| 7 | Pending results | `resultsPending` surfaces on board when applicable |
-| 8 | Discharge-ready observation | `DISCHARGE_READY` visible; discharge still manual |
-| 9 | External billing export | Closed INPATIENT: JSON contains `observationStay` with `applicable: true`; CSV opens in existing tools |
-| 10 | Chart export | JSON/HTML include observation section when applicable; legacy snapshot without field still opens |
-| 11 | ROI export | Fulfilled package using chart snapshot shows same HTML/JSON behavior as chart export path |
+|---|----------|----------------|
+| 1 | Chest pain observation | INPATIENT + observation care level; board LOS/chips render; encounter chrome + order template usable; no console errors |
+| 2 | Dehydration observation | Same as (1); fluids / CARE orders path unchanged from Orders tab |
+| 3 | Sepsis-watch observation | Operational flags + disposition readiness behave; **no** auto-escalation; critical lab path testable via (8) |
+| 4 | Transfer holding | `DISPOSITION` shows as **hint only** (board + chrome badges); **no** auto-transfer; handoff rules unchanged for ER→INPATIENT where applicable |
+| 5 | Overnight observation | UTC overnight span appears when anchor vs “now” crosses UTC calendar date (conservative hint) |
+| 6 | Discharge-ready observation | `DISCHARGE_READY` visible on board/chrome; discharge/close still **manual**; `DispositionReadinessBanner` respected |
+| 7 | Pending results blocking disposition | Unresolved LAB/IMAGING order items → `ACTIVE_ORDERS_UNRESOLVED` (or equivalent) blocks `canClose` until resolved/cancelled; banner lists blockers |
+| 8 | Critical result unresolved | Critical value unacked → operational chip + export/timeline behavior unchanged; closure policy per existing safety util |
+| 9 | Provider reassessment overdue | `lastProviderObservationReassessmentAt` lane overdue; board + header pill can show **provider-specific** overdue when RN lane current |
+| 10 | RN reassessment overdue | `lastRnObservationReassessmentAt` lane overdue; board chip **RN obs. overdue**; independent from ER `erNursingReassessmentV1` clock |
+| 11 | External billing JSON export | Closed INPATIENT: JSON includes additive `observationStay` / readiness blocks per `OBSERVATION_BILLING_AND_DOCUMENTATION.md`; **CSV column contract unchanged** |
+| 12 | Chart export / ROI export | New manifest: observation stay section when applicable; **legacy** snapshot without field still opens; ROI fulfilled package uses same snapshot path as chart export |
 
-**Regression guard:** ER trackboard, billing ledger, ROI approve/deny, and chart snapshot integrity checks still pass (`pnpm run verify:*`, targeted Jest as in `DEPLOYMENT_RUNBOOK.md`).
+**13G regression spot-checks (same session):** observation order template apply; provider + RN **observation reassessment** POST; **quick phrases** insert into note only; **clinical timeline** row for `OBSERVATION_REASSESSMENT_V1`; observation board (`/app/hospitalisation`) chip density readable; **admin system-health** page loads (no crash).
+
+**Regression guard:** ER trackboard list, billing ledger math, ROI approve/deny flows, chart snapshot integrity specs — unchanged from prior phases; see `DEPLOYMENT_RUNBOOK.md` §2.1.
 
 ---
 
@@ -176,3 +180,43 @@ Use during pilot UAT; record pass/fail and screen reference in the pilot log.
 ## 15. Verdict
 
 **SAFE** — documentation and bounded UI copy only; no billing math, schema, routes, or persisted field renames. **SAFE WITH CAUTION** if sales/commercial teams present the product beyond the §12 boundaries without engineering review.
+
+---
+
+## 16. Phase 14A — Verdict (pilot readiness gate)
+
+| Gate | Status (this engineering pass) |
+|------|--------------------------------|
+| Automated build / unit tests | `verify:api`, `verify:web`, `@medora/web build`, `@medora/shared test` — run green in audit session |
+| Manual UAT (§8 checklist) | **Required** — not executed in this pass |
+| Schema / billing math | **Unchanged** — no migration |
+
+**Phase 14A engineering verdict:** **SAFE WITH CAUTION** — implementation surface is consistent with runbooks and disposition safety; **PILOT READY** only after pilot lead signs §8 on representative staging data (including exports §2.1).
+
+---
+
+## 17. Migration (Phase 14A)
+
+**None** for Phase 14A when limited to validation documentation and runbook alignment.
+
+---
+
+## 18. Related — Phase 14A audit notes
+
+### 18.1 Files reviewed (engineering audit)
+
+| Area | Path(s) |
+|------|---------|
+| Pilot / runbook | `docs/OBSERVATION_PRODUCT_READINESS.md`, `docs/OBSERVATION_OPERATIONAL_WORKFLOW.md`, `docs/OBSERVATION_BILLING_AND_DOCUMENTATION.md`, `docs/DEPLOYMENT_RUNBOOK.md` (§2.1) |
+| Disposition closure / pending orders | `apps/api/src/encounters/disposition-safety-readiness.util.ts` |
+| Encounter detail observation input | `apps/web/app/app/encounters/[id]/page.tsx`, `packages/shared/src/observationOperational.ts` |
+| Clinical timeline (observation reassessment) | `apps/web/src/components/clinical/ClinicalTimeline.tsx` (sampled) |
+
+### 18.2 Findings summary
+
+| Topic | Finding |
+|-------|---------|
+| Bugs found in code (static audit) | **None confirmed** — no code fixes applied in this pass |
+| Fixes made | **Documentation:** §8 checklist expansion (14A); §16–18 gate; `OBSERVATION_OPERATIONAL_WORKFLOW.md` §7 encounter-detail row corrected |
+| Deferred | Full 12-scenario **manual** UAT; facility timezone vs UTC overnight hint; payer-specific observation coding remains out of product scope (`OBSERVATION_BILLING_AND_DOCUMENTATION.md`) |
+| `OBSERVATION_OPERATIONAL_WORKFLOW.md` §7 | Encounter detail uses merged **`trackboardOps` from `GET /encounters/:id`** plus triage timestamps — not a permanently empty aggregate when the API returns operational rows |
