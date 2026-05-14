@@ -463,7 +463,7 @@ export const erTriageMessagesFr = {
     emtalaStatus_DISPOSITIONED: "Orientation enregistrée",
     emtalaStatus_DEPARTED: "Départ effectué",
     emtalaDisp_HOME: "Domicile / sortie",
-    emtalaDisp_ADMISSION: "Hospitalisation / admission",
+    emtalaDisp_ADMISSION: "Admission / observation (court séjour)",
     emtalaDisp_TRANSFER: "Transfert",
     emtalaDisp_AMA: "Contre avis (LAMA)",
     emtalaDisp_LWBS: "Départ sans soins (FPP, LWBS)",

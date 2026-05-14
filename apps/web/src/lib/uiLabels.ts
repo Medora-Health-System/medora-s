@@ -59,7 +59,7 @@ const fr = {
     provider: "Médecin",
     patients: "Patients",
     encounters: "Consultations",
-    hospitalisation: "Hospitalisation",
+    hospitalisation: "Observation et court séjour",
     followUps: "Suivis",
     radWorklist: "Liste imagerie",
     labWorklist: "Liste laboratoire",
@@ -106,7 +106,7 @@ const fr = {
     types: {
       /** Libellés UI — valeurs Prisma inchangées (OUTPATIENT, …) */
       OUTPATIENT: "Clinique",
-      INPATIENT: "Hospitalisation",
+      INPATIENT: "Observation et court séjour",
       EMERGENCY: "Urgences",
       URGENT_CARE: "Soins urgents / intensifs",
     } as Record<string, string>,

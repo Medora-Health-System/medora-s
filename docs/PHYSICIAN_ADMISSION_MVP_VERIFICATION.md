@@ -1,6 +1,8 @@
 # Physician admission MVP — verification checkpoint
 
-**Milestone:** Admission depuis la consultation (MVP) — dossier structuré sur l’`Encounter` existant, sans second sous-système d’hospitalisation.
+**Positioning (terminology):** See `docs/OBSERVATION_POSITIONING.md` — Medora-S positions observation & short stay; this milestone remains structurally the same **admission packet on `Encounter`**.
+
+**Milestone:** Admission depuis la consultation (MVP) — dossier structuré sur l’`Encounter` existant, sans second sous-système de séjour complet type hôpital traditionnel.
 
 **But de ce document:** point de contrôle **stabilité** après complétion du milestone — **aucun changement de comportement produit** n’est décrit ici au-delà de ce qui est déjà livré dans les fichiers listés.
 
@@ -33,7 +35,7 @@
 
 1. **PROVIDER ou ADMIN** — consultation **OPEN** : le bouton **« Admettre le patient »** est visible ; **RN seul** (sans rôle prescripteur) : bouton absent.
 2. Ouvrir la modale, remplir **au moins un** champ obligatoire côté API, **Enregistrer** : succès, rechargement du dossier.
-3. Vérifier **badge** « Patient admis (hospitalisation) », type de consultation **Hospitalisation** si attendu, section **Résumé** avec le dossier d’admission.
+3. Vérifier **badge** « Patient admis (observation / court séjour) », type de consultation **Observation et court séjour** si attendu, section **Résumé** avec le dossier d’admission.
 4. Ouvrir le **dossier patient** — timeline : bloc **Décision d’admission** avec les champs renseignés.
 5. **Sortie / clôture** : terminer la consultation comme d’habitude — la visite se ferme ; l’admission reste visible dans l’historique (timeline).
 6. **API** — compte **RN** : `PATCH /encounters/:id` avec `admissionSummaryJson` → **403**.

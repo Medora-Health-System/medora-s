@@ -458,7 +458,7 @@ export const erTriageMessagesEn = {
     emtalaStatus_DISPOSITIONED: "Dispositioned",
     emtalaStatus_DEPARTED: "Departed",
     emtalaDisp_HOME: "Home",
-    emtalaDisp_ADMISSION: "Admission",
+    emtalaDisp_ADMISSION: "Admission / observation (short stay)",
     emtalaDisp_TRANSFER: "Transfer",
     emtalaDisp_AMA: "AMA",
     emtalaDisp_LWBS: "LWBS",

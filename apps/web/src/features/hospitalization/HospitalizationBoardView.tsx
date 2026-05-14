@@ -22,12 +22,6 @@ import {
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
-const ACUITY_LABEL_FR: Record<AcuityTier, string> = {
-  critical: "Critique",
-  monitoring: "Surveillance",
-  stable: "Stable",
-};
-
 const ACUITY_BORDER: Record<AcuityTier, string> = {
   critical: "#ef4444",
   monitoring: "#fbbf24",
@@ -79,6 +73,14 @@ function unitFromRoomLabel(roomLabel: string | null | undefined): string {
  */
 export function HospitalizationBoardView() {
   const { t, language } = useI18n();
+  const acuityLabel = useMemo(
+    () => ({
+      critical: t("hospitalizationBoard.acuityCritical"),
+      monitoring: t("hospitalizationBoard.acuityMonitoring"),
+      stable: t("hospitalizationBoard.acuityStable"),
+    }),
+    [t]
+  );
   const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const mockMode = searchParams.get("mock");
@@ -115,7 +117,7 @@ export function HospitalizationBoardView() {
       setFetchError(null);
       setEncounters([]);
     }
-  }, [mockMode]);
+  }, [mockMode, t]);
 
   const loadEncounters = async () => {
     if (mockMode === "error" || mockMode === "empty") return;
@@ -168,7 +170,7 @@ export function HospitalizationBoardView() {
       console.error("Failed to discharge inpatient encounter:", error);
       setFetchError(
         normalizeUserFacingError(error instanceof Error ? error.message : null) ||
-          "Impossible d'effectuer la sortie du patient."
+          t("hospitalizationBoard.dischargeFailed")
       );
     } finally {
       setDischargingId(null);
@@ -193,8 +195,8 @@ export function HospitalizationBoardView() {
       const u = unitFromRoomLabel(e.roomLabel);
       if (u) set.add(u);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, language === "en" ? "en" : "fr"));
+  }, [encounters, language]);
 
   const physicianOptions = useMemo(() => {
     const set = new Set<string>();
@@ -202,8 +204,8 @@ export function HospitalizationBoardView() {
       const pl = physicianLabel(e);
       if (pl) set.add(pl);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [encounters]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, language === "en" ? "en" : "fr"));
+  }, [encounters, language]);
 
   const filteredEncounters = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -289,9 +291,9 @@ export function HospitalizationBoardView() {
         >
           <div>
             <h1 style={{ margin: 0, fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)", fontWeight: 600, color: "#0f172a" }}>
-              Hospitalisation
+              {t("hospitalizationBoard.pageTitle")}
             </h1>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vue des patients hospitalisés</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("hospitalizationBoard.pageSubtitle")}</p>
           </div>
         </header>
 
@@ -307,14 +309,14 @@ export function HospitalizationBoardView() {
           }}
         >
           <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-            <span style={{ ...filterLabel, marginBottom: 3 }}>Recherche</span>
+            <span style={{ ...filterLabel, marginBottom: 3 }}>{t("hospitalizationBoard.filterSearchLabel")}</span>
             <input
               id="hosp-board-search"
               type="search"
-              aria-label="Recherche"
+              aria-label={t("hospitalizationBoard.filterSearchAriaLabel")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Patient, motif, salle…"
+              placeholder={t("hospitalizationBoard.filterSearchPlaceholder")}
               style={{
                 ...inputBase,
                 height: 40,
@@ -324,13 +326,13 @@ export function HospitalizationBoardView() {
           </div>
 
           <div style={{ flex: "0 0 auto", width: 124 }}>
-            <span style={filterLabel}>Unité</span>
+            <span style={filterLabel}>{t("hospitalizationBoard.filterUnitLabel")}</span>
             <select
               value={filterUnit}
               onChange={(e) => setFilterUnit(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Toutes</option>
+              <option value="">{t("hospitalizationBoard.filterUnitAll")}</option>
               {unitOptions.map((u) => (
                 <option key={u} value={u}>
                   {u}
@@ -340,27 +342,27 @@ export function HospitalizationBoardView() {
           </div>
 
           <div style={{ flex: "0 0 auto", width: 128 }}>
-            <span style={filterLabel}>Statut</span>
+            <span style={filterLabel}>{t("hospitalizationBoard.filterStatusLabel")}</span>
             <select
               value={filterAcuity}
               onChange={(e) => setFilterAcuity(e.target.value as "" | AcuityTier)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Tous</option>
-              <option value="critical">{ACUITY_LABEL_FR.critical}</option>
-              <option value="monitoring">{ACUITY_LABEL_FR.monitoring}</option>
-              <option value="stable">{ACUITY_LABEL_FR.stable}</option>
+              <option value="">{t("hospitalizationBoard.filterStatusAll")}</option>
+              <option value="critical">{acuityLabel.critical}</option>
+              <option value="monitoring">{acuityLabel.monitoring}</option>
+              <option value="stable">{acuityLabel.stable}</option>
             </select>
           </div>
 
           <div style={{ flex: "0 1 160px", minWidth: 140 }}>
-            <span style={filterLabel}>Médecin</span>
+            <span style={filterLabel}>{t("hospitalizationBoard.filterPhysicianLabel")}</span>
             <select
               value={filterPhysician}
               onChange={(e) => setFilterPhysician(e.target.value)}
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
-              <option value="">Tous</option>
+              <option value="">{t("hospitalizationBoard.filterPhysicianAll")}</option>
               {physicianOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -401,11 +403,11 @@ export function HospitalizationBoardView() {
               }
               title={
                 mockMode === "error" || mockMode === "empty"
-                  ? "Non disponible en mode démo."
+                  ? t("hospitalizationBoard.dischargeTooltipDemo")
                   : !effectiveFacilityId
-                    ? "Établissement requis."
+                    ? t("hospitalizationBoard.dischargeTooltipNoFacility")
                     : !singleOpenInpatientRow
-                      ? "Affinez les filtres pour n’afficher qu’un seul patient hospitalisé ouvert, ou utilisez « Sortie » sur la ligne."
+                      ? t("hospitalizationBoard.dischargeTooltipNeedSingle")
                       : undefined
               }
               onClick={() => {
@@ -457,8 +459,8 @@ export function HospitalizationBoardView() {
               }}
             >
               {singleOpenInpatientRow && dischargingId === singleOpenInpatientRow.id
-                ? "Sortie…"
-                : "Sortie patient"}
+                ? t("hospitalizationBoard.dischargeSending")
+                : t("hospitalizationBoard.dischargePatient")}
             </button>
           </div>
         </div>
@@ -475,7 +477,7 @@ export function HospitalizationBoardView() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{fetchError}</p>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>Vérifiez la connexion et réessayez.</p>
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("hospitalizationBoard.errorStateHint")}</p>
             <button
               type="button"
               onClick={() => void loadEncounters()}
@@ -491,7 +493,7 @@ export function HospitalizationBoardView() {
                 cursor: "pointer",
               }}
             >
-              Réessayer
+              {t("hospitalizationBoard.retryButton")}
             </button>
           </div>
         ) : loading && encounters.length === 0 ? (
@@ -531,13 +533,13 @@ export function HospitalizationBoardView() {
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
               {encounters.length === 0
-                ? "Aucun patient hospitalisé avec une consultation ouverte."
-                : "Aucun patient ne correspond aux filtres."}
+                ? t("hospitalizationBoard.emptyNoPatients")
+                : t("hospitalizationBoard.emptyFiltered")}
             </p>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
               {encounters.length === 0
-                ? "Les admissions ouvertes apparaîtront ici."
-                : "Ajustez la recherche ou les filtres."}
+                ? t("hospitalizationBoard.emptyHintNoPatients")
+                : t("hospitalizationBoard.emptyHintFiltered")}
             </p>
           </div>
         ) : (
@@ -623,7 +625,7 @@ export function HospitalizationBoardView() {
                                 justifyContent: "flex-end",
                               }}
                             >
-                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{ACUITY_LABEL_FR[acuity]}</MedoraCardBadge>
+                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
                             </div>
                             <div
                               style={{
@@ -685,9 +687,11 @@ export function HospitalizationBoardView() {
                                       ? 0.6
                                       : 1,
                                 }}
-                                aria-label="Sortie patient"
+                                aria-label={t("hospitalizationBoard.rowDischargeAriaLabel")}
                               >
-                                {dischargingId === encounter.id ? "Sortie..." : "Sortie"}
+                                {dischargingId === encounter.id
+                                  ? t("hospitalizationBoard.rowDischargeSending")
+                                  : t("hospitalizationBoard.rowDischarge")}
                               </button>
                             </div>
                           </>

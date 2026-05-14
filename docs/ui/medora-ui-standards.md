@@ -8,7 +8,7 @@ Canonical implementation lives in code. This file is the **index** for humans an
 |------|----------|
 | Card shell tokens, priority/sync/pathway badges | `apps/web/src/components/medora-card/medoraCardTokens.ts` |
 | Card components (`MedoraCard`, `MedoraCardInner`, `MedoraCardRoomBlock`, …) | `apps/web/src/components/medora-card/` |
-| Reference layouts | e.g. `apps/web/app/app/trackboard/page.tsx` (inline tokens), hospitalization feature (Tailwind aligned to same values) |
+| Reference layouts | e.g. `apps/web/app/app/trackboard/page.tsx` (inline tokens), observation / short-stay board (`HospitalizationBoardView`, Tailwind aligned to same values) |
 
 ## Shell and surface
 
