@@ -75,6 +75,104 @@ function queueTypeForRequest(path: string, method: string): OfflineQueueItemType
   return null;
 }
 
+/**
+ * Authenticated fetch to the backend proxy; returns the raw `Response` after refresh retry and `ok` checks.
+ * Intended for file downloads (GET). Does not implement the offline mutation queue used by `apiFetch`.
+ */
+export async function apiFetchResponse(
+  path: string,
+  options: RequestInit & { facilityId?: string } = {}
+): Promise<Response> {
+  const { facilityId: providedFacilityId, ...fetchOptions } = options;
+  const method = (fetchOptions.method ?? "GET").toUpperCase();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(fetchOptions.headers && typeof fetchOptions.headers === "object" && !(fetchOptions.headers instanceof Headers)
+      ? (fetchOptions.headers as Record<string, string>)
+      : {}),
+  };
+  if (providedFacilityId) {
+    headers["x-facility-id"] = providedFacilityId;
+  }
+
+  const doFetch = () =>
+    fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      credentials: "include",
+      ...(fetchOptions.body !== undefined && { body: fetchOptions.body }),
+    });
+
+  let response!: Response;
+  try {
+    let attempt = 0;
+    while (attempt < 2) {
+      response = await doFetch();
+      if (response.status !== 401 || attempt === 1) break;
+      const skipRefresh = path.startsWith("/auth/") || path.includes("/auth/");
+      if (skipRefresh || typeof window === "undefined") break;
+      const ref = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
+      if (!ref.ok) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[apiClient] refresh refusé après 401:", ref.status);
+        }
+        break;
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[apiClient] session renouvelée, nouvelle tentative:", path);
+      }
+      attempt++;
+    }
+  } catch (networkErr: unknown) {
+    const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
+    throw new Error(
+      normalizeUserFacingError((networkErr as Error)?.message, loc) ||
+        normalizeUserFacingError("Erreur de communication avec le serveur", loc)
+    );
+  }
+
+  if (!response.ok) {
+    const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
+    if (response.status === 413) {
+      throw new Error(
+        normalizeUserFacingError(
+          "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite.",
+          loc
+        ) || (loc === "en" ? "Payload too large." : "Fichier ou texte trop volumineux.")
+      );
+    }
+    const txt = await response.text().catch(() => "");
+    let message = `Request failed (${response.status}).`;
+    try {
+      if (txt.trim()) {
+        const json = JSON.parse(txt) as {
+          message?: string | string[];
+          error?: string;
+          statusCode?: number;
+        };
+        if (typeof json?.message === "string") message = json.message;
+        else if (Array.isArray(json?.message)) message = json.message.filter(Boolean).join(" ");
+        else if (typeof json?.error === "string") message = json.error;
+      }
+    } catch {
+      if (txt?.trim()) {
+        const short = txt.length > 500 ? `${txt.slice(0, 500)}…` : txt;
+        message = short;
+      } else if (response.statusText) {
+        message = `${response.status} ${response.statusText}`;
+      }
+    }
+    throw new Error(
+      normalizeUserFacingError(message.trim() || `Request failed (${response.status}).`, loc) ||
+        message.trim() ||
+        `Request failed (${response.status}).`
+    );
+  }
+
+  return response;
+}
+
 export async function apiFetch(
   path: string,
   options: RequestInit & { facilityId?: string } = {}

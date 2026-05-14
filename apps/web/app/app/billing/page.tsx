@@ -2,12 +2,21 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/apiClient";
+import { downloadExternalBillingDailyExport } from "@/lib/externalBillingExportApi";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { readBillingCaptureV1 } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+
+function defaultLocalIsoDate(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 export default function BillingPage() {
   const { t, language } = useI18n();
@@ -24,6 +33,10 @@ export default function BillingPage() {
   const [showJsonEditor, setShowJsonEditor] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
   const [queueFilter, setQueueFilter] = useState<"all" | "unmapped">("all");
+  const [dailyExportDate, setDailyExportDate] = useState(defaultLocalIsoDate);
+  const [dailyExportBusy, setDailyExportBusy] = useState<null | "json" | "csv">(null);
+  const [dailyExportErr, setDailyExportErr] = useState<string | null>(null);
+  const [dailyExportOk, setDailyExportOk] = useState(false);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -117,6 +130,33 @@ export default function BillingPage() {
     }
   };
 
+  const runDailyExternalExport = useCallback(
+    async (format: "json" | "csv") => {
+      const fid = effectiveFacilityId;
+      if (!fid) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dailyExportDate.trim())) {
+        setDailyExportErr(t("billingPage.externalBillingDailyDateInvalid"));
+        return;
+      }
+      setDailyExportErr(null);
+      setDailyExportOk(false);
+      setDailyExportBusy(format);
+      try {
+        await downloadExternalBillingDailyExport(fid, dailyExportDate.trim(), format);
+        setDailyExportOk(true);
+        window.setTimeout(() => setDailyExportOk(false), 6000);
+      } catch (e: unknown) {
+        const raw = e instanceof Error && e.message ? e.message : "";
+        setDailyExportErr(
+          normalizeUserFacingError(raw, language) || t("billingPage.externalBillingDailyFailed")
+        );
+      } finally {
+        setDailyExportBusy(null);
+      }
+    },
+    [dailyExportDate, effectiveFacilityId, language, t]
+  );
+
   if (!ready) {
     return (
       <div>
@@ -149,6 +189,86 @@ export default function BillingPage() {
           {t("billingPage.manualReviewOpen")}
         </Link>
       </div>
+      {effectiveFacilityId ? (
+        <div
+          style={{
+            marginTop: 20,
+            padding: 16,
+            borderRadius: 8,
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+            maxWidth: 640,
+          }}
+        >
+          <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.externalBillingDailySectionTitle")}</h2>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+            {t("billingPage.externalBillingDailySectionSubtitle")}
+          </p>
+          <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: "#334155" }}>
+              <span>{t("billingPage.externalBillingDailyDateLabel")}</span>
+              <input
+                type="date"
+                value={dailyExportDate}
+                onChange={(e) => {
+                  setDailyExportErr(null);
+                  setDailyExportOk(false);
+                  setDailyExportDate(e.target.value);
+                }}
+                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 14 }}
+              />
+            </label>
+          </div>
+          {dailyExportErr ? (
+            <p style={{ margin: "0 0 12px", color: "#b91c1c", fontSize: 13 }} role="alert">
+              {dailyExportErr}
+            </p>
+          ) : null}
+          {dailyExportOk ? (
+            <p style={{ margin: "0 0 12px", color: "#047857", fontSize: 13 }} role="status">
+              {t("billingPage.externalBillingDailySucceeded")}
+            </p>
+          ) : null}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              disabled={Boolean(dailyExportBusy)}
+              onClick={() => void runDailyExternalExport("json")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: dailyExportBusy === "json" ? "#f1f5f9" : "#fff",
+                cursor: dailyExportBusy ? "wait" : "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {dailyExportBusy === "json"
+                ? t("billingPage.externalBillingDailyBusy")
+                : t("billingPage.externalBillingDailyDownloadJson")}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(dailyExportBusy)}
+              onClick={() => void runDailyExternalExport("csv")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: dailyExportBusy === "csv" ? "#f1f5f9" : "#fff",
+                cursor: dailyExportBusy ? "wait" : "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {dailyExportBusy === "csv"
+                ? t("billingPage.externalBillingDailyBusy")
+                : t("billingPage.externalBillingDailyDownloadCsv")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {savedNotice ? (
         <div
           style={{

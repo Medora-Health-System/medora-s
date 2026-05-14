@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
+import { downloadExternalBillingEncounterExport } from "@/lib/externalBillingExportApi";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
@@ -830,6 +831,8 @@ export default function BillingEncounterLedgerPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [externalExportBusy, setExternalExportBusy] = useState<null | "json" | "csv">(null);
+  const [externalExportErr, setExternalExportErr] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -1040,6 +1043,28 @@ export default function BillingEncounterLedgerPage() {
       setLoading(false);
     }
   }, [encounterId, facilityId, ready, t]);
+
+  const runExternalEncounterExport = useCallback(
+    async (format: "json" | "csv") => {
+      if (!facilityId) return;
+      setExternalExportErr(null);
+      setExternalExportBusy(format);
+      setActionError(null);
+      try {
+        await downloadExternalBillingEncounterExport(facilityId, encounterId, format);
+        setToast(t("billingPage.externalBillingExportSucceeded"));
+        window.setTimeout(() => setToast(null), 6000);
+      } catch (e: unknown) {
+        const raw = e instanceof Error && e.message ? e.message : "";
+        setExternalExportErr(
+          normalizeUserFacingError(raw, language) || t("billingPage.externalBillingExportFailed")
+        );
+      } finally {
+        setExternalExportBusy(null);
+      }
+    },
+    [encounterId, facilityId, language, t]
+  );
 
   const generateSubmissionPreview = useCallback(async () => {
     if (!facilityId) return;
@@ -1581,6 +1606,68 @@ export default function BillingEncounterLedgerPage() {
           {actionError}
         </div>
       )}
+      {!loading && !error && data && facilityId ? (
+        <div
+          style={{
+            marginBottom: 20,
+            padding: 16,
+            borderRadius: 8,
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+          }}
+        >
+          <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.externalBillingExportSectionTitle")}</h2>
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+            {t("billingPage.externalBillingExportSectionSubtitle")}
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+            {t("billingPage.externalBillingExportScopeNote")}
+          </p>
+          {externalExportErr ? (
+            <p style={{ margin: "0 0 12px", color: "#b91c1c", fontSize: 13 }} role="alert">
+              {externalExportErr}
+            </p>
+          ) : null}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <button
+              type="button"
+              disabled={Boolean(externalExportBusy)}
+              onClick={() => void runExternalEncounterExport("json")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: externalExportBusy === "json" ? "#f1f5f9" : "#fff",
+                cursor: externalExportBusy ? "wait" : "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {externalExportBusy === "json"
+                ? t("billingPage.externalBillingExportBusy")
+                : t("billingPage.externalBillingExportDownloadJson")}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(externalExportBusy)}
+              onClick={() => void runExternalEncounterExport("csv")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: externalExportBusy === "csv" ? "#f1f5f9" : "#fff",
+                cursor: externalExportBusy ? "wait" : "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {externalExportBusy === "csv"
+                ? t("billingPage.externalBillingExportBusy")
+                : t("billingPage.externalBillingExportDownloadCsv")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {manualReviewGate && manualReviewGate.unresolvedCount > 0 ? (
         <div
           style={{
