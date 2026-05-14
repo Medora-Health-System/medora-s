@@ -908,6 +908,42 @@ export default function EncounterDetailPage() {
     }
   }, [showNursingTab]);
 
+  /**
+   * INPATIENT + OPEN observation LOS snapshot. Must run before any early return — same hook
+   * count on loading / error / loaded paths (React #310).
+   */
+  const observationOpsClient = useMemo(() => {
+    if (!encounter || encounter.type !== "INPATIENT" || encounter.status !== "OPEN") return null;
+    return computeObservationOperationalSnapshot({
+      encounterType: encounter.type,
+      status: encounter.status,
+      workflowState: String(encounter.workflowState ?? ""),
+      admittedAt: encounter.admittedAt,
+      createdAt: encounter.createdAt,
+      physicianAssignedUserId: encounter.physicianAssignedUserId ?? null,
+      nurseAssignedUserId: encounter.nurseAssignedUserId ?? null,
+      providerDocumentationStatus: encounter.providerDocumentationStatus,
+      providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
+      trackboardOps: {
+        resultsPendingCount: 0,
+        criticalResultUnacknowledged: false,
+        lastNursingReassessmentAt: null,
+        firstDispositionDocAt: null,
+        lastTriageVitalsRecordedAt: null,
+      },
+    });
+  }, [
+    encounter?.type,
+    encounter?.status,
+    encounter?.workflowState,
+    encounter?.admittedAt,
+    encounter?.createdAt,
+    encounter?.physicianAssignedUserId,
+    encounter?.nurseAssignedUserId,
+    encounter?.providerDocumentationStatus,
+    encounter?.providerDocumentationSignedAt,
+  ]);
+
   if (!facilityId || !encounterId) {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1029,38 +1065,6 @@ export default function EncounterDetailPage() {
     encounter.status === "OPEN" &&
     canPrescribe &&
     shouldOfferObservationOrderTemplateCareLevel(admissionBannerPreview?.careLevel);
-
-  const observationOpsClient = useMemo(() => {
-    if (encounter.type !== "INPATIENT" || encounter.status !== "OPEN") return null;
-    return computeObservationOperationalSnapshot({
-      encounterType: encounter.type,
-      status: encounter.status,
-      workflowState: String(encounter.workflowState ?? ""),
-      admittedAt: encounter.admittedAt,
-      createdAt: encounter.createdAt,
-      physicianAssignedUserId: encounter.physicianAssignedUserId ?? null,
-      nurseAssignedUserId: encounter.nurseAssignedUserId ?? null,
-      providerDocumentationStatus: encounter.providerDocumentationStatus,
-      providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
-      trackboardOps: {
-        resultsPendingCount: 0,
-        criticalResultUnacknowledged: false,
-        lastNursingReassessmentAt: null,
-        firstDispositionDocAt: null,
-        lastTriageVitalsRecordedAt: null,
-      },
-    });
-  }, [
-    encounter.type,
-    encounter.status,
-    encounter.workflowState,
-    encounter.admittedAt,
-    encounter.createdAt,
-    encounter.physicianAssignedUserId,
-    encounter.nurseAssignedUserId,
-    encounter.providerDocumentationStatus,
-    encounter.providerDocumentationSignedAt,
-  ]);
 
   const quickBtn: React.CSSProperties = {
     padding: "8px 14px",
