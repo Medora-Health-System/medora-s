@@ -12,6 +12,7 @@ import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
+import type { ObservationOperationalSnapshot } from "@medora/shared";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -58,6 +59,133 @@ function physicianLabel(enc: HospitalisationBoardEncounterRow): string {
   const p = enc.physicianAssigned;
   if (!p) return "";
   return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
+}
+
+function nurseLabel(enc: HospitalisationBoardEncounterRow): string {
+  const p = enc.nurseAssigned;
+  if (!p) return "";
+  return `${(p.firstName ?? "").trim()} ${(p.lastName ?? "").trim()}`.trim();
+}
+
+const OBS_SOFT = { bg: "#f8fafc", text: "#334155", border: "#e2e8f0" } as const;
+const OBS_WARN = { bg: "#fffbeb", text: "#92400e", border: "#fde68a" } as const;
+const OBS_DANGER = { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" } as const;
+const OBS_OK = { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" } as const;
+
+function ObservationOpsChips({
+  obs,
+  resultsPendingCount,
+  t,
+}: {
+  obs: ObservationOperationalSnapshot;
+  resultsPendingCount: number;
+  t: (key: string) => string;
+}) {
+  const chips: React.ReactNode[] = [];
+  chips.push(
+    <span key="los" title={t("hospitalizationBoard.obsLosChipTitle")}>
+      <MedoraCardBadge soft={OBS_SOFT}>{obs.losLabel}</MedoraCardBadge>
+    </span>
+  );
+  const f = obs.flags;
+  if (obs.extendedStay24h) {
+    chips.push(
+      <MedoraCardBadge key="24" soft={OBS_WARN}>
+        {t("hospitalizationBoard.badgeExtended24h")}
+      </MedoraCardBadge>
+    );
+  } else if (obs.overnightUtcSpan) {
+    chips.push(
+      <MedoraCardBadge key="night" soft={OBS_SOFT}>
+        {t("hospitalizationBoard.badgeOvernightUtc")}
+      </MedoraCardBadge>
+    );
+  }
+  if (f.criticalLabsUnacked) {
+    chips.push(
+      <MedoraCardBadge key="crit" soft={OBS_DANGER}>
+        {t("hospitalizationBoard.badgeCriticalUnacked")}
+      </MedoraCardBadge>
+    );
+  }
+  if (f.reassessmentOverdue) {
+    chips.push(
+      <MedoraCardBadge key="ro" soft={OBS_DANGER}>
+        {t("hospitalizationBoard.badgeReassessmentOverdue")}
+      </MedoraCardBadge>
+    );
+  } else if (f.reassessmentDue) {
+    chips.push(
+      <MedoraCardBadge key="rd" soft={OBS_WARN}>
+        {t("hospitalizationBoard.badgeReassessmentDue")}
+      </MedoraCardBadge>
+    );
+  }
+  if (obs.vitalsStale) {
+    chips.push(
+      <MedoraCardBadge key="vs" soft={OBS_WARN}>
+        {t("hospitalizationBoard.badgeVitalsStale")}
+      </MedoraCardBadge>
+    );
+  }
+  if (f.readyForDischarge) {
+    chips.push(
+      <MedoraCardBadge key="prd" soft={OBS_OK}>
+        {t("hospitalizationBoard.badgeReadyDischarge")}
+      </MedoraCardBadge>
+    );
+  }
+  if (f.dispositionPhase) {
+    chips.push(
+      <MedoraCardBadge key="disp" soft={OBS_SOFT}>
+        {t("hospitalizationBoard.badgeDisposition")}
+      </MedoraCardBadge>
+    );
+  }
+  if (f.boardingOperational) {
+    chips.push(
+      <MedoraCardBadge key="bd" soft={OBS_SOFT}>
+        {t("hospitalizationBoard.badgeBoarding")}
+      </MedoraCardBadge>
+    );
+  }
+  if (resultsPendingCount > 0) {
+    chips.push(
+      <MedoraCardBadge key="pend" soft={OBS_SOFT}>
+        {t("hospitalizationBoard.badgeResultsPending").replace("{count}", String(resultsPendingCount))}
+      </MedoraCardBadge>
+    );
+  }
+  if (f.assignPhysicianGap) {
+    chips.push(
+      <MedoraCardBadge key="md" soft={OBS_WARN}>
+        {t("hospitalizationBoard.badgeNoPhysician")}
+      </MedoraCardBadge>
+    );
+  }
+  if (f.assignRnGap) {
+    chips.push(
+      <MedoraCardBadge key="rn" soft={OBS_WARN}>
+        {t("hospitalizationBoard.badgeNoRn")}
+      </MedoraCardBadge>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 4,
+        justifyContent: "flex-end",
+        marginTop: 4,
+        maxWidth: 320,
+      }}
+    >
+      {chips.slice(0, 8)}
+    </div>
+  );
 }
 
 /** Heuristic « unité » from room label when API has no separate unit field. */
@@ -553,7 +681,9 @@ export function HospitalizationBoardView() {
               const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : t("common.dash");
               const room = encounter.roomLabel?.trim() || t("common.dash");
               const phys = physicianLabel(encounter) || t("common.dash");
-
+              const nl = nurseLabel(encounter) || t("common.dash");
+              const obs = encounter.observationOps ?? null;
+              const resultsPendingCount = encounter.trackboardOps?.resultsPendingCount ?? 0;
               return (
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
@@ -614,7 +744,7 @@ export function HospitalizationBoardView() {
                               {phys}
                             </p>
                             <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", textAlign: "right" }}>
-                              <span style={{ color: "#cbd5e1" }}>{t("clinicalTrackboardPage.nurseAbbr")}</span> {t("common.dash")}
+                              <span style={{ color: "#cbd5e1" }}>{t("clinicalTrackboardPage.nurseAbbr")}</span> {nl}
                             </p>
                             <div
                               style={{
@@ -627,6 +757,9 @@ export function HospitalizationBoardView() {
                             >
                               <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
                             </div>
+                            {obs ? (
+                              <ObservationOpsChips obs={obs} resultsPendingCount={resultsPendingCount} t={t} />
+                            ) : null}
                             <div
                               style={{
                                 display: "flex",

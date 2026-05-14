@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { EncounterStatus, EncounterType, Prisma } from "@prisma/client";
+import { computeObservationOperationalSnapshot } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   emptyTrackboardOperationalAggregate,
@@ -59,7 +60,32 @@ export class TrackboardService {
 
     const encounterIds = encounters.map((e) => e.id);
     const opMap = await this.loadTrackboardOperationalAggregates(facilityId, encounterIds);
-    return mergeOperationalIntoEncounters(encounters, opMap);
+    const merged = mergeOperationalIntoEncounters(encounters, opMap);
+    return merged.map((e) => {
+      if (e.type !== EncounterType.INPATIENT) {
+        return e;
+      }
+      const ops = e.trackboardOps;
+      const observationOps = computeObservationOperationalSnapshot({
+        encounterType: e.type,
+        status: e.status,
+        workflowState: e.workflowState,
+        admittedAt: e.admittedAt,
+        createdAt: e.createdAt,
+        physicianAssignedUserId: e.physicianAssignedUserId,
+        nurseAssignedUserId: e.nurseAssignedUserId,
+        providerDocumentationStatus: e.providerDocumentationStatus,
+        providerDocumentationSignedAt: e.providerDocumentationSignedAt,
+        trackboardOps: {
+          resultsPendingCount: ops.resultsPendingCount,
+          criticalResultUnacknowledged: ops.criticalResultUnacknowledged,
+          lastNursingReassessmentAt: ops.lastNursingReassessmentAt,
+          firstDispositionDocAt: ops.firstDispositionDocAt,
+          lastTriageVitalsRecordedAt: ops.lastTriageVitalsRecordedAt,
+        },
+      });
+      return { ...e, observationOps };
+    });
   }
 
   /**
@@ -80,7 +106,7 @@ export class TrackboardService {
 
     const idsSql = Prisma.join(encounterIds);
 
-    const [labRows, reassessRows, dispositionDocRows] = await Promise.all([
+    const [labRows, reassessRows, dispositionDocRows, vitalsRows] = await Promise.all([
       this.prisma.$queryRaw<
         Array<{
           encounterId: string;
@@ -136,6 +162,14 @@ export class TrackboardService {
           )
         GROUP BY e."encounterId"
       `),
+      this.prisma.$queryRaw<Array<{ encounterId: string; lastAt: Date }>>(Prisma.sql`
+        SELECT t."encounterId" AS "encounterId",
+          MAX(t."recordedAt") AS "lastAt"
+        FROM "TriageVitalsReading" t
+        WHERE t."facilityId" = ${facilityId}
+          AND t."encounterId" IN (${idsSql})
+        GROUP BY t."encounterId"
+      `),
     ]);
 
     for (const row of labRows) {
@@ -162,6 +196,15 @@ export class TrackboardService {
         ...cur,
         firstDispositionDocAt:
           row.firstAt instanceof Date ? row.firstAt.toISOString() : new Date(row.firstAt).toISOString(),
+      });
+    }
+
+    for (const row of vitalsRows) {
+      const cur = map.get(row.encounterId) ?? emptyTrackboardOperationalAggregate();
+      map.set(row.encounterId, {
+        ...cur,
+        lastTriageVitalsRecordedAt:
+          row.lastAt instanceof Date ? row.lastAt.toISOString() : new Date(row.lastAt).toISOString(),
       });
     }
 

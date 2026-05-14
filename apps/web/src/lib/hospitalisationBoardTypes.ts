@@ -4,6 +4,16 @@
  * extra encounter scalars may exist at runtime.
  */
 
+import type { ObservationOperationalSnapshot } from "@medora/shared";
+
+export type HospitalisationBoardTrackboardOps = {
+  resultsPendingCount: number;
+  criticalResultUnacknowledged: boolean;
+  lastNursingReassessmentAt: string | null;
+  firstDispositionDocAt: string | null;
+  lastTriageVitalsRecordedAt?: string | null;
+};
+
 export type HospitalisationBoardPatient = {
   firstName?: string | null;
   lastName?: string | null;
@@ -31,7 +41,15 @@ export type HospitalisationBoardEncounterRow = {
   roomLabel?: string | null;
   status: string;
   createdAt: string | null | undefined;
+  workflowState?: string | null;
+  admittedAt?: string | null;
+  physicianAssignedUserId?: string | null;
+  nurseAssignedUserId?: string | null;
   patient?: HospitalisationBoardPatient | null;
   triage?: HospitalisationBoardTriage | null;
   physicianAssigned?: HospitalisationBoardPhysician | null;
+  nurseAssigned?: HospitalisationBoardPhysician | null;
+  trackboardOps?: HospitalisationBoardTrackboardOps;
+  /** Phase 13B — server-computed observation / short-stay operational snapshot (INPATIENT only). */
+  observationOps?: ObservationOperationalSnapshot | null;
 };

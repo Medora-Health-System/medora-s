@@ -55,7 +55,7 @@ import { triagePreviewSliceFromTriageGet } from "@/features/emergency/emergencyT
 import { erTriageV1FormFromVitalsJson } from "@/features/emergency/medoraErTriageV1";
 import { isTriageStaleConflictError } from "@/features/emergency/triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
-import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds } from "@medora/shared";
+import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds, computeObservationOperationalSnapshot } from "@medora/shared";
 import {
   diagnosisDisplayFr,
   nursingAssessmentDisplayLines,
@@ -1014,6 +1014,38 @@ export default function EncounterDetailPage() {
   const showConfirmInpatientTransfer =
     encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionBannerPreview != null;
 
+  const observationOpsClient = useMemo(() => {
+    if (encounter.type !== "INPATIENT" || encounter.status !== "OPEN") return null;
+    return computeObservationOperationalSnapshot({
+      encounterType: encounter.type,
+      status: encounter.status,
+      workflowState: String(encounter.workflowState ?? ""),
+      admittedAt: encounter.admittedAt,
+      createdAt: encounter.createdAt,
+      physicianAssignedUserId: encounter.physicianAssignedUserId ?? null,
+      nurseAssignedUserId: encounter.nurseAssignedUserId ?? null,
+      providerDocumentationStatus: encounter.providerDocumentationStatus,
+      providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
+      trackboardOps: {
+        resultsPendingCount: 0,
+        criticalResultUnacknowledged: false,
+        lastNursingReassessmentAt: null,
+        firstDispositionDocAt: null,
+        lastTriageVitalsRecordedAt: null,
+      },
+    });
+  }, [
+    encounter.type,
+    encounter.status,
+    encounter.workflowState,
+    encounter.admittedAt,
+    encounter.createdAt,
+    encounter.physicianAssignedUserId,
+    encounter.nurseAssignedUserId,
+    encounter.providerDocumentationStatus,
+    encounter.providerDocumentationSignedAt,
+  ]);
+
   const quickBtn: React.CSSProperties = {
     padding: "8px 14px",
     fontSize: 13,
@@ -1158,6 +1190,24 @@ export default function EncounterDetailPage() {
                   {t("encounterChrome.admissionRecordEmpty")}
                 </div>
               )}
+              {observationOpsClient && encounter.status === "OPEN" ? (
+                <div style={{ fontSize: 13, color: "#334155", marginTop: 4 }}>
+                  <span style={{ color: "#64748b" }}>{t("encounterChrome.observationLosLabel")}:</span>{" "}
+                  {observationOpsClient.losLabel}
+                  {observationOpsClient.overnightUtcSpan ? (
+                    <>
+                      {" · "}
+                      <span style={{ fontWeight: 600 }}>{t("encounterChrome.observationOvernightUtc")}</span>
+                    </>
+                  ) : null}
+                  {observationOpsClient.extendedStay24h ? (
+                    <>
+                      {" · "}
+                      <span style={{ fontWeight: 600 }}>{t("encounterChrome.observationExtended24h")}</span>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
               {admissionBannerPreview?.admissionReason ? (
                 <div style={{ wordBreak: "break-word" }}>
                   <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAdmissionReason")}:</span>{" "}
