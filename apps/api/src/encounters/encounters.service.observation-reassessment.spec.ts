@@ -35,7 +35,8 @@ const openInpatientObservationEncounter = {
   type: "INPATIENT",
   status: "OPEN",
   workflowState: "IN_TREATMENT",
-  admissionSummaryJson: { careLevel: "Observation" },
+  admittedAt: null as Date | null,
+  admissionSummaryJson: { careLevel: "Observation" } as unknown,
 };
 
 function buildMocks(encounterRow: typeof openInpatientObservationEncounter | null, userRoleCodes: string[]) {
@@ -141,9 +142,13 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
     expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
   });
 
-  it("rejects when admission care level is not observation / short stay", async () => {
+  it("rejects when encounter is not in an observation / short-stay workflow lane (no anchor, empty packet)", async () => {
     const { prisma, audit, trackboard, encounterClinicalEventCreate } = buildMocks(
-      { ...openInpatientObservationEncounter, admissionSummaryJson: { careLevel: "Urgences vitales" } },
+      {
+        ...openInpatientObservationEncounter,
+        admittedAt: null,
+        admissionSummaryJson: {},
+      },
       ["PROVIDER"]
     );
     const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
@@ -152,6 +157,22 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       BadRequestException
     );
     expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
+  });
+
+  it("allows PROVIDER when admittedAt is set even if careLevel is not observation wording", async () => {
+    const { prisma, audit, trackboard, encounterClinicalEventCreate } = buildMocks(
+      {
+        ...openInpatientObservationEncounter,
+        admittedAt: new Date("2026-05-01T09:00:00.000Z"),
+        admissionSummaryJson: { careLevel: "Soins généraux (salle)" },
+      },
+      ["PROVIDER"]
+    );
+    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+
+    await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
+
+    expect(encounterClinicalEventCreate).toHaveBeenCalledTimes(1);
   });
 
   it("rejects RN dto when caller is only PROVIDER", async () => {

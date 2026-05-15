@@ -642,13 +642,16 @@ export class EncountersController {
       throw new BadRequestException("Facility ID required");
     }
     const dto = assertZodBody(observationOrderTemplateApplyDtoSchema.safeParse(body));
+    const langHeader = String(req.headers["x-medora-ui-language"] ?? "").toLowerCase();
+    const orderLabelLocale = langHeader === "en" ? ("en" as const) : ("fr" as const);
     return this.observationOrderTemplateService.apply(
       id,
       facilityId,
       dto,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      { orderLabelLocale }
     );
   }
 

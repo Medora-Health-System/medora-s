@@ -306,6 +306,9 @@ export function ObservationWorkflowEncounterChrome({
           </div>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: "0 1 auto" }}>
+          <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
+            {t("encounterChrome.observationWorkflow.quick.vitals")}
+          </button>
           <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
             {t("encounterChrome.observationWorkflow.quick.reassess")}
           </button>

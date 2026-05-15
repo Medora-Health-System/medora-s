@@ -71,7 +71,7 @@ import {
   admissionSummaryFieldsSchema,
   ER_HANDOFF_V1_KEY,
   erHandoffV1SatisfiesInpatientTransferConfirm,
-  isObservationShortStayCareLevel,
+  isObservationShortStayEncounter,
   type EncounterAdmissionCancelDto,
   type EncounterCloseDto,
   type EncounterCreateDto,
@@ -529,6 +529,7 @@ export class EncountersService {
         type: true,
         status: true,
         workflowState: true,
+        admittedAt: true,
         admissionSummaryJson: true,
       },
     });
@@ -540,11 +541,16 @@ export class EncountersService {
       throw new BadRequestException("La réévaluation observation s'applique uniquement à une hospitalisation.");
     }
 
-    const adm = admissionSummaryFieldsSchema.safeParse(enc.admissionSummaryJson);
-    const careLevel = adm.success ? adm.data.careLevel : undefined;
-    if (!isObservationShortStayCareLevel(careLevel ?? null)) {
+    if (
+      !isObservationShortStayEncounter({
+        type: enc.type,
+        status: enc.status,
+        admittedAt: enc.admittedAt,
+        admissionSummaryJson: enc.admissionSummaryJson,
+      })
+    ) {
       throw new BadRequestException(
-        "Réévaluation observation : le dossier d'admission doit indiquer observation ou court séjour."
+        "Observation reassessment is only available for an open observation or short-stay stay (admission recorded or packet on file)."
       );
     }
 

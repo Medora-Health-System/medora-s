@@ -83,6 +83,7 @@ describe("ObservationOrderTemplateService", () => {
     expect(createArgs[1]).toBe("fac-1");
     expect(createArgs[2].type).toBe("CARE");
     expect(createArgs[2].items.length).toBe(2);
+    expect(createArgs[2].items[0]?.manualLabel).toMatch(/Signes vitaux|Vital signs/i);
     expect(createArgs[3]).toBe("user-1");
 
     expect(audit.log).toHaveBeenCalled();
@@ -95,6 +96,26 @@ describe("ObservationOrderTemplateService", () => {
     const blob = JSON.stringify(meta).toLowerCase();
     expect(blob).not.toContain("jean");
     expect(blob).not.toContain("mrn");
+  });
+
+  it("uses English CARE line labels when orderLabelLocale is en", async () => {
+    const prisma = buildPrismaMock({});
+    const orders = buildOrdersMock();
+    const audit = buildAuditMock();
+    const svc = new ObservationOrderTemplateService(prisma as never, orders as never, audit as never);
+
+    await svc.apply(
+      "enc-1",
+      "fac-1",
+      { selectedItemIds: ["mon_vitals_q2h"] },
+      "user-1",
+      "127.0.0.1",
+      "jest",
+      { orderLabelLocale: "en" }
+    );
+
+    const createArgs = (orders.create as AnyMock).mock.calls[0]!;
+    expect(String(createArgs[2].items[0]?.manualLabel)).toContain("Vital signs every 2 hours");
   });
 
   it("rejects second apply when observation template CARE bundle already exists (Phase 13F)", async () => {

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   OBSERVATION_ORDER_TEMPLATE_GROUP_IDS,
   OBSERVATION_ORDER_TEMPLATE_ITEMS,
+  observationOrderTemplateItemManualLabel,
   type ObservationOrderTemplateGroupId,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
@@ -105,7 +106,10 @@ export function ObservationOrderTemplateModal({
       const created = await apiFetch(`/encounters/${encounterId}/observation-order-template/apply`, {
         method: "POST",
         facilityId,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-medora-ui-language": language,
+        },
         body: JSON.stringify({ selectedItemIds: selectedList }),
       });
       if (
@@ -145,6 +149,7 @@ export function ObservationOrderTemplateModal({
   if (!open) return null;
 
   const formDisabled = templateAlreadyApplied || applySuccess || applying;
+  const labelLocale = language === "en" ? "en" : "fr";
 
   return (
     <div
@@ -305,7 +310,7 @@ export function ObservationOrderTemplateModal({
                             onChange={() => toggle(item.id)}
                             style={{ width: 14, height: 14, marginTop: 3 }}
                           />
-                          <span>{item.manualLabelFr}</span>
+                          <span>{observationOrderTemplateItemManualLabel(item.id, labelLocale)}</span>
                         </label>
                       ))}
                     </div>

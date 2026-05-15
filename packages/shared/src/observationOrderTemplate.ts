@@ -23,13 +23,17 @@ export const OBSERVATION_ORDER_TEMPLATE_GROUP_IDS = [
 
 export type ObservationOrderTemplateGroupId = (typeof OBSERVATION_ORDER_TEMPLATE_GROUP_IDS)[number];
 
+export type ObservationOrderTemplateLabelLocale = "fr" | "en";
+
 export type ObservationOrderTemplateItemDef = {
   id: string;
   group: ObservationOrderTemplateGroupId;
   /** Pre-checked when the modal opens (provider may uncheck). */
   defaultSelected: boolean;
-  /** Persisted as CARE `manualLabel` (French product copy). */
+  /** Persisted as CARE `manualLabel` when UI / API locale is French. */
   manualLabelFr: string;
+  /** Persisted as CARE `manualLabel` when UI / API locale is English. */
+  manualLabelEn: string;
 };
 
 /** Stable ids for audit metadata and API validation. */
@@ -39,78 +43,91 @@ export const OBSERVATION_ORDER_TEMPLATE_ITEMS: readonly ObservationOrderTemplate
     group: "monitoring",
     defaultSelected: true,
     manualLabelFr: "Signes vitaux toutes les 2 heures (surveillance observation)",
+    manualLabelEn: "Vital signs every 2 hours (observation monitoring)",
   },
   {
     id: "mon_vitals_q4h",
     group: "monitoring",
     defaultSelected: false,
     manualLabelFr: "Signes vitaux toutes les 4 heures",
+    manualLabelEn: "Vital signs every 4 hours",
   },
   {
     id: "mon_pulse_ox_continuous",
     group: "monitoring",
     defaultSelected: false,
     manualLabelFr: "Surveillance continue par oxymétrie de pouls",
+    manualLabelEn: "Continuous pulse oximetry monitoring",
   },
   {
     id: "mon_cardiac_monitoring",
     group: "monitoring",
     defaultSelected: false,
     manualLabelFr: "Surveillance monitorée (rythme / signes vitaux dédiés)",
+    manualLabelEn: "Monitored surveillance (rhythm / dedicated vitals)",
   },
   {
     id: "nurse_reassess_q2h",
     group: "nursing_reassessment",
     defaultSelected: true,
     manualLabelFr: "Réévaluation infirmière toutes les 2 heures (parcours observation)",
+    manualLabelEn: "Nursing reassessment every 2 hours (observation pathway)",
   },
   {
     id: "nurse_pain_q2h",
     group: "nursing_reassessment",
     defaultSelected: true,
     manualLabelFr: "Évaluation de la douleur toutes les 2 heures",
+    manualLabelEn: "Pain assessment every 2 hours",
   },
   {
     id: "nurse_notify_bp",
     group: "nursing_reassessment",
     defaultSelected: false,
     manualLabelFr: "Alerter le médecin si tension artérielle > 160/95 mmHg",
+    manualLabelEn: "Notify physician if blood pressure > 160/95 mmHg",
   },
   {
     id: "nurse_notify_hr",
     group: "nursing_reassessment",
     defaultSelected: false,
     manualLabelFr: "Alerter le médecin si fréquence cardiaque > 120/min ou < 50/min",
+    manualLabelEn: "Notify physician if heart rate > 120/min or < 50/min",
   },
   {
     id: "nurse_notify_spo2",
     group: "nursing_reassessment",
     defaultSelected: false,
     manualLabelFr: "Alerter le médecin si SpO₂ < 92 % en air ambiant",
+    manualLabelEn: "Notify physician if SpO₂ < 92% on room air",
   },
   {
     id: "nurse_notify_fever",
     group: "nursing_reassessment",
     defaultSelected: false,
     manualLabelFr: "Alerter le médecin si fièvre ≥ 38,3 °C (équivalent 101 °F oral)",
+    manualLabelEn: "Notify physician if fever ≥ 38.3 °C (101 °F oral equivalent)",
   },
   {
     id: "com_diet_ad_lib",
     group: "comfort",
     defaultSelected: true,
     manualLabelFr: "Régime alimentaire selon tolérance",
+    manualLabelEn: "Diet as tolerated",
   },
   {
     id: "com_oral_fluids",
     group: "comfort",
     defaultSelected: true,
     manualLabelFr: "Encourager les liquides oraux sauf contre-indication",
+    manualLabelEn: "Encourage oral fluids unless contraindicated",
   },
   {
     id: "com_fall_precautions",
     group: "comfort",
     defaultSelected: true,
     manualLabelFr: "Précautions anti-chute selon indication",
+    manualLabelEn: "Fall precautions as indicated",
   },
   {
     id: "dx_catalog_reminder",
@@ -118,18 +135,22 @@ export const OBSERVATION_ORDER_TEMPLATE_ITEMS: readonly ObservationOrderTemplate
     defaultSelected: false,
     manualLabelFr:
       "Biologie ou imagerie de contrôle : utiliser l’onglet Ordres pour commandes au catalogue si cliniquement indiqué",
+    manualLabelEn:
+      "Follow-up labs or imaging: use the Orders tab for catalog orders when clinically indicated",
   },
   {
     id: "disp_reassess_discharge",
     group: "disposition",
     defaultSelected: true,
     manualLabelFr: "Réévaluer quotidiennement les critères de sortie (observation / court séjour)",
+    manualLabelEn: "Reassess discharge criteria daily (observation / short stay)",
   },
   {
     id: "disp_prepare_transfer",
     group: "disposition",
     defaultSelected: false,
     manualLabelFr: "Préparer un transfert en cas d'aggravation clinique",
+    manualLabelEn: "Prepare for transfer if clinical condition worsens",
   },
 ] as const;
 
@@ -160,22 +181,35 @@ export function orderObservationTemplateSelection(ids: string[]): string[] {
   return OBSERVATION_ORDER_TEMPLATE_ITEMS.map((d) => d.id).filter((id) => knownSet.has(id));
 }
 
+/** Display / persistence label for one template line (UI locale or API header). */
+export function observationOrderTemplateItemManualLabel(
+  id: string,
+  locale: ObservationOrderTemplateLabelLocale
+): string {
+  const def = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === id);
+  if (!def) return id;
+  return locale === "en" ? def.manualLabelEn : def.manualLabelFr;
+}
+
 export function buildObservationTemplateCareOrderDto(input: {
   selectedItemIds: string[];
   prescriberName: string;
   prescriberLicense?: string | null;
   prescriberContact?: string | null;
+  /** Defaults to French (legacy); English UI sends `en` so stored CARE lines match chart language. */
+  labelLocale?: ObservationOrderTemplateLabelLocale;
 }): OrderCreateDto {
   const unique = orderObservationTemplateSelection(input.selectedItemIds);
   if (unique.length === 0) {
     throw new Error("observation_template_no_valid_items");
   }
+  const locale: ObservationOrderTemplateLabelLocale = input.labelLocale === "en" ? "en" : "fr";
   const items: OrderItemCreateDto[] = unique.map((id) => {
     const def = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === id)!;
     return {
       catalogItemId: null,
       catalogItemType: "CARE",
-      manualLabel: def.manualLabelFr,
+      manualLabel: locale === "en" ? def.manualLabelEn : def.manualLabelFr,
     };
   });
   return {

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import type { ObservationReassessmentV1Body } from "@medora/shared";
 import { insertTextAtTextareaSelection } from "@/lib/insertTextAtTextareaSelection";
@@ -94,7 +95,7 @@ export function ObservationReassessmentModal({
   onClose,
   onSaved,
 }: ObservationReassessmentModalProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [role, setRole] = useState<"PROVIDER" | "RN">(defaultRole);
   const [patientStatus, setPatientStatus] = useState<ObservationReassessmentV1Body["patientStatus"]>("unchanged");
   const [symptomsReviewed, setSymptomsReviewed] = useState(true);
@@ -151,7 +152,9 @@ export function ObservationReassessmentModal({
       onClose();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || t("encounterChrome.observationReassessment.saveError"));
+      setError(
+        normalizeUserFacingError(msg, language) || t("encounterChrome.observationReassessment.saveError")
+      );
     } finally {
       setSaving(false);
     }
@@ -159,6 +162,7 @@ export function ObservationReassessmentModal({
     continueObservation,
     encounterId,
     facilityId,
+    language,
     note,
     onClose,
     onSaved,

@@ -11,8 +11,6 @@ import { PathwayMilestoneRow } from "@/features/pathways/components/PathwayMiles
 import { PathwaySessionSummaryBar } from "@/features/pathways/components/PathwaySessionSummary";
 import {
   COMMON_VISIT_REASONS,
-  PROVIDER_IMPRESSION_SNIPPETS,
-  PROVIDER_PLAN_SNIPPETS,
 } from "@/constants/clinicalTemplates";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
@@ -698,7 +696,7 @@ export default function EncounterDetailPage() {
     if (!encounter) return;
     const payload = admissionFormToPayload(admissionForm);
     if (Object.keys(payload).length === 0) {
-      alert("Veuillez renseigner au moins un champ du dossier d'admission.");
+      alert(t("encounterChrome.modals.admissionNeedOneField"));
       return;
     }
     setSavingAdmission(true);
@@ -714,9 +712,7 @@ export default function EncounterDetailPage() {
       const encAfter = await loadEncounter({ silent: true });
       setShowAdmissionModal(false);
       if (queued) {
-        alert(
-          "Le dossier d'admission a été enregistré sur cet appareil et est en attente de synchronisation. Il n'est pas encore confirmé côté serveur."
-        );
+        alert(t("encounterChrome.modals.admissionSaveQueued"));
         return;
       }
       if (!encAfter) return;
@@ -735,7 +731,7 @@ export default function EncounterDetailPage() {
       }
     } catch (e) {
       const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
-      alert(msg || "Impossible d'enregistrer le dossier d'admission.");
+      alert(msg || t("encounterChrome.modals.admissionSaveFailed"));
     } finally {
       setSavingAdmission(false);
     }
@@ -2991,6 +2987,20 @@ function ClinicVisitTab({
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const impressionSnippetKeys = [
+    "encounterClinicTab.snippetImpression0",
+    "encounterClinicTab.snippetImpression1",
+    "encounterClinicTab.snippetImpression2",
+    "encounterClinicTab.snippetImpression3",
+    "encounterClinicTab.snippetImpression4",
+  ] as const;
+  const planSnippetKeys = [
+    "encounterClinicTab.snippetPlan0",
+    "encounterClinicTab.snippetPlan1",
+    "encounterClinicTab.snippetPlan2",
+    "encounterClinicTab.snippetPlan3",
+    "encounterClinicTab.snippetPlan4",
+  ] as const;
   const [visitReason, setVisitReason] = useState(encounter.visitReason || encounter.chiefComplaint || "");
   const [impression, setImpression] = useState(encounter.clinicianImpression || encounter.providerNote || "");
   const [plan, setPlan] = useState(encounter.treatmentPlan || "");
@@ -3460,17 +3470,20 @@ function ClinicVisitTab({
             <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>
               {t("encounterClinicTab.insertLabel")}
             </span>
-            {PROVIDER_IMPRESSION_SNIPPETS.slice(0, 5).map((snippet) => (
-              <button
-                key={snippet.slice(0, 24)}
-                type="button"
-                onClick={() => setImpression((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
-                style={clinicSnippetBtn}
-                title={snippet}
-              >
-                {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
-              </button>
-            ))}
+            {impressionSnippetKeys.map((snippetKey) => {
+              const snippet = t(snippetKey);
+              return (
+                <button
+                  key={snippetKey}
+                  type="button"
+                  onClick={() => setImpression((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
+                  style={clinicSnippetBtn}
+                  title={snippet}
+                >
+                  {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
+                </button>
+              );
+            })}
           </div>
         )}
         <textarea
@@ -3491,17 +3504,20 @@ function ClinicVisitTab({
             <span style={{ fontSize: 13, color: "#64748b", alignSelf: "center" }}>
               {t("encounterClinicTab.insertLabel")}
             </span>
-            {PROVIDER_PLAN_SNIPPETS.slice(0, 5).map((snippet) => (
-              <button
-                key={snippet.slice(0, 24)}
-                type="button"
-                onClick={() => setPlan((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
-                style={clinicSnippetBtn}
-                title={snippet}
-              >
-                {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
-              </button>
-            ))}
+            {planSnippetKeys.map((snippetKey) => {
+              const snippet = t(snippetKey);
+              return (
+                <button
+                  key={snippetKey}
+                  type="button"
+                  onClick={() => setPlan((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
+                  style={clinicSnippetBtn}
+                  title={snippet}
+                >
+                  {snippet.length > 36 ? snippet.slice(0, 35) + "…" : snippet}
+                </button>
+              );
+            })}
           </div>
         )}
         <textarea

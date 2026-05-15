@@ -5,6 +5,7 @@ import {
   buildObservationTemplateCareOrderDto,
   findUnknownObservationTemplateIds,
   isObservationOrderTemplateProtocol,
+  observationOrderTemplateItemManualLabel,
   orderObservationTemplateSelection,
 } from "./observationOrderTemplate";
 
@@ -42,5 +43,20 @@ describe("observationOrderTemplate", () => {
     expect(dto.items[0]?.manualLabel).toBe(
       OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "mon_vitals_q2h")!.manualLabelFr
     );
+  });
+
+  it("buildObservationTemplateCareOrderDto uses English manual labels when labelLocale is en", () => {
+    const dto = buildObservationTemplateCareOrderDto({
+      selectedItemIds: ["mon_vitals_q2h", "nurse_pain_q2h"],
+      prescriberName: "Dr. Test",
+      labelLocale: "en",
+    });
+    expect(dto.items[0]?.manualLabel).toContain("Vital signs every 2 hours");
+    expect(dto.items[1]?.manualLabel).toContain("Pain assessment every 2 hours");
+  });
+
+  it("observationOrderTemplateItemManualLabel returns locale-specific copy", () => {
+    expect(observationOrderTemplateItemManualLabel("mon_vitals_q2h", "en")).toContain("Vital signs");
+    expect(observationOrderTemplateItemManualLabel("mon_vitals_q2h", "fr")).toContain("Signes vitaux");
   });
 });

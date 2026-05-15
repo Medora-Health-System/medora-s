@@ -5605,6 +5605,7 @@ export default {
       },
       quick: {
         reassess: "Réévaluer le patient",
+        vitals: "Enregistrer les signes vitaux",
         orders: "Ordres",
         results: "Résultats en attente",
         nursing: "Soins infirmiers",
@@ -5946,6 +5947,10 @@ export default {
       admissionIntro:
         "Documentez la décision d’admission en observation ou court séjour depuis cette consultation. La sortie de consultation (autre flux) clôt la visite ; l'admission enregistre la décision et le plan initial dans ce même dossier.",
       saveAdmission: "Enregistrer le dossier d'admission",
+      admissionNeedOneField: "Renseignez au moins un champ du dossier d'admission avant d'enregistrer.",
+      admissionSaveFailed: "Impossible d'enregistrer le dossier d'admission.",
+      admissionSaveQueued:
+        "Le dossier d'admission a été enregistré sur cet appareil et est en attente de synchronisation. Il n'est pas encore confirmé côté serveur.",
       closeEncounterTitle: "Terminer la consultation",
       closeEncounterBody: "Êtes-vous sûr de vouloir terminer la consultation ?",
       finish: "Terminer",
@@ -6016,6 +6021,16 @@ export default {
     placeholderMdm: "Complexité, données, risque, synthèse décisionnelle",
     labelImpression: "Impression clinique",
     insertLabel: "Insérer :",
+    snippetImpression0: "Examen clinique rassurant.",
+    snippetImpression1: "Pas de signe de gravité.",
+    snippetImpression2: "Diagnostic de présomption : infection virale banale.",
+    snippetImpression3: "Symptomatologie en faveur d'une origine infectieuse.",
+    snippetImpression4: "Bilan à compléter selon évolution.",
+    snippetPlan0: "Traitement symptomatique. Repos. Hydratation.",
+    snippetPlan1: "Antibiothérapie si pas d'amélioration sous 48–72 h.",
+    snippetPlan2: "Contrôle des constantes à domicile.",
+    snippetPlan3: "Reconsulter si aggravation (fièvre persistante, difficultés respiratoires).",
+    snippetPlan4: "Suivi en soins primaires.",
     placeholderImpression: "Bilan / impression clinique",
     labelPlan: "Plan de traitement",
     placeholderPlan:

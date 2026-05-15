@@ -56,7 +56,8 @@ export class ObservationOrderTemplateService {
     dto: ObservationOrderTemplateApplyDto,
     userId: string | undefined,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    opts?: { orderLabelLocale?: "fr" | "en" }
   ) {
     await this.assertProviderOrAdmin(userId, facilityId);
 
@@ -140,6 +141,7 @@ export class ObservationOrderTemplateService {
         prescriberName,
         prescriberLicense: user?.billingNpi?.trim() || undefined,
         prescriberContact: undefined,
+        labelLocale: opts?.orderLabelLocale === "en" ? "en" : "fr",
       });
     } catch (e) {
       if (e instanceof Error && e.message === "observation_template_no_valid_items") {

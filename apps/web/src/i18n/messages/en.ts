@@ -5627,6 +5627,7 @@ export default {
       },
       quick: {
         reassess: "Reassess patient",
+        vitals: "Record vital signs",
         orders: "Orders",
         results: "Pending results",
         nursing: "Nursing",
@@ -5967,6 +5968,10 @@ export default {
       admissionIntro:
         "Document the observation / short-stay admission decision from this encounter. Discharge from the encounter (separate flow) ends the visit; admission records the decision and initial plan in this chart.",
       saveAdmission: "Save admission packet",
+      admissionNeedOneField: "Enter at least one admission packet field before saving.",
+      admissionSaveFailed: "Unable to save the admission packet.",
+      admissionSaveQueued:
+        "The admission packet was saved on this device and is waiting to sync with the server. It is not yet confirmed on the server.",
       closeEncounterTitle: "End encounter",
       closeEncounterBody: "Are you sure you want to end this encounter?",
       finish: "End",
@@ -6038,6 +6043,16 @@ export default {
     placeholderMdm: "Complexity, data, risk, medical decision synthesis",
     labelImpression: "Clinical impression",
     insertLabel: "Insert:",
+    snippetImpression0: "Reassuring clinical examination.",
+    snippetImpression1: "No red flags.",
+    snippetImpression2: "Working diagnosis: uncomplicated viral illness.",
+    snippetImpression3: "Symptoms suggest infectious etiology.",
+    snippetImpression4: "Further workup as clinically indicated.",
+    snippetPlan0: "Supportive care. Rest. Hydration.",
+    snippetPlan1: "Antibiotics if no improvement in 48–72 h.",
+    snippetPlan2: "Monitor vitals at home.",
+    snippetPlan3: "Return if worse (persistent fever, breathing difficulty).",
+    snippetPlan4: "Follow-up in primary care.",
     placeholderImpression: "Assessment and clinical impression",
     labelPlan: "Treatment plan",
     placeholderPlan:

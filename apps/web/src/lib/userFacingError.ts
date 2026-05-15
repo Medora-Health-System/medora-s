@@ -199,6 +199,17 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     en: "This procedure is already recorded for this encounter.",
   },
   {
+    test: (s) =>
+      /Observation reassessment is only available|not available for an open observation/i.test(s),
+    fr: "La réévaluation observation n'est pas disponible pour cet état de dossier (admission ou dossier incomplet).",
+    en: "Observation reassessment is not available for this encounter state.",
+  },
+  {
+    test: (s) => /Réévaluation observation\s*:/i.test(s) || /dossier d'admission doit indiquer observation/i.test(s),
+    fr: "La réévaluation observation nécessite un dossier d'admission indiquant observation ou court séjour.",
+    en: "Observation reassessment requires an active observation or short-stay stay.",
+  },
+  {
     test: (s) => /INVALID_NDC_FORMAT/i.test(s),
     fr: "Le format NDC est invalide. Utilisez 11 chiffres ou un format avec tirets.",
     en: "Invalid NDC format. Use 11 digits or a supported dashed format.",
@@ -237,6 +248,11 @@ export function normalizeUserFacingError(
       ? "The operation failed. Please try again."
       : "L'opération a échoué. Réessayez.";
   if (/server error/i.test(s)) return locale === "en" ? "Server error." : "Erreur serveur.";
+
+  /** EN UI: pass through ASCII API errors Nest returns (avoid generic "Something went wrong"). */
+  if (locale === "en" && s.length >= 3 && s.length <= 500 && !/[^\x00-\x7F]/.test(s)) {
+    return s;
+  }
 
   return locale === "en" ? "Something went wrong." : "Une erreur est survenue.";
 }

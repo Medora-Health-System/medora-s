@@ -174,6 +174,8 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     headers.set("Authorization", `Bearer ${token}`);
     headers.set("x-facility-id", facilityId!);
     if (requestId) headers.set("x-request-id", requestId);
+    const uiLang = req.headers.get("x-medora-ui-language");
+    if (uiLang) headers.set("x-medora-ui-language", uiLang);
     return {
       method: req.method,
       headers,
