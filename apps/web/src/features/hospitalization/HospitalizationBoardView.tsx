@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -10,7 +10,11 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { formatAgeYearsSexForLocale, DISPLAY_DASH } from "@/lib/patientDisplay";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
-import { fetchHospitalisationEncounters } from "@/lib/clinicalWorklistApi";
+import {
+  assignNurseSelf,
+  assignProviderSelf,
+  fetchHospitalisationEncounters,
+} from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 import type { ObservationOperationalSnapshot } from "@medora/shared";
 import {
@@ -20,6 +24,7 @@ import {
   MedoraCompactPatientCardRow,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
+import { mergeHospitalisationRowAfterAssign } from "./hospitalizationBoardAssignMerge";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -237,12 +242,18 @@ export function HospitalizationBoardView() {
   const searchParams = useSearchParams();
   const mockMode = searchParams.get("mock");
 
-  const { facilityId: facilityIdFromHook, ready, canManagePharmacy } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, ready, canManagePharmacy, roles, userId } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<HospitalisationBoardEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [dischargingId, setDischargingId] = useState<string | null>(null);
+  /** Phase 14G-B — same self-assign flow as ER trackboard (operational ownership). */
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
+
+  const isProvider = roles.includes("PROVIDER");
+  const isNurse = roles.includes("RN");
 
   const [search, setSearch] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
@@ -271,11 +282,16 @@ export function HospitalizationBoardView() {
     }
   }, [mockMode, t]);
 
-  const loadEncounters = async () => {
+  const effectiveFacilityId = facilityId || facilityIdFromHook || null;
+
+  const loadEncounters = useCallback(async (opts?: { silent?: boolean }) => {
     if (mockMode === "error" || mockMode === "empty") return;
     if (!facilityId) return;
-    setLoading(true);
-    setFetchError(null);
+    const silent = Boolean(opts?.silent);
+    if (!silent) {
+      setLoading(true);
+      setFetchError(null);
+    }
     try {
       const data = await fetchHospitalisationEncounters(facilityId);
       setEncounters(data || []);
@@ -283,9 +299,43 @@ export function HospitalizationBoardView() {
       console.error("Failed to load hospitalisation board:", error);
       setFetchError(t("hospitalizationBoard.loadListError"));
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, [facilityId, mockMode, t]);
+
+  const claimSelf = useCallback(
+    async (encounterId: string, kind: "provider" | "nurse") => {
+      const fid = effectiveFacilityId;
+      if (!fid || mockMode === "error" || mockMode === "empty") return;
+      setAssigningId(encounterId);
+      setAssignError(null);
+      try {
+        const updated =
+          kind === "provider"
+            ? await assignProviderSelf(fid, encounterId)
+            : await assignNurseSelf(fid, encounterId);
+        setEncounters((prev) =>
+          prev.map((r) => (r.id === encounterId ? mergeHospitalisationRowAfterAssign(r, updated) : r))
+        );
+        await loadEncounters({ silent: true });
+      } catch (err) {
+        const raw = err instanceof Error ? err.message : "";
+        const lc = raw.toLowerCase();
+        const message =
+          lc.includes("ouverte") || lc.includes("open")
+            ? t("emergencyTrackboard.assignErrorClosed")
+            : lc.includes("rôle") || lc.includes("role") || lc.includes("infirm") || lc.includes("médecin")
+              ? t("emergencyTrackboard.assignErrorRole")
+              : t("emergencyTrackboard.assignErrorGeneric");
+        setAssignError({ id: encounterId, message });
+      } finally {
+        setAssigningId(null);
+      }
+    },
+    [effectiveFacilityId, loadEncounters, mockMode, t]
+  );
 
   const dischargeEncounter = async (encounter: HospitalisationBoardEncounterRow) => {
     const fid = effectiveFacilityId;
@@ -337,9 +387,7 @@ export function HospitalizationBoardView() {
       void loadEncounters();
     }, 10000);
     return () => clearInterval(interval);
-  }, [ready, facilityId, mockMode]);
-
-  const effectiveFacilityId = facilityId || facilityIdFromHook || null;
+  }, [ready, facilityId, mockMode, loadEncounters]);
 
   const unitOptions = useMemo(() => {
     const set = new Set<string>();
@@ -379,7 +427,8 @@ export function HospitalizationBoardView() {
           ""
         ).toLowerCase();
         const room = (encounter.roomLabel ?? "").toLowerCase();
-        const blob = `${name} ${cc} ${room} ${phys.toLowerCase()}`;
+        const nurse = nurseLabel(encounter).toLowerCase();
+        const blob = `${name} ${cc} ${room} ${phys.toLowerCase()} ${nurse}`;
         if (!blob.includes(q)) return false;
       }
       return true;
@@ -704,8 +753,14 @@ export function HospitalizationBoardView() {
                 encounter.triage?.chiefComplaint || encounter.chiefComplaint || t("common.dash");
               const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : t("common.dash");
               const room = encounter.roomLabel?.trim() || t("common.dash");
-              const phys = physicianLabel(encounter) || t("common.dash");
-              const nl = nurseLabel(encounter) || t("common.dash");
+              const physName = physicianLabel(encounter);
+              const nurseName = nurseLabel(encounter);
+              const physLine = physName || t("emergencyTrackboard.unassignedDash");
+              const nurseLine = nurseName || t("emergencyTrackboard.unassignedDash");
+              const physId = (encounter.physicianAssigned?.id ?? "").trim();
+              const nurseId = (encounter.nurseAssigned?.id ?? "").trim();
+              const isPhysMine = Boolean(userId && physId && physId === userId);
+              const isNurseMine = Boolean(userId && nurseId && nurseId === userId);
               const obs = encounter.observationOps ?? null;
               const resultsPendingCount = encounter.trackboardOps?.resultsPendingCount ?? 0;
               return (
@@ -717,6 +772,64 @@ export function HospitalizationBoardView() {
                         roomLabel={t("common.room")}
                         roomValue={room}
                         rightMaxWidth={320}
+                        centerTrailingMaxWidth={260}
+                        centerTrailing={
+                          <div
+                            aria-label={t("emergencyTrackboard.assignedPersonnelLabel")}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 2,
+                              padding: "4px 8px",
+                              borderRadius: 8,
+                              border: "1px solid #e2e8f0",
+                              backgroundColor: "#fff",
+                              minWidth: 0,
+                              width: "100%",
+                            }}
+                          >
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: "#475569",
+                                lineHeight: 1.25,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={physName || undefined}
+                            >
+                              <span style={{ color: "#94a3b8", marginRight: 4 }}>
+                                {t("emergencyTrackboard.physicianShort")}:
+                              </span>
+                              <span style={{ color: physName ? "#0f172a" : "#94a3b8", fontWeight: physName ? 600 : 500 }}>
+                                {physLine}
+                              </span>
+                            </p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: "#475569",
+                                lineHeight: 1.25,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={nurseName || undefined}
+                            >
+                              <span style={{ color: "#94a3b8", marginRight: 4 }}>
+                                {t("emergencyTrackboard.nurseShort")}:
+                              </span>
+                              <span style={{ color: nurseName ? "#0f172a" : "#94a3b8", fontWeight: nurseName ? 600 : 500 }}>
+                                {nurseLine}
+                              </span>
+                            </p>
+                          </div>
+                        }
                         identity={
                           <>
                             <h2
@@ -750,26 +863,6 @@ export function HospitalizationBoardView() {
                         }
                         right={
                           <>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: "#0f172a",
-                                textAlign: "right",
-                                lineHeight: 1.2,
-                                maxWidth: 260,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                              title={phys}
-                            >
-                              {phys}
-                            </p>
-                            <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", textAlign: "right" }}>
-                              <span style={{ color: "#cbd5e1" }}>{t("clinicalTrackboardPage.nurseAbbr")}</span> {nl}
-                            </p>
                             <div
                               style={{
                                 display: "flex",
@@ -812,6 +905,94 @@ export function HospitalizationBoardView() {
                               >
                                 {t("common.view")}
                               </Link>
+                              {isProvider ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void claimSelf(encounter.id, "provider")}
+                                  disabled={
+                                    assigningId === encounter.id ||
+                                    isPhysMine ||
+                                    mockMode === "error" ||
+                                    mockMode === "empty" ||
+                                    !effectiveFacilityId
+                                  }
+                                  title={
+                                    isPhysMine
+                                      ? t("emergencyTrackboard.assignProviderMine")
+                                      : t("emergencyTrackboard.assignProviderMe")
+                                  }
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: isPhysMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                    backgroundColor: isPhysMine ? "#d1fae5" : "#fff",
+                                    color: isPhysMine ? "#065f46" : "#0f172a",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor:
+                                      assigningId === encounter.id ||
+                                      isPhysMine ||
+                                      mockMode === "error" ||
+                                      mockMode === "empty" ||
+                                      !effectiveFacilityId
+                                        ? "default"
+                                        : "pointer",
+                                  }}
+                                >
+                                  {isPhysMine
+                                    ? t("emergencyTrackboard.assignProviderMine")
+                                    : assigningId === encounter.id
+                                      ? t("emergencyTrackboard.assignSubmitting")
+                                      : t("emergencyTrackboard.assignProviderMeShort")}
+                                </button>
+                              ) : null}
+                              {isNurse ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void claimSelf(encounter.id, "nurse")}
+                                  disabled={
+                                    assigningId === encounter.id ||
+                                    isNurseMine ||
+                                    mockMode === "error" ||
+                                    mockMode === "empty" ||
+                                    !effectiveFacilityId
+                                  }
+                                  title={
+                                    isNurseMine
+                                      ? t("emergencyTrackboard.assignNurseMine")
+                                      : t("emergencyTrackboard.assignNurseMe")
+                                  }
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: isNurseMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                    backgroundColor: isNurseMine ? "#d1fae5" : "#fff",
+                                    color: isNurseMine ? "#065f46" : "#0f172a",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor:
+                                      assigningId === encounter.id ||
+                                      isNurseMine ||
+                                      mockMode === "error" ||
+                                      mockMode === "empty" ||
+                                      !effectiveFacilityId
+                                        ? "default"
+                                        : "pointer",
+                                  }}
+                                >
+                                  {isNurseMine
+                                    ? t("emergencyTrackboard.assignNurseMine")
+                                    : assigningId === encounter.id
+                                      ? t("emergencyTrackboard.assignSubmitting")
+                                      : t("emergencyTrackboard.assignNurseMeShort")}
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 onClick={() => void dischargeEncounter(encounter)}
@@ -851,6 +1032,19 @@ export function HospitalizationBoardView() {
                                   : t("hospitalizationBoard.rowDischarge")}
                               </button>
                             </div>
+                            {assignError && assignError.id === encounter.id ? (
+                              <p
+                                role="alert"
+                                style={{
+                                  margin: "4px 0 0 0",
+                                  fontSize: 11,
+                                  color: "#b91c1c",
+                                  textAlign: "right",
+                                }}
+                              >
+                                {assignError.message}
+                              </p>
+                            ) : null}
                           </>
                         }
                       />

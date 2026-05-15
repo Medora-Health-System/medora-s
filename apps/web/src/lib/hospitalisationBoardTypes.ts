@@ -33,6 +33,7 @@ export type HospitalisationBoardTriage = {
 };
 
 export type HospitalisationBoardPhysician = {
+  id?: string;
   firstName?: string | null;
   lastName?: string | null;
 };
