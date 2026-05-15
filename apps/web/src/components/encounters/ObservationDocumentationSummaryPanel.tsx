@@ -202,6 +202,15 @@ export function ObservationDocumentationSummaryPanel({
             <div style={rowValueStyle}>{t("encounterChrome.observationDocSummary.gapsNone")}</div>
           )}
         </div>
+        <div>
+          <div style={sectionTitleStyle}>{t("encounterChrome.observationDocSummary.sectionWorkflowTabsTitle")}</div>
+          <p style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.5 }}>
+            {t("encounterChrome.observationDocSummary.sectionWorkflowTabsBody")
+              .replace("{triage}", t("encounterChrome.tabs.triage"))
+              .replace("{orders}", t("encounterChrome.tabs.orders"))
+              .replace("{mar}", t("encounterChrome.tabs.mar"))}
+          </p>
+        </div>
       </div>
     </div>
   );

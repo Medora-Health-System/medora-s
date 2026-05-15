@@ -5659,6 +5659,9 @@ export default {
       dischargePacketHintTitle: "Discharge packet (observation)",
       dischargePacketHintBody:
         "Summarize the observation course in provider documentation (MDM / impression) and complete the discharge fields below before ending the visit. Existing closure checks still apply — nothing is auto-discharged or auto-billed.",
+      sectionWorkflowTabsTitle: "Related encounter tabs (operational)",
+      sectionWorkflowTabsBody:
+        "Confirm recent vitals in {triage}; review orders (including observation template care lines) in {orders}; complete medication administration, PRN outcomes, and infusion continuity in {mar}.",
     },
     observationReassessment: {
       title: "Observation reassessment",
@@ -5992,10 +5995,13 @@ export default {
         "Nursing and medical fields by role (nurse: condition, destination, mode; provider: disposition, instructions, medications, follow-up). Unauthorized fields are read-only.",
       observationDischargeReminderTitle: "Observation — documentation reminders (non-blocking)",
       observationDischargeReminderFootnote:
-        "Reminder only. Confirm LOS, reassessments, pending results, and observation course in your authored documentation before discharge.",
+        "Reminder only. Confirm LOS, reassessments, vitals, pending results, MAR / medications, and observation course in your authored documentation before discharge.",
       observationDischargeReminderLos: "LOS / overnight / ≥24 h trajectory reviewed in the chart",
       observationDischargeReminderReassessments: "Provider and RN observation reassessments up to date (or gaps explained in the note)",
+      observationDischargeReminderVitals: "Recent vitals reviewed (or rationale documented in the chart)",
       observationDischargeReminderPendingResults: "Pending results reviewed or follow-up documented",
+      observationDischargeReminderMarMedications:
+        "Medications / MAR reviewed (active orders, administrations, PRN documentation, infusion continuity as applicable)",
       observationDischargeReminderCourse: "Observation course summarized in provider documentation (MDM / impression as appropriate)",
       readOnly: "(read-only)",
       dischargeMode: "Discharge disposition",

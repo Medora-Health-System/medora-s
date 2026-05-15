@@ -5637,6 +5637,9 @@ export default {
       dischargePacketHintTitle: "Dossier de sortie (observation)",
       dischargePacketHintBody:
         "Résumez le déroulé d'observation dans la documentation médicale (MDM / impression) et complétez les champs de sortie ci-dessous avant de terminer la visite. Les contrôles de clôture existants s'appliquent — aucune sortie ni facturation automatique.",
+      sectionWorkflowTabsTitle: "Onglets liés (opérationnel)",
+      sectionWorkflowTabsBody:
+        "Vérifiez les signes vitaux récents dans {triage} ; les ordres (y compris les lignes de soins du modèle observation) dans {orders} ; l'administration médicamenteuse, les PRN et la continuité des perfusions dans {mar}.",
     },
     observationReassessment: {
       title: "Réévaluation observation",
@@ -5971,11 +5974,14 @@ export default {
         "Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin : disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.",
       observationDischargeReminderTitle: "Observation — rappels documentaires (non bloquant)",
       observationDischargeReminderFootnote:
-        "Rappel uniquement. Vérifiez durée de séjour, réévaluations, résultats en attente et déroulé d'observation dans votre documentation rédigée avant la sortie.",
+        "Rappel uniquement. Vérifiez durée de séjour, réévaluations, signes vitaux, résultats en attente, médicaments / administration et déroulé d'observation dans votre documentation rédigée avant la sortie.",
       observationDischargeReminderLos: "Durée de séjour / passage minuit / séjour ≥24 h revus dans le dossier",
       observationDischargeReminderReassessments:
         "Réévaluations observation médecin et IDE à jour (ou écarts expliqués dans la note)",
+      observationDischargeReminderVitals: "Signes vitaux récents revus (ou justification consignée au dossier)",
       observationDischargeReminderPendingResults: "Résultats en attente revus ou suivi documenté",
+      observationDischargeReminderMarMedications:
+        "Médicaments / administration revus (ordres actifs, administrations, documentation PRN, continuité des perfusions le cas échéant)",
       observationDischargeReminderCourse:
         "Déroulé d'observation résumé dans la documentation médicale (MDM / impression selon le cas)",
       readOnly: "(lecture seule)",

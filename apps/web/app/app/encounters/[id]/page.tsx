@@ -2181,7 +2181,9 @@ export default function EncounterDetailPage() {
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#451a03", lineHeight: 1.5 }}>
                   <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderLos")}</li>
                   <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderReassessments")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderVitals")}</li>
                   <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderPendingResults")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderMarMedications")}</li>
                   <li style={{ marginBottom: 0 }}>{t("encounterChrome.modals.observationDischargeReminderCourse")}</li>
                 </ul>
               </div>
