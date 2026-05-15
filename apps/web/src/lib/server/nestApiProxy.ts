@@ -178,13 +178,17 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
 
   let facilityId = await getFacilityId(req, accessToken, apiUrl);
 
-  /** Jeton d’accès expiré : /auth/me échoue → pas d’établissement sans refresh (avant : 400 au lieu de laisser le client rafraîchir). */
-  if (!facilityId) {
+  const isPlatformAnnouncementPath =
+    normalized === "platform-announcements/active" ||
+    /^platform-announcements\/[^/]+\/acknowledge$/.test(normalized);
+
+  /** Phase 14G-A — JWT-only routes; MSPP-only users may have no facility cookie/header. */
+  if (!facilityId && !isPlatformAnnouncementPath) {
     await refreshOnce();
     facilityId = await getFacilityId(req, accessToken, apiUrl);
   }
 
-  if (!facilityId) {
+  if (!facilityId && !isPlatformAnnouncementPath) {
     const res = NextResponse.json({ message: "No facility selected." }, { status: 400 });
     if (requestId) res.headers.set("x-request-id", requestId);
     return res;
@@ -197,7 +201,9 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     const headers = new Headers();
     headers.set("Content-Type", "application/json");
     headers.set("Authorization", `Bearer ${token}`);
-    headers.set("x-facility-id", facilityId!);
+    if (facilityId) {
+      headers.set("x-facility-id", facilityId);
+    }
     if (requestId) headers.set("x-request-id", requestId);
     const uiLang = req.headers.get("x-medora-ui-language");
     if (uiLang) headers.set("x-medora-ui-language", uiLang);

@@ -8418,4 +8418,21 @@ export default {
   mar: {
     viewSafetyDetails: "Voir les détails de sécurité",
   },
+  platformAnnouncement: {
+    title: "Annonce plateforme",
+    newUpdateAvailable: "Une nouvelle mise à jour Medora est disponible.",
+    acknowledge: "J’ai pris connaissance",
+    acknowledging: "Enregistrement…",
+    skipForNow: "Plus tard",
+    loading: "Chargement…",
+    loadError: "Impossible de charger les annonces. Vous pouvez continuer à utiliser Medora.",
+    acknowledgeError: "Impossible d’enregistrer la confirmation. Réessayez plus tard.",
+    versionKeyLabel: "Clé de version : {key}",
+    severity: {
+      info: "Information",
+      warning: "Avertissement",
+      critical: "Critique",
+      release: "Notes de version",
+    },
+  },
 };

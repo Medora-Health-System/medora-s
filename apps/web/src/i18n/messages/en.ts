@@ -8409,4 +8409,21 @@ export default {
   mar: {
     viewSafetyDetails: "View safety details",
   },
+  platformAnnouncement: {
+    title: "Platform announcement",
+    newUpdateAvailable: "A new Medora update is available.",
+    acknowledge: "Acknowledge",
+    acknowledging: "Saving…",
+    skipForNow: "Skip for now",
+    loading: "Loading…",
+    loadError: "Unable to load announcements. You can continue using Medora.",
+    acknowledgeError: "Unable to record acknowledgment. Try again later.",
+    versionKeyLabel: "Release key: {key}",
+    severity: {
+      info: "Information",
+      warning: "Warning",
+      critical: "Critical",
+      release: "Release notes",
+    },
+  },
 };

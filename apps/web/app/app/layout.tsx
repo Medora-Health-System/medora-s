@@ -13,6 +13,7 @@ import {
  * Imports directs vers les fichiers (pas de barrel `app-shell/index`) — évite manifest / chunks client incorrects.
  */
 import { AppShell, type AppShellFacilityOption } from "@/components/app-shell/AppShell";
+import { PlatformAnnouncementGate } from "@/components/platform-announcement/PlatformAnnouncementGate";
 import { SIDEBAR_NAV_ITEMS, groupSidebarNavItems } from "@/components/app-shell/sidebarNavConfig";
 import { I18nProvider } from "@/i18n/provider";
 
@@ -318,7 +319,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onLogout={handleLogout}
         groupedNavSections={groupedNavSections}
       >
-        {children}
+        <PlatformAnnouncementGate sessionReady={sessionReady} userId={user?.id} facilityId={activeFacility || undefined}>
+          {children}
+        </PlatformAnnouncementGate>
       </AppShell>
     </I18nProvider>
   );

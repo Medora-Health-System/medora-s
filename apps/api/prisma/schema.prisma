@@ -134,6 +134,8 @@ enum AuditAction {
   MFA_RECOVERY_CODE_USED
   MFA_RECOVERY_CODES_REGENERATED
   MFA_RESET_BY_ADMIN
+  /// Phase 14G-A — user acknowledged a platform announcement (metadata: announcementId, versionKey, severity only).
+  PLATFORM_ANNOUNCEMENT_ACKNOWLEDGED
 }
 
 /// Phase 5G — category of external / formal record release request.
@@ -620,6 +622,9 @@ model User {
   chartRoiRequestsRequested                  ChartRoiRequest[]              @relation("ChartRoiRequestedBy")
   chartRoiRequestsApproved                   ChartRoiRequest[]              @relation("ChartRoiApprovedBy")
   chartRoiRequestsFulfilled                  ChartRoiRequest[]              @relation("ChartRoiFulfilledBy")
+  /// Phase 14G-A — platform release / operational notices (creator optional).
+  platformAnnouncementsCreated              PlatformAnnouncement[]         @relation("PlatformAnnouncementCreatedBy")
+  platformAnnouncementAcknowledgements      PlatformAnnouncementAcknowledgement[]
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -2327,4 +2332,37 @@ model ClaimOperationalEvent {
   @@index([submissionId, eventAt])
   @@index([facilityId, eventType, eventAt])
   @@index([encounterId, eventAt])
+}
+
+/// Phase 14G-A — non-clinical platform announcements (no PHI; not patient-scoped).
+model PlatformAnnouncement {
+  id               String    @id @default(cuid())
+  title            String
+  body             String    @db.Text
+  severity         String?
+  versionKey       String    @unique
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  isActive         Boolean   @default(true)
+  createdByUserId  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  createdBy        User? @relation("PlatformAnnouncementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  acknowledgements PlatformAnnouncementAcknowledgement[]
+
+  @@index([isActive, startsAt, expiresAt, createdAt])
+}
+
+model PlatformAnnouncementAcknowledgement {
+  id              String   @id @default(cuid())
+  announcementId  String
+  userId          String
+  acknowledgedAt  DateTime @default(now())
+
+  announcement PlatformAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
 }
