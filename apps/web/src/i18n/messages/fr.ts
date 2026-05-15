@@ -5640,6 +5640,20 @@ export default {
       sectionWorkflowTabsTitle: "Onglets liés (opérationnel)",
       sectionWorkflowTabsBody:
         "Vérifiez les signes vitaux récents dans {triage} ; les ordres (y compris les lignes de soins du modèle observation) dans {orders} ; l'administration médicamenteuse, les PRN et la continuité des perfusions dans {mar}.",
+      marSummary: {
+        sectionTitle: "Médicaments / administration (synthèse lecture seule)",
+        loading: "Chargement de la synthèse médicamenteuse…",
+        loadFailed: "Impossible de charger la synthèse médicamenteuse.",
+        pendingCount: "Lignes médicamenteuses actives (MAR) : {count}",
+        overdueCount: "Administrations en retard (heure prévue) : {count}",
+        overdueNone: "Aucun retard détecté à partir des heures prévues sur les lignes MAR actives.",
+        infusionActive: "Session(s) de perfusion active(s) au dossier (événements d'ordre) : {count}",
+        infusionNone: "Aucune session de perfusion active détectée pour les lignes perfusion éligibles au MAR.",
+        prnReminder:
+          "Médicaments PRN / à la demande : consigner la réponse et la réévaluation dans les notes ou le MAR selon le cas.",
+        reviewBeforeDischarge:
+          "Avant la sortie : réconcilier les ordres actifs, le MAR, les réponses PRN et les perfusions / IV dans l'onglet MAR.",
+      },
     },
     observationReassessment: {
       title: "Réévaluation observation",
@@ -5974,14 +5988,17 @@ export default {
         "Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin : disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.",
       observationDischargeReminderTitle: "Observation — rappels documentaires (non bloquant)",
       observationDischargeReminderFootnote:
-        "Rappel uniquement. Vérifiez durée de séjour, réévaluations, signes vitaux, résultats en attente, médicaments / administration et déroulé d'observation dans votre documentation rédigée avant la sortie.",
+        "Rappel uniquement. Vérifiez durée de séjour, réévaluations, signes vitaux, résultats en attente, médicaments actifs, complétude du MAR, documentation PRN, perfusions / IV et déroulé d'observation dans votre documentation rédigée avant la sortie.",
       observationDischargeReminderLos: "Durée de séjour / passage minuit / séjour ≥24 h revus dans le dossier",
       observationDischargeReminderReassessments:
         "Réévaluations observation médecin et IDE à jour (ou écarts expliqués dans la note)",
       observationDischargeReminderVitals: "Signes vitaux récents revus (ou justification consignée au dossier)",
       observationDischargeReminderPendingResults: "Résultats en attente revus ou suivi documenté",
-      observationDischargeReminderMarMedications:
-        "Médicaments / administration revus (ordres actifs, administrations, documentation PRN, continuité des perfusions le cas échéant)",
+      observationDischargeReminderActiveMedsReviewed: "Ordres médicamenteux actifs revus par rapport au dossier",
+      observationDischargeReminderMarComplete:
+        "MAR complété pour les administrations planifiées sur les lignes actives (ou écarts expliqués)",
+      observationDischargeReminderPrnDocumented: "Réponses aux PRN documentées le cas échéant",
+      observationDischargeReminderIvInfusionsAccounted: "Perfusion / IV arrêtée ou justifiée dans la documentation",
       observationDischargeReminderCourse:
         "Déroulé d'observation résumé dans la documentation médicale (MDM / impression selon le cas)",
       readOnly: "(lecture seule)",

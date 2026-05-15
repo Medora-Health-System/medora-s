@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
-import { listQueueItems } from "@/lib/offline/offlineQueue";
+import { getPendingMedicationAdminsFromQueue } from "@/lib/pendingMedicationAdminsFromQueue";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
@@ -39,6 +39,7 @@ import { AdvancedMedicationSafetyPanel } from "@/components/medication/AdvancedM
 import { MedicationSoftSafetyPanel } from "@/components/medication/MedicationSoftSafetyPanel";
 import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { medicationMarIntendedTimingUrgency } from "@/lib/medicationMarIntendedUrgency";
 
 type AdminRow = {
   id: string;
@@ -182,9 +183,6 @@ function parseOrderEventsForMar(raw: unknown[] | null): MarOrderEventRow[] {
     .filter((e) => e.id && e.orderId && e.performedAt);
 }
 
-/** Fenêtre avant l’heure prévue : affichage « bientôt dû » (jaune), sans logique de planification. */
-const INTENDED_DUE_SOON_BEFORE_MS = 60 * 60 * 1000;
-
 function isSameLocalCalendarDay(iso: string, ref: Date): boolean {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return false;
@@ -193,24 +191,6 @@ function isSameLocalCalendarDay(iso: string, ref: Date): boolean {
     d.getMonth() === ref.getMonth() &&
     d.getDate() === ref.getDate()
   );
-}
-
-type IntendedUrgency = "overdue" | "dueSoon";
-
-function intendedTimingUrgency(
-  intendedAtIso: string | null | undefined,
-  nowMs: number,
-  isAdministered: boolean
-): IntendedUrgency | null {
-  if (isAdministered) return null;
-  const raw = intendedAtIso != null ? String(intendedAtIso).trim() : "";
-  if (!raw) return null;
-  const due = new Date(raw).getTime();
-  if (Number.isNaN(due)) return null;
-  if (nowMs > due) return "overdue";
-  const msUntil = due - nowMs;
-  if (msUntil >= 0 && msUntil <= INTENDED_DUE_SOON_BEFORE_MS) return "dueSoon";
-  return null;
 }
 
 type MarAction = "administered" | "refused" | "not_available" | "md_changed";
@@ -237,51 +217,6 @@ function latestMarClinicalActionForRow(latest: AdminRow | undefined): MarAction 
     marAction: latest.marAction ?? null,
     notes: latest.notes,
   });
-}
-
-async function getPendingMedicationAdminsFromQueue(
-  facilityId: string,
-  encounterId: string,
-  pendingSyncFirstName: string,
-  pendingSyncLastName: string
-): Promise<AdminRow[]> {
-  const endpoint = `/encounters/${encounterId}/medication-administrations`;
-  const all = await listQueueItems();
-  const out: AdminRow[] = [];
-  for (const item of all) {
-    if (item.status !== "pending" && item.status !== "failed" && item.status !== "syncing") continue;
-    if (item.type !== "medication_administration") continue;
-    if (item.facilityId !== facilityId) continue;
-    if (item.endpoint !== endpoint) continue;
-    const payload =
-      item.payload && typeof item.payload === "object" && !Array.isArray(item.payload)
-        ? (item.payload as Record<string, unknown>)
-        : {};
-    const rawOid = payload.orderItemId;
-    const orderItemId =
-      typeof rawOid === "string" ? rawOid : typeof rawOid === "number" ? String(rawOid) : null;
-    const administeredAt =
-      typeof payload.administeredAt === "string" ? payload.administeredAt : item.createdAt;
-    const notes = typeof payload.notes === "string" ? payload.notes : null;
-    const marAction = typeof payload.marAction === "string" ? payload.marAction : null;
-    const administeredQuantityRaw = payload.administeredQuantity;
-    const administeredQuantity =
-      typeof administeredQuantityRaw === "number" && Number.isFinite(administeredQuantityRaw)
-        ? administeredQuantityRaw
-        : null;
-    out.push({
-      id: `local:${item.id}`,
-      orderItemId,
-      medicationLabelSnapshot: null,
-      administeredAt,
-      notes,
-      marAction,
-      administeredBy: { id: "pending-sync", firstName: pendingSyncFirstName, lastName: pendingSyncLastName },
-      pendingSync: true,
-      administeredQuantity,
-    });
-  }
-  return out;
 }
 
 export function MedicationAdministrationTab({
@@ -1121,7 +1056,7 @@ export function MedicationAdministrationTab({
                     : null;
 
                 const intendedUrgency = intendedLine
-                  ? intendedTimingUrgency(row.intendedAt, nowMs, marSaysAdministered)
+                  ? medicationMarIntendedTimingUrgency(row.intendedAt, nowMs, marSaysAdministered)
                   : null;
                 const intendedLineStyle: React.CSSProperties =
                   intendedUrgency === "overdue"

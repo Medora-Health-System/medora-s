@@ -1656,6 +1656,9 @@ export default function EncounterDetailPage() {
                 dispositionReadiness={dispositionReadiness}
                 formatDateTime={(iso) => formatEncounterChromeDateTime(iso, language)}
                 t={t}
+                encounterId={encounterId}
+                facilityId={facilityId}
+                medicationMarSummaryRefreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${encounterResultsRefresh}-${clinicalTimelineRefresh}`}
               />
             ) : null}
 
@@ -2183,7 +2186,10 @@ export default function EncounterDetailPage() {
                   <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderReassessments")}</li>
                   <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderVitals")}</li>
                   <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderPendingResults")}</li>
-                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderMarMedications")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderActiveMedsReviewed")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderMarComplete")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderPrnDocumented")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderIvInfusionsAccounted")}</li>
                   <li style={{ marginBottom: 0 }}>{t("encounterChrome.modals.observationDischargeReminderCourse")}</li>
                 </ul>
               </div>

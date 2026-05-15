@@ -5662,6 +5662,19 @@ export default {
       sectionWorkflowTabsTitle: "Related encounter tabs (operational)",
       sectionWorkflowTabsBody:
         "Confirm recent vitals in {triage}; review orders (including observation template care lines) in {orders}; complete medication administration, PRN outcomes, and infusion continuity in {mar}.",
+      marSummary: {
+        sectionTitle: "Medications / MAR (read-only digest)",
+        loading: "Loading medication summary…",
+        loadFailed: "Unable to load medication summary.",
+        pendingCount: "Active MAR medication lines: {count}",
+        overdueCount: "Overdue scheduled administrations (by intended time): {count}",
+        overdueNone: "No overdue administrations detected from intended times on active MAR lines.",
+        infusionActive: "Active infusion session(s) on chart (from order events): {count}",
+        infusionNone: "No active infusion session detected on chart for MAR-eligible infusion lines.",
+        prnReminder:
+          "PRN / as-needed medications: document response and reassessment in nursing notes or MAR as applicable.",
+        reviewBeforeDischarge: "Before discharge: reconcile active orders, MAR, PRN responses, and IV / infusions in the MAR tab.",
+      },
     },
     observationReassessment: {
       title: "Observation reassessment",
@@ -5995,13 +6008,15 @@ export default {
         "Nursing and medical fields by role (nurse: condition, destination, mode; provider: disposition, instructions, medications, follow-up). Unauthorized fields are read-only.",
       observationDischargeReminderTitle: "Observation — documentation reminders (non-blocking)",
       observationDischargeReminderFootnote:
-        "Reminder only. Confirm LOS, reassessments, vitals, pending results, MAR / medications, and observation course in your authored documentation before discharge.",
+        "Reminder only. Confirm LOS, reassessments, vitals, pending results, active medications, MAR completion, PRN documentation, IV/infusions, and observation course in your authored documentation before discharge.",
       observationDischargeReminderLos: "LOS / overnight / ≥24 h trajectory reviewed in the chart",
       observationDischargeReminderReassessments: "Provider and RN observation reassessments up to date (or gaps explained in the note)",
       observationDischargeReminderVitals: "Recent vitals reviewed (or rationale documented in the chart)",
       observationDischargeReminderPendingResults: "Pending results reviewed or follow-up documented",
-      observationDischargeReminderMarMedications:
-        "Medications / MAR reviewed (active orders, administrations, PRN documentation, infusion continuity as applicable)",
+      observationDischargeReminderActiveMedsReviewed: "Active medication orders reviewed against the chart",
+      observationDischargeReminderMarComplete: "MAR complete for scheduled administrations on active lines (or gaps explained)",
+      observationDischargeReminderPrnDocumented: "PRN responses documented where applicable",
+      observationDischargeReminderIvInfusionsAccounted: "IV fluids / infusions stopped or accounted for in documentation",
       observationDischargeReminderCourse: "Observation course summarized in provider documentation (MDM / impression as appropriate)",
       readOnly: "(read-only)",
       dischargeMode: "Discharge disposition",

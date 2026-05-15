@@ -5,6 +5,7 @@ import type { DispositionSafetyReadinessResponse, ObservationOperationalSnapshot
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { dispositionReadinessIssueText } from "@/components/clinical/DispositionReadinessBanner";
 import { BLOCKER_LABEL_KEY, READINESS_LABEL_KEY } from "@/components/encounters/ObservationWorkflowEncounterChrome";
+import { ObservationMarEncounterSummaryBlock } from "@/components/encounters/ObservationMarEncounterSummaryBlock";
 
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: 12,
@@ -47,6 +48,9 @@ export function ObservationDocumentationSummaryPanel({
   dispositionReadiness,
   formatDateTime,
   t,
+  encounterId,
+  facilityId,
+  medicationMarSummaryRefreshKey,
 }: {
   snapshot: ObservationOperationalSnapshot;
   initialObservationReason: string;
@@ -55,6 +59,9 @@ export function ObservationDocumentationSummaryPanel({
   dispositionReadiness: DispositionSafetyReadinessResponse | null;
   formatDateTime: (iso: string) => string;
   t: (key: string) => string;
+  encounterId?: string;
+  facilityId?: string;
+  medicationMarSummaryRefreshKey?: string;
 }) {
   const providerLast = snapshot.reassessmentLanes.provider.lastAtIso;
   const rnLast = snapshot.reassessmentLanes.rnObservation.lastAtIso;
@@ -174,6 +181,13 @@ export function ObservationDocumentationSummaryPanel({
           <div style={sectionTitleStyle}>{t("encounterChrome.observationWorkflow.pendingResultsLabel")}</div>
           <div style={rowValueStyle}>{pendingLine}</div>
         </div>
+        {encounterId && facilityId && medicationMarSummaryRefreshKey ? (
+          <ObservationMarEncounterSummaryBlock
+            encounterId={encounterId}
+            facilityId={facilityId}
+            refreshKey={medicationMarSummaryRefreshKey}
+          />
+        ) : null}
         <div>
           <div style={sectionTitleStyle}>{t("encounterChrome.observationDocSummary.readinessContext")}</div>
           {activeReadinessLines.length > 0 ? (
