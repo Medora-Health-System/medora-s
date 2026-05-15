@@ -5531,6 +5531,11 @@ export default {
     loadFailedTitle: "Unable to load encounter.",
     errLoadEncounter: "Could not load the encounter.",
     errAuditTimelineLoad: "Could not load audit history.",
+    quickContextFailedVitals: "vital signs",
+    quickContextFailedOrders: "orders",
+    quickContextFailedDiagnoses: "diagnosis list",
+    quickContextPartialLoadNotice:
+      "Some supplemental data could not be loaded ({labels}). The encounter record remains available.",
     lockedSignedBanner:
       "Chart locked — clinical content cannot be edited. Only addenda are allowed after signature.",
     queuedCloseBanner:
@@ -5594,7 +5599,7 @@ export default {
         CONTINUE_OBSERVATION: "Ready to continue observation (no critical delay on tracked lanes)",
         NEEDS_REASSESSMENT: "Needs reassessment (provider and/or RN observation lane)",
         NEEDS_RESULTS_REVIEW: "Needs results review",
-        READY_FOR_DISCHARGE_WORKFLOW: "Ready for discharge workflow",
+        READY_FOR_DISCHARGE_WORKFLOW: "Ready to complete observation discharge (documentation + packet)",
         NEEDS_ESCALATION_REVIEW: "Consider escalation / transfer review (LOS or disposition phase)",
       },
       lastProviderSigned: "Last signed provider note",
@@ -5632,7 +5637,7 @@ export default {
         results: "Pending results",
         nursing: "Nursing",
         continue: "Continue observation",
-        discharge: "Discharge / discharge packet",
+        discharge: "End observation & discharge packet",
         addReassessmentProvider: "Observation reassessment (provider)",
         addReassessmentNursing: "Observation reassessment (RN)",
       },
@@ -5651,6 +5656,9 @@ export default {
       readinessNoneActive: "No highlighted readiness lines.",
       gapsTitle: "Documentation gaps (informational checklist)",
       gapsNone: "No checklist items listed.",
+      dischargePacketHintTitle: "Discharge packet (observation)",
+      dischargePacketHintBody:
+        "Summarize the observation course in provider documentation (MDM / impression) and complete the discharge fields below before ending the visit. Existing closure checks still apply — nothing is auto-discharged or auto-billed.",
     },
     observationReassessment: {
       title: "Observation reassessment",
@@ -5979,6 +5987,7 @@ export default {
     },
     modals: {
       dischargeTitle: "Discharge summary",
+      dischargeTitleObservation: "Observation discharge packet",
       dischargeIntro:
         "Nursing and medical fields by role (nurse: condition, destination, mode; provider: disposition, instructions, medications, follow-up). Unauthorized fields are read-only.",
       observationDischargeReminderTitle: "Observation — documentation reminders (non-blocking)",
@@ -7265,6 +7274,9 @@ export default {
     cardTitle: "Nursing reassessment (ED)",
     cardSubline:
       "Ongoing reassessment at the bedside — saved with the encounter. For structured system-based assessment, use the link below.",
+    cardTitleObservationEncounter: "Nursing reassessment (observation)",
+    cardSublineObservationEncounter:
+      "Same reassessment template as the ED nursing board — saved with this encounter. Use Summary for a quick chart digest.",
     openNursingTab: "Open nursing assessment (chart)",
     esiRoomLabel: "ESI (triage)",
     vitalsStripLabel: "Vital signs (triage)",

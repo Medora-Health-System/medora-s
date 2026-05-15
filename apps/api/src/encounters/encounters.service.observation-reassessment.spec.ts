@@ -136,8 +136,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
     );
     const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
 
-    await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
-      BadRequestException
+    await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
+      /Observation reassessment applies only to inpatient encounters/i
     );
     expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
   });
@@ -153,8 +153,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
     );
     const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
 
-    await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
-      BadRequestException
+    await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
+      /Observation reassessment is only available for an open observation or short-stay stay/i
     );
     expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
   });
@@ -208,8 +208,8 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
     );
     const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
 
-    await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, undefined)).rejects.toBeInstanceOf(
-      ForbiddenException
+    await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, undefined)).rejects.toThrow(
+      /Authentication required to save observation reassessment/i
     );
     expect(encounterClinicalEventCreate).not.toHaveBeenCalled();
   });

@@ -550,6 +550,8 @@ export function EmergencyNursingReassessmentPanel({
   isLocked,
   onSaved,
   nursingTabHref,
+  /** Same ED reassessment grid; observation short-stay uses localized card copy and hides the legacy “open nursing tab” link. */
+  variant = "edEmbedded",
 }: {
   encounterId: string;
   facilityId: string;
@@ -558,9 +560,17 @@ export function EmergencyNursingReassessmentPanel({
   onSaved: () => void | Promise<void>;
   /** Lien vers l&apos;onglet évaluation infirmière du dossier (référence complète). */
   nursingTabHref: string;
+  variant?: "edEmbedded" | "observationEncounter";
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const isObservationEncounter = variant === "observationEncounter";
+  const cardTitle = isObservationEncounter
+    ? t("emergencyNursingReassessment.cardTitleObservationEncounter")
+    : t("emergencyNursingReassessment.cardTitle");
+  const cardSubline = isObservationEncounter
+    ? t("emergencyNursingReassessment.cardSublineObservationEncounter")
+    : t("emergencyNursingReassessment.cardSubline");
 
   const applyAbcStableFillEmpty = useCallback(() => {
     setForm((f) => ({
@@ -1459,34 +1469,36 @@ export function EmergencyNursingReassessmentPanel({
       <MedoraCardInner>
         <MedoraCardIdentity initials="S">
           <MedoraCardTitle
-            title={t("emergencyNursingReassessment.cardTitle")}
+            title={cardTitle}
             subline={
               <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                {t("emergencyNursingReassessment.cardSubline")}
+                {cardSubline}
               </p>
             }
           />
         </MedoraCardIdentity>
 
-        <MedoraCardActions railBorderTopColor="#e2e8f0" gap={10} minWidth={0} alignItems="flex-start">
-          <Link
-            href={nursingTabHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #bae6fd",
-              backgroundColor: "#f0f9ff",
-              color: "#0369a1",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            {t("emergencyNursingReassessment.openNursingTab")}
-          </Link>
-        </MedoraCardActions>
+        {!isObservationEncounter ? (
+          <MedoraCardActions railBorderTopColor="#e2e8f0" gap={10} minWidth={0} alignItems="flex-start">
+            <Link
+              href={nursingTabHref}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "1px solid #bae6fd",
+                backgroundColor: "#f0f9ff",
+                color: "#0369a1",
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              {t("emergencyNursingReassessment.openNursingTab")}
+            </Link>
+          </MedoraCardActions>
+        ) : null}
 
         {loadingTriage ? (
           <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("common.loading")}</p>

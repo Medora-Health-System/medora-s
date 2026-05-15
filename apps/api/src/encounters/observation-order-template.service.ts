@@ -21,11 +21,11 @@ import {
   assertEncounterOpenForClinicalMutation,
 } from "./encounter-sign-lock.util";
 
-const UNKNOWN_TEMPLATE_IDS_FR =
-  "Identifiants de modèle inconnus ou non pris en charge pour ce lot d’ordres.";
-const NO_VALID_LINES_FR = "Sélectionnez au moins une ligne valide du modèle.";
-const NOT_INPATIENT_FR = "Ce modèle d’ordres s’applique uniquement aux hospitalisations (consultation ouverte).";
-const ROLE_BLOCKED_FR = "Seuls les médecins ou administrateurs peuvent appliquer ce modèle d’ordres.";
+/** User-facing API text (English): surfaced in alerts; UI locale maps via i18n where wrapped. */
+const UNKNOWN_TEMPLATE_IDS = "Unknown or unsupported template line ids for this order set.";
+const NO_VALID_LINES = "Select at least one valid template line.";
+const NOT_INPATIENT = "This order template applies only to inpatient (open) encounters.";
+const ROLE_BLOCKED = "Only physicians or administrators may apply this order template.";
 
 @Injectable()
 export class ObservationOrderTemplateService {
@@ -37,7 +37,7 @@ export class ObservationOrderTemplateService {
 
   private async assertProviderOrAdmin(userId: string | undefined, facilityId: string): Promise<void> {
     if (!userId) {
-      throw new ForbiddenException("Authentification requise");
+      throw new ForbiddenException("Authentication required.");
     }
     const userRoles = await this.prisma.userRole.findMany({
       where: { userId, facilityId, isActive: true },
@@ -45,7 +45,7 @@ export class ObservationOrderTemplateService {
     });
     const codes = userRoles.flatMap((ur) => (ur.role ? [ur.role.code] : []));
     if (!codes.includes(RoleCode.PROVIDER) && !codes.includes(RoleCode.ADMIN)) {
-      throw new ForbiddenException(ROLE_BLOCKED_FR);
+      throw new ForbiddenException(ROLE_BLOCKED);
     }
   }
 
@@ -62,12 +62,12 @@ export class ObservationOrderTemplateService {
 
     const unknown = findUnknownObservationTemplateIds(dto.selectedItemIds);
     if (unknown.length > 0) {
-      throw new BadRequestException(UNKNOWN_TEMPLATE_IDS_FR);
+      throw new BadRequestException(UNKNOWN_TEMPLATE_IDS);
     }
 
     const ordered = orderObservationTemplateSelection(dto.selectedItemIds);
     if (ordered.length === 0) {
-      throw new BadRequestException(NO_VALID_LINES_FR);
+      throw new BadRequestException(NO_VALID_LINES);
     }
 
     const encounter = await this.prisma.encounter.findFirst({
@@ -88,7 +88,7 @@ export class ObservationOrderTemplateService {
     }
 
     if (encounter.type !== "INPATIENT") {
-      throw new BadRequestException(NOT_INPATIENT_FR);
+      throw new BadRequestException(NOT_INPATIENT);
     }
 
     assertEncounterOpenForClinicalMutation(encounter);
@@ -175,7 +175,7 @@ export class ObservationOrderTemplateService {
       });
     } catch (e) {
       if (e instanceof Error && e.message === "observation_template_no_valid_items") {
-        throw new BadRequestException(NO_VALID_LINES_FR);
+        throw new BadRequestException(NO_VALID_LINES);
       }
       throw e;
     }

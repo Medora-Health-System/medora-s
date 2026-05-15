@@ -56,7 +56,9 @@ export async function parseApiResponse(response: Response): Promise<unknown> {
       return JSON.parse(trimmed);
     } catch {
       const locale = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
-      throw new Error(normalizeUserFacingError("Réponse JSON invalide du serveur", locale));
+      const msg =
+        locale === "en" ? "Invalid JSON response from server." : "Réponse JSON invalide du serveur.";
+      throw new Error(normalizeUserFacingError(msg, locale));
     }
   }
 
@@ -152,9 +154,10 @@ export async function apiFetchResponse(
     }
   } catch (networkErr: unknown) {
     const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
+    const fallback =
+      loc === "en" ? "Unable to reach the server. Check your connection." : "Erreur de communication avec le serveur";
     throw new Error(
-      normalizeUserFacingError((networkErr as Error)?.message, loc) ||
-        normalizeUserFacingError("Erreur de communication avec le serveur", loc)
+      normalizeUserFacingError((networkErr as Error)?.message, loc) || normalizeUserFacingError(fallback, loc)
     );
   }
 
@@ -164,7 +167,9 @@ export async function apiFetchResponse(
     if (response.status === 413) {
       throw new Error(
         normalizeUserFacingError(
-          "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite.",
+          loc === "en"
+            ? "Payload too large: reduce file or text size, or ask an administrator to raise the limit."
+            : "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite.",
           loc
         ) || (loc === "en" ? "Payload too large." : "Fichier ou texte trop volumineux.")
       );
@@ -227,11 +232,11 @@ export async function apiFetch(
       payload = fetchOptions.body ?? {};
     }
     await enqueueOfflineAction(queueType, path, method as "POST" | "PATCH" | "PUT", payload, providedFacilityId);
-    // Pas de parse de réponse réseau — la requête est mise en file uniquement.
+    const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
     return {
       queued: true,
       syncState: "pending",
-      message: "En attente de synchronisation",
+      message: i18nMessage(loc, "worklistDepartments.shared.syncPendingStatus"),
     };
   }
 
@@ -281,9 +286,10 @@ export async function apiFetch(
       };
     }
     const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
+    const fallback =
+      loc === "en" ? "Unable to reach the server. Check your connection." : "Erreur de communication avec le serveur";
     throw new Error(
-      normalizeUserFacingError((networkErr as Error)?.message, loc) ||
-        normalizeUserFacingError("Erreur de communication avec le serveur", loc)
+      normalizeUserFacingError((networkErr as Error)?.message, loc) || normalizeUserFacingError(fallback, loc)
     );
   }
 
@@ -293,7 +299,9 @@ export async function apiFetch(
     if (response.status === 413) {
       throw new Error(
         normalizeUserFacingError(
-          "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite.",
+          loc === "en"
+            ? "Payload too large: reduce file or text size, or ask an administrator to raise the limit."
+            : "Payload trop volumineux : réduisez la taille des fichiers ou du texte, ou contactez l’administrateur pour augmenter la limite.",
           loc
         ) || (loc === "en" ? "Payload too large." : "Fichier ou texte trop volumineux.")
       );

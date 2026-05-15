@@ -114,6 +114,22 @@ export function ObservationDocumentationSummaryPanel({
       <p style={{ margin: "0 0 12px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
         {t("encounterChrome.observationDocSummary.footnote")}
       </p>
+      <div
+        style={{
+          marginBottom: 14,
+          padding: "10px 12px",
+          borderRadius: 12,
+          border: "1px solid #bae6fd",
+          backgroundColor: "#f0f9ff",
+        }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#0c4a6e", marginBottom: 6 }}>
+          {t("encounterChrome.observationDocSummary.dischargePacketHintTitle")}
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
+          {t("encounterChrome.observationDocSummary.dischargePacketHintBody")}
+        </p>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
           <div style={sectionTitleStyle}>{t("encounterChrome.observationDocSummary.sectionInitialReason")}</div>

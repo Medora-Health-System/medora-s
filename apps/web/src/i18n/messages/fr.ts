@@ -5506,6 +5506,11 @@ export default {
     loadFailedTitle: "Impossible de charger la consultation.",
     errLoadEncounter: "Impossible de charger la consultation.",
     errAuditTimelineLoad: "Impossible de charger l'historique.",
+    quickContextFailedVitals: "signes vitaux",
+    quickContextFailedOrders: "ordres",
+    quickContextFailedDiagnoses: "liste de diagnostics",
+    quickContextPartialLoadNotice:
+      "Certaines données complémentaires n’ont pas pu être chargées ({labels}). Le dossier de consultation reste disponible.",
     lockedSignedBanner:
       "Dossier verrouillé — la saisie clinique n'est plus modifiable. Seuls les addendums sont autorisés après signature.",
     queuedCloseBanner:
@@ -5571,7 +5576,7 @@ export default {
           "Poursuite d'observation possible (pas de retard critique sur les voies suivies)",
         NEEDS_REASSESSMENT: "Réévaluation nécessaire (médecin et/ou IDE observation)",
         NEEDS_RESULTS_REVIEW: "Revue des résultats nécessaire",
-        READY_FOR_DISCHARGE_WORKFLOW: "Prêt pour le parcours de sortie",
+        READY_FOR_DISCHARGE_WORKFLOW: "Prêt pour finaliser la sortie d'observation (documentation + dossier)",
         NEEDS_ESCALATION_REVIEW:
           "Envisager revue d'escalade / transfert (durée ou phase disposition)",
       },
@@ -5629,6 +5634,9 @@ export default {
       readinessNoneActive: "Aucune ligne de disponibilité mise en avant.",
       gapsTitle: "Lacunes documentaires (liste d'aide, non contraignante)",
       gapsNone: "Aucun élément de liste affiché.",
+      dischargePacketHintTitle: "Dossier de sortie (observation)",
+      dischargePacketHintBody:
+        "Résumez le déroulé d'observation dans la documentation médicale (MDM / impression) et complétez les champs de sortie ci-dessous avant de terminer la visite. Les contrôles de clôture existants s'appliquent — aucune sortie ni facturation automatique.",
     },
     observationReassessment: {
       title: "Réévaluation observation",
@@ -5958,6 +5966,7 @@ export default {
     },
     modals: {
       dischargeTitle: "Dossier de sortie",
+      dischargeTitleObservation: "Fin d'observation — dossier de sortie",
       dischargeIntro:
         "Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin : disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.",
       observationDischargeReminderTitle: "Observation — rappels documentaires (non bloquant)",
@@ -7264,6 +7273,9 @@ export default {
     cardTitle: "Réévaluation infirmière (urgences)",
     cardSubline:
       "Progression et réévaluation au box — enregistrée avec le dossier de consultation. Pour l'évaluation structurée par systèmes, ouvrez le lien ci-dessous.",
+    cardTitleObservationEncounter: "Réévaluation infirmière (observation)",
+    cardSublineObservationEncounter:
+      "Même grille que les urgences — enregistrée avec cette consultation. Utilisez l'onglet Synthèse pour un aperçu rapide du dossier.",
     openNursingTab: "Ouvrir l'évaluation infirmière (dossier)",
     esiRoomLabel: "ESI (triage)",
     vitalsStripLabel: "Signes vitaux (triage)",

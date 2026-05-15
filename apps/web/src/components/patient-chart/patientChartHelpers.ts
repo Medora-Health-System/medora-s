@@ -1,5 +1,9 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { nursingProcedureSummaryLinesForLocale } from "@/lib/nursingProcedures";
+import {
+  buildErNursingReassessmentPreviewModel,
+  erNursingReassessmentFormFromEncounter,
+} from "@/features/emergency/emergencyNursingReassessmentV1";
 
 /** Libellés des sections d’évaluation infirmière (`nursingEvalV1.sections`) — aligné sur `NursingAssessmentTab`. */
 export const NURSING_ASSESSMENT_SECTION_LABELS_FR: Record<string, string> = {
@@ -91,17 +95,21 @@ export function nursingAssessmentSignatureLineFr(raw: unknown): string | null {
   return `Saisi par ${name.trim()} le ${dt}`;
 }
 
-/**
- * Signature line for nursing assessment when saved — uses facility language for template and date format.
- */
-export function nursingAssessmentSignatureForLocale(
-  raw: unknown,
-  language: SupportedLanguage,
-  t: (key: string) => string
-): string | null {
-  if (language === "fr") {
-    return nursingAssessmentSignatureLineFr(raw);
-  }
+function parseErNursingReassessmentSignature(raw: unknown): { name: string; atIso: string } | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const blob = (raw as Record<string, unknown>).erNursingReassessmentV1;
+  if (!blob || typeof blob !== "object" || Array.isArray(blob)) return null;
+  const s = (blob as Record<string, unknown>).signature;
+  if (!s || typeof s !== "object" || Array.isArray(s)) return null;
+  const at = (s as { savedAt?: unknown }).savedAt;
+  const by = (s as { savedByDisplayName?: unknown }).savedByDisplayName;
+  if (typeof at !== "string" || typeof by !== "string") return null;
+  const name = by.trim();
+  if (!name) return null;
+  return { name, atIso: at };
+}
+
+function nursingEvalSignatureEn(raw: unknown, t: (key: string) => string): string | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const inner = o.nursingEvalV1;
@@ -118,6 +126,58 @@ export function nursingAssessmentSignatureForLocale(
   return t("encounterChrome.chartTabs.nursingSignature")
     .replace("{name}", name.trim())
     .replace("{datetime}", dt);
+}
+
+function erNursingSignatureLineFr(raw: unknown): string | null {
+  const p = parseErNursingReassessmentSignature(raw);
+  if (!p) return null;
+  const dt = new Date(p.atIso);
+  const formatted = Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleString("fr-FR");
+  return `Saisi par ${p.name} le ${formatted}`;
+}
+
+function erNursingSignatureLineEn(raw: unknown, t: (key: string) => string): string | null {
+  const p = parseErNursingReassessmentSignature(raw);
+  if (!p) return null;
+  const dt = new Date(p.atIso);
+  const formatted = Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleString("en-US");
+  return t("encounterChrome.chartTabs.nursingSignature")
+    .replace("{name}", p.name)
+    .replace("{datetime}", formatted);
+}
+
+/**
+ * Signature line for nursing assessment when saved — uses facility language for template and date format.
+ */
+export function nursingAssessmentSignatureForLocale(
+  raw: unknown,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): string | null {
+  if (language === "fr") {
+    return nursingAssessmentSignatureLineFr(raw) ?? erNursingSignatureLineFr(raw);
+  }
+  return nursingEvalSignatureEn(raw, t) ?? erNursingSignatureLineEn(raw, t);
+}
+
+function erNursingReassessmentChartLines(raw: unknown, language: SupportedLanguage): string[] {
+  const form = erNursingReassessmentFormFromEncounter(raw);
+  const preview = buildErNursingReassessmentPreviewModel(form, language);
+  const sep = language === "en" ? ": " : " : ";
+  const out: string[] = [];
+  for (const sec of preview.sections) {
+    if (sec.id === "empty") continue;
+    for (const line of sec.lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      out.push(`${sec.title}${sep}${trimmed}`);
+    }
+  }
+  const nar = preview.narrative.trim();
+  if (nar && out.length === 0) {
+    out.push(nar.length > 800 ? `${nar.slice(0, 800)}…` : nar);
+  }
+  return out;
 }
 
 /** Résumé court infirmier (lignes pré-calculées ou dérivées des sections). */
@@ -142,9 +202,11 @@ export function nursingAssessmentDisplayLines(
       (s) => `${s.label}${sep}${s.text}`
     );
   }
+  const erLines = erNursingReassessmentChartLines(raw, language);
+  const merged = erLines.length > 0 ? [...base, ...erLines] : base;
   const proc = nursingProcedureSummaryLinesForLocale(raw, language);
-  if (proc.length === 0) return base;
-  return [...base, ...proc];
+  if (proc.length === 0) return merged;
+  return [...merged, ...proc];
 }
 
 const PHYSICIAN_EVAL_LABELS: Record<SupportedLanguage, Record<string, string>> = {

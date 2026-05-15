@@ -51,6 +51,8 @@ import { ObservationReassessmentModal } from "@/components/encounters/Observatio
 import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
 import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
+import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
+import { EmergencyNursingReassessmentPanel } from "@/features/emergency/EmergencyNursingReassessmentPanel";
 import { mergeVitalsJsonForSave } from "@/features/emergency/emergencyTriageVitalsMerge";
 import { triagePreviewSliceFromTriageGet } from "@/features/emergency/emergencyTriageDocPreview";
 import { erTriageV1FormFromVitalsJson } from "@/features/emergency/medoraErTriageV1";
@@ -492,9 +494,15 @@ export default function EncounterDetailPage() {
     const dx = dxRes.status === "fulfilled" ? dxRes.value : null;
 
     const failedLabels: string[] = [];
-    if (canFetchEncounterTriage && triRes.status === "rejected") failedLabels.push("signes vitaux");
-    if (canFetchEncounterOrders && ordRes.status === "rejected") failedLabels.push("ordres");
-    if (canFetchPatientDiagnosesList && patientId && dxRes.status === "rejected") failedLabels.push("liste de diagnostics");
+    if (canFetchEncounterTriage && triRes.status === "rejected") {
+      failedLabels.push(t("encounterChrome.quickContextFailedVitals"));
+    }
+    if (canFetchEncounterOrders && ordRes.status === "rejected") {
+      failedLabels.push(t("encounterChrome.quickContextFailedOrders"));
+    }
+    if (canFetchPatientDiagnosesList && patientId && dxRes.status === "rejected") {
+      failedLabels.push(t("encounterChrome.quickContextFailedDiagnoses"));
+    }
 
     let mergedQuickOrders = mergeOrders(Array.isArray(ords) ? ords : [], pendingOrders);
     if (mergedQuickOrders.length === 0) {
@@ -550,7 +558,7 @@ export default function EncounterDetailPage() {
     }
     if (failedLabels.length > 0) {
       setQuickContextNotice(
-        `Certaines données complémentaires n’ont pas pu être chargées (${failedLabels.join(", ")}). Le dossier de consultation reste disponible.`
+        t("encounterChrome.quickContextPartialLoadNotice").replace("{labels}", failedLabels.join(", "))
       );
     }
     setQuickContextLoading(false);
@@ -562,6 +570,7 @@ export default function EncounterDetailPage() {
     canFetchEncounterTriage,
     canFetchEncounterOrders,
     canFetchPatientDiagnosesList,
+    t,
   ]);
 
   useEffect(() => {
@@ -1934,15 +1943,41 @@ export default function EncounterDetailPage() {
             <TriageVitalsTab encounter={encounter} facilityId={facilityId} onUpdate={loadEncounter} isLocked={isLocked} />
           )}
           {activeTab === "nursing" && showNursingTab && (
-            <NursingAssessmentTab
-              encounterId={encounterId}
-              facilityId={facilityId}
-              encounter={encounter}
-              onUpdate={loadEncounter}
-              isLocked={isLocked}
-              canEditErInpatientHandoff={canEditOperational && encounter.status === "OPEN"}
-              onHandoffSaved={mergeEncounterFromOperationalPatch}
-            />
+            observationWorkflowActive ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <EmergencyNursingReassessmentPanel
+                  encounterId={encounterId}
+                  facilityId={facilityId}
+                  encounter={encounter}
+                  isLocked={isLocked}
+                  onSaved={async () => {
+                    setClinicalTimelineRefresh((n) => n + 1);
+                    await loadEncounter({ silent: true });
+                  }}
+                  nursingTabHref={`/app/encounters/${encounterId}`}
+                  variant="observationEncounter"
+                />
+                <ErHandoffV1NursingSection
+                  encounter={encounter}
+                  encounterId={encounterId}
+                  facilityId={facilityId}
+                  isLocked={isLocked}
+                  canEditErHandoff={canEditOperational && encounter.status === "OPEN"}
+                  onUpdated={() => void loadEncounter({ silent: true })}
+                  onSaved={mergeEncounterFromOperationalPatch}
+                />
+              </div>
+            ) : (
+              <NursingAssessmentTab
+                encounterId={encounterId}
+                facilityId={facilityId}
+                encounter={encounter}
+                onUpdate={loadEncounter}
+                isLocked={isLocked}
+                canEditErInpatientHandoff={canEditOperational && encounter.status === "OPEN"}
+                onHandoffSaved={mergeEncounterFromOperationalPatch}
+              />
+            )
           )}
           {activeTab === "diagnostics" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -2110,7 +2145,9 @@ export default function EncounterDetailPage() {
               id="discharge-title"
               style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
             >
-              {t("encounterChrome.modals.dischargeTitle")}
+              {observationWorkflowActive
+                ? t("encounterChrome.modals.dischargeTitleObservation")
+                : t("encounterChrome.modals.dischargeTitle")}
             </h2>
             <div
               style={{

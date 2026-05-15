@@ -203,7 +203,7 @@ describe("ObservationOrderTemplateService", () => {
 
     await expect(
       svc.apply("enc-1", "fac-1", { selectedItemIds: ["not_a_real_id"] }, "user-1")
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toThrow(/Unknown or unsupported template line ids/i);
     expect(orders.create).not.toHaveBeenCalled();
     expect(audit.log).not.toHaveBeenCalled();
   });
@@ -216,7 +216,7 @@ describe("ObservationOrderTemplateService", () => {
 
     await expect(
       svc.apply("enc-1", "fac-1", { selectedItemIds: ["mon_vitals_q2h"] }, "user-1")
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toThrow(/applies only to inpatient/i);
     expect(orders.create).not.toHaveBeenCalled();
   });
 
@@ -254,7 +254,7 @@ describe("ObservationOrderTemplateService", () => {
 
     await expect(
       svc.apply("enc-1", "fac-1", { selectedItemIds: ["mon_vitals_q2h"] }, "user-1")
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).rejects.toThrow(/Only physicians or administrators/i);
     expect(orders.create).not.toHaveBeenCalled();
   });
 

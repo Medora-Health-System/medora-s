@@ -518,7 +518,7 @@ export class EncountersService {
     userAgent?: string
   ) {
     if (!userId) {
-      throw new ForbiddenException("Authentification requise pour enregistrer une réévaluation.");
+      throw new ForbiddenException("Authentication required to save observation reassessment.");
     }
 
     const enc = await this.prisma.encounter.findFirst({
@@ -538,7 +538,7 @@ export class EncountersService {
     }
     assertEncounterOpenForClinicalMutation(enc);
     if (enc.type !== EncounterType.INPATIENT) {
-      throw new BadRequestException("La réévaluation observation s'applique uniquement à une hospitalisation.");
+      throw new BadRequestException("Observation reassessment applies only to inpatient encounters.");
     }
 
     if (
