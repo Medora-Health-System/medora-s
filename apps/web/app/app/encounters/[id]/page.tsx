@@ -69,6 +69,7 @@ import {
   ObservationWorkflowEncounterChrome,
   ObservationWorkflowHeaderStatusPill,
 } from "@/components/encounters/ObservationWorkflowEncounterChrome";
+import { ObservationDocumentationSummaryPanel } from "@/components/encounters/ObservationDocumentationSummaryPanel";
 import type { HospitalisationBoardTrackboardOps } from "@/lib/hospitalisationBoardTypes";
 import {
   diagnosisDisplayFr,
@@ -939,6 +940,16 @@ export default function EncounterDetailPage() {
     [encounter?.admissionSummaryJson]
   );
 
+  const observationInitialReasonForSummary = useMemo(() => {
+    if (!encounter) return "";
+    const fromAdmission = admissionPreviewForChrome?.admissionReason?.trim();
+    if (fromAdmission) return fromAdmission;
+    const vr = typeof encounter.visitReason === "string" ? encounter.visitReason.trim() : "";
+    if (vr) return vr;
+    const cc = typeof encounter.chiefComplaint === "string" ? encounter.chiefComplaint.trim() : "";
+    return cc;
+  }, [encounter, admissionPreviewForChrome?.admissionReason]);
+
   /** INPATIENT observation lane: do not gate on `careLevel` alone (see `isObservationShortStayEncounter`). */
   const observationWorkflowActive = useMemo(
     () =>
@@ -1605,6 +1616,18 @@ export default function EncounterDetailPage() {
               />
             ) : null}
 
+            {observationWorkflowActive && observationOpsClient ? (
+              <ObservationDocumentationSummaryPanel
+                snapshot={observationOpsClient}
+                initialObservationReason={observationInitialReasonForSummary}
+                resultsPendingCount={observationTrackboardOpsInput.resultsPendingCount ?? 0}
+                criticalResultsUnacknowledged={Boolean(observationTrackboardOpsInput.criticalResultUnacknowledged)}
+                dispositionReadiness={dispositionReadiness}
+                formatDateTime={(iso) => formatEncounterChromeDateTime(iso, language)}
+                t={t}
+              />
+            ) : null}
+
             {observationWorkflowActive ? (
               <div style={{ marginTop: 12 }}>
                 <ClinicalTimeline
@@ -1882,6 +1905,7 @@ export default function EncounterDetailPage() {
               facilityId={facilityId}
               onUpdate={loadEncounter}
               canSignProviderDocumentation={isProviderLike}
+              observationMdmGuidanceActive={observationWorkflowActive}
             />
           )}
           {activeTab === "triage" && (
@@ -2079,6 +2103,30 @@ export default function EncounterDetailPage() {
                 {t("encounterChrome.modals.dischargeIntro")}
               </p>
             </div>
+            {observationWorkflowActive && observationOpsClient ? (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "12px 14px",
+                  backgroundColor: "#fffbeb",
+                  border: "1px solid #fde68a",
+                  borderRadius: 12,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>
+                  {t("encounterChrome.modals.observationDischargeReminderTitle")}
+                </div>
+                <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#78350f", lineHeight: 1.5 }}>
+                  {t("encounterChrome.modals.observationDischargeReminderFootnote")}
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#451a03", lineHeight: 1.5 }}>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderLos")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderReassessments")}</li>
+                  <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderPendingResults")}</li>
+                  <li style={{ marginBottom: 0 }}>{t("encounterChrome.modals.observationDischargeReminderCourse")}</li>
+                </ul>
+              </div>
+            ) : null}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {(
                 [
@@ -2349,6 +2397,7 @@ export default function EncounterDetailPage() {
         onClose={() => setObservationReassessmentModalRole(null)}
         onSaved={async () => {
           setClinicalTimelineRefresh((n) => n + 1);
+          setEncounterResultsRefresh((x) => x + 1);
           await loadEncounter({ silent: true });
         }}
       />
@@ -2979,11 +3028,13 @@ function ClinicVisitTab({
   facilityId,
   onUpdate,
   canSignProviderDocumentation,
+  observationMdmGuidanceActive = false,
 }: {
   encounter: any;
   facilityId: string;
   onUpdate: () => void;
   canSignProviderDocumentation: boolean;
+  observationMdmGuidanceActive?: boolean;
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -3000,6 +3051,12 @@ function ClinicVisitTab({
     "encounterClinicTab.snippetPlan2",
     "encounterClinicTab.snippetPlan3",
     "encounterClinicTab.snippetPlan4",
+  ] as const;
+  const observationMdmSnippetKeys = [
+    "encounterClinicTab.observationMdmSnippetContinuedRationale",
+    "encounterClinicTab.observationMdmSnippetResponseToTreatment",
+    "encounterClinicTab.observationMdmSnippetPendingResultsReviewed",
+    "encounterClinicTab.observationMdmSnippetDischargeReadiness",
   ] as const;
   const [visitReason, setVisitReason] = useState(encounter.visitReason || encounter.chiefComplaint || "");
   const [impression, setImpression] = useState(encounter.clinicianImpression || encounter.providerNote || "");
@@ -3452,6 +3509,43 @@ function ClinicVisitTab({
         <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
           {t("encounterClinicTab.labelMdm")}
         </label>
+        {observationMdmGuidanceActive ? (
+          <div
+            style={{
+              marginBottom: 10,
+              padding: "10px 12px",
+              backgroundColor: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+              {t("encounterClinicTab.observationMdmGuidanceTitle")}
+            </div>
+            <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+              {t("encounterClinicTab.observationMdmGuidanceFootnote")}
+            </p>
+            {!fieldsLocked && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#64748b" }}>{t("encounterClinicTab.observationMdmGuidanceInsert")}</span>
+                {observationMdmSnippetKeys.map((snippetKey) => {
+                  const snippet = t(snippetKey);
+                  return (
+                    <button
+                      key={snippetKey}
+                      type="button"
+                      onClick={() => setMdm((prev: string) => (prev ? `${prev}\n${snippet}` : snippet))}
+                      style={clinicSnippetBtn}
+                      title={snippet}
+                    >
+                      {snippet.length > 40 ? snippet.slice(0, 39) + "…" : snippet}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : null}
         <textarea
           disabled={fieldsLocked}
           value={mdm}

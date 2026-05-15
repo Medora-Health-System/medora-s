@@ -9,7 +9,7 @@ import type {
 } from "@medora/shared";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 
-const BLOCKER_LABEL_KEY: Record<ObservationOperationalBlocker["id"], string> = {
+export const BLOCKER_LABEL_KEY: Record<ObservationOperationalBlocker["id"], string> = {
   CRITICAL_RESULT_UNACKED: "encounterChrome.observationWorkflow.blockers.CRITICAL_RESULT_UNACKED",
   VITALS_STALE: "encounterChrome.observationWorkflow.blockers.VITALS_STALE",
   PROVIDER_REASSESSMENT_OVERDUE: "encounterChrome.observationWorkflow.blockers.PROVIDER_REASSESSMENT_OVERDUE",
@@ -23,7 +23,7 @@ const BLOCKER_LABEL_KEY: Record<ObservationOperationalBlocker["id"], string> = {
   DISCHARGE_READY_DOC_GAP: "encounterChrome.observationWorkflow.blockers.DISCHARGE_READY_DOC_GAP",
 };
 
-const READINESS_LABEL_KEY: Record<ObservationReadinessLine["id"], string> = {
+export const READINESS_LABEL_KEY: Record<ObservationReadinessLine["id"], string> = {
   CONTINUE_OBSERVATION: "encounterChrome.observationWorkflow.readiness.CONTINUE_OBSERVATION",
   NEEDS_REASSESSMENT: "encounterChrome.observationWorkflow.readiness.NEEDS_REASSESSMENT",
   NEEDS_RESULTS_REVIEW: "encounterChrome.observationWorkflow.readiness.NEEDS_RESULTS_REVIEW",

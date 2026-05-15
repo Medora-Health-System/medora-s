@@ -5637,6 +5637,21 @@ export default {
         addReassessmentNursing: "Observation reassessment (RN)",
       },
     },
+    observationDocSummary: {
+      title: "Observation documentation summary",
+      footnote:
+        "Read-only operational digest. Does not replace authored notes, legal determinations, billing decisions, or discharge actions.",
+      sectionInitialReason: "Initial observation reason (admission packet / visit reason)",
+      noneRecorded: "— Not recorded in packet —",
+      noneYet: "— None recorded —",
+      sectionLos: "Length of stay / trajectory flags",
+      yes: "Yes",
+      no: "No",
+      readinessContext: "Discharge readiness context (active lines)",
+      readinessNoneActive: "No highlighted readiness lines.",
+      gapsTitle: "Documentation gaps (informational checklist)",
+      gapsNone: "No checklist items listed.",
+    },
     observationReassessment: {
       title: "Observation reassessment",
       intro:
@@ -5959,6 +5974,13 @@ export default {
       dischargeTitle: "Discharge summary",
       dischargeIntro:
         "Nursing and medical fields by role (nurse: condition, destination, mode; provider: disposition, instructions, medications, follow-up). Unauthorized fields are read-only.",
+      observationDischargeReminderTitle: "Observation — documentation reminders (non-blocking)",
+      observationDischargeReminderFootnote:
+        "Reminder only. Confirm LOS, reassessments, pending results, and observation course in your authored documentation before discharge.",
+      observationDischargeReminderLos: "LOS / overnight / ≥24 h trajectory reviewed in the chart",
+      observationDischargeReminderReassessments: "Provider and RN observation reassessments up to date (or gaps explained in the note)",
+      observationDischargeReminderPendingResults: "Pending results reviewed or follow-up documented",
+      observationDischargeReminderCourse: "Observation course summarized in provider documentation (MDM / impression as appropriate)",
       readOnly: "(read-only)",
       dischargeMode: "Discharge disposition",
       selectPlaceholder: "— Select —",
@@ -6041,6 +6063,18 @@ export default {
     placeholderPhysicalExam: "Physical examination findings",
     labelMdm: "Medical decision-making (MDM)",
     placeholderMdm: "Complexity, data, risk, medical decision synthesis",
+    observationMdmGuidanceTitle: "Observation — MDM prompts (insert only)",
+    observationMdmGuidanceFootnote:
+      "Short drafting aids only. Edit for accuracy; nothing here is a conclusion, billing statement, or disposition.",
+    observationMdmGuidanceInsert: "Insert:",
+    observationMdmSnippetContinuedRationale:
+      "Continued observation rationale: clinical stability, remaining risks, and why extended monitoring is appropriate (edit for accuracy).",
+    observationMdmSnippetResponseToTreatment:
+      "Response to treatment / monitoring: symptoms, vitals trend, interventions, and patient tolerance (edit for accuracy).",
+    observationMdmSnippetPendingResultsReviewed:
+      "Pending results: what is outstanding, how it affects management, and follow-up if results return after discharge (edit for accuracy).",
+    observationMdmSnippetDischargeReadiness:
+      "Discharge readiness / transfer: criteria met or not met, precautions, and disposition considerations (edit for accuracy).",
     labelImpression: "Clinical impression",
     insertLabel: "Insert:",
     snippetImpression0: "Reassuring clinical examination.",

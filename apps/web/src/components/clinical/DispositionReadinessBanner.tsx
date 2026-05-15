@@ -6,7 +6,7 @@ import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 
-function dispositionReadinessIssueText(
+export function dispositionReadinessIssueText(
   t: (key: string) => string,
   issue: { code: string; message: string },
   data: DispositionSafetyReadinessResponse

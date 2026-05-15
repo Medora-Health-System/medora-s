@@ -5615,6 +5615,21 @@ export default {
         addReassessmentNursing: "Réévaluation observation (IDE)",
       },
     },
+    observationDocSummary: {
+      title: "Synthèse documentaire (observation)",
+      footnote:
+        "Agrégat opérationnel en lecture seule. Ne remplace pas les notes rédigées, les décisions juridiques, la facturation ni les décisions de sortie.",
+      sectionInitialReason: "Motif initial d'observation (dossier d'admission / motif de visite)",
+      noneRecorded: "— Non renseigné dans le dossier —",
+      noneYet: "— Aucun enregistrement —",
+      sectionLos: "Durée de séjour / indicateurs de trajectoire",
+      yes: "Oui",
+      no: "Non",
+      readinessContext: "Contexte de disponibilité pour la sortie (lignes actives)",
+      readinessNoneActive: "Aucune ligne de disponibilité mise en avant.",
+      gapsTitle: "Lacunes documentaires (liste d'aide, non contraignante)",
+      gapsNone: "Aucun élément de liste affiché.",
+    },
     observationReassessment: {
       title: "Réévaluation observation",
       intro:
@@ -5938,6 +5953,15 @@ export default {
       dischargeTitle: "Dossier de sortie",
       dischargeIntro:
         "Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin : disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.",
+      observationDischargeReminderTitle: "Observation — rappels documentaires (non bloquant)",
+      observationDischargeReminderFootnote:
+        "Rappel uniquement. Vérifiez durée de séjour, réévaluations, résultats en attente et déroulé d'observation dans votre documentation rédigée avant la sortie.",
+      observationDischargeReminderLos: "Durée de séjour / passage minuit / séjour ≥24 h revus dans le dossier",
+      observationDischargeReminderReassessments:
+        "Réévaluations observation médecin et IDE à jour (ou écarts expliqués dans la note)",
+      observationDischargeReminderPendingResults: "Résultats en attente revus ou suivi documenté",
+      observationDischargeReminderCourse:
+        "Déroulé d'observation résumé dans la documentation médicale (MDM / impression selon le cas)",
       readOnly: "(lecture seule)",
       dischargeMode: "Mode de sortie",
       selectPlaceholder: "— Sélectionner —",
@@ -6019,6 +6043,18 @@ export default {
     placeholderPhysicalExam: "Constatations à l'examen",
     labelMdm: "Aide à la décision médicale (MDM)",
     placeholderMdm: "Complexité, données, risque, synthèse décisionnelle",
+    observationMdmGuidanceTitle: "Observation — aides MDM (insertion seulement)",
+    observationMdmGuidanceFootnote:
+      "Aides de rédaction courtes uniquement. Adapter au contexte réel ; rien ici ne constitue conclusion, facturation ou disposition.",
+    observationMdmGuidanceInsert: "Insérer :",
+    observationMdmSnippetContinuedRationale:
+      "Poursuite de l'observation : stabilité clinique, risques résiduels et justification d'une surveillance prolongée (adapter au cas réel).",
+    observationMdmSnippetResponseToTreatment:
+      "Réponse au traitement / surveillance : symptômes, tendance des constantes, interventions et tolérance du patient (adapter au cas réel).",
+    observationMdmSnippetPendingResultsReviewed:
+      "Résultats en attente : examens manquants, impact sur la prise en charge et suivi si résultats après la sortie (adapter au cas réel).",
+    observationMdmSnippetDischargeReadiness:
+      "Sortie / transfert : critères remplis ou non, précautions et éléments de disposition (adapter au cas réel).",
     labelImpression: "Impression clinique",
     insertLabel: "Insérer :",
     snippetImpression0: "Examen clinique rassurant.",
