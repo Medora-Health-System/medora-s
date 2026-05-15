@@ -181,6 +181,59 @@ export function orderObservationTemplateSelection(ids: string[]): string[] {
   return OBSERVATION_ORDER_TEMPLATE_ITEMS.map((d) => d.id).filter((id) => knownSet.has(id));
 }
 
+/** Narrow persisted order item shape — maps persisted CARE manual labels back to stable template ids. */
+export type ObservationTemplatePersistedOrderItemLite = {
+  manualLabel?: string | null;
+  status?: string | null;
+  lifecycleState?: string | null;
+};
+
+export function normalizeObservationTemplateManualLabelForMatch(raw: string): string {
+  return raw.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** True when this item line should count toward "already applied" dedupe (non-cancelled). */
+export function isObservationTemplatePersistedOrderItemActive(it: ObservationTemplatePersistedOrderItemLite): boolean {
+  const st = String(it.status ?? "").toUpperCase();
+  if (st === "CANCELLED") return false;
+  const ls = String(it.lifecycleState ?? "").toUpperCase();
+  if (ls === "CANCELLED") return false;
+  return true;
+}
+
+/**
+ * Resolve stable template item id from persisted CARE manualLabel (matches FR or EN canonical labels).
+ */
+export function observationTemplateItemIdFromPersistedManualLabel(
+  manualLabel: string | null | undefined
+): string | undefined {
+  const raw = typeof manualLabel === "string" ? manualLabel : "";
+  if (!raw.trim()) return undefined;
+  const n = normalizeObservationTemplateManualLabelForMatch(raw);
+  for (const def of OBSERVATION_ORDER_TEMPLATE_ITEMS) {
+    if (
+      n === normalizeObservationTemplateManualLabelForMatch(def.manualLabelFr) ||
+      n === normalizeObservationTemplateManualLabelForMatch(def.manualLabelEn)
+    ) {
+      return def.id;
+    }
+  }
+  return undefined;
+}
+
+/** Aggregate distinct template ids already represented by persisted CARE lines (template bundle orders). */
+export function collectObservationTemplateItemIdsFromOrderItems(
+  items: ObservationTemplatePersistedOrderItemLite[]
+): string[] {
+  const discovered = new Set<string>();
+  for (const it of items) {
+    if (!isObservationTemplatePersistedOrderItemActive(it)) continue;
+    const id = observationTemplateItemIdFromPersistedManualLabel(it.manualLabel ?? "");
+    if (id) discovered.add(id);
+  }
+  return orderObservationTemplateSelection([...discovered]);
+}
+
 /** Display / persistence label for one template line (UI locale or API header). */
 export function observationOrderTemplateItemManualLabel(
   id: string,

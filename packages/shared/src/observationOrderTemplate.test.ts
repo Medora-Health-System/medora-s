@@ -3,6 +3,7 @@ import {
   OBSERVATION_ORDER_TEMPLATE_ID,
   OBSERVATION_ORDER_TEMPLATE_ITEMS,
   buildObservationTemplateCareOrderDto,
+  collectObservationTemplateItemIdsFromOrderItems,
   findUnknownObservationTemplateIds,
   isObservationOrderTemplateProtocol,
   observationOrderTemplateItemManualLabel,
@@ -58,5 +59,17 @@ describe("observationOrderTemplate", () => {
   it("observationOrderTemplateItemManualLabel returns locale-specific copy", () => {
     expect(observationOrderTemplateItemManualLabel("mon_vitals_q2h", "en")).toContain("Vital signs");
     expect(observationOrderTemplateItemManualLabel("mon_vitals_q2h", "fr")).toContain("Signes vitaux");
+  });
+
+  it("collectObservationTemplateItemIdsFromOrderItems maps persisted manual labels (FR/EN) and ignores cancelled rows", () => {
+    const frLabel = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "mon_vitals_q2h")!.manualLabelFr;
+    const enPain = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "nurse_pain_q2h")!.manualLabelEn;
+    expect(
+      collectObservationTemplateItemIdsFromOrderItems([
+        { manualLabel: frLabel, status: "PENDING", lifecycleState: "ORDERED" },
+        { manualLabel: enPain, status: "PENDING", lifecycleState: "ORDERED" },
+        { manualLabel: frLabel, status: "CANCELLED", lifecycleState: "ORDERED" },
+      ])
+    ).toEqual(["mon_vitals_q2h", "nurse_pain_q2h"]);
   });
 });

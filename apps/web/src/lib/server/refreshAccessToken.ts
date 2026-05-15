@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { NextRequest } from "next/server";
 import {
   accessTokenCookieOptions,
   refreshTokenCookieOptions,
@@ -13,13 +14,38 @@ export type RefreshedTokens = {
   refreshToken: string;
 };
 
+function parseCookieValue(cookieHeader: string | null, name: string): string | null {
+  if (!cookieHeader) return null;
+  const match = new RegExp(`(?:^|;\\s*)${name}=([^;]*)`).exec(cookieHeader);
+  return match ? decodeURIComponent(match[1].trim()) : null;
+}
+
+function resolveRefreshTokenFromIncoming(req?: NextRequest): string | null {
+  if (req) {
+    const fromJar = req.cookies.get("refreshToken")?.value?.trim();
+    if (fromJar) return fromJar;
+    const fromHdr = parseCookieValue(req.headers.get("cookie"), "refreshToken")?.trim();
+    if (fromHdr) return fromHdr;
+  }
+  return null;
+}
+
 /**
  * Lit le cookie refreshToken et appelle Nest /auth/refresh.
  * Utilisé par GET /api/auth/me et POST /api/auth/refresh.
+ *
+ * Phase 14D — préfère `NextRequest.cookies` / en-tête `Cookie` lorsqu'une requête entrante est
+ * disponible (fiabilité BFF vs lecture isolée via `cookies()`).
  */
-export async function refreshAccessTokenFromCookies(requestId?: string): Promise<RefreshedTokens | null> {
-  const cookieStore = await cookies();
-  const refreshToken = cookieStore.get("refreshToken")?.value;
+export async function refreshAccessTokenFromCookies(
+  requestId?: string,
+  req?: NextRequest
+): Promise<RefreshedTokens | null> {
+  let refreshToken = resolveRefreshTokenFromIncoming(req);
+  if (!refreshToken) {
+    const cookieStore = await cookies();
+    refreshToken = cookieStore.get("refreshToken")?.value ?? null;
+  }
   if (!refreshToken) {
     if (process.env.NODE_ENV !== "production") {
       console.warn("[auth] refreshAccessTokenFromCookies: pas de cookie refreshToken");

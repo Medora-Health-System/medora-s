@@ -21,6 +21,33 @@ function getAccessTokenFromRequest(req: NextRequest): string | null {
   return fromAccess ?? fromMedora ?? null;
 }
 
+/**
+ * Phase 14D — Prefer `NextRequest.cookies` / raw Cookie header over isolated `cookies()` reads.
+ * Some deployments showed empty `cookies()` in Route Handlers while the browser did send cookies,
+ * causing false "Authentication required." before the upstream Nest guard.
+ */
+function resolveAccessTokenForProxy(
+  req: NextRequest,
+  cookieStore: Awaited<ReturnType<typeof cookies>>
+): { token: string | null; selectedSource: string } {
+  const fromReqCookies =
+    req.cookies.get("accessToken")?.value?.trim() ||
+    req.cookies.get("medora_session")?.value?.trim() ||
+    null;
+  if (fromReqCookies) return { token: fromReqCookies, selectedSource: "requestCookies" };
+
+  const fromCookieHeader = getAccessTokenFromRequest(req)?.trim() || null;
+  if (fromCookieHeader) return { token: fromCookieHeader, selectedSource: "cookieHeader" };
+
+  const fromStore =
+    cookieStore.get("accessToken")?.value?.trim() ||
+    cookieStore.get("medora_session")?.value?.trim() ||
+    null;
+  if (fromStore) return { token: fromStore, selectedSource: "cookieStore" };
+
+  return { token: null, selectedSource: "none" };
+}
+
 const isDev = process.env.NODE_ENV !== "production";
 
 /** Consistent JSON when the Nest API is unreachable (DNS, ECONNREFUSED, timeout). No stack traces to clients. */
@@ -51,6 +78,10 @@ async function getFacilityId(
 ): Promise<string | null> {
   const headerFacilityId = req.headers.get("x-facility-id");
   if (headerFacilityId) return headerFacilityId;
+
+  const fromReqFacility =
+    req.cookies.get("facilityId")?.value?.trim() ?? req.cookies.get("medora_facility_id")?.value?.trim() ?? null;
+  if (fromReqFacility) return fromReqFacility;
 
   const cookieHeader = req.headers.get("cookie");
   const facilityFromHeader =
@@ -109,26 +140,22 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
   });
 
   const cookieStore = await cookies();
-  const fromCookieStoreAccess = cookieStore.get("accessToken")?.value ?? null;
-  const fromCookieStoreMedora = cookieStore.get("medora_session")?.value ?? null;
-  let accessToken: string | null = fromCookieStoreAccess ?? fromCookieStoreMedora ?? null;
-  let selectedSource: "cookieStore" | "header" | null = accessToken ? "cookieStore" : null;
-
-  if (!accessToken) {
-    accessToken = getAccessTokenFromRequest(req);
-    if (accessToken) selectedSource = "header";
-  }
+  const resolved = resolveAccessTokenForProxy(req, cookieStore);
+  let accessToken = resolved.token;
+  const { selectedSource } = resolved;
 
   devLogProxy("Token source", {
-    hasMedoraSession: !!fromCookieStoreMedora,
-    hasAccessToken: !!fromCookieStoreAccess,
     selectedSource,
     selectedTokenLength: accessToken?.length ?? 0,
+    hasCookieStoreAccess: !!cookieStore.get("accessToken")?.value,
+    hasCookieStoreMedora: !!cookieStore.get("medora_session")?.value,
+    hasReqAccessCookie: !!req.cookies.get("accessToken")?.value,
+    hasReqMedoraCookie: !!req.cookies.get("medora_session")?.value,
   });
 
   if (!accessToken) {
     if (isDev) console.log("[proxy auth] No token found, returning 401");
-    const res = NextResponse.json({ message: "Authentication required." }, { status: 401 });
+    const res = NextResponse.json({ message: "Authentication required.", code: "AUTH_REQUIRED" }, { status: 401 });
     if (requestId) res.headers.set("x-request-id", requestId);
     return res;
   }
@@ -141,9 +168,7 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
   const refreshOnce = async (): Promise<boolean> => {
     if (refreshAttempted) return false;
     refreshAttempted = true;
-    const hasRt = !!cookieStore.get("refreshToken")?.value;
-    if (!hasRt) return false;
-    const t = await refreshAccessTokenFromCookies(requestId || undefined);
+    const t = await refreshAccessTokenFromCookies(requestId || undefined, req);
     if (!t) return false;
     didRefresh = true;
     lastRefreshed = t;

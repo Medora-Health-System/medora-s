@@ -1,10 +1,11 @@
 /**
- * Phase 13E — observation order template apply service (provider/admin, INPATIENT OPEN,
+ * Phase 13E / 14D — observation order template apply service (provider/admin, INPATIENT OPEN,
  * delegates to OrdersService.create; supplementary ORDERS_CREATED audit metadata PHI-safe).
  */
 
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { AuditAction, RoleCode } from "@prisma/client";
+import { OBSERVATION_ORDER_TEMPLATE_ITEMS } from "@medora/shared";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
 
 type AnyMock = jest.Mock;
@@ -13,7 +14,10 @@ function buildPrismaMock(opts: {
   encounter?: Record<string, unknown> | null;
   userRoles?: Array<{ role: { code: RoleCode } | null }>;
   user?: { firstName: string; lastName: string; billingNameOverride: string | null; billingNpi: string | null } | null;
-  existingObservationTemplateOrder?: { id: string } | null;
+  existingObservationTemplateOrders?: Array<{
+    id: string;
+    items: Array<{ manualLabel: string | null; status: string; lifecycleState: string }>;
+  }>;
 }) {
   const encounter =
     opts.encounter === null
@@ -32,7 +36,7 @@ function buildPrismaMock(opts: {
   return {
     encounter: { findFirst: jest.fn().mockResolvedValue(encounter) },
     order: {
-      findFirst: jest.fn().mockResolvedValue(opts.existingObservationTemplateOrder ?? null),
+      findMany: jest.fn().mockResolvedValue(opts.existingObservationTemplateOrders ?? []),
     },
     userRole: {
       findMany: jest.fn().mockResolvedValue(opts.userRoles ?? [{ role: { code: RoleCode.PROVIDER } }]),
@@ -67,7 +71,7 @@ describe("ObservationOrderTemplateService", () => {
     const audit = buildAuditMock();
     const svc = new ObservationOrderTemplateService(prisma as never, orders as never, audit as never);
 
-    await svc.apply(
+    const out = await svc.apply(
       "enc-1",
       "fac-1",
       { selectedItemIds: ["mon_vitals_q2h", "com_diet_ad_lib"] },
@@ -76,8 +80,10 @@ describe("ObservationOrderTemplateService", () => {
       "jest"
     );
 
+    expect(out.order).toBeTruthy();
+    expect(out.summary?.createdCount).toBe(2);
     expect(orders.create).toHaveBeenCalledTimes(1);
-    expect((prisma as { order: { findFirst: AnyMock } }).order.findFirst).toHaveBeenCalled();
+    expect((prisma as { order: { findMany: AnyMock } }).order.findMany).toHaveBeenCalled();
     const createArgs = (orders.create as AnyMock).mock.calls[0]!;
     expect(createArgs[0]).toBe("enc-1");
     expect(createArgs[1]).toBe("fac-1");
@@ -91,8 +97,9 @@ describe("ObservationOrderTemplateService", () => {
     expect(ordersCreated).toBeTruthy();
     const meta = ordersCreated![2].metadata as Record<string, unknown>;
     expect(meta.source).toBe("OBSERVATION_ORDER_SET");
-    expect(meta.selectedCount).toBe(2);
+    expect(meta.createdCount).toBe(2);
     expect(Array.isArray(meta.selectedItemIds)).toBe(true);
+    expect(meta.skippedDuplicateItemIds).toEqual([]);
     const blob = JSON.stringify(meta).toLowerCase();
     expect(blob).not.toContain("jean");
     expect(blob).not.toContain("mrn");
@@ -118,15 +125,72 @@ describe("ObservationOrderTemplateService", () => {
     expect(String(createArgs[2].items[0]?.manualLabel)).toContain("Vital signs every 2 hours");
   });
 
-  it("rejects second apply when observation template CARE bundle already exists (Phase 13F)", async () => {
-    const prisma = buildPrismaMock({ existingObservationTemplateOrder: { id: "ord-existing" } });
+  it("partial second apply creates only missing template lines (Phase 14D)", async () => {
+    const vitalsFr = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "mon_vitals_q2h")!.manualLabelFr;
+    const prisma = buildPrismaMock({
+      existingObservationTemplateOrders: [
+        {
+          id: "ord-existing",
+          items: [{ manualLabel: vitalsFr, status: "PENDING", lifecycleState: "ORDERED" }],
+        },
+      ],
+    });
     const orders = buildOrdersMock();
     const audit = buildAuditMock();
     const svc = new ObservationOrderTemplateService(prisma as never, orders as never, audit as never);
 
-    await expect(
-      svc.apply("enc-1", "fac-1", { selectedItemIds: ["mon_vitals_q2h"] }, "user-1")
-    ).rejects.toBeInstanceOf(BadRequestException);
+    const out = await svc.apply(
+      "enc-1",
+      "fac-1",
+      { selectedItemIds: ["mon_vitals_q2h", "com_diet_ad_lib"] },
+      "user-1",
+      "127.0.0.1",
+      "jest"
+    );
+
+    expect(out.summary?.skippedDuplicateItemIds).toEqual(["mon_vitals_q2h"]);
+    expect(out.summary?.createdCount).toBe(1);
+    expect(orders.create).toHaveBeenCalledTimes(1);
+    const createArgs = (orders.create as AnyMock).mock.calls[0]!;
+    expect(createArgs[2].items).toHaveLength(1);
+    expect(createArgs[2].items[0]?.manualLabel).toMatch(/Régime alimentaire|Diet as tolerated/i);
+
+    const ordersCreated = (audit.log as AnyMock).mock.calls.find((c) => c[0] === AuditAction.ORDERS_CREATED);
+    const meta = ordersCreated![2].metadata as Record<string, unknown>;
+    expect(meta.appliedItemIds).toEqual(["com_diet_ad_lib"]);
+    expect(meta.skippedDuplicateItemIds).toEqual(["mon_vitals_q2h"]);
+  });
+
+  it("returns noop summary when all selected lines already exist (Phase 14D)", async () => {
+    const vitalsFr = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "mon_vitals_q2h")!.manualLabelFr;
+    const dietFr = OBSERVATION_ORDER_TEMPLATE_ITEMS.find((i) => i.id === "com_diet_ad_lib")!.manualLabelFr;
+    const prisma = buildPrismaMock({
+      existingObservationTemplateOrders: [
+        {
+          id: "ord-existing",
+          items: [
+            { manualLabel: vitalsFr, status: "PENDING", lifecycleState: "ORDERED" },
+            { manualLabel: dietFr, status: "PENDING", lifecycleState: "ORDERED" },
+          ],
+        },
+      ],
+    });
+    const orders = buildOrdersMock();
+    const audit = buildAuditMock();
+    const svc = new ObservationOrderTemplateService(prisma as never, orders as never, audit as never);
+
+    const out = await svc.apply(
+      "enc-1",
+      "fac-1",
+      { selectedItemIds: ["mon_vitals_q2h", "com_diet_ad_lib"] },
+      "user-1",
+      "127.0.0.1",
+      "jest"
+    );
+
+    expect(out.order).toBeNull();
+    expect(out.summary?.allAlreadyPresent).toBe(true);
+    expect(out.summary?.createdCount).toBe(0);
     expect(orders.create).not.toHaveBeenCalled();
     expect(audit.log).not.toHaveBeenCalled();
   });

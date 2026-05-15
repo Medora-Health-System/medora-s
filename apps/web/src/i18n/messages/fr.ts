@@ -5702,14 +5702,21 @@ export default {
       },
     },
     observationOrderTemplateBannerButton: "Modèle d'ordres (observation / court séjour)",
-    observationOrderTemplateBannerAlreadyApplied:
-      "Modèle observation déjà appliqué — le lot de soins figure dans l’onglet Ordres (type Soins).",
+    observationOrderTemplateBannerPartial:
+      "Certaines lignes du modèle observation existent déjà — rouvrez la fenêtre pour n’ajouter que les ordres de soins manquants.",
+    observationOrderTemplateBannerComplete:
+      "Toutes les lignes prédéfinies du modèle observation sont déjà présentes — utilisez l’onglet Ordres pour d’autres soins manuels.",
     observationOrderTemplate: {
       title: "Modèle d'ordres — observation / court séjour",
       intro:
         "Cochez les lignes à créer comme ordres de soins. Aucun ordre n'est créé sans votre confirmation. Les médicaments et examens au catalogue s'ajoutent depuis l'onglet Ordres.",
-      alreadyAppliedWarning:
-        "Ce modèle a déjà été appliqué sur cette consultation. Pour modifier les lignes, annulez le lot dans l’onglet Ordres ou ajoutez des soins manuellement.",
+      partialAppliedBanner:
+        "Certaines lignes du modèle sont déjà dans le dossier — les lignes cochées en lecture seule ne peuvent pas être dupliquées ; sélectionnez uniquement les lignes non encore créées.",
+      allLinesAppliedBanner:
+        "Toutes les lignes du modèle figurent déjà au dossier — utilisez l’onglet Ordres pour ajouter d’autres soins manuels.",
+      allAlreadyPresent:
+        "Tous les ordres sélectionnés du modèle existent déjà sur cette consultation — ouvrez l’onglet Ordres pour des soins complémentaires si nécessaire.",
+      lineAlreadyOnChart: "Déjà au dossier — pas de doublon.",
       skipHint: "Ferme sans créer d’ordre — vous pourrez rouvrir ce modèle plus tard.",
       cancelHint: "Ferme la fenêtre sans enregistrer ni créer d’ordre.",
       groups: {

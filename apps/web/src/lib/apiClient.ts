@@ -1,4 +1,5 @@
 /** Base path for backend proxy. Pass backend-relative paths only (e.g. "/trackboard", "/pharmacy/inventory"), not "/api/backend/...". */
+import { defaultLanguage, type SupportedLanguage } from "@/i18n/config";
 import { readStoredUiLanguage } from "@/i18n/readStoredUiLanguage";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { normalizeUserFacingError } from "./userFacingError";
@@ -7,6 +8,31 @@ import type { OfflineQueueItemType } from "@/lib/offline/offlineTypes";
 import { processOfflineQueueOnce } from "@/lib/offline/offlineSync";
 
 const API_BASE = "/api/backend";
+
+function resolveUiLang(): SupportedLanguage {
+  return typeof window !== "undefined" ? readStoredUiLanguage() : defaultLanguage;
+}
+
+/** Phase 14D — after refresh retry still 401: redirect to login with return path so writes don’t fail silently. */
+function redirectLoginSessionExpired(): void {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname.startsWith("/login")) return;
+  const redirect = `${window.location.pathname}${window.location.search}`;
+  window.location.assign(`/login?reason=session_expired&redirect=${encodeURIComponent(redirect)}`);
+}
+
+function sessionExpiredMessage(lang: SupportedLanguage): string {
+  return lang === "en"
+    ? "Session expired. Please sign in again."
+    : "Session expirée. Veuillez vous reconnecter.";
+}
+
+function throwUnauthorizedSessionExpired(response: Response): void {
+  if (response.status !== 401) return;
+  const lang = resolveUiLang();
+  redirectLoginSessionExpired();
+  throw new Error(normalizeUserFacingError(sessionExpiredMessage(lang), lang) ?? sessionExpiredMessage(lang));
+}
 
 /**
  * Lecture sûre du corps de réponse — évite `response.json()` sur corps vide
@@ -133,6 +159,7 @@ export async function apiFetchResponse(
   }
 
   if (!response.ok) {
+    throwUnauthorizedSessionExpired(response);
     const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
     if (response.status === 413) {
       throw new Error(
@@ -261,6 +288,7 @@ export async function apiFetch(
   }
 
   if (!response.ok) {
+    throwUnauthorizedSessionExpired(response);
     const loc = typeof window !== "undefined" ? readStoredUiLanguage() : "fr";
     if (response.status === 413) {
       throw new Error(

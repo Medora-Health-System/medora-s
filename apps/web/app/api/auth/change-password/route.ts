@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     let refreshedTokens: Awaited<ReturnType<typeof refreshAccessTokenFromCookies>> = null;
 
     if (backendResponse.status === 401) {
-      refreshedTokens = await refreshAccessTokenFromCookies();
+      refreshedTokens = await refreshAccessTokenFromCookies(undefined, request);
       if (refreshedTokens) {
         accessToken = refreshedTokens.accessToken;
         backendResponse = await doChange(accessToken);

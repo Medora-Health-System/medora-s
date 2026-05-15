@@ -221,7 +221,7 @@ export function NursingAssessmentTab({
     try {
       let savedByDisplayName = t("nursingAssessmentTab.signerFallback");
       try {
-        const meRes = await fetch("/api/auth/me");
+        const meRes = await fetch("/api/auth/me", { credentials: "include" });
         const me = await parseApiResponse(meRes);
         if (me && typeof me === "object" && !Array.isArray(me)) {
           const fn = (me as { fullName?: string }).fullName?.trim();

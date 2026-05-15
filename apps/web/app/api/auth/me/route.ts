@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     let refreshedTokens: Awaited<ReturnType<typeof refreshAccessTokenFromCookies>> = null;
 
     if (backendResponse.status === 401) {
-      refreshedTokens = await refreshAccessTokenFromCookies(requestId || undefined);
+      refreshedTokens = await refreshAccessTokenFromCookies(requestId || undefined, request);
       if (refreshedTokens) {
         accessToken = refreshedTokens.accessToken;
         backendResponse = await fetchMe(accessToken);

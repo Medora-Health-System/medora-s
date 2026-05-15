@@ -5723,14 +5723,21 @@ export default {
       },
     },
     observationOrderTemplateBannerButton: "Observation order template",
-    observationOrderTemplateBannerAlreadyApplied:
-      "Observation template already applied — the CARE bundle appears on the Orders tab.",
+    observationOrderTemplateBannerPartial:
+      "Some observation template lines already exist — reopen the dialog anytime to add only missing CARE orders.",
+    observationOrderTemplateBannerComplete:
+      "All built-in observation template lines already exist — add further CARE orders manually from the Orders tab.",
     observationOrderTemplate: {
       title: "Observation / short-stay order template",
       intro:
         "Select the lines to create as CARE orders. Nothing is created until you confirm. Medications and catalog tests/imaging are added from the Orders tab.",
-      alreadyAppliedWarning:
-        "This template was already applied for this encounter. To change lines, cancel the bundle on the Orders tab or add manual CARE orders.",
+      partialAppliedBanner:
+        "Some checklist lines from this template are already on the chart — checked rows below cannot create duplicates; pick unchecked rows only.",
+      allLinesAppliedBanner:
+        "Every checklist line from this template is already represented — use the Orders tab for additional CARE orders.",
+      allAlreadyPresent:
+        "All selected template orders already exist on this encounter — open the Orders tab for manual CARE orders if needed.",
+      lineAlreadyOnChart: "Already on chart — duplicates blocked.",
       skipHint: "Closes without creating orders — you can open this template again later.",
       cancelHint: "Closes the dialog without saving or creating orders.",
       groups: {

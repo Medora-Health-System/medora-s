@@ -57,10 +57,12 @@ import { erTriageV1FormFromVitalsJson } from "@/features/emergency/medoraErTriag
 import { isTriageStaleConflictError } from "@/features/emergency/triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
 import {
+  collectObservationTemplateItemIdsFromOrderItems,
   computeObservationOperationalSnapshot,
   isObservationOrderTemplateProtocol,
   isObservationShortStayEncounter,
   mergeObservationTrackboardOpsInput,
+  OBSERVATION_ORDER_TEMPLATE_ITEMS,
   temperatureHintPairCelsiusFahrenheit,
   weightHintPairKgPounds,
 } from "@medora/shared";
@@ -1006,13 +1008,31 @@ export default function EncounterDetailPage() {
     observationTrackboardOpsInput,
   ]);
 
-  const observationTemplateAlreadyApplied = useMemo(() => {
-    return quickOrders.some((o: { type?: string; cancelledAt?: string | null; authority?: { protocolName?: string | null } }) => {
-      if (!o || o.type !== "CARE") return false;
-      if (o.cancelledAt) return false;
-      return isObservationOrderTemplateProtocol(o.authority?.protocolName ?? null);
-    });
+  const existingObservationTemplateItemIds = useMemo(() => {
+    const collected: { manualLabel?: string | null; status?: string | null; lifecycleState?: string | null }[] = [];
+    for (const o of quickOrders) {
+      if (!o || (o as { type?: string }).type !== "CARE" || (o as { cancelledAt?: string | null }).cancelledAt)
+        continue;
+      if (!isObservationOrderTemplateProtocol((o as { authority?: { protocolName?: string | null } }).authority?.protocolName ?? null))
+        continue;
+      const items = Array.isArray((o as { items?: unknown }).items) ? (o as { items: unknown[] }).items : [];
+      for (const it of items) {
+        const row = it as {
+          manualLabel?: string | null;
+          status?: string | null;
+          lifecycleState?: string | null;
+        };
+        collected.push({
+          manualLabel: row.manualLabel ?? null,
+          status: row.status ?? null,
+          lifecycleState: row.lifecycleState ?? null,
+        });
+      }
+    }
+    return collectObservationTemplateItemIdsFromOrderItems(collected);
   }, [quickOrders]);
+
+  const observationTemplateHasAppliedLines = existingObservationTemplateItemIds.length > 0;
 
   if (!facilityId || !encounterId) {
     return (
@@ -1314,7 +1334,7 @@ export default function EncounterDetailPage() {
                   >
                     {t("encounterChrome.observationOrderTemplateBannerButton")}
                   </button>
-                  {observationTemplateAlreadyApplied ? (
+                  {observationTemplateHasAppliedLines ? (
                     <div
                       style={{
                         marginTop: 8,
@@ -1324,7 +1344,9 @@ export default function EncounterDetailPage() {
                         maxWidth: 520,
                       }}
                     >
-                      {t("encounterChrome.observationOrderTemplateBannerAlreadyApplied")}
+                      {existingObservationTemplateItemIds.length >= OBSERVATION_ORDER_TEMPLATE_ITEMS.length
+                        ? t("encounterChrome.observationOrderTemplateBannerComplete")
+                        : t("encounterChrome.observationOrderTemplateBannerPartial")}
                     </div>
                   ) : null}
                 </div>
@@ -2381,7 +2403,7 @@ export default function EncounterDetailPage() {
         open={showObservationOrderTemplateModal}
         encounterId={encounterId}
         facilityId={facilityId}
-        templateAlreadyApplied={observationTemplateAlreadyApplied}
+        existingTemplateItemIds={existingObservationTemplateItemIds}
         onClose={() => setShowObservationOrderTemplateModal(false)}
         onOrdersCreated={async () => {
           await refreshQuickOrdersOnly();

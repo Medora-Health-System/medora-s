@@ -19,45 +19,61 @@ const GROUP_LABEL_KEYS: Record<ObservationOrderTemplateGroupId, string> = {
   disposition: "encounterChrome.observationOrderTemplate.groups.disposition",
 };
 
-function defaultSelectedIds(): Set<string> {
-  return new Set(OBSERVATION_ORDER_TEMPLATE_ITEMS.filter((i) => i.defaultSelected).map((i) => i.id));
+function initialSelectableSelection(existing: Set<string>): Set<string> {
+  const next = new Set<string>();
+  for (const item of OBSERVATION_ORDER_TEMPLATE_ITEMS) {
+    if (!item.defaultSelected) continue;
+    if (existing.has(item.id)) continue;
+    next.add(item.id);
+  }
+  return next;
 }
 
-function careLineCountFromCreated(created: unknown): number {
+function careLineCountFromApplyPayload(created: unknown): number {
   if (!created || typeof created !== "object" || Array.isArray(created)) return 0;
-  const items = (created as { items?: unknown }).items;
-  return Array.isArray(items) ? items.length : 0;
+  const o = created as Record<string, unknown>;
+  if (o.summary && typeof o.summary === "object" && !Array.isArray(o.summary)) {
+    const c = (o.summary as { createdCount?: unknown }).createdCount;
+    if (typeof c === "number" && Number.isFinite(c)) return c;
+  }
+  if (o.order && typeof o.order === "object" && !Array.isArray(o.order)) {
+    const items = (o.order as { items?: unknown }).items;
+    return Array.isArray(items) ? items.length : 0;
+  }
+  const legacyItems = o.items;
+  return Array.isArray(legacyItems) ? legacyItems.length : 0;
 }
 
 export function ObservationOrderTemplateModal({
   open,
   encounterId,
   facilityId,
-  templateAlreadyApplied,
+  existingTemplateItemIds,
   onClose,
   onOrdersCreated,
 }: {
   open: boolean;
   encounterId: string;
   facilityId: string;
-  /** True when an active CARE bundle from this template already exists (from encounter orders snapshot). */
-  templateAlreadyApplied: boolean;
+  /** Stable template item ids already represented by active CARE lines from this template bundle. */
+  existingTemplateItemIds: string[];
   onClose: () => void;
   onOrdersCreated: () => void | Promise<void>;
 }) {
   const { t, language } = useI18n();
-  const [selected, setSelected] = useState<Set<string>>(() => defaultSelectedIds());
+  const existingSet = useMemo(() => new Set(existingTemplateItemIds), [existingTemplateItemIds]);
+  const [selected, setSelected] = useState<Set<string>>(() => initialSelectableSelection(new Set()));
   const [applying, setApplying] = useState(false);
   const [applySuccess, setApplySuccess] = useState(false);
   const [successLineCount, setSuccessLineCount] = useState(0);
 
   useEffect(() => {
     if (!open) return;
-    setSelected(defaultSelectedIds());
+    setSelected(initialSelectableSelection(existingSet));
     setApplying(false);
     setApplySuccess(false);
     setSuccessLineCount(0);
-  }, [open]);
+  }, [open, existingSet]);
 
   useEffect(() => {
     if (!applySuccess) return;
@@ -82,7 +98,7 @@ export function ObservationOrderTemplateModal({
 
   const toggle = useCallback(
     (id: string) => {
-      if (templateAlreadyApplied || applySuccess) return;
+      if (applySuccess || applying || existingSet.has(id)) return;
       setSelected((prev) => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
@@ -90,14 +106,21 @@ export function ObservationOrderTemplateModal({
         return next;
       });
     },
-    [applySuccess, templateAlreadyApplied]
+    [applySuccess, applying, existingSet]
   );
 
   const selectedList = useMemo(() => [...selected], [selected]);
 
+  const newSelectionCount = useMemo(
+    () => selectedList.filter((id) => !existingSet.has(id)).length,
+    [selectedList, existingSet]
+  );
+
+  const allTemplateLinesApplied = existingSet.size >= OBSERVATION_ORDER_TEMPLATE_ITEMS.length;
+
   const onCreate = useCallback(async () => {
-    if (templateAlreadyApplied || applySuccess) return;
-    if (selectedList.length === 0) {
+    if (applySuccess || applying) return;
+    if (newSelectionCount === 0) {
       alert(t("encounterChrome.observationOrderTemplate.validationNeedOne"));
       return;
     }
@@ -121,8 +144,16 @@ export function ObservationOrderTemplateModal({
         alert(t("encounterChrome.observationOrderTemplate.queuedApply"));
         return;
       }
+      const summary =
+        created && typeof created === "object" && !Array.isArray(created)
+          ? (created as { summary?: { allAlreadyPresent?: boolean } }).summary
+          : undefined;
+      if (summary?.allAlreadyPresent) {
+        alert(t("encounterChrome.observationOrderTemplate.allAlreadyPresent"));
+        return;
+      }
       await onOrdersCreated();
-      setSuccessLineCount(Math.max(careLineCountFromCreated(created), selectedList.length));
+      setSuccessLineCount(Math.max(careLineCountFromApplyPayload(created), newSelectionCount));
       setApplySuccess(true);
     } catch (e) {
       const msg = normalizeUserFacingError(e instanceof Error ? e.message : null, language);
@@ -132,13 +163,14 @@ export function ObservationOrderTemplateModal({
     }
   }, [
     applySuccess,
+    applying,
     encounterId,
     facilityId,
     language,
+    newSelectionCount,
     onOrdersCreated,
     selectedList,
     t,
-    templateAlreadyApplied,
   ]);
 
   const closeFromSuccess = useCallback(() => {
@@ -148,7 +180,7 @@ export function ObservationOrderTemplateModal({
 
   if (!open) return null;
 
-  const formDisabled = templateAlreadyApplied || applySuccess || applying;
+  const formDisabled = applySuccess || applying;
   const labelLocale = language === "en" ? "en" : "fr";
 
   return (
@@ -239,21 +271,23 @@ export function ObservationOrderTemplateModal({
               {t("encounterChrome.observationOrderTemplate.intro")}
             </p>
 
-            {templateAlreadyApplied ? (
+            {existingSet.size > 0 ? (
               <div
                 role="status"
                 style={{
                   marginBottom: 14,
                   padding: "12px 14px",
                   borderRadius: 12,
-                  border: "1px solid #fde68a",
-                  background: "#fffbeb",
+                  border: "1px solid #bfdbfe",
+                  background: "#eff6ff",
                   fontSize: 13,
-                  color: "#92400e",
+                  color: "#1e3a8a",
                   lineHeight: 1.55,
                 }}
               >
-                {t("encounterChrome.observationOrderTemplate.alreadyAppliedWarning")}
+                {allTemplateLinesApplied
+                  ? t("encounterChrome.observationOrderTemplate.allLinesAppliedBanner")
+                  : t("encounterChrome.observationOrderTemplate.partialAppliedBanner")}
               </div>
             ) : null}
 
@@ -284,35 +318,46 @@ export function ObservationOrderTemplateModal({
                       {t(GROUP_LABEL_KEYS[groupId])}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {items.map((item) => (
-                        <label
-                          key={item.id}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "18px 1fr",
-                            gap: 10,
-                            alignItems: "flex-start",
-                            padding: "8px 10px",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 8,
-                            background: selected.has(item.id) ? "#f8fafc" : "#fff",
-                            cursor: formDisabled ? "not-allowed" : "pointer",
-                            fontSize: 13,
-                            color: "#334155",
-                            lineHeight: 1.45,
-                            opacity: templateAlreadyApplied ? 0.75 : 1,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(item.id)}
-                            disabled={formDisabled}
-                            onChange={() => toggle(item.id)}
-                            style={{ width: 14, height: 14, marginTop: 3 }}
-                          />
-                          <span>{observationOrderTemplateItemManualLabel(item.id, labelLocale)}</span>
-                        </label>
-                      ))}
+                      {items.map((item) => {
+                        const already = existingSet.has(item.id);
+                        const checked = already || selected.has(item.id);
+                        return (
+                          <label
+                            key={item.id}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "18px 1fr",
+                              gap: 10,
+                              alignItems: "flex-start",
+                              padding: "8px 10px",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 8,
+                              background: checked ? "#f8fafc" : "#fff",
+                              cursor: formDisabled || already ? "not-allowed" : "pointer",
+                              fontSize: 13,
+                              color: "#334155",
+                              lineHeight: 1.45,
+                              opacity: already ? 0.72 : 1,
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={formDisabled || already}
+                              onChange={() => toggle(item.id)}
+                              style={{ width: 14, height: 14, marginTop: 3 }}
+                            />
+                            <span>
+                              {observationOrderTemplateItemManualLabel(item.id, labelLocale)}
+                              {already ? (
+                                <span style={{ display: "block", fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                                  {t("encounterChrome.observationOrderTemplate.lineAlreadyOnChart")}
+                                </span>
+                              ) : null}
+                            </span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -358,7 +403,7 @@ export function ObservationOrderTemplateModal({
               </button>
               <button
                 type="button"
-                disabled={applying || selectedList.length === 0 || templateAlreadyApplied}
+                disabled={applying || newSelectionCount === 0}
                 onClick={() => void onCreate()}
                 style={{
                   padding: "10px 16px",
@@ -368,8 +413,8 @@ export function ObservationOrderTemplateModal({
                   borderRadius: 10,
                   background: "#0f172a",
                   color: "#fff",
-                  cursor: applying || selectedList.length === 0 || templateAlreadyApplied ? "not-allowed" : "pointer",
-                  opacity: applying || selectedList.length === 0 || templateAlreadyApplied ? 0.65 : 1,
+                  cursor: applying || newSelectionCount === 0 ? "not-allowed" : "pointer",
+                  opacity: applying || newSelectionCount === 0 ? 0.65 : 1,
                 }}
               >
                 {applying

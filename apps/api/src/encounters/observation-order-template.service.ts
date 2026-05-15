@@ -8,6 +8,7 @@ import { AuditAction, OrderEventType, RoleCode } from "@prisma/client";
 import {
   OBSERVATION_ORDER_TEMPLATE_ID,
   buildObservationTemplateCareOrderDto,
+  collectObservationTemplateItemIdsFromOrderItems,
   findUnknownObservationTemplateIds,
   orderObservationTemplateSelection,
   type ObservationOrderTemplateApplyDto,
@@ -25,8 +26,6 @@ const UNKNOWN_TEMPLATE_IDS_FR =
 const NO_VALID_LINES_FR = "Sélectionnez au moins une ligne valide du modèle.";
 const NOT_INPATIENT_FR = "Ce modèle d’ordres s’applique uniquement aux hospitalisations (consultation ouverte).";
 const ROLE_BLOCKED_FR = "Seuls les médecins ou administrateurs peuvent appliquer ce modèle d’ordres.";
-const TEMPLATE_ALREADY_APPLIED_FR =
-  "Ce modèle d’observation a déjà été appliqué sur cette consultation (lot de soins actif). Utilisez l’onglet Ordres pour consulter ou annuler ce lot avant d’en créer un autre.";
 
 @Injectable()
 export class ObservationOrderTemplateService {
@@ -95,7 +94,7 @@ export class ObservationOrderTemplateService {
     assertEncounterOpenForClinicalMutation(encounter);
     assertEncounterNotSigned(encounter);
 
-    const existingObservationTemplateOrder = await this.prisma.order.findFirst({
+    const existingTemplateOrders = await this.prisma.order.findMany({
       where: {
         encounterId,
         facilityId,
@@ -111,10 +110,41 @@ export class ObservationOrderTemplateService {
           },
         },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        items: {
+          select: {
+            manualLabel: true,
+            status: true,
+            lifecycleState: true,
+          },
+        },
+      },
     });
-    if (existingObservationTemplateOrder) {
-      throw new BadRequestException(TEMPLATE_ALREADY_APPLIED_FR);
+
+    const persistedLines = existingTemplateOrders.flatMap((o) => o.items);
+    const alreadyPresentIds = new Set(collectObservationTemplateItemIdsFromOrderItems(persistedLines));
+
+    const skippedDuplicateItemIds = ordered.filter((id) => alreadyPresentIds.has(id));
+    const missingItemIds = ordered.filter((id) => !alreadyPresentIds.has(id));
+
+    const applySummaryBase = {
+      templateId: OBSERVATION_ORDER_TEMPLATE_ID,
+      requestedItemIds: ordered,
+      skippedDuplicateItemIds,
+      createdItemIds: missingItemIds,
+      createdCount: missingItemIds.length,
+      source: "OBSERVATION_ORDER_SET" as const,
+    };
+
+    if (missingItemIds.length === 0) {
+      return {
+        order: null,
+        summary: {
+          ...applySummaryBase,
+          allAlreadyPresent: true,
+        },
+      };
     }
 
     const user = userId
@@ -137,7 +167,7 @@ export class ObservationOrderTemplateService {
     let orderDto;
     try {
       orderDto = buildObservationTemplateCareOrderDto({
-        selectedItemIds: ordered,
+        selectedItemIds: missingItemIds,
         prescriberName,
         prescriberLicense: user?.billingNpi?.trim() || undefined,
         prescriberContact: undefined,
@@ -174,12 +204,20 @@ export class ObservationOrderTemplateService {
         encounterId,
         templateId: OBSERVATION_ORDER_TEMPLATE_ID,
         selectedItemIds: ordered,
-        selectedCount: ordered.length,
+        appliedItemIds: missingItemIds,
+        skippedDuplicateItemIds,
         skippedMedicationItems,
+        createdCount: missingItemIds.length,
         source: "OBSERVATION_ORDER_SET",
       },
     });
 
-    return created;
+    return {
+      order: created,
+      summary: {
+        ...applySummaryBase,
+        allAlreadyPresent: false,
+      },
+    };
   }
 }
