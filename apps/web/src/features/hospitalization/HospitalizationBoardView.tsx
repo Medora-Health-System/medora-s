@@ -25,6 +25,14 @@ import {
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 import { mergeHospitalisationRowAfterAssign } from "./hospitalizationBoardAssignMerge";
+import {
+  computeObservationBoardCensus,
+  computeObservationBoardStaffingPressure,
+  observationBoardRowMatchesOperationalFilter,
+  observationRowOperationalAttentionScore,
+  type ObservationBoardOperationalFilterId,
+  type ObservationBoardSortId,
+} from "./observationBoardOperational";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -225,6 +233,45 @@ function unitFromRoomLabel(roomLabel: string | null | undefined): string {
   return part || r;
 }
 
+function ObservationOperationalStatChip({
+  label,
+  value,
+  title,
+}: {
+  label: string;
+  value: string | number;
+  title?: string;
+}) {
+  return (
+    <span
+      title={title}
+      style={{
+        display: "inline-flex",
+        flexDirection: "column",
+        minWidth: 54,
+        padding: "6px 8px",
+        borderRadius: 8,
+        border: "1px solid #e2e8f0",
+        backgroundColor: "#fafafa",
+      }}
+    >
+      <span
+        style={{
+          fontSize: 9,
+          fontWeight: 600,
+          color: "#64748b",
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+          lineHeight: 1.2,
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>{value}</span>
+    </span>
+  );
+}
+
 /**
  * Single implementation for `/app/hospitalisation` (and optional `?mock=error` | `?mock=empty` for demos/tests).
  */
@@ -259,6 +306,8 @@ export function HospitalizationBoardView() {
   const [filterUnit, setFilterUnit] = useState("");
   const [filterAcuity, setFilterAcuity] = useState<"" | AcuityTier>("");
   const [filterPhysician, setFilterPhysician] = useState("");
+  const [filterOperational, setFilterOperational] = useState<ObservationBoardOperationalFilterId>("");
+  const [sortOperational, setSortOperational] = useState<ObservationBoardSortId>("default");
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -407,9 +456,15 @@ export function HospitalizationBoardView() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, language === "en" ? "en" : "fr"));
   }, [encounters, language]);
 
+  const observationCensus = useMemo(() => computeObservationBoardCensus(encounters), [encounters]);
+  const observationStaffing = useMemo(() => computeObservationBoardStaffingPressure(encounters), [encounters]);
+
   const filteredEncounters = useMemo(() => {
+    let list = encounters.filter((encounter) =>
+      observationBoardRowMatchesOperationalFilter(encounter, filterOperational)
+    );
     const q = search.trim().toLowerCase();
-    return encounters.filter((encounter) => {
+    list = list.filter((encounter) => {
       const acuity = acuityFromEsi(encounter.triage?.esi);
       if (filterAcuity && acuity !== filterAcuity) return false;
 
@@ -433,7 +488,23 @@ export function HospitalizationBoardView() {
       }
       return true;
     });
-  }, [encounters, search, filterAcuity, filterUnit, filterPhysician]);
+    if (sortOperational === "attention_desc") {
+      list = [...list].sort(
+        (a, b) => observationRowOperationalAttentionScore(b) - observationRowOperationalAttentionScore(a)
+      );
+    } else if (sortOperational === "los_desc") {
+      list = [...list].sort((a, b) => (b.observationOps?.losMs ?? 0) - (a.observationOps?.losMs ?? 0));
+    }
+    return list;
+  }, [
+    encounters,
+    filterOperational,
+    search,
+    filterAcuity,
+    filterUnit,
+    filterPhysician,
+    sortOperational,
+  ]);
 
   const singleOpenInpatientRow = useMemo(() => {
     if (filteredEncounters.length !== 1) return null;
@@ -497,6 +568,98 @@ export function HospitalizationBoardView() {
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("hospitalizationBoard.pageSubtitle")}</p>
           </div>
         </header>
+
+        {encounters.length > 0 && mockMode !== "error" ? (
+          <section
+            style={{
+              marginBottom: 16,
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#fff",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
+              {t("hospitalizationBoard.operationalStripTitle")}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8, alignItems: "stretch" }}>
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatActive")}
+                value={observationCensus.activeObservationPatients}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatRnUnassigned")}
+                value={observationCensus.rnUnassignedCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatMdUnassigned")}
+                value={observationCensus.providerUnassignedCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatReassessOverdue")}
+                value={observationCensus.reassessmentOverdueCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatRnReassessOverdue")}
+                value={observationCensus.rnReassessmentOverdueCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatMdReassessOverdue")}
+                value={observationCensus.providerReassessmentOverdueCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatVitalsStale")}
+                value={observationCensus.vitalsStaleCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatPendingPatients")}
+                value={observationCensus.pendingResultsPatientsCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatPendingSum")}
+                value={observationCensus.sumPendingResultsCounts}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatCriticalPatients")}
+                value={observationCensus.criticalResultPatientsCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatLos24")}
+                value={observationCensus.los24hOrMoreCount}
+              />
+              <ObservationOperationalStatChip
+                label={t("hospitalizationBoard.operationalStatReadyDischarge")}
+                value={observationCensus.dischargeReadyOpenCount}
+              />
+            </div>
+            <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.45, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600 }}>{t("hospitalizationBoard.operationalStaffingAvgRn")}:</span>{" "}
+              {observationStaffing.avgPatientsPerRn != null
+                ? String(observationStaffing.avgPatientsPerRn)
+                : t("hospitalizationBoard.operationalStaffingDash")}
+              {" · "}
+              <span style={{ fontWeight: 600 }}>{t("hospitalizationBoard.operationalStaffingAvgMd")}:</span>{" "}
+              {observationStaffing.avgPatientsPerProvider != null
+                ? String(observationStaffing.avgPatientsPerProvider)
+                : t("hospitalizationBoard.operationalStaffingDash")}
+              {" · "}
+              <span style={{ fontWeight: 600 }}>{t("hospitalizationBoard.operationalStaffingUnassignedAny")}:</span>{" "}
+              {observationStaffing.unassignedEitherRolePatientCount}
+            </div>
+            {observationStaffing.highestRiskUnassignedPatientNames.length > 0 ? (
+              <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.4, marginBottom: 6 }}>
+                <span style={{ fontWeight: 600, color: "#475569" }}>
+                  {t("hospitalizationBoard.operationalStaffingTopRisk")}:
+                </span>{" "}
+                {observationStaffing.highestRiskUnassignedPatientNames.join(", ")}
+              </div>
+            ) : null}
+            <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+              {t("hospitalizationBoard.operationalGuidanceFootnote")} {t("hospitalizationBoard.operationalNoAutoFootnote")}
+            </p>
+          </section>
+        ) : null}
 
         {/* Barre unique : recherche à gauche, filtres compacts, actions à droite (V0) */}
         <div
@@ -569,6 +732,35 @@ export function HospitalizationBoardView() {
                   {name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div style={{ flex: "0 1 200px", minWidth: 160 }}>
+            <span style={filterLabel}>{t("hospitalizationBoard.operationalFilterLabel")}</span>
+            <select
+              value={filterOperational}
+              onChange={(e) => setFilterOperational(e.target.value as ObservationBoardOperationalFilterId)}
+              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
+            >
+              <option value="">{t("hospitalizationBoard.operationalFilterAll")}</option>
+              <option value="needs_attention">{t("hospitalizationBoard.operationalFilterNeedsAttention")}</option>
+              <option value="unassigned">{t("hospitalizationBoard.operationalFilterUnassigned")}</option>
+              <option value="ready_discharge">{t("hospitalizationBoard.operationalFilterReadyDischarge")}</option>
+              <option value="los24">{t("hospitalizationBoard.operationalFilterLos24")}</option>
+              <option value="results_critical">{t("hospitalizationBoard.operationalFilterResultsCritical")}</option>
+            </select>
+          </div>
+
+          <div style={{ flex: "0 0 auto", width: 200 }}>
+            <span style={filterLabel}>{t("hospitalizationBoard.operationalSortLabel")}</span>
+            <select
+              value={sortOperational}
+              onChange={(e) => setSortOperational(e.target.value as ObservationBoardSortId)}
+              style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
+            >
+              <option value="default">{t("hospitalizationBoard.operationalSortDefault")}</option>
+              <option value="attention_desc">{t("hospitalizationBoard.operationalSortAttention")}</option>
+              <option value="los_desc">{t("hospitalizationBoard.operationalSortLos")}</option>
             </select>
           </div>
 
