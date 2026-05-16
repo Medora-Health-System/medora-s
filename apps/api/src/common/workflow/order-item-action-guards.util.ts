@@ -51,6 +51,11 @@ export function assertCareProcedureEffectiveTimeActor(roleCodes: RoleCode[]) {
   );
 }
 
+/** MAR effective administration time correction — documented administrations only. */
+export function assertMedicationAdminEffectiveTimeActor(roleCodes: RoleCode[]) {
+  assertCareProcedureEffectiveTimeActor(roleCodes);
+}
+
 export function isMedicationAdministerChart(orderItem: {
   catalogItemType: string;
   medicationFulfillmentIntent: string | null;

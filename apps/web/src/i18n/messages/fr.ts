@@ -8291,6 +8291,31 @@ export default {
     safetyPreviewOrdered: "Quantité ordonnée : {qty}",
     safetyPreviewCumulative: "Total administré (cumul, quantités documentées) : {qty}",
     safetyPreviewCumulativeEvents: "Événements « administré » (cumul) : {count}",
+    adminTime: {
+      adjustTooltip: "Ajuster l'heure d'administration",
+      modalTitle: "Heure d'administration réelle",
+      effectiveLabel: "Heure d'administration réelle",
+      reasonLabel: "Motif de l'ajustement",
+      reasonPlaceholder: "Ex. soins donnés avant la saisie au dossier",
+      warning:
+        "Cet enregistrement conserve l'horodatage de documentation d'origine et enregistre séparément l'heure clinique d'administration.",
+      documentedAt: "Documenté le {when}",
+      adjustedBadge: "Ajusté",
+      adjustedBadgeLong: "Heure d'administration corrigée",
+      controlledWarning:
+        "Médicament soumis à contrôle : un motif est toujours requis pour tout ajustement d'heure.",
+      largeBackdateReasonHelp:
+        "Pour un décalage de plus de 24 h par rapport à la documentation, le motif doit comporter au moins 15 caractères.",
+      save: "Enregistrer",
+      cancel: "Annuler",
+      invalidTime: "Horodatage invalide.",
+      reasonRequired: "Un motif est requis pour cet ajustement.",
+      reasonTooShortForLargeBackdate:
+        "Pour un décalage de plus de 24 h, le motif doit comporter au moins 15 caractères.",
+      saveFailed: "Impossible d'enregistrer l'ajustement.",
+      infusionDeferred:
+        "L'ajustement d'heure pour les perfusions IV n'est pas disponible pour l'instant.",
+    },
   },
   ordersets: {
     apply: {

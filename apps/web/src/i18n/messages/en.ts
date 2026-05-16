@@ -8277,6 +8277,30 @@ export default {
     safetyPreviewOrdered: "Ordered quantity: {qty}",
     safetyPreviewCumulative: "Total administered (cumulative documented qty): {qty}",
     safetyPreviewCumulativeEvents: "“Administered” events (cumulative): {count}",
+    adminTime: {
+      adjustTooltip: "Adjust administration time",
+      modalTitle: "Actual administration time",
+      effectiveLabel: "Actual administration time",
+      reasonLabel: "Reason for adjustment",
+      reasonPlaceholder: "e.g. care given before charting",
+      warning:
+        "This records clinical administration time separately and preserves the original documentation timestamp.",
+      documentedAt: "Documented at {when}",
+      adjustedBadge: "Adjusted",
+      adjustedBadgeLong: "Administration time corrected",
+      controlledWarning:
+        "Controlled medication: a reason is always required for any time adjustment.",
+      largeBackdateReasonHelp:
+        "For adjustments more than 24 hours before documentation, the reason must be at least 15 characters.",
+      save: "Save",
+      cancel: "Cancel",
+      invalidTime: "Invalid timestamp.",
+      reasonRequired: "A reason is required for this adjustment.",
+      reasonTooShortForLargeBackdate:
+        "For adjustments more than 24 hours back, the reason must be at least 15 characters.",
+      saveFailed: "Could not save adjustment.",
+      infusionDeferred: "Time adjustment for IV infusions is not available yet.",
+    },
   },
   ordersets: {
     apply: {

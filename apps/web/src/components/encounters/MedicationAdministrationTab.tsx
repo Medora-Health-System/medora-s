@@ -40,12 +40,20 @@ import { MedicationSoftSafetyPanel } from "@/components/medication/MedicationSof
 import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { medicationMarIntendedTimingUrgency } from "@/lib/medicationMarIntendedUrgency";
+import {
+  canShowMedicationAdministrationTimeClock,
+  resolveMedicationAdministrationDisplayTimes,
+} from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
+import { MedicationAdministrationEffectiveTimeModal } from "@/components/encounters/MedicationAdministrationEffectiveTimeModal";
 
 type AdminRow = {
   id: string;
   orderItemId: string | null;
   medicationLabelSnapshot?: string | null;
   administeredAt: string;
+  createdAt?: string | null;
+  effectiveAdministeredAt?: string | null;
+  effectiveAdministeredAtVersion?: number | null;
   notes: string | null;
   /** From API (`findByEncounter`) or offline queue payload when present. */
   marAction?: string | null;
@@ -56,6 +64,7 @@ type AdminRow = {
 
 type OrderItemApi = {
   id?: string;
+  createdAt?: string | null;
   quantity?: number | null;
   catalogItemId?: string | null;
   catalogItemType?: string | null;
@@ -271,12 +280,29 @@ export function MedicationAdministrationTab({
   const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
   const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
+  const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
+  const [adminTimeSaving, setAdminTimeSaving] = useState(false);
   /** Re-render periodically so infusion elapsed time updates on the MAR grid. */
   const [, setInfusionClockTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setInfusionClockTick((n) => n + 1), 15_000);
     return () => clearInterval(id);
   }, []);
+
+  const encounterOpen = encounterStatus === "OPEN";
+
+  const orderItemById = useMemo(() => {
+    const map = new Map<string, OrderItemApi>();
+    for (const o of orders) {
+      const order = asApiObject(o);
+      const items = Array.isArray(order?.items) ? order.items : [];
+      for (const it of items) {
+        const row = asApiObject(it) as OrderItemApi | null;
+        if (row?.id) map.set(String(row.id), row);
+      }
+    }
+    return map;
+  }, [orders]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -1177,6 +1203,13 @@ export function MedicationAdministrationTab({
                 (oid
                   ? taskRows.find((tr) => tr.orderItemId === oid)?.label ?? t("common.dash")
                   : t("marTab.noLinkedOrder"));
+              const displayTimes = resolveMedicationAdministrationDisplayTimes(r);
+              const linkedOrderItem = oid ? orderItemById.get(oid) : undefined;
+              const showClock = canShowMedicationAdministrationTimeClock(r, {
+                encounterOpen,
+                canAdjust: true,
+                isControlled: Boolean(linkedOrderItem?.catalogMedication?.isControlled),
+              });
               return (
                 <li
                   key={r.id}
@@ -1190,10 +1223,62 @@ export function MedicationAdministrationTab({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>{label}</div>
-                  <div style={{ color: "#555", marginTop: 4 }}>
-                    {new Date(r.administeredAt).toLocaleString(dateLocale)} · {r.administeredBy.firstName}{" "}
-                    {r.administeredBy.lastName}
+                  <div
+                    style={{
+                      color: "#555",
+                      marginTop: 4,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span>
+                      {new Date(displayTimes.effectiveIso).toLocaleString(dateLocale)} · {r.administeredBy.firstName}{" "}
+                      {r.administeredBy.lastName}
+                    </span>
+                    {showClock ? (
+                      <button
+                        type="button"
+                        title={t("marTab.adminTime.adjustTooltip")}
+                        aria-label={t("marTab.adminTime.adjustTooltip")}
+                        onClick={() => setAdminTimeModalRow(r)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          padding: "0 2px",
+                          fontSize: 14,
+                          lineHeight: 1,
+                        }}
+                      >
+                        🧭
+                      </button>
+                    ) : null}
+                    {displayTimes.showAdjustedBadge ? (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: "2px 8px",
+                          borderRadius: 9999,
+                          background: "#fef3c7",
+                          color: "#92400e",
+                          border: "1px solid #fcd34d",
+                        }}
+                      >
+                        {t("marTab.adminTime.adjustedBadge")}
+                      </span>
+                    ) : null}
                   </div>
+                  {displayTimes.documentedSystemIso ? (
+                    <div style={{ color: "#94a3b8", marginTop: 4, fontSize: 12 }}>
+                      {t("marTab.adminTime.documentedAt").replace(
+                        "{when}",
+                        new Date(displayTimes.documentedSystemIso).toLocaleString(dateLocale)
+                      )}
+                    </div>
+                  ) : null}
                   {r.notes?.trim() ? (
                     <pre
                       style={{
@@ -1708,6 +1793,70 @@ export function MedicationAdministrationTab({
           </div>
         </div>
       ) : null}
+
+      {adminTimeModalRow ? (() => {
+        const row = adminTimeModalRow;
+        const displayTimes = resolveMedicationAdministrationDisplayTimes(row);
+        const oid = row.orderItemId;
+        const linkedOrderItem = oid ? orderItemById.get(oid) : undefined;
+        const linkedOrder = oid
+          ? orders
+              .map((o) => asApiObject(o))
+              .find((ord) => {
+                const items = Array.isArray(ord?.items) ? ord.items : [];
+                return items.some((it) => asApiObject(it)?.id === oid);
+              })
+          : null;
+        const orderCreatedAt = linkedOrder?.createdAt
+          ? new Date(String(linkedOrder.createdAt))
+          : new Date(row.administeredAt);
+        const orderItemCreatedAt = linkedOrderItem?.createdAt
+          ? new Date(String(linkedOrderItem.createdAt))
+          : null;
+        const orderCancelledAt =
+          String(linkedOrder?.status ?? "").toUpperCase() === "CANCELLED" && linkedOrder?.cancelledAt
+            ? new Date(String(linkedOrder.cancelledAt))
+            : null;
+        const label =
+          row.medicationLabelSnapshot?.trim() ||
+          (oid ? taskRows.find((tr) => tr.orderItemId === oid)?.label ?? t("common.dash") : t("marTab.noLinkedOrder"));
+        return (
+          <MedicationAdministrationEffectiveTimeModal
+            open
+            medicationLabel={label}
+            defaultEffectiveIso={displayTimes.effectiveIso}
+            originalAdministeredAt={new Date(row.administeredAt)}
+            systemDocumentedAt={row.createdAt ? new Date(row.createdAt) : new Date(row.administeredAt)}
+            orderCreatedAt={orderCreatedAt}
+            orderItemCreatedAt={orderItemCreatedAt}
+            orderCancelledAt={orderCancelledAt}
+            adjustmentVersion={row.effectiveAdministeredAtVersion ?? 0}
+            controlledMedication={Boolean(linkedOrderItem?.catalogMedication?.isControlled)}
+            t={t}
+            saving={adminTimeSaving}
+            onClose={() => {
+              if (!adminTimeSaving) setAdminTimeModalRow(null);
+            }}
+            onSave={async (payload) => {
+              setAdminTimeSaving(true);
+              try {
+                await apiFetch(
+                  `/encounters/${encounterId}/medication-administrations/${row.id}/effective-administered-time`,
+                  {
+                    facilityId,
+                    method: "PATCH",
+                    body: JSON.stringify(payload),
+                  }
+                );
+                setAdminTimeModalRow(null);
+                await loadAll();
+              } finally {
+                setAdminTimeSaving(false);
+              }
+            }}
+          />
+        );
+      })() : null}
     </div>
   );
 }

@@ -99,6 +99,7 @@ enum AuditAction {
   ORDER_START
   ORDER_COMPLETE
   CARE_PROCEDURE_EFFECTIVE_TIME_ADJUSTED
+  MEDICATION_ADMIN_TIME_ADJUSTED
   RESULT_VERIFY
   CRITICAL_FLAG
   PATHWAY_ACTIVATED
@@ -1775,6 +1776,12 @@ model MedicationAdministration {
   ndcDisplaySnapshot      String?  @db.VarChar(32)
   administeredAt          DateTime @default(now())
   administeredByUserId    String
+  /// Phase 15F-B: corrected clinical administration instant; never overwrites `administeredAt`.
+  effectiveAdministeredAt          DateTime?
+  effectiveAdministeredAtSetAt     DateTime?
+  effectiveAdministeredAtSetByUserId String?
+  effectiveAdministeredAtReason    String?
+  effectiveAdministeredAtVersion   Int      @default(0)
   /// ER-3.2: primary MAR outcome; null = legacy row (derive from notes only for display).
   marAction               MedicationMarAction?
   notes                   String?

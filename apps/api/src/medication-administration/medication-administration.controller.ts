@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -12,7 +13,10 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { RoleCode } from "@prisma/client";
-import { medicationAdministrationCreateDtoSchema } from "@medora/shared";
+import {
+  medicationAdministrationCreateDtoSchema,
+  medicationAdministrationEffectiveTimeDtoSchema,
+} from "@medora/shared";
 import { assertZodBody } from "../common/http/zod-parse";
 import { MedicationAdministrationService } from "./medication-administration.service";
 
@@ -44,5 +48,33 @@ export class MedicationAdministrationController {
     }
     const data = assertZodBody(medicationAdministrationCreateDtoSchema.safeParse(body));
     return this.medicationAdministrationService.create(encounterId, facilityId, userId, data);
+  }
+
+  @Patch("encounters/:encounterId/medication-administrations/:administrationId/effective-administered-time")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async setEffectiveAdministeredAt(
+    @Param("encounterId") encounterId: string,
+    @Param("administrationId") administrationId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise");
+    }
+    const dto = assertZodBody(medicationAdministrationEffectiveTimeDtoSchema.safeParse(body));
+    return this.medicationAdministrationService.setEffectiveAdministeredAt(
+      encounterId,
+      facilityId,
+      administrationId,
+      dto,
+      userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
   }
 }

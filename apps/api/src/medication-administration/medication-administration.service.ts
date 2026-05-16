@@ -5,22 +5,34 @@ import {
   OrderEventOrderType,
   OrderEventType,
   OrderStatus,
+  RoleCode,
   type OrderItem,
   type Prisma,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import type { MarClinicalAction, MedicationAdministrationCreateDto } from "@medora/shared";
+import type {
+  MarClinicalAction,
+  MedicationAdministrationCreateDto,
+  MedicationAdministrationEffectiveTimeDto,
+} from "@medora/shared";
 import {
   acceptableManualOrderLine,
   buildMedicationAdministrationCandidate,
+  deltaMinutesBetween,
   deriveMarClinicalActionFromNotes,
   getEncounterAllergyDocumentationSummary,
   isInvalidTechnicalOrderDisplayLabel,
+  medicationAdministrationRowIsInfusionTerminal,
   normalizeNdc,
+  parseMedicationAdministrationEffectiveTimeIso,
   resolveMedicationMarActionFromStorage,
   suggestInfusionBilling,
+  toMedicationAdministrationEffectiveTimeIsoUtc,
+  validateMedicationAdministrationEffectiveTime,
+  type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
+import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
 import {
@@ -636,5 +648,187 @@ export class MedicationAdministrationService {
     }
 
     return created;
+  }
+
+  private encounterAnchorAt(encounter: { createdAt: Date; admittedAt: Date | null }): Date {
+    return encounter.admittedAt ?? encounter.createdAt;
+  }
+
+  private marEffectiveTimeValidationMessage(code: MedicationAdminEffectiveTimeValidationCode): string {
+    switch (code) {
+      case "FUTURE_TIME":
+        return "L'heure d'administration ne peut pas être dans le futur.";
+      case "BEFORE_ENCOUNTER":
+        return "L'heure d'administration ne peut pas précéder le début de la consultation.";
+      case "REASON_REQUIRED":
+        return "Un motif est requis pour cet ajustement d'heure.";
+      case "REASON_TOO_SHORT_FOR_LARGE_BACKDATE":
+        return "Pour un décalage de plus de 24 h, le motif doit comporter au moins 15 caractères.";
+      case "NOT_ADMINISTERED":
+        return "Seules les administrations documentées (administré) peuvent être ajustées.";
+      case "INFUSION_DEFERRED":
+        return "L'ajustement d'heure pour les perfusions IV n'est pas disponible pour l'instant.";
+      case "INVALID_TIME":
+        return "Horodatage invalide.";
+      default:
+        return "Ajustement d'heure refusé.";
+    }
+  }
+
+  private async roleCodesForFacility(userId: string, facilityId: string): Promise<RoleCode[]> {
+    const urs = await this.prisma.userRole.findMany({
+      where: { facilityId, userId, isActive: true },
+      include: { role: { select: { code: true } } },
+    });
+    return urs.map((r) => r.role.code);
+  }
+
+  /**
+   * Post-hoc correction of effective clinical administration time for an existing MAR row.
+   * Never mutates `administeredAt`, `createdAt`, billing, or OrderEvent timestamps.
+   *
+   * Phase 15F-B visibility: MAR tab history only. ClinicalTimeline / chart export deferred (15F-D / 15G).
+   * Infusion terminal MAR rows deferred (would desync infusion STOP OrderEvent metadata).
+   */
+  async setEffectiveAdministeredAt(
+    encounterId: string,
+    facilityId: string,
+    medicationAdministrationId: string,
+    dto: MedicationAdministrationEffectiveTimeDto,
+    userId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+    assertMedicationAdminEffectiveTimeActor(roleCodes);
+
+    const row = await this.prisma.medicationAdministration.findFirst({
+      where: { id: medicationAdministrationId, encounterId, facilityId },
+      include: {
+        encounter: true,
+        orderItem: {
+          include: {
+            order: true,
+          },
+        },
+      },
+    });
+    if (!row) {
+      throw new NotFoundException("Administration introuvable.");
+    }
+
+    assertEncounterNotSigned(row.encounter);
+    if (row.encounter.status !== "OPEN") {
+      throw new BadRequestException("La consultation doit être ouverte pour ajuster une administration.");
+    }
+
+    const marActionResolved = resolveMedicationMarActionFromStorage({
+      marAction: row.marAction ?? null,
+      notes: row.notes,
+    });
+    if (marActionResolved !== "administered") {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage("NOT_ADMINISTERED"));
+    }
+    if (medicationAdministrationRowIsInfusionTerminal(row.notes)) {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INFUSION_DEFERRED"));
+    }
+
+    const effectiveAt = parseMedicationAdministrationEffectiveTimeIso(dto.effectiveAdministeredTime);
+    if (!effectiveAt) {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INVALID_TIME"));
+    }
+
+    const systemNow = new Date();
+    const originalAdministeredAt = row.administeredAt;
+    const systemDocumentedAt = row.createdAt;
+    const reasonTrim = dto.reason?.trim() || null;
+
+    const order = row.orderItem?.order;
+    const orderCreatedAt = order?.createdAt ?? row.encounter.createdAt;
+    const orderItemCreatedAt = row.orderItem?.createdAt ?? null;
+    const orderCancelledAt =
+      order?.status === OrderStatus.CANCELLED && order.cancelledAt ? order.cancelledAt : null;
+
+    let controlledMedication = false;
+    if (row.orderItem?.catalogItemType === "MEDICATION" && row.orderItem.catalogItemId) {
+      const cat = await this.prisma.catalogMedication.findUnique({
+        where: { id: row.orderItem.catalogItemId },
+        select: { isControlled: true },
+      });
+      controlledMedication = Boolean(cat?.isControlled);
+    }
+
+    const validation = validateMedicationAdministrationEffectiveTime({
+      effectiveAdministeredTime: effectiveAt,
+      now: systemNow,
+      encounterAnchorAt: this.encounterAnchorAt(row.encounter),
+      originalAdministeredAt,
+      systemDocumentedAt,
+      orderCreatedAt,
+      orderItemCreatedAt,
+      orderCancelledAt,
+      adjustmentVersion: row.effectiveAdministeredAtVersion,
+      reason: reasonTrim,
+      controlledMedication,
+      marActionAdministered: true,
+      infusionTerminalRow: medicationAdministrationRowIsInfusionTerminal(row.notes),
+    });
+    if (!validation.ok) {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage(validation.code));
+    }
+
+    const previousEffective = row.effectiveAdministeredAt;
+    const effectiveAtUtc = new Date(toMedicationAdministrationEffectiveTimeIsoUtc(effectiveAt));
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      return tx.medicationAdministration.update({
+        where: { id: medicationAdministrationId },
+        data: {
+          effectiveAdministeredAt: effectiveAtUtc,
+          effectiveAdministeredAtSetAt: systemNow,
+          effectiveAdministeredAtSetByUserId: userId,
+          effectiveAdministeredAtReason: reasonTrim,
+          effectiveAdministeredAtVersion: { increment: 1 },
+        },
+        include: {
+          administeredBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+    });
+
+    await this.audit.log(AuditAction.MEDICATION_ADMIN_TIME_ADJUSTED, "MEDICATION_ADMINISTRATION", {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      ...(row.orderItem?.orderId ? { orderId: row.orderItem.orderId } : {}),
+      entityId: medicationAdministrationId,
+      ip,
+      userAgent,
+      critical: true,
+      metadata: {
+        medicationAdministrationId,
+        orderId: row.orderItem?.orderId ?? null,
+        encounterId: row.encounterId,
+        previousEffectiveAdministeredAt: previousEffective
+          ? toMedicationAdministrationEffectiveTimeIsoUtc(previousEffective)
+          : null,
+        newEffectiveAdministeredAt: toMedicationAdministrationEffectiveTimeIsoUtc(effectiveAtUtc),
+        originalSystemTime: toMedicationAdministrationEffectiveTimeIsoUtc(systemDocumentedAt),
+        deltaMinutes: deltaMinutesBetween(effectiveAtUtc, originalAdministeredAt),
+        controlledMedication,
+        infusionEvent: false,
+        reasonProvided: Boolean(reasonTrim),
+        source: "MAR",
+      },
+    });
+
+    return {
+      ...updated,
+      marAction: resolveMedicationMarActionFromStorage({
+        marAction: updated.marAction ?? null,
+        notes: updated.notes,
+      }),
+    };
   }
 }
