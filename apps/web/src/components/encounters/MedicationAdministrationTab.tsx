@@ -46,6 +46,11 @@ import {
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
 import { MedicationAdministrationEffectiveTimeModal } from "@/components/encounters/MedicationAdministrationEffectiveTimeModal";
 import { MedicationAdministrationTimeCell } from "@/components/encounters/MedicationAdministrationTimeCell";
+import {
+  MedicationAdministrationAdjustedBadge,
+  MedicationAdministrationClockButton,
+} from "@/components/encounters/MedicationAdministrationClockButton";
+import { buildMedicationAdministrationRowClockAction } from "@/features/mar/buildMedicationAdministrationRowClockAction";
 
 type AdminRow = {
   id: string;
@@ -1077,6 +1082,41 @@ export function MedicationAdministrationTab({
                   marControls = row.isInfusionLifecycleMed ? infusionControlsEl : administerControlEl;
                 }
 
+                const marRowClock = buildMedicationAdministrationRowClockAction({
+                  administration: latest ?? null,
+                  encounterOpen,
+                  canAdjust: canAdjustAdminTime,
+                });
+
+                const marControlsWithClock = (
+                  <div style={infusionControlsStackStyle}>
+                    {marControls}
+                    {marRowClock.show ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <MedicationAdministrationClockButton
+                          enabled={marRowClock.enabled}
+                          title={t(marRowClock.tooltipKey)}
+                          onClick={() => {
+                            if (latest) setAdminTimeModalRow(latest);
+                          }}
+                        />
+                        {marRowClock.showAdjustedBadge ? (
+                          <MedicationAdministrationAdjustedBadge
+                            label={t("marTab.adminTime.adjustedBadgeLong")}
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+
                 const displayName =
                   latest?.medicationLabelSnapshot?.trim() || row.label;
 
@@ -1136,14 +1176,7 @@ export function MedicationAdministrationTab({
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 13, color: "#424242" }}>
                       {latest ? (
-                        <MedicationAdministrationTimeCell
-                          row={latest}
-                          encounterOpen={encounterOpen}
-                          canAdjust={canAdjustAdminTime}
-                          dateLocale={dateLocale}
-                          t={t}
-                          onAdjustClick={() => setAdminTimeModalRow(latest)}
-                        />
+                        <MedicationAdministrationTimeCell row={latest} dateLocale={dateLocale} t={t} />
                       ) : (
                         <div style={{ whiteSpace: "nowrap" }}>{t("common.dash")}</div>
                       )}
@@ -1191,7 +1224,7 @@ export function MedicationAdministrationTab({
                     <td style={MAR_TABLE_METRIC_CELL}>{marStopped}</td>
                     <td style={MAR_TABLE_METRIC_CELL}>{marPerformer}</td>
                     <td style={MAR_TABLE_METRIC_CELL}>{marElapsed}</td>
-                    <td style={MAR_TABLE_CONTROLS_CELL}>{marControls}</td>
+                    <td style={MAR_TABLE_CONTROLS_CELL}>{marControlsWithClock}</td>
                     <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
                       {titleCell}
                     </td>
@@ -1218,6 +1251,11 @@ export function MedicationAdministrationTab({
                 (oid
                   ? taskRows.find((tr) => tr.orderItemId === oid)?.label ?? t("common.dash")
                   : t("marTab.noLinkedOrder"));
+              const historyClock = buildMedicationAdministrationRowClockAction({
+                administration: r,
+                encounterOpen,
+                canAdjust: canAdjustAdminTime,
+              });
               return (
                 <li
                   key={r.id}
@@ -1230,17 +1268,25 @@ export function MedicationAdministrationTab({
                     fontSize: 14,
                   }}
                 >
-                  <div style={{ fontWeight: 600 }}>{label}</div>
-                  <div style={{ marginTop: 4 }}>
-                    <MedicationAdministrationTimeCell
-                      row={r}
-                      encounterOpen={encounterOpen}
-                      canAdjust={canAdjustAdminTime}
-                      dateLocale={dateLocale}
-                      t={t}
-                      showPerformer
-                      onAdjustClick={() => setAdminTimeModalRow(r)}
-                    />
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }}>{label}</div>
+                      <div style={{ marginTop: 4 }}>
+                        <MedicationAdministrationTimeCell
+                          row={r}
+                          dateLocale={dateLocale}
+                          t={t}
+                          showPerformer
+                        />
+                      </div>
+                    </div>
+                    {historyClock.show ? (
+                      <MedicationAdministrationClockButton
+                        enabled={historyClock.enabled}
+                        title={t(historyClock.tooltipKey)}
+                        onClick={() => setAdminTimeModalRow(r)}
+                      />
+                    ) : null}
                   </div>
                   {r.notes?.trim() ? (
                     <pre

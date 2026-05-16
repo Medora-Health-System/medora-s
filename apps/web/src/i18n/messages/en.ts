@@ -8278,7 +8278,8 @@ export default {
     safetyPreviewCumulative: "Total administered (cumulative documented qty): {qty}",
     safetyPreviewCumulativeEvents: "“Administered” events (cumulative): {count}",
     adminTime: {
-      adjustTooltip: "Adjust administration time",
+      adjustTooltip: "Adjust time",
+      adjustStopTooltip: "Adjust stop time",
       modalTitle: "Actual administration time",
       effectiveLabel: "Actual administration time",
       reasonLabel: "Reason for adjustment",

@@ -1,33 +1,24 @@
 "use client";
 
 import React from "react";
-import {
-  canShowMedicationAdministrationTimeClock,
-  resolveMedicationAdministrationDisplayTimes,
-  type MedicationAdministrationTimeFields,
-} from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
+import { resolveMedicationAdministrationDisplayTimes, type MedicationAdministrationTimeFields } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
+import { MedicationAdministrationAdjustedBadge } from "@/components/encounters/MedicationAdministrationClockButton";
 
+/** Date/time column — effective + documented times; clock lives in Controls column. */
 export function MedicationAdministrationTimeCell({
   row,
-  encounterOpen,
-  canAdjust,
   dateLocale,
   t,
-  onAdjustClick,
   showPerformer,
 }: {
   row: MedicationAdministrationTimeFields & {
     administeredBy?: { firstName: string; lastName: string };
   };
-  encounterOpen: boolean;
-  canAdjust: boolean;
   dateLocale: string;
   t: (key: string) => string;
-  onAdjustClick: () => void;
   showPerformer?: boolean;
 }) {
   const displayTimes = resolveMedicationAdministrationDisplayTimes(row);
-  const showClock = canShowMedicationAdministrationTimeClock(row, { encounterOpen, canAdjust });
   const timeLabel = displayTimes.effectiveIso
     ? new Date(displayTimes.effectiveIso).toLocaleString(dateLocale)
     : t("common.dash");
@@ -49,38 +40,8 @@ export function MedicationAdministrationTimeCell({
             ? ` · ${row.administeredBy.firstName} ${row.administeredBy.lastName}`
             : null}
         </span>
-        {showClock ? (
-          <button
-            type="button"
-            title={t("marTab.adminTime.adjustTooltip")}
-            aria-label={t("marTab.adminTime.adjustTooltip")}
-            onClick={onAdjustClick}
-            style={{
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              padding: "0 2px",
-              fontSize: 14,
-              lineHeight: 1,
-            }}
-          >
-            🧭
-          </button>
-        ) : null}
         {displayTimes.showAdjustedBadge ? (
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              padding: "2px 8px",
-              borderRadius: 9999,
-              background: "#fef3c7",
-              color: "#92400e",
-              border: "1px solid #fcd34d",
-            }}
-          >
-            {t("marTab.adminTime.adjustedBadgeLong")}
-          </span>
+          <MedicationAdministrationAdjustedBadge label={t("marTab.adminTime.adjustedBadgeLong")} />
         ) : null}
       </div>
       {displayTimes.documentedSystemIso ? (

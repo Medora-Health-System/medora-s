@@ -8292,7 +8292,8 @@ export default {
     safetyPreviewCumulative: "Total administré (cumul, quantités documentées) : {qty}",
     safetyPreviewCumulativeEvents: "Événements « administré » (cumul) : {count}",
     adminTime: {
-      adjustTooltip: "Ajuster l'heure d'administration",
+      adjustTooltip: "Ajuster l'heure",
+      adjustStopTooltip: "Ajuster l'heure d'arrêt",
       modalTitle: "Heure d'administration réelle",
       effectiveLabel: "Heure d'administration réelle",
       reasonLabel: "Motif de l'ajustement",
