@@ -1,5 +1,8 @@
 import type { MedicationInfusionCandidateInput } from "@medora/shared";
-import { isMedicationInfusionCandidate, resolveMedicationMarActionFromStorage } from "@medora/shared";
+import {
+  isMedicationInfusionCandidate,
+  medicationAdministrationCountsAsCompletedAdministration,
+} from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
 import {
   findMedicationInfusionTimelineFromOrderEvents,
@@ -38,6 +41,7 @@ type AdminLite = {
   administeredAt: string;
   marAction?: string | null;
   notes: string | null;
+  infusionPhase?: string | null;
 };
 
 function adminsByOrderItemIdDesc(admins: unknown[]): Map<string, AdminLite[]> {
@@ -55,6 +59,7 @@ function adminsByOrderItemIdDesc(admins: unknown[]): Map<string, AdminLite[]> {
       administeredAt,
       marAction: typeof r.marAction === "string" ? r.marAction : null,
       notes: typeof r.notes === "string" ? r.notes : null,
+      infusionPhase: typeof r.infusionPhase === "string" ? r.infusionPhase : null,
     };
     const list = m.get(orderItemId) ?? [];
     list.push(row);
@@ -148,11 +153,13 @@ export function computeObservationMarEncounterSummary(
         t
       );
       const latest = adminMap.get(itemId)?.[0];
-      const marSaysAdministered =
-        resolveMedicationMarActionFromStorage({
-          marAction: latest?.marAction ?? null,
-          notes: latest?.notes ?? null,
-        }) === "administered";
+      const marSaysAdministered = latest
+        ? medicationAdministrationCountsAsCompletedAdministration({
+            marAction: latest.marAction ?? null,
+            notes: latest.notes,
+            infusionPhase: latest.infusionPhase,
+          })
+        : false;
       const intendedRaw = item.intendedAdministrationAt;
       const intendedAt = typeof intendedRaw === "string" ? intendedRaw : null;
       if (medicationMarIntendedTimingUrgency(intendedAt, nowMs, marSaysAdministered) === "overdue") {

@@ -3,7 +3,8 @@ import {
   medicationAdminEffectiveTimeRequiresDetailedReason,
   medicationAdminEffectiveTimeRequiresReason,
   medicationAdminEffectiveTimesDiffer,
-  medicationAdministrationRowIsInfusionTerminal,
+  medicationAdministrationRowIsInfusionStart,
+  medicationAdministrationRowIsInfusionStop,
   MEDICATION_ADMIN_LARGE_BACKDATE_MIN_REASON_LENGTH,
   parseMedicationAdministrationEffectiveTimeIso,
   resolveMedicationMarActionFromStorage,
@@ -18,7 +19,15 @@ export type MedicationAdministrationTimeFields = {
   effectiveAdministeredAtVersion?: number | null;
   marAction?: string | null;
   notes?: string | null;
+  infusionPhase?: string | null;
+  infusionSessionKey?: string | null;
   pendingSync?: boolean;
+};
+
+export type PickMedicationAdministrationClockTargetOpts = {
+  infusionActive?: boolean;
+  /** Active infusion session from OrderEvent metadata — prevents cross-session clock binding. */
+  activeInfusionSessionKey?: string | null;
 };
 
 export function canAdjustMedicationAdministrationTime(roles: string[]): boolean {
@@ -53,8 +62,68 @@ export function canShowMedicationAdministrationTimeClock(
     notes: row.notes ?? null,
   });
   if (marAction !== "administered") return false;
-  if (medicationAdministrationRowIsInfusionTerminal(row.notes)) return false;
   return true;
+}
+
+function administeredMarRows(
+  administrations: MedicationAdministrationTimeFields[]
+): MedicationAdministrationTimeFields[] {
+  return administrations.filter((row) => {
+    if (!row.id?.trim() || row.pendingSync) return false;
+    if (!toDate(row.administeredAt)) return false;
+    const marAction = resolveMedicationMarActionFromStorage({
+      marAction: row.marAction ?? null,
+      notes: row.notes ?? null,
+    });
+    return marAction === "administered";
+  });
+}
+
+function filterBySessionKey(
+  rows: MedicationAdministrationTimeFields[],
+  sessionKey: string | null | undefined
+): MedicationAdministrationTimeFields[] {
+  const sk = sessionKey?.trim();
+  if (!sk) return rows;
+  const matched = rows.filter((row) => row.infusionSessionKey?.trim() === sk);
+  return matched.length > 0 ? matched : rows;
+}
+
+/** MAR row bound to the 🧭 for a task line (infusion START while active, STOP when completed). */
+export function pickMedicationAdministrationClockTarget(
+  administrations: MedicationAdministrationTimeFields[],
+  opts?: PickMedicationAdministrationClockTargetOpts
+): MedicationAdministrationTimeFields | null {
+  const eligible = administeredMarRows(administrations);
+  if (!eligible.length) return null;
+
+  const byAdministeredDesc = (rows: MedicationAdministrationTimeFields[]) =>
+    [...rows].sort(
+      (a, b) =>
+        new Date(String(b.administeredAt)).getTime() - new Date(String(a.administeredAt)).getTime()
+    );
+
+  if (opts?.infusionActive) {
+    let starts = eligible.filter((row) =>
+      medicationAdministrationRowIsInfusionStart(row.notes, row.infusionPhase)
+    );
+    starts = filterBySessionKey(starts, opts.activeInfusionSessionKey);
+    if (starts.length) return byAdministeredDesc(starts)[0] ?? null;
+    return null;
+  }
+
+  let stops = eligible.filter((row) =>
+    medicationAdministrationRowIsInfusionStop(row.notes, row.infusionPhase)
+  );
+  stops = filterBySessionKey(stops, opts?.activeInfusionSessionKey);
+  if (stops.length) return byAdministeredDesc(stops)[0] ?? null;
+
+  const standard = eligible.filter(
+    (row) =>
+      !medicationAdministrationRowIsInfusionStart(row.notes, row.infusionPhase) &&
+      !medicationAdministrationRowIsInfusionStop(row.notes, row.infusionPhase)
+  );
+  return byAdministeredDesc(standard.length ? standard : eligible)[0] ?? null;
 }
 
 export function resolveMedicationAdministrationDisplayTimes(row: MedicationAdministrationTimeFields): {

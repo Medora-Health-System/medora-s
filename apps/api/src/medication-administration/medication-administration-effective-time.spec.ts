@@ -149,18 +149,46 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
     ).rejects.toMatchObject({ message: expect.stringContaining("introuvable") });
   });
 
-  it("blocks infusion terminal MAR rows", async () => {
-    const row = makeAdminRow({ notes: "Perfusion IV terminée — durée : 10 min" });
+  it("allows infusion START MAR effective time without mutating administeredAt", async () => {
+    const row = makeAdminRow({
+      notes: "Perfusion IV — début",
+      infusionPhase: "INFUSION_START",
+    });
     const { service, update } = makeService(row);
-    await expect(
-      service.setEffectiveAdministeredAt(
-        "enc-1",
-        "fac-1",
-        "mar-1",
-        { effectiveAdministeredTime: "2026-05-16T13:00:00.000Z", reason: "not applicable" },
-        "user-rn"
-      )
-    ).rejects.toMatchObject({ message: expect.stringContaining("perfusion") });
-    expect(update).not.toHaveBeenCalled();
+    await service.setEffectiveAdministeredAt(
+      "enc-1",
+      "fac-1",
+      "mar-1",
+      {
+        effectiveAdministeredTime: "2026-05-16T13:00:00.000Z",
+        reason: "Started at bedside before charting",
+      },
+      "user-rn"
+    );
+    expect(update.mock.calls[0][0].data.administeredAt).toBeUndefined();
+  });
+
+  it("allows infusion stop terminal MAR effective time without mutating administeredAt", async () => {
+    const row = makeAdminRow({ notes: "Perfusion IV terminée — durée : 10 min" });
+    const { service, update, auditLog: log } = makeService(row);
+    await service.setEffectiveAdministeredAt(
+      "enc-1",
+      "fac-1",
+      "mar-1",
+      {
+        effectiveAdministeredTime: "2026-05-16T13:00:00.000Z",
+        reason: "Stop documented at bedside before charting",
+      },
+      "user-rn"
+    );
+    expect(update).toHaveBeenCalled();
+    expect(update.mock.calls[0][0].data.administeredAt).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        metadata: expect.objectContaining({ infusionEvent: true }),
+      })
+    );
   });
 });

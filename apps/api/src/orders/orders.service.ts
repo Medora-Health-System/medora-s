@@ -2375,7 +2375,8 @@ export class OrdersService {
   }
 
   /**
-   * IVPB / infusion — Phase 1: OrderItem → IN_PROGRESS, infusion OrderEvent + audit only (no MAR, no billing).
+   * IVPB / infusion — OrderItem → IN_PROGRESS, infusion START OrderEvent, and in-progress MAR (Phase 15F-B.1).
+   * Billing and line completion occur only on STOP.
    */
   async startMedicationInfusion(
     facilityId: string,
@@ -2474,6 +2475,31 @@ export class OrdersService {
       });
     });
 
+    const startMar = await this.medicationAdministration.createInfusionStartMar(
+      orderItem.order.encounterId,
+      facilityId,
+      userId,
+      {
+        orderItemId,
+        infusionSessionKey,
+        startedAt: infusionStartedAt,
+        route: routeResolved,
+      }
+    );
+
+    const startMetaWithMar: Record<string, unknown> = {
+      ...startMetaRaw,
+      medicationAdministrationId: startMar.id,
+    };
+    const startMetaLinked = stripUndefinedDeep(startMetaWithMar) as Prisma.InputJsonValue;
+
+    await this.patchInfusionOrderEventMedicationAdministrationId({
+      orderId: orderItem.orderId,
+      infusionSessionKey,
+      infusionAction: "START",
+      medicationAdministrationId: startMar.id,
+    });
+
     await this.audit.log(AuditAction.ORDER_START, "ORDER_ITEM", {
       userId,
       facilityId,
@@ -2484,7 +2510,7 @@ export class OrdersService {
       ip,
       userAgent,
       critical: true,
-      metadata: startMeta,
+      metadata: startMetaLinked,
     });
 
     const refreshed = await this.prisma.orderItem.findFirst({
@@ -2495,6 +2521,44 @@ export class OrdersService {
       throw new NotFoundException("Order item not found");
     }
     return refreshed;
+  }
+
+  /** Attach MAR id to infusion OrderEvent metadata after START MAR row is created (idempotent). */
+  private async patchInfusionOrderEventMedicationAdministrationId(input: {
+    orderId: string;
+    infusionSessionKey: string;
+    infusionAction: "START" | "STOP";
+    medicationAdministrationId: string;
+  }) {
+    const events = await this.prisma.orderEvent.findMany({
+      where: {
+        orderId: input.orderId,
+        eventType:
+          input.infusionAction === "START" ? OrderEventType.STARTED : OrderEventType.COMPLETED,
+      },
+      orderBy: { performedAt: "desc" },
+      take: 20,
+      select: { id: true, metadata: true },
+    });
+    const match = events.find((ev) => {
+      const m = ev.metadata as Record<string, unknown> | null;
+      return (
+        m?.infusionScope === "MEDICATION_INFUSION" &&
+        m?.infusionAction === input.infusionAction &&
+        m?.infusionSessionKey === input.infusionSessionKey
+      );
+    });
+    if (!match) return;
+    const prior = (match.metadata as Record<string, unknown> | null) ?? {};
+    if (prior.medicationAdministrationId === input.medicationAdministrationId) return;
+    const merged = stripUndefinedDeep({
+      ...prior,
+      medicationAdministrationId: input.medicationAdministrationId,
+    }) as Prisma.InputJsonValue;
+    await this.prisma.orderEvent.update({
+      where: { id: match.id },
+      data: { metadata: merged },
+    });
   }
 
   /**
@@ -2717,6 +2781,11 @@ export class OrdersService {
       {
         allowAdministeredForInfusionTerminal: true,
         skipAutoMedicationCatalogBilling: true,
+        skipDuplicateAdministeredWindowCheck: true,
+        infusionMar: {
+          infusionSessionKey: active.sessionKey,
+          infusionPhase: "INFUSION_STOP",
+        },
         infusionBillingEvidence: {
           infusionSessionKey: active.sessionKey,
           infusionStartedAtIso: startedIso,

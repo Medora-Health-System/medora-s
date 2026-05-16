@@ -48,7 +48,6 @@ describe("medicationAdministrationEffectiveTime", () => {
       reason: "charted late",
       controlledMedication: false,
       marActionAdministered: true,
-      infusionTerminalRow: false,
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("FUTURE_TIME");
@@ -69,7 +68,6 @@ describe("medicationAdministrationEffectiveTime", () => {
       reason: "too short",
       controlledMedication: false,
       marActionAdministered: true,
-      infusionTerminalRow: false,
     });
     expect(short.ok).toBe(false);
     if (!short.ok) expect(short.code).toBe("REASON_TOO_SHORT_FOR_LARGE_BACKDATE");
@@ -87,8 +85,25 @@ describe("medicationAdministrationEffectiveTime", () => {
       reason: "Patient received medication yesterday evening before charting was available",
       controlledMedication: false,
       marActionAdministered: true,
-      infusionTerminalRow: false,
     });
     expect(ok.ok).toBe(true);
+  });
+
+  it("allows infusion stop terminal row adjustment (effective time only)", () => {
+    const result = validateMedicationAdministrationEffectiveTime({
+      effectiveAdministeredTime: new Date("2026-05-16T13:30:00Z"),
+      now,
+      encounterAnchorAt: encounterAnchor,
+      originalAdministeredAt: originalAdmin,
+      systemDocumentedAt: systemDoc,
+      orderCreatedAt: orderCreated,
+      orderItemCreatedAt: orderItemCreated,
+      orderCancelledAt: null,
+      adjustmentVersion: 0,
+      reason: "Stop time documented after bedside care",
+      controlledMedication: false,
+      marActionAdministered: true,
+    });
+    expect(result.ok).toBe(true);
   });
 });

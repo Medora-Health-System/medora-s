@@ -42,9 +42,57 @@ export function MedicationAdministrationClockButton({
   );
 }
 
-export function MedicationAdministrationAdjustedBadge({ label }: { label: string }) {
+export function MedicationAdministrationDocumentButton({
+  title,
+  onClick,
+  disabled,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const isDisabled = disabled === true;
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={isDisabled}
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 36,
+        height: 36,
+        minHeight: 36,
+        padding: 0,
+        borderRadius: 8,
+        border: "1px solid #cbd5e1",
+        background: isDisabled ? "#f1f5f9" : "#fff",
+        color: isDisabled ? "#94a3b8" : "#334155",
+        cursor: isDisabled ? "not-allowed" : "pointer",
+        fontSize: 15,
+        lineHeight: 1,
+        flexShrink: 0,
+        boxSizing: "border-box",
+      }}
+    >
+      📋
+    </button>
+  );
+}
+
+export function MedicationAdministrationAdjustedBadge({
+  label,
+  title,
+}: {
+  label: string;
+  title?: string;
+}) {
   return (
     <span
+      title={title}
       style={{
         display: "inline-block",
         fontSize: 11,

@@ -3,6 +3,7 @@
 import React from "react";
 import { resolveMedicationAdministrationDisplayTimes, type MedicationAdministrationTimeFields } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
 import { MedicationAdministrationAdjustedBadge } from "@/components/encounters/MedicationAdministrationClockButton";
+import { MedicationAdministrationInfusionPhaseChip } from "@/components/encounters/MedicationAdministrationInfusionPhaseChip";
 
 /** Date/time column — effective + documented times; clock lives in Controls column. */
 export function MedicationAdministrationTimeCell({
@@ -13,6 +14,7 @@ export function MedicationAdministrationTimeCell({
 }: {
   row: MedicationAdministrationTimeFields & {
     administeredBy?: { firstName: string; lastName: string };
+    infusionPhase?: string | null;
   };
   dateLocale: string;
   t: (key: string) => string;
@@ -40,8 +42,12 @@ export function MedicationAdministrationTimeCell({
             ? ` · ${row.administeredBy.firstName} ${row.administeredBy.lastName}`
             : null}
         </span>
+        <MedicationAdministrationInfusionPhaseChip row={row} t={t} />
         {displayTimes.showAdjustedBadge ? (
-          <MedicationAdministrationAdjustedBadge label={t("marTab.adminTime.adjustedBadgeLong")} />
+          <MedicationAdministrationAdjustedBadge
+            label={t("marTab.adminTime.adjustedBadge")}
+            title={t("marTab.adminTime.adjustedBadgeTooltip")}
+          />
         ) : null}
       </div>
       {displayTimes.documentedSystemIso ? (

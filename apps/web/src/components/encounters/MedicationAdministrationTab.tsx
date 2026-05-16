@@ -21,6 +21,7 @@ import {
   computeAdvancedMedicationSafetyForSingleLine,
   mergeAdvancedMedicationLineWithDraft,
   isMedicationInfusionCandidate,
+  medicationAdministrationCountsAsCompletedAdministration,
   type MedicationInfusionCandidateInput,
   type AdvancedMedicationSafetyLine,
   type MedicationSafetyCatalogInput,
@@ -46,11 +47,17 @@ import {
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
 import { MedicationAdministrationEffectiveTimeModal } from "@/components/encounters/MedicationAdministrationEffectiveTimeModal";
 import { MedicationAdministrationTimeCell } from "@/components/encounters/MedicationAdministrationTimeCell";
+import { MedicationAdministrationInfusionPhaseChip } from "@/components/encounters/MedicationAdministrationInfusionPhaseChip";
 import {
   MedicationAdministrationAdjustedBadge,
   MedicationAdministrationClockButton,
+  MedicationAdministrationDocumentButton,
 } from "@/components/encounters/MedicationAdministrationClockButton";
-import { buildMedicationAdministrationRowClockAction } from "@/features/mar/buildMedicationAdministrationRowClockAction";
+import {
+  buildMedicationAdministrationRowClockAction,
+  buildMedicationAdministrationRowDocumentAction,
+  buildMedicationAdministrationTaskRowClockAction,
+} from "@/features/mar/buildMedicationAdministrationRowClockAction";
 
 type AdminRow = {
   id: string;
@@ -63,6 +70,8 @@ type AdminRow = {
   notes: string | null;
   /** From API (`findByEncounter`) or offline queue payload when present. */
   marAction?: string | null;
+  infusionPhase?: string | null;
+  infusionSessionKey?: string | null;
   administeredBy: { id: string; firstName: string; lastName: string };
   pendingSync?: boolean;
   administeredQuantity?: number | null;
@@ -799,7 +808,13 @@ export function MedicationAdministrationTab({
                 const latest = list[0];
                 const latestTime = latest ? new Date(latest.administeredAt).getTime() : 0;
                 const marActionResolved = latestMarClinicalActionForRow(latest);
-                const marSaysAdministered = marActionResolved === "administered";
+                const marSaysAdministered = latest
+                  ? medicationAdministrationCountsAsCompletedAdministration({
+                      marAction: latest.marAction ?? marActionResolved,
+                      notes: latest.notes,
+                      infusionPhase: latest.infusionPhase,
+                    })
+                  : false;
                 const marRowLocked = Boolean(latest?.pendingSync || marSaysAdministered);
                 const recentWindow = latestTime > 0 && nowMs - latestTime < RECENT_MS;
 
@@ -1082,16 +1097,27 @@ export function MedicationAdministrationTab({
                   marControls = row.isInfusionLifecycleMed ? infusionControlsEl : administerControlEl;
                 }
 
-                const marRowClock = buildMedicationAdministrationRowClockAction({
-                  administration: latest ?? null,
+                const adminListForRow = adminsByOrderItemId.get(row.orderItemId) ?? [];
+                const marRowClock = buildMedicationAdministrationTaskRowClockAction({
+                  administrations: adminListForRow,
                   encounterOpen,
                   canAdjust: canAdjustAdminTime,
+                  infusionActive: Boolean(row.isInfusionLifecycleMed && activeMarInfusion),
+                  activeInfusionSessionKey: activeMarInfusion?.infusionSessionKey ?? null,
                 });
+                const resolvedClockAdmin =
+                  marRowClock.administrationId != null
+                    ? adminListForRow.find((a) => a.id === marRowClock.administrationId) ?? null
+                    : null;
+                const showDocAction = buildMedicationAdministrationRowDocumentAction({
+                  encounterOpen,
+                  canAdjust: canAdjustAdminTime,
+                }).show;
 
                 const marControlsWithClock = (
                   <div style={infusionControlsStackStyle}>
                     {marControls}
-                    {marRowClock.show ? (
+                    {showDocAction || marRowClock.show ? (
                       <div
                         style={{
                           display: "flex",
@@ -1100,16 +1126,34 @@ export function MedicationAdministrationTab({
                           gap: 8,
                         }}
                       >
-                        <MedicationAdministrationClockButton
-                          enabled={marRowClock.enabled}
-                          title={t(marRowClock.tooltipKey)}
-                          onClick={() => {
-                            if (latest) setAdminTimeModalRow(latest);
-                          }}
-                        />
+                        {showDocAction ? (
+                          <MedicationAdministrationDocumentButton
+                            title={t("marTab.adminTime.documentNoteTooltip")}
+                            onClick={() => {
+                              if (row.isInfusionLifecycleMed && activeMarInfusion) {
+                                openModal(row, { hideAdministeredAction: true });
+                              } else if (marSaysAdministered) {
+                                openModal(row, { hideAdministeredAction: true });
+                              } else {
+                                openModal(row);
+                              }
+                            }}
+                            disabled={!isOpen || submitting}
+                          />
+                        ) : null}
+                        {marRowClock.show ? (
+                          <MedicationAdministrationClockButton
+                            enabled={marRowClock.enabled}
+                            title={t(marRowClock.tooltipKey)}
+                            onClick={() => {
+                              if (resolvedClockAdmin) setAdminTimeModalRow(resolvedClockAdmin);
+                            }}
+                          />
+                        ) : null}
                         {marRowClock.showAdjustedBadge ? (
                           <MedicationAdministrationAdjustedBadge
-                            label={t("marTab.adminTime.adjustedBadgeLong")}
+                            label={t("marTab.adminTime.adjustedBadge")}
+                            title={t("marTab.adminTime.adjustedBadgeTooltip")}
                           />
                         ) : null}
                       </div>
@@ -1270,7 +1314,18 @@ export function MedicationAdministrationTab({
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600 }}>{label}</div>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 8,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span>{label}</span>
+                        <MedicationAdministrationInfusionPhaseChip row={r} t={t} />
+                      </div>
                       <div style={{ marginTop: 4 }}>
                         <MedicationAdministrationTimeCell
                           row={r}

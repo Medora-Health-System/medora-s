@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canAdjustMedicationAdministrationTime,
   canShowMedicationAdministrationTimeClock,
+  pickMedicationAdministrationClockTarget,
   resolveMedicationAdministrationDisplayTimes,
 } from "./medicationAdministrationEffectiveTimeDisplay";
 
@@ -64,7 +65,7 @@ describe("medicationAdministrationEffectiveTimeDisplay", () => {
     ).toBe(false);
   });
 
-  it("hides clock for infusion terminal notes", () => {
+  it("allows clock for infusion stop terminal notes (effective time adjustment)", () => {
     expect(
       canShowMedicationAdministrationTimeClock(
         {
@@ -73,6 +74,25 @@ describe("medicationAdministrationEffectiveTimeDisplay", () => {
         },
         openAdjust
       )
+    ).toBe(true);
+  });
+
+  it("shows adjusted badge on START row when effective differs", () => {
+    const result = resolveMedicationAdministrationDisplayTimes({
+      ...baseRow,
+      infusionPhase: "INFUSION_START",
+      effectiveAdministeredAt: "2026-05-16T13:00:00.000Z",
+      effectiveAdministeredAtVersion: 1,
+    });
+    expect(result.showAdjustedBadge).toBe(true);
+  });
+
+  it("hides adjusted badge when effective equals original", () => {
+    expect(
+      resolveMedicationAdministrationDisplayTimes({
+        ...baseRow,
+        effectiveAdministeredAt: "2026-05-16T14:00:00.000Z",
+      }).showAdjustedBadge
     ).toBe(false);
   });
 
@@ -81,5 +101,64 @@ describe("medicationAdministrationEffectiveTimeDisplay", () => {
     expect(
       canShowMedicationAdministrationTimeClock({ ...baseRow, administeredAt: "" }, openAdjust)
     ).toBe(false);
+  });
+});
+
+describe("pickMedicationAdministrationClockTarget", () => {
+  const startRow = {
+    id: "mar-start",
+    administeredAt: "2026-05-16T14:00:00.000Z",
+    marAction: "administered" as const,
+    infusionPhase: "INFUSION_START",
+    infusionSessionKey: "sess-a",
+  };
+  const stopRow = {
+    id: "mar-stop",
+    administeredAt: "2026-05-16T16:00:00.000Z",
+    marAction: "administered" as const,
+    infusionPhase: "INFUSION_STOP",
+    infusionSessionKey: "sess-a",
+    notes: "Perfusion IV terminée — durée : 120 min",
+  };
+  const otherStart = {
+    ...startRow,
+    id: "mar-start-b",
+    infusionSessionKey: "sess-b",
+    administeredAt: "2026-05-16T12:00:00.000Z",
+  };
+
+  it("targets START when infusion active even if STOP exists", () => {
+    const target = pickMedicationAdministrationClockTarget([stopRow, startRow], {
+      infusionActive: true,
+      activeInfusionSessionKey: "sess-a",
+    });
+    expect(target?.id).toBe("mar-start");
+  });
+
+  it("never targets STOP when infusion active", () => {
+    const target = pickMedicationAdministrationClockTarget([stopRow], { infusionActive: true });
+    expect(target).toBeNull();
+  });
+
+  it("targets STOP when infusion not active", () => {
+    const target = pickMedicationAdministrationClockTarget([startRow, stopRow], {
+      infusionActive: false,
+      activeInfusionSessionKey: "sess-a",
+    });
+    expect(target?.id).toBe("mar-stop");
+  });
+
+  it("does not cross infusion sessions when session key provided", () => {
+    const target = pickMedicationAdministrationClockTarget([otherStart, startRow], {
+      infusionActive: true,
+      activeInfusionSessionKey: "sess-a",
+    });
+    expect(target?.id).toBe("mar-start");
+  });
+
+  it("targets standard administered row for non-infusion meds", () => {
+    const standard = { ...startRow, id: "mar-std", infusionPhase: null, infusionSessionKey: null };
+    const target = pickMedicationAdministrationClockTarget([standard]);
+    expect(target?.id).toBe("mar-std");
   });
 });

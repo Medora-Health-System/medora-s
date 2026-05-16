@@ -8293,7 +8293,9 @@ export default {
     safetyPreviewCumulativeEvents: "Événements « administré » (cumul) : {count}",
     adminTime: {
       adjustTooltip: "Ajuster l'heure",
-      adjustStopTooltip: "Ajuster l'heure d'arrêt",
+      adjustStartTooltip: "Ajuster l'heure de début de perfusion",
+      adjustStopTooltip: "Ajuster l'heure d'arrêt de perfusion",
+      documentNoteTooltip: "Documenter une note médicament",
       modalTitle: "Heure d'administration réelle",
       effectiveLabel: "Heure d'administration réelle",
       reasonLabel: "Motif de l'ajustement",
@@ -8303,6 +8305,10 @@ export default {
       documentedAt: "Documenté le {when}",
       adjustedBadge: "Ajusté",
       adjustedBadgeLong: "Heure clinique corrigée",
+      adjustedBadgeTooltip:
+        "Heure clinique corrigée — l'heure documentée originale est conservée",
+      infusionPhaseChipStart: "Perfusion démarrée",
+      infusionPhaseChipStop: "Perfusion arrêtée",
       controlledWarning:
         "Médicament soumis à contrôle : un motif est toujours requis pour tout ajustement d'heure.",
       largeBackdateReasonHelp:

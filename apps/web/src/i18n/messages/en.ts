@@ -8279,7 +8279,9 @@ export default {
     safetyPreviewCumulativeEvents: "“Administered” events (cumulative): {count}",
     adminTime: {
       adjustTooltip: "Adjust time",
-      adjustStopTooltip: "Adjust stop time",
+      adjustStartTooltip: "Adjust infusion start time",
+      adjustStopTooltip: "Adjust infusion stop time",
+      documentNoteTooltip: "Document medication note",
       modalTitle: "Actual administration time",
       effectiveLabel: "Actual administration time",
       reasonLabel: "Reason for adjustment",
@@ -8289,6 +8291,10 @@ export default {
       documentedAt: "Documented at {when}",
       adjustedBadge: "Adjusted",
       adjustedBadgeLong: "Clinical time corrected",
+      adjustedBadgeTooltip:
+        "Clinical time corrected — original documented time preserved",
+      infusionPhaseChipStart: "Infusion started",
+      infusionPhaseChipStop: "Infusion stopped",
       controlledWarning:
         "Controlled medication: a reason is always required for any time adjustment.",
       largeBackdateReasonHelp:

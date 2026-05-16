@@ -45,7 +45,28 @@ describe("OrdersService.startMedicationInfusion", () => {
   it("completes start for Vancomycin IVPB when line is PLACED (no 500 from status guard)", async () => {
     const row = makeVancomycinIvpbOrderItem(OrderStatus.PLACED);
     const orderItemUpdate = jest.fn().mockResolvedValue({});
-    const orderEventCreate = jest.fn().mockResolvedValue({});
+    let capturedSessionKey = "";
+    let orderEventFindManyCall = 0;
+    const orderEventCreate = jest.fn().mockImplementation(async (args: { data: { metadata: Record<string, unknown> } }) => {
+      capturedSessionKey = String(args.data.metadata.infusionSessionKey ?? "");
+    });
+    const orderEventUpdate = jest.fn().mockResolvedValue({});
+    const orderEventFindMany = jest.fn().mockImplementation(async () => {
+      orderEventFindManyCall += 1;
+      if (orderEventFindManyCall === 1) {
+        return [];
+      }
+      return [
+        {
+          id: "oe-start-1",
+          metadata: {
+            infusionScope: "MEDICATION_INFUSION",
+            infusionAction: "START",
+            infusionSessionKey: capturedSessionKey,
+          },
+        },
+      ];
+    });
     const tx = {
       orderItem: { update: orderItemUpdate },
       orderEvent: { create: orderEventCreate },
@@ -73,7 +94,8 @@ describe("OrdersService.startMedicationInfusion", () => {
         }),
       },
       orderEvent: {
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany: orderEventFindMany,
+        update: orderEventUpdate,
       },
       user: {
         findUnique: jest.fn().mockResolvedValue({ firstName: "Marie", lastName: "Infirmier" }),
@@ -86,7 +108,8 @@ describe("OrdersService.startMedicationInfusion", () => {
       }),
     };
     const audit = { log: jest.fn().mockResolvedValue(undefined) };
-    const medicationAdministration = { create: jest.fn() };
+    const createInfusionStartMar = jest.fn().mockResolvedValue({ id: "mar-infusion-start-1" });
+    const medicationAdministration = { createInfusionStartMar };
     const service = new OrdersService(prisma as any, audit as any, medicationAdministration as any);
 
     await service.startMedicationInfusion("fac-1", "item-vanco-1", [RoleCode.RN], "user-1");
@@ -114,6 +137,17 @@ describe("OrdersService.startMedicationInfusion", () => {
       performedByRoleSnapshot: expect.any(String),
       actionRecordedAt: expect.any(String),
     });
-    expect(medicationAdministration.create).not.toHaveBeenCalled();
+    expect(createInfusionStartMar).toHaveBeenCalledWith(
+      "enc-1",
+      "fac-1",
+      "user-1",
+      expect.objectContaining({
+        orderItemId: "item-vanco-1",
+        startedAt: expect.any(Date),
+        route: expect.any(String),
+        infusionSessionKey: expect.any(String),
+      })
+    );
+    expect(orderEventUpdate).toHaveBeenCalled();
   });
 });

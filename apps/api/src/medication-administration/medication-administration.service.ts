@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   AuditAction,
+  MedicationAdministrationInfusionPhase,
   MedicationMarAction,
   OrderEventOrderType,
   OrderEventType,
@@ -23,6 +24,9 @@ import {
   deriveMarClinicalActionFromNotes,
   getEncounterAllergyDocumentationSummary,
   isInvalidTechnicalOrderDisplayLabel,
+  INFUSION_START_MAR_NOTE_PREFIX,
+  medicationAdministrationRowIsInfusionStart,
+  medicationAdministrationRowIsInfusionStop,
   medicationAdministrationRowIsInfusionTerminal,
   normalizeNdc,
   parseMedicationAdministrationEffectiveTimeIso,
@@ -68,11 +72,24 @@ function utcDayBoundsForMar(at: Date): { start: Date; end: Date } {
 const MAR_AUDIT_DOSE_MAX_LEN = 80;
 const MAR_AUDIT_ROUTE_MAX_LEN = 64;
 
-/** Internal callers only (e.g. infusion STOP terminal MAR). HTTP API must not set this. */
+/** Internal callers only (infusion START/STOP). HTTP API must not set these. */
 export type MedicationAdministrationCreateServiceOptions = {
   allowAdministeredForInfusionTerminal?: boolean;
+  /** Phase 15F-B.1: real MAR row at infusion START (no line completion, no billing). */
+  allowAdministeredForInfusionStart?: boolean;
   /** When true, skip `tryAutoMedicationAdministrationBilling` (catalog HCPCS / route CPT companion) — infusion time coding is manual. */
   skipAutoMedicationCatalogBilling?: boolean;
+  /** When true, do not close the medication order line on administered (infusion START). */
+  skipMedicationLineCompletion?: boolean;
+  /** When true, skip duplicate-administration window (infusion START then STOP within minutes). */
+  skipDuplicateAdministeredWindowCheck?: boolean;
+  /** When true, skip billing capture candidate append (infusion START). */
+  skipBillingCaptureCandidate?: boolean;
+  /** Links MAR row to OrderEvent `infusionSessionKey`. */
+  infusionMar?: {
+    infusionSessionKey: string;
+    infusionPhase: "INFUSION_START" | "INFUSION_STOP";
+  };
   /** Structured billing evidence for infusion STOP terminal MAR (not persisted on MAR row). */
   infusionBillingEvidence?: {
     infusionSessionKey: string;
@@ -388,7 +405,8 @@ export class MedicationAdministrationService {
       orderItemId &&
       linkedMedicationLine &&
       marActionResolved === "administered" &&
-      !serviceOptions?.allowAdministeredForInfusionTerminal
+      !serviceOptions?.allowAdministeredForInfusionTerminal &&
+      !serviceOptions?.allowAdministeredForInfusionStart
     ) {
       const { resolvedRoute, catalog } = await loadMedicationInfusionClassificationContext(
         this.prisma,
@@ -411,14 +429,19 @@ export class MedicationAdministrationService {
       marActionResolved === "administered" &&
       allergySummaryForGate &&
       data.safetyAcknowledgedMedicationAllergies !== true &&
-      !serviceOptions?.allowAdministeredForInfusionTerminal
+      !serviceOptions?.allowAdministeredForInfusionTerminal &&
+      !serviceOptions?.allowAdministeredForInfusionStart
     ) {
       throw new BadRequestException(
         "Des allergies ou intolérances sont documentées pour cette visite. Confirmez avant d’enregistrer l’administration."
       );
     }
 
-    if (orderItemId && marActionResolved === "administered") {
+    if (
+      orderItemId &&
+      marActionResolved === "administered" &&
+      !serviceOptions?.skipDuplicateAdministeredWindowCheck
+    ) {
       const winStart = new Date(Date.now() - MAR_REPEAT_ADMINISTER_WINDOW_MS);
       const dup = await this.prisma.medicationAdministration.findFirst({
         where: {
@@ -443,7 +466,8 @@ export class MedicationAdministrationService {
       marActionResolved === "administered" &&
       linkedMedicationLine &&
       linkedMedicationLine.quantity != null &&
-      linkedMedicationLine.quantity >= 1
+      linkedMedicationLine.quantity >= 1 &&
+      !serviceOptions?.skipMedicationLineCompletion
     ) {
       const prescribed = Number(linkedMedicationLine.quantity);
       const increment =
@@ -462,6 +486,7 @@ export class MedicationAdministrationService {
             encounterId,
             marAction: MedicationMarAction.administered,
             administeredAt: { gte: start, lt: end },
+            infusionPhase: { notIn: [MedicationAdministrationInfusionPhase.INFUSION_START] },
           },
           _sum: { administeredQuantity: true },
         });
@@ -517,6 +542,12 @@ export class MedicationAdministrationService {
           administeredAt: data.administeredAt ?? new Date(),
           administeredByUserId,
           marAction: this.toPrismaMarAction(marActionResolved),
+          infusionPhase: serviceOptions?.infusionMar
+            ? serviceOptions.infusionMar.infusionPhase === "INFUSION_START"
+              ? MedicationAdministrationInfusionPhase.INFUSION_START
+              : MedicationAdministrationInfusionPhase.INFUSION_STOP
+            : null,
+          infusionSessionKey: serviceOptions?.infusionMar?.infusionSessionKey?.trim() || null,
           notes: data.notes?.trim() ? data.notes.trim() : null,
         },
         include: {
@@ -542,7 +573,12 @@ export class MedicationAdministrationService {
           marActionResolved === "refused" ||
           marActionResolved === "not_available" ||
           marActionResolved === "md_changed";
-        if (isTerminalMarAction && line.status !== OrderStatus.COMPLETED && line.status !== OrderStatus.CANCELLED) {
+        if (
+          isTerminalMarAction &&
+          !serviceOptions?.skipMedicationLineCompletion &&
+          line.status !== OrderStatus.COMPLETED &&
+          line.status !== OrderStatus.CANCELLED
+        ) {
           this.assertMedicationLineCloseableViaMar(line.status);
           const lifecycleState = applyLifecycleWithStatus(line.lifecycleState, OrderStatus.COMPLETED);
           await tx.orderItem.update({
@@ -555,16 +591,18 @@ export class MedicationAdministrationService {
             },
           });
         }
-        await this.writeMarOrderEventIfNeeded(tx, {
-          facilityId,
-          orderId: line.orderId,
-          encounterId: line.order.encounterId,
-          orderType: line.order.type,
-          orderItemId: line.id,
-          medicationAdministrationId: row.id,
-          marAction: marActionResolved,
-          performedByUserId: administeredByUserId,
-        });
+        if (!serviceOptions?.skipMedicationLineCompletion) {
+          await this.writeMarOrderEventIfNeeded(tx, {
+            facilityId,
+            orderId: line.orderId,
+            encounterId: line.order.encounterId,
+            orderType: line.order.type,
+            orderItemId: line.id,
+            medicationAdministrationId: row.id,
+            marAction: marActionResolved,
+            performedByUserId: administeredByUserId,
+          });
+        }
       }
 
       return row;
@@ -585,7 +623,7 @@ export class MedicationAdministrationService {
         ? created.administeredAt.toISOString()
         : new Date().toISOString();
     const medLabel = created.medicationLabelSnapshot?.trim() || "Medication";
-    if (marActionResolved === "administered") {
+    if (marActionResolved === "administered" && !serviceOptions?.skipBillingCaptureCandidate) {
       const ev = serviceOptions?.infusionBillingEvidence;
       const infusionManualReview = Boolean(ev);
       let infusionRoute: string | undefined;
@@ -648,6 +686,69 @@ export class MedicationAdministrationService {
     }
 
     return created;
+  }
+
+  /**
+   * Phase 15F-B.1: in-progress infusion MAR at START (OrderEvent remains source for active session).
+   * No billing, no order-line completion, no duplicate-window conflict with imminent STOP row.
+   */
+  async createInfusionStartMar(
+    encounterId: string,
+    facilityId: string,
+    administeredByUserId: string,
+    input: {
+      orderItemId: string;
+      infusionSessionKey: string;
+      startedAt: Date;
+      route?: string;
+    }
+  ) {
+    const sessionKey = input.infusionSessionKey.trim();
+    if (!sessionKey) {
+      throw new BadRequestException("Clé de session de perfusion invalide.");
+    }
+    const existing = await this.prisma.medicationAdministration.findFirst({
+      where: {
+        facilityId,
+        encounterId,
+        orderItemId: input.orderItemId,
+        infusionSessionKey: sessionKey,
+        infusionPhase: MedicationAdministrationInfusionPhase.INFUSION_START,
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      return this.prisma.medicationAdministration.findFirstOrThrow({
+        where: { id: existing.id },
+        include: {
+          administeredBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+    }
+
+    return this.create(
+      encounterId,
+      facilityId,
+      administeredByUserId,
+      {
+        orderItemId: input.orderItemId,
+        marAction: "administered",
+        administeredAt: input.startedAt,
+        ...(input.route?.trim() ? { route: input.route.trim() } : {}),
+        notes: INFUSION_START_MAR_NOTE_PREFIX,
+      },
+      {
+        allowAdministeredForInfusionStart: true,
+        skipAutoMedicationCatalogBilling: true,
+        skipMedicationLineCompletion: true,
+        skipDuplicateAdministeredWindowCheck: true,
+        skipBillingCaptureCandidate: true,
+        infusionMar: {
+          infusionSessionKey: sessionKey,
+          infusionPhase: "INFUSION_START",
+        },
+      }
+    );
   }
 
   private encounterAnchorAt(encounter: { createdAt: Date; admittedAt: Date | null }): Date {
@@ -729,9 +830,12 @@ export class MedicationAdministrationService {
     if (marActionResolved !== "administered") {
       throw new BadRequestException(this.marEffectiveTimeValidationMessage("NOT_ADMINISTERED"));
     }
-    if (medicationAdministrationRowIsInfusionTerminal(row.notes)) {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INFUSION_DEFERRED"));
-    }
+
+    const infusionStopTerminal = medicationAdministrationRowIsInfusionStop(
+      row.notes,
+      row.infusionPhase
+    );
+    const infusionStartRow = medicationAdministrationRowIsInfusionStart(row.notes, row.infusionPhase);
 
     const effectiveAt = parseMedicationAdministrationEffectiveTimeIso(dto.effectiveAdministeredTime);
     if (!effectiveAt) {
@@ -771,7 +875,6 @@ export class MedicationAdministrationService {
       reason: reasonTrim,
       controlledMedication,
       marActionAdministered: true,
-      infusionTerminalRow: medicationAdministrationRowIsInfusionTerminal(row.notes),
     });
     if (!validation.ok) {
       throw new BadRequestException(this.marEffectiveTimeValidationMessage(validation.code));
@@ -817,7 +920,8 @@ export class MedicationAdministrationService {
         originalSystemTime: toMedicationAdministrationEffectiveTimeIsoUtc(systemDocumentedAt),
         deltaMinutes: deltaMinutesBetween(effectiveAtUtc, originalAdministeredAt),
         controlledMedication,
-        infusionEvent: false,
+        infusionEvent: infusionStopTerminal || infusionStartRow,
+        infusionPhase: row.infusionPhase ?? null,
         reasonProvided: Boolean(reasonTrim),
         source: "MAR",
       },

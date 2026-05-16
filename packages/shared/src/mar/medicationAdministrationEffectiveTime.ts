@@ -20,7 +20,12 @@ const MS_24H = 24 * 60 * 60 * 1000;
 /** Minimum trimmed reason length when effective time is >24h before system documented time (`createdAt`). */
 export const MEDICATION_ADMIN_LARGE_BACKDATE_MIN_REASON_LENGTH = 15;
 
-const TERMINAL_INFUSION_MAR_NOTE_PREFIX = "Perfusion IV terminée";
+export {
+  INFUSION_START_MAR_NOTE_PREFIX,
+  medicationAdministrationRowIsInfusionStart,
+  medicationAdministrationRowIsInfusionStop,
+  medicationAdministrationRowIsInfusionTerminal,
+} from "./medicationAdministrationInfusionMar.js";
 
 export function parseMedicationAdministrationEffectiveTimeIso(iso: string): Date | null {
   const trimmed = String(iso).trim();
@@ -48,11 +53,6 @@ export function medicationAdminEffectiveTimesDiffer(
 ): boolean {
   if (!effectiveAdministeredTime || !originalAdministeredAt) return false;
   return effectiveAdministeredTime.getTime() !== originalAdministeredAt.getTime();
-}
-
-export function medicationAdministrationRowIsInfusionTerminal(notes: string | null | undefined): boolean {
-  const t = notes?.trim() ?? "";
-  return t.startsWith(TERMINAL_INFUSION_MAR_NOTE_PREFIX);
 }
 
 export function medicationAdminEffectiveTimeRequiresReason(input: {
@@ -134,7 +134,6 @@ export function validateMedicationAdministrationEffectiveTime(input: {
   reason?: string | null;
   controlledMedication: boolean;
   marActionAdministered: boolean;
-  infusionTerminalRow: boolean;
 }):
   | { ok: true }
   | { ok: false; code: MedicationAdminEffectiveTimeValidationCode; messageKey: string } {
@@ -151,7 +150,6 @@ export function validateMedicationAdministrationEffectiveTime(input: {
     reason,
     controlledMedication,
     marActionAdministered,
-    infusionTerminalRow,
   } = input;
 
   if (Number.isNaN(effectiveAdministeredTime.getTime())) {
@@ -159,9 +157,6 @@ export function validateMedicationAdministrationEffectiveTime(input: {
   }
   if (!marActionAdministered) {
     return { ok: false, code: "NOT_ADMINISTERED", messageKey: "marTab.adminTime.notAdministered" };
-  }
-  if (infusionTerminalRow) {
-    return { ok: false, code: "INFUSION_DEFERRED", messageKey: "marTab.adminTime.infusionDeferred" };
   }
   if (effectiveAdministeredTime.getTime() > now.getTime()) {
     return { ok: false, code: "FUTURE_TIME", messageKey: "marTab.adminTime.futureTimeRejected" };

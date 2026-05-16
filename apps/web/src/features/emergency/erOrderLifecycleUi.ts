@@ -291,6 +291,7 @@ export function findMedicationInfusionTimelineFromOrderEvents(
         typeof m.infusionStoppedAt === "string" && m.infusionStoppedAt.trim()
           ? m.infusionStoppedAt.trim()
           : ev.performedAt;
+      // Duration uses documented OrderEvent timestamps, not effective MAR correction times.
       let duration = m.durationMinutes != null && Number.isFinite(m.durationMinutes) ? m.durationMinutes : null;
       if (duration == null && active.infusionStartedAtIso) {
         const a = new Date(active.infusionStartedAtIso).getTime();
