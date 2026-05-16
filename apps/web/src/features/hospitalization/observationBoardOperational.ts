@@ -4,6 +4,8 @@ import type { ObservationOperationalSnapshot } from "@medora/shared";
 export type ObservationBoardRowInput = {
   id: string;
   status: string;
+  /** For "recent first" sort (trackboard row). */
+  createdAt?: string | null;
   observationOps?: ObservationOperationalSnapshot | null;
   trackboardOps?: {
     resultsPendingCount?: number;
@@ -36,12 +38,25 @@ export type ObservationBoardCensusSummary = {
 export type ObservationBoardOperationalFilterId =
   | ""
   | "needs_attention"
+  /** Either role unassigned (RN or physician). */
   | "unassigned"
+  | "needs_rn"
+  | "needs_provider"
+  | "reassess_overdue"
+  | "rn_reassess_overdue"
+  | "provider_reassess_overdue"
   | "ready_discharge"
   | "los24"
-  | "results_critical";
+  | "pending_results"
+  | "vitals_stale";
 
-export type ObservationBoardSortId = "default" | "attention_desc" | "los_desc";
+/** Spec-aligned sort keys (read-only list ordering). */
+export type ObservationBoardSortId =
+  | "default"
+  | "los_desc"
+  | "reassess_desc"
+  | "pending_desc"
+  | "ready_discharge_desc";
 
 export type ObservationBoardStaffingPressure = {
   patientsWithAssignedRn: number;
@@ -234,11 +249,12 @@ export function observationBoardRowMatchesOperationalFilter(
   if (!filterId) return true;
   const o = snapshot(row);
   const pend = row.trackboardOps?.resultsPendingCount ?? 0;
-  const critical = Boolean(row.trackboardOps?.criticalResultUnacknowledged);
+  const criticalUnacked = Boolean(row.trackboardOps?.criticalResultUnacknowledged);
 
   if (filterId === "needs_attention") {
     return Boolean(
-      o?.flags.criticalLabsUnacked ||
+      criticalUnacked ||
+        o?.flags.criticalLabsUnacked ||
         o?.vitalsStale ||
         o?.flags.reassessmentOverdue ||
         o?.extendedStay24h ||
@@ -251,14 +267,76 @@ export function observationBoardRowMatchesOperationalFilter(
   if (filterId === "unassigned") {
     return observationBoardRnAssignmentGap(row) || observationBoardProviderAssignmentGap(row);
   }
+  if (filterId === "needs_rn") {
+    return observationBoardRnAssignmentGap(row);
+  }
+  if (filterId === "needs_provider") {
+    return observationBoardProviderAssignmentGap(row);
+  }
+  if (filterId === "reassess_overdue") {
+    return Boolean(o?.flags.reassessmentOverdue);
+  }
+  if (filterId === "rn_reassess_overdue") {
+    return Boolean(o?.flags.rnObservationReassessmentOverdue);
+  }
+  if (filterId === "provider_reassess_overdue") {
+    return Boolean(o?.flags.providerReassessmentOverdue);
+  }
   if (filterId === "ready_discharge") {
     return Boolean(o?.flags.readyForDischarge);
   }
   if (filterId === "los24") {
     return Boolean(o?.extendedStay24h);
   }
-  if (filterId === "results_critical") {
-    return critical || pend > 0;
+  if (filterId === "pending_results") {
+    return pend > 0;
+  }
+  if (filterId === "vitals_stale") {
+    return Boolean(o?.vitalsStale);
   }
   return true;
+}
+
+function rowCreatedAtMs(row: ObservationBoardRowInput): number {
+  const s = (row.createdAt ?? "").trim();
+  if (!s) return 0;
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : 0;
+}
+
+/**
+ * Stable read-only ordering for the observation board list (ties → more recent first).
+ */
+export function compareObservationBoardRows(
+  a: ObservationBoardRowInput,
+  b: ObservationBoardRowInput,
+  sortId: ObservationBoardSortId
+): number {
+  if (sortId === "default") {
+    return rowCreatedAtMs(b) - rowCreatedAtMs(a);
+  }
+  if (sortId === "los_desc") {
+    const d = (b.observationOps?.losMs ?? 0) - (a.observationOps?.losMs ?? 0);
+    if (d !== 0) return d;
+    return rowCreatedAtMs(b) - rowCreatedAtMs(a);
+  }
+  if (sortId === "reassess_desc") {
+    const bo = b.observationOps?.flags.reassessmentOverdue ? 1 : 0;
+    const ao = a.observationOps?.flags.reassessmentOverdue ? 1 : 0;
+    if (bo !== ao) return bo - ao;
+    return rowCreatedAtMs(b) - rowCreatedAtMs(a);
+  }
+  if (sortId === "pending_desc") {
+    const bp = b.trackboardOps?.resultsPendingCount ?? 0;
+    const ap = a.trackboardOps?.resultsPendingCount ?? 0;
+    if (bp !== ap) return bp - ap;
+    return rowCreatedAtMs(b) - rowCreatedAtMs(a);
+  }
+  if (sortId === "ready_discharge_desc") {
+    const br = b.observationOps?.flags.readyForDischarge ? 1 : 0;
+    const ar = a.observationOps?.flags.readyForDischarge ? 1 : 0;
+    if (br !== ar) return br - ar;
+    return rowCreatedAtMs(b) - rowCreatedAtMs(a);
+  }
+  return 0;
 }

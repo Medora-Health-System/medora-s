@@ -26,10 +26,12 @@ import {
 } from "@/components/medora-card";
 import { mergeHospitalisationRowAfterAssign } from "./hospitalizationBoardAssignMerge";
 import {
+  compareObservationBoardRows,
   computeObservationBoardCensus,
   computeObservationBoardStaffingPressure,
+  observationBoardProviderAssignmentGap,
+  observationBoardRnAssignmentGap,
   observationBoardRowMatchesOperationalFilter,
-  observationRowOperationalAttentionScore,
   type ObservationBoardOperationalFilterId,
   type ObservationBoardSortId,
 } from "./observationBoardOperational";
@@ -277,6 +279,84 @@ function ObservationOpsChips({
       }}
     >
       {chips.slice(0, 8)}
+    </div>
+  );
+}
+
+function ObservationEscalationHintBadges({
+  encounter,
+  t,
+}: {
+  encounter: HospitalisationBoardEncounterRow;
+  t: (key: string) => string;
+}) {
+  if ((encounter.status ?? "").trim() !== "OPEN") return null;
+  const o = encounter.observationOps ?? null;
+  const pend = encounter.trackboardOps?.resultsPendingCount ?? 0;
+  const nodes: React.ReactNode[] = [];
+  if (observationBoardRnAssignmentGap(encounter)) {
+    nodes.push(
+      <MedoraCardBadge key="e-rn" soft={OBS_WARN}>
+        {t("hospitalizationBoard.escalationNeedsRn")}
+      </MedoraCardBadge>
+    );
+  }
+  if (observationBoardProviderAssignmentGap(encounter)) {
+    nodes.push(
+      <MedoraCardBadge key="e-md" soft={OBS_WARN}>
+        {t("hospitalizationBoard.escalationNeedsProvider")}
+      </MedoraCardBadge>
+    );
+  }
+  if (o?.flags.reassessmentOverdue) {
+    nodes.push(
+      <MedoraCardBadge key="e-re" soft={OBS_DANGER}>
+        {t("hospitalizationBoard.escalationReassessOverdue")}
+      </MedoraCardBadge>
+    );
+  }
+  if (o?.vitalsStale) {
+    nodes.push(
+      <MedoraCardBadge key="e-vs" soft={OBS_WARN}>
+        {t("hospitalizationBoard.escalationVitalsStale")}
+      </MedoraCardBadge>
+    );
+  }
+  if (o?.extendedStay24h) {
+    nodes.push(
+      <MedoraCardBadge key="e-24" soft={OBS_WARN}>
+        {t("hospitalizationBoard.escalationLos24")}
+      </MedoraCardBadge>
+    );
+  }
+  if (pend > 0) {
+    nodes.push(
+      <MedoraCardBadge key="e-pend" soft={OBS_SOFT}>
+        {t("hospitalizationBoard.escalationPendingResults")}
+      </MedoraCardBadge>
+    );
+  }
+  if (o?.flags.readyForDischarge) {
+    nodes.push(
+      <MedoraCardBadge key="e-rfd" soft={OBS_OK}>
+        {t("hospitalizationBoard.escalationReadyDischargeReview")}
+      </MedoraCardBadge>
+    );
+  }
+  if (nodes.length === 0) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 4,
+        justifyContent: "flex-end",
+        marginTop: 4,
+        maxWidth: 320,
+      }}
+    >
+      {nodes}
     </div>
   );
 }
@@ -544,13 +624,7 @@ export function HospitalizationBoardView() {
       }
       return true;
     });
-    if (sortOperational === "attention_desc") {
-      list = [...list].sort(
-        (a, b) => observationRowOperationalAttentionScore(b) - observationRowOperationalAttentionScore(a)
-      );
-    } else if (sortOperational === "los_desc") {
-      list = [...list].sort((a, b) => (b.observationOps?.losMs ?? 0) - (a.observationOps?.losMs ?? 0));
-    }
+    list = [...list].sort((a, b) => compareObservationBoardRows(a, b, sortOperational));
     return list;
   }, [
     encounters,
@@ -792,7 +866,7 @@ export function HospitalizationBoardView() {
             </select>
           </div>
 
-          <div style={{ flex: "0 1 200px", minWidth: 160 }}>
+          <div style={{ flex: "0 1 260px", minWidth: 200 }}>
             <span style={filterLabel}>{t("hospitalizationBoard.operationalFilterLabel")}</span>
             <select
               value={filterOperational}
@@ -802,9 +876,17 @@ export function HospitalizationBoardView() {
               <option value="">{t("hospitalizationBoard.operationalFilterAll")}</option>
               <option value="needs_attention">{t("hospitalizationBoard.operationalFilterNeedsAttention")}</option>
               <option value="unassigned">{t("hospitalizationBoard.operationalFilterUnassigned")}</option>
-              <option value="ready_discharge">{t("hospitalizationBoard.operationalFilterReadyDischarge")}</option>
+              <option value="needs_rn">{t("hospitalizationBoard.operationalFilterNeedsRn")}</option>
+              <option value="needs_provider">{t("hospitalizationBoard.operationalFilterNeedsProvider")}</option>
+              <option value="reassess_overdue">{t("hospitalizationBoard.operationalFilterReassessOverdue")}</option>
+              <option value="rn_reassess_overdue">{t("hospitalizationBoard.operationalFilterRnReassessOverdue")}</option>
+              <option value="provider_reassess_overdue">
+                {t("hospitalizationBoard.operationalFilterProviderReassessOverdue")}
+              </option>
               <option value="los24">{t("hospitalizationBoard.operationalFilterLos24")}</option>
-              <option value="results_critical">{t("hospitalizationBoard.operationalFilterResultsCritical")}</option>
+              <option value="pending_results">{t("hospitalizationBoard.operationalFilterPendingResults")}</option>
+              <option value="ready_discharge">{t("hospitalizationBoard.operationalFilterReadyDischarge")}</option>
+              <option value="vitals_stale">{t("hospitalizationBoard.operationalFilterVitalsStale")}</option>
             </select>
           </div>
 
@@ -816,8 +898,10 @@ export function HospitalizationBoardView() {
               style={{ ...inputBase, cursor: "pointer", minWidth: 0 }}
             >
               <option value="default">{t("hospitalizationBoard.operationalSortDefault")}</option>
-              <option value="attention_desc">{t("hospitalizationBoard.operationalSortAttention")}</option>
               <option value="los_desc">{t("hospitalizationBoard.operationalSortLos")}</option>
+              <option value="reassess_desc">{t("hospitalizationBoard.operationalSortReassessFirst")}</option>
+              <option value="pending_desc">{t("hospitalizationBoard.operationalSortPendingFirst")}</option>
+              <option value="ready_discharge_desc">{t("hospitalizationBoard.operationalSortReadyDischargeFirst")}</option>
             </select>
           </div>
 
@@ -1126,9 +1210,12 @@ export function HospitalizationBoardView() {
                             {obs ? (
                               <>
                                 <ObservationDispositionBoardChips encounter={encounter} t={t} />
+                                <ObservationEscalationHintBadges encounter={encounter} t={t} />
                                 <ObservationOpsChips obs={obs} resultsPendingCount={resultsPendingCount} t={t} />
                               </>
-                            ) : null}
+                            ) : (
+                              <ObservationEscalationHintBadges encounter={encounter} t={t} />
+                            )}
                             <div
                               style={{
                                 display: "flex",
