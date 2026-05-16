@@ -55,6 +55,9 @@ export type HospitalisationBoardEncounterRow = {
   physicianAssigned?: HospitalisationBoardPhysician | null;
   nurseAssigned?: HospitalisationBoardPhysician | null;
   trackboardOps?: HospitalisationBoardTrackboardOps;
+  /** Present on trackboard API rows — used for disposition chip (no extra fetch). */
+  dischargeSummaryJson?: unknown;
+  nursingAssessment?: unknown;
   /** Phase 13B — server-computed observation / short-stay operational snapshot (INPATIENT only). */
   observationOps?: ObservationOperationalSnapshot | null;
 };

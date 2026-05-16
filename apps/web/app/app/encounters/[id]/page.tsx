@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiFetch, asApiObject } from "@/lib/apiClient";
+import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { MEDORA_PATIENT_VITALS_UPDATED, hasVitalsJson, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { usePathwayTimers } from "@/features/pathways/hooks/usePathwayTimers";
@@ -100,6 +100,26 @@ import {
   mergeDischargeForSave,
   type DischargeFormState,
 } from "@/lib/encounterDischarge";
+import {
+  emptyErDispositionSupplementForm,
+  erDispositionSupplementFromEncounter,
+  inferOutcomeUiFromForms,
+  localizedErDischargeModeLabel,
+  mergeErDispositionV1IntoNursingAssessment,
+  mergeErDischargeForEncounterPatch,
+  outcomeUiToDischargeMode,
+  type ErDispositionOutcomeUi,
+  type ErDispositionSupplementForm,
+} from "@/features/emergency/emergencyDispositionV1";
+import {
+  applyEmtalaV1ComplementToNursingAssessment,
+  emtalaDispositionComplementFromNursing,
+} from "@/features/emergency/erEmtalaV1";
+import {
+  appendQuickNoteToField,
+  OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES,
+  OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES,
+} from "@/features/observation/observationDischargeQuickNotes";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
@@ -255,6 +275,10 @@ export default function EncounterDetailPage() {
   const [dispositionReadiness, setDispositionReadiness] = useState<DispositionSafetyReadinessResponse | null>(null);
   const [ackDispositionSafety, setAckDispositionSafety] = useState(false);
   const [dischargeForm, setDischargeForm] = useState<DischargeFormState>(() => emptyDischargeForm());
+  const [obsDischargeOutcomeUi, setObsDischargeOutcomeUi] = useState<ErDispositionOutcomeUi>("HOME");
+  const [obsDispositionSupplement, setObsDispositionSupplement] = useState<ErDispositionSupplementForm>(() =>
+    emptyErDispositionSupplementForm()
+  );
   const [showAdmissionModal, setShowAdmissionModal] = useState(false);
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
   const [savingAdmission, setSavingAdmission] = useState(false);
@@ -375,8 +399,35 @@ export default function EncounterDetailPage() {
 
   useEffect(() => {
     if (!showDischargeModal || !encounter) return;
-    setDischargeForm(hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson));
-  }, [showDischargeModal, encounter?.id]);
+    const base = hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson);
+    const obsWorkflow = Boolean(
+      isObservationShortStayEncounter({
+        type: encounter.type,
+        status: encounter.status,
+        admittedAt: encounter.admittedAt,
+        admissionSummaryJson: encounter.admissionSummaryJson,
+      })
+    );
+    if (obsWorkflow) {
+      const sup = erDispositionSupplementFromEncounter(encounter.nursingAssessment);
+      const inferred = inferOutcomeUiFromForms(base.dischargeMode, sup);
+      const mode = base.dischargeMode.trim() ? base.dischargeMode : outcomeUiToDischargeMode(inferred);
+      setObsDispositionSupplement(sup);
+      setObsDischargeOutcomeUi(inferred);
+      setDischargeForm({ ...base, dischargeMode: mode });
+    } else {
+      setDischargeForm(base);
+    }
+  }, [
+    showDischargeModal,
+    encounter?.id,
+    encounter?.type,
+    encounter?.status,
+    encounter?.admittedAt,
+    encounter?.admissionSummaryJson,
+    encounter?.dischargeSummaryJson,
+    encounter?.nursingAssessment,
+  ]);
 
   useEffect(() => {
     if (!showAdmissionModal || !encounter) return;
@@ -753,13 +804,67 @@ export default function EncounterDetailPage() {
 
   const submitDischargeAndConfirmClose = async () => {
     if (!encounter) return;
-    const merged = mergeDischargeForSave(
-      encounter.dischargeSummaryJson,
-      dischargeForm,
-      canEditNursingDischarge,
-      canEditMedicalDischarge
-    );
     try {
+      if (observationWorkflowActive) {
+        const merged = mergeErDischargeForEncounterPatch(
+          encounter.dischargeSummaryJson,
+          dischargeForm,
+          canEditNursingDischarge,
+          canEditMedicalDischarge,
+          obsDischargeOutcomeUi
+        );
+        let savedByDisplayName = t("emergencyDisposition.signerFallback");
+        try {
+          const meRes = await fetch("/api/auth/me");
+          const me = await parseApiResponse(meRes);
+          if (me && typeof me === "object" && !Array.isArray(me)) {
+            const fn = (me as { fullName?: string }).fullName?.trim();
+            if (fn) savedByDisplayName = fn;
+          }
+        } catch {
+          /* ignore */
+        }
+        const signature = { savedAt: new Date().toISOString(), savedByDisplayName };
+        const naWithDisp = mergeErDispositionV1IntoNursingAssessment(
+          encounter.nursingAssessment,
+          obsDispositionSupplement,
+          signature
+        );
+        const emtalaComplement = emtalaDispositionComplementFromNursing(encounter.nursingAssessment);
+        const body: Record<string, unknown> = {};
+        if (merged !== null) {
+          body.dischargeSummaryJson = merged;
+        }
+        body.nursingAssessment = applyEmtalaV1ComplementToNursingAssessment(naWithDisp, {
+          outcome: obsDischargeOutcomeUi,
+          complement: emtalaComplement,
+          dispositionDecidedAtIso: signature.savedAt,
+        });
+        const res = await apiFetch(`/encounters/${encounterId}`, {
+          method: "PATCH",
+          facilityId,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const queued =
+          res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+        setQueuedDischargeSaveNotice(queued);
+        await loadEncounter({ silent: true });
+        const pending: Record<string, unknown> | null =
+          merged ??
+          (dischargeForm.dischargeMode.trim() ? { dischargeMode: dischargeForm.dischargeMode.trim() } : null);
+        setPendingDischarge(pending);
+        setShowDischargeModal(false);
+        setShowCloseConfirmModal(true);
+        return;
+      }
+
+      const merged = mergeDischargeForSave(
+        encounter.dischargeSummaryJson,
+        dischargeForm,
+        canEditNursingDischarge,
+        canEditMedicalDischarge
+      );
       if (merged !== null) {
         const res = await apiFetch(`/encounters/${encounterId}`, {
           method: "PATCH",
@@ -2215,6 +2320,136 @@ export default function EncounterDetailPage() {
                 </ul>
               </div>
             ) : null}
+            {observationWorkflowActive ? (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: "12px 14px",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: 12,
+                  backgroundColor: "#f0fdf4",
+                }}
+              >
+                <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#166534", lineHeight: 1.5 }}>
+                  {t("observationDischarge.modalHelper")}
+                </p>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#14532d", marginBottom: 8 }}>
+                  {t("observationDischarge.outcomeTitle")}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                  {(
+                    [
+                      "HOME",
+                      "TRANSFER",
+                      "AMA",
+                      "DECEASED",
+                      "LWBS",
+                      "OTHER",
+                      "ADMISSION",
+                    ] as readonly ErDispositionOutcomeUi[]
+                  ).map((oid) => {
+                    const outcomeDisabled =
+                      isLocked || (!canEditNursingDischarge && !canEditMedicalDischarge);
+                    const active = obsDischargeOutcomeUi === oid;
+                    return (
+                      <button
+                        key={oid}
+                        type="button"
+                        disabled={outcomeDisabled}
+                        onClick={() => {
+                          setObsDischargeOutcomeUi(oid);
+                          setDischargeForm((f) => ({ ...f, dischargeMode: outcomeUiToDischargeMode(oid) }));
+                        }}
+                        style={{
+                          padding: "6px 10px",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          borderRadius: 9999,
+                          border: active ? "1px solid #22c55e" : "1px solid #cbd5e1",
+                          backgroundColor: active ? "#dcfce7" : "#fff",
+                          color: active ? "#14532d" : "#334155",
+                          cursor: outcomeDisabled ? "not-allowed" : "pointer",
+                          opacity: outcomeDisabled ? 0.65 : 1,
+                        }}
+                      >
+                        {t(
+                          (
+                            {
+                              HOME: "emergencyDisposition.outcomeHOME",
+                              ADMISSION: "emergencyDisposition.outcomeADMISSION",
+                              TRANSFER: "emergencyDisposition.outcomeTRANSFER",
+                              AMA: "emergencyDisposition.outcomeAMA",
+                              LWBS: "emergencyDisposition.outcomeLWBS",
+                              DECEASED: "emergencyDisposition.outcomeDECEASED",
+                              OTHER: "emergencyDisposition.outcomeOTHER",
+                            } as const
+                          )[oid]
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!isLocked && (canEditNursingDischarge || canEditMedicalDischarge) ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                    {obsDischargeOutcomeUi === "TRANSFER" ? (
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ fontWeight: 600, color: "#334155" }}>{t("emergencyDisposition.labelTransferHandoff")}</span>
+                        <textarea
+                          value={obsDispositionSupplement.transferHandoffNote}
+                          onChange={(e) =>
+                            setObsDispositionSupplement((s) => ({ ...s, transferHandoffNote: e.target.value }))
+                          }
+                          rows={2}
+                          placeholder={t("emergencyDisposition.transferPlaceholder")}
+                          style={encounterWorkflowModalField(true)}
+                        />
+                      </label>
+                    ) : null}
+                    {obsDischargeOutcomeUi === "AMA" ? (
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ fontWeight: 600, color: "#334155" }}>{t("emergencyDisposition.labelAmaRisks")}</span>
+                        <textarea
+                          value={obsDispositionSupplement.amaRisksDiscussed}
+                          onChange={(e) =>
+                            setObsDispositionSupplement((s) => ({ ...s, amaRisksDiscussed: e.target.value }))
+                          }
+                          rows={2}
+                          style={encounterWorkflowModalField(true)}
+                        />
+                      </label>
+                    ) : null}
+                    {obsDischargeOutcomeUi === "LWBS" ? (
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ fontWeight: 600, color: "#334155" }}>{t("emergencyDisposition.labelLwbs")}</span>
+                        <textarea
+                          value={obsDispositionSupplement.lwbsNarrative}
+                          onChange={(e) =>
+                            setObsDispositionSupplement((s) => ({ ...s, lwbsNarrative: e.target.value }))
+                          }
+                          rows={2}
+                          placeholder={t("emergencyDisposition.lwbsPlaceholder")}
+                          style={encounterWorkflowModalField(true)}
+                        />
+                      </label>
+                    ) : null}
+                    {obsDischargeOutcomeUi === "DECEASED" ? (
+                      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                        <span style={{ fontWeight: 600, color: "#334155" }}>{t("emergencyDisposition.labelDeceasedNotes")}</span>
+                        <textarea
+                          value={obsDispositionSupplement.deceasedPlaceholderNote}
+                          onChange={(e) =>
+                            setObsDispositionSupplement((s) => ({ ...s, deceasedPlaceholderNote: e.target.value }))
+                          }
+                          rows={2}
+                          placeholder={t("emergencyDisposition.deceasedPlaceholder")}
+                          style={encounterWorkflowModalField(true)}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {(
                 [
@@ -2233,6 +2468,12 @@ export default function EncounterDetailPage() {
                     (kind === "medical" && canEditMedicalDischarge));
                 const k = key as keyof DischargeFormState;
                 const label = t(`encounterChrome.modals.dischargeField.${key}`);
+                const quickList =
+                  observationWorkflowActive && editable
+                    ? kind === "medical"
+                      ? OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES.filter((n) => n.field === k)
+                      : OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES.filter((n) => n.field === k)
+                    : [];
                 return (
                   <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
                     <span style={{ fontWeight: 600, color: "#334155" }}>
@@ -2243,6 +2484,41 @@ export default function EncounterDetailPage() {
                         </span>
                       ) : null}
                     </span>
+                    {quickList.length > 0 ? (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>
+                          {kind === "medical"
+                            ? t("observationDischarge.quickNotesGroupProvider")
+                            : t("observationDischarge.quickNotesGroupNursing")}
+                        </span>
+                        {quickList.map((n) => (
+                          <button
+                            key={n.id}
+                            type="button"
+                            disabled={!editable}
+                            onClick={() =>
+                              setDischargeForm((f) => ({
+                                ...f,
+                                [k]: appendQuickNoteToField(f[k] as string, t(n.messageKey)),
+                              }))
+                            }
+                            style={{
+                              padding: "4px 9px",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              borderRadius: 9999,
+                              border: "1px solid #e2e8f0",
+                              backgroundColor: "#fff",
+                              color: "#475569",
+                              cursor: editable ? "pointer" : "not-allowed",
+                              opacity: editable ? 1 : 0.65,
+                            }}
+                          >
+                            {t(n.messageKey)}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                     <textarea
                       readOnly={!editable}
                       value={dischargeForm[k] as string}
@@ -2253,6 +2529,7 @@ export default function EncounterDetailPage() {
                   </label>
                 );
               })}
+              {!observationWorkflowActive ? (
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
                 <span style={{ fontWeight: 600, color: "#334155" }}>
                   {t("encounterChrome.modals.dischargeMode")}
@@ -2279,6 +2556,23 @@ export default function EncounterDetailPage() {
                   ))}
                 </select>
               </label>
+              ) : (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#64748b",
+                    padding: "8px 10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 10,
+                    backgroundColor: "#f8fafc",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: "#334155" }}>{t("encounterChrome.modals.dischargeMode")}: </span>
+                  {dischargeForm.dischargeMode.trim()
+                    ? localizedErDischargeModeLabel(dischargeForm.dischargeMode, obsDispositionSupplement, language)
+                    : t("encounterChrome.modals.selectPlaceholder")}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, flexWrap: "wrap" }}>
               <button

@@ -33,6 +33,8 @@ import {
   type ObservationBoardOperationalFilterId,
   type ObservationBoardSortId,
 } from "./observationBoardOperational";
+import type { ErDispositionOutcomeUi } from "@/features/emergency/emergencyDispositionV1";
+import { resolveObservationBoardDispositionModel } from "@/features/observation/observationBoardDisposition";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -84,6 +86,60 @@ const OBS_SOFT = { bg: "#f8fafc", text: "#334155", border: "#e2e8f0" } as const;
 const OBS_WARN = { bg: "#fffbeb", text: "#92400e", border: "#fde68a" } as const;
 const OBS_DANGER = { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" } as const;
 const OBS_OK = { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" } as const;
+
+const OBS_DISP_OUTCOME_I18N: Record<ErDispositionOutcomeUi, string> = {
+  HOME: "emergencyDisposition.outcomeHOME",
+  ADMISSION: "emergencyDisposition.outcomeADMISSION",
+  TRANSFER: "emergencyDisposition.outcomeTRANSFER",
+  AMA: "emergencyDisposition.outcomeAMA",
+  LWBS: "emergencyDisposition.outcomeLWBS",
+  DECEASED: "emergencyDisposition.outcomeDECEASED",
+  OTHER: "emergencyDisposition.outcomeOTHER",
+};
+
+function ObservationDispositionBoardChips({
+  encounter,
+  t,
+}: {
+  encounter: HospitalisationBoardEncounterRow;
+  t: (key: string) => string;
+}) {
+  const model = resolveObservationBoardDispositionModel({
+    status: encounter.status,
+    dischargeSummaryJson: encounter.dischargeSummaryJson,
+    nursingAssessment: encounter.nursingAssessment,
+    trackboardOps: encounter.trackboardOps,
+    observationOps: encounter.observationOps ?? null,
+  });
+  if (!model) return null;
+  let label = "";
+  let tone: PriorityBadgeSoft = OBS_SOFT;
+  if (model.tier === "outcome") {
+    label = t(OBS_DISP_OUTCOME_I18N[model.outcome]);
+    if (model.encounterClosed) {
+      tone = { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" };
+    } else if (model.outcome === "AMA" || model.outcome === "LWBS" || model.outcome === "OTHER") {
+      tone = OBS_WARN;
+    } else if (model.outcome === "DECEASED") {
+      tone = OBS_DANGER;
+    } else if (model.outcome === "HOME") {
+      tone = OBS_OK;
+    }
+  } else if (model.tier === "discharge_packet_active") {
+    label = t("hospitalizationBoard.dispositionPacketInProgress");
+    tone = OBS_WARN;
+  } else if (model.tier === "ready_no_mode") {
+    label = t("hospitalizationBoard.dispositionReadyNoModeShort");
+    tone = OBS_OK;
+  } else {
+    label = t("hospitalizationBoard.dispositionObserving");
+  }
+  return (
+    <span title={t("hospitalizationBoard.dispositionChipTitle")}>
+      <MedoraCardBadge soft={tone}>{label}</MedoraCardBadge>
+    </span>
+  );
+}
 
 function ObservationOpsChips({
   obs,
@@ -1068,7 +1124,10 @@ export function HospitalizationBoardView() {
                               <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
                             </div>
                             {obs ? (
-                              <ObservationOpsChips obs={obs} resultsPendingCount={resultsPendingCount} t={t} />
+                              <>
+                                <ObservationDispositionBoardChips encounter={encounter} t={t} />
+                                <ObservationOpsChips obs={obs} resultsPendingCount={resultsPendingCount} t={t} />
+                              </>
                             ) : null}
                             <div
                               style={{
