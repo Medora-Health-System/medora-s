@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { appendQuickNoteToField } from "./observationDischargeQuickNotes";
+import {
+  appendQuickNoteToField,
+  OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES,
+  OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES,
+  type ObservationDischargeQuickNoteDefinition,
+} from "./observationDischargeQuickNotes";
+
+function assertChipInsertKeys(n: ObservationDischargeQuickNoteDefinition) {
+  expect(n.insertKey.startsWith("observationDischarge.quickNotes.")).toBe(true);
+  expect(n.chipLabelKey.startsWith("observationDischarge.chips.")).toBe(true);
+}
 
 describe("appendQuickNoteToField", () => {
   it("returns snippet when current empty", () => {
@@ -16,5 +26,21 @@ describe("appendQuickNoteToField", () => {
 
   it("ignores empty snippet", () => {
     expect(appendQuickNoteToField("A", "   ")).toBe("A");
+  });
+});
+
+describe("OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES", () => {
+  it("each provider quick note has insert + chip i18n key prefixes", () => {
+    for (const n of OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES) {
+      assertChipInsertKeys(n);
+    }
+  });
+});
+
+describe("OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES", () => {
+  it("each nursing quick note has insert + chip i18n key prefixes", () => {
+    for (const n of OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES) {
+      assertChipInsertKeys(n);
+    }
   });
 });

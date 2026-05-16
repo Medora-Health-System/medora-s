@@ -6,6 +6,7 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { dispositionReadinessIssueText } from "@/components/clinical/DispositionReadinessBanner";
 import { BLOCKER_LABEL_KEY, READINESS_LABEL_KEY } from "@/components/encounters/ObservationWorkflowEncounterChrome";
 import { ObservationMarEncounterSummaryBlock } from "@/components/encounters/ObservationMarEncounterSummaryBlock";
+import type { ObservationMarEncounterSummary } from "@/lib/observationMarEncounterSummary";
 
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: 12,
@@ -51,6 +52,7 @@ export function ObservationDocumentationSummaryPanel({
   encounterId,
   facilityId,
   medicationMarSummaryRefreshKey,
+  marEncounterDigest,
 }: {
   snapshot: ObservationOperationalSnapshot;
   initialObservationReason: string;
@@ -62,6 +64,12 @@ export function ObservationDocumentationSummaryPanel({
   encounterId?: string;
   facilityId?: string;
   medicationMarSummaryRefreshKey?: string;
+  /** Shared MAR digest (same fetch as observation workflow chrome) — avoids duplicate requests. */
+  marEncounterDigest?: {
+    summary: ObservationMarEncounterSummary | null;
+    loading: boolean;
+    error: string | null;
+  };
 }) {
   const providerLast = snapshot.reassessmentLanes.provider.lastAtIso;
   const rnLast = snapshot.reassessmentLanes.rnObservation.lastAtIso;
@@ -181,11 +189,12 @@ export function ObservationDocumentationSummaryPanel({
           <div style={sectionTitleStyle}>{t("encounterChrome.observationWorkflow.pendingResultsLabel")}</div>
           <div style={rowValueStyle}>{pendingLine}</div>
         </div>
-        {encounterId && facilityId && medicationMarSummaryRefreshKey ? (
+        {encounterId && facilityId && (medicationMarSummaryRefreshKey || marEncounterDigest) ? (
           <ObservationMarEncounterSummaryBlock
             encounterId={encounterId}
             facilityId={facilityId}
-            refreshKey={medicationMarSummaryRefreshKey}
+            refreshKey={medicationMarSummaryRefreshKey ?? ""}
+            externalDigest={marEncounterDigest}
           />
         ) : null}
         <div>

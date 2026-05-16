@@ -10,6 +10,8 @@ import { insertTextAtTextareaSelection } from "@/lib/insertTextAtTextareaSelecti
 
 const OBS_REASSESS_NOTE_MAX = 2000;
 
+import { OBSERVATION_REASSESSMENT_OPERATIONAL_PRESET_IDS } from "@/features/observation/observationReassessmentOperationalPresets";
+
 const QUICK_PHRASE_GROUPS = [
   {
     groupKey: "encounterChrome.observationReassessment.quickPhrases.groups.general",
@@ -22,6 +24,10 @@ const QUICK_PHRASE_GROUPS = [
   {
     groupKey: "encounterChrome.observationReassessment.quickPhrases.groups.disposition",
     phraseIds: ["readyDischarge"] as const,
+  },
+  {
+    groupKey: "encounterChrome.observationReassessment.quickPhrases.groups.operational",
+    phraseIds: OBSERVATION_REASSESSMENT_OPERATIONAL_PRESET_IDS,
   },
 ] as const;
 

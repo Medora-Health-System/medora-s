@@ -6,6 +6,7 @@ import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { MEDORA_PATIENT_VITALS_UPDATED, hasVitalsJson, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { useObservationMarEncounterSummary } from "@/hooks/useObservationMarEncounterSummary";
 import { usePathwayTimers } from "@/features/pathways/hooks/usePathwayTimers";
 import { PathwayMilestoneRow } from "@/features/pathways/components/PathwayMilestoneRow";
 import { PathwaySessionSummaryBar } from "@/features/pathways/components/PathwaySessionSummary";
@@ -47,6 +48,7 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
+import { ObservationContinueObservationQuickModal } from "@/components/encounters/ObservationContinueObservationQuickModal";
 import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
 import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
 import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
@@ -69,6 +71,7 @@ import {
   weightHintPairKgPounds,
 } from "@medora/shared";
 import {
+  READINESS_LABEL_KEY,
   ObservationWorkflowActiveHeaderPill,
   ObservationWorkflowEncounterChrome,
   ObservationWorkflowHeaderStatusPill,
@@ -120,6 +123,7 @@ import {
   OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES,
   OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES,
 } from "@/features/observation/observationDischargeQuickNotes";
+import { buildObservationSummaryDraft } from "@/features/observation/observationSummaryDraft";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
@@ -205,6 +209,17 @@ const ENCOUNTER_TAB_IDS = new Set([
   "history",
 ]);
 
+/** Discharge packet modal field rows (key, editor kind, textarea rows). */
+const OBSERVATION_DISCHARGE_FIELD_ROWS = [
+  ["disposition", "medical", 2],
+  ["exitCondition", "nursing", 2],
+  ["dischargeInstructions", "medical", 3],
+  ["medicationsGiven", "medical", 3],
+  ["followUp", "medical", 2],
+  ["returnIfWorse", "nursing", 2],
+  ["patientDestination", "nursing", 2],
+] as const;
+
 /** Button label for documentation-deficiency “go to” actions (maps known API deficiency codes only). */
 function documentationDeficiencyNavigateButtonLabel(
   code: string,
@@ -287,6 +302,7 @@ export default function EncounterDetailPage() {
   const [observationReassessmentModalRole, setObservationReassessmentModalRole] = useState<null | "PROVIDER" | "RN">(
     null
   );
+  const [showContinueObservationQuickModal, setShowContinueObservationQuickModal] = useState(false);
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
 
@@ -1144,6 +1160,29 @@ export default function EncounterDetailPage() {
     observationTrackboardOpsInput,
   ]);
 
+  const medicationMarSummaryRefreshKey = useMemo(
+    () =>
+      `${String((encounter as { updatedAt?: string } | null)?.updatedAt ?? "")}-${encounterResultsRefresh}-${clinicalTimelineRefresh}`,
+    [encounter, encounterResultsRefresh, clinicalTimelineRefresh]
+  );
+
+  const observationMarEncounterDigest = useObservationMarEncounterSummary({
+    encounterId,
+    facilityId,
+    refreshKey: medicationMarSummaryRefreshKey,
+    enabled: Boolean(
+      rolesReady &&
+        facilityId &&
+        encounterId &&
+        encounter &&
+        observationWorkflowActive &&
+        observationOpsClient &&
+        canFetchEncounterOrders
+    ),
+    language,
+    t,
+  });
+
   const existingObservationTemplateItemIds = useMemo(() => {
     const collected: { manualLabel?: string | null; status?: string | null; lifecycleState?: string | null }[] = [];
     for (const o of quickOrders) {
@@ -1293,6 +1332,71 @@ export default function EncounterDetailPage() {
     encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionPreviewForChrome != null;
 
   const showObservationOrdersEntry = observationWorkflowActive && canPrescribe;
+
+  const renderDischargeFieldRow = (key: keyof DischargeFormState, kind: "medical" | "nursing", rows: number) => {
+    const editable =
+      !isLocked &&
+      ((kind === "nursing" && canEditNursingDischarge) || (kind === "medical" && canEditMedicalDischarge));
+    const label = t(`encounterChrome.modals.dischargeField.${key}`);
+    const quickList =
+      observationWorkflowActive && editable
+        ? kind === "medical"
+          ? OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES.filter((n) => n.field === key)
+          : OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES.filter((n) => n.field === key)
+        : [];
+    return (
+      <label key={String(key)} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+        <span style={{ fontWeight: 600, color: "#334155" }}>
+          {label}
+          {!editable ? (
+            <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>{t("encounterChrome.modals.readOnly")}</span>
+          ) : null}
+        </span>
+        {quickList.length > 0 ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>
+              {kind === "medical"
+                ? t("observationDischarge.quickNotesGroupProvider")
+                : t("observationDischarge.quickNotesGroupNursing")}
+            </span>
+            {quickList.map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                disabled={!editable}
+                onClick={() =>
+                  setDischargeForm((f) => ({
+                    ...f,
+                    [key]: appendQuickNoteToField(f[key] as string, t(n.insertKey)),
+                  }))
+                }
+                style={{
+                  padding: "4px 9px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  borderRadius: 9999,
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#fff",
+                  color: "#475569",
+                  cursor: editable ? "pointer" : "not-allowed",
+                  opacity: editable ? 1 : 0.65,
+                }}
+              >
+                {t(n.chipLabelKey)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <textarea
+          readOnly={!editable}
+          value={dischargeForm[key] as string}
+          onChange={(e) => setDischargeForm((f) => ({ ...f, [key]: e.target.value }))}
+          rows={rows}
+          style={encounterWorkflowModalField(editable)}
+        />
+      </label>
+    );
+  };
 
   const quickBtn: React.CSSProperties = {
     padding: "8px 14px",
@@ -1763,6 +1867,12 @@ export default function EncounterDetailPage() {
             canAddProviderReassessment={canAddObsProviderReassessment}
             canAddNursingReassessment={canAddObsNursingReassessment}
             onOpenObservationReassessment={(role) => setObservationReassessmentModalRole(role)}
+            onOpenContinueObservationQuick={() => setShowContinueObservationQuickModal(true)}
+            marEncounterDigest={{
+              summary: observationMarEncounterDigest.summary,
+              loading: observationMarEncounterDigest.loading,
+            }}
+            canOpenMarTab={canFetchMarTab}
           />
         ) : null}
         <EncounterOperationalPanel
@@ -2145,7 +2255,12 @@ export default function EncounterDetailPage() {
                 t={t}
                 encounterId={encounterId}
                 facilityId={facilityId}
-                medicationMarSummaryRefreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${encounterResultsRefresh}-${clinicalTimelineRefresh}`}
+                medicationMarSummaryRefreshKey={medicationMarSummaryRefreshKey}
+                marEncounterDigest={{
+                  summary: observationMarEncounterDigest.summary,
+                  loading: observationMarEncounterDigest.loading,
+                  error: observationMarEncounterDigest.error,
+                }}
               />
             </div>
           ) : null}
@@ -2261,50 +2376,64 @@ export default function EncounterDetailPage() {
         >
           <div
             style={{
-              ...encounterWorkflowModalPanel(520),
-              maxHeight: "90vh",
-              overflowY: "auto",
+              ...encounterWorkflowModalPanel(observationWorkflowActive ? 600 : 520),
+              maxHeight: "92vh",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              overflow: "hidden",
             }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-labelledby="discharge-title"
           >
-            <h2
-              id="discharge-title"
-              style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
-            >
-              {observationWorkflowActive
-                ? t("encounterChrome.modals.dischargeTitleObservation")
-                : t("encounterChrome.modals.dischargeTitle")}
-            </h2>
-            <div
-              style={{
-                marginBottom: 16,
-                padding: "12px 14px",
-                backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: 12,
-              }}
-            >
-              <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.55 }}>
-                {t("encounterChrome.modals.dischargeIntro")}
-              </p>
-            </div>
-            {observationWorkflowActive && observationOpsClient ? (
+            <div style={{ flexShrink: 0, padding: "18px 24px 0" }}>
+              <h2
+                id="discharge-title"
+                style={{ margin: "0 0 10px 0", fontSize: 18, fontWeight: 600, color: "#0f172a", lineHeight: 1.3 }}
+              >
+                {observationWorkflowActive
+                  ? t("encounterChrome.modals.dischargeTitleObservation")
+                  : t("encounterChrome.modals.dischargeTitle")}
+              </h2>
               <div
                 style={{
-                  marginBottom: 16,
+                  marginBottom: 14,
                   padding: "12px 14px",
+                  backgroundColor: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.55 }}>
+                  {t("encounterChrome.modals.dischargeIntro")}
+                </p>
+              </div>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 24px 8px" }}>
+            {observationWorkflowActive ? (
+              <details
+                style={{
+                  marginBottom: 14,
+                  padding: "10px 12px",
                   backgroundColor: "#fffbeb",
                   border: "1px solid #fde68a",
                   borderRadius: 12,
                 }}
               >
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>
-                  {t("encounterChrome.modals.observationDischargeReminderTitle")}
-                </div>
-                <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#78350f", lineHeight: 1.5 }}>
+                <summary
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#92400e",
+                    cursor: "pointer",
+                    listStyle: "none",
+                  }}
+                >
+                  {t("observationDischarge.reminderDetailsSummary")}
+                </summary>
+                <p style={{ margin: "10px 0 10px 0", fontSize: 12, color: "#78350f", lineHeight: 1.5 }}>
                   {t("encounterChrome.modals.observationDischargeReminderFootnote")}
                 </p>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#451a03", lineHeight: 1.5 }}>
@@ -2318,7 +2447,7 @@ export default function EncounterDetailPage() {
                   <li style={{ marginBottom: 4 }}>{t("encounterChrome.modals.observationDischargeReminderIvInfusionsAccounted")}</li>
                   <li style={{ marginBottom: 0 }}>{t("encounterChrome.modals.observationDischargeReminderCourse")}</li>
                 </ul>
-              </div>
+              </details>
             ) : null}
             {observationWorkflowActive ? (
               <div
@@ -2450,86 +2579,134 @@ export default function EncounterDetailPage() {
                 ) : null}
               </div>
             ) : null}
+            {observationWorkflowActive && !isLocked && canEditMedicalDischarge ? (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid #bae6fd",
+                  backgroundColor: "#f0f9ff",
+                }}
+              >
+                <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#0369a1", lineHeight: 1.45 }}>
+                  {t("observationDischarge.insertSummaryHint")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const labels = {
+                      draftBanner: t("observationDischarge.summaryDraft.banner"),
+                      motifLabel: t("observationDischarge.summaryDraft.motifLabel"),
+                      losLabel: t("observationDischarge.summaryDraft.losLabel"),
+                      laneProviderLabel: t("observationDischarge.summaryDraft.laneProviderLabel"),
+                      laneRnLabel: t("observationDischarge.summaryDraft.laneRnLabel"),
+                      laneOverdue: t("observationDischarge.summaryDraft.laneOverdue"),
+                      laneDue: t("observationDischarge.summaryDraft.laneDue"),
+                      laneOk: t("observationDischarge.summaryDraft.laneOk"),
+                      pendingLabel: t("observationDischarge.summaryDraft.pendingLabel"),
+                      pendingNone: t("observationDischarge.summaryDraft.pendingNone"),
+                      pendingCount: t("observationDischarge.summaryDraft.pendingCount"),
+                      criticalLabsFlag: t("observationDischarge.summaryDraft.criticalLabsFlag"),
+                      vitalsStale: t("observationDischarge.summaryDraft.vitalsStale"),
+                      vitalsOk: t("observationDischarge.summaryDraft.vitalsOk"),
+                      extended24h: t("observationDischarge.summaryDraft.extended24h"),
+                    };
+                    const readinessLineLabels =
+                      observationOpsClient?.readinessLines
+                        .filter((r) => r.active)
+                        .map((r) => t(READINESS_LABEL_KEY[r.id])) ?? [];
+                    const draft = buildObservationSummaryDraft(
+                      observationOpsClient ?? null,
+                      Number(encounter.trackboardOps?.resultsPendingCount ?? 0),
+                      Boolean(encounter.trackboardOps?.criticalResultUnacknowledged),
+                      motif,
+                      labels,
+                      { readinessLineLabels }
+                    );
+                    setDischargeForm((f) => ({
+                      ...f,
+                      disposition: appendQuickNoteToField(f.disposition, draft),
+                    }));
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 10,
+                    border: "1px solid #7dd3fc",
+                    backgroundColor: "#fff",
+                    color: "#0c4a6e",
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("observationDischarge.insertSummaryButton")}
+                </button>
+              </div>
+            ) : null}
+            {observationWorkflowActive ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <h3
+                    style={{
+                      margin: "0 0 8px 0",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {t("observationDischarge.sectionProviderClinical")}
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {renderDischargeFieldRow("disposition", "medical", 2)}
+                    {renderDischargeFieldRow("dischargeInstructions", "medical", 3)}
+                    {renderDischargeFieldRow("medicationsGiven", "medical", 3)}
+                  </div>
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      margin: "0 0 8px 0",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {t("observationDischarge.sectionFollowUp")}
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {renderDischargeFieldRow("followUp", "medical", 2)}
+                  </div>
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      margin: "0 0 8px 0",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {t("observationDischarge.sectionNursing")}
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {renderDischargeFieldRow("exitCondition", "nursing", 2)}
+                    {renderDischargeFieldRow("returnIfWorse", "nursing", 2)}
+                    {renderDischargeFieldRow("patientDestination", "nursing", 2)}
+                  </div>
+                </div>
+              </div>
+            ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {(
-                [
-                  ["disposition", "medical", 2],
-                  ["exitCondition", "nursing", 2],
-                  ["dischargeInstructions", "medical", 3],
-                  ["medicationsGiven", "medical", 3],
-                  ["followUp", "medical", 2],
-                  ["returnIfWorse", "nursing", 2],
-                  ["patientDestination", "nursing", 2],
-                ] as const
-              ).map(([key, kind, rows]) => {
-                const editable =
-                  !isLocked &&
-                  ((kind === "nursing" && canEditNursingDischarge) ||
-                    (kind === "medical" && canEditMedicalDischarge));
-                const k = key as keyof DischargeFormState;
-                const label = t(`encounterChrome.modals.dischargeField.${key}`);
-                const quickList =
-                  observationWorkflowActive && editable
-                    ? kind === "medical"
-                      ? OBSERVATION_DISCHARGE_PROVIDER_QUICK_NOTES.filter((n) => n.field === k)
-                      : OBSERVATION_DISCHARGE_NURSING_QUICK_NOTES.filter((n) => n.field === k)
-                    : [];
-                return (
-                  <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-                    <span style={{ fontWeight: 600, color: "#334155" }}>
-                      {label}
-                      {!editable ? (
-                        <span style={{ fontWeight: 500, color: "#94a3b8", marginLeft: 6 }}>
-                          {t("encounterChrome.modals.readOnly")}
-                        </span>
-                      ) : null}
-                    </span>
-                    {quickList.length > 0 ? (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>
-                          {kind === "medical"
-                            ? t("observationDischarge.quickNotesGroupProvider")
-                            : t("observationDischarge.quickNotesGroupNursing")}
-                        </span>
-                        {quickList.map((n) => (
-                          <button
-                            key={n.id}
-                            type="button"
-                            disabled={!editable}
-                            onClick={() =>
-                              setDischargeForm((f) => ({
-                                ...f,
-                                [k]: appendQuickNoteToField(f[k] as string, t(n.messageKey)),
-                              }))
-                            }
-                            style={{
-                              padding: "4px 9px",
-                              fontSize: 11,
-                              fontWeight: 600,
-                              borderRadius: 9999,
-                              border: "1px solid #e2e8f0",
-                              backgroundColor: "#fff",
-                              color: "#475569",
-                              cursor: editable ? "pointer" : "not-allowed",
-                              opacity: editable ? 1 : 0.65,
-                            }}
-                          >
-                            {t(n.messageKey)}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                    <textarea
-                      readOnly={!editable}
-                      value={dischargeForm[k] as string}
-                      onChange={(e) => setDischargeForm((f) => ({ ...f, [k]: e.target.value }))}
-                      rows={rows}
-                      style={encounterWorkflowModalField(editable)}
-                    />
-                  </label>
-                );
-              })}
-              {!observationWorkflowActive ? (
+              {OBSERVATION_DISCHARGE_FIELD_ROWS.map(([key, kind, rows]) =>
+                renderDischargeFieldRow(key as keyof DischargeFormState, kind, rows)
+              )}
+            </div>
+            )}
+            {!observationWorkflowActive ? (
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
                 <span style={{ fontWeight: 600, color: "#334155" }}>
                   {t("encounterChrome.modals.dischargeMode")}
@@ -2556,25 +2733,36 @@ export default function EncounterDetailPage() {
                   ))}
                 </select>
               </label>
-              ) : (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#64748b",
-                    padding: "8px 10px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 10,
-                    backgroundColor: "#f8fafc",
-                  }}
-                >
-                  <span style={{ fontWeight: 600, color: "#334155" }}>{t("encounterChrome.modals.dischargeMode")}: </span>
-                  {dischargeForm.dischargeMode.trim()
-                    ? localizedErDischargeModeLabel(dischargeForm.dischargeMode, obsDispositionSupplement, language)
-                    : t("encounterChrome.modals.selectPlaceholder")}
-                </div>
-              )}
+            ) : (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#64748b",
+                  padding: "8px 10px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  backgroundColor: "#f8fafc",
+                }}
+              >
+                <span style={{ fontWeight: 600, color: "#334155" }}>{t("encounterChrome.modals.dischargeMode")}: </span>
+                {dischargeForm.dischargeMode.trim()
+                  ? localizedErDischargeModeLabel(dischargeForm.dischargeMode, obsDispositionSupplement, language)
+                  : t("encounterChrome.modals.selectPlaceholder")}
+              </div>
+            )}
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, flexWrap: "wrap" }}>
+            <div
+              style={{
+                flexShrink: 0,
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+                flexWrap: "wrap",
+                padding: "14px 24px 18px",
+                borderTop: "1px solid #e2e8f0",
+                backgroundColor: "#fafafa",
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setShowDischargeModal(false)}
@@ -2777,6 +2965,18 @@ export default function EncounterDetailPage() {
         encounterId={encounterId}
         facilityId={facilityId}
         onClose={() => setObservationReassessmentModalRole(null)}
+        onSaved={async () => {
+          setClinicalTimelineRefresh((n) => n + 1);
+          setEncounterResultsRefresh((x) => x + 1);
+          await loadEncounter({ silent: true });
+        }}
+      />
+
+      <ObservationContinueObservationQuickModal
+        open={showContinueObservationQuickModal}
+        encounterId={encounterId}
+        facilityId={facilityId}
+        onClose={() => setShowContinueObservationQuickModal(false)}
         onSaved={async () => {
           setClinicalTimelineRefresh((n) => n + 1);
           setEncounterResultsRefresh((x) => x + 1);

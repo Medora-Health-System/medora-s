@@ -1114,12 +1114,41 @@ export default {
     modalHelper:
       "Choose the outcome, then complete the fields. Shortcuts insert text into the focused field (saved at the next step only). Standard closure checks still apply.",
     outcomeTitle: "Discharge outcome (packet)",
+    sectionProviderClinical: "Provider — clinical summary",
+    sectionFollowUp: "Provider — follow-up & instructions",
+    sectionNursing: "Nursing — discharge documentation",
+    insertSummaryButton: "Insert observation summary (draft)",
+    insertSummaryHint:
+      "Inserts operational context as editable text into Clinical summary / disposition. Review and edit before continuing to close.",
+    reminderDetailsSummary: "Documentation reminders (tap to expand)",
     quickNotesGroupProvider: "Provider shortcuts",
     quickNotesGroupNursing: "Nursing shortcuts",
+    summaryDraft: {
+      banner: "Observation context (draft — review before save; not a standalone legal document).",
+      motifLabel: "Presenting concern",
+      losLabel: "Length of stay (operational)",
+      laneProviderLabel: "Provider observation reassessment lane",
+      laneRnLabel: "RN observation reassessment lane",
+      laneOverdue: "Overdue",
+      laneDue: "Due",
+      laneOk: "OK / within window",
+      pendingLabel: "Pending results (aggregate)",
+      pendingNone: "No pending results aggregate on the worklist.",
+      pendingCount: "Pending results aggregate: {count} item(s) — review chart before discharge.",
+      criticalLabsFlag: "Critical or unacknowledged results flagged on the worklist — verify before discharge.",
+      vitalsStale: "Intake vitals clock: stale per operational rule — verify recent vitals or document rationale.",
+      vitalsOk: "Intake vitals clock: not flagged stale on this operational view.",
+      extended24h: "Operational extended stay (≥24h anchor) — verify documentation and plan.",
+    },
     quickNotes: {
       provider: {
         stableCourse: "Observation course stable; patient hemodynamically stable at discharge.",
+        improvedStable: "Patient clinically improved and stable; appropriate for discharge planning or continued observation per protocol.",
         symptomsImproved: "Symptoms improved from arrival; reassuring exam.",
+        toleratingPo: "Tolerating oral intake without distress.",
+        ambulatingSafely: "Ambulating safely with assistance as needed.",
+        noAcuteDistress: "No acute distress on reassessment.",
+        verbalizedUnderstandingProvider: "Patient verbalized understanding of the plan, precautions, and follow-up instructions.",
         vitalsReviewed: "Vital signs reviewed and acceptable for discharge.",
         labsImagingReviewed: "Labs / imaging reviewed; no discharge-blocking issue identified.",
         medicationsReviewed: "Active medications reviewed; discharge plan consistent with therapy.",
@@ -1133,11 +1162,52 @@ export default {
         instructionsReviewed: "Discharge instructions reviewed with the patient.",
         verbalizedUnderstanding: "Patient verbalized understanding of instructions.",
         ivRemoved: "IV removed; site intact; dressing applied if needed.",
+        vitalsStable: "Vital signs stable at discharge reassessment.",
+        dischargeTeachingCompleted: "Discharge teaching completed; questions addressed.",
+        painControlled: "Pain controlled with current regimen at discharge reassessment.",
+        awaitingTransport: "Awaiting transport / escort per discharge plan.",
+        familyNotified: "Family / caregiver notified of disposition and plan.",
+        wheelchairEscort: "Wheelchair escort provided per facility protocol.",
         belongingsReturned: "Belongings returned; identity verified.",
         transportArranged: "Transport / escort arranged per discharge plan.",
         transferPaperwork: "Transfer paperwork sent to receiving service / partner.",
         leftAmbulatory: "Patient left the facility (ambulatory / wheelchair) per plan.",
         amaWitness: "AMA / refusal: witness / refusal documented when applicable.",
+      },
+    },
+    chips: {
+      provider: {
+        stable_course: "Stable course",
+        improved_stable: "Improved & stable",
+        symptoms_improved: "Symptoms improved",
+        tolerating_po: "Tolerating PO",
+        ambulating_safely: "Ambulating safely",
+        no_acute_distress: "No acute distress",
+        vitals_reviewed: "Vitals reviewed",
+        labs_imaging_reviewed: "Labs / imaging OK",
+        medications_reviewed: "Meds reviewed",
+        discharge_home_precautions: "Home precautions",
+        transfer_arranged: "Transfer arranged",
+        ama_counseling: "AMA counseling",
+        return_precautions: "Return precautions",
+        follow_up_advised: "Follow-up advised",
+        verbalized_understanding_provider: "Verbalized understanding",
+      },
+      nursing: {
+        instructions_reviewed: "Instructions reviewed",
+        verbalized_understanding: "Verbalized OK",
+        iv_removed: "IV removed",
+        vitals_stable: "Vitals stable",
+        discharge_teaching_completed: "Teaching done",
+        pain_controlled_nursing: "Pain controlled",
+        left_ambulatory: "Ambulatory / escort",
+        wheelchair_escort: "Wheelchair escort",
+        belongings: "Belongings",
+        transport: "Transport arranged",
+        awaiting_transport: "Awaiting transport",
+        family_notified: "Family notified",
+        transfer_paperwork: "Transfer paperwork",
+        ama_witness: "AMA witness",
       },
     },
   },
@@ -5736,6 +5806,18 @@ export default {
         discharge: "End observation & discharge packet",
         addReassessmentProvider: "Observation reassessment (provider)",
         addReassessmentNursing: "Observation reassessment (RN)",
+        continueObsSave: "Continue observation (save note)",
+        reviewMar: "Review MAR",
+      },
+      marChipFootnote:
+        "Read-only medication / MAR digest from orders and administrations — informational only; does not replace the MAR tab or clinical verification.",
+      marChip: {
+        loading: "MAR digest…",
+        unavailable: "MAR digest unavailable",
+        overdue: "{count} administration(s) overdue (MAR)",
+        infusionActive: "{count} active infusion session(s) (MAR)",
+        activeLines: "{count} active MAR line(s)",
+        clear: "MAR / meds — nothing urgent in digest",
       },
       compactDetailsSummary: "Operational details (timers, blockers, readiness) — show",
     },
@@ -5805,6 +5887,7 @@ export default {
           general: "General",
           clinical: "Clinical templates",
           disposition: "Disposition hints",
+          operational: "Observation workflow",
         },
         improvedContinue: {
           btn: "Improved / continue",
@@ -5841,7 +5924,59 @@ export default {
           text:
             "Ready-for-discharge reassessment: disposition and follow-up still to be finalized with the responsible clinician. This is not a discharge order by itself.",
         },
+        presetStable: {
+          btn: "Stable",
+          text:
+            "Observation reassessment: patient stable at this time. Monitoring continues per plan. Edit to reflect the bedside assessment.",
+        },
+        presetImproving: {
+          btn: "Improving",
+          text:
+            "Observation reassessment: clinical course improving compared with prior assessment. Continue monitoring and document any change.",
+        },
+        presetPendingResults: {
+          btn: "Pending results",
+          text:
+            "Observation reassessment: awaiting outstanding laboratory or imaging results before finalizing disposition. Follow-up documented in chart as results return.",
+        },
+        presetAwaitingImaging: {
+          btn: "Awaiting imaging",
+          text:
+            "Observation reassessment: awaiting imaging interpretation / additional imaging as ordered. Update the note when imaging is reviewed.",
+        },
+        presetAwaitingConsult: {
+          btn: "Awaiting consult",
+          text:
+            "Observation reassessment: awaiting specialist input or consult response. No disposition change documented until recommendations are available.",
+        },
+        presetNeedsRepeatVitals: {
+          btn: "Repeat vitals",
+          text:
+            "Observation reassessment: repeat vital signs obtained or ordered per protocol; trend reviewed. Adjust documentation if values change.",
+        },
+        presetContinueObservation: {
+          btn: "Continue observation",
+          text:
+            "Observation reassessment: continue observation with serial reassessments per local protocol. Rationale and monitoring plan updated in the chart.",
+        },
+        presetEscalateReview: {
+          btn: "Escalate review",
+          text:
+            "Observation reassessment: escalation / senior review requested due to clinical concern. Awaiting guidance; no disposition finalized in this note alone.",
+        },
       },
+    },
+    continueObservationQuick: {
+      title: "Continue observation (document)",
+      intro:
+        "Saves a provider observation reassessment with “continue observation” checked. Refreshes operational timers after save. Does not discharge, bill, or change encounter status.",
+      reviewHint: "Edit the rationale — you remain the author of the note.",
+      rationaleLabel: "Rationale (required)",
+      placeholder: "Brief clinical rationale for continuing observation…",
+      cancel: "Cancel",
+      save: "Save reassessment",
+      saving: "Saving…",
+      saveError: "Could not save reassessment.",
     },
     observationOrderTemplateBannerButton: "Observation order template",
     observationOrderTemplateBannerPartial:

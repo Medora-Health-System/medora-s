@@ -8,6 +8,12 @@ import type {
   ObservationTrackboardOpsInput,
 } from "@medora/shared";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+import type { ObservationMarEncounterSummary } from "@/lib/observationMarEncounterSummary";
+import {
+  observationMarWorkflowChipModel,
+  type ObservationMarWorkflowChipModel,
+  type ObservationMarWorkflowChipTone,
+} from "@/lib/observationMarWorkflowChipModel";
 
 export const BLOCKER_LABEL_KEY: Record<ObservationOperationalBlocker["id"], string> = {
   CRITICAL_RESULT_UNACKED: "encounterChrome.observationWorkflow.blockers.CRITICAL_RESULT_UNACKED",
@@ -87,6 +93,22 @@ const toneStyles: Record<
   amber: { backgroundColor: "#ffedd5", borderColor: "#fb923c", color: "#9a3412" },
 };
 
+const marChipToneStyles: Record<
+  ObservationMarWorkflowChipTone,
+  { backgroundColor: string; borderColor: string; color: string }
+> = {
+  loading: { backgroundColor: "#f1f5f9", borderColor: "#cbd5e1", color: "#475569" },
+  alert: { backgroundColor: "#fee2e2", borderColor: "#f87171", color: "#991b1b" },
+  caution: { backgroundColor: "#fef9c3", borderColor: "#fde047", color: "#854d0e" },
+  ok: { backgroundColor: "#dcfce7", borderColor: "#86efac", color: "#166534" },
+  idle: { backgroundColor: "#f1f5f9", borderColor: "#cbd5e1", color: "#64748b" },
+};
+
+function formatObservationMarChipLabel(t: (k: string) => string, model: ObservationMarWorkflowChipModel): string {
+  const raw = t(model.labelKey);
+  return model.count !== undefined ? raw.replace("{count}", String(model.count)) : raw;
+}
+
 const badgeBase: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -120,8 +142,14 @@ export type ObservationWorkflowEncounterChromeProps = {
   canAddProviderReassessment: boolean;
   canAddNursingReassessment: boolean;
   onOpenObservationReassessment: (role: "PROVIDER" | "RN") => void;
+  /** Optional: quick-save “continue observation” reassessment (same audited POST as full modal). */
+  onOpenContinueObservationQuick?: () => void;
   /** Dense dashboard: narrative operational details behind a disclosure; actions + badges stay visible. */
   compact?: boolean;
+  /** Read-only MAR digest (same source as observation documentation summary). */
+  marEncounterDigest?: { summary: ObservationMarEncounterSummary | null; loading: boolean } | null;
+  /** When true, show “Review MAR” quick action (tab must exist in parent). */
+  canOpenMarTab?: boolean;
 };
 
 export function ObservationWorkflowEncounterChrome({
@@ -137,7 +165,10 @@ export function ObservationWorkflowEncounterChrome({
   canAddProviderReassessment,
   canAddNursingReassessment,
   onOpenObservationReassessment,
+  onOpenContinueObservationQuick,
   compact = false,
+  marEncounterDigest,
+  canOpenMarTab = false,
 }: ObservationWorkflowEncounterChromeProps) {
   const providerObsAt = snapshot.reassessmentLanes.provider.lastAtIso
     ? formatDateTime(snapshot.reassessmentLanes.provider.lastAtIso)
@@ -158,6 +189,11 @@ export function ObservationWorkflowEncounterChrome({
       : t("common.dash");
 
   const pendingCount = typeof trackboardOps.resultsPendingCount === "number" ? trackboardOps.resultsPendingCount : 0;
+
+  const marWorkflowChip = useMemo(() => {
+    if (!marEncounterDigest) return null;
+    return observationMarWorkflowChipModel(marEncounterDigest.summary, marEncounterDigest.loading);
+  }, [marEncounterDigest]);
 
   const quickBtn: React.CSSProperties = {
     padding: "6px 12px",
@@ -318,6 +354,20 @@ export function ObservationWorkflowEncounterChrome({
           {t("encounterChrome.observationWorkflow.quick.addReassessmentProvider")}
         </button>
       ) : null}
+      {canAddProviderReassessment && onOpenContinueObservationQuick ? (
+        <button
+          type="button"
+          style={{
+            ...quickBtnCompact,
+            backgroundColor: "#faf5ff",
+            borderColor: "#d8b4fe",
+            color: "#6b21a8",
+          }}
+          onClick={onOpenContinueObservationQuick}
+        >
+          {t("encounterChrome.observationWorkflow.quick.continueObsSave")}
+        </button>
+      ) : null}
       {canAddNursingReassessment ? (
         <button
           type="button"
@@ -335,6 +385,11 @@ export function ObservationWorkflowEncounterChrome({
       <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("orders")}>
         {t("encounterChrome.observationWorkflow.quick.orders")}
       </button>
+      {canOpenMarTab ? (
+        <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("mar")}>
+          {t("encounterChrome.observationWorkflow.quick.reviewMar")}
+        </button>
+      ) : null}
       <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("results")}>
         {t("encounterChrome.observationWorkflow.quick.results")}
       </button>
@@ -448,6 +503,17 @@ export function ObservationWorkflowEncounterChrome({
         {flags.dispositionPhase ? (
           <span style={{ ...badgeBase, backgroundColor: "#f1f5f9", borderColor: "#cbd5e1", color: "#334155" }}>
             {t("encounterChrome.observationWorkflow.badges.disposition")}
+          </span>
+        ) : null}
+        {marWorkflowChip ? (
+          <span
+            title={t("encounterChrome.observationWorkflow.marChipFootnote")}
+            style={{
+              ...badgeBase,
+              ...marChipToneStyles[marWorkflowChip.tone],
+            }}
+          >
+            {formatObservationMarChipLabel(t, marWorkflowChip)}
           </span>
         ) : null}
     </div>

@@ -1072,12 +1072,47 @@ export default {
     modalHelper:
       "Choisissez l’issue puis complétez les champs. Les raccourcis insèrent du texte dans le champ sélectionné (enregistrement à l’étape suivante uniquement). Les contrôles de clôture habituels s’appliquent.",
     outcomeTitle: "Issue de la sortie (dossier)",
+    sectionProviderClinical: "Médecin — synthèse clinique",
+    sectionFollowUp: "Médecin — suivi et consignes",
+    sectionNursing: "IDE — documentation de sortie",
+    insertSummaryButton: "Insérer un résumé d’observation (brouillon)",
+    insertSummaryHint:
+      "Insère le contexte opérationnel comme texte modifiable dans la synthèse clinique / disposition. Relire et adapter avant de poursuivre la clôture.",
+    reminderDetailsSummary: "Rappels documentaires (appuyer pour afficher)",
     quickNotesGroupProvider: "Raccourcis médecin",
     quickNotesGroupNursing: "Raccourcis IDE",
+    summaryDraft: {
+      banner:
+        "Contexte d’observation (brouillon — à relire avant enregistrement ; ne remplace pas une note clinique complète).",
+      motifLabel: "Motif / plainte principale",
+      losLabel: "Durée de séjour (indicateur opérationnel)",
+      laneProviderLabel: "Voie de réévaluation médecin (observation)",
+      laneRnLabel: "Voie de réévaluation IDE (observation)",
+      laneOverdue: "En retard",
+      laneDue: "Due",
+      laneOk: "OK / dans la fenêtre",
+      pendingLabel: "Résultats en attente (agrégat)",
+      pendingNone: "Aucun résultat en attente sur la file opérationnelle.",
+      pendingCount: "Résultats en attente (agrégat) : {count} élément(s) — vérifier le dossier avant la sortie.",
+      criticalLabsFlag:
+        "Résultat critique ou non acquitté signalé sur la file — vérifier avant la sortie.",
+      vitalsStale:
+        "Horloge des signes vitaux d’accueil : signal « à renouveler » sur cette vue opérationnelle — vérifier des SV récents ou documenter la justification.",
+      vitalsOk: "Horloge des signes vitaux d’accueil : non signalée comme obsolète sur cette vue.",
+      extended24h:
+        "Séjour prolongé ≥24 h (ancrage opérationnel) — vérifier la documentation et le plan.",
+    },
     quickNotes: {
       provider: {
         stableCourse: "Parcours d’observation stable ; patient hémodynamiquement stable à la sortie.",
+        improvedStable:
+          "Patient cliniquement amélioré et stable ; adapté à la planification de sortie ou à la poursuite de l’observation selon le protocole.",
         symptomsImproved: "Symptômes améliorés par rapport à l’arrivée ; clinique rassurante.",
+        toleratingPo: "Tolère la voie orale sans détresse.",
+        ambulatingSafely: "Marche en sécurité avec aide si nécessaire.",
+        noAcuteDistress: "Pas de détresse aiguë à la réévaluation.",
+        verbalizedUnderstandingProvider:
+          "Le patient a verbalisé sa compréhension du plan, des précautions et du suivi.",
         vitalsReviewed: "Signes vitaux revus et jugés acceptables pour la sortie.",
         labsImagingReviewed: "Résultats de biologie / imagerie revus ; pas de contre-indication à la sortie identifiée.",
         medicationsReviewed: "Médicaments actifs revus ; plan de sortie cohérent avec le traitement.",
@@ -1091,11 +1126,52 @@ export default {
         instructionsReviewed: "Consignes de sortie revues avec le patient.",
         verbalizedUnderstanding: "Le patient a verbalisé sa compréhension des consignes.",
         ivRemoved: "Perfusion retirée ; site d’insertion intact ; pansement appliqué si nécessaire.",
+        vitalsStable: "Signes vitaux stables à la réévaluation de sortie.",
+        dischargeTeachingCompleted: "Éducation thérapeutique de sortie réalisée ; questions traitées.",
+        painControlled: "Douleur contrôlée avec le schéma actuel à la réévaluation de sortie.",
+        awaitingTransport: "En attente de transport / accompagnement selon le plan de sortie.",
+        familyNotified: "Famille / aidant informé(e) de la disposition et du plan.",
+        wheelchairEscort: "Sortie en fauteuil selon le protocole de l’établissement.",
         belongingsReturned: "Effets personnels restitués ; identité vérifiée.",
         transportArranged: "Transport / accompagnement organisé selon le plan de sortie.",
         transferPaperwork: "Transmission / documents de transfert envoyés au service ou partenaire concerné.",
         leftAmbulatory: "Patient parti de l’établissement (marche / fauteuil) selon le plan.",
         amaWitness: "Refus de soins / LAMA : témoin / refus documenté si applicable.",
+      },
+    },
+    chips: {
+      provider: {
+        stable_course: "Parcours stable",
+        improved_stable: "Amélioré & stable",
+        symptoms_improved: "Symptômes améliorés",
+        tolerating_po: "Tolère VO",
+        ambulating_safely: "Marche en sécurité",
+        no_acute_distress: "Pas de détresse",
+        vitals_reviewed: "SV revus",
+        labs_imaging_reviewed: "Bio / imagerie OK",
+        medications_reviewed: "Médicaments revus",
+        discharge_home_precautions: "Consignes domicile",
+        transfer_arranged: "Transfert organisé",
+        ama_counseling: "Conseils LAMA",
+        return_precautions: "Signes d’alarme",
+        follow_up_advised: "Suivi conseillé",
+        verbalized_understanding_provider: "Compréhension verbalisée",
+      },
+      nursing: {
+        instructions_reviewed: "Consignes revues",
+        verbalized_understanding: "Compréhension OK",
+        iv_removed: "Perfusion retirée",
+        vitals_stable: "SV stables",
+        discharge_teaching_completed: "Éducation faite",
+        pain_controlled_nursing: "Douleur contrôlée",
+        left_ambulatory: "Marche / accompagnement",
+        wheelchair_escort: "Sortie fauteuil",
+        belongings: "Effets restitués",
+        transport: "Transport organisé",
+        awaiting_transport: "En attente transport",
+        family_notified: "Famille informée",
+        transfer_paperwork: "Documents transfert",
+        ama_witness: "Témoin LAMA",
       },
     },
   },
@@ -5715,6 +5791,18 @@ export default {
         discharge: "Sortie / dossier de sortie",
         addReassessmentProvider: "Réévaluation observation (médecin)",
         addReassessmentNursing: "Réévaluation observation (IDE)",
+        continueObsSave: "Poursuivre l'observation (enregistrer la note)",
+        reviewMar: "Voir le MAR",
+      },
+      marChipFootnote:
+        "Synthèse médicaments / MAR en lecture seule (ordres et administrations) — informationnelle uniquement ; ne remplace pas l'onglet MAR ni la vérification clinique.",
+      marChip: {
+        loading: "Synthèse MAR…",
+        unavailable: "Synthèse MAR indisponible",
+        overdue: "{count} administration(s) en retard (MAR)",
+        infusionActive: "{count} perfusion(s) active(s) (MAR)",
+        activeLines: "{count} ligne(s) MAR active(s)",
+        clear: "MAR / médicaments — rien d'urgent dans la synthèse",
       },
       compactDetailsSummary: "Détails opérationnels (horloges, freins, disponibilité) — afficher",
     },
@@ -5786,6 +5874,7 @@ export default {
           general: "Général",
           clinical: "Contextes cliniques (modèles)",
           disposition: "Sortie / transfert (informationnel)",
+          operational: "Parcours d'observation",
         },
         improvedContinue: {
           btn: "Amélioration / poursuite",
@@ -5822,7 +5911,59 @@ export default {
           text:
             "Réévaluation « prêt pour sortie » : disposition et suivi encore à finaliser avec le clinicien responsable. Ne constitue pas à elle seule un ordre de sortie.",
         },
+        presetStable: {
+          btn: "Stable",
+          text:
+            "Réévaluation observation : patient stable à ce moment. Surveillance poursuivie selon le plan. Adapter au contexte du lit.",
+        },
+        presetImproving: {
+          btn: "En amélioration",
+          text:
+            "Réévaluation observation : évolution clinique favorable par rapport à l'évaluation précédente. Poursuivre la surveillance et documenter tout changement.",
+        },
+        presetPendingResults: {
+          btn: "Résultats en attente",
+          text:
+            "Réévaluation observation : en attente de résultats de biologie ou d'imagerie avant de finaliser la disposition. Suivi à consigner au dossier à réception.",
+        },
+        presetAwaitingImaging: {
+          btn: "Imagerie en attente",
+          text:
+            "Réévaluation observation : en attente d'interprétation d'imagerie ou d'examens complémentaires prescrits. Mettre à jour la note après revue.",
+        },
+        presetAwaitingConsult: {
+          btn: "Avis en attente",
+          text:
+            "Réévaluation observation : en attente d'un avis spécialisé ou de la réponse à une demande de consultation. Pas de changement de disposition consigné ici seul.",
+        },
+        presetNeedsRepeatVitals: {
+          btn: "SV à renouveler",
+          text:
+            "Réévaluation observation : signes vitaux renouvelés ou demandés selon le protocole ; tendance revue. Adapter si les valeurs évoluent.",
+        },
+        presetContinueObservation: {
+          btn: "Poursuivre l'observation",
+          text:
+            "Réévaluation observation : poursuite de l'observation avec réévaluations sérielles selon le protocole local. Motif et plan de surveillance actualisés au dossier.",
+        },
+        presetEscalateReview: {
+          btn: "Revue / escalade",
+          text:
+            "Réévaluation observation : demande d'escalade ou d'avis senior pour préoccupation clinique. En attente d'orientations ; cette note ne suffit pas à trancher seule la disposition.",
+        },
       },
+    },
+    continueObservationQuick: {
+      title: "Poursuivre l'observation (documenter)",
+      intro:
+        "Enregistre une réévaluation observation médecin avec la case « poursuivre l'observation » cochée. Actualise les horloges opérationnelles après enregistrement. Ne sort pas le patient, ne facture pas et ne change pas le statut de la consultation.",
+      reviewHint: "Modifiez le motif — vous restez l'auteur de la note.",
+      rationaleLabel: "Motif (obligatoire)",
+      placeholder: "Motif clinique bref pour la poursuite de l'observation…",
+      cancel: "Annuler",
+      save: "Enregistrer la réévaluation",
+      saving: "Enregistrement…",
+      saveError: "Impossible d'enregistrer la réévaluation.",
     },
     observationOrderTemplateBannerButton: "Modèle d'ordres (observation / court séjour)",
     observationOrderTemplateBannerPartial:

@@ -1,77 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { apiFetch } from "@/lib/apiClient";
-import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
-import { getPendingMedicationAdminsFromQueue } from "@/lib/pendingMedicationAdminsFromQueue";
-import {
-  computeObservationMarEncounterSummary,
-  type ObservationMarEncounterSummary,
-} from "@/lib/observationMarEncounterSummary";
 import { useI18n } from "@/lib/i18n";
-import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { useObservationMarEncounterSummary } from "@/hooks/useObservationMarEncounterSummary";
+import type { ObservationMarEncounterSummary } from "@/lib/observationMarEncounterSummary";
 
 export function ObservationMarEncounterSummaryBlock({
   encounterId,
   facilityId,
   refreshKey,
+  /** Parent-provided digest (e.g. shared with observation workflow chrome) — skips duplicate fetch. */
+  externalDigest,
 }: {
   encounterId: string;
   facilityId: string;
   /** Bump when encounter data that affects orders/MAR may have changed. */
   refreshKey: string;
+  externalDigest?: {
+    summary: ObservationMarEncounterSummary | null;
+    loading: boolean;
+    error: string | null;
+  };
 }) {
   const { t, language } = useI18n();
-  const [summary, setSummary] = useState<ObservationMarEncounterSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [pendingAdmins, pendingOrders] = await Promise.all([
-        getPendingMedicationAdminsFromQueue(
-          facilityId,
-          encounterId,
-          t("marTab.pendingSyncFirstName"),
-          t("marTab.pendingSyncLastName")
-        ).catch(() => []),
-        getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(() => [] as Record<string, unknown>[]),
-      ]);
-      const [o, a] = await Promise.all([
-        apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
-        apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
-      ]);
-      let eventsRaw: unknown[] = [];
-      try {
-        const ev = await apiFetch(`/encounters/${encounterId}/order-events`, { facilityId });
-        eventsRaw = Array.isArray(ev) ? ev : [];
-      } catch {
-        eventsRaw = [];
-      }
-      const serverOrders = Array.isArray(o) ? o : [];
-      const serverAdmins = Array.isArray(a) ? a : [];
-      const orders = mergeOrders(serverOrders, pendingOrders);
-      const admins = [...serverAdmins, ...pendingAdmins];
-      setSummary(computeObservationMarEncounterSummary(orders, admins, eventsRaw, Date.now(), language, t));
-    } catch (e) {
-      const raw = e instanceof Error ? e.message : String(e);
-      setError(normalizeUserFacingError(raw.trim() || null, language) || t("encounterChrome.observationDocSummary.marSummary.loadFailed"));
-      setSummary(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [encounterId, facilityId, language, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load, refreshKey]);
-
-  useEffect(() => {
-    const id = setInterval(() => void load(), 60_000);
-    return () => clearInterval(id);
-  }, [load]);
+  const internal = useObservationMarEncounterSummary({
+    encounterId,
+    facilityId,
+    refreshKey,
+    enabled: !externalDigest,
+    language,
+    t,
+  });
+  const summary = externalDigest?.summary ?? internal.summary;
+  const loading = externalDigest?.loading ?? internal.loading;
+  const error = externalDigest?.error ?? internal.error;
 
   if (loading && !summary && !error) {
     return (
@@ -108,9 +69,7 @@ export function ObservationMarEncounterSummaryBlock({
         <li style={{ marginBottom: 4 }}>{pendingLine}</li>
         <li style={{ marginBottom: 4 }}>{overdueLine}</li>
         <li style={{ marginBottom: 4 }}>{infusionLine}</li>
-        {summary.pendingMedicationLines > 0 ? (
-          <li style={{ marginBottom: 4 }}>{t("encounterChrome.observationDocSummary.marSummary.prnReminder")}</li>
-        ) : null}
+        <li style={{ marginBottom: 4 }}>{t("encounterChrome.observationDocSummary.marSummary.prnReminder")}</li>
         <li style={{ marginBottom: 0 }}>{t("encounterChrome.observationDocSummary.marSummary.reviewBeforeDischarge")}</li>
       </ul>
     </div>
