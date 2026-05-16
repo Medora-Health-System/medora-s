@@ -14,6 +14,12 @@ import {
   COMMON_VISIT_REASONS,
 } from "@/constants/clinicalTemplates";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
+import { CareProcedureClinicalTimeModal } from "@/components/orders/CareProcedureClinicalTimeModal";
+import {
+  canAdjustCareProcedureClinicalTime,
+  canShowCareProcedureClinicalTimeClock,
+  resolveCareProcedureDisplayTimes,
+} from "@/features/orders/careProcedureClinicalTimeDisplay";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -5365,6 +5371,126 @@ function canAttemptWholeOrderCancel(order: { status?: string; pendingSync?: bool
   return true;
 }
 
+function CareOrderItemClinicalTimeBlock({
+  it,
+  order,
+  language,
+  t,
+  canAdjustClinicalTime,
+  encounterOpen,
+  onOpenAdjust,
+}: {
+  it: Record<string, unknown>;
+  order: { type?: string; id?: string };
+  language: string;
+  t: (key: string) => string;
+  canAdjustClinicalTime: boolean;
+  encounterOpen: boolean;
+  onOpenAdjust: () => void;
+}) {
+  const { effectiveIso, documentedIso, showAdjustedBadge } = resolveCareProcedureDisplayTimes(
+    it as Parameters<typeof resolveCareProcedureDisplayTimes>[0]
+  );
+  const showClock = canShowCareProcedureClinicalTimeClock(String(order.type ?? ""), it as Parameters<typeof canShowCareProcedureClinicalTimeClock>[1], {
+    encounterOpen,
+    canAdjust: canAdjustClinicalTime,
+  });
+  if (!effectiveIso && !documentedIso && !showClock) return null;
+  return (
+    <div style={{ marginTop: 4 }}>
+      {!effectiveIso && showClock ? (
+        <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
+          <span>{t("encounterChrome.ordersTab.careClinicalTime.adjustClinicalTime")}</span>
+          <button
+            type="button"
+            title={t("encounterChrome.ordersTab.careClinicalTime.adjustClinicalTime")}
+            aria-label={t("encounterChrome.ordersTab.careClinicalTime.adjustClinicalTime")}
+            onClick={onOpenAdjust}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              padding: 0,
+              fontSize: 14,
+              lineHeight: 1,
+            }}
+          >
+            🧭
+          </button>
+        </div>
+      ) : null}
+      {effectiveIso ? (
+        <CareEffectiveTimeRow>
+          <span>
+            {formatEncounterChromeDateTime(effectiveIso, language as "fr" | "en")}
+          </span>
+          {showAdjustedBadge ? (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "#64748b",
+                backgroundColor: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                borderRadius: 9999,
+                padding: "1px 6px",
+                lineHeight: 1.35,
+              }}
+            >
+              {t("encounterChrome.ordersTab.careClinicalTime.adjustedBadge")}
+            </span>
+          ) : null}
+          {showClock ? (
+            <button
+              type="button"
+              title={t("encounterChrome.ordersTab.careClinicalTime.adjustClinicalTime")}
+              aria-label={t("encounterChrome.ordersTab.careClinicalTime.adjustClinicalTime")}
+              onClick={onOpenAdjust}
+              style={{
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                padding: 0,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              🧭
+            </button>
+          ) : null}
+        </CareEffectiveTimeRow>
+      ) : null}
+      {documentedIso && documentedIso !== effectiveIso ? (
+        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+          {t("encounterChrome.ordersTab.careClinicalTime.documentedAt").replace(
+            "{datetime}",
+            formatEncounterChromeDateTime(documentedIso, language as "fr" | "en")
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CareEffectiveTimeRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 12,
+        color: "#0f766e",
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        flexWrap: "wrap",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+
 function OrdersTab({
   encounterId,
   encounter,
@@ -5397,6 +5523,7 @@ function OrdersTab({
   /** Libellé CARE à injecter uniquement à l’ouverture via action rapide (évite de réutiliser un ancien preset avec une ordonnance). */
   const [carePresetForOpenModal, setCarePresetForOpenModal] = useState<string | null>(null);
   const isRn = roles.includes("RN") || roles.includes("ADMIN");
+  const canAdjustCareClinicalTime = canAdjustCareProcedureClinicalTime(roles);
   const canUseRnOrderAuthority = roles.includes("RN") && !canPrescribe;
   const canCreateOrders = canPrescribe || canUseRnOrderAuthority;
   const canCancelWholeOrder =
@@ -5405,6 +5532,12 @@ function OrdersTab({
   const [cancelConfirmOrderId, setCancelConfirmOrderId] = useState<string | null>(null);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [ordersFeedback, setOrdersFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [careClinicalTimeModal, setCareClinicalTimeModal] = useState<{
+    orderId: string;
+    item: Record<string, unknown>;
+    orderCreatedAt: string;
+  } | null>(null);
+  const [careClinicalTimeSaving, setCareClinicalTimeSaving] = useState(false);
 
   const handlePrintRx = (order: any) => {
     if (order.type !== "MEDICATION") return;
@@ -5792,6 +5925,23 @@ function OrdersTab({
                               {formatEncounterChromeDateTime(it.pharmacyDispenseRecord.dispensedAt, language)}
                             </div>
                           ) : null}
+                          {order.type === "CARE" ? (
+                            <CareOrderItemClinicalTimeBlock
+                              it={it}
+                              order={order}
+                              language={language}
+                              t={t}
+                              canAdjustClinicalTime={canAdjustCareClinicalTime}
+                              encounterOpen={encounterOpen}
+                              onOpenAdjust={() =>
+                                setCareClinicalTimeModal({
+                                  orderId: String(order.id),
+                                  item: it,
+                                  orderCreatedAt: String(order.createdAt),
+                                })
+                              }
+                            />
+                          ) : null}
                         </li>
                       ))}
                     </ul>
@@ -5915,6 +6065,63 @@ function OrdersTab({
             void onRefetchEncounter?.();
             void loadOrders({ silent: true });
             void onOrdersUpdated?.();
+          }}
+        />
+      ) : null}
+      {careClinicalTimeModal ? (
+        <CareProcedureClinicalTimeModal
+          open
+          lineLabel={orderItemLineLabel(careClinicalTimeModal.item)}
+          defaultEffectiveIso={
+            resolveCareProcedureDisplayTimes(
+              careClinicalTimeModal.item as Parameters<typeof resolveCareProcedureDisplayTimes>[0]
+            ).effectiveIso ?? new Date().toISOString()
+          }
+          documentedCompletedAt={(() => {
+            const raw = careClinicalTimeModal.item.documentedCompletedAt ?? careClinicalTimeModal.item.updatedAt;
+            if (!raw) return null;
+            const d = new Date(String(raw));
+            return Number.isNaN(d.getTime()) ? null : d;
+          })()}
+          orderCreatedAt={new Date(careClinicalTimeModal.orderCreatedAt)}
+          orderItemCreatedAt={new Date(String(careClinicalTimeModal.item.createdAt ?? careClinicalTimeModal.orderCreatedAt))}
+          adjustmentVersion={Number(careClinicalTimeModal.item.effectiveClinicalAtVersion ?? 0)}
+          t={t}
+          saving={careClinicalTimeSaving}
+          onClose={() => {
+            if (careClinicalTimeSaving) return;
+            setCareClinicalTimeModal(null);
+          }}
+          onSave={async (payload) => {
+            setCareClinicalTimeSaving(true);
+            try {
+              await apiFetch(
+                `/orders/items/${String(careClinicalTimeModal.item.id)}/effective-clinical-time`,
+                {
+                  method: "PATCH",
+                  facilityId,
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    ...payload,
+                    orderId: careClinicalTimeModal.orderId,
+                  }),
+                }
+              );
+              setCareClinicalTimeModal(null);
+              setOrdersFeedback({
+                type: "ok",
+                text: t("encounterChrome.ordersTab.careClinicalTime.clinicalTimeAdjusted"),
+              });
+              await loadOrders({ silent: true });
+              await onOrdersUpdated?.();
+            } catch (e: unknown) {
+              throw new Error(
+                normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+                  t("encounterChrome.ordersTab.careClinicalTime.saveFailed")
+              );
+            } finally {
+              setCareClinicalTimeSaving(false);
+            }
           }}
         />
       ) : null}

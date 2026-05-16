@@ -37,6 +37,20 @@ export function assertDepartmentRoleForItem(catalogItemType: string, roleCodes: 
   throw new BadRequestException("Type de ligne d'ordre non pris en charge.");
 }
 
+/** CARE/procedure effective clinical time correction — after item is confirmed CARE (not med/lab/imaging). */
+export function assertCareProcedureEffectiveTimeActor(roleCodes: RoleCode[]) {
+  if (
+    roleCodes.includes(RoleCode.ADMIN) ||
+    roleCodes.includes(RoleCode.RN) ||
+    roleCodes.includes(RoleCode.PROVIDER)
+  ) {
+    return;
+  }
+  throw new ForbiddenException(
+    "Seuls le personnel infirmier, le médecin ou un administrateur peuvent ajuster l'heure clinique d'un soin / procédure."
+  );
+}
+
 export function isMedicationAdministerChart(orderItem: {
   catalogItemType: string;
   medicationFulfillmentIntent: string | null;

@@ -6192,6 +6192,30 @@ export default {
       print: "Print",
       cancelOrder: "Cancel order",
       prescriberLabel: "Prescriber",
+      careClinicalTime: {
+        adjustClinicalTime: "Adjust clinical time",
+        modalTitle: "Adjust care/procedure clinical time",
+        actualClinicalTime: "Actual clinical time",
+        adjustmentReason: "Reason for late documentation / adjustment",
+        reasonPlaceholder: "Brief operational reason (not clinical narrative)",
+        explanation:
+          "This does not change the original documentation timestamp. It records the clinical time separately and keeps an audit trail.",
+        clinicalTimeAdjusted: "Clinical time adjusted — audit retained",
+        documentedAt: "Documented at {datetime}",
+        saveTime: "Save time",
+        cancel: "Cancel",
+        cannotAdjustThisOrderType: "This order type cannot be adjusted here.",
+        futureTimeRejected: "Clinical time cannot be in the future.",
+        timeBeforeOrderRequiresReason: "A reason is required when clinical time is before the order was created.",
+        reasonRequired: "A reason is required for this adjustment.",
+        reasonTooShortForLargeBackdate:
+          "A detailed reason (at least 15 characters) is required when clinical time is more than 24 hours before the documented time.",
+        largeBackdateReasonHelp:
+          "This is more than 24 hours before the documented time. A detailed reason is required.",
+        adjustedBadge: "Clinical time corrected",
+        invalidTime: "Invalid date or time.",
+        saveFailed: "Unable to save clinical time.",
+      },
     },
     summaryTab: {
       title: "Encounter summary",

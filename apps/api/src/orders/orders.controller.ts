@@ -16,9 +16,11 @@ import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  careProcedureEffectiveClinicalTimeDtoSchema,
   medicationInfusionStopDtoSchema,
   orderCancelDtoSchema,
   orderCreateDtoSchema,
+  orderItemCompleteWithClinicalTimeDtoSchema,
   orderUpdateDtoSchema,
 } from "@medora/shared";
 import { RoleCode } from "@prisma/client";
@@ -235,20 +237,61 @@ export class OrdersController {
 
   @Post("orders/items/:id/complete")
   @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
-  async completeOrderItem(@Param("id") orderItemId: string, @Req() req: any) {
+  async completeOrderItem(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
 
     const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    const completeOptions =
+      body != null && typeof body === "object" && Object.keys(body as object).length > 0
+        ? assertZodBody(orderItemCompleteWithClinicalTimeDtoSchema.safeParse(body))
+        : undefined;
     return this.ordersService.completeOrderItem(
       facilityId,
       orderItemId,
       codes,
       req.user?.userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      completeOptions
+    );
+  }
+
+  @Patch("orders/items/:itemId/effective-clinical-time")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async setCareProcedureEffectiveClinicalTime(
+    @Param("itemId") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise");
+    }
+    const dto = assertZodBody(careProcedureEffectiveClinicalTimeDtoSchema.safeParse(body));
+    const orderId =
+      body != null &&
+      typeof body === "object" &&
+      typeof (body as { orderId?: unknown }).orderId === "string"
+        ? (body as { orderId: string }).orderId.trim()
+        : undefined;
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.ordersService.setCareProcedureEffectiveClinicalTime(
+      facilityId,
+      orderItemId,
+      orderId,
+      dto,
+      codes,
+      userId,
+      req.ip,
+      req.headers["user-agent"],
+      "ORDERS_TAB"
     );
   }
 

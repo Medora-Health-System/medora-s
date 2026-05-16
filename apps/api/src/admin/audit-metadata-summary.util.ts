@@ -42,6 +42,13 @@ const SAFE_METADATA_KEYS = new Set([
   "procedureType",
   "performedAt",
   "documentedAt",
+  "orderId",
+  "orderItemId",
+  "previousEffectiveClinicalTime",
+  "newEffectiveClinicalTime",
+  "originalSystemTime",
+  "reasonProvided",
+  "deltaMinutes",
 ]);
 
 const MAX_SCALAR_LEN = 120;

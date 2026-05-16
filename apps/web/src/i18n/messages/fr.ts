@@ -6179,6 +6179,31 @@ export default {
       print: "Imprimer",
       cancelOrder: "Annuler la commande",
       prescriberLabel: "Prescripteur",
+      careClinicalTime: {
+        adjustClinicalTime: "Ajuster l'heure clinique",
+        modalTitle: "Ajuster l'heure clinique du soin / procédure",
+        actualClinicalTime: "Heure clinique réelle",
+        adjustmentReason: "Motif (documentation tardive / ajustement)",
+        reasonPlaceholder: "Motif opérationnel bref (pas de récit clinique)",
+        explanation:
+          "Cela ne modifie pas l'horodatage système d'origine. L'heure clinique est enregistrée séparément avec une piste d'audit.",
+        clinicalTimeAdjusted: "Heure clinique ajustée — audit conservé",
+        documentedAt: "Documenté à {datetime}",
+        saveTime: "Enregistrer l'heure",
+        cancel: "Annuler",
+        cannotAdjustThisOrderType: "Ce type d'ordre ne peut pas être ajusté ici.",
+        futureTimeRejected: "L'heure clinique ne peut pas être dans le futur.",
+        timeBeforeOrderRequiresReason:
+          "Un motif est requis lorsque l'heure clinique précède la création de l'ordre.",
+        reasonRequired: "Un motif est requis pour cet ajustement.",
+        reasonTooShortForLargeBackdate:
+          "Un motif détaillé (au moins 15 caractères) est requis lorsque l'heure clinique précède de plus de 24 h l'heure documentée.",
+        largeBackdateReasonHelp:
+          "L'heure choisie précède de plus de 24 h l'heure documentée. Un motif détaillé est requis.",
+        adjustedBadge: "Heure clinique corrigée",
+        invalidTime: "Date ou heure invalide.",
+        saveFailed: "Impossible d'enregistrer l'heure clinique.",
+      },
     },
     summaryTab: {
       title: "Résumé de la consultation",

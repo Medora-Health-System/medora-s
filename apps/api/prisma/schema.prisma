@@ -98,6 +98,7 @@ enum AuditAction {
   ORDER_ACK
   ORDER_START
   ORDER_COMPLETE
+  CARE_PROCEDURE_EFFECTIVE_TIME_ADJUSTED
   RESULT_VERIFY
   CRITICAL_FLAG
   PATHWAY_ACTIVATED
@@ -1174,6 +1175,15 @@ model OrderItem {
   completedAt                 DateTime?
   completedByUserId           String?
   completedByNurse            User?                        @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  /// System time when the line was first marked complete (immutable after set).
+  documentedCompletedAt       DateTime?
+  /// User-entered when care/procedure was actually performed (CARE lines only).
+  effectiveClinicalAt         DateTime?
+  effectiveClinicalAtSetAt    DateTime?
+  effectiveClinicalAtSetByUserId String?
+  effectiveClinicalAtReason   String?
+  /// Incremented on each effective-time correction (audit / reason rules).
+  effectiveClinicalAtVersion  Int                          @default(0)
   status                      OrderStatus                  @default(PENDING)
   /// Explicit visit lifecycle — kept in sync with `status` in application code; `REVIEWED` = chart/review closure.
   lifecycleState              OrderItemLifecycleState      @default(ORDERED)

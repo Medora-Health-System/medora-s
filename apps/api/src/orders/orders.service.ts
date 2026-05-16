@@ -32,10 +32,26 @@ import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { logError as medoraLogError } from "../common/logging/medoraLogger";
 import {
   assertAckOrStartActor,
+  assertCareProcedureEffectiveTimeActor,
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
-import type { MedicationInfusionStopDto, OrderCancelDto, OrderCreateDto, OrderUpdateDto } from "@medora/shared";
+import type {
+  CareProcedureEffectiveClinicalTimeDto,
+  MedicationInfusionStopDto,
+  OrderCancelDto,
+  OrderCreateDto,
+  OrderItemCompleteWithClinicalTimeDto,
+  OrderUpdateDto,
+} from "@medora/shared";
+import {
+  deltaMinutesBetween,
+  isCareProcedureOrderItem,
+  parseCareProcedureEffectiveClinicalTimeIso,
+  toCareProcedureEffectiveClinicalTimeIsoUtc,
+  validateCareProcedureEffectiveClinicalTime,
+  type CareProcedureEffectiveTimeValidationCode,
+} from "@medora/shared";
 import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isMedicationInfusionCandidate } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -1896,13 +1912,44 @@ export class OrdersService {
     return updated;
   }
 
+  private parseEffectiveClinicalTimeIso(iso: string): Date {
+    const d = parseCareProcedureEffectiveClinicalTimeIso(iso);
+    if (!d) {
+      throw new BadRequestException("Date ou heure clinique invalide.");
+    }
+    return d;
+  }
+
+  private careProcedureEffectiveTimeValidationMessage(code: CareProcedureEffectiveTimeValidationCode): string {
+    switch (code) {
+      case "FUTURE_TIME":
+        return "L'heure clinique ne peut pas être dans le futur.";
+      case "BEFORE_ENCOUNTER":
+        return "L'heure clinique ne peut pas précéder l'arrivée du patient.";
+      case "REASON_TOO_SHORT_FOR_LARGE_BACKDATE":
+        return "Un motif détaillé (au moins 15 caractères) est requis lorsque l'heure clinique précède de plus de 24 h l'heure documentée.";
+      case "REASON_REQUIRED":
+        return "Un motif est requis pour cet ajustement d'heure clinique.";
+      default:
+        return "Heure clinique invalide.";
+    }
+  }
+
+  private encounterAnchorAt(encounter: { createdAt: Date; admittedAt: Date | null }): Date {
+    if (encounter.admittedAt && encounter.admittedAt.getTime() < encounter.createdAt.getTime()) {
+      return encounter.admittedAt;
+    }
+    return encounter.createdAt;
+  }
+
   async completeOrderItem(
     facilityId: string,
     orderItemId: string,
     requestorRoleCodes: RoleCode[],
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    completeOptions?: OrderItemCompleteWithClinicalTimeDto
   ) {
     const orderItem = await this.prisma.orderItem.findFirst({
       where: {
@@ -1952,10 +1999,64 @@ export class OrdersService {
       throw new ForbiddenException("Authentification requise pour terminer une ligne.");
     }
 
+    const systemNow = new Date();
+    let effectiveAt = systemNow;
+    let reasonTrim: string | null = null;
+    const isCareProcedure = isCareProcedureOrderItem(
+      orderItem.catalogItemType,
+      orderItem.order.type
+    );
+    if (completeOptions?.effectiveClinicalTime?.trim()) {
+      if (!isCareProcedure) {
+        throw new BadRequestException(
+          "L'heure clinique rétroactive ne s'applique qu'aux ordres de soins / procédures."
+        );
+      }
+      effectiveAt = this.parseEffectiveClinicalTimeIso(completeOptions.effectiveClinicalTime);
+      reasonTrim = completeOptions.reason?.trim() || null;
+      const validation = validateCareProcedureEffectiveClinicalTime({
+        effectiveClinicalTime: effectiveAt,
+        now: systemNow,
+        encounterAnchorAt: this.encounterAnchorAt(orderItem.order.encounter),
+        orderCreatedAt: orderItem.order.createdAt,
+        orderItemCreatedAt: orderItem.createdAt,
+        documentedCompletedAt: null,
+        adjustmentVersion: 0,
+        reason: reasonTrim,
+      });
+      if (!validation.ok) {
+        throw new BadRequestException(this.careProcedureEffectiveTimeValidationMessage(validation.code));
+      }
+    }
+
+    const eventMetadata: Prisma.InputJsonValue = isCareProcedure
+      ? {
+          orderItemId,
+          effectiveClinicalTime: toCareProcedureEffectiveClinicalTimeIsoUtc(effectiveAt),
+          originalSystemTime: toCareProcedureEffectiveClinicalTimeIsoUtc(systemNow),
+        }
+      : { orderItemId };
+
+    const itemUpdateData: Prisma.OrderItemUpdateInput = {
+      status: OrderStatus.COMPLETED,
+      lifecycleState,
+      ...(isCareProcedure
+        ? {
+            documentedCompletedAt: systemNow,
+            effectiveClinicalAt: effectiveAt,
+            effectiveClinicalAtSetAt: systemNow,
+            effectiveClinicalAtSetByUserId: userId,
+            effectiveClinicalAtReason: reasonTrim,
+            effectiveClinicalAtVersion: 0,
+            completedAt: effectiveAt,
+          }
+        : {}),
+    };
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.orderItem.update({
         where: { id: orderItemId },
-        data: { status: OrderStatus.COMPLETED, lifecycleState },
+        data: itemUpdateData,
       });
       await this.writeOrderEvent({
         facilityId,
@@ -1964,7 +2065,7 @@ export class OrdersService {
         orderType: orderItem.order.type,
         eventType: OrderEventType.COMPLETED,
         performedByUserId: userId,
-        metadata: { orderItemId },
+        metadata: eventMetadata,
         tx,
       });
       return row;
@@ -1979,6 +2080,141 @@ export class OrdersService {
       entityId: orderItemId,
       ip,
       userAgent,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Post-hoc correction of effective clinical time for completed CARE / procedure lines only.
+   * System documented time (`documentedCompletedAt` + COMPLETED `OrderEvent.performedAt`) is never mutated.
+   *
+   * Phase 15F-A visibility: Orders tab only. ClinicalTimeline / patient chart timeline / chart export
+   * integration deferred (15F-D / 15G). Append-only OrderEvent.performedAt + audit metadata preserve corrections.
+   */
+  async setCareProcedureEffectiveClinicalTime(
+    facilityId: string,
+    orderItemId: string,
+    orderId: string | undefined,
+    dto: CareProcedureEffectiveClinicalTimeDto,
+    requestorRoleCodes: RoleCode[],
+    userId: string,
+    ip?: string,
+    userAgent?: string,
+    source: "ORDERS_TAB" | "ER_ORDERS_PANEL" = "ORDERS_TAB"
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: orderItemId,
+        order: { facilityId },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: { include: { patient: true } },
+          },
+        },
+      },
+    });
+
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+    if (orderId && orderItem.orderId !== orderId) {
+      throw new BadRequestException("La ligne n'appartient pas à cette commande.");
+    }
+
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
+    assertEncounterNotSigned(orderItem.order.encounter);
+    assertParentOrderNotCancelled(orderItem.order.status);
+
+    if (!isCareProcedureOrderItem(orderItem.catalogItemType, orderItem.order.type)) {
+      throw new BadRequestException(
+        "Seuls les ordres de soins / procédures (CARE) permettent l'ajustement d'heure clinique."
+      );
+    }
+
+    if (orderItem.catalogItemType === "MEDICATION") {
+      throw new BadRequestException("Les lignes médicamenteuses ne peuvent pas être ajustées ici.");
+    }
+    if (orderItem.catalogItemType === "LAB_TEST" || orderItem.order.type === "LAB") {
+      throw new BadRequestException("Les lignes de laboratoire ne peuvent pas être ajustées ici.");
+    }
+    if (orderItem.catalogItemType === "IMAGING_STUDY" || orderItem.order.type === "IMAGING") {
+      throw new BadRequestException("Les lignes d'imagerie ne peuvent pas être ajustées ici.");
+    }
+
+    if (orderItem.status !== OrderStatus.COMPLETED) {
+      throw new BadRequestException("La ligne doit être terminée avant d'ajuster l'heure clinique.");
+    }
+
+    assertCareProcedureEffectiveTimeActor(requestorRoleCodes);
+
+    const systemNow = new Date();
+    const effectiveAt = this.parseEffectiveClinicalTimeIso(dto.effectiveClinicalTime);
+    const reasonTrim = dto.reason?.trim() || null;
+    const documentedAt =
+      orderItem.documentedCompletedAt ??
+      orderItem.completedAt ??
+      orderItem.updatedAt;
+
+    const validation = validateCareProcedureEffectiveClinicalTime({
+      effectiveClinicalTime: effectiveAt,
+      now: systemNow,
+      encounterAnchorAt: this.encounterAnchorAt(orderItem.order.encounter),
+      orderCreatedAt: orderItem.order.createdAt,
+      orderItemCreatedAt: orderItem.createdAt,
+      documentedCompletedAt: documentedAt,
+      adjustmentVersion: orderItem.effectiveClinicalAtVersion,
+      reason: reasonTrim,
+    });
+    if (!validation.ok) {
+      throw new BadRequestException(this.careProcedureEffectiveTimeValidationMessage(validation.code));
+    }
+
+    const previousEffective = orderItem.effectiveClinicalAt;
+    const originalSystemTime = orderItem.documentedCompletedAt ?? documentedAt;
+    const effectiveAtUtc = new Date(toCareProcedureEffectiveClinicalTimeIsoUtc(effectiveAt));
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      return tx.orderItem.update({
+        where: { id: orderItemId },
+        data: {
+          effectiveClinicalAt: effectiveAtUtc,
+          effectiveClinicalAtSetAt: systemNow,
+          effectiveClinicalAtSetByUserId: userId,
+          effectiveClinicalAtReason: reasonTrim,
+          effectiveClinicalAtVersion: { increment: 1 },
+          completedAt: effectiveAtUtc,
+          ...(orderItem.documentedCompletedAt
+            ? {}
+            : { documentedCompletedAt: originalSystemTime }),
+        },
+      });
+    });
+
+    await this.audit.log(AuditAction.CARE_PROCEDURE_EFFECTIVE_TIME_ADJUSTED, "ORDER_ITEM", {
+      userId,
+      facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
+      ip,
+      userAgent,
+      metadata: {
+        orderId: orderItem.orderId,
+        orderItemId,
+        encounterId: orderItem.order.encounterId,
+        previousEffectiveClinicalTime: previousEffective
+          ? toCareProcedureEffectiveClinicalTimeIsoUtc(previousEffective)
+          : null,
+        newEffectiveClinicalTime: toCareProcedureEffectiveClinicalTimeIsoUtc(effectiveAtUtc),
+        originalSystemTime: toCareProcedureEffectiveClinicalTimeIsoUtc(originalSystemTime),
+        reasonProvided: Boolean(reasonTrim),
+        deltaMinutes: deltaMinutesBetween(effectiveAtUtc, documentedAt),
+        source,
+      },
     });
 
     return updated;
