@@ -5537,6 +5537,8 @@ export default {
       orders: "Ordres",
       mar: "Administration médicamenteuse",
       results: "Résultats",
+      observationSummary: "Synthèse observation",
+      clinicalTimeline: "Chronologie clinique",
       notes: "Notes Inf.",
       pathways: "Parcours cliniques",
       history: "Historique",
@@ -5664,6 +5666,7 @@ export default {
         addReassessmentProvider: "Réévaluation observation (médecin)",
         addReassessmentNursing: "Réévaluation observation (IDE)",
       },
+      compactDetailsSummary: "Détails opérationnels (horloges, freins, disponibilité) — afficher",
     },
     observationDocSummary: {
       title: "Synthèse documentaire (observation)",

@@ -511,6 +511,7 @@ export function HospitalizationBoardView() {
     const e = filteredEncounters[0];
     if (e.status !== "OPEN") return null;
     if ((e.type ?? "").trim() !== "INPATIENT") return null;
+    if (e.observationOps != null) return null;
     return e;
   }, [filteredEncounters]);
 
@@ -1185,44 +1186,46 @@ export function HospitalizationBoardView() {
                                       : t("emergencyTrackboard.assignNurseMeShort")}
                                 </button>
                               ) : null}
-                              <button
-                                type="button"
-                                onClick={() => void dischargeEncounter(encounter)}
-                                disabled={
-                                  dischargingId === encounter.id ||
-                                  encounter.status !== "OPEN" ||
-                                  (encounter.type ?? "").trim() !== "INPATIENT"
-                                }
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  padding: "4px 10px",
-                                  borderRadius: 8,
-                                  border: "1px solid #cbd5e1",
-                                  backgroundColor: "#fff",
-                                  color: "#475569",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  cursor:
+                              {!obs ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void dischargeEncounter(encounter)}
+                                  disabled={
                                     dischargingId === encounter.id ||
                                     encounter.status !== "OPEN" ||
                                     (encounter.type ?? "").trim() !== "INPATIENT"
-                                      ? "not-allowed"
-                                      : "pointer",
-                                  opacity:
-                                    dischargingId === encounter.id ||
-                                    encounter.status !== "OPEN" ||
-                                    (encounter.type ?? "").trim() !== "INPATIENT"
-                                      ? 0.6
-                                      : 1,
-                                }}
-                                aria-label={t("hospitalizationBoard.rowDischargeAriaLabel")}
-                              >
-                                {dischargingId === encounter.id
-                                  ? t("hospitalizationBoard.rowDischargeSending")
-                                  : t("hospitalizationBoard.rowDischarge")}
-                              </button>
+                                  }
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: "1px solid #cbd5e1",
+                                    backgroundColor: "#fff",
+                                    color: "#475569",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor:
+                                      dischargingId === encounter.id ||
+                                      encounter.status !== "OPEN" ||
+                                      (encounter.type ?? "").trim() !== "INPATIENT"
+                                        ? "not-allowed"
+                                        : "pointer",
+                                    opacity:
+                                      dischargingId === encounter.id ||
+                                      encounter.status !== "OPEN" ||
+                                      (encounter.type ?? "").trim() !== "INPATIENT"
+                                        ? 0.6
+                                        : 1,
+                                  }}
+                                  aria-label={t("hospitalizationBoard.rowDischargeAriaLabel")}
+                                >
+                                  {dischargingId === encounter.id
+                                    ? t("hospitalizationBoard.rowDischargeSending")
+                                    : t("hospitalizationBoard.rowDischarge")}
+                                </button>
+                              ) : null}
                             </div>
                             {assignError && assignError.id === encounter.id ? (
                               <p

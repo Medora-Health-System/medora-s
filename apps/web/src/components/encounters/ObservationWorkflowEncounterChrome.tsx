@@ -120,6 +120,8 @@ export type ObservationWorkflowEncounterChromeProps = {
   canAddProviderReassessment: boolean;
   canAddNursingReassessment: boolean;
   onOpenObservationReassessment: (role: "PROVIDER" | "RN") => void;
+  /** Dense dashboard: narrative operational details behind a disclosure; actions + badges stay visible. */
+  compact?: boolean;
 };
 
 export function ObservationWorkflowEncounterChrome({
@@ -135,6 +137,7 @@ export function ObservationWorkflowEncounterChrome({
   canAddProviderReassessment,
   canAddNursingReassessment,
   onOpenObservationReassessment,
+  compact = false,
 }: ObservationWorkflowEncounterChromeProps) {
   const providerObsAt = snapshot.reassessmentLanes.provider.lastAtIso
     ? formatDateTime(snapshot.reassessmentLanes.provider.lastAtIso)
@@ -170,191 +173,204 @@ export function ObservationWorkflowEncounterChrome({
 
   const { flags } = snapshot;
 
-  return (
-    <div
-      style={{
-        marginTop: 14,
-        padding: "14px 16px",
-        backgroundColor: MEDORA_CARD_SHELL.background,
-        border: MEDORA_CARD_SHELL.border,
-        borderRadius: MEDORA_CARD_SHELL.radius,
-        boxShadow: MEDORA_CARD_SHELL.boxShadow,
-      }}
-    >
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
-            {t("encounterChrome.observationWorkflow.cardTitle")}
-          </div>
-          <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
-            <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.anchorLabel")}:</span>{" "}
-              {snapshot.anchorKind === "admittedAt"
-                ? t("encounterChrome.observationWorkflow.anchorAdmittedAt")
-                : t("encounterChrome.observationWorkflow.anchorCreatedAt")}{" "}
-              · {formatDateTime(snapshot.anchorIso)}
-            </div>
-            <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lineLos")}:</span> {snapshot.losLabel}
-              {snapshot.overnightUtcSpan ? (
-                <>
-                  {" · "}
-                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.observationOvernightUtc")}</span>
-                </>
-              ) : null}
-              {snapshot.extendedStay24h ? (
-                <>
-                  {" · "}
-                  <span style={{ fontWeight: 600 }}>{t("encounterChrome.observationExtended24h")}</span>
-                </>
-              ) : null}
-            </div>
-            <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastRnObsReassess")}:</span>{" "}
-              {rnObsAt}
-            </div>
-            <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastProviderObsReassess")}:</span>{" "}
-              {providerObsAt}
-            </div>
-            <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastProviderSigned")}:</span>{" "}
-              {providerSigned}
-            </div>
-            <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.vitalsAgeLabel")}:</span>{" "}
-              {snapshot.vitalsStale
-                ? t("encounterChrome.observationWorkflow.vitalsStaleLine")
-                : snapshot.vitalsAgeMs != null && Number.isFinite(snapshot.vitalsAgeMs)
-                  ? t("encounterChrome.observationWorkflow.vitalsAgeValue").replace(
-                      "{age}",
-                      formatAgeMs(snapshot.vitalsAgeMs, t)
-                    )
-                  : t("encounterChrome.observationWorkflow.vitalsClockUnknown")}
-            </div>
-            <div>
-              <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.pendingResultsLabel")}:</span>{" "}
-              {pendingCount > 0
-                ? t("encounterChrome.observationWorkflow.pendingResultsCount").replace("{count}", String(pendingCount))
-                : t("encounterChrome.observationWorkflow.pendingResultsNone")}
-              {flags.criticalLabsUnacked ? (
-                <span style={{ marginLeft: 8, fontWeight: 700, color: "#b91c1c" }}>
-                  {t("encounterChrome.observationWorkflow.criticalResultFlag")}
-                </span>
-              ) : null}
-            </div>
-            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
-                {t("encounterChrome.observationWorkflow.reassessmentLanesTitle")}
-              </div>
-              <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
-                <div>
-                  <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.laneProvider")}:</span>{" "}
-                  {snapshot.reassessmentLanes.provider.overdue
-                    ? t("encounterChrome.observationWorkflow.laneOverdue")
-                    : snapshot.reassessmentLanes.provider.due
-                      ? t("encounterChrome.observationWorkflow.laneDue")
-                      : t("encounterChrome.observationWorkflow.laneOk")}
-                </div>
-                <div>
-                  <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.laneRnObservation")}:</span>{" "}
-                  {snapshot.reassessmentLanes.rnObservation.overdue
-                    ? t("encounterChrome.observationWorkflow.laneOverdue")
-                    : snapshot.reassessmentLanes.rnObservation.due
-                      ? t("encounterChrome.observationWorkflow.laneDue")
-                      : t("encounterChrome.observationWorkflow.laneOk")}
-                </div>
-              </div>
-            </div>
-            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
-                {t("encounterChrome.observationWorkflow.blockersTitle")}
-              </div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
-                {snapshot.operationalBlockers.slice(0, 6).map((b) => (
-                  <li key={b.id} style={{ marginBottom: 2 }}>
-                    {t(BLOCKER_LABEL_KEY[b.id])}
-                  </li>
-                ))}
-              </ul>
-              {snapshot.operationalBlockers.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#64748b" }}>{t("encounterChrome.observationWorkflow.blockersNone")}</div>
-              ) : null}
-            </div>
-            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
-                {t("encounterChrome.observationWorkflow.readinessTitle")}
-              </div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
-                {snapshot.readinessLines.map((line) => (
-                  <li
-                    key={line.id}
-                    style={{
-                      marginBottom: 2,
-                      fontWeight: line.active ? 600 : 400,
-                      color: line.active ? "#0f172a" : "#64748b",
-                    }}
-                  >
-                    {t(READINESS_LABEL_KEY[line.id])}
-                  </li>
-                ))}
-              </ul>
-              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
-                {t("encounterChrome.observationWorkflow.readinessFootnote")}
-              </div>
-            </div>
-          </div>
+  const quickBtnCompact: React.CSSProperties = compact
+    ? { ...quickBtn, padding: "5px 10px", fontSize: 11, borderRadius: 8 }
+    : quickBtn;
+
+  const operationalDetailColumn = (
+    <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
+      <div>
+        <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.anchorLabel")}:</span>{" "}
+        {snapshot.anchorKind === "admittedAt"
+          ? t("encounterChrome.observationWorkflow.anchorAdmittedAt")
+          : t("encounterChrome.observationWorkflow.anchorCreatedAt")}{" "}
+        · {formatDateTime(snapshot.anchorIso)}
+      </div>
+      <div>
+        <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lineLos")}:</span> {snapshot.losLabel}
+        {snapshot.overnightUtcSpan ? (
+          <>
+            {" · "}
+            <span style={{ fontWeight: 600 }}>{t("encounterChrome.observationOvernightUtc")}</span>
+          </>
+        ) : null}
+        {snapshot.extendedStay24h ? (
+          <>
+            {" · "}
+            <span style={{ fontWeight: 600 }}>{t("encounterChrome.observationExtended24h")}</span>
+          </>
+        ) : null}
+      </div>
+      <div>
+        <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastRnObsReassess")}:</span> {rnObsAt}
+      </div>
+      <div>
+        <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastProviderObsReassess")}:</span>{" "}
+        {providerObsAt}
+      </div>
+      <div>
+        <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.lastProviderSigned")}:</span> {providerSigned}
+      </div>
+      <div>
+        <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.vitalsAgeLabel")}:</span>{" "}
+        {snapshot.vitalsStale
+          ? t("encounterChrome.observationWorkflow.vitalsStaleLine")
+          : snapshot.vitalsAgeMs != null && Number.isFinite(snapshot.vitalsAgeMs)
+            ? t("encounterChrome.observationWorkflow.vitalsAgeValue").replace(
+                "{age}",
+                formatAgeMs(snapshot.vitalsAgeMs, t)
+              )
+            : t("encounterChrome.observationWorkflow.vitalsClockUnknown")}
+      </div>
+      <div>
+        <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.pendingResultsLabel")}:</span>{" "}
+        {pendingCount > 0
+          ? t("encounterChrome.observationWorkflow.pendingResultsCount").replace("{count}", String(pendingCount))
+          : t("encounterChrome.observationWorkflow.pendingResultsNone")}
+        {flags.criticalLabsUnacked ? (
+          <span style={{ marginLeft: 8, fontWeight: 700, color: "#b91c1c" }}>
+            {t("encounterChrome.observationWorkflow.criticalResultFlag")}
+          </span>
+        ) : null}
+      </div>
+      <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+          {t("encounterChrome.observationWorkflow.reassessmentLanesTitle")}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: "0 1 auto" }}>
-          <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
-            {t("encounterChrome.observationWorkflow.quick.vitals")}
-          </button>
-          <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
-            {t("encounterChrome.observationWorkflow.quick.reassess")}
-          </button>
-          {canAddProviderReassessment ? (
-            <button
-              type="button"
-              style={{ ...quickBtn, backgroundColor: "#eef2ff", borderColor: "#a5b4fc", color: "#3730a3" }}
-              onClick={() => onOpenObservationReassessment("PROVIDER")}
-            >
-              {t("encounterChrome.observationWorkflow.quick.addReassessmentProvider")}
-            </button>
-          ) : null}
-          {canAddNursingReassessment ? (
-            <button
-              type="button"
-              style={{ ...quickBtn, backgroundColor: "#ecfeff", borderColor: "#67e8f9", color: "#155e75" }}
-              onClick={() => onOpenObservationReassessment("RN")}
-            >
-              {t("encounterChrome.observationWorkflow.quick.addReassessmentNursing")}
-            </button>
-          ) : null}
-          <button type="button" style={quickBtn} onClick={() => setActiveTab("orders")}>
-            {t("encounterChrome.observationWorkflow.quick.orders")}
-          </button>
-          <button type="button" style={quickBtn} onClick={() => setActiveTab("results")}>
-            {t("encounterChrome.observationWorkflow.quick.results")}
-          </button>
-          {showNursingTab ? (
-            <button type="button" style={quickBtn} onClick={() => setActiveTab("nursing")}>
-              {t("encounterChrome.observationWorkflow.quick.nursing")}
-            </button>
-          ) : null}
-          <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
-            {t("encounterChrome.observationWorkflow.quick.continue")}
-          </button>
-          <button
-            type="button"
-            style={{ ...quickBtn, backgroundColor: "#f1f5f9", borderColor: "#cbd5e1", color: "#0f172a" }}
-            onClick={onOpenDischarge}
-          >
-            {t("encounterChrome.observationWorkflow.quick.discharge")}
-          </button>
+        <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+          <div>
+            <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.laneProvider")}:</span>{" "}
+            {snapshot.reassessmentLanes.provider.overdue
+              ? t("encounterChrome.observationWorkflow.laneOverdue")
+              : snapshot.reassessmentLanes.provider.due
+                ? t("encounterChrome.observationWorkflow.laneDue")
+                : t("encounterChrome.observationWorkflow.laneOk")}
+          </div>
+          <div>
+            <span style={{ color: "#64748b" }}>{t("encounterChrome.observationWorkflow.laneRnObservation")}:</span>{" "}
+            {snapshot.reassessmentLanes.rnObservation.overdue
+              ? t("encounterChrome.observationWorkflow.laneOverdue")
+              : snapshot.reassessmentLanes.rnObservation.due
+                ? t("encounterChrome.observationWorkflow.laneDue")
+                : t("encounterChrome.observationWorkflow.laneOk")}
+          </div>
         </div>
       </div>
+      <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+          {t("encounterChrome.observationWorkflow.blockersTitle")}
+        </div>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
+          {snapshot.operationalBlockers.slice(0, 6).map((b) => (
+            <li key={b.id} style={{ marginBottom: 2 }}>
+              {t(BLOCKER_LABEL_KEY[b.id])}
+            </li>
+          ))}
+        </ul>
+        {snapshot.operationalBlockers.length === 0 ? (
+          <div style={{ fontSize: 12, color: "#64748b" }}>{t("encounterChrome.observationWorkflow.blockersNone")}</div>
+        ) : null}
+      </div>
+      <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+          {t("encounterChrome.observationWorkflow.readinessTitle")}
+        </div>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
+          {snapshot.readinessLines.map((line) => (
+            <li
+              key={line.id}
+              style={{
+                marginBottom: 2,
+                fontWeight: line.active ? 600 : 400,
+                color: line.active ? "#0f172a" : "#64748b",
+              }}
+            >
+              {t(READINESS_LABEL_KEY[line.id])}
+            </li>
+          ))}
+        </ul>
+        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>
+          {t("encounterChrome.observationWorkflow.readinessFootnote")}
+        </div>
+      </div>
+    </div>
+  );
 
-      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+  const quickActionButtons = (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: compact ? 6 : 8, alignItems: "center", flex: "0 1 auto" }}>
+      <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("triage")}>
+        {t("encounterChrome.observationWorkflow.quick.vitals")}
+      </button>
+      <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("clinic")}>
+        {t("encounterChrome.observationWorkflow.quick.reassess")}
+      </button>
+      {canAddProviderReassessment ? (
+        <button
+          type="button"
+          style={{
+            ...quickBtnCompact,
+            backgroundColor: "#eef2ff",
+            borderColor: "#a5b4fc",
+            color: "#3730a3",
+          }}
+          onClick={() => onOpenObservationReassessment("PROVIDER")}
+        >
+          {t("encounterChrome.observationWorkflow.quick.addReassessmentProvider")}
+        </button>
+      ) : null}
+      {canAddNursingReassessment ? (
+        <button
+          type="button"
+          style={{
+            ...quickBtnCompact,
+            backgroundColor: "#ecfeff",
+            borderColor: "#67e8f9",
+            color: "#155e75",
+          }}
+          onClick={() => onOpenObservationReassessment("RN")}
+        >
+          {t("encounterChrome.observationWorkflow.quick.addReassessmentNursing")}
+        </button>
+      ) : null}
+      <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("orders")}>
+        {t("encounterChrome.observationWorkflow.quick.orders")}
+      </button>
+      <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("results")}>
+        {t("encounterChrome.observationWorkflow.quick.results")}
+      </button>
+      {showNursingTab ? (
+        <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("nursing")}>
+          {t("encounterChrome.observationWorkflow.quick.nursing")}
+        </button>
+      ) : null}
+      <button type="button" style={quickBtnCompact} onClick={() => setActiveTab("clinic")}>
+        {t("encounterChrome.observationWorkflow.quick.continue")}
+      </button>
+      <button
+        type="button"
+        style={{
+          ...quickBtnCompact,
+          backgroundColor: "#f1f5f9",
+          borderColor: "#cbd5e1",
+          color: "#0f172a",
+        }}
+        onClick={onOpenDischarge}
+      >
+        {t("encounterChrome.observationWorkflow.quick.discharge")}
+      </button>
+    </div>
+  );
+
+  const badgeRow = (
+    <div
+      style={{
+        marginTop: compact ? 8 : 12,
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 6,
+        alignItems: "center",
+      }}
+    >
         {flags.assignPhysicianGap ? (
           <span
             style={{
@@ -434,7 +450,90 @@ export function ObservationWorkflowEncounterChrome({
             {t("encounterChrome.observationWorkflow.badges.disposition")}
           </span>
         ) : null}
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <div
+        style={{
+          marginTop: 10,
+          marginBottom: 0,
+          padding: "10px 12px",
+          backgroundColor: MEDORA_CARD_SHELL.background,
+          border: MEDORA_CARD_SHELL.border,
+          borderRadius: MEDORA_CARD_SHELL.radius,
+          boxShadow: MEDORA_CARD_SHELL.boxShadow,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 8,
+              minWidth: 0,
+              flex: "1 1 200px",
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+              {t("encounterChrome.observationWorkflow.cardTitle")}
+            </span>
+            <ObservationWorkflowHeaderStatusPill snapshot={snapshot} t={t} />
+          </div>
+          {quickActionButtons}
+        </div>
+        {badgeRow}
+        <details style={{ marginTop: 8 }}>
+          <summary
+            style={{
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#475569",
+              listStyle: "none",
+            }}
+          >
+            {t("encounterChrome.observationWorkflow.compactDetailsSummary")}
+          </summary>
+          <div style={{ marginTop: 10 }}>{operationalDetailColumn}</div>
+        </details>
       </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        padding: "14px 16px",
+        backgroundColor: MEDORA_CARD_SHELL.background,
+        border: MEDORA_CARD_SHELL.border,
+        borderRadius: MEDORA_CARD_SHELL.radius,
+        boxShadow: MEDORA_CARD_SHELL.boxShadow,
+      }}
+    >
+      <div
+        style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}
+      >
+        <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
+            {t("encounterChrome.observationWorkflow.cardTitle")}
+          </div>
+          {operationalDetailColumn}
+        </div>
+        {quickActionButtons}
+      </div>
+      {badgeRow}
     </div>
   );
 }

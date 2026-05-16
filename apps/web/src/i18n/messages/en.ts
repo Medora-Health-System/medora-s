@@ -5561,6 +5561,8 @@ export default {
       orders: "Orders",
       mar: "Medication administration",
       results: "Results",
+      observationSummary: "Observation summary",
+      clinicalTimeline: "Clinical timeline",
       notes: "Nursing notes",
       pathways: "Clinical pathways",
       history: "History",
@@ -5685,6 +5687,7 @@ export default {
         addReassessmentProvider: "Observation reassessment (provider)",
         addReassessmentNursing: "Observation reassessment (RN)",
       },
+      compactDetailsSummary: "Operational details (timers, blockers, readiness) — show",
     },
     observationDocSummary: {
       title: "Observation documentation summary",

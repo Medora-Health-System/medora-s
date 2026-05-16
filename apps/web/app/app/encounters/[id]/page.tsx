@@ -178,6 +178,8 @@ const ENCOUNTER_TAB_IDS = new Set([
   "orders",
   "mar",
   "results",
+  "observation_summary",
+  "clinical_timeline",
   "notes",
   "pathways",
   "history",
@@ -895,33 +897,6 @@ export default function EncounterDetailPage() {
     boxSizing: "border-box",
   };
 
-  /** Must run before any early return — same hook order on loading / error / ready paths (React #310). */
-  const tabs = useMemo(
-    () =>
-      isReadOnlyTechnicianViewer
-        ? [
-            { id: "summary", label: t("encounterChrome.tabs.summary") },
-            { id: "triage", label: t("encounterChrome.tabs.triage") },
-            { id: "orders", label: t("encounterChrome.tabs.orders") },
-            { id: "results", label: t("encounterChrome.tabs.results") },
-            { id: "history", label: t("encounterChrome.tabs.history") },
-          ]
-        : [
-            { id: "summary", label: t("encounterChrome.tabs.summary") },
-            { id: "triage", label: t("encounterChrome.tabs.triage") },
-            ...(showNursingTab ? [{ id: "nursing", label: t("encounterChrome.tabs.nursing") }] : []),
-            { id: "clinic", label: t("encounterChrome.tabs.clinic") },
-            { id: "diagnostics", label: t("encounterChrome.tabs.diagnostics") },
-            { id: "orders", label: t("encounterChrome.tabs.orders") },
-            ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
-            { id: "results", label: t("encounterChrome.tabs.results") },
-            { id: "notes", label: t("encounterChrome.tabs.notes") },
-            { id: "pathways", label: t("encounterChrome.tabs.pathways") },
-            { id: "history", label: t("encounterChrome.tabs.history") },
-          ],
-    [t, showNursingTab, canFetchMarTab, isReadOnlyTechnicianViewer]
-  );
-
   const handleDocumentationDeficiencyNavigate = useCallback((code: string) => {
     setShowDocumentationDeficiencyModal(false);
     setDocumentationDeficiencies([]);
@@ -975,6 +950,53 @@ export default function EncounterDetailPage() {
       ),
     [encounter, encounter?.type, encounter?.status, encounter?.admittedAt, encounter?.admissionSummaryJson]
   );
+
+  /** Tab list depends on observation lane — defined after `observationWorkflowActive` (React #310 safe). */
+  const tabs = useMemo(
+    () =>
+      isReadOnlyTechnicianViewer
+        ? [
+            { id: "summary", label: t("encounterChrome.tabs.summary") },
+            { id: "triage", label: t("encounterChrome.tabs.triage") },
+            { id: "orders", label: t("encounterChrome.tabs.orders") },
+            { id: "results", label: t("encounterChrome.tabs.results") },
+            ...(observationWorkflowActive
+              ? [
+                  { id: "observation_summary", label: t("encounterChrome.tabs.observationSummary") },
+                  { id: "clinical_timeline", label: t("encounterChrome.tabs.clinicalTimeline") },
+                ]
+              : []),
+            { id: "history", label: t("encounterChrome.tabs.history") },
+          ]
+        : [
+            { id: "summary", label: t("encounterChrome.tabs.summary") },
+            { id: "triage", label: t("encounterChrome.tabs.triage") },
+            ...(showNursingTab ? [{ id: "nursing", label: t("encounterChrome.tabs.nursing") }] : []),
+            { id: "clinic", label: t("encounterChrome.tabs.clinic") },
+            { id: "diagnostics", label: t("encounterChrome.tabs.diagnostics") },
+            { id: "orders", label: t("encounterChrome.tabs.orders") },
+            ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
+            { id: "results", label: t("encounterChrome.tabs.results") },
+            ...(observationWorkflowActive
+              ? [
+                  { id: "observation_summary", label: t("encounterChrome.tabs.observationSummary") },
+                  { id: "clinical_timeline", label: t("encounterChrome.tabs.clinicalTimeline") },
+                ]
+              : []),
+            { id: "notes", label: t("encounterChrome.tabs.notes") },
+            { id: "pathways", label: t("encounterChrome.tabs.pathways") },
+            { id: "history", label: t("encounterChrome.tabs.history") },
+          ],
+    [t, showNursingTab, canFetchMarTab, isReadOnlyTechnicianViewer, observationWorkflowActive]
+  );
+
+  useEffect(() => {
+    if (!observationWorkflowActive && (activeTab === "observation_summary" || activeTab === "clinical_timeline")) {
+      const providerLike = roles.includes("PROVIDER") || roles.includes("ADMIN");
+      const rnOnly = roles.includes("RN") && !providerLike;
+      setActiveTab(rnOnly ? "triage" : providerLike ? "clinic" : "summary");
+    }
+  }, [observationWorkflowActive, activeTab, roles]);
 
   const observationTrackboardOpsInput = useMemo(
     () =>
@@ -1128,6 +1150,7 @@ export default function EncounterDetailPage() {
   /** Dossier médical signé : saisie verrouillée (addendum et navigation restent possibles). */
   const isLocked = isEncounterLocked(encounter);
   const isRNOnly = roles.includes("RN") && !isProviderLike;
+
   const canAddObsProviderReassessment =
     observationWorkflowActive && encounter.status === "OPEN" && isProviderLike;
   const canAddObsNursingReassessment =
@@ -1618,256 +1641,36 @@ export default function EncounterDetailPage() {
                 )}
               </div>
             </div>
+          </div>
 
-            {encounter.status === "OPEN" && canManageEncounterClosure ? (
-              <div style={{ marginTop: 14 }}>
-                <DispositionReadinessBanner
-                  encounterId={encounterId}
-                  facilityId={facilityId}
-                  refreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${encounterResultsRefresh}`}
-                  onReadinessChange={handleDispositionReadiness}
-                />
-              </div>
-            ) : null}
-
-            {observationWorkflowActive && observationOpsClient ? (
-              <ObservationWorkflowEncounterChrome
-                snapshot={observationOpsClient}
-                trackboardOps={observationTrackboardOpsInput}
-                providerDocumentationStatus={encounter.providerDocumentationStatus}
-                providerDocumentationSignedAt={encounter.providerDocumentationSignedAt}
-                formatDateTime={(iso) => formatEncounterChromeDateTime(iso, language)}
-                t={t}
-                setActiveTab={(tab) => setActiveTab(tab)}
-                onOpenDischarge={openDischargeThenClose}
-                showNursingTab={showNursingTab}
-                canAddProviderReassessment={canAddObsProviderReassessment}
-                canAddNursingReassessment={canAddObsNursingReassessment}
-                onOpenObservationReassessment={(role) => setObservationReassessmentModalRole(role)}
-              />
-            ) : null}
-
-            {observationWorkflowActive && observationOpsClient ? (
-              <ObservationDocumentationSummaryPanel
-                snapshot={observationOpsClient}
-                initialObservationReason={observationInitialReasonForSummary}
-                resultsPendingCount={observationTrackboardOpsInput.resultsPendingCount ?? 0}
-                criticalResultsUnacknowledged={Boolean(observationTrackboardOpsInput.criticalResultUnacknowledged)}
-                dispositionReadiness={dispositionReadiness}
-                formatDateTime={(iso) => formatEncounterChromeDateTime(iso, language)}
-                t={t}
-                encounterId={encounterId}
-                facilityId={facilityId}
-                medicationMarSummaryRefreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${encounterResultsRefresh}-${clinicalTimelineRefresh}`}
-              />
-            ) : null}
-
-            {observationWorkflowActive ? (
-              <div style={{ marginTop: 12 }}>
-                <ClinicalTimeline
-                  encounterId={encounterId}
-                  facilityId={facilityId}
-                  refreshToken={clinicalTimelineRefresh}
-                />
-              </div>
-            ) : null}
-
-            <div style={{ marginTop: 16 }}>
-              <div
-                style={{
-                  backgroundColor: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 12,
-                  padding: "14px 16px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#0f172a",
-                    marginBottom: 10,
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  {t("encounterChrome.lastVitals")}
-                </div>
-                <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
-                  {quickContextLoading ? t("common.loading") : vitalsLine}
-                  {vitalsJson?.allergyNote && String(vitalsJson.allergyNote).trim() !== "" && (
-                    <div style={{ marginTop: 6, color: "#c62828", fontWeight: 700 }}>
-                      ⚠️ {t("encounterChrome.allergyPrefix")}: {String(vitalsJson.allergyNote).trim()}
-                    </div>
-                  )}
-                  {vitalsAt && (
-                    <div style={{ color: "#64748b" }}>
-                      {t("encounterChrome.vitalsRecordedAt")}: {vitalsAt}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 16 }}>
-              <div
-                style={{
-                  backgroundColor: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 12,
-                  padding: "14px 16px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#0f172a",
-                    marginBottom: 12,
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  {t("encounterChrome.quickActions")}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-              {isRNOnly && (
-                <>
-                  <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
-                    {t("encounterChrome.rnEnterVitals")}
-                  </button>
-                  <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
-                    {t("encounterChrome.rnViewMedicalEval")}
-                  </button>
-                  <button type="button" style={quickBtn} onClick={() => setActiveTab("orders")}>
-                    {t("encounterChrome.rnViewOrders")}
-                  </button>
-                  {encounter.status === "OPEN" && canManageEncounterClosure ? (
-                    <>
-                      <button
-                        type="button"
-                        style={{
-                          ...quickBtn,
-                          backgroundColor: "#37474f",
-                          color: "#fff",
-                          borderColor: "#37474f",
-                        }}
-                        onClick={openDischargeThenClose}
-                      >
-                        {t("encounterChrome.dischargeSummary")}
-                      </button>
-                      <button type="button" style={{ ...quickBtn, borderColor: "#c62828", color: "#c62828" }} onClick={openCloseConfirmModal}>
-                        {t("encounterChrome.finishEncounter")}
-                      </button>
-                    </>
-                  ) : null}
-                  <Link href={`/app/patients/${patient.id}`} style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}>
-                    {t("encounterChrome.backToPatientChart")}
-                  </Link>
-                </>
-              )}
-              {isProviderLike && (
-                <>
-                  <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
-                    {t("encounterChrome.providerMedicalEval")}
-                  </button>
-                  <button
-                    type="button"
-                    style={quickBtn}
-                    onClick={() => setActiveTab("diagnostics")}
-                  >
-                    {t("encounterChrome.providerAddDiagnosis")}
-                  </button>
-                  {canPrescribe ? (
-                    <>
-                      <button
-                        type="button"
-                        style={quickBtn}
-                        onClick={() => {
-                          setActiveTab("orders");
-                          setMedicationModalRequestTick((tick) => tick + 1);
-                        }}
-                      >
-                        {t("encounterChrome.providerCreatePrescription")}
-                      </button>
-                      <button
-                        type="button"
-                        style={quickBtn}
-                        onClick={() => {
-                          setActiveTab("orders");
-                          setCareModalPresetLabel(t("orders.ivLine"));
-                          setCareModalRequestTick((tick) => tick + 1);
-                        }}
-                      >
-                        {t("encounterChrome.providerPrescribeIv")}
-                      </button>
-                      <button
-                        type="button"
-                        style={quickBtn}
-                        onClick={() => {
-                          setActiveTab("orders");
-                          setCareModalPresetLabel(t("orders.oxygenTherapy"));
-                          setCareModalRequestTick((tick) => tick + 1);
-                        }}
-                      >
-                        {t("encounterChrome.providerPrescribeOxygen")}
-                      </button>
-                      <button
-                        type="button"
-                        style={quickBtn}
-                        onClick={() => {
-                          setActiveTab("orders");
-                          setCareModalPresetLabel(t("orders.dressingWoundCare"));
-                          setCareModalRequestTick((tick) => tick + 1);
-                        }}
-                      >
-                        {t("encounterChrome.providerPrescribeWoundCare")}
-                      </button>
-                    </>
-                  ) : null}
-                  {canAdmitPatient && !observationWorkflowActive ? (
-                    <button
-                      type="button"
-                      style={{
-                        ...quickBtn,
-                        backgroundColor: "#f3e5f5",
-                        borderColor: "#6a1b9a",
-                        color: "#4a148c",
-                        fontWeight: 600,
-                      }}
-                      onClick={() => setShowAdmissionModal(true)}
-                    >
-                      {t("encounterChrome.admitPatient")}
-                    </button>
-                  ) : null}
-                  <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
-                    {t("encounterChrome.providerViewVitals")}
-                  </button>
-                </>
-              )}
-              {!isRNOnly && !isProviderLike && (
-                <>
-                  <button type="button" style={quickBtn} onClick={() => setActiveTab("summary")}>
-                    {t("encounterChrome.otherRoleSummary")}
-                  </button>
-                  <Link href={`/app/patients/${patient.id}`} style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}>
-                    {t("encounterChrome.backToPatientChart")}
-                  </Link>
-                </>
-              )}
-                </div>
-              </div>
-            </div>
-          <EncounterOperationalPanel
-            encounterId={encounterId}
-            facilityId={facilityId}
-            canEdit={canEditOperational && encounter.status === "OPEN"}
-            roomLabel={encounter.roomLabel}
-            physicianAssigned={encounter.physicianAssigned}
-            showConfirmInpatientTransfer={showConfirmInpatientTransfer}
-            nursingAssessment={encounter.nursingAssessment}
-            onSaved={mergeEncounterFromOperationalPatch}
-            onUpdated={() => void loadEncounter({ silent: true })}
+        {observationWorkflowActive && observationOpsClient ? (
+          <ObservationWorkflowEncounterChrome
+            compact
+            snapshot={observationOpsClient}
+            trackboardOps={observationTrackboardOpsInput}
+            providerDocumentationStatus={encounter.providerDocumentationStatus}
+            providerDocumentationSignedAt={encounter.providerDocumentationSignedAt}
+            formatDateTime={(iso) => formatEncounterChromeDateTime(iso, language)}
+            t={t}
+            setActiveTab={(tab) => setActiveTab(tab)}
+            onOpenDischarge={openDischargeThenClose}
+            showNursingTab={showNursingTab}
+            canAddProviderReassessment={canAddObsProviderReassessment}
+            canAddNursingReassessment={canAddObsNursingReassessment}
+            onOpenObservationReassessment={(role) => setObservationReassessmentModalRole(role)}
           />
-        </div>
+        ) : null}
+        <EncounterOperationalPanel
+          encounterId={encounterId}
+          facilityId={facilityId}
+          canEdit={canEditOperational && encounter.status === "OPEN"}
+          roomLabel={encounter.roomLabel}
+          physicianAssigned={encounter.physicianAssigned}
+          showConfirmInpatientTransfer={showConfirmInpatientTransfer}
+          nursingAssessment={encounter.nursingAssessment}
+          onSaved={mergeEncounterFromOperationalPatch}
+          onUpdated={() => void loadEncounter({ silent: true })}
+        />
       </div>
 
       <div
@@ -1914,6 +1717,191 @@ export default function EncounterDetailPage() {
               {tab.label}
             </button>
           ))}
+        </div>
+
+        <div
+          style={{
+            padding: "10px 14px 12px",
+            backgroundColor: "#ffffff",
+            borderBottom: "1px solid #e2e8f0",
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+          }}
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 6,
+                  letterSpacing: "0.01em",
+                }}
+              >
+                {t("encounterChrome.lastVitals")}
+              </div>
+              <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
+                {quickContextLoading ? t("common.loading") : vitalsLine}
+                {vitalsJson?.allergyNote && String(vitalsJson.allergyNote).trim() !== "" && (
+                  <div style={{ marginTop: 4, color: "#c62828", fontWeight: 700 }}>
+                    ⚠️ {t("encounterChrome.allergyPrefix")}: {String(vitalsJson.allergyNote).trim()}
+                  </div>
+                )}
+                {vitalsAt && (
+                  <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>
+                    {t("encounterChrome.vitalsRecordedAt")}: {vitalsAt}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ flex: "2 1 280px", minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 8,
+                  letterSpacing: "0.01em",
+                }}
+              >
+                {t("encounterChrome.quickActions")}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                {isRNOnly && (
+                  <>
+                    <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
+                      {t("encounterChrome.rnEnterVitals")}
+                    </button>
+                    <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
+                      {t("encounterChrome.rnViewMedicalEval")}
+                    </button>
+                    <button type="button" style={quickBtn} onClick={() => setActiveTab("orders")}>
+                      {t("encounterChrome.rnViewOrders")}
+                    </button>
+                    {encounter.status === "OPEN" && canManageEncounterClosure ? (
+                      <>
+                        <button
+                          type="button"
+                          style={{
+                            ...quickBtn,
+                            backgroundColor: "#37474f",
+                            color: "#fff",
+                            borderColor: "#37474f",
+                          }}
+                          onClick={openDischargeThenClose}
+                        >
+                          {t("encounterChrome.dischargeSummary")}
+                        </button>
+                        <button
+                          type="button"
+                          style={{ ...quickBtn, borderColor: "#c62828", color: "#c62828" }}
+                          onClick={openCloseConfirmModal}
+                        >
+                          {t("encounterChrome.finishEncounter")}
+                        </button>
+                      </>
+                    ) : null}
+                    <Link
+                      href={`/app/patients/${patient.id}`}
+                      style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}
+                    >
+                      {t("encounterChrome.backToPatientChart")}
+                    </Link>
+                  </>
+                )}
+                {isProviderLike && (
+                  <>
+                    <button type="button" style={quickBtn} onClick={() => setActiveTab("clinic")}>
+                      {t("encounterChrome.providerMedicalEval")}
+                    </button>
+                    <button type="button" style={quickBtn} onClick={() => setActiveTab("diagnostics")}>
+                      {t("encounterChrome.providerAddDiagnosis")}
+                    </button>
+                    {canPrescribe ? (
+                      <>
+                        <button
+                          type="button"
+                          style={quickBtn}
+                          onClick={() => {
+                            setActiveTab("orders");
+                            setMedicationModalRequestTick((tick) => tick + 1);
+                          }}
+                        >
+                          {t("encounterChrome.providerCreatePrescription")}
+                        </button>
+                        <button
+                          type="button"
+                          style={quickBtn}
+                          onClick={() => {
+                            setActiveTab("orders");
+                            setCareModalPresetLabel(t("orders.ivLine"));
+                            setCareModalRequestTick((tick) => tick + 1);
+                          }}
+                        >
+                          {t("encounterChrome.providerPrescribeIv")}
+                        </button>
+                        <button
+                          type="button"
+                          style={quickBtn}
+                          onClick={() => {
+                            setActiveTab("orders");
+                            setCareModalPresetLabel(t("orders.oxygenTherapy"));
+                            setCareModalRequestTick((tick) => tick + 1);
+                          }}
+                        >
+                          {t("encounterChrome.providerPrescribeOxygen")}
+                        </button>
+                        <button
+                          type="button"
+                          style={quickBtn}
+                          onClick={() => {
+                            setActiveTab("orders");
+                            setCareModalPresetLabel(t("orders.dressingWoundCare"));
+                            setCareModalRequestTick((tick) => tick + 1);
+                          }}
+                        >
+                          {t("encounterChrome.providerPrescribeWoundCare")}
+                        </button>
+                      </>
+                    ) : null}
+                    {canAdmitPatient && !observationWorkflowActive ? (
+                      <button
+                        type="button"
+                        style={{
+                          ...quickBtn,
+                          backgroundColor: "#f3e5f5",
+                          borderColor: "#6a1b9a",
+                          color: "#4a148c",
+                          fontWeight: 600,
+                        }}
+                        onClick={() => setShowAdmissionModal(true)}
+                      >
+                        {t("encounterChrome.admitPatient")}
+                      </button>
+                    ) : null}
+                    <button type="button" style={quickBtn} onClick={() => setActiveTab("triage")}>
+                      {t("encounterChrome.providerViewVitals")}
+                    </button>
+                  </>
+                )}
+                {!isRNOnly && !isProviderLike && (
+                  <>
+                    <button type="button" style={quickBtn} onClick={() => setActiveTab("summary")}>
+                      {t("encounterChrome.otherRoleSummary")}
+                    </button>
+                    <Link
+                      href={`/app/patients/${patient.id}`}
+                      style={{ ...quickBtn, display: "inline-block", textDecoration: "none", color: "inherit" }}
+                    >
+                      {t("encounterChrome.backToPatientChart")}
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div
@@ -2032,6 +2020,39 @@ export default function EncounterDetailPage() {
               canAcknowledgeResults={canAcknowledgeResults}
             />
           )}
+          {activeTab === "observation_summary" && observationWorkflowActive && observationOpsClient ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {encounter.status === "OPEN" && canManageEncounterClosure ? (
+                <DispositionReadinessBanner
+                  encounterId={encounterId}
+                  facilityId={facilityId}
+                  refreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${encounterResultsRefresh}`}
+                  onReadinessChange={handleDispositionReadiness}
+                />
+              ) : null}
+              <ObservationDocumentationSummaryPanel
+                snapshot={observationOpsClient}
+                initialObservationReason={observationInitialReasonForSummary}
+                resultsPendingCount={observationTrackboardOpsInput.resultsPendingCount ?? 0}
+                criticalResultsUnacknowledged={Boolean(observationTrackboardOpsInput.criticalResultUnacknowledged)}
+                dispositionReadiness={dispositionReadiness}
+                formatDateTime={(iso) => formatEncounterChromeDateTime(iso, language)}
+                t={t}
+                encounterId={encounterId}
+                facilityId={facilityId}
+                medicationMarSummaryRefreshKey={`${String((encounter as { updatedAt?: string }).updatedAt ?? "")}-${encounterResultsRefresh}-${clinicalTimelineRefresh}`}
+              />
+            </div>
+          ) : null}
+          {activeTab === "clinical_timeline" && observationWorkflowActive ? (
+            <div style={{ marginTop: 0 }}>
+              <ClinicalTimeline
+                encounterId={encounterId}
+                facilityId={facilityId}
+                refreshToken={clinicalTimelineRefresh}
+              />
+            </div>
+          ) : null}
           {activeTab === "history" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div
