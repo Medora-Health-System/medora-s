@@ -8,7 +8,7 @@ import { downloadExternalBillingEncounterExport } from "@/lib/externalBillingExp
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import type { BillingCaptureItem, InfusionBillingReviewDecision } from "@medora/shared";
+import type { BillingCaptureItem, InfusionBillingReviewDecision, ObservationStaySummaryForExport } from "@medora/shared";
 import {
   billingLedgerRowHasUsableCode,
   billingLedgerRowIsInformationalNonBillable,
@@ -417,12 +417,15 @@ type SummaryPayload = {
     type: string;
     status?: string;
     dischargedAt: string | null;
+    admittedAt?: string | null;
+    createdAt?: string | null;
     billingFinalizationStatus?: string;
     billingFinalizedAt?: string | null;
     billingReopenedAt?: string | null;
     billingCaptureJson?: unknown;
     patient: { firstName?: string; lastName?: string; mrn?: string | null };
   };
+  observationStay?: ObservationStaySummaryForExport | null;
   readiness: ReadinessPayload;
   claimPackages: ClaimPackagesPayload;
   events: LedgerEventRow[];
@@ -472,6 +475,81 @@ function infusionBillingClassLabelFr(t: (k: string) => string, cls: string): str
   if (cls === "HYDRATION") return t("billingPage.infusionBillingClass_HYDRATION");
   if (cls === "THERAPEUTIC") return t("billingPage.infusionBillingClass_THERAPEUTIC");
   return t("billingPage.infusionBillingClass_UNKNOWN");
+}
+
+function observationStayYesNo(t: (k: string) => string, yes: boolean): string {
+  return yes ? t("billingPage.observationStayYes") : t("billingPage.observationStayNo");
+}
+
+function ObservationStayBillingDigest({
+  stay,
+  encounterType,
+  locale,
+  t,
+}: {
+  stay: ObservationStaySummaryForExport;
+  encounterType: string;
+  locale: string;
+  t: (k: string) => string;
+}) {
+  if (encounterType !== "INPATIENT" || stay.applicable !== true) return null;
+  const formatIso = (iso: string | null | undefined) => {
+    if (!iso?.trim()) return "—";
+    try {
+      return new Date(iso).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
+    } catch {
+      return iso;
+    }
+  };
+  const losLine =
+    stay.observationLosHours != null
+      ? t("billingPage.observationStayLosHours").replace("{hours}", String(stay.observationLosHours))
+      : stay.observationLosMinutes != null
+        ? t("billingPage.observationStayLosMinutes").replace("{minutes}", String(stay.observationLosMinutes))
+        : t("billingPage.observationStayLosUnavailable");
+  return (
+    <div
+      style={{
+        marginBottom: 16,
+        padding: 14,
+        borderRadius: 8,
+        border: "1px solid #bae6fd",
+        background: "#f0f9ff",
+      }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#0c4a6e", marginBottom: 6 }}>
+        {t("billingPage.observationStayDigestTitle")}
+      </div>
+      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+        {t("billingPage.observationStayDigestFootnote")}
+      </p>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#0f172a", lineHeight: 1.5 }}>
+        <li style={{ marginBottom: 4 }}>{losLine}</li>
+        <li style={{ marginBottom: 4 }}>
+          {t("billingPage.observationStayOvernight").replace(
+            "{value}",
+            observationStayYesNo(t, stay.overnightObservationUtcSpan)
+          )}
+        </li>
+        <li style={{ marginBottom: 4 }}>
+          {t("billingPage.observationStayExtended24h").replace(
+            "{value}",
+            observationStayYesNo(t, stay.extendedObservation24hPlus)
+          )}
+        </li>
+        {stay.preview ? (
+          <li style={{ marginBottom: 4 }}>
+            {t("billingPage.observationStayPreview").replace("{value}", observationStayYesNo(t, true))}
+          </li>
+        ) : null}
+        {stay.anchorIso ? (
+          <li style={{ marginBottom: 0 }}>
+            {t("billingPage.observationStayAnchor").replace("{value}", formatIso(stay.anchorIso))}
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
 }
 
 function billingReadinessStatusForLedgerRow(
@@ -1590,6 +1668,14 @@ export default function BillingEncounterLedgerPage() {
         <p style={{ margin: "0 0 16px", color: "#475569", fontSize: 14 }}>
           {data.encounter.patient.firstName} {data.encounter.patient.lastName} · {data.encounter.patient.mrn ?? "—"}
         </p>
+      ) : null}
+      {data?.observationStay && data.encounter.type === "INPATIENT" && data.observationStay.applicable ? (
+        <ObservationStayBillingDigest
+          stay={data.observationStay}
+          encounterType={data.encounter.type}
+          locale={locale}
+          t={t}
+        />
       ) : null}
 
       {loading && <p>{t("common.loading")}</p>}

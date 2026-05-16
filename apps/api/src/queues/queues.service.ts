@@ -25,6 +25,7 @@ import {
   billingLedgerRowMissingBillableCodeBlocksReadiness,
   buildOrderItemCandidate,
   computeClaimPackageSummaries,
+  computeObservationStaySummaryForExport,
 } from "@medora/shared";
 import {
   computeEncounterBillingReadiness,
@@ -366,6 +367,8 @@ export class QueuesService {
         id: true,
         type: true,
         status: true,
+        createdAt: true,
+        admittedAt: true,
         dischargedAt: true,
         dischargeStatus: true,
         physicianAssignedUserId: true,
@@ -409,8 +412,15 @@ export class QueuesService {
         diagnosisCodes: ev.diagnosisCodes,
       }))
     );
+    const observationStay = computeObservationStaySummaryForExport({
+      encounterType: enc.type,
+      admittedAt: enc.admittedAt,
+      createdAt: enc.createdAt,
+      dischargedAt: enc.dischargedAt,
+    });
     return {
       encounter: enc,
+      observationStay,
       events,
       readiness,
       claimPackages,
