@@ -42,9 +42,11 @@ export function datetimeLocalValueToUtcIso(localValue: string): string | null {
 
 export function canShowMedicationAdministrationTimeClock(
   row: MedicationAdministrationTimeFields,
-  opts: { encounterOpen: boolean; canAdjust: boolean; isControlled?: boolean }
+  opts: { encounterOpen: boolean; canAdjust: boolean }
 ): boolean {
   if (!opts.encounterOpen || !opts.canAdjust) return false;
+  if (!row.id?.trim()) return false;
+  if (!toDate(row.administeredAt)) return false;
   if (row.pendingSync) return false;
   const marAction = resolveMedicationMarActionFromStorage({
     marAction: row.marAction ?? null,

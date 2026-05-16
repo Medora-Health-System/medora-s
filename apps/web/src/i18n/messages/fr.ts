@@ -8301,7 +8301,7 @@ export default {
         "Cet enregistrement conserve l'horodatage de documentation d'origine et enregistre séparément l'heure clinique d'administration.",
       documentedAt: "Documenté le {when}",
       adjustedBadge: "Ajusté",
-      adjustedBadgeLong: "Heure d'administration corrigée",
+      adjustedBadgeLong: "Heure clinique corrigée",
       controlledWarning:
         "Médicament soumis à contrôle : un motif est toujours requis pour tout ajustement d'heure.",
       largeBackdateReasonHelp:

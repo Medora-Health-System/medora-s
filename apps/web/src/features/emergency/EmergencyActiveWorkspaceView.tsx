@@ -1258,6 +1258,7 @@ export function EmergencyActiveWorkspaceView() {
                     encounterId={encounterId}
                     facilityId={fid}
                     encounterStatus={encounter.status ?? "OPEN"}
+                    roleCodes={roles}
                   />
                 </div>
               </MedoraCardInner>

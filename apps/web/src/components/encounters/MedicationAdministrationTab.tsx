@@ -41,10 +41,11 @@ import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatest
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { medicationMarIntendedTimingUrgency } from "@/lib/medicationMarIntendedUrgency";
 import {
-  canShowMedicationAdministrationTimeClock,
+  canAdjustMedicationAdministrationTime,
   resolveMedicationAdministrationDisplayTimes,
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
 import { MedicationAdministrationEffectiveTimeModal } from "@/components/encounters/MedicationAdministrationEffectiveTimeModal";
+import { MedicationAdministrationTimeCell } from "@/components/encounters/MedicationAdministrationTimeCell";
 
 type AdminRow = {
   id: string;
@@ -232,10 +233,13 @@ export function MedicationAdministrationTab({
   encounterId,
   facilityId,
   encounterStatus,
+  roleCodes = [],
 }: {
   encounterId: string;
   facilityId: string;
   encounterStatus: string;
+  /** RN / PROVIDER / ADMIN may adjust effective administration time (MAR tab callers). */
+  roleCodes?: string[];
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -290,6 +294,10 @@ export function MedicationAdministrationTab({
   }, []);
 
   const encounterOpen = encounterStatus === "OPEN";
+  /** When omitted, callers rely on MAR-tab route gating (RN / PROVIDER / ADMIN only). */
+  const canAdjustAdminTime = canAdjustMedicationAdministrationTime(
+    roleCodes.length > 0 ? roleCodes : ["RN", "PROVIDER", "ADMIN"]
+  );
 
   const orderItemById = useMemo(() => {
     const map = new Map<string, OrderItemApi>();
@@ -1069,10 +1077,6 @@ export function MedicationAdministrationTab({
                   marControls = row.isInfusionLifecycleMed ? infusionControlsEl : administerControlEl;
                 }
 
-                const timeCell = latest
-                  ? new Date(latest.administeredAt).toLocaleString(dateLocale)
-                  : t("common.dash");
-
                 const displayName =
                   latest?.medicationLabelSnapshot?.trim() || row.label;
 
@@ -1131,7 +1135,18 @@ export function MedicationAdministrationTab({
                       {issuedCell}
                     </td>
                     <td style={{ padding: "12px 8px", fontSize: 13, color: "#424242" }}>
-                      <div style={{ whiteSpace: "nowrap" }}>{timeCell}</div>
+                      {latest ? (
+                        <MedicationAdministrationTimeCell
+                          row={latest}
+                          encounterOpen={encounterOpen}
+                          canAdjust={canAdjustAdminTime}
+                          dateLocale={dateLocale}
+                          t={t}
+                          onAdjustClick={() => setAdminTimeModalRow(latest)}
+                        />
+                      ) : (
+                        <div style={{ whiteSpace: "nowrap" }}>{t("common.dash")}</div>
+                      )}
                       {intendedLine ? (
                         <div
                           style={intendedLineStyle}
@@ -1203,13 +1218,6 @@ export function MedicationAdministrationTab({
                 (oid
                   ? taskRows.find((tr) => tr.orderItemId === oid)?.label ?? t("common.dash")
                   : t("marTab.noLinkedOrder"));
-              const displayTimes = resolveMedicationAdministrationDisplayTimes(r);
-              const linkedOrderItem = oid ? orderItemById.get(oid) : undefined;
-              const showClock = canShowMedicationAdministrationTimeClock(r, {
-                encounterOpen,
-                canAdjust: true,
-                isControlled: Boolean(linkedOrderItem?.catalogMedication?.isControlled),
-              });
               return (
                 <li
                   key={r.id}
@@ -1223,62 +1231,17 @@ export function MedicationAdministrationTab({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>{label}</div>
-                  <div
-                    style={{
-                      color: "#555",
-                      marginTop: 4,
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <span>
-                      {new Date(displayTimes.effectiveIso).toLocaleString(dateLocale)} · {r.administeredBy.firstName}{" "}
-                      {r.administeredBy.lastName}
-                    </span>
-                    {showClock ? (
-                      <button
-                        type="button"
-                        title={t("marTab.adminTime.adjustTooltip")}
-                        aria-label={t("marTab.adminTime.adjustTooltip")}
-                        onClick={() => setAdminTimeModalRow(r)}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          padding: "0 2px",
-                          fontSize: 14,
-                          lineHeight: 1,
-                        }}
-                      >
-                        🧭
-                      </button>
-                    ) : null}
-                    {displayTimes.showAdjustedBadge ? (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          padding: "2px 8px",
-                          borderRadius: 9999,
-                          background: "#fef3c7",
-                          color: "#92400e",
-                          border: "1px solid #fcd34d",
-                        }}
-                      >
-                        {t("marTab.adminTime.adjustedBadge")}
-                      </span>
-                    ) : null}
+                  <div style={{ marginTop: 4 }}>
+                    <MedicationAdministrationTimeCell
+                      row={r}
+                      encounterOpen={encounterOpen}
+                      canAdjust={canAdjustAdminTime}
+                      dateLocale={dateLocale}
+                      t={t}
+                      showPerformer
+                      onAdjustClick={() => setAdminTimeModalRow(r)}
+                    />
                   </div>
-                  {displayTimes.documentedSystemIso ? (
-                    <div style={{ color: "#94a3b8", marginTop: 4, fontSize: 12 }}>
-                      {t("marTab.adminTime.documentedAt").replace(
-                        "{when}",
-                        new Date(displayTimes.documentedSystemIso).toLocaleString(dateLocale)
-                      )}
-                    </div>
-                  ) : null}
                   {r.notes?.trim() ? (
                     <pre
                       style={{

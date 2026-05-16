@@ -2231,6 +2231,7 @@ export default function EncounterDetailPage() {
               encounterId={encounterId}
               facilityId={facilityId}
               encounterStatus={encounter.status}
+              roleCodes={roles}
             />
           )}
           {activeTab === "results" && (

@@ -8287,7 +8287,7 @@ export default {
         "This records clinical administration time separately and preserves the original documentation timestamp.",
       documentedAt: "Documented at {when}",
       adjustedBadge: "Adjusted",
-      adjustedBadgeLong: "Administration time corrected",
+      adjustedBadgeLong: "Clinical time corrected",
       controlledWarning:
         "Controlled medication: a reason is always required for any time adjustment.",
       largeBackdateReasonHelp:

@@ -893,6 +893,7 @@ export function EmergencyChartView() {
                       encounterId={encounterId}
                       facilityId={fid}
                       encounterStatus={encounter.status ?? "OPEN"}
+                      roleCodes={roles}
                     />
                   </div>
                 </MedoraCardInner>
