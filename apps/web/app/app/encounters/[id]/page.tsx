@@ -3967,6 +3967,7 @@ function ClinicVisitTab({
         type: "err",
         text: normalizeUserFacingError(e?.message) || t("encounterClinicTab.errSave"),
       });
+      throw e;
     } finally {
       setSaving(false);
     }
@@ -4023,6 +4024,7 @@ function ClinicVisitTab({
   return (
     <div style={{ maxWidth: "none", display: "flex", flexDirection: "column", gap: 16 }}>
       <ProviderDocumentationWorkspace
+        encounterId={encounter.id}
         encounterMode="OBSERVATION"
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}

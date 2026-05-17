@@ -645,6 +645,7 @@ export function EmergencyProviderMsePanel({
           normalizeUserFacingError(e instanceof Error ? e.message : null) ||
           t("erMseProviderPanel.saveErrorFallback"),
       });
+      throw e;
     } finally {
       setSaving(false);
     }
@@ -917,6 +918,7 @@ export function EmergencyProviderMsePanel({
   return (
     <>
       <ProviderDocumentationWorkspace
+        encounterId={encounterId}
         encounterMode="ED"
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}
