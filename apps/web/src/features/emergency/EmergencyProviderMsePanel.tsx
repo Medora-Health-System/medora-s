@@ -32,6 +32,13 @@ import {
   type ErPhysicalExamTemplateId,
 } from "./erPhysicalExamTemplatePresets";
 import { appendIfNotPresent } from "./medoraErTriageV1";
+import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import {
+  buildProviderDocumentationMetadata,
+  buildProviderDocumentationSavePayload,
+  emptyProviderDocumentationWorkspaceState,
+  type ProviderDocumentationWorkspaceState,
+} from "@/lib/providerDocumentationModel";
 
 /** HPI quick chips — fragments only; appended to `hpiNarrative` via `appendIfNotPresent`. */
 const HPI_CHIP_ROWS: readonly { categoryKey: string; fragmentKeys: readonly string[] }[] = [
@@ -418,6 +425,59 @@ export function EmergencyProviderMsePanel({
 
   const previewModel = useMemo(() => buildErProviderMsePreviewModel(form, language), [form, language]);
 
+  const providerWorkspaceValue = useMemo<ProviderDocumentationWorkspaceState>(() => {
+    const next = emptyProviderDocumentationWorkspaceState();
+    next.chiefComplaint = form.chiefConcern;
+    next.hpi = form.hpiNarrative;
+    next.rosFocusedImpression = form.focusedImpression;
+    next.rosImportantPositives = form.importantPositives;
+    next.rosImportantNegatives = form.importantNegatives;
+    next.rosRedFlags = form.redFlagsText;
+    next.physicalExam.general = form.examGeneralAppearance;
+    next.physicalExam.heent = form.examHeent;
+    next.physicalExam.cardiovascular = form.examCardiac;
+    next.physicalExam.respiratory = form.examRespiratory;
+    next.physicalExam.abdomen = form.examAbdomen;
+    next.physicalExam.neuroPsych = [form.examNeuroMental, form.examPsychBehavior].filter(Boolean).join("\n");
+    next.physicalExam.musculoskeletal = form.examMusculoskeletal;
+    next.physicalExam.skin = form.examSkin;
+    next.mdmWorkingAssessment = form.mdmWorkingAssessment;
+    next.mdmDifferentialSynthesis = form.differentialAssessmentText;
+    next.mdmPlanSummary = form.mdmPlanSummary;
+    next.mdmImmediateActionsRationale = form.mdmImmediateActionsRationale;
+    next.mdmConsultsDiscussed = form.mdmConsultsDiscussed;
+    next.mdmAdmitObserveDischarge = form.mdmAdmitObserveDischarge;
+    next.providerAddendum = form.mdmProviderAddendum;
+    return next;
+  }, [form]);
+
+  const setProviderWorkspaceValue = useCallback((next: ProviderDocumentationWorkspaceState) => {
+    setForm((f) => ({
+      ...f,
+      chiefConcern: next.chiefComplaint,
+      hpiNarrative: next.hpi,
+      focusedImpression: next.rosFocusedImpression,
+      importantPositives: next.rosImportantPositives,
+      importantNegatives: next.rosImportantNegatives,
+      redFlagsText: next.rosRedFlags,
+      differentialAssessmentText: next.mdmDifferentialSynthesis,
+      examGeneralAppearance: next.physicalExam.general,
+      examHeent: next.physicalExam.heent,
+      examCardiac: next.physicalExam.cardiovascular,
+      examRespiratory: next.physicalExam.respiratory,
+      examAbdomen: next.physicalExam.abdomen,
+      examNeuroMental: next.physicalExam.neuroPsych,
+      examMusculoskeletal: next.physicalExam.musculoskeletal,
+      examSkin: next.physicalExam.skin,
+      mdmWorkingAssessment: next.mdmWorkingAssessment,
+      mdmPlanSummary: next.mdmPlanSummary,
+      mdmImmediateActionsRationale: next.mdmImmediateActionsRationale,
+      mdmConsultsDiscussed: next.mdmConsultsDiscussed,
+      mdmAdmitObserveDischarge: next.mdmAdmitObserveDischarge,
+      mdmProviderAddendum: next.providerAddendum,
+    }));
+  }, []);
+
   const patchForm = useCallback((patch: Partial<ErProviderMseForm>) => {
     setForm((f) => ({ ...f, ...patch }));
   }, []);
@@ -541,6 +601,58 @@ export function EmergencyProviderMsePanel({
     }
   };
 
+  const handleSaveProviderWorkspace = async () => {
+    if (formDisabled) return;
+    setSaving(true);
+    setSaveFeedback(null);
+    try {
+      let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
+      try {
+        const meRes = await fetch("/api/auth/me");
+        const me = await parseApiResponse(meRes);
+        if (me && typeof me === "object" && !Array.isArray(me)) {
+          const fn = (me as { fullName?: string }).fullName?.trim();
+          if (fn) savedByDisplayName = fn;
+        }
+      } catch {
+        /* fallback only */
+      }
+      const metadata = buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: new Date().toISOString(),
+        savedBy: savedByDisplayName,
+      });
+      const payload = buildProviderDocumentationSavePayload({
+        previousNursingAssessment: encounter.nursingAssessment,
+        state: providerWorkspaceValue,
+        metadata,
+      });
+      const res = await apiFetch(`/encounters/${encounterId}`, {
+        method: "PATCH",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const queued =
+        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      await onSaved();
+      setSaveFeedback({
+        variant: "success",
+        message: queued ? t("erMseProviderPanel.saveQueued") : t("erMseProviderPanel.saveSuccess"),
+      });
+    } catch (e) {
+      console.error(e);
+      setSaveFeedback({
+        variant: "error",
+        message:
+          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          t("erMseProviderPanel.saveErrorFallback"),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRecordProviderHandoff = useCallback(async () => {
     if (formDisabled) return;
     if (!handoffToId) {
@@ -609,6 +721,55 @@ export function EmergencyProviderMsePanel({
   );
 
   return (
+    <>
+      <ProviderDocumentationWorkspace
+        encounterMode="ED"
+        value={providerWorkspaceValue}
+        onChange={setProviderWorkspaceValue}
+        onSave={handleSaveProviderWorkspace}
+        onClear={() => setProviderWorkspaceValue(emptyProviderDocumentationWorkspaceState())}
+        saving={saving}
+        readOnly={formDisabled}
+        lockedMessage={
+          isLocked
+            ? t("erMseProviderPanel.lockedDocumentation")
+            : isReadOnly
+              ? t("erMseProviderPanel.readOnlyEncounter")
+              : null
+        }
+        saveMessage={
+          saveFeedback
+            ? {
+                variant: saveFeedback.variant === "success" ? "success" : "error",
+                text: saveFeedback.message,
+              }
+            : null
+        }
+        lastSaved={
+          storedSig
+            ? {
+                savedBy: storedSig.savedByDisplayName,
+                savedAt: new Date(storedSig.savedAt).toLocaleString(language === "en" ? "en-US" : "fr-FR", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                }),
+              }
+            : null
+        }
+        keyInformation={[t("erMseProviderPanel.previewSubline")]}
+        encounterSummary={[t("erMseProviderPanel.sectionPresentation"), t("erMseProviderPanel.sectionMdm")]}
+        quickActions={
+          <Link href={erChartHref} style={{ color: "#1d4ed8", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+            {t("erMseProviderPanel.linkFullEncounter")}
+          </Link>
+        }
+        t={t}
+      />
+      <details style={{ marginTop: 12 }}>
+        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#475569" }}>
+          {t("providerDocumentationWorkspace.legacyDetails")}
+        </summary>
+        <div style={{ marginTop: 10 }}>
     <MedoraCard leftAccentColor="#4f46e5" variant="default">
       <MedoraCardInner>
         <MedoraCardIdentity initials="M">
@@ -1290,5 +1451,8 @@ export function EmergencyProviderMsePanel({
         </div>
       </MedoraCardInner>
     </MedoraCard>
+        </div>
+      </details>
+    </>
   );
 }

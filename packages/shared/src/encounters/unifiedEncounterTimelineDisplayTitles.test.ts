@@ -39,4 +39,13 @@ describe("unifiedEncounterTimelineDisplayTitles", () => {
       "Discharge packet saved"
     );
   });
+
+  it("builds provider workspace clinical titles in the requested locale", () => {
+    expect(buildUnifiedClinicalEventTitle("en", "ED_PROVIDER_DOCUMENTATION_SAVED")).toBe(
+      "ED provider documentation saved"
+    );
+    expect(buildUnifiedClinicalEventTitle("fr", "OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED")).toBe(
+      "Note d'évolution médecin observation enregistrée"
+    );
+  });
 });

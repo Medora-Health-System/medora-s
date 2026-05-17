@@ -38,6 +38,27 @@ export function clinicalTimelineSortAtIso(row: ClinicalTimelineStoredRow): strin
 export function resolveClinicalTimelineDisplayEventType(row: ClinicalTimelineStoredRow): string {
   const stored = String(row.eventType ?? "").trim();
   if (!stored) return "UNKNOWN";
+  if (stored === "PROVIDER_MSE_SAVED") {
+    const payload =
+      row.payloadJson && typeof row.payloadJson === "object" && !Array.isArray(row.payloadJson)
+        ? (row.payloadJson as Record<string, unknown>)
+        : null;
+    const snapshot =
+      payload?.snapshot && typeof payload.snapshot === "object" && !Array.isArray(payload.snapshot)
+        ? (payload.snapshot as Record<string, unknown>)
+        : null;
+    const workspaceMetadata =
+      snapshot?.workspaceMetadata &&
+      typeof snapshot.workspaceMetadata === "object" &&
+      !Array.isArray(snapshot.workspaceMetadata)
+        ? (snapshot.workspaceMetadata as Record<string, unknown>)
+        : null;
+    if (workspaceMetadata?.source === "PROVIDER_DOCUMENTATION_WORKSPACE") {
+      return workspaceMetadata.encounterMode === "OBSERVATION"
+        ? "OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED"
+        : "ED_PROVIDER_DOCUMENTATION_SAVED";
+    }
+  }
   if (
     mislabeledDischargeEventIsObservationAdmission({
       eventType: stored,
@@ -69,8 +90,11 @@ export function clinicalTimelineCarePhaseForDisplayEventType(displayEventType: s
       return "DISCHARGE";
     case "DISPOSITION_SUPPLEMENT_SAVED":
     case "TRIAGE_ASSESSMENT_SAVED":
+    case "ED_PROVIDER_DOCUMENTATION_SAVED":
     case "PROVIDER_MSE_SAVED":
       return "ED";
+    case "OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED":
+      return "OBSERVATION";
     case "HANDOFF_NURSING":
     case "HANDOFF_PROVIDER":
       return "HANDOFF";
@@ -96,6 +120,9 @@ export function clinicalTimelineDisplayLabelKey(displayEventType: string): strin
     PROVIDER_SIGNED: "emergencyVisitSummaryPanel.clinicalTimeline.event.providerSigned",
     PROVIDER_UNLOCKED: "emergencyVisitSummaryPanel.clinicalTimeline.event.providerUnlocked",
     PROVIDER_MSE_SAVED: "emergencyVisitSummaryPanel.clinicalTimeline.event.providerMseSaved",
+    ED_PROVIDER_DOCUMENTATION_SAVED: "emergencyVisitSummaryPanel.clinicalTimeline.event.edProviderDocumentationSaved",
+    OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED:
+      "emergencyVisitSummaryPanel.clinicalTimeline.event.observationProviderProgressNoteSaved",
     NURSING_ASSESSMENT_SAVED: "emergencyVisitSummaryPanel.clinicalTimeline.event.nursingAssessmentSaved",
     HANDOFF_PROVIDER: "emergencyVisitSummaryPanel.clinicalTimeline.event.handoffProvider",
     HANDOFF_NURSING: "emergencyVisitSummaryPanel.clinicalTimeline.event.handoffNursing",
@@ -112,6 +139,8 @@ export const CLINICAL_TIMELINE_DISPLAY_LABEL_FR: Record<string, string> = {
   PROVIDER_SIGNED: "Documentation signée par le médecin",
   PROVIDER_UNLOCKED: "Documentation déverrouillée par le médecin",
   PROVIDER_MSE_SAVED: "Examen médical mis à jour",
+  ED_PROVIDER_DOCUMENTATION_SAVED: "Documentation médecin urgences enregistrée",
+  OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED: "Note d'évolution médecin observation enregistrée",
   NURSING_ASSESSMENT_SAVED: "Évaluation infirmière mise à jour",
   HANDOFF_PROVIDER: "Passation médecin",
   HANDOFF_NURSING: "Passation infirmière",
@@ -135,6 +164,8 @@ export const CLINICAL_TIMELINE_DISPLAY_LABEL_EN: Record<string, string> = {
   PROVIDER_SIGNED: "Provider documentation signed",
   PROVIDER_UNLOCKED: "Provider documentation unlocked",
   PROVIDER_MSE_SAVED: "Medical exam updated",
+  ED_PROVIDER_DOCUMENTATION_SAVED: "ED provider documentation saved",
+  OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED: "Observation provider progress note saved",
   NURSING_ASSESSMENT_SAVED: "Nursing assessment updated",
   HANDOFF_PROVIDER: "Provider handoff",
   HANDOFF_NURSING: "Nursing handoff",

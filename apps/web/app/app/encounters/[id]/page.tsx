@@ -148,6 +148,13 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import {
+  buildProviderDocumentationMetadata,
+  buildProviderDocumentationSavePayload,
+  emptyProviderDocumentationWorkspaceState,
+  type ProviderDocumentationWorkspaceState,
+} from "@/lib/providerDocumentationModel";
 
 /** Presentation-only: admission / discharge / close / documentation-deficiency modals on this page. */
 function encounterWorkflowModalOverlay(zIndex: number): React.CSSProperties {
@@ -3755,6 +3762,60 @@ function ClinicVisitTab({
   const docSigned = isEncounterLocked(encounter);
   const fieldsLocked = readOnly || docSigned;
 
+  const providerWorkspaceValue = useMemo<ProviderDocumentationWorkspaceState>(() => {
+    const next = emptyProviderDocumentationWorkspaceState();
+    next.reasonForVisit = visitReason;
+    next.chiefComplaint = visitReason;
+    next.hpi = hpi;
+    next.rosFocusedImpression = ros;
+    next.physicalExam.general = physicalExam;
+    next.mdmDifferentialSynthesis = mdm;
+    next.clinicalImpression = impression;
+    next.treatmentPlan = plan;
+    return next;
+  }, [visitReason, hpi, ros, physicalExam, mdm, impression, plan]);
+
+  const setProviderWorkspaceValue = useCallback((next: ProviderDocumentationWorkspaceState) => {
+    setVisitReason(next.reasonForVisit || next.chiefComplaint);
+    setHpi(next.hpi);
+    setRos(
+      [next.rosFocusedImpression, next.rosImportantPositives, next.rosImportantNegatives, next.rosRedFlags]
+        .filter(Boolean)
+        .join("\n")
+    );
+    setPhysicalExam(
+      [
+        next.physicalExam.general,
+        next.physicalExam.heent,
+        next.physicalExam.cardiovascular,
+        next.physicalExam.respiratory,
+        next.physicalExam.abdomen,
+        next.physicalExam.neuroPsych,
+        next.physicalExam.musculoskeletal,
+        next.physicalExam.skin,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+    setMdm(
+      [
+        next.mdmWorkingAssessment,
+        next.mdmDifferentialSynthesis,
+        next.mdmDataReviewed,
+        next.mdmRiskLevel,
+        next.mdmClinicalRationale,
+        next.mdmPlanSummary,
+        next.mdmImmediateActionsRationale,
+        next.mdmConsultsDiscussed,
+        next.mdmAdmitObserveDischarge,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+    setImpression(next.clinicalImpression);
+    setPlan(next.treatmentPlan);
+  }, []);
+
   useEffect(() => {
     setVisitReason(encounter.visitReason || encounter.chiefComplaint || "");
     setImpression(encounter.clinicianImpression || encounter.providerNote || "");
@@ -3858,31 +3919,30 @@ function ClinicVisitTab({
     setMessage(null);
     setSaving(true);
     try {
-      const prevNav = encounter.nursingAssessment;
-      const prevObj =
-        prevNav && typeof prevNav === "object" && !Array.isArray(prevNav)
-          ? { ...(prevNav as Record<string, unknown>) }
-          : {};
-      const physicianEvalV1: Record<string, string> = {};
-      if (hpi.trim()) physicianEvalV1.hpi = hpi.trim();
-      if (ros.trim()) physicianEvalV1.ros = ros.trim();
-      if (physicalExam.trim()) physicianEvalV1.physicalExam = physicalExam.trim();
-      if (mdm.trim()) physicianEvalV1.mdm = mdm.trim();
-      const mergedNav: Record<string, unknown> = { ...prevObj };
-      if (Object.keys(physicianEvalV1).length > 0) mergedNav.physicianEvalV1 = physicianEvalV1;
-      else delete mergedNav.physicianEvalV1;
-
-      const prevKeys = prevObj && typeof prevObj === "object" ? Object.keys(prevObj as object) : [];
-      const shouldPatchNav =
-        Object.keys(mergedNav).length > 0 || prevKeys.length > 0;
-
+      let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
+      try {
+        const meRes = await fetch("/api/auth/me");
+        const me = await parseApiResponse(meRes);
+        if (me && typeof me === "object" && !Array.isArray(me)) {
+          const fn = (me as { fullName?: string }).fullName?.trim();
+          if (fn) savedByDisplayName = fn;
+        }
+      } catch {
+        /* fallback only */
+      }
+      const providerPayload = buildProviderDocumentationSavePayload({
+        previousNursingAssessment: encounter.nursingAssessment,
+        state: providerWorkspaceValue,
+        metadata: buildProviderDocumentationMetadata({
+          encounterMode: "OBSERVATION",
+          savedAt: new Date().toISOString(),
+          savedBy: savedByDisplayName,
+        }),
+      });
       const payload: Record<string, unknown> = {
-        visitReason: visitReason.trim() || null,
-        clinicianImpression: impression.trim() || null,
-        treatmentPlan: plan.trim() || null,
+        ...providerPayload,
         followUpDate: followUp ? new Date(followUp + "T12:00:00").toISOString() : null,
       };
-      if (shouldPatchNav) payload.nursingAssessment = mergedNav;
 
       const res = await apiFetch(`/encounters/${encounter.id}`, {
         method: "PATCH",
@@ -3955,7 +4015,41 @@ function ClinicVisitTab({
   };
 
   return (
-    <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ maxWidth: "none", display: "flex", flexDirection: "column", gap: 16 }}>
+      <ProviderDocumentationWorkspace
+        encounterMode="OBSERVATION"
+        value={providerWorkspaceValue}
+        onChange={setProviderWorkspaceValue}
+        onSave={save}
+        onClear={() => setProviderWorkspaceValue(emptyProviderDocumentationWorkspaceState())}
+        saving={saving}
+        readOnly={fieldsLocked}
+        lockedMessage={
+          docSigned
+            ? t("erMseProviderPanel.lockedDocumentation")
+            : readOnly
+              ? t("erMseProviderPanel.readOnlyEncounter")
+              : null
+        }
+        saveMessage={
+          message
+            ? {
+                variant: message.type === "err" ? "error" : message.type === "queued" ? "queued" : "success",
+                text: message.text,
+              }
+            : null
+        }
+        keyInformation={[
+          observationMdmGuidanceActive
+            ? t("encounterClinicTab.observationMdmGuidanceTitle")
+            : t("encounterClinicTab.title"),
+        ]}
+        encounterSummary={[
+          encounter.type ? tEncounterType(t, encounter.type) : t("common.dash"),
+          encounter.status ? tEncounterStatus(t, encounter.status) : t("common.dash"),
+        ]}
+        t={t}
+      />
       <div style={{ ...clinicShell, padding: "16px 18px" }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
           {t("encounterClinicTab.title")}
