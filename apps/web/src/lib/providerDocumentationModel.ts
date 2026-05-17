@@ -36,6 +36,11 @@ export type ProviderDocumentationTemplateId =
   | "back_pain"
   | "uri_respiratory"
   | "trauma_musculoskeletal"
+  | "nausea_vomiting"
+  | "dizziness_syncope"
+  | "allergic_reaction_rash"
+  | "urinary_symptoms"
+  | "psychiatric_behavioral"
   | "observation_reassessment";
 
 export type ProviderDocumentationWorkspaceState = {
@@ -69,13 +74,25 @@ export type ProviderDocumentationSavePayload = {
   treatmentPlan: string | null;
 };
 
-type TemplateStringField = Exclude<keyof ProviderDocumentationWorkspaceState, "physicalExam" | "mdmRiskLevel">;
+export type ProviderDocumentationTemplateStringField = Exclude<
+  keyof ProviderDocumentationWorkspaceState,
+  "physicalExam" | "mdmRiskLevel"
+>;
+
+export type ProviderDocumentationTemplateCategory =
+  | "cardiopulmonary"
+  | "abdominal_gu"
+  | "neuro_behavioral"
+  | "respiratory_allergy_skin"
+  | "trauma_msk"
+  | "observation";
 
 export type ProviderDocumentationTemplateDefinition = {
   id: ProviderDocumentationTemplateId;
+  categoryKey: string;
   labelKey: string;
   helperKey: string;
-  fields: Partial<Record<TemplateStringField, string[]>>;
+  fields: Partial<Record<ProviderDocumentationTemplateStringField, string[]>>;
   physicalExam: Partial<Record<ProviderDocumentationExamSectionId, string[]>>;
 };
 
@@ -107,6 +124,7 @@ export const PROVIDER_DOCUMENTATION_EXAM_FIELD_TO_LEGACY_KEY: Record<
 export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefinition[] = [
   {
     id: "chest_pain",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryCardiopulmonary",
     labelKey: "providerDocumentationWorkspace.templateChestPain",
     helperKey: "providerDocumentationWorkspace.templateChestPainHelp",
     fields: {
@@ -114,22 +132,34 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
         "erMseHpiChips.locChestPain",
         "erMseHpiChips.timStartedToday",
         "erMseHpiChips.qualPressureLike",
+        "erMseHpiChips.assocSob",
       ],
       rosImportantPositives: ["erMseRosChips.posChestPain", "erMseRosChips.posSob"],
-      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
+      rosImportantNegatives: [
+        "erMseRosChips.negDeniesFever",
+        "erMseRosChips.negDeniesSyncope",
+        "erMseRosChips.negDeniesVomiting",
+      ],
       rosRedFlags: ["erMseRosChips.rfSyncope", "erMseRosChips.rfHypotensionConcern"],
       mdmWorkingAssessment: ["erMseMdmChips.waCardiopulmonary"],
-      mdmPlanSummary: ["erMseMdmChips.planLabs", "erMseMdmChips.planEcg", "erMseMdmChips.planReassess"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planEcg"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess", "erMseMdmChips.planSdM"],
       mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispAdmit"],
     },
     physicalExam: {
       general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
-      cardiovascular: ["erMseExamChips.cardioRrr", "erMseExamChips.cardioNoMurmur"],
+      cardiovascular: [
+        "erMseExamChips.cardioRrr",
+        "erMseExamChips.cardioNoMurmur",
+        "erMseExamChips.cardioPeripheralPulsesPresent",
+      ],
       respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs"],
+      musculoskeletal: ["providerDocumentationWorkspace.stickerExamChestWallTenderness"],
     },
   },
   {
     id: "abdominal_pain",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryAbdominalGu",
     labelKey: "providerDocumentationWorkspace.templateAbdominalPain",
     helperKey: "providerDocumentationWorkspace.templateAbdominalPainHelp",
     fields: {
@@ -139,28 +169,52 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
         "erMseHpiChips.timWorsening",
       ],
       rosImportantPositives: ["erMseRosChips.posAbdominalPain", "erMseRosChips.posVomiting"],
-      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
-      rosRedFlags: ["erMseRosChips.rfSeverePain", "erMseRosChips.rfHypotensionConcern"],
+      rosImportantNegatives: [
+        "erMseRosChips.negDeniesFever",
+        "erMseRosChips.negDeniesSyncope",
+        "providerDocumentationWorkspace.stickerRosNoCvaPain",
+      ],
+      rosRedFlags: [
+        "erMseRosChips.rfSeverePain",
+        "erMseRosChips.rfHypotensionConcern",
+        "erMseRosChips.rfPregnancyConcern",
+      ],
       mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
-      mdmPlanSummary: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging", "erMseMdmChips.planReassess"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
       mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispReturnPrecautions"],
     },
     physicalExam: {
       general: ["erMseExamChips.genAlert"],
-      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdTendernessPresent", "erMseExamChips.abdGuarding"],
+      abdomen: [
+        "erMseExamChips.abdSoft",
+        "providerDocumentationWorkspace.stickerExamAbdNonDistended",
+        "erMseExamChips.abdNonTender",
+        "erMseExamChips.abdTendernessPresent",
+        "erMseExamChips.abdGuarding",
+        "providerDocumentationWorkspace.stickerExamReboundPresent",
+        "providerDocumentationWorkspace.stickerExamBowelSoundsPresent",
+        "providerDocumentationWorkspace.stickerExamNoCvaTenderness",
+      ],
     },
   },
   {
     id: "headache",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryNeuroBehavioral",
     labelKey: "providerDocumentationWorkspace.templateHeadache",
     helperKey: "providerDocumentationWorkspace.templateHeadacheHelp",
     fields: {
       hpi: ["erMseHpiChips.locHeadache", "erMseHpiChips.timStartedToday", "erMseHpiChips.timSuddenOnset"],
       rosImportantPositives: ["erMseRosChips.posHeadache", "erMseRosChips.posDizziness"],
-      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
+      rosImportantNegatives: [
+        "erMseRosChips.negDeniesFever",
+        "erMseRosChips.negDeniesSyncope",
+        "providerDocumentationWorkspace.stickerRosNoNeckStiffness",
+      ],
       rosRedFlags: ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSeverePain"],
       mdmWorkingAssessment: ["erMseMdmChips.waNeurologic"],
-      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planImaging", "erMseMdmChips.planReassess"],
+      mdmDataReviewed: ["erMseMdmChips.planImaging"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
       mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
     },
     physicalExam: {
@@ -171,14 +225,20 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
   },
   {
     id: "back_pain",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryTraumaMsk",
     labelKey: "providerDocumentationWorkspace.templateBackPain",
     helperKey: "providerDocumentationWorkspace.templateBackPainHelp",
     fields: {
       hpi: ["erMseHpiChips.locBackPain", "erMseHpiChips.timStartedToday", "erMseHpiChips.qualAching"],
       rosImportantPositives: ["erMseRosChips.posWeakness"],
-      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesWeakness"],
+      rosImportantNegatives: [
+        "erMseRosChips.negDeniesFever",
+        "erMseRosChips.negDeniesWeakness",
+        "providerDocumentationWorkspace.stickerRosNoBowelBladder",
+      ],
       rosRedFlags: ["erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSeverePain"],
       mdmWorkingAssessment: ["erMseMdmChips.waTrauma"],
+      mdmDataReviewed: ["erMseMdmChips.planImaging"],
       mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
       mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
     },
@@ -190,16 +250,23 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
   },
   {
     id: "uri_respiratory",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryRespiratoryAllergySkin",
     labelKey: "providerDocumentationWorkspace.templateUriRespiratory",
     helperKey: "providerDocumentationWorkspace.templateUriRespiratoryHelp",
     fields: {
       hpi: ["erMseHpiChips.timStartedToday", "erMseHpiChips.timGradualOnset", "erMseHpiChips.assocSob"],
       rosImportantPositives: ["erMseRosChips.posFever", "erMseRosChips.posSob"],
-      rosImportantNegatives: ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesSyncope"],
+      rosImportantNegatives: [
+        "erMseRosChips.negDeniesChestPain",
+        "erMseRosChips.negDeniesSyncope",
+        "providerDocumentationWorkspace.stickerRosNoHemoptysis",
+      ],
       rosRedFlags: ["erMseRosChips.rfRespDistress", "erMseRosChips.rfHypotensionConcern"],
       mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waCardiopulmonary"],
-      mdmPlanSummary: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging", "erMseMdmChips.planReassess"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
       mdmImmediateActionsRationale: ["erMseMdmChips.actOxygen"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispReturnPrecautions"],
     },
     physicalExam: {
       general: ["erMseExamChips.genAlert"],
@@ -209,14 +276,17 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
   },
   {
     id: "trauma_musculoskeletal",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryTraumaMsk",
     labelKey: "providerDocumentationWorkspace.templateTraumaMsk",
     helperKey: "providerDocumentationWorkspace.templateTraumaMskHelp",
     fields: {
       hpi: ["erMseHpiChips.locLimbPain", "erMseHpiChips.timSuddenOnset", "erMseHpiChips.qualAching"],
       rosImportantPositives: ["erMseRosChips.posWeakness"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesWeakness", "providerDocumentationWorkspace.stickerRosNoNumbness"],
       rosRedFlags: ["erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSeverePain", "erMseRosChips.rfBleeding"],
       mdmWorkingAssessment: ["erMseMdmChips.waTrauma"],
-      mdmPlanSummary: ["erMseMdmChips.planImaging", "erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmDataReviewed: ["erMseMdmChips.planImaging"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
       mdmImmediateActionsRationale: ["erMseMdmChips.actPain", "erMseMdmChips.actSafety"],
       mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
     },
@@ -227,13 +297,127 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
         "erMseExamChips.mskTendernessPresent",
         "erMseExamChips.mskSwellingPresent",
         "erMseExamChips.mskDeformityNoted",
+        "providerDocumentationWorkspace.stickerExamLimitedRom",
+        "providerDocumentationWorkspace.stickerExamNvIntact",
+        "providerDocumentationWorkspace.stickerExamCapRefillIntact",
       ],
       skin: ["erMseExamChips.skinLacerationPresent"],
       neuroPsych: ["erMseExamChips.neuroFocalDeficitNoted"],
     },
   },
   {
+    id: "nausea_vomiting",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryAbdominalGu",
+    labelKey: "providerDocumentationWorkspace.templateNauseaVomiting",
+    helperKey: "providerDocumentationWorkspace.templateNauseaVomitingHelp",
+    fields: {
+      hpi: ["erMseHpiChips.assocNausea", "erMseHpiChips.assocVomiting", "erMseHpiChips.timStartedToday"],
+      rosImportantPositives: ["erMseRosChips.posVomiting", "erMseRosChips.posAbdominalPain"],
+      rosImportantNegatives: [
+        "erMseRosChips.negDeniesChestPain",
+        "erMseRosChips.negDeniesFever",
+        "providerDocumentationWorkspace.stickerRosNoBloodInEmesis",
+      ],
+      rosRedFlags: ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfAlteredMs"],
+      mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs"],
+      mdmPlanSummary: ["erMseMdmChips.actAntiemetic", "erMseMdmChips.actFluids", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      heent: ["erMseExamChips.heentDryMm"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender", "providerDocumentationWorkspace.stickerExamBowelSoundsPresent"],
+    },
+  },
+  {
+    id: "dizziness_syncope",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryNeuroBehavioral",
+    labelKey: "providerDocumentationWorkspace.templateDizzinessSyncope",
+    helperKey: "providerDocumentationWorkspace.templateDizzinessSyncopeHelp",
+    fields: {
+      hpi: ["erMseHpiChips.assocDizziness", "erMseHpiChips.timSuddenOnset", "erMseHpiChips.timImproving"],
+      rosImportantPositives: ["erMseRosChips.posDizziness"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesSob", "erMseRosChips.negDeniesWeakness"],
+      rosRedFlags: ["erMseRosChips.rfSyncope", "erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfHypotensionConcern"],
+      mdmWorkingAssessment: ["erMseMdmChips.waNeurologic", "erMseMdmChips.waCardiopulmonary"],
+      mdmDataReviewed: ["erMseMdmChips.planEcg", "erMseMdmChips.planLabs"],
+      mdmPlanSummary: ["erMseMdmChips.actSafety", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispAdmit", "erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      cardiovascular: ["erMseExamChips.cardioRrr", "erMseExamChips.cardioPeripheralPulsesPresent"],
+      neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroSpeechClear", "erMseExamChips.neuroFollowsCommands"],
+    },
+  },
+  {
+    id: "allergic_reaction_rash",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryRespiratoryAllergySkin",
+    labelKey: "providerDocumentationWorkspace.templateAllergicReactionRash",
+    helperKey: "providerDocumentationWorkspace.templateAllergicReactionRashHelp",
+    fields: {
+      hpi: ["providerDocumentationWorkspace.stickerHpiRash", "erMseHpiChips.timStartedToday", "erMseHpiChips.timWorsening"],
+      rosImportantPositives: ["providerDocumentationWorkspace.stickerRosPruritus", "erMseRosChips.posSob"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesSob", "providerDocumentationWorkspace.stickerRosNoThroatTightness"],
+      rosRedFlags: ["erMseRosChips.rfRespDistress", "erMseRosChips.rfHypotensionConcern"],
+      mdmWorkingAssessment: ["providerDocumentationWorkspace.stickerMdmAllergicProcess"],
+      mdmDataReviewed: ["providerDocumentationWorkspace.stickerMdmMedicationExposureReviewed"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs", "erMseExamChips.respWheezing"],
+      skin: ["erMseExamChips.skinRashPresent", "providerDocumentationWorkspace.stickerExamUrticariaPresent"],
+      heent: ["providerDocumentationWorkspace.stickerExamNoOropharyngealSwelling"],
+    },
+  },
+  {
+    id: "urinary_symptoms",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryAbdominalGu",
+    labelKey: "providerDocumentationWorkspace.templateUrinarySymptoms",
+    helperKey: "providerDocumentationWorkspace.templateUrinarySymptomsHelp",
+    fields: {
+      hpi: ["providerDocumentationWorkspace.stickerHpiDysuria", "erMseHpiChips.locFlankPain", "erMseHpiChips.timStartedToday"],
+      rosImportantPositives: ["providerDocumentationWorkspace.stickerRosDysuria", "providerDocumentationWorkspace.stickerRosFrequency"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "providerDocumentationWorkspace.stickerRosNoVomiting", "providerDocumentationWorkspace.stickerRosNoCvaPain"],
+      rosRedFlags: ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfPregnancyConcern", "erMseRosChips.rfAlteredMs"],
+      mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waAbdominal"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender", "providerDocumentationWorkspace.stickerExamNoCvaTenderness"],
+    },
+  },
+  {
+    id: "psychiatric_behavioral",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryNeuroBehavioral",
+    labelKey: "providerDocumentationWorkspace.templatePsychBehavioral",
+    helperKey: "providerDocumentationWorkspace.templatePsychBehavioralHelp",
+    fields: {
+      hpi: ["providerDocumentationWorkspace.stickerHpiBehavioralConcern", "erMseHpiChips.timStartedToday"],
+      rosImportantPositives: ["providerDocumentationWorkspace.stickerRosAnxiety", "providerDocumentationWorkspace.stickerRosMoodConcern"],
+      rosImportantNegatives: ["providerDocumentationWorkspace.stickerRosNoMedicalComplaint", "providerDocumentationWorkspace.stickerRosNoIntoxicationReported"],
+      rosRedFlags: ["erMseRosChips.rfAlteredMs", "providerDocumentationWorkspace.stickerRosSafetyConcern"],
+      mdmWorkingAssessment: ["erMseMdmChips.waMedIntox", "providerDocumentationWorkspace.stickerMdmBehavioralConcern"],
+      mdmDataReviewed: ["providerDocumentationWorkspace.stickerMdmCollateralReviewed"],
+      mdmPlanSummary: ["erMseMdmChips.actSafety", "erMseMdmChips.planReassess"],
+      mdmConsultsDiscussed: ["erMseMdmChips.conSpecialist", "erMseMdmChips.conNursing"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispTransfer"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.psychCalmCooperative", "erMseExamChips.psychAgitated", "erMseExamChips.psychAnxious"],
+      skin: ["erMseExamChips.skinWarmDry"],
+    },
+  },
+  {
     id: "observation_reassessment",
+    categoryKey: "providerDocumentationWorkspace.templateCategoryObservation",
     labelKey: "providerDocumentationWorkspace.templateObservationReassessment",
     helperKey: "providerDocumentationWorkspace.templateObservationReassessmentHelp",
     fields: {
@@ -242,12 +426,21 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
         "providerDocumentationWorkspace.obsSymptomsUnchanged",
         "providerDocumentationWorkspace.obsSymptomsWorsening",
         "providerDocumentationWorkspace.obsVitalsStable",
+        "providerDocumentationWorkspace.obsToleratingPo",
+        "providerDocumentationWorkspace.obsPainControlled",
       ],
+      rosImportantPositives: ["providerDocumentationWorkspace.obsSymptomsImproving"],
+      rosImportantNegatives: ["providerDocumentationWorkspace.obsVitalsStable"],
+      rosRedFlags: ["providerDocumentationWorkspace.obsTransferConsidered"],
       rosFocusedImpression: [
         "providerDocumentationWorkspace.obsAwaitingLab",
         "providerDocumentationWorkspace.obsAwaitingImaging",
       ],
       mdmWorkingAssessment: ["erMseMdmChips.waUndifferentiated"],
+      mdmDataReviewed: [
+        "providerDocumentationWorkspace.stickerObsPendingLabsReviewed",
+        "providerDocumentationWorkspace.stickerObsPendingImagingReviewed",
+      ],
       mdmPlanSummary: [
         "providerDocumentationWorkspace.obsContinuedMonitoring",
         "erMseMdmChips.planReassess",
@@ -265,6 +458,24 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     },
   },
 ];
+
+export const PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS = [
+  "providerDocumentationWorkspace.templateCategoryCardiopulmonary",
+  "providerDocumentationWorkspace.templateCategoryAbdominalGu",
+  "providerDocumentationWorkspace.templateCategoryNeuroBehavioral",
+  "providerDocumentationWorkspace.templateCategoryRespiratoryAllergySkin",
+  "providerDocumentationWorkspace.templateCategoryTraumaMsk",
+  "providerDocumentationWorkspace.templateCategoryObservation",
+] as const;
+
+export const PROVIDER_DOCUMENTATION_REQUIRED_SECTION_IDS = [
+  "hpi",
+  "ros",
+  "physicalExam",
+  "mdm",
+  "impression",
+  "plan",
+] as const satisfies ReadonlyArray<ProviderDocumentationPreviewSection["id"]>;
 
 export function documentTypeForEncounterMode(
   encounterMode: ProviderDocumentationEncounterMode
@@ -363,6 +574,19 @@ export function providerDocumentationTemplateById(
   return template;
 }
 
+export function providerDocumentationCompletedSectionIds(
+  state: ProviderDocumentationWorkspaceState
+): ProviderDocumentationPreviewSection["id"][] {
+  return buildProviderDocumentationPreviewSections(state).map((section) => section.id);
+}
+
+export function providerDocumentationMissingSectionIds(
+  state: ProviderDocumentationWorkspaceState
+): ProviderDocumentationPreviewSection["id"][] {
+  const completed = new Set(providerDocumentationCompletedSectionIds(state));
+  return PROVIDER_DOCUMENTATION_REQUIRED_SECTION_IDS.filter((sectionId) => !completed.has(sectionId));
+}
+
 export function applyProviderDocumentationTemplate(input: {
   state: ProviderDocumentationWorkspaceState;
   templateId: ProviderDocumentationTemplateId;
@@ -375,7 +599,7 @@ export function applyProviderDocumentationTemplate(input: {
   };
 
   for (const [field, fragmentKeys] of Object.entries(template.fields) as Array<
-    [TemplateStringField, string[] | undefined]
+    [ProviderDocumentationTemplateStringField, string[] | undefined]
   >) {
     if (!fragmentKeys) continue;
     let current = next[field];

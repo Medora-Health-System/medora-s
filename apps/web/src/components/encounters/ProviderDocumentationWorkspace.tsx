@@ -4,20 +4,27 @@ import React, { useMemo, useState } from "react";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import {
   PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
+  PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
   appendDocumentationFragment,
   applyProviderDocumentationTemplate,
   buildProviderDocumentationPreviewSections,
+  providerDocumentationCompletedSectionIds,
+  providerDocumentationMissingSectionIds,
   providerDocumentationTitleKey,
   type ProviderDocumentationEncounterMode,
   type ProviderDocumentationExamSectionId,
   type ProviderDocumentationRiskLevel,
+  type ProviderDocumentationTemplateDefinition,
+  type ProviderDocumentationTemplateId,
+  type ProviderDocumentationTemplateStringField,
   type ProviderDocumentationWorkspaceState,
 } from "@/lib/providerDocumentationModel";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
 type ExamChipGroup = { sectionId: ProviderDocumentationExamSectionId; titleKey: string; chips: Chip[] };
+type PreviewSectionId = ReturnType<typeof buildProviderDocumentationPreviewSections>[number]["id"];
 
 export type ProviderDocumentationWorkspaceProps = {
   encounterMode: ProviderDocumentationEncounterMode;
@@ -184,6 +191,26 @@ const EXAM_CHIPS: ExamChipGroup[] = [
   { sectionId: "skin", titleKey: "providerDocumentationWorkspace.examSkin", chips: ["skinWarmDry", "skinRashPresent", "skinLacerationPresent", "skinDiaphoresis"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
 ];
 
+const examTitleKeyBySection: Record<ProviderDocumentationExamSectionId, string> = {
+  general: "providerDocumentationWorkspace.examGeneral",
+  heent: "providerDocumentationWorkspace.examHeent",
+  cardiovascular: "providerDocumentationWorkspace.examCardiovascular",
+  respiratory: "providerDocumentationWorkspace.examRespiratory",
+  abdomen: "providerDocumentationWorkspace.examAbdomen",
+  neuroPsych: "providerDocumentationWorkspace.examNeuroPsych",
+  musculoskeletal: "providerDocumentationWorkspace.examMusculoskeletal",
+  skin: "providerDocumentationWorkspace.examSkin",
+};
+
+const previewTitleKeyBySection: Record<PreviewSectionId, string> = {
+  hpi: "providerDocumentationWorkspace.previewHpi",
+  ros: "providerDocumentationWorkspace.previewRos",
+  physicalExam: "providerDocumentationWorkspace.previewExam",
+  mdm: "providerDocumentationWorkspace.previewMdm",
+  impression: "providerDocumentationWorkspace.previewImpression",
+  plan: "providerDocumentationWorkspace.previewPlan",
+};
+
 const MDM_CHIPS: ChipGroup[] = [
   { titleKey: "erMseMdmChips.catWorkingAssessment", field: "mdmWorkingAssessment", chips: ["waUndifferentiated", "waInfectious", "waCardiopulmonary", "waNeurologic", "waAbdominal", "waTrauma", "waMedIntox"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
   { titleKey: "erMseMdmChips.catPlanSummary", field: "mdmPlanSummary", chips: ["planLabs", "planImaging", "planEcg", "planMeds", "planReassess", "planSdM"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
@@ -235,7 +262,14 @@ export function ProviderDocumentationWorkspace({
 }: ProviderDocumentationWorkspaceProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [activeTemplateId, setActiveTemplateId] = useState<ProviderDocumentationTemplateId | null>(null);
   const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
+  const activeTemplate = useMemo(
+    () => PROVIDER_DOCUMENTATION_TEMPLATES.find((template) => template.id === activeTemplateId) ?? null,
+    [activeTemplateId]
+  );
+  const completedSections = useMemo(() => providerDocumentationCompletedSectionIds(value), [value]);
+  const missingSections = useMemo(() => providerDocumentationMissingSectionIds(value), [value]);
 
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
     onChange({ ...value, ...patchValue });
@@ -263,6 +297,7 @@ export function ProviderDocumentationWorkspace({
         resolveFragment: t,
       })
     );
+    setActiveTemplateId(templateId);
     setShowTemplates(false);
   };
   const ta = (field: keyof ProviderDocumentationWorkspaceState, rows = 2) => (
@@ -274,7 +309,7 @@ export function ProviderDocumentationWorkspace({
       style={{ ...inputBase, resize: "vertical", minHeight: rows * 24, background: readOnly ? "#f8fafc" : "#fff" }}
     />
   );
-  const chipRow = (chips: Chip[], onClick: (chip: Chip) => void, tone?: "warn" | "green") => (
+  const chipRow = <T extends Chip,>(chips: T[], onClick: (chip: T) => void, tone?: "warn" | "green") => (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
       {chips.map((chip) => (
         <button
@@ -295,6 +330,43 @@ export function ProviderDocumentationWorkspace({
       ))}
     </div>
   );
+  const templateTextChips = (
+    template: ProviderDocumentationTemplateDefinition | null,
+    fields: ProviderDocumentationTemplateStringField[],
+    titleKey: string
+  ) => {
+    if (!template) return null;
+    const chips = fields.flatMap((field) =>
+      (template.fields[field] ?? []).map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey, field }))
+    );
+    if (!chips.length) return null;
+    return (
+      <ChipGroupView title={t(titleKey)}>
+        {chipRow(chips, (chip) => appendField(chip.field, chip.fragmentKey))}
+      </ChipGroupView>
+    );
+  };
+  const templateExamChips = (template: ProviderDocumentationTemplateDefinition | null) => {
+    if (!template) return null;
+    const groups = PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS.map((sectionId) => ({
+      sectionId,
+      chips: (template.physicalExam[sectionId] ?? []).map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey })),
+    })).filter((group) => group.chips.length > 0);
+    if (!groups.length) return null;
+    return (
+      <div style={{ marginBottom: 10 }}>
+        <p style={{ margin: "0 0 6px", fontSize: 11, color: "#475569", lineHeight: 1.4 }}>
+          {t("providerDocumentationWorkspace.activeTemplateStickerHelp")}
+        </p>
+        {groups.map((group) => (
+          <ChipGroupView key={group.sectionId} title={t(examTitleKeyBySection[group.sectionId])}>
+            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
+          </ChipGroupView>
+        ))}
+      </div>
+    );
+  };
+  const sectionLabel = (sectionId: PreviewSectionId) => t(previewTitleKeyBySection[sectionId]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -333,6 +405,11 @@ export function ProviderDocumentationWorkspace({
           </div>
         </div>
         {lockedMessage ? <p style={{ margin: "10px 0 0", fontSize: 12, color: "#92400e" }}>{lockedMessage}</p> : null}
+        {activeTemplate ? (
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#0f766e", fontWeight: 700 }}>
+            {t("providerDocumentationWorkspace.activeTemplate").replace("{template}", t(activeTemplate.labelKey))}
+          </p>
+        ) : null}
         {saveMessage ? (
           <p style={{ margin: "10px 0 0", fontSize: 12, color: saveMessage.variant === "error" ? "#b91c1c" : "#15803d" }}>
             {saveMessage.text}
@@ -351,34 +428,45 @@ export function ProviderDocumentationWorkspace({
             <p style={{ margin: "0 0 8px", fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.templatePickerHelp")}
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-              {PROVIDER_DOCUMENTATION_TEMPLATES.map((template) => (
-                <button
-                  key={template.id}
-                  type="button"
-                  disabled={readOnly}
-                  onClick={() => applyTemplate(template.id)}
-                  title={t(template.helperKey)}
-                  style={{
-                    padding: "9px 10px",
-                    border: "1px solid #dbeafe",
-                    borderRadius: 10,
-                    background: "#fff",
-                    color: "#1e3a8a",
-                    textAlign: "left",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: readOnly ? "not-allowed" : "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  <span style={{ display: "block" }}>{t(template.labelKey)}</span>
-                  <span style={{ display: "block", marginTop: 3, color: "#64748b", fontSize: 11, fontWeight: 500 }}>
-                    {t(template.helperKey)}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS.map((categoryKey) => {
+              const templates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.categoryKey === categoryKey);
+              if (!templates.length) return null;
+              return (
+                <div key={categoryKey} style={{ marginTop: 10 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>
+                    {t(categoryKey)}
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+                    {templates.map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        disabled={readOnly}
+                        onClick={() => applyTemplate(template.id)}
+                        title={t(template.helperKey)}
+                        style={{
+                          padding: "9px 10px",
+                          border: activeTemplateId === template.id ? "1px solid #0f766e" : "1px solid #dbeafe",
+                          borderRadius: 10,
+                          background: activeTemplateId === template.id ? "#ecfdf5" : "#fff",
+                          color: activeTemplateId === template.id ? "#0f766e" : "#1e3a8a",
+                          textAlign: "left",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: readOnly ? "not-allowed" : "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        <span style={{ display: "block" }}>{t(template.labelKey)}</span>
+                        <span style={{ display: "block", marginTop: 3, color: "#64748b", fontSize: 11, fontWeight: 500 }}>
+                          {t(template.helperKey)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
             <p style={{ margin: "8px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.templateSafetyComment")}
             </p>
@@ -395,6 +483,7 @@ export function ProviderDocumentationWorkspace({
             </div>
             <div style={{ marginTop: 10 }}>
               <Field label={t("providerDocumentationWorkspace.hpi")}>{ta("hpi", 4)}</Field>
+              {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
               {HPI_CHIPS.map((group) => (
                 <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
                   {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
@@ -415,6 +504,11 @@ export function ProviderDocumentationWorkspace({
               <Field label={t("providerDocumentationWorkspace.importantNegatives")}>{ta("rosImportantNegatives", 2)}</Field>
               <Field label={t("providerDocumentationWorkspace.redFlags")}>{ta("rosRedFlags", 2)}</Field>
             </div>
+            {templateTextChips(
+              activeTemplate,
+              ["rosFocusedImpression", "rosImportantPositives", "rosImportantNegatives", "rosRedFlags"],
+              "providerDocumentationWorkspace.activeTemplateRos"
+            )}
             {ROS_CHIPS.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
                 {group.field === "rosImportantNegatives" ? (
@@ -426,6 +520,7 @@ export function ProviderDocumentationWorkspace({
           </WorkspaceSection>
 
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionExam")}>
+            {templateExamChips(activeTemplate)}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               {EXAM_CHIPS.map((group) => (
                 <div key={group.sectionId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 10, background: "#f8fafc" }}>
@@ -450,6 +545,18 @@ export function ProviderDocumentationWorkspace({
           </WorkspaceSection>
 
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionMdm")}>
+            {templateTextChips(
+              activeTemplate,
+              [
+                "mdmWorkingAssessment",
+                "mdmDataReviewed",
+                "mdmPlanSummary",
+                "mdmImmediateActionsRationale",
+                "mdmConsultsDiscussed",
+                "mdmAdmitObserveDischarge",
+              ],
+              "providerDocumentationWorkspace.activeTemplateMdm"
+            )}
             {MDM_CHIPS.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
                 {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
@@ -494,6 +601,30 @@ export function ProviderDocumentationWorkspace({
         </div>
 
         <aside style={{ position: "sticky", top: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={sectionShell} data-testid="provider-documentation-overview">
+            <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#0f172a" }}>
+              {t("providerDocumentationWorkspace.documentationOverview")}
+            </h3>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+              <strong>{t("providerDocumentationWorkspace.activeTemplateLabel")}</strong>{" "}
+              {activeTemplate ? t(activeTemplate.labelKey) : t("providerDocumentationWorkspace.noActiveTemplate")}
+            </p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
+              {t("providerDocumentationWorkspace.completedSections")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+              {completedSections.length ? completedSections.map(sectionLabel).join(", ") : t("common.dash")}
+            </p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
+              {t("providerDocumentationWorkspace.missingKeySections")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+              {missingSections.length ? missingSections.map(sectionLabel).join(", ") : t("providerDocumentationWorkspace.noMissingKeySections")}
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+              {t("providerDocumentationWorkspace.chipsSafetyComment")}
+            </p>
+          </div>
           <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
           <ContextCard title={t("providerDocumentationWorkspace.keyInformation")} lines={keyInformation} empty={t("common.dash")} />
           <ContextCard title={t("providerDocumentationWorkspace.encounterSummary")} lines={encounterSummary} empty={t("common.dash")} />

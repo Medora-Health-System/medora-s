@@ -5,6 +5,8 @@ import {
   applyProviderDocumentationTemplate,
   buildProviderDocumentationMetadata,
   buildProviderDocumentationDisplayModel,
+  providerDocumentationCompletedSectionIds,
+  providerDocumentationMissingSectionIds,
   buildProviderDocumentationPreviewSections,
   buildProviderDocumentationSavePayload,
   emptyProviderDocumentationWorkspaceState,
@@ -98,8 +100,38 @@ describe("providerDocumentationModel", () => {
       "back_pain",
       "uri_respiratory",
       "trauma_musculoskeletal",
+      "nausea_vomiting",
+      "dizziness_syncope",
+      "allergic_reaction_rash",
+      "urinary_symptoms",
+      "psychiatric_behavioral",
       "observation_reassessment",
     ]);
+  });
+
+  it("gives every complaint template complete editable sticker coverage", () => {
+    for (const template of PROVIDER_DOCUMENTATION_TEMPLATES) {
+      expect(template.categoryKey).toMatch(/^providerDocumentationWorkspace\./);
+      expect(template.fields.hpi?.length, template.id).toBeGreaterThan(0);
+      expect(template.fields.rosImportantPositives?.length, template.id).toBeGreaterThan(0);
+      expect(template.fields.rosImportantNegatives?.length, template.id).toBeGreaterThan(0);
+      expect(template.fields.rosRedFlags?.length, template.id).toBeGreaterThan(0);
+      expect(Object.values(template.physicalExam).flat().length, template.id).toBeGreaterThan(0);
+      expect(template.fields.mdmWorkingAssessment?.length, template.id).toBeGreaterThan(0);
+      expect(template.fields.mdmDataReviewed?.length, template.id).toBeGreaterThan(0);
+      expect(template.fields.mdmPlanSummary?.length, template.id).toBeGreaterThan(0);
+      expect(template.fields.mdmAdmitObserveDischarge?.length, template.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("uses i18n keys for template labels and active template display", () => {
+    for (const template of PROVIDER_DOCUMENTATION_TEMPLATES) {
+      const label = template.labelKey.replace("providerDocumentationWorkspace.", "");
+      const helper = template.helperKey.replace("providerDocumentationWorkspace.", "");
+      expect(label, template.id).toMatch(/^template/);
+      expect(helper, template.id).toMatch(/^template/);
+      expect(template.labelKey, template.id).not.toContain("Douleur");
+    }
   });
 
   it("applies a complaint template into visible editable fields only", () => {
@@ -133,6 +165,19 @@ describe("providerDocumentationModel", () => {
     expect(second.mdmPlanSummary).toBe(first.mdmPlanSummary);
   });
 
+  it("tracks completed and missing overview sections without blocking save", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Focused history";
+    state.rosImportantPositives = "vomiting";
+    expect(providerDocumentationCompletedSectionIds(state)).toEqual(["hpi", "ros"]);
+    expect(providerDocumentationMissingSectionIds(state)).toEqual([
+      "physicalExam",
+      "mdm",
+      "impression",
+      "plan",
+    ]);
+  });
+
   it("templates do not create diagnoses, orders, billing, or preview-only content", () => {
     const next = applyProviderDocumentationTemplate({
       state: emptyProviderDocumentationWorkspaceState(),
@@ -149,6 +194,7 @@ describe("providerDocumentationModel", () => {
       }),
     });
     expect(JSON.stringify(payload)).not.toMatch(/diagnosisId|orderId|billing|billingLevel/i);
+    expect(JSON.stringify(payload)).not.toMatch(/chargeCapture|billingComplexity/i);
     expect(buildProviderDocumentationPreviewSections(next).map((section) => section.id)).toEqual([
       "hpi",
       "ros",
