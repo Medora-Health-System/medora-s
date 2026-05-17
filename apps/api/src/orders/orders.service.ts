@@ -1807,10 +1807,17 @@ export class OrdersService {
       throw new ForbiddenException("Authentification requise pour accuser réception d'une ligne.");
     }
 
+    const systemNow = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.orderItem.update({
         where: { id: orderItemId },
-        data: { status: OrderStatus.ACKNOWLEDGED, lifecycleState },
+        data: {
+          status: OrderStatus.ACKNOWLEDGED,
+          lifecycleState,
+          ...(orderItem.catalogItemType === "LAB_TEST" && !orderItem.documentedReceivedAt
+            ? { documentedReceivedAt: systemNow }
+            : {}),
+        },
       });
       await this.writeOrderEvent({
         facilityId,
@@ -1880,10 +1887,20 @@ export class OrdersService {
       throw new ForbiddenException("Authentification requise pour démarrer une ligne.");
     }
 
+    const systemNow = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.orderItem.update({
         where: { id: orderItemId },
-        data: { status: OrderStatus.IN_PROGRESS, lifecycleState },
+        data: {
+          status: OrderStatus.IN_PROGRESS,
+          lifecycleState,
+          ...(orderItem.catalogItemType === "LAB_TEST" && !orderItem.documentedCollectedAt
+            ? { documentedCollectedAt: systemNow }
+            : {}),
+          ...(orderItem.catalogItemType === "IMAGING_STUDY" && !orderItem.documentedPerformedAt
+            ? { documentedPerformedAt: systemNow }
+            : {}),
+        },
       });
       await this.writeOrderEvent({
         facilityId,

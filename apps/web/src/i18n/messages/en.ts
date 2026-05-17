@@ -8321,6 +8321,37 @@ export default {
       infusionDeferred: "Time adjustment for IV infusions is not available yet.",
     },
   },
+  labRadTime: {
+    adjustCardTooltip: "Adjust clinical time",
+    warning:
+      "This records clinical time separately and preserves the original documented timestamp.",
+    effectiveLabel: "Clinical time",
+    reasonLabel: "Reason for adjustment",
+    reasonPlaceholder: "e.g. care at bedside before charting",
+    historyClinicalLabel: "Clinical",
+    historyDocumentedLabel: "Documented",
+    adjustedBadge: "Adjusted",
+    adjustedBadgeTooltip: "Clinical time corrected — original documented time preserved",
+    largeBackdateSupervisoryWarning:
+      "Large retroactive corrections may require supervisory review.",
+    save: "Save",
+    cancel: "Cancel",
+    invalidTime: "Invalid timestamp.",
+    reasonRequired: "A reason is required for this adjustment.",
+    reasonTooShortForLargeBackdate:
+      "A detailed reason is required for large time corrections.",
+    saveFailed: "Could not save adjustment.",
+    labReceived: "Received at lab",
+    labCollected: "Specimen collected",
+    labResulted: "Result recorded",
+    imagingPerformed: "Imaging performed",
+    imagingFinalized: "Report finalized",
+    adjustReceivedTitle: "Adjust received time",
+    adjustCollectedTitle: "Adjust collection time",
+    adjustResultedTitle: "Adjust result time",
+    adjustPerformedTitle: "Adjust performed time",
+    adjustFinalizedTitle: "Adjust finalized time",
+  },
   ordersets: {
     apply: {
       skipped: "Some items could not be applied: {items}. Add them manually if still needed.",

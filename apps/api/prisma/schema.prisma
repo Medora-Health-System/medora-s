@@ -100,6 +100,8 @@ enum AuditAction {
   ORDER_COMPLETE
   CARE_PROCEDURE_EFFECTIVE_TIME_ADJUSTED
   MEDICATION_ADMIN_TIME_ADJUSTED
+  LAB_TIME_ADJUSTED
+  RADIOLOGY_TIME_ADJUSTED
   RESULT_VERIFY
   CRITICAL_FLAG
   PATHWAY_ACTIVATED
@@ -1191,6 +1193,27 @@ model OrderItem {
   effectiveClinicalAtReason   String?
   /// Incremented on each effective-time correction (audit / reason rules).
   effectiveClinicalAtVersion  Int                          @default(0)
+  /// Lab: specimen collected (system time at START; clinical correction via effectiveCollectedAt).
+  documentedCollectedAt       DateTime?
+  effectiveCollectedAt        DateTime?
+  effectiveCollectedAtSetAt   DateTime?
+  effectiveCollectedAtSetByUserId String?
+  effectiveCollectedAtReason  String?
+  effectiveCollectedAtVersion Int                          @default(0)
+  /// Lab: specimen received at department (system time at ACK).
+  documentedReceivedAt        DateTime?
+  effectiveReceivedAt         DateTime?
+  effectiveReceivedAtSetAt    DateTime?
+  effectiveReceivedAtSetByUserId String?
+  effectiveReceivedAtReason   String?
+  effectiveReceivedAtVersion  Int                          @default(0)
+  /// Imaging: exam performed (system time at START).
+  documentedPerformedAt       DateTime?
+  effectivePerformedAt        DateTime?
+  effectivePerformedAtSetAt   DateTime?
+  effectivePerformedAtSetByUserId String?
+  effectivePerformedAtReason  String?
+  effectivePerformedAtVersion Int                          @default(0)
   status                      OrderStatus                  @default(PENDING)
   /// Explicit visit lifecycle — kept in sync with `status` in application code; `REVIEWED` = chart/review closure.
   lifecycleState              OrderItemLifecycleState      @default(ORDERED)
@@ -1320,6 +1343,18 @@ model Result {
   acknowledgedByProviderAt DateTime?
   /// Receiving clinician who acknowledged the result in-chart (distinct from `verifiedByUserId`).
   acknowledgedByUserId     String?
+  /// Lab: clinical result time (documented entry time remains `verifiedAt`).
+  effectiveResultedAt          DateTime?
+  effectiveResultedAtSetAt     DateTime?
+  effectiveResultedAtSetByUserId String?
+  effectiveResultedAtReason    String?
+  effectiveResultedAtVersion   Int       @default(0)
+  /// Imaging: clinical finalized/report time (documented entry remains `verifiedAt`).
+  effectiveFinalizedAt         DateTime?
+  effectiveFinalizedAtSetAt    DateTime?
+  effectiveFinalizedAtSetByUserId String?
+  effectiveFinalizedAtReason   String?
+  effectiveFinalizedAtVersion  Int       @default(0)
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 

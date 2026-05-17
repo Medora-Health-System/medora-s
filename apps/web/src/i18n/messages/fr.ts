@@ -8336,6 +8336,37 @@ export default {
         "L'ajustement d'heure pour les perfusions IV n'est pas disponible pour l'instant.",
     },
   },
+  labRadTime: {
+    adjustCardTooltip: "Ajuster l'heure clinique",
+    warning:
+      "Cette correction enregistre l'heure clinique séparément et conserve l'heure documentée originale.",
+    effectiveLabel: "Heure clinique",
+    reasonLabel: "Motif de l'ajustement",
+    reasonPlaceholder: "ex. soins au lit avant saisie",
+    historyClinicalLabel: "Clinique",
+    historyDocumentedLabel: "Documentée",
+    adjustedBadge: "Ajusté",
+    adjustedBadgeTooltip: "Heure clinique corrigée — heure documentée conservée",
+    largeBackdateSupervisoryWarning:
+      "Les corrections rétroactives importantes peuvent nécessiter une révision de supervision.",
+    save: "Enregistrer",
+    cancel: "Annuler",
+    invalidTime: "Horodatage invalide.",
+    reasonRequired: "Un motif est requis pour cet ajustement.",
+    reasonTooShortForLargeBackdate:
+      "Un motif détaillé est requis pour les corrections d'heure importantes.",
+    saveFailed: "Impossible d'enregistrer l'ajustement.",
+    labReceived: "Réception au laboratoire",
+    labCollected: "Prélèvement / collecte",
+    labResulted: "Résultat enregistré",
+    imagingPerformed: "Examen réalisé",
+    imagingFinalized: "Compte rendu finalisé",
+    adjustReceivedTitle: "Ajuster l'heure de réception",
+    adjustCollectedTitle: "Ajuster l'heure de collecte",
+    adjustResultedTitle: "Ajuster l'heure du résultat",
+    adjustPerformedTitle: "Ajuster l'heure de l'examen",
+    adjustFinalizedTitle: "Ajuster l'heure du compte rendu",
+  },
   ordersets: {
     apply: {
       skipped: "Certains éléments n'ont pas pu être appliqués : {items}. Ajoutez-les manuellement si nécessaire.",

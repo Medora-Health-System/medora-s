@@ -30,6 +30,7 @@ export * from "./mar/medicationAdministrationEffectiveTime.js";
 export * from "./mar/medicationAdministrationInfusionMar.js";
 export * from "./orders/orderItemDisplayLabels.js";
 export * from "./orders/careProcedureEffectiveClinicalTime.js";
+export * from "./orders/labRadiologyEffectiveClinicalTime.js";
 export * from "./encounter-allergy-safety.js";
 export * from "./vitalsUnitConversions.js";
 export * from "./documentedProcedureBillingBridge.js";

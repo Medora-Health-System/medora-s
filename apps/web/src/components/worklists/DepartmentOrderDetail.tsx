@@ -25,6 +25,9 @@ import { useI18n } from "@/lib/i18n";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
+import { LabRadiologyEffectiveTimeRow } from "@/components/worklists/LabRadiologyEffectiveTimeRow";
+import { LabRadiologyEffectiveTimeModal } from "@/components/worklists/LabRadiologyEffectiveTimeModal";
+import { isEncounterLocked } from "@/lib/encounterLock";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -613,6 +616,38 @@ function LineCard({
   const [pdfFiles, setPdfFiles] = useState<FileList | null>(null);
   const [imgFiles, setImgFiles] = useState<FileList | null>(null);
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [timeAdjustSaving, setTimeAdjustSaving] = useState(false);
+  const [timeAdjustTarget, setTimeAdjustTarget] = useState<{
+    milestone: "received" | "collected" | "performed" | "resulted" | "finalized";
+    patchPath: string;
+    titleKey: string;
+    documentedAt: Date;
+    effectiveAt: string | null;
+    version: number;
+  } | null>(null);
+
+  const dateLocale = encounterBcp47(language);
+  const encounterLocked = isEncounterLocked(order?.encounter);
+  const canAdjustClinicalTime = viewerIsDeptActor && !encounterLocked;
+
+  const saveTimeAdjust = useCallback(
+    async (payload: { effectiveClinicalTime: string; reason?: string }) => {
+      if (!timeAdjustTarget || !facilityId) return;
+      setTimeAdjustSaving(true);
+      try {
+        await apiFetch(timeAdjustTarget.patchPath, {
+          method: "PATCH",
+          facilityId,
+          body: JSON.stringify(payload),
+        });
+        setTimeAdjustTarget(null);
+        await onReload();
+      } finally {
+        setTimeAdjustSaving(false);
+      }
+    },
+    [timeAdjustTarget, facilityId, onReload]
+  );
 
   useEffect(() => {
     setResultText(item.result?.resultText ?? "");
@@ -848,6 +883,115 @@ function LineCard({
 
       {parentOrderCancelled ? null : workflowButtons}
 
+      {kind === "lab" && viewerIsDeptActor ? (
+        <div style={{ marginTop: 10 }}>
+          <LabRadiologyEffectiveTimeRow
+            label={t("labRadTime.labReceived")}
+            documentedAt={item.documentedReceivedAt}
+            effectiveAt={item.effectiveReceivedAt}
+            version={item.effectiveReceivedAtVersion ?? 0}
+            dateLocale={dateLocale}
+            canAdjust={canAdjustClinicalTime && Boolean(item.documentedReceivedAt)}
+            onAdjust={() =>
+              setTimeAdjustTarget({
+                milestone: "received",
+                patchPath: `/orders/items/${item.id}/effective-lab-received-time`,
+                titleKey: "labRadTime.adjustReceivedTitle",
+                documentedAt: new Date(item.documentedReceivedAt),
+                effectiveAt: item.effectiveReceivedAt,
+                version: item.effectiveReceivedAtVersion ?? 0,
+              })
+            }
+            t={t}
+          />
+          <LabRadiologyEffectiveTimeRow
+            label={t("labRadTime.labCollected")}
+            documentedAt={item.documentedCollectedAt}
+            effectiveAt={item.effectiveCollectedAt}
+            version={item.effectiveCollectedAtVersion ?? 0}
+            dateLocale={dateLocale}
+            canAdjust={canAdjustClinicalTime && Boolean(item.documentedCollectedAt)}
+            onAdjust={() =>
+              setTimeAdjustTarget({
+                milestone: "collected",
+                patchPath: `/orders/items/${item.id}/effective-lab-collected-time`,
+                titleKey: "labRadTime.adjustCollectedTitle",
+                documentedAt: new Date(item.documentedCollectedAt),
+                effectiveAt: item.effectiveCollectedAt,
+                version: item.effectiveCollectedAtVersion ?? 0,
+              })
+            }
+            t={t}
+          />
+          {item.result?.verifiedAt ? (
+            <LabRadiologyEffectiveTimeRow
+              label={t("labRadTime.labResulted")}
+              documentedAt={item.result.verifiedAt}
+              effectiveAt={item.result.effectiveResultedAt}
+              version={item.result.effectiveResultedAtVersion ?? 0}
+              dateLocale={dateLocale}
+              canAdjust={canAdjustClinicalTime}
+              onAdjust={() =>
+                setTimeAdjustTarget({
+                  milestone: "resulted",
+                  patchPath: `/orders/${item.id}/effective-lab-result-time`,
+                  titleKey: "labRadTime.adjustResultedTitle",
+                  documentedAt: new Date(item.result.verifiedAt),
+                  effectiveAt: item.result.effectiveResultedAt,
+                  version: item.result.effectiveResultedAtVersion ?? 0,
+                })
+              }
+              t={t}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {kind === "radiology" && viewerIsDeptActor ? (
+        <div style={{ marginTop: 10 }}>
+        <LabRadiologyEffectiveTimeRow
+          label={t("labRadTime.imagingPerformed")}
+          documentedAt={item.documentedPerformedAt}
+          effectiveAt={item.effectivePerformedAt}
+          version={item.effectivePerformedAtVersion ?? 0}
+          dateLocale={dateLocale}
+          canAdjust={canAdjustClinicalTime && Boolean(item.documentedPerformedAt)}
+          onAdjust={() =>
+            setTimeAdjustTarget({
+              milestone: "performed",
+              patchPath: `/orders/items/${item.id}/effective-imaging-performed-time`,
+              titleKey: "labRadTime.adjustPerformedTitle",
+              documentedAt: new Date(item.documentedPerformedAt),
+              effectiveAt: item.effectivePerformedAt,
+              version: item.effectivePerformedAtVersion ?? 0,
+            })
+          }
+          t={t}
+        />
+        {item.result?.verifiedAt ? (
+          <LabRadiologyEffectiveTimeRow
+            label={t("labRadTime.imagingFinalized")}
+            documentedAt={item.result.verifiedAt}
+            effectiveAt={item.result.effectiveFinalizedAt}
+            version={item.result.effectiveFinalizedAtVersion ?? 0}
+            dateLocale={dateLocale}
+            canAdjust={canAdjustClinicalTime}
+            onAdjust={() =>
+              setTimeAdjustTarget({
+                milestone: "finalized",
+                patchPath: `/orders/${item.id}/effective-imaging-finalized-time`,
+                titleKey: "labRadTime.adjustFinalizedTitle",
+                documentedAt: new Date(item.result.verifiedAt),
+                effectiveAt: item.result.effectiveFinalizedAt,
+                version: item.result.effectiveFinalizedAtVersion ?? 0,
+              })
+            }
+            t={t}
+          />
+        ) : null}
+        </div>
+      ) : null}
+
       {item.result &&
       (item.result.resultText?.trim() ||
         existingAtt.length > 0 ||
@@ -961,6 +1105,24 @@ function LineCard({
             {t("orderDetail.uploadFormatsHint")} {t("orderDetail.uploadFooterHint")}
           </p>
         </div>
+      ) : null}
+
+      {timeAdjustTarget ? (
+        <LabRadiologyEffectiveTimeModal
+          open
+          lineLabel={getOrderItemDisplayLabelFromLocale(item, language)}
+          milestoneLabel={t(timeAdjustTarget.titleKey)}
+          defaultEffectiveIso={
+            timeAdjustTarget.effectiveAt ?? timeAdjustTarget.documentedAt.toISOString()
+          }
+          documentedAt={timeAdjustTarget.documentedAt}
+          orderCreatedAt={new Date(order.createdAt)}
+          orderItemCreatedAt={new Date(item.createdAt)}
+          adjustmentVersion={timeAdjustTarget.version}
+          saving={timeAdjustSaving}
+          onClose={() => setTimeAdjustTarget(null)}
+          onSave={saveTimeAdjust}
+        />
       ) : null}
     </section>
   );

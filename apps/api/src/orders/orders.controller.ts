@@ -14,9 +14,11 @@ import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
+import { OrdersLabRadiologyEffectiveTimeService } from "./orders-lab-radiology-effective-time.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   careProcedureEffectiveClinicalTimeDtoSchema,
+  labRadiologyEffectiveClinicalTimeDtoSchema,
   medicationInfusionStopDtoSchema,
   orderCancelDtoSchema,
   orderCreateDtoSchema,
@@ -31,6 +33,7 @@ import { assertZodBody } from "../common/http/zod-parse";
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
+    private readonly labRadEffectiveTime: OrdersLabRadiologyEffectiveTimeService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -256,6 +259,78 @@ export class OrdersController {
       req.ip,
       req.headers["user-agent"],
       completeOptions
+    );
+  }
+
+  @Patch("orders/items/:itemId/effective-lab-collected-time")
+  @RequireRoles(RoleCode.LAB, RoleCode.ADMIN)
+  async setLabCollectedEffectiveTime(
+    @Param("itemId") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.labRadEffectiveTime.setLabCollectedEffectiveTime(
+      facilityId,
+      orderItemId,
+      dto,
+      userId,
+      codes,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Patch("orders/items/:itemId/effective-lab-received-time")
+  @RequireRoles(RoleCode.LAB, RoleCode.ADMIN)
+  async setLabReceivedEffectiveTime(
+    @Param("itemId") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.labRadEffectiveTime.setLabReceivedEffectiveTime(
+      facilityId,
+      orderItemId,
+      dto,
+      userId,
+      codes,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Patch("orders/items/:itemId/effective-imaging-performed-time")
+  @RequireRoles(RoleCode.RADIOLOGY, RoleCode.ADMIN)
+  async setImagingPerformedEffectiveTime(
+    @Param("itemId") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.labRadEffectiveTime.setImagingPerformedEffectiveTime(
+      facilityId,
+      orderItemId,
+      dto,
+      userId,
+      codes,
+      req.ip,
+      req.headers["user-agent"]
     );
   }
 
