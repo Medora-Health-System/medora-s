@@ -124,8 +124,11 @@ function makePrismaMock(opts: {
 
 function makeService(prisma: ReturnType<typeof makePrismaMock>) {
   const audit = { log: jest.fn().mockResolvedValue(undefined) };
+  const unifiedTimelineService = {
+    getUnifiedTimeline: jest.fn().mockResolvedValue({ capped: false, items: [] }),
+  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const service = new EncounterChartExportService(prisma as any, audit as any);
+  const service = new EncounterChartExportService(prisma as any, audit as any, unifiedTimelineService as any);
   return { service, prisma, audit };
 }
 

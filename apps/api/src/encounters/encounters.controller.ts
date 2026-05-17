@@ -16,6 +16,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { EncountersService } from "./encounters.service";
 import { EncounterChartExportService } from "./chart-export.service";
+import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
 import { DiagnosesService } from "../diagnoses/diagnoses.service";
 import { createDiagnosisDtoSchema, reorderDiagnosesDtoSchema } from "../diagnoses/dto";
 import { appendProcedureCaptureDtoSchema } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
@@ -52,6 +53,7 @@ export class EncountersController {
     private readonly encountersService: EncountersService,
     private readonly diagnosesService: DiagnosesService,
     private readonly chartExportService: EncounterChartExportService,
+    private readonly unifiedTimelineService: UnifiedEncounterTimelineService,
     private readonly observationOrderTemplateService: ObservationOrderTemplateService
   ) {}
 
@@ -437,6 +439,25 @@ export class EncountersController {
     }
     const parsed = limit != null && String(limit).trim() !== "" ? Number.parseInt(String(limit), 10) : undefined;
     return this.encountersService.getClinicalTimeline(facilityId, id, parsed);
+  }
+
+  @Get("encounters/:id/unified-timeline")
+  @RequireRoles(
+    RoleCode.FRONT_DESK,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.BILLING,
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.ADMIN
+  )
+  async getUnifiedTimeline(@Param("id") id: string, @Query("limit") limit: string | undefined, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = limit != null && String(limit).trim() !== "" ? Number.parseInt(String(limit), 10) : undefined;
+    return this.unifiedTimelineService.getUnifiedTimeline(facilityId, id, parsed);
   }
 
   @Get("encounters/:id/clinical-documentation-events")

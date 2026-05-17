@@ -67,6 +67,7 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
     procedures: { entries: [] },
     ivAccess: { entries: [] },
     clinicalTimeline: { items: [], capped: false },
+    unifiedTimeline: null,
     auditTimelineSummary: { items: [], capped: false },
     followUps: { items: [] },
     deferredDomains: [{ domain: "pathways", reason: "deferred_to_phase_5f" }],

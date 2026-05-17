@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { EncountersController } from "./encounters.controller";
 import { EncountersService } from "./encounters.service";
 import { EncounterChartExportService } from "./chart-export.service";
+import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AuditService } from "../common/services/audit.service";
 import { DiagnosesModule } from "../diagnoses/diagnoses.module";
@@ -12,8 +13,14 @@ import { TrackboardModule } from "../trackboard/trackboard.module";
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
   controllers: [EncountersController],
-  providers: [EncountersService, EncounterChartExportService, ObservationOrderTemplateService, AuditService],
-  exports: [EncountersService, EncounterChartExportService],
+  providers: [
+    EncountersService,
+    EncounterChartExportService,
+    UnifiedEncounterTimelineService,
+    ObservationOrderTemplateService,
+    AuditService,
+  ],
+  exports: [EncountersService, EncounterChartExportService, UnifiedEncounterTimelineService],
 })
 export class EncountersModule {}
 
