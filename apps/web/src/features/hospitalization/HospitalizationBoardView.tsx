@@ -37,6 +37,11 @@ import {
 } from "./observationBoardOperational";
 import type { ErDispositionOutcomeUi } from "@/features/emergency/emergencyDispositionV1";
 import { resolveObservationBoardDispositionModel } from "@/features/observation/observationBoardDisposition";
+import {
+  dispatchObservationEncounterRefresh,
+  MEDORA_OBSERVATION_ENCOUNTER_REFRESH,
+  type ObservationEncounterRefreshDetail,
+} from "@/lib/observationEncounterRefresh";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -108,6 +113,10 @@ function ObservationDispositionBoardChips({
 }) {
   const model = resolveObservationBoardDispositionModel({
     status: encounter.status,
+    type: encounter.type,
+    admittedAt: encounter.admittedAt,
+    admissionSummaryJson: encounter.admissionSummaryJson,
+    dischargedAt: encounter.dischargedAt,
     dischargeSummaryJson: encounter.dischargeSummaryJson,
     nursingAssessment: encounter.nursingAssessment,
     trackboardOps: encounter.trackboardOps,
@@ -553,6 +562,7 @@ export function HospitalizationBoardView() {
         body: JSON.stringify(payload),
       });
       await loadEncounters();
+      dispatchObservationEncounterRefresh({ encounterId: encounter.id, facilityId: fid });
     } catch (error) {
       console.error("Failed to discharge inpatient encounter:", error);
       setFetchError(
@@ -573,6 +583,17 @@ export function HospitalizationBoardView() {
     }, 10000);
     return () => clearInterval(interval);
   }, [ready, facilityId, mockMode, loadEncounters]);
+
+  useEffect(() => {
+    if (!facilityId) return;
+    const onObservationRefresh = (ev: Event) => {
+      const detail = (ev as CustomEvent<ObservationEncounterRefreshDetail>).detail;
+      if (!detail || detail.facilityId !== facilityId) return;
+      void loadEncounters();
+    };
+    window.addEventListener(MEDORA_OBSERVATION_ENCOUNTER_REFRESH, onObservationRefresh);
+    return () => window.removeEventListener(MEDORA_OBSERVATION_ENCOUNTER_REFRESH, onObservationRefresh);
+  }, [facilityId, loadEncounters]);
 
   const unitOptions = useMemo(() => {
     const set = new Set<string>();

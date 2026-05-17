@@ -453,6 +453,10 @@ export const orderCreateDtoSchema = z
     orderSource: orderSourceSchema.optional(),
     readbackConfirmed: z.boolean().optional(),
     protocolName: z.string().max(256).optional(),
+    /** Observation template apply: stable line id when one CARE order is created per template row. */
+    observationTemplateItemId: z.string().max(128).optional(),
+    /** Observation template apply: correlates sibling single-line orders from one apply action. */
+    observationTemplateGroupId: z.string().max(128).optional(),
     /** Explicit clinician acknowledgment when allergy-related documentation exists (server-enforced for MEDICATION orders). */
     safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
     items: z.array(orderItemCreateDtoSchema).min(1),

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
   ForbiddenException,
@@ -164,40 +165,49 @@ export class ObservationOrderTemplateService {
       `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
       "Prescripteur";
 
-    let orderDto;
-    try {
-      orderDto = buildObservationTemplateCareOrderDto({
-        selectedItemIds: missingItemIds,
-        prescriberName,
-        prescriberLicense: user?.billingNpi?.trim() || undefined,
-        prescriberContact: undefined,
-        labelLocale: opts?.orderLabelLocale === "en" ? "en" : "fr",
-      });
-    } catch (e) {
-      if (e instanceof Error && e.message === "observation_template_no_valid_items") {
-        throw new BadRequestException(NO_VALID_LINES);
+    const labelLocale = opts?.orderLabelLocale === "en" ? "en" : "fr";
+    const observationTemplateGroupId = randomUUID();
+    const createdOrders: Awaited<ReturnType<OrdersService["create"]>>[] = [];
+
+    for (const itemId of missingItemIds) {
+      let orderDto;
+      try {
+        orderDto = buildObservationTemplateCareOrderDto({
+          selectedItemIds: [itemId],
+          prescriberName,
+          prescriberLicense: user?.billingNpi?.trim() || undefined,
+          prescriberContact: undefined,
+          labelLocale,
+          observationTemplateGroupId,
+        });
+      } catch (e) {
+        if (e instanceof Error && e.message === "observation_template_no_valid_items") {
+          throw new BadRequestException(NO_VALID_LINES);
+        }
+        throw e;
       }
-      throw e;
+
+      const created = await this.ordersService.create(
+        encounterId,
+        facilityId,
+        orderDto,
+        userId,
+        ip,
+        userAgent
+      );
+      createdOrders.push(created);
     }
 
-    const created = await this.ordersService.create(
-      encounterId,
-      facilityId,
-      orderDto,
-      userId,
-      ip,
-      userAgent
-    );
-
     const skippedMedicationItems: string[] = [];
+    const primaryOrder = createdOrders[createdOrders.length - 1] ?? null;
 
     await this.audit.log(AuditAction.ORDERS_CREATED, "ORDER", {
       userId,
       facilityId,
       patientId: encounter.patientId,
       encounterId,
-      entityId: created.id,
-      orderId: created.id,
+      entityId: primaryOrder?.id,
+      orderId: primaryOrder?.id,
       ip,
       userAgent,
       metadata: {
@@ -208,15 +218,19 @@ export class ObservationOrderTemplateService {
         skippedDuplicateItemIds,
         skippedMedicationItems,
         createdCount: missingItemIds.length,
+        observationTemplateGroupId,
+        orderIds: createdOrders.map((o) => o.id),
         source: "OBSERVATION_ORDER_SET",
       },
     });
 
     return {
-      order: created,
+      order: primaryOrder,
+      orders: createdOrders,
       summary: {
         ...applySummaryBase,
         allAlreadyPresent: false,
+        observationTemplateGroupId,
       },
     };
   }

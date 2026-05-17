@@ -5698,6 +5698,10 @@ export default {
     observationExtended24h: "Séjour ≥24h",
     observationWorkflow: {
       headerWorkflowActive: "Observation active",
+      displayStatus: {
+        dischargedObservation: "Sortie (observation)",
+        dischargeDocumented: "Dossier de sortie enregistré",
+      },
       statusPill: {
         active: "Observation en cours",
         reassessmentDue: "Réévaluation due",
@@ -5976,7 +5980,7 @@ export default {
       intro:
         "Cochez les lignes à créer comme ordres de soins. Aucun ordre n'est créé sans votre confirmation. Les médicaments et examens au catalogue s'ajoutent depuis l'onglet Ordres.",
       partialAppliedBanner:
-        "Certaines lignes du modèle sont déjà dans le dossier — les lignes cochées en lecture seule ne peuvent pas être dupliquées ; sélectionnez uniquement les lignes non encore créées.",
+        "Certaines lignes de ce modèle sont déjà au dossier — les lignes cochées ci-dessous ne peuvent pas créer de doublons ; choisissez seulement les lignes non cochées.",
       allLinesAppliedBanner:
         "Toutes les lignes du modèle figurent déjà au dossier — utilisez l’onglet Ordres pour ajouter d’autres soins manuels.",
       allAlreadyPresent:
@@ -5999,11 +6003,28 @@ export default {
       validationNeedOne: "Cochez au moins une ligne.",
       successTitle: "Ordres créés",
       successBody:
-        "Le lot de soins a été ajouté. Retrouvez-le dans l’onglet Ordres (type Soins) ; chaque ligne peut être suivie comme un ordre habituel.",
+        "Les ordres de soins ont été ajoutés. Dans l’onglet Ordres, chaque ligne du modèle observation peut être accusée réception et annulée individuellement.",
       successClose: "Fermer",
       successLineCount: "{count} ligne(s) de soins dans le lot.",
       queuedApply:
         "La création a été mise en file hors ligne. Les ordres ne seront pas visibles tant que la synchronisation n'est pas terminée.",
+    },
+    observationTemplateOrders: {
+      title: "Ordres observation / court séjour",
+      subtitle:
+        "Chaque ligne du modèle est indépendante : accusation de réception infirmière et annulation ligne par ligne.",
+      tableOrder: "Ordre",
+      tableStatus: "Statut",
+      tableAckBy: "Accusé par",
+      tableAckAt: "Accusé le",
+      tableActions: "Action",
+      acknowledge: "Accuser réception",
+      acknowledging: "Accusé…",
+      acknowledgedState: "Réception accusée",
+      cancelLine: "Annuler",
+      acknowledgedOk: "Réception accusée pour cette ligne.",
+      acknowledgeFailed: "Impossible d’accuser réception pour cette ligne.",
+      otherOrdersEmpty: "Aucun autre ordre (hors modèle observation) sur cette consultation.",
     },
     labelRoom: "Salle",
     labelAdmission: "Admission",

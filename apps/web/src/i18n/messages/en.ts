@@ -5717,6 +5717,10 @@ export default {
     observationExtended24h: "Stay ≥24h",
     observationWorkflow: {
       headerWorkflowActive: "Observation active",
+      displayStatus: {
+        dischargedObservation: "Discharged (observation)",
+        dischargeDocumented: "Discharge packet documented",
+      },
       statusPill: {
         active: "Observation in progress",
         reassessmentDue: "Reassessment due",
@@ -6012,11 +6016,27 @@ export default {
       validationNeedOne: "Select at least one line.",
       successTitle: "Orders created",
       successBody:
-        "The CARE bundle was added. Find it on the Orders tab (CARE type); each line behaves like a normal order for charting and workflow.",
+        "CARE orders were added. On the Orders tab, each observation template line can be acknowledged and cancelled individually.",
       successClose: "Close",
       successLineCount: "{count} CARE line(s) in the bundle.",
       queuedApply:
         "This save was queued offline. Orders will not appear until the device syncs with the server.",
+    },
+    observationTemplateOrders: {
+      title: "Observation / short-stay orders",
+      subtitle: "Each template line is independent: nursing acknowledgement and per-line cancel.",
+      tableOrder: "Order",
+      tableStatus: "Status",
+      tableAckBy: "Acknowledged by",
+      tableAckAt: "Acknowledged at",
+      tableActions: "Action",
+      acknowledge: "Acknowledge",
+      acknowledging: "Acknowledging…",
+      acknowledgedState: "Acknowledged",
+      cancelLine: "Cancel",
+      acknowledgedOk: "Receipt acknowledged for this line.",
+      acknowledgeFailed: "Could not acknowledge this line.",
+      otherOrdersEmpty: "No other orders (outside observation template) on this encounter.",
     },
     labelRoom: "Room",
     labelAdmission: "Admission",

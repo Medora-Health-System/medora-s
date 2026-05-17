@@ -694,6 +694,7 @@ export class QueuesService {
       },
     });
 
+    // Billing capture runs on COMPLETED only — never on ACKNOWLEDGED / IN_PROGRESS (see orderAcknowledgementBillingSafety).
     if (status === OrderStatus.COMPLETED) {
       const completedAt =
         updated.completedAt instanceof Date && !Number.isNaN(updated.completedAt.getTime())

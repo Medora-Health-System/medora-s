@@ -48,6 +48,8 @@ export type HospitalisationBoardEncounterRow = {
   createdAt: string | null | undefined;
   workflowState?: string | null;
   admittedAt?: string | null;
+  admissionSummaryJson?: unknown;
+  dischargedAt?: string | null;
   physicianAssignedUserId?: string | null;
   nurseAssignedUserId?: string | null;
   patient?: HospitalisationBoardPatient | null;

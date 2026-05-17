@@ -45,6 +45,7 @@ import type {
   OrderUpdateDto,
 } from "@medora/shared";
 import {
+  OBSERVATION_ORDER_TEMPLATE_ID,
   deltaMinutesBetween,
   isCareProcedureOrderItem,
   parseCareProcedureEffectiveClinicalTimeIso,
@@ -702,6 +703,12 @@ export class OrdersService {
       source: orderSource,
       readbackConfirmed: data.readbackConfirmed,
       protocolName: data.protocolName?.trim() || undefined,
+      ...(data.observationTemplateItemId?.trim()
+        ? { templateItemId: data.observationTemplateItemId.trim() }
+        : {}),
+      ...(data.observationTemplateGroupId?.trim()
+        ? { observationTemplateGroupId: data.observationTemplateGroupId.trim() }
+        : {}),
       ...(data.type === "MEDICATION" && data.safetyAcknowledgedMedicationAllergies === true
         ? { safetyAcknowledgedMedicationAllergies: true as const }
         : {}),
@@ -1477,7 +1484,7 @@ export class OrdersService {
       where: { id, facilityId },
       include: {
         encounter: true,
-        items: { select: { catalogItemType: true } },
+        items: { select: { catalogItemType: true, lifecycleState: true, status: true } },
       },
     });
 
@@ -1487,6 +1494,30 @@ export class OrdersService {
 
     assertEncounterOpenForClinicalMutation(order.encounter);
     assertEncounterNotSigned(order.encounter);
+
+    const createdEv = await this.prisma.orderEvent.findFirst({
+      where: { orderId: id, eventType: OrderEventType.CREATED },
+      orderBy: { performedAt: "asc" },
+      select: { metadata: true },
+    });
+    const createdMeta =
+      createdEv?.metadata && typeof createdEv.metadata === "object" && !Array.isArray(createdEv.metadata)
+        ? (createdEv.metadata as Record<string, unknown>)
+        : null;
+    const protocolName =
+      typeof createdMeta?.protocolName === "string" ? createdMeta.protocolName.trim() : "";
+    if (protocolName === OBSERVATION_ORDER_TEMPLATE_ID) {
+      const activeLines = order.items.filter(
+        (it) =>
+          it.lifecycleState !== OrderItemLifecycleState.CANCELLED &&
+          it.lifecycleState !== OrderItemLifecycleState.REVIEWED
+      );
+      if (activeLines.length > 1) {
+        throw new BadRequestException(
+          "Ce lot d'ordres observation comporte plusieurs lignes actives. Annulez chaque ligne séparément."
+        );
+      }
+    }
 
     assertCanTransition(order.status, "CANCELLED");
 
@@ -1758,6 +1789,10 @@ export class OrdersService {
     return this.prisma.orderItem.findFirstOrThrow({ where: { id: orderItemId } });
   }
 
+  /**
+   * RN/provider acknowledgment only — does not complete the line, bill, or set performedBy.
+   * `acknowledgedBy` (event actor) must not be treated as clinical performer for billing.
+   */
   async acknowledgeOrderItem(
     facilityId: string,
     orderItemId: string,
@@ -1775,6 +1810,12 @@ export class OrdersService {
         order: {
           include: {
             encounter: { include: { patient: true } },
+            orderEvents: {
+              where: { eventType: OrderEventType.CREATED },
+              orderBy: { performedAt: "asc" },
+              take: 1,
+              select: { metadata: true },
+            },
           },
         },
       },
@@ -1788,6 +1829,28 @@ export class OrdersService {
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
+
+    if (orderItem.status === OrderStatus.ACKNOWLEDGED) {
+      return orderItem;
+    }
+
+    if (
+      orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED ||
+      orderItem.status === OrderStatus.CANCELLED
+    ) {
+      throw new BadRequestException("Cette ligne est annulée ; l'accusé de réception n'est pas possible.");
+    }
+
+    const createdMeta = orderItem.order.orderEvents[0]?.metadata;
+    const protocolName =
+      createdMeta && typeof createdMeta === "object" && !Array.isArray(createdMeta)
+        ? (createdMeta as { protocolName?: unknown }).protocolName
+        : null;
+    const ackSource =
+      typeof protocolName === "string" && protocolName.trim() === "medora_observation_order_set_v1"
+        ? "OBSERVATION_TEMPLATE_ORDER"
+        : undefined;
+
     assertCanTransition(orderItem.status, OrderStatus.ACKNOWLEDGED);
 
     const lifecycleState = applyLifecycleWithStatus(
@@ -1799,8 +1862,22 @@ export class OrdersService {
       throw new ForbiddenException("Authentification requise pour accuser réception d'une ligne.");
     }
 
+    const lineLabelFr = orderItem.manualLabel?.trim() || undefined;
+    const ackDedupeKey = `order-item-ack:${orderItemId}`;
+
     const systemNow = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      const existingAckEvent = await tx.orderEvent.findFirst({
+        where: {
+          orderId: orderItem.orderId,
+          eventType: OrderEventType.STARTED,
+          metadata: {
+            path: ["dedupeKey"],
+            equals: ackDedupeKey,
+          } as Prisma.JsonFilter,
+        },
+      });
+
       const row = await tx.orderItem.update({
         where: { id: orderItemId },
         data: {
@@ -1811,16 +1888,25 @@ export class OrdersService {
             : {}),
         },
       });
-      await this.writeOrderEvent({
-        facilityId,
-        encounterId: orderItem.order.encounterId,
-        orderId: orderItem.orderId,
-        orderType: orderItem.order.type,
-        eventType: OrderEventType.STARTED,
-        performedByUserId: userId,
-        metadata: { orderItemId, lifecycleOutcome: "ACKNOWLEDGED" },
-        tx,
-      });
+
+      if (!existingAckEvent) {
+        await this.writeOrderEvent({
+          facilityId,
+          encounterId: orderItem.order.encounterId,
+          orderId: orderItem.orderId,
+          orderType: orderItem.order.type,
+          eventType: OrderEventType.STARTED,
+          performedByUserId: userId,
+          metadata: {
+            orderItemId,
+            lifecycleOutcome: "ACKNOWLEDGED",
+            dedupeKey: ackDedupeKey,
+            ...(lineLabelFr ? { lineLabelFr } : {}),
+            ...(ackSource ? { source: ackSource } : {}),
+          },
+          tx,
+        });
+      }
       return row;
     });
 

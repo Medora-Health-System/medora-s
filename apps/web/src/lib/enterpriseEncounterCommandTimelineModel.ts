@@ -223,6 +223,25 @@ export function commandTimelineEventTitle(
   return item.displayEventType;
 }
 
+export function resolveOrderEventAttributionKind(
+  item: UnifiedTimelineApiItem
+): ReturnType<typeof orderAttributionActionForOrderType> {
+  const et = item.storedEventType.trim().toUpperCase();
+  const meta = asRecord(item.payloadJson);
+  if (et === "STARTED" && meta?.lifecycleOutcome === "ACKNOWLEDGED") {
+    return "ACKNOWLEDGED";
+  }
+  const orderType =
+    item.displayGroup === "LABORATORY"
+      ? "LAB"
+      : item.displayGroup === "IMAGING"
+        ? "IMAGING"
+        : item.displayGroup === "PROCEDURE"
+          ? "CARE"
+          : null;
+  return orderAttributionActionForOrderType(et, orderType);
+}
+
 export function buildCommandTimelinePrimaryActorLine(
   item: UnifiedTimelineApiItem,
   t: (key: string) => string
@@ -240,7 +259,7 @@ export function buildCommandTimelinePrimaryActorLine(
         role: roleDept ? ` (${roleDept})` : "",
       });
     }
-    const kind = orderAttributionActionForOrderType(et, item.displayGroup === "LABORATORY" ? "LAB" : item.displayGroup === "IMAGING" ? "IMAGING" : null);
+    const kind = resolveOrderEventAttributionKind(item);
     if (kind) {
       return fillTemplate(t(orderAttributionLabelKey(kind)), {
         name,

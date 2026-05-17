@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCommandTimelinePrimaryActorLine,
   commandTimelineEventTitle,
   filterCommandTimelineItems,
   isSortedByDocumentedTimeNewestFirst,
   matchesCommandTimelineFilter,
   resolveCommandTimelineCategory,
+  resolveOrderEventAttributionKind,
 } from "./enterpriseEncounterCommandTimelineModel";
 import type { UnifiedTimelineApiItem } from "./enterpriseEncounterCommandTimelineModel";
 
@@ -14,6 +16,7 @@ const t = (key: string) => {
     "emergencyVisitSummaryPanel.clinicalTimeline.event.vitalsRecorded": "Signes vitaux enregistrés",
     "attribution.orderedBy": "Prescrit par {name}{role} · {datetime}",
     "attribution.performedBy": "Réalisé par {name}{role} · {datetime}",
+    "attribution.acknowledgedBy": "Accusé réception par {name}{role} · {datetime}",
     "attribution.resultedBy": "Résultat par {name}{role} · {datetime}",
     "unifiedTimeline.groups.CLINICAL": "Clinique",
   };
@@ -113,5 +116,21 @@ describe("enterpriseEncounterCommandTimelineModel", () => {
     });
     expect(resolveCommandTimelineCategory(item)).toBe("LABORATORY");
     expect(matchesCommandTimelineFilter(item, "LAB")).toBe(true);
+  });
+
+  it("maps STARTED+ACKNOWLEDGED order events to acknowledgement attribution (not performed)", () => {
+    const item = baseItem({
+      id: "ORDER_EVENT:ack-1",
+      sourceKind: "ORDER_EVENT",
+      storedEventType: "STARTED",
+      displayGroup: "PROCEDURE",
+      displayEventType: "ORDER_STARTED_CARE",
+      titleFr: "Ordre accusé réception — Signes vitaux",
+      payloadJson: { lifecycleOutcome: "ACKNOWLEDGED", orderItemId: "item-1" },
+      actor: { userId: "u1", displayName: "Elizabeth Posada", role: "RN", department: "RN" },
+    });
+    expect(resolveOrderEventAttributionKind(item)).toBe("ACKNOWLEDGED");
+    expect(buildCommandTimelinePrimaryActorLine(item, t)).toContain("Accusé réception");
+    expect(buildCommandTimelinePrimaryActorLine(item, t)).not.toContain("Réalisé");
   });
 });

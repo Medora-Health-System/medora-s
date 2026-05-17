@@ -4,7 +4,10 @@ import {
   inferOutcomeUiFromForms,
   type ErDispositionOutcomeUi,
 } from "@/features/emergency/emergencyDispositionV1";
-import type { ObservationOperationalSnapshot } from "@medora/shared";
+import {
+  deriveObservationEncounterDisplayStatus,
+  type ObservationOperationalSnapshot,
+} from "@medora/shared";
 
 export type ObservationBoardDispositionTier =
   | "outcome"
@@ -30,15 +33,30 @@ export type ObservationBoardDispositionModel =
  */
 export function resolveObservationBoardDispositionModel(input: {
   status: string;
+  type?: string | null;
+  admittedAt?: unknown;
+  admissionSummaryJson?: unknown;
+  dischargedAt?: unknown;
   dischargeSummaryJson?: unknown;
   nursingAssessment?: unknown;
   trackboardOps?: { firstDispositionDocAt?: string | null } | null;
   observationOps?: ObservationOperationalSnapshot | null;
 }): ObservationBoardDispositionModel {
+  const displayStatus = deriveObservationEncounterDisplayStatus({
+    type: input.type,
+    status: input.status,
+    admittedAt: input.admittedAt,
+    admissionSummaryJson: input.admissionSummaryJson,
+    dischargeSummaryJson: input.dischargeSummaryJson,
+    dischargedAt: input.dischargedAt,
+  });
+
   const parsed = parseDischargeSummaryForChart(input.dischargeSummaryJson);
-  const mode = typeof parsed?.dischargeMode === "string" ? parsed.dischargeMode.trim() : "";
+  const mode =
+    displayStatus.dischargeMode ??
+    (typeof parsed?.dischargeMode === "string" ? parsed.dischargeMode.trim() : "");
   const sup = erDispositionSupplementFromEncounter(input.nursingAssessment);
-  const encounterClosed = input.status !== "OPEN";
+  const encounterClosed = displayStatus.phase === "DISCHARGED" || input.status !== "OPEN";
   const hasDischargePayload = parsed != null;
   const firstDocRaw = input.trackboardOps?.firstDispositionDocAt;
   const hasFirstDispositionDoc =
@@ -54,6 +72,10 @@ export function resolveObservationBoardDispositionModel(input: {
 
   if (encounterClosed) {
     return null;
+  }
+
+  if (displayStatus.phase === "DISCHARGE_IN_PROGRESS") {
+    return { tier: "discharge_packet_active" };
   }
 
   if (input.observationOps?.flags.readyForDischarge) {

@@ -54,9 +54,13 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
+import { ObservationEncounterDisplayPill } from "@/components/encounters/ObservationEncounterDisplayPill";
 import { ObservationContinueObservationQuickModal } from "@/components/encounters/ObservationContinueObservationQuickModal";
 import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
+import { ObservationTemplateOrdersPanel } from "@/components/encounters/ObservationTemplateOrdersPanel";
+import { ordersExcludingObservationTemplate } from "@/lib/observationTemplateOrderRows";
+import { dispatchObservationEncounterRefresh } from "@/lib/observationEncounterRefresh";
 import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
@@ -70,6 +74,7 @@ import {
   collectObservationTemplateItemIdsFromOrderItems,
   computeObservationOperationalSnapshot,
   isObservationOrderTemplateProtocol,
+  deriveObservationEncounterDisplayStatus,
   isObservationShortStayEncounter,
   mergeObservationTrackboardOpsInput,
   OBSERVATION_ORDER_TEMPLATE_ITEMS,
@@ -717,6 +722,16 @@ export default function EncounterDetailPage() {
     }
   }, [canViewEncounterDetail, encounterId, facilityId]);
 
+  /** Re-fetch encounter + orders + timeline after observation disposition or order-line mutations. */
+  const refreshObservationClinicalSurfaces = useCallback(async () => {
+    await Promise.all([loadEncounter({ silent: true }), refreshQuickOrdersOnly()]);
+    setClinicalTimelineRefresh((n) => n + 1);
+    setEncounterResultsRefresh((x) => x + 1);
+    if (encounterId && facilityId) {
+      dispatchObservationEncounterRefresh({ encounterId, facilityId });
+    }
+  }, [loadEncounter, refreshQuickOrdersOnly, encounterId, facilityId]);
+
   const handlePrintDischarge = useCallback(() => {
     if (!encounter?.patient) return;
     const facilityName = facilities.find((f) => f.id === facilityId)?.name;
@@ -872,7 +887,7 @@ export default function EncounterDetailPage() {
         const queued =
           res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
         setQueuedDischargeSaveNotice(queued);
-        await loadEncounter({ silent: true });
+        await refreshObservationClinicalSurfaces();
         const pending: Record<string, unknown> | null =
           merged ??
           (dischargeForm.dischargeMode.trim() ? { dischargeMode: dischargeForm.dischargeMode.trim() } : null);
@@ -898,7 +913,7 @@ export default function EncounterDetailPage() {
         const queued =
           res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
         setQueuedDischargeSaveNotice(queued);
-        await loadEncounter({ silent: true });
+        await refreshObservationClinicalSurfaces();
       } else {
         setQueuedDischargeSaveNotice(false);
       }
@@ -959,7 +974,7 @@ export default function EncounterDetailPage() {
         setQueuedClosePendingSync(true);
         setPendingDischarge(null);
         setQueuedDischargeSaveNotice(false);
-        await loadEncounter();
+        await refreshObservationClinicalSurfaces();
         return;
       }
 
@@ -969,7 +984,7 @@ export default function EncounterDetailPage() {
       if (acknowledgeDeficiencies) {
         alert(t("encounterChrome.modals.closeSuccessDespiteDeficiencies"));
       }
-      await loadEncounter();
+      await refreshObservationClinicalSurfaces();
     } catch (e) {
       alert(
         normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
@@ -1077,6 +1092,31 @@ export default function EncounterDetailPage() {
           })
       ),
     [encounter, encounter?.type, encounter?.status, encounter?.admittedAt, encounter?.admissionSummaryJson]
+  );
+
+  const observationDisplayStatus = useMemo(
+    () =>
+      encounter
+        ? deriveObservationEncounterDisplayStatus({
+            type: encounter.type,
+            status: encounter.status,
+            admittedAt: encounter.admittedAt,
+            admissionSummaryJson: encounter.admissionSummaryJson,
+            dischargeSummaryJson: encounter.dischargeSummaryJson,
+            dischargedAt: encounter.dischargedAt,
+            updatedAt: encounter.updatedAt,
+          })
+        : { phase: "NOT_OBSERVATION" as const, closedOrDischargedAtIso: null, dischargeMode: null },
+    [
+      encounter,
+      encounter?.type,
+      encounter?.status,
+      encounter?.admittedAt,
+      encounter?.admissionSummaryJson,
+      encounter?.dischargeSummaryJson,
+      encounter?.dischargedAt,
+      encounter?.updatedAt,
+    ]
   );
 
   /** Tab list depends on observation lane — defined after `observationWorkflowActive` (React #310 safe). */
@@ -1340,7 +1380,8 @@ export default function EncounterDetailPage() {
   const showConfirmInpatientTransfer =
     encounter.status === "OPEN" && encounter.type === "EMERGENCY" && admissionPreviewForChrome != null;
 
-  const showObservationOrdersEntry = observationWorkflowActive && canPrescribe;
+  const showObservationOrdersEntry =
+    observationWorkflowActive && observationDisplayStatus.phase === "ACTIVE" && canPrescribe;
 
   const renderDischargeFieldRow = (key: keyof DischargeFormState, kind: "medical" | "nursing", rows: number) => {
     const editable =
@@ -1701,7 +1742,12 @@ export default function EncounterDetailPage() {
                         {t("encounterChrome.patientAdmittedBadge")}
                       </span>
                     ) : null}
-                    {observationWorkflowActive && observationOpsClient ? (
+                    <ObservationEncounterDisplayPill
+                      status={observationDisplayStatus}
+                      t={t}
+                      language={language}
+                    />
+                    {observationDisplayStatus.phase === "ACTIVE" && observationOpsClient ? (
                       <ObservationWorkflowHeaderStatusPill snapshot={observationOpsClient} t={t} />
                     ) : null}
                   </div>
@@ -1799,7 +1845,9 @@ export default function EncounterDetailPage() {
                 >
                   {t("encounterChrome.backToPatientChart")}
                 </Link>
-                {observationWorkflowActive ? <ObservationWorkflowActiveHeaderPill t={t} /> : null}
+                {observationWorkflowActive && observationDisplayStatus.phase === "ACTIVE" ? (
+                  <ObservationWorkflowActiveHeaderPill t={t} />
+                ) : null}
                 {canAdmitPatient && !observationWorkflowActive && (
                   <button
                     type="button"
@@ -1861,7 +1909,7 @@ export default function EncounterDetailPage() {
             </div>
           </div>
 
-        {observationWorkflowActive && observationOpsClient ? (
+        {observationDisplayStatus.phase === "ACTIVE" && observationWorkflowActive && observationOpsClient ? (
           <ObservationWorkflowEncounterChrome
             compact
             snapshot={observationOpsClient}
@@ -1893,7 +1941,7 @@ export default function EncounterDetailPage() {
           showConfirmInpatientTransfer={showConfirmInpatientTransfer}
           nursingAssessment={encounter.nursingAssessment}
           onSaved={mergeEncounterFromOperationalPatch}
-          onUpdated={() => void loadEncounter({ silent: true })}
+          onUpdated={() => void refreshObservationClinicalSurfaces()}
         />
       </div>
 
@@ -2178,7 +2226,7 @@ export default function EncounterDetailPage() {
                   facilityId={facilityId}
                   isLocked={isLocked}
                   canEditErHandoff={canEditOperational && encounter.status === "OPEN"}
-                  onUpdated={() => void loadEncounter({ silent: true })}
+                  onUpdated={() => void refreshObservationClinicalSurfaces()}
                   onSaved={mergeEncounterFromOperationalPatch}
                 />
               </div>
@@ -2225,8 +2273,8 @@ export default function EncounterDetailPage() {
               medicationModalRequestTick={medicationModalRequestTick}
               careModalRequestTick={careModalRequestTick}
               careModalPresetLabel={careModalPresetLabel}
-              onOrdersUpdated={refreshQuickOrdersOnly}
-              onRefetchEncounter={() => loadEncounter({ silent: true })}
+              onOrdersUpdated={refreshObservationClinicalSurfaces}
+              onRefetchEncounter={refreshObservationClinicalSurfaces}
             />
           )}
           {activeTab === "mar" && canFetchMarTab && (
@@ -2976,10 +3024,7 @@ export default function EncounterDetailPage() {
         facilityId={facilityId}
         existingTemplateItemIds={existingObservationTemplateItemIds}
         onClose={() => setShowObservationOrderTemplateModal(false)}
-        onOrdersCreated={async () => {
-          await refreshQuickOrdersOnly();
-          await loadEncounter({ silent: true });
-        }}
+        onOrdersCreated={refreshObservationClinicalSurfaces}
       />
 
       <ObservationReassessmentModal
@@ -2988,11 +3033,7 @@ export default function EncounterDetailPage() {
         encounterId={encounterId}
         facilityId={facilityId}
         onClose={() => setObservationReassessmentModalRole(null)}
-        onSaved={async () => {
-          setClinicalTimelineRefresh((n) => n + 1);
-          setEncounterResultsRefresh((x) => x + 1);
-          await loadEncounter({ silent: true });
-        }}
+        onSaved={refreshObservationClinicalSurfaces}
       />
 
       <ObservationContinueObservationQuickModal
@@ -3000,11 +3041,7 @@ export default function EncounterDetailPage() {
         encounterId={encounterId}
         facilityId={facilityId}
         onClose={() => setShowContinueObservationQuickModal(false)}
-        onSaved={async () => {
-          setClinicalTimelineRefresh((n) => n + 1);
-          setEncounterResultsRefresh((x) => x + 1);
-          await loadEncounter({ silent: true });
-        }}
+        onSaved={refreshObservationClinicalSurfaces}
       />
 
       {showCloseConfirmModal && (
@@ -5546,6 +5583,7 @@ function OrdersTab({
   const canCancelWholeOrder =
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
   const encounterOpen = encounter?.status === "OPEN";
+  const displayOrders = useMemo(() => ordersExcludingObservationTemplate(orders), [orders]);
   const [cancelConfirmOrderId, setCancelConfirmOrderId] = useState<string | null>(null);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [ordersFeedback, setOrdersFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -5669,6 +5707,17 @@ function OrdersTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <ObservationTemplateOrdersPanel
+        encounterId={encounterId}
+        facilityId={facilityId}
+        orders={orders}
+        encounterOpen={encounterOpen}
+        roles={roles}
+        onOrdersUpdated={async () => {
+          await loadOrders({ silent: true });
+          await onOrdersUpdated?.();
+        }}
+      />
       <div
         style={{
           ...ordersShell,
@@ -5728,9 +5777,11 @@ function OrdersTab({
         </div>
       ) : null}
 
-      {orders.length === 0 ? (
+      {displayOrders.length === 0 ? (
         <div style={{ ...ordersShell, padding: "22px 20px", textAlign: "center", color: "#64748b", fontSize: 14 }}>
-          {t("encounterChrome.ordersTab.emptyNone")}
+          {orders.length === 0
+            ? t("encounterChrome.ordersTab.emptyNone")
+            : t("encounterChrome.observationTemplateOrders.otherOrdersEmpty")}
         </div>
       ) : (
         <div style={{ ...ordersShell, overflow: "hidden" }}>
@@ -5760,7 +5811,7 @@ function OrdersTab({
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => {
+              {displayOrders.map((order: any) => {
                 const orderStatusBadgeKey =
                   order.type === "MEDICATION" ? medicationOrderStatusKeyForEncounterTab(order) : order.status;
                 return (

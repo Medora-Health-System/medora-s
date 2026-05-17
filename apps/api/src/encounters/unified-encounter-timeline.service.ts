@@ -26,10 +26,23 @@ function asRecord(v: unknown): Record<string, unknown> | null {
   return null;
 }
 
-function orderEventTitleFr(eventType: string, orderType: string, lineLabelFr: string | null): string {
-  if (lineLabelFr?.trim()) return lineLabelFr.trim();
+function orderEventTitleFr(
+  eventType: string,
+  orderType: string,
+  lineLabelFr: string | null,
+  metadata?: Record<string, unknown> | null
+): string {
   const et = eventType.toUpperCase();
   const ot = orderType.toUpperCase();
+  const lifecycle =
+    metadata && typeof metadata.lifecycleOutcome === "string"
+      ? metadata.lifecycleOutcome.toUpperCase()
+      : "";
+  if (et === "STARTED" && lifecycle === "ACKNOWLEDGED") {
+    const line = lineLabelFr?.trim();
+    return line ? `Ordre accusé réception — ${line}` : "Ordre accusé réception";
+  }
+  if (lineLabelFr?.trim() && et !== "STARTED") return lineLabelFr.trim();
   if (et === "CREATED") {
     if (ot === "LAB") return "Prescription laboratoire";
     if (ot === "IMAGING") return "Prescription imagerie";
@@ -151,7 +164,7 @@ export class UnifiedEncounterTimelineService {
         orderId: e.orderId,
         orderItemId:
           typeof meta?.orderItemId === "string" ? meta.orderItemId : null,
-        titleFr: orderEventTitleFr(e.eventType, e.orderType, lineLabelFr),
+        titleFr: orderEventTitleFr(e.eventType, e.orderType, lineLabelFr, meta),
         payloadJson: e.metadata,
         dedupeKey:
           typeof meta?.dedupeKey === "string" ? meta.dedupeKey : undefined,

@@ -82,13 +82,14 @@ describe("ObservationOrderTemplateService", () => {
 
     expect(out.order).toBeTruthy();
     expect(out.summary?.createdCount).toBe(2);
-    expect(orders.create).toHaveBeenCalledTimes(1);
+    expect(orders.create).toHaveBeenCalledTimes(2);
     expect((prisma as { order: { findMany: AnyMock } }).order.findMany).toHaveBeenCalled();
     const createArgs = (orders.create as AnyMock).mock.calls[0]!;
     expect(createArgs[0]).toBe("enc-1");
     expect(createArgs[1]).toBe("fac-1");
     expect(createArgs[2].type).toBe("CARE");
-    expect(createArgs[2].items.length).toBe(2);
+    expect(createArgs[2].items.length).toBe(1);
+    expect(createArgs[2].observationTemplateItemId).toBe("mon_vitals_q2h");
     expect(createArgs[2].items[0]?.manualLabel).toMatch(/Signes vitaux|Vital signs/i);
     expect(createArgs[3]).toBe("user-1");
 
@@ -153,6 +154,7 @@ describe("ObservationOrderTemplateService", () => {
     expect(orders.create).toHaveBeenCalledTimes(1);
     const createArgs = (orders.create as AnyMock).mock.calls[0]!;
     expect(createArgs[2].items).toHaveLength(1);
+    expect(createArgs[2].observationTemplateItemId).toBe("com_diet_ad_lib");
     expect(createArgs[2].items[0]?.manualLabel).toMatch(/Régime alimentaire|Diet as tolerated/i);
 
     const ordersCreated = (audit.log as AnyMock).mock.calls.find((c) => c[0] === AuditAction.ORDERS_CREATED);

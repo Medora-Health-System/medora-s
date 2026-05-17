@@ -251,6 +251,8 @@ export function buildObservationTemplateCareOrderDto(input: {
   prescriberContact?: string | null;
   /** Defaults to French (legacy); English UI sends `en` so stored CARE lines match chart language. */
   labelLocale?: ObservationOrderTemplateLabelLocale;
+  /** When applying one order per template line, links rows from the same apply action. */
+  observationTemplateGroupId?: string | null;
 }): OrderCreateDto {
   const unique = orderObservationTemplateSelection(input.selectedItemIds);
   if (unique.length === 0) {
@@ -273,6 +275,12 @@ export function buildObservationTemplateCareOrderDto(input: {
     prescriberLicense: input.prescriberLicense?.trim() || undefined,
     prescriberContact: input.prescriberContact?.trim() || undefined,
     protocolName: OBSERVATION_ORDER_TEMPLATE_ID,
+    ...(unique.length === 1
+      ? { observationTemplateItemId: unique[0] }
+      : {}),
+    ...(input.observationTemplateGroupId?.trim()
+      ? { observationTemplateGroupId: input.observationTemplateGroupId.trim() }
+      : {}),
     items,
   };
 }

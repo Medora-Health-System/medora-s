@@ -46,6 +46,17 @@ describe("observationOrderTemplate", () => {
     );
   });
 
+  it("buildObservationTemplateCareOrderDto stamps templateItemId for single-line orders", () => {
+    const dto = buildObservationTemplateCareOrderDto({
+      selectedItemIds: ["mon_vitals_q2h"],
+      prescriberName: "Dr. Test",
+      observationTemplateGroupId: "grp-1",
+    });
+    expect(dto.items).toHaveLength(1);
+    expect(dto.observationTemplateItemId).toBe("mon_vitals_q2h");
+    expect(dto.observationTemplateGroupId).toBe("grp-1");
+  });
+
   it("buildObservationTemplateCareOrderDto uses English manual labels when labelLocale is en", () => {
     const dto = buildObservationTemplateCareOrderDto({
       selectedItemIds: ["mon_vitals_q2h", "nurse_pain_q2h"],
