@@ -26,7 +26,8 @@ export type ProviderDocumentationExamSectionId =
   | "abdomen"
   | "neuroPsych"
   | "musculoskeletal"
-  | "skin";
+  | "skin"
+  | "reassessment";
 
 export type ProviderDocumentationRiskLevel = "" | "Low" | "Moderate" | "High";
 
@@ -107,6 +108,7 @@ export const PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS: ProviderDocumentationExamS
   "neuroPsych",
   "musculoskeletal",
   "skin",
+  "reassessment",
 ];
 
 export const PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT = `Review of Systems:
@@ -137,6 +139,7 @@ export const PROVIDER_DOCUMENTATION_EXAM_FIELD_TO_LEGACY_KEY: Record<
   neuroPsych: "examNeuroMental",
   musculoskeletal: "examMusculoskeletal",
   skin: "examSkin",
+  reassessment: "examReassessmentExtra",
 };
 
 export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefinition[] = [
@@ -607,6 +610,7 @@ export function emptyProviderDocumentationWorkspaceState(): ProviderDocumentatio
       neuroPsych: "",
       musculoskeletal: "",
       skin: "",
+      reassessment: "",
     },
     mdmWorkingAssessment: "",
     mdmDifferentialSynthesis: "",
@@ -1051,7 +1055,7 @@ export function buildProviderDocumentationSavePayload(input: {
     examMusculoskeletal: s.physicalExam.musculoskeletal.trim(),
     examSkin: s.physicalExam.skin.trim(),
     examPsychBehavior: "",
-    examReassessmentExtra: "",
+    examReassessmentExtra: s.physicalExam.reassessment.trim(),
     mdmWorkingAssessment: s.mdmWorkingAssessment.trim(),
     mdmPlanSummary: s.mdmPlanSummary.trim(),
     mdmImmediateActionsRationale: s.mdmImmediateActionsRationale.trim(),

@@ -37,6 +37,7 @@ import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
   emptyProviderDocumentationWorkspaceState,
+  hydrateProviderDocumentationWorkspaceState,
   readProviderDocumentationWorkspaceMetadata,
   type ProviderDocumentationTemplateId,
   type ProviderDocumentationWorkspaceState,
@@ -362,6 +363,17 @@ export function EmergencyProviderMsePanel({
   const [providerActiveTemplateId, setProviderActiveTemplateId] = useState<ProviderDocumentationTemplateId | null>(
     () => readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)?.activeTemplateId ?? null
   );
+  const [providerDraftExtras, setProviderDraftExtras] = useState(() => {
+    const hydrated = hydrateProviderDocumentationWorkspaceState({ encounter });
+    return {
+      mdmDataReviewed: hydrated.mdmDataReviewed,
+      mdmRiskLevel: hydrated.mdmRiskLevel,
+      mdmClinicalRationale: hydrated.mdmClinicalRationale,
+      clinicalImpression: hydrated.clinicalImpression,
+      treatmentPlan: hydrated.treatmentPlan,
+      followUpDisposition: hydrated.followUpDisposition,
+    };
+  });
   const [saving, setSaving] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<{ variant: "success" | "error"; message: string } | null>(null);
   const [handoffToId, setHandoffToId] = useState<string | null>(null);
@@ -378,7 +390,16 @@ export function EmergencyProviderMsePanel({
   useEffect(() => {
     setForm(erProviderMseFormFromEncounter(encounter.nursingAssessment));
     setProviderActiveTemplateId(readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)?.activeTemplateId ?? null);
-  }, [encounter.nursingAssessment, encounter.updatedAt]);
+    const hydrated = hydrateProviderDocumentationWorkspaceState({ encounter });
+    setProviderDraftExtras({
+      mdmDataReviewed: hydrated.mdmDataReviewed,
+      mdmRiskLevel: hydrated.mdmRiskLevel,
+      mdmClinicalRationale: hydrated.mdmClinicalRationale,
+      clinicalImpression: hydrated.clinicalImpression,
+      treatmentPlan: hydrated.treatmentPlan,
+      followUpDisposition: hydrated.followUpDisposition,
+    });
+  }, [encounter, encounter.nursingAssessment, encounter.updatedAt]);
 
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
@@ -448,18 +469,33 @@ export function EmergencyProviderMsePanel({
     next.physicalExam.neuroPsych = [form.examNeuroMental, form.examPsychBehavior].filter(Boolean).join("\n");
     next.physicalExam.musculoskeletal = form.examMusculoskeletal;
     next.physicalExam.skin = form.examSkin;
+    next.physicalExam.reassessment = form.examReassessmentExtra;
     next.mdmWorkingAssessment = form.mdmWorkingAssessment;
     next.mdmDifferentialSynthesis = form.differentialAssessmentText;
+    next.mdmDataReviewed = providerDraftExtras.mdmDataReviewed;
+    next.mdmRiskLevel = providerDraftExtras.mdmRiskLevel;
+    next.mdmClinicalRationale = providerDraftExtras.mdmClinicalRationale;
     next.mdmPlanSummary = form.mdmPlanSummary;
     next.mdmImmediateActionsRationale = form.mdmImmediateActionsRationale;
     next.mdmConsultsDiscussed = form.mdmConsultsDiscussed;
     next.mdmAdmitObserveDischarge = form.mdmAdmitObserveDischarge;
+    next.clinicalImpression = providerDraftExtras.clinicalImpression;
+    next.treatmentPlan = providerDraftExtras.treatmentPlan;
+    next.followUpDisposition = providerDraftExtras.followUpDisposition;
     next.providerAddendum = form.mdmProviderAddendum;
     return next;
-  }, [form, providerActiveTemplateId]);
+  }, [form, providerActiveTemplateId, providerDraftExtras]);
 
   const setProviderWorkspaceValue = useCallback((next: ProviderDocumentationWorkspaceState) => {
     setProviderActiveTemplateId(next.activeTemplateId);
+    setProviderDraftExtras({
+      mdmDataReviewed: next.mdmDataReviewed,
+      mdmRiskLevel: next.mdmRiskLevel,
+      mdmClinicalRationale: next.mdmClinicalRationale,
+      clinicalImpression: next.clinicalImpression,
+      treatmentPlan: next.treatmentPlan,
+      followUpDisposition: next.followUpDisposition,
+    });
     setForm((f) => ({
       ...f,
       chiefConcern: next.chiefComplaint,
@@ -477,6 +513,7 @@ export function EmergencyProviderMsePanel({
       examNeuroMental: next.physicalExam.neuroPsych,
       examMusculoskeletal: next.physicalExam.musculoskeletal,
       examSkin: next.physicalExam.skin,
+      examReassessmentExtra: next.physicalExam.reassessment,
       mdmWorkingAssessment: next.mdmWorkingAssessment,
       mdmPlanSummary: next.mdmPlanSummary,
       mdmImmediateActionsRationale: next.mdmImmediateActionsRationale,

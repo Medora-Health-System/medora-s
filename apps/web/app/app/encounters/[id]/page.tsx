@@ -153,6 +153,7 @@ import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
   emptyProviderDocumentationWorkspaceState,
+  hydrateProviderDocumentationWorkspaceState,
   readProviderDocumentationWorkspaceMetadata,
   type ProviderDocumentationTemplateId,
   type ProviderDocumentationWorkspaceState,
@@ -3755,6 +3756,9 @@ function ClinicVisitTab({
   const [providerActiveTemplateId, setProviderActiveTemplateId] = useState<ProviderDocumentationTemplateId | null>(
     () => readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)?.activeTemplateId ?? null
   );
+  const [providerWorkspaceDraft, setProviderWorkspaceDraft] = useState<ProviderDocumentationWorkspaceState>(() =>
+    hydrateProviderDocumentationWorkspaceState({ encounter })
+  );
   const [saving, setSaving] = useState(false);
   const [signingDoc, setSigningDoc] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -3768,21 +3772,10 @@ function ClinicVisitTab({
   const fieldsLocked = readOnly || docSigned;
   const showLegacyProviderDocumentation = false;
 
-  const providerWorkspaceValue = useMemo<ProviderDocumentationWorkspaceState>(() => {
-    const next = emptyProviderDocumentationWorkspaceState();
-    next.activeTemplateId = providerActiveTemplateId;
-    next.reasonForVisit = visitReason;
-    next.chiefComplaint = visitReason;
-    next.hpi = hpi;
-    next.rosFocusedImpression = ros;
-    next.physicalExam.general = physicalExam;
-    next.mdmDifferentialSynthesis = mdm;
-    next.clinicalImpression = impression;
-    next.treatmentPlan = plan;
-    return next;
-  }, [visitReason, hpi, ros, physicalExam, mdm, impression, plan, providerActiveTemplateId]);
+  const providerWorkspaceValue = providerWorkspaceDraft;
 
   const setProviderWorkspaceValue = useCallback((next: ProviderDocumentationWorkspaceState) => {
+    setProviderWorkspaceDraft(next);
     setProviderActiveTemplateId(next.activeTemplateId);
     setVisitReason(next.reasonForVisit || next.chiefComplaint);
     setHpi(next.hpi);
@@ -3831,6 +3824,7 @@ function ClinicVisitTab({
     setFollowUp(encounter.followUpDate ? new Date(encounter.followUpDate).toISOString().slice(0, 10) : "");
     const pe = parsePhysicianEvalV1FromEncounter(encounter);
     setProviderActiveTemplateId(readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)?.activeTemplateId ?? null);
+    setProviderWorkspaceDraft(hydrateProviderDocumentationWorkspaceState({ encounter }));
     setHpi(pe.hpi);
     setRos(pe.ros);
     setPhysicalExam(pe.physicalExam);

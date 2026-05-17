@@ -194,6 +194,7 @@ const EXAM_CHIPS: ExamChipGroup[] = [
   { sectionId: "neuroPsych", titleKey: "providerDocumentationWorkspace.examNeuroPsych", chips: ["neuroAlertOriented", "neuroFollowsCommands", "neuroSpeechClear", "neuroFocalDeficitNoted", "psychAppropriateAffect", "psychAnxious"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
   { sectionId: "musculoskeletal", titleKey: "providerDocumentationWorkspace.examMusculoskeletal", chips: ["mskRomNormal", "mskTendernessPresent", "mskSwellingPresent", "mskDeformityNoted"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
   { sectionId: "skin", titleKey: "providerDocumentationWorkspace.examSkin", chips: ["skinWarmDry", "skinRashPresent", "skinLacerationPresent", "skinDiaphoresis"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
+  { sectionId: "reassessment", titleKey: "providerDocumentationWorkspace.examReassessment", chips: ["planReassess"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
 ];
 
 const examTitleKeyBySection: Record<ProviderDocumentationExamSectionId, string> = {
@@ -205,6 +206,7 @@ const examTitleKeyBySection: Record<ProviderDocumentationExamSectionId, string> 
   neuroPsych: "providerDocumentationWorkspace.examNeuroPsych",
   musculoskeletal: "providerDocumentationWorkspace.examMusculoskeletal",
   skin: "providerDocumentationWorkspace.examSkin",
+  reassessment: "providerDocumentationWorkspace.examReassessment",
 };
 
 const previewTitleKeyBySection: Record<PreviewSectionId, string> = {
@@ -714,6 +716,30 @@ export function ProviderDocumentationWorkspace({
             <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.chipsSafetyComment")}
             </p>
+          </div>
+          <div style={sectionShell} data-testid="provider-documentation-live-preview">
+            <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#0f172a" }}>
+              {t("providerDocumentationWorkspace.liveDocumentationPreview")}
+            </h3>
+            <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+              {t("providerDocumentationWorkspace.previewOnlyNotLegal")}
+            </p>
+            {previewSections.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+                {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
+              </p>
+            ) : (
+              previewSections.map((section) => (
+                <div key={section.id} style={{ marginBottom: 10 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
+                    {t(section.titleKey)}
+                  </p>
+                  <div style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+                    {section.lines.join("\n")}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
           <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
           <ContextCard title={t("providerDocumentationWorkspace.keyInformation")} lines={keyInformation} empty={t("common.dash")} />

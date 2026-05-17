@@ -84,6 +84,57 @@ describe("providerDocumentationModel", () => {
     expect(preview.flatMap((section) => section.lines).join("\n")).toContain("Review of Systems:");
   });
 
+  it("preserves free-text MDM, impression, and plan fields in preview", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Free text HPI";
+    state.rosFocusedImpression = "Free text ROS";
+    state.physicalExam.general = "Free text exam";
+    state.physicalExam.reassessment = "Free text reassessment";
+    state.mdmWorkingAssessment = "Free text working assessment";
+    state.mdmClinicalRationale = "Free text clinical rationale";
+    state.clinicalImpression = "Free text clinical impression";
+    state.treatmentPlan = "Free text treatment plan";
+    const previewText = buildProviderDocumentationPreviewSections(state)
+      .flatMap((section) => section.lines)
+      .join("\n");
+    expect(previewText).toContain("Free text working assessment");
+    expect(previewText).toContain("Free text clinical rationale");
+    expect(previewText).toContain("Free text clinical impression");
+    expect(previewText).toContain("Free text treatment plan");
+    expect(previewText).toContain("Free text reassessment");
+  });
+
+  it("chip/template insertion does not erase manual free text afterward", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.mdmWorkingAssessment = "Manual working assessment";
+    state.clinicalImpression = "Manual impression";
+    state.treatmentPlan = "Manual treatment plan";
+    const next = applyProviderDocumentationTemplate({
+      state,
+      templateId: "chest_pain",
+      resolveFragment: (key) => key,
+    });
+    next.mdmWorkingAssessment = appendDocumentationFragment(next.mdmWorkingAssessment, "Manual addition after chip");
+    expect(next.mdmWorkingAssessment).toContain("Manual working assessment");
+    expect(next.mdmWorkingAssessment).toContain("Manual addition after chip");
+    expect(next.clinicalImpression).toBe("Manual impression");
+    expect(next.treatmentPlan).toBe("Manual treatment plan");
+  });
+
+  it("live preview data is empty until fields are entered and has no side effects", () => {
+    const empty = emptyProviderDocumentationWorkspaceState();
+    expect(buildProviderDocumentationPreviewSections(empty)).toEqual([]);
+    empty.hpi = "Unsaved HPI";
+    empty.rosFocusedImpression = "Unsaved ROS";
+    empty.physicalExam.general = "Unsaved PE";
+    empty.mdmWorkingAssessment = "Unsaved MDM";
+    empty.clinicalImpression = "Unsaved impression";
+    empty.treatmentPlan = "Unsaved plan";
+    const preview = buildProviderDocumentationPreviewSections(empty);
+    expect(preview.map((section) => section.id)).toEqual(["hpi", "ros", "physicalExam", "mdm", "impression", "plan"]);
+    expect(JSON.stringify(preview)).not.toMatch(/billing|diagnosisId|orderId|chargeCapture/i);
+  });
+
   it("save payload includes required safe metadata and no billing conclusions", () => {
     const state = emptyProviderDocumentationWorkspaceState();
     state.chiefComplaint = "Vomiting";

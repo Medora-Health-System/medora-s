@@ -448,6 +448,7 @@ function providerDocumentationWorkspaceNote(raw: unknown): ChartExportManifest["
         str("examNeuroMental"),
         str("examMusculoskeletal"),
         str("examSkin"),
+        str("examReassessmentExtra"),
       ]),
     },
     {
