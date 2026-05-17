@@ -10,6 +10,9 @@ import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { worklistItemIsTerminal, worklistItemNeedsAcknowledge } from "@/lib/worklistLabRadUi";
+import { pairPassesLabRadReconciliationFilters } from "@/lib/worklistLabRadReconciliation";
+import { analyzeLabRadWorklistItem } from "@/features/orders/labRadiologyOperationalReconciliationUi";
+import { LabRadiologyReconciliationBadges } from "@/components/worklists/LabRadiologyReconciliationBadges";
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 import {
   getEncounterPatientLabelFromCache,
@@ -180,6 +183,9 @@ export default function RadWorklistPage() {
   /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterNeedsReconciliation, setFilterNeedsReconciliation] = useState(false);
+  const [filterAdjustedTime, setFilterAdjustedTime] = useState(false);
+  const [filterDelayedWorkflow, setFilterDelayedWorkflow] = useState(false);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -247,14 +253,51 @@ export default function RadWorklistPage() {
     });
   }, [pendingLocal, searchQuery, t]);
 
+  const reconciliationByItemId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof analyzeLabRadWorklistItem>>();
+    for (const { order, item } of filteredQueuePairs) {
+      map.set(
+        item.id,
+        analyzeLabRadWorklistItem({
+          domain: "RADIOLOGY",
+          order: { id: order.id, createdAt: order.createdAt, type: order.type },
+          item,
+          siblingItems: Array.isArray(order.items) ? order.items : [],
+        })
+      );
+    }
+    return map;
+  }, [filteredQueuePairs]);
+
+  const reconciliationFilteredPairs = useMemo(() => {
+    if (!filterNeedsReconciliation && !filterAdjustedTime && !filterDelayedWorkflow) {
+      return filteredQueuePairs;
+    }
+    return filteredQueuePairs.filter(({ item }) => {
+      const analysis = reconciliationByItemId.get(item.id);
+      if (!analysis) return false;
+      return pairPassesLabRadReconciliationFilters(analysis, {
+        needsReconciliation: filterNeedsReconciliation,
+        adjustedTime: filterAdjustedTime,
+        delayedWorkflow: filterDelayedWorkflow,
+      });
+    });
+  }, [
+    filteredQueuePairs,
+    reconciliationByItemId,
+    filterNeedsReconciliation,
+    filterAdjustedTime,
+    filterDelayedWorkflow,
+  ]);
+
   const activeQueuePairs = useMemo(
-    () => filteredQueuePairs.filter(({ item }) => isActiveWorklistStatus(item.status)),
-    [filteredQueuePairs]
+    () => reconciliationFilteredPairs.filter(({ item }) => isActiveWorklistStatus(item.status)),
+    [reconciliationFilteredPairs]
   );
 
   const completedQueuePairs = useMemo(
-    () => filteredQueuePairs.filter(({ item }) => isCompletedWorklistStatus(item.status)),
-    [filteredQueuePairs]
+    () => reconciliationFilteredPairs.filter(({ item }) => isCompletedWorklistStatus(item.status)),
+    [reconciliationFilteredPairs]
   );
 
   const handleAcknowledge = async (itemId: string) => {
@@ -367,6 +410,7 @@ export default function RadWorklistPage() {
         const pc = String(order.priority ?? "ROUTINE");
         const pSoft = getPriorityBadgeSoft(pc);
         const borderLeft = getPriorityBorder(pc);
+        const reconciliation = reconciliationByItemId.get(item.id);
         return (
           <li key={item.id}>
             <MedoraCard
@@ -409,6 +453,9 @@ export default function RadWorklistPage() {
                       {line}
                     </p>
                   ))}
+                  {reconciliation?.badges.length ? (
+                    <LabRadiologyReconciliationBadges badges={reconciliation.badges} t={t} compact />
+                  ) : null}
                 </MedoraCardIdentity>
 
                 <MedoraCardActions railBorderTopColor="#f1f5f9">
@@ -458,7 +505,7 @@ export default function RadWorklistPage() {
         </header>
 
         {!loading && (queue.length > 0 || pendingLocal.length > 0) ? (
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
             <input
               type="search"
               value={searchQuery}
@@ -468,6 +515,32 @@ export default function RadWorklistPage() {
               aria-label={t("worklistDepartments.shared.searchAria")}
               style={searchInputStyle}
             />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12 }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={filterNeedsReconciliation}
+                  onChange={(e) => setFilterNeedsReconciliation(e.target.checked)}
+                />
+                {t("labRadReconciliation.filterNeedsReconciliation")}
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={filterAdjustedTime}
+                  onChange={(e) => setFilterAdjustedTime(e.target.checked)}
+                />
+                {t("labRadReconciliation.filterAdjustedTime")}
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={filterDelayedWorkflow}
+                  onChange={(e) => setFilterDelayedWorkflow(e.target.checked)}
+                />
+                {t("labRadReconciliation.filterDelayedWorkflow")}
+              </label>
+            </div>
           </div>
         ) : null}
 

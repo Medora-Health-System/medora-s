@@ -34,6 +34,11 @@ export type ClinicalResultViewerInput = {
   title: string;
   itemStatus?: string | null;
   verifiedAt?: string | null;
+  /** Documented result time (system); defaults to verifiedAt when dual display off. */
+  resultDocumentedAt?: string | null;
+  /** Clinical/effective result time when adjusted (lab resulted / imaging finalized). */
+  resultClinicalAt?: string | null;
+  resultEffectiveVersion?: number;
   criticalValue?: boolean | null;
   resultText?: string | null;
   attachments?: ResultAttachmentRow[] | null;
@@ -52,6 +57,10 @@ export function clinicalResultFromOrderItemLike(item: {
   result?: {
     resultText?: string | null;
     verifiedAt?: string | null;
+    effectiveResultedAt?: string | null;
+    effectiveResultedAtVersion?: number;
+    effectiveFinalizedAt?: string | null;
+    effectiveFinalizedAtVersion?: number;
     criticalValue?: boolean | null;
     resultData?: unknown;
     enteredByDisplayFr?: string | null;
@@ -65,10 +74,26 @@ export function clinicalResultFromOrderItemLike(item: {
     item.emptyTitleFallback?.trim() ||
     "—";
   const r = item.result;
+  const documentedAt = r?.verifiedAt ?? null;
+  const isLab = item.catalogItemType === "LAB_TEST";
+  const isRad = item.catalogItemType === "IMAGING_STUDY";
+  const clinicalAt = isLab
+    ? r?.effectiveResultedAt ?? documentedAt
+    : isRad
+      ? r?.effectiveFinalizedAt ?? documentedAt
+      : documentedAt;
+  const effectiveVersion = isLab
+    ? r?.effectiveResultedAtVersion ?? 0
+    : isRad
+      ? r?.effectiveFinalizedAtVersion ?? 0
+      : 0;
   return {
     title,
     itemStatus: item.status ?? null,
-    verifiedAt: r?.verifiedAt ?? null,
+    verifiedAt: documentedAt,
+    resultDocumentedAt: documentedAt,
+    resultClinicalAt: clinicalAt,
+    resultEffectiveVersion: effectiveVersion,
     criticalValue: r?.criticalValue ?? null,
     resultText: r?.resultText ?? null,
     attachments: attachmentsFromResultDataAll(r?.resultData ?? null),
@@ -91,6 +116,10 @@ export function clinicalResultFromChartOrderItem(
     result: {
       resultText: string | null;
       verifiedAt: string | null;
+      effectiveResultedAt?: string | null;
+      effectiveResultedAtVersion?: number;
+      effectiveFinalizedAt?: string | null;
+      effectiveFinalizedAtVersion?: number;
       criticalValue: boolean;
       enteredByDisplayFr?: string | null;
       attachments?: ResultAttachmentRow[] | null;
@@ -101,10 +130,26 @@ export function clinicalResultFromChartOrderItem(
 ): ClinicalResultViewerInput {
   const title = chartSummaryOrderItemLineLabel(item as ChartSummaryOrderItem, language, t);
   const r = item.result;
+  const documentedAt = r?.verifiedAt ?? null;
+  const isLab = item.catalogItemType === "LAB_TEST";
+  const isRad = item.catalogItemType === "IMAGING_STUDY";
+  const clinicalAt = isLab
+    ? r?.effectiveResultedAt ?? documentedAt
+    : isRad
+      ? r?.effectiveFinalizedAt ?? documentedAt
+      : documentedAt;
+  const effectiveVersion = isLab
+    ? r?.effectiveResultedAtVersion ?? 0
+    : isRad
+      ? r?.effectiveFinalizedAtVersion ?? 0
+      : 0;
   return {
     title,
     itemStatus: item.status,
-    verifiedAt: r?.verifiedAt ?? null,
+    verifiedAt: documentedAt,
+    resultDocumentedAt: documentedAt,
+    resultClinicalAt: clinicalAt,
+    resultEffectiveVersion: effectiveVersion,
     criticalValue: r?.criticalValue ?? null,
     resultText: r?.resultText ?? null,
     attachments: r?.attachments?.length ? r.attachments : [],

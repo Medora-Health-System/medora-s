@@ -227,6 +227,9 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
               title={v.title}
               itemStatus={v.itemStatus}
               verifiedAt={v.verifiedAt}
+              resultDocumentedAt={v.resultDocumentedAt}
+              resultClinicalAt={v.resultClinicalAt}
+              resultEffectiveVersion={v.resultEffectiveVersion}
               criticalValue={v.criticalValue}
               resultText={v.resultText}
               attachments={v.attachments}
@@ -303,6 +306,9 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
                     title={v.title}
                     itemStatus={v.itemStatus}
                     verifiedAt={v.verifiedAt}
+                    resultDocumentedAt={v.resultDocumentedAt}
+                    resultClinicalAt={v.resultClinicalAt}
+                    resultEffectiveVersion={v.resultEffectiveVersion}
                     criticalValue={v.criticalValue}
                     resultText={v.resultText}
                     attachments={v.attachments}

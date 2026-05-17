@@ -8352,6 +8352,44 @@ export default {
     adjustPerformedTitle: "Adjust performed time",
     adjustFinalizedTitle: "Adjust finalized time",
   },
+  labRadReconciliation: {
+    filterNeedsReconciliation: "Needs reconciliation",
+    filterAdjustedTime: "Adjusted clinical time",
+    filterDelayedWorkflow: "Delayed workflow",
+    bannerTitle: "Operational indicators",
+    bannerReadOnly: "Read-only warnings — no automatic changes.",
+    flagResultWithoutMilestone: "Result without milestone",
+    flagResultWithoutMilestoneTooltip:
+      "A result is recorded without an operational collection or performed timestamp.",
+    flagDelayedOrderToMilestone: "Delayed milestone",
+    flagDelayedOrderToMilestoneTooltip:
+      "Large gap between order and operational milestone (indicator only).",
+    flagDelayedMilestoneToResult: "Delayed result",
+    flagDelayedMilestoneToResultTooltip:
+      "Large gap between operational milestone and result (indicator only).",
+    flagAdjustedClinicalTime: "Adjusted clinical time",
+    flagAdjustedClinicalTimeTooltip: "Original documented timestamp preserved.",
+    flagDuplicateResulted: "Possible duplicate",
+    flagDuplicateResultedTooltip:
+      "Multiple results for the same test or study — manual review suggested.",
+    flagStalePending: "Stale pending",
+    flagStalePendingTooltip: "Order pending more than 24 h without an operational milestone.",
+    flagOrphanResult: "Orphan result",
+    flagOrphanResultTooltip: "Result present without a coherent workflow anchor — manual review.",
+    flagOvernightTiming: "Overnight span",
+    flagOvernightTimingTooltip:
+      "UTC calendar day differs — verify clinical vs documented times.",
+    lab: {
+      delayedCollection: "Delayed collection",
+      adjustedCollectionTime: "Adjusted collection time",
+      duplicateResulted: "Duplicate result",
+    },
+    rad: {
+      delayedPerformed: "Delayed performed",
+      adjustedPerformedTime: "Adjusted performed time",
+      duplicateResulted: "Duplicate resulted study",
+    },
+  },
   ordersets: {
     apply: {
       skipped: "Some items could not be applied: {items}. Add them manually if still needed.",

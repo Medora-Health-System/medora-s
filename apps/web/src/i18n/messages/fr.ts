@@ -8367,6 +8367,45 @@ export default {
     adjustPerformedTitle: "Ajuster l'heure de l'examen",
     adjustFinalizedTitle: "Ajuster l'heure du compte rendu",
   },
+  labRadReconciliation: {
+    filterNeedsReconciliation: "À réconcilier",
+    filterAdjustedTime: "Heure clinique ajustée",
+    filterDelayedWorkflow: "Flux retardé",
+    bannerTitle: "Indicateurs opérationnels",
+    bannerReadOnly: "Avertissements en lecture seule — aucune modification automatique.",
+    flagResultWithoutMilestone: "Résultat sans étape",
+    flagResultWithoutMilestoneTooltip:
+      "Un résultat est enregistré sans horodatage opérationnel de collecte ou d'examen.",
+    flagDelayedOrderToMilestone: "Étape retardée",
+    flagDelayedOrderToMilestoneTooltip:
+      "Délai important entre la commande et l'étape opérationnelle (indicateur seulement).",
+    flagDelayedMilestoneToResult: "Résultat retardé",
+    flagDelayedMilestoneToResultTooltip:
+      "Délai important entre l'étape opérationnelle et le résultat (indicateur seulement).",
+    flagAdjustedClinicalTime: "Heure clinique ajustée",
+    flagAdjustedClinicalTimeTooltip: "Heure documentée d'origine conservée.",
+    flagDuplicateResulted: "Doublon possible",
+    flagDuplicateResultedTooltip:
+      "Plusieurs résultats pour la même analyse ou le même examen — vérification manuelle.",
+    flagStalePending: "En attente prolongée",
+    flagStalePendingTooltip: "Commande en attente depuis plus de 24 h sans étape opérationnelle.",
+    flagOrphanResult: "Résultat orphelin",
+    flagOrphanResultTooltip:
+      "Résultat présent sans ancrage de flux cohérent — vérification manuelle.",
+    flagOvernightTiming: "Passage de nuit",
+    flagOvernightTimingTooltip:
+      "Écart entre jours UTC — vérifier l'heure clinique et l'heure documentée.",
+    lab: {
+      delayedCollection: "Collecte retardée",
+      adjustedCollectionTime: "Heure de collecte ajustée",
+      duplicateResulted: "Doublon de résultat",
+    },
+    rad: {
+      delayedPerformed: "Examen retardé",
+      adjustedPerformedTime: "Heure d'examen ajustée",
+      duplicateResulted: "Doublon de compte rendu",
+    },
+  },
   ordersets: {
     apply: {
       skipped: "Certains éléments n'ont pas pu être appliqués : {items}. Ajoutez-les manuellement si nécessaire.",

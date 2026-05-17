@@ -13,6 +13,8 @@ import {
   type ResultAttachmentRow,
 } from "@/lib/clinicalResultNormalize";
 import { useI18n } from "@/lib/i18n";
+import { MedicationAdministrationAdjustedBadge } from "@/components/encounters/MedicationAdministrationClockButton";
+import { resolveLabRadMilestoneDisplay } from "@/features/orders/labRadiologyEffectiveTimeDisplay";
 
 export type { ResultAttachmentRow };
 
@@ -132,6 +134,9 @@ type ClinicalResultViewerProps = {
   /** Statut ligne d’ordre (ORDER_ITEM) */
   itemStatus?: string | null;
   verifiedAt?: string | null;
+  resultDocumentedAt?: string | null;
+  resultClinicalAt?: string | null;
+  resultEffectiveVersion?: number;
   criticalValue?: boolean | null;
   resultText?: string | null;
   attachments?: ResultAttachmentRow[] | null;
@@ -468,10 +473,64 @@ function StructuredResultBody({
 /**
  * Bloc résultat labo / imagerie lisible (consultation + dossier patient).
  */
+function ResultTimestampBlock({
+  documentedAt,
+  clinicalAt,
+  effectiveVersion,
+  compact,
+}: {
+  documentedAt?: string | null;
+  clinicalAt?: string | null;
+  effectiveVersion?: number;
+  compact?: boolean;
+}) {
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const display = resolveLabRadMilestoneDisplay({
+    documentedAt: documentedAt ?? clinicalAt,
+    effectiveAt: clinicalAt,
+    version: effectiveVersion ?? 0,
+  });
+  if (!display.documentedIso) return null;
+  const formatWhen = (iso: string) => new Date(iso).toLocaleString(dateLocale);
+  return (
+    <div style={{ fontSize: 12, color: "#455a64", marginTop: compact ? 4 : 8, lineHeight: 1.5 }}>
+      {display.showDualLabels ? (
+        <>
+          <div>
+            <span style={{ fontWeight: 600 }}>{t("labRadTime.historyClinicalLabel")}:</span>{" "}
+            {formatWhen(display.clinicalIso!)}
+          </div>
+          <div>
+            <span style={{ fontWeight: 600 }}>{t("labRadTime.historyDocumentedLabel")}:</span>{" "}
+            {formatWhen(display.documentedIso)}
+          </div>
+        </>
+      ) : (
+        <div>
+          <span style={{ fontWeight: 600 }}>{t("labRadTime.historyDocumentedLabel")}:</span>{" "}
+          {formatWhen(display.clinicalIso!)}
+        </div>
+      )}
+      {display.showAdjustedBadge ? (
+        <span style={{ marginLeft: 6 }}>
+          <MedicationAdministrationAdjustedBadge
+            label={t("labRadTime.adjustedBadge")}
+            title={t("labRadTime.adjustedBadgeTooltip")}
+          />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function ClinicalResultViewer({
   title,
   itemStatus,
   verifiedAt,
+  resultDocumentedAt,
+  resultClinicalAt,
+  resultEffectiveVersion,
   criticalValue,
   resultText,
   attachments,
@@ -519,6 +578,15 @@ export function ClinicalResultViewer({
         <div style={{ fontSize: 12, color: "#616161", marginTop: 6 }}>
           {fillTemplate(t("clinicalResultViewer.enteredVerifiedOn"), { datetime: new Date(verifiedAt).toLocaleString(dateLocale) })}
         </div>
+      ) : null}
+      {(resultDocumentedAt || resultClinicalAt) &&
+      (catalogItemType === "LAB_TEST" || catalogItemType === "IMAGING_STUDY") ? (
+        <ResultTimestampBlock
+          documentedAt={resultDocumentedAt ?? verifiedAt}
+          clinicalAt={resultClinicalAt ?? verifiedAt}
+          effectiveVersion={resultEffectiveVersion}
+          compact={compact}
+        />
       ) : null}
       {criticalValue && catalogItemType !== "LAB_TEST" ? (
         <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#c62828" }}>{t("clinicalResultViewer.imagingCriticalBanner")}</div>

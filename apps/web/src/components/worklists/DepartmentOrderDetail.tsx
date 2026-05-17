@@ -27,6 +27,8 @@ import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import { LabRadiologyEffectiveTimeRow } from "@/components/worklists/LabRadiologyEffectiveTimeRow";
 import { LabRadiologyEffectiveTimeModal } from "@/components/worklists/LabRadiologyEffectiveTimeModal";
+import { LabRadiologyReconciliationBadges } from "@/components/worklists/LabRadiologyReconciliationBadges";
+import { analyzeLabRadWorklistItem } from "@/features/orders/labRadiologyOperationalReconciliationUi";
 import { isEncounterLocked } from "@/lib/encounterLock";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
@@ -630,6 +632,18 @@ function LineCard({
   const encounterLocked = isEncounterLocked(order?.encounter);
   const canAdjustClinicalTime = viewerIsDeptActor && !encounterLocked;
 
+  const reconciliation = useMemo(() => {
+    if (kind !== "lab" && kind !== "radiology") return null;
+    const domain = kind === "lab" ? ("LAB" as const) : ("RADIOLOGY" as const);
+    const siblings = Array.isArray(order?.items) ? order.items : [];
+    return analyzeLabRadWorklistItem({
+      domain,
+      order: { id: order.id, createdAt: order.createdAt, type: order.type },
+      item,
+      siblingItems: siblings,
+    });
+  }, [kind, order, item]);
+
   const saveTimeAdjust = useCallback(
     async (payload: { effectiveClinicalTime: string; reason?: string }) => {
       if (!timeAdjustTarget || !facilityId) return;
@@ -883,6 +897,26 @@ function LineCard({
 
       {parentOrderCancelled ? null : workflowButtons}
 
+      {reconciliation && reconciliation.badges.length > 0 ? (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            background: "#f8fafc",
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>
+            {t("labRadReconciliation.bannerTitle")}
+          </div>
+          <p style={{ margin: "0 0 6px 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+            {t("labRadReconciliation.bannerReadOnly")}
+          </p>
+          <LabRadiologyReconciliationBadges badges={reconciliation.badges} t={t} compact />
+        </div>
+      ) : null}
+
       {kind === "lab" && viewerIsDeptActor ? (
         <div style={{ marginTop: 10 }}>
           <LabRadiologyEffectiveTimeRow
@@ -1010,6 +1044,9 @@ function LineCard({
                 title={v.title}
                 itemStatus={v.itemStatus}
                 verifiedAt={v.verifiedAt}
+                resultDocumentedAt={v.resultDocumentedAt}
+                resultClinicalAt={v.resultClinicalAt}
+                resultEffectiveVersion={v.resultEffectiveVersion}
                 criticalValue={v.criticalValue}
                 resultText={v.resultText}
                 attachments={v.attachments}

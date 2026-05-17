@@ -49,6 +49,11 @@ type OrderItemWithOrder = OrderItem & {
   } | null;
 };
 
+/**
+ * Department worklist clinical-time adjustments only.
+ * All effective* fields are stored as UTC Date; billing/claims must use documented anchors
+ * (documentedCollectedAt, documentedPerformedAt, Result.verifiedAt) — never effective* fields.
+ */
 @Injectable()
 export class OrdersLabRadiologyEffectiveTimeService {
   constructor(

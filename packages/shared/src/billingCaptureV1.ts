@@ -471,6 +471,11 @@ export function buildDiagnosisCandidate(params: {
   };
 }
 
+/**
+ * Order-item charge capture uses documented completion time only.
+ * Lab/radiology `effectiveCollectedAt`, `effectivePerformedAt`, `effectiveResultedAt`, and
+ * `effectiveFinalizedAt` are operational-clinical overlays — never use them for serviceDate.
+ */
 export function buildOrderItemCandidate(params: {
   orderItemId: string;
   orderId: string;
