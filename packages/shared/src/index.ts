@@ -32,6 +32,7 @@ export * from "./orders/orderItemDisplayLabels.js";
 export * from "./orders/careProcedureEffectiveClinicalTime.js";
 export * from "./orders/labRadiologyEffectiveClinicalTime.js";
 export * from "./orders/labRadiologyOperationalReconciliation.js";
+export * from "./orders/labRadiologyOperationalEscalation.js";
 export * from "./encounter-allergy-safety.js";
 export * from "./vitalsUnitConversions.js";
 export * from "./documentedProcedureBillingBridge.js";

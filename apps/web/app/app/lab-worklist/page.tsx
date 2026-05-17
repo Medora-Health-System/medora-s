@@ -10,9 +10,19 @@ import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
 import { worklistItemIsTerminal, worklistItemNeedsAcknowledge } from "@/lib/worklistLabRadUi";
-import { pairPassesLabRadReconciliationFilters } from "@/lib/worklistLabRadReconciliation";
-import { analyzeLabRadWorklistItem } from "@/features/orders/labRadiologyOperationalReconciliationUi";
-import { LabRadiologyReconciliationBadges } from "@/components/worklists/LabRadiologyReconciliationBadges";
+import { summarizeLabRadWorklistOperational, type LabRadWorklistSortMode } from "@medora/shared";
+import {
+  analyzeLabRadWorklistOperationalRow,
+  type LabRadWorklistOperationalRow,
+} from "@/features/orders/labRadiologyOperationalEscalationUi";
+import { LabRadiologyOperationalBadges } from "@/components/worklists/LabRadiologyOperationalBadges";
+import { LabRadiologyWorklistSummaryStrip } from "@/components/worklists/LabRadiologyWorklistSummaryStrip";
+import { LabRadiologyWorklistOperationalToolbar } from "@/components/worklists/LabRadiologyWorklistOperationalToolbar";
+import {
+  pairPassesLabRadOperationalFilters,
+  sortLabRadWorklistPairs,
+  type LabRadWorklistOperationalFilters,
+} from "@/lib/worklistLabRadOperational";
 import { orderIsCancelled, WORKLIST_ORDER_CANCELLED_BADGE_STYLE } from "@/lib/worklistOrderCancelledUi";
 import {
   getEncounterPatientLabelFromCache,
@@ -183,9 +193,18 @@ export default function LabWorklistPage() {
   /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterNeedsReconciliation, setFilterNeedsReconciliation] = useState(false);
-  const [filterAdjustedTime, setFilterAdjustedTime] = useState(false);
-  const [filterDelayedWorkflow, setFilterDelayedWorkflow] = useState(false);
+  const [sortMode, setSortMode] = useState<LabRadWorklistSortMode>("MOST_URGENT");
+  const [operationalFilters, setOperationalFilters] = useState<LabRadWorklistOperationalFilters>({
+    needsReconciliation: false,
+    adjustedTime: false,
+    delayedWorkflow: false,
+    needsEscalation: false,
+    criticalDelay: false,
+    awaitingResultOrFinalization: false,
+    awaitingAcknowledgement: false,
+    shiftHandoffReview: false,
+    adjustedReconciled: false,
+  });
 
   /**
    * Workflow d’équipe LAB : accusé / démarrage / clôture sont réservés aux techniciens labo.
@@ -260,14 +279,19 @@ export default function LabWorklistPage() {
     });
   }, [pendingLocal, searchQuery, t]);
 
-  const reconciliationByItemId = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof analyzeLabRadWorklistItem>>();
+  const operationalByItemId = useMemo(() => {
+    const map = new Map<string, LabRadWorklistOperationalRow>();
     for (const { order, item } of filteredQueuePairs) {
       map.set(
         item.id,
-        analyzeLabRadWorklistItem({
+        analyzeLabRadWorklistOperationalRow({
           domain: "LAB",
-          order: { id: order.id, createdAt: order.createdAt, type: order.type },
+          order: {
+            id: order.id,
+            createdAt: order.createdAt,
+            type: order.type,
+            priority: order.priority,
+          },
           item,
           siblingItems: Array.isArray(order.items) ? order.items : [],
         })
@@ -276,35 +300,40 @@ export default function LabWorklistPage() {
     return map;
   }, [filteredQueuePairs]);
 
-  const reconciliationFilteredPairs = useMemo(() => {
-    if (!filterNeedsReconciliation && !filterAdjustedTime && !filterDelayedWorkflow) {
-      return filteredQueuePairs;
-    }
-    return filteredQueuePairs.filter(({ item }) => {
-      const analysis = reconciliationByItemId.get(item.id);
-      if (!analysis) return false;
-      return pairPassesLabRadReconciliationFilters(analysis, {
-        needsReconciliation: filterNeedsReconciliation,
-        adjustedTime: filterAdjustedTime,
-        delayedWorkflow: filterDelayedWorkflow,
-      });
-    });
-  }, [
-    filteredQueuePairs,
-    reconciliationByItemId,
-    filterNeedsReconciliation,
-    filterAdjustedTime,
-    filterDelayedWorkflow,
-  ]);
+  const operationalFilteredPairs = useMemo(() => {
+    const withRow = filteredQueuePairs
+      .map((pair) => ({
+        ...pair,
+        row: operationalByItemId.get(pair.item.id)!,
+      }))
+      .filter((p) => p.row);
+    const filtered = withRow.filter((p) => pairPassesLabRadOperationalFilters(p.row, operationalFilters));
+    return sortLabRadWorklistPairs(filtered, sortMode);
+  }, [filteredQueuePairs, operationalByItemId, operationalFilters, sortMode]);
+
+  const operationalSummary = useMemo(
+    () =>
+      summarizeLabRadWorklistOperational(
+        filteredQueuePairs.map(({ item }) => {
+          const row = operationalByItemId.get(item.id);
+          return {
+            escalation: row!.escalation,
+            reconciliationFlags: row!.reconciliation.flags,
+            isActive: isActiveWorklistStatus(item.status),
+          };
+        })
+      ),
+    [filteredQueuePairs, operationalByItemId]
+  );
 
   const activeQueuePairs = useMemo(
-    () => reconciliationFilteredPairs.filter(({ item }) => isActiveWorklistStatus(item.status)),
-    [reconciliationFilteredPairs]
+    () => operationalFilteredPairs.filter(({ item }) => isActiveWorklistStatus(item.status)),
+    [operationalFilteredPairs]
   );
 
   const completedQueuePairs = useMemo(
-    () => reconciliationFilteredPairs.filter(({ item }) => isCompletedWorklistStatus(item.status)),
-    [reconciliationFilteredPairs]
+    () => operationalFilteredPairs.filter(({ item }) => isCompletedWorklistStatus(item.status)),
+    [operationalFilteredPairs]
   );
 
   const handleAcknowledge = async (itemId: string) => {
@@ -419,7 +448,7 @@ export default function LabWorklistPage() {
         const pc = String(order.priority ?? "ROUTINE");
         const pSoft = getPriorityBadgeSoft(pc);
         const borderLeft = getPriorityBorder(pc);
-        const reconciliation = reconciliationByItemId.get(item.id);
+        const operational = operationalByItemId.get(item.id);
         return (
           <li key={item.id}>
             <MedoraCard
@@ -462,8 +491,13 @@ export default function LabWorklistPage() {
                       {line}
                     </p>
                   ))}
-                  {reconciliation?.badges.length ? (
-                    <LabRadiologyReconciliationBadges badges={reconciliation.badges} t={t} compact />
+                  {operational ? (
+                    <LabRadiologyOperationalBadges
+                      escalationBadges={operational.escalationBadges}
+                      reconciliationBadges={operational.reconciliation.badges}
+                      t={t}
+                      compact
+                    />
                   ) : null}
                 </MedoraCardIdentity>
 
@@ -514,7 +548,9 @@ export default function LabWorklistPage() {
         </header>
 
         {!loading && (queue.length > 0 || pendingLocal.length > 0) ? (
-          <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          <>
+            <LabRadiologyWorklistSummaryStrip summary={operationalSummary} t={t} />
+            <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
             <input
               type="search"
               value={searchQuery}
@@ -524,33 +560,15 @@ export default function LabWorklistPage() {
               aria-label={t("worklistDepartments.shared.searchAria")}
               style={searchInputStyle}
             />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12 }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={filterNeedsReconciliation}
-                  onChange={(e) => setFilterNeedsReconciliation(e.target.checked)}
-                />
-                {t("labRadReconciliation.filterNeedsReconciliation")}
-              </label>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={filterAdjustedTime}
-                  onChange={(e) => setFilterAdjustedTime(e.target.checked)}
-                />
-                {t("labRadReconciliation.filterAdjustedTime")}
-              </label>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={filterDelayedWorkflow}
-                  onChange={(e) => setFilterDelayedWorkflow(e.target.checked)}
-                />
-                {t("labRadReconciliation.filterDelayedWorkflow")}
-              </label>
+              <LabRadiologyWorklistOperationalToolbar
+                filters={operationalFilters}
+                onFiltersChange={setOperationalFilters}
+                sortMode={sortMode}
+                onSortModeChange={setSortMode}
+                t={t}
+              />
             </div>
-          </div>
+          </>
         ) : null}
 
         {queuedActionNotice ? (

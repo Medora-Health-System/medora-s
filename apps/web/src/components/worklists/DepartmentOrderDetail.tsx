@@ -27,8 +27,8 @@ import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import { LabRadiologyEffectiveTimeRow } from "@/components/worklists/LabRadiologyEffectiveTimeRow";
 import { LabRadiologyEffectiveTimeModal } from "@/components/worklists/LabRadiologyEffectiveTimeModal";
-import { LabRadiologyReconciliationBadges } from "@/components/worklists/LabRadiologyReconciliationBadges";
-import { analyzeLabRadWorklistItem } from "@/features/orders/labRadiologyOperationalReconciliationUi";
+import { LabRadiologyOperationalBadges } from "@/components/worklists/LabRadiologyOperationalBadges";
+import { analyzeLabRadWorklistOperationalRow } from "@/features/orders/labRadiologyOperationalEscalationUi";
 import { isEncounterLocked } from "@/lib/encounterLock";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
@@ -632,13 +632,18 @@ function LineCard({
   const encounterLocked = isEncounterLocked(order?.encounter);
   const canAdjustClinicalTime = viewerIsDeptActor && !encounterLocked;
 
-  const reconciliation = useMemo(() => {
+  const operational = useMemo(() => {
     if (kind !== "lab" && kind !== "radiology") return null;
     const domain = kind === "lab" ? ("LAB" as const) : ("RADIOLOGY" as const);
     const siblings = Array.isArray(order?.items) ? order.items : [];
-    return analyzeLabRadWorklistItem({
+    return analyzeLabRadWorklistOperationalRow({
       domain,
-      order: { id: order.id, createdAt: order.createdAt, type: order.type },
+      order: {
+        id: order.id,
+        createdAt: order.createdAt,
+        type: order.type,
+        priority: order.priority,
+      },
       item,
       siblingItems: siblings,
     });
@@ -897,7 +902,8 @@ function LineCard({
 
       {parentOrderCancelled ? null : workflowButtons}
 
-      {reconciliation && reconciliation.badges.length > 0 ? (
+      {operational &&
+      (operational.reconciliation.badges.length > 0 || operational.escalationBadges.length > 0) ? (
         <div
           style={{
             marginTop: 10,
@@ -908,12 +914,17 @@ function LineCard({
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>
-            {t("labRadReconciliation.bannerTitle")}
+            {t("labRadEscalation.detailEscalationTitle")}
           </div>
           <p style={{ margin: "0 0 6px 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-            {t("labRadReconciliation.bannerReadOnly")}
+            {t("labRadEscalation.detailEscalationReadOnly")}
           </p>
-          <LabRadiologyReconciliationBadges badges={reconciliation.badges} t={t} compact />
+          <LabRadiologyOperationalBadges
+            escalationBadges={operational.escalationBadges}
+            reconciliationBadges={operational.reconciliation.badges}
+            t={t}
+            compact
+          />
         </div>
       ) : null}
 
