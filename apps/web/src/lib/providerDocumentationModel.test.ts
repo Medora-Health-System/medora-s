@@ -14,8 +14,11 @@ import {
   providerDocumentationMissingSectionIds,
   buildProviderDocumentationPreviewSections,
   buildProviderDocumentationSavePayload,
+  buildProviderDocumentationSignReadiness,
   emptyProviderDocumentationWorkspaceState,
   hydrateProviderDocumentationWorkspaceState,
+  providerDocumentationCanSubmitSignature,
+  providerDocumentationSignedTimelineLabel,
   providerDocumentationTimelineLabel,
   providerDocumentationTitleKey,
   readProviderDocumentationWorkspaceMetadata,
@@ -264,6 +267,102 @@ describe("providerDocumentationModel", () => {
     expect(warnings).toContain("observationPendingResultsRecommended");
     expect(warnings).toContain("observationMissingReadinessOrRationale");
     expect(warnings).toContain("observationMissingTransferDischargeReasoning");
+  });
+
+  it("shows incomplete notes as not ready to sign with missing sections", () => {
+    const signReadiness = buildProviderDocumentationSignReadiness({
+      state: emptyProviderDocumentationWorkspaceState(),
+      encounterMode: "ED",
+      savedMetadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    expect(signReadiness.readyToSign).toBe(false);
+    expect(signReadiness.missingSections).toEqual([
+      "chiefComplaintHpi",
+      "ros",
+      "physicalExam",
+      "mdm",
+      "impression",
+      "plan",
+    ]);
+  });
+
+  it("shows complete saved notes as ready to sign", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.chiefComplaint = "Chest pain";
+    state.hpi = "Started today";
+    state.rosImportantPositives = "chest pain";
+    state.physicalExam.general = "alert";
+    state.mdmWorkingAssessment = "concern for cardiopulmonary process";
+    state.mdmPlanSummary = "reassessment planned";
+    state.mdmAdmitObserveDischarge = "discharge criteria reviewed";
+    state.clinicalImpression = "provider-authored impression";
+    state.treatmentPlan = "provider-authored plan";
+    const signReadiness = buildProviderDocumentationSignReadiness({
+      state,
+      encounterMode: "ED",
+      savedMetadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    expect(signReadiness.readyToSign).toBe(true);
+    expect(signReadiness.missingSections).toEqual([]);
+  });
+
+  it("requires attestation before signature submission and keeps warnings advisory", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Focused history";
+    const signReadiness = buildProviderDocumentationSignReadiness({
+      state,
+      encounterMode: "ED",
+      savedMetadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    expect(signReadiness.readyToSign).toBe(false);
+    expect(providerDocumentationCanSubmitSignature({ attestationAccepted: false, signReadiness })).toBe(false);
+    expect(providerDocumentationCanSubmitSignature({ attestationAccepted: true, signReadiness })).toBe(true);
+    expect(JSON.stringify(signReadiness)).not.toMatch(/diagnosisId|orderId|billing|chargeCapture|billingComplexity/i);
+  });
+
+  it("treats signed notes as locked and keeps addenda outside draft fields", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.chiefComplaint = "Chest pain";
+    state.hpi = "Started today";
+    state.rosImportantPositives = "chest pain";
+    state.physicalExam.general = "alert";
+    state.mdmWorkingAssessment = "concern for cardiopulmonary process";
+    state.clinicalImpression = "provider-authored impression";
+    state.treatmentPlan = "provider-authored plan";
+    const signReadiness = buildProviderDocumentationSignReadiness({
+      state,
+      encounterMode: "ED",
+      savedMetadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+      signedOrFinalized: true,
+    });
+    expect(signReadiness.readyToSign).toBe(false);
+    expect(providerDocumentationCanSubmitSignature({ attestationAccepted: true, signReadiness, signedOrFinalized: true })).toBe(false);
+    const addendumPayload = { providerAddenda: [{ text: "Post-sign addendum remains append-only." }] };
+    expect(JSON.stringify(addendumPayload)).not.toMatch(/billing|diagnosisId|orderId/i);
+  });
+
+  it("uses ED and observation signed timeline labels", () => {
+    expect(providerDocumentationSignedTimelineLabel("ED")).toBe("ED provider documentation signed");
+    expect(providerDocumentationSignedTimelineLabel("OBSERVATION")).toBe(
+      "Observation provider progress note signed"
+    );
+    expect(providerDocumentationSignedTimelineLabel("OBSERVATION")).not.toMatch(/discharge/i);
   });
 
   it("keeps English and French label keys separate for callers", () => {

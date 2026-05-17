@@ -662,6 +662,15 @@ export const encounterProviderAddendumCreateDtoSchema = z.object({
 
 export type EncounterProviderAddendumCreateDto = z.infer<typeof encounterProviderAddendumCreateDtoSchema>;
 
+/** POST /encounters/:id/sign-provider-documentation — explicit provider legal attestation. */
+export const encounterProviderDocumentationSignDtoSchema = z.object({
+  attestationAccepted: z.literal(true),
+});
+
+export type EncounterProviderDocumentationSignDto = z.infer<
+  typeof encounterProviderDocumentationSignDtoSchema
+>;
+
 /** POST /encounters/:id/unlock-provider-documentation — provider/admin only; audited (metadata on ENCOUNTER_UPDATE). */
 export const encounterProviderDocumentationUnlockDtoSchema = z.object({
   reason: z.preprocess(emptyStrToUndefined, z.string().trim().max(2000).optional()),

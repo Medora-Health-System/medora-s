@@ -29,6 +29,7 @@ import {
   encounterOperationalUpdateDtoSchema,
   encounterOutpatientCreateDtoSchema,
   encounterProviderAddendumCreateDtoSchema,
+  encounterProviderDocumentationSignDtoSchema,
   encounterProviderDocumentationUnlockDtoSchema,
   encounterProviderHandoffCreateDtoSchema,
   encounterIvAccessInsertDtoSchema,
@@ -637,10 +638,16 @@ export class EncountersController {
 
   @Post("encounters/:id/sign-provider-documentation")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
-  async signProviderDocumentation(@Param("id") id: string, @Req() req: any) {
+  async signProviderDocumentation(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterProviderDocumentationSignDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Provider attestation is required before signing documentation.", {
+        cause: parsed.error,
+      });
     }
     return this.encountersService.signProviderDocumentation(
       facilityId,

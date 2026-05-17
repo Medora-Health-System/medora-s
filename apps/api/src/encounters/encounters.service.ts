@@ -111,6 +111,29 @@ import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { logError, logInfo } from "../common/logging/medoraLogger";
 import type { AppendProcedureCaptureDto } from "../billing-procedure-codes/dto/append-procedure-capture.dto";
 
+function providerDocumentationWorkspaceMetadataFromNursingAssessment(raw: unknown): {
+  encounterMode: "ED" | "OBSERVATION";
+  documentType: "INITIAL_PROVIDER_NOTE" | "OBSERVATION_PROVIDER_PROGRESS_NOTE";
+} {
+  const nursing = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
+  const stored = nursing?.[NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1];
+  const storedObj = stored && typeof stored === "object" && !Array.isArray(stored) ? (stored as Record<string, unknown>) : null;
+  const meta = storedObj?.workspaceMetadata;
+  const metaObj = meta && typeof meta === "object" && !Array.isArray(meta) ? (meta as Record<string, unknown>) : null;
+  const observation =
+    metaObj?.encounterMode === "OBSERVATION" ||
+    metaObj?.documentType === "OBSERVATION_PROVIDER_PROGRESS_NOTE";
+  return observation
+    ? {
+        encounterMode: "OBSERVATION",
+        documentType: "OBSERVATION_PROVIDER_PROGRESS_NOTE",
+      }
+    : {
+        encounterMode: "ED",
+        documentType: "INITIAL_PROVIDER_NOTE",
+      };
+}
+
 /** Champs alignés sur encounterDischargeFieldsSchema — fusion à la clôture pour ne pas écraser un brouillon. */
 const DISCHARGE_SUMMARY_STRING_KEYS = [
   "disposition",
@@ -698,6 +721,9 @@ export class EncountersService {
 
     const previousSignedByUserId = encounter.providerDocumentationSignedByUserId;
     const previousSignedAt = encounter.providerDocumentationSignedAt;
+    const signedDocumentationMetadata = providerDocumentationWorkspaceMetadataFromNursingAssessment(
+      encounter.nursingAssessment
+    );
 
     const signedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -731,6 +757,8 @@ export class EncountersService {
           payloadJson: providerDocumentationSignedPayloadJson({
             signedAt: signedAt.toISOString(),
             providerDocumentationStatus: "SIGNED",
+            encounterMode: signedDocumentationMetadata.encounterMode,
+            documentType: signedDocumentationMetadata.documentType,
             previousSignedByUserId,
             previousSignedAt: previousSignedAt?.toISOString() ?? null,
           }),

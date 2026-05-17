@@ -126,6 +126,9 @@ describe("EncounterChartExportService.getManifest", () => {
     expect(manifest.livePreview).toBe(false);
     expect(manifest.encounter.id).toBe("enc-1");
     expect(manifest.encounter.status).toBe("CLOSED");
+    expect(manifest.encounter.providerDocumentation.status).toBe("SIGNED");
+    expect(manifest.encounter.providerDocumentation.signedAt).toBe("2026-01-02T00:30:00.000Z");
+    expect(manifest.encounter.providerDocumentation.signedByDisplayFr).toBe("Alice Doctor");
     expect(manifest.deferredDomains.length).toBeGreaterThan(0);
 
     expect(audit.log).toHaveBeenCalledTimes(1);

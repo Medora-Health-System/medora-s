@@ -7,6 +7,8 @@ function asJsonValue(o: Record<string, unknown>): Prisma.InputJsonValue {
 export function providerDocumentationSignedPayloadJson(input: {
   signedAt: string;
   providerDocumentationStatus: string;
+  encounterMode?: "ED" | "OBSERVATION" | null;
+  documentType?: "INITIAL_PROVIDER_NOTE" | "OBSERVATION_PROVIDER_PROGRESS_NOTE" | null;
   previousSignedByUserId?: string | null;
   previousSignedAt?: string | null;
 }): Prisma.InputJsonValue {
@@ -15,6 +17,15 @@ export function providerDocumentationSignedPayloadJson(input: {
     signedAt: input.signedAt,
     providerDocumentationStatus: input.providerDocumentationStatus,
   };
+  if (input.encounterMode === "ED" || input.encounterMode === "OBSERVATION") {
+    o.encounterMode = input.encounterMode;
+  }
+  if (
+    input.documentType === "INITIAL_PROVIDER_NOTE" ||
+    input.documentType === "OBSERVATION_PROVIDER_PROGRESS_NOTE"
+  ) {
+    o.documentType = input.documentType;
+  }
   if (input.previousSignedByUserId != null && input.previousSignedByUserId !== "") {
     o.previousSignedByUserId = input.previousSignedByUserId;
   }

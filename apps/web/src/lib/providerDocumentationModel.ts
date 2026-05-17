@@ -99,6 +99,13 @@ export type ProviderDocumentationTemplateDefinition = {
   physicalExam: Partial<Record<ProviderDocumentationExamSectionId, string[]>>;
 };
 
+export type ProviderDocumentationSignReadiness = {
+  readyToSign: boolean;
+  savedBeforeSign: boolean;
+  missingSections: ProviderDocumentationCompletenessSectionId[];
+  warnings: ProviderDocumentationWarning[];
+};
+
 export const PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS: ProviderDocumentationExamSectionId[] = [
   "general",
   "heent",
@@ -855,6 +862,50 @@ export function buildProviderDocumentationReadiness(
   const missing = input.missingSections ?? buildProviderDocumentationCompleteness(input).missingSections;
   if (missing.length || warnings.length) return "needs_review";
   return "ready_to_save";
+}
+
+export function buildProviderDocumentationSignReadiness(
+  input: ProviderDocumentationCompletenessInput
+): ProviderDocumentationSignReadiness {
+  const completeness = buildProviderDocumentationCompleteness(input);
+  const requiredForSign: ProviderDocumentationCompletenessSectionId[] = [
+    "chiefComplaintHpi",
+    "ros",
+    "physicalExam",
+    "mdm",
+    "impression",
+    "plan",
+  ];
+  const missingSections = requiredForSign.filter((sectionId) =>
+    completeness.missingSections.includes(sectionId)
+  );
+  const savedBeforeSign = Boolean(input.savedMetadata);
+  return {
+    readyToSign: savedBeforeSign && missingSections.length === 0 && !input.signedOrFinalized,
+    savedBeforeSign,
+    missingSections,
+    warnings: completeness.warnings,
+  };
+}
+
+export function providerDocumentationSignedTimelineLabel(
+  encounterMode: ProviderDocumentationEncounterMode
+): string {
+  return encounterMode === "OBSERVATION"
+    ? "Observation provider progress note signed"
+    : "ED provider documentation signed";
+}
+
+export function providerDocumentationCanSubmitSignature(input: {
+  attestationAccepted: boolean;
+  signReadiness: ProviderDocumentationSignReadiness;
+  signedOrFinalized?: boolean;
+}): boolean {
+  return Boolean(
+    input.attestationAccepted &&
+      input.signReadiness.savedBeforeSign &&
+      !input.signedOrFinalized
+  );
 }
 
 export function applyProviderDocumentationTemplate(input: {

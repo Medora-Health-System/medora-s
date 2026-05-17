@@ -11,6 +11,8 @@ import {
   applyProviderDocumentationTemplate,
   buildProviderDocumentationCompleteness,
   buildProviderDocumentationPreviewSections,
+  buildProviderDocumentationSignReadiness,
+  providerDocumentationCanSubmitSignature,
   providerDocumentationTitleKey,
   type ProviderDocumentationEncounterMode,
   type ProviderDocumentationExamSectionId,
@@ -34,12 +36,15 @@ export type ProviderDocumentationWorkspaceProps = {
   value: ProviderDocumentationWorkspaceState;
   onChange: (next: ProviderDocumentationWorkspaceState) => void;
   onSave: () => void | Promise<void>;
+  onSign?: () => void | Promise<void>;
   onClear?: () => void;
   saving?: boolean;
+  signing?: boolean;
   readOnly?: boolean;
   lockedMessage?: string | null;
   saveMessage?: { variant: "success" | "error" | "queued"; text: string } | null;
   lastSaved?: { savedAt: string; savedBy: string } | null;
+  signedMetadata?: { signedAt: string; signedBy: string } | null;
   savedMetadata?: ProviderDocumentationMetadata | null;
   signedOrFinalized?: boolean;
   latestVitalSigns?: string[];
@@ -268,12 +273,15 @@ export function ProviderDocumentationWorkspace({
   value,
   onChange,
   onSave,
+  onSign,
   onClear,
   saving = false,
+  signing = false,
   readOnly = false,
   lockedMessage = null,
   saveMessage = null,
   lastSaved = null,
+  signedMetadata = null,
   savedMetadata = null,
   signedOrFinalized = false,
   latestVitalSigns = [],
@@ -284,6 +292,7 @@ export function ProviderDocumentationWorkspace({
 }: ProviderDocumentationWorkspaceProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [attestationAccepted, setAttestationAccepted] = useState(false);
   const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
   const activeTemplate = useMemo(
     () => PROVIDER_DOCUMENTATION_TEMPLATES.find((template) => template.id === value.activeTemplateId) ?? null,
@@ -306,6 +315,24 @@ export function ProviderDocumentationWorkspace({
     () => Object.fromEntries(completeness.sectionStatuses.map((section) => [section.id, section.status])),
     [completeness.sectionStatuses]
   ) as Partial<Record<string, ProviderDocumentationSectionStatus>>;
+  const signReadiness = useMemo(
+    () =>
+      buildProviderDocumentationSignReadiness({
+        state: value,
+        encounterMode,
+        savedMetadata,
+        signedOrFinalized,
+        dispositionContext: null,
+        hasPendingResults: false,
+        longStayOrInterventionHeavy: false,
+      }),
+    [encounterMode, savedMetadata, signedOrFinalized, value]
+  );
+  const canSubmitSignature = providerDocumentationCanSubmitSignature({
+    attestationAccepted,
+    signReadiness,
+    signedOrFinalized,
+  });
 
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
     onChange({ ...value, ...patchValue });
@@ -713,6 +740,43 @@ export function ProviderDocumentationWorkspace({
                 ))}
               </ul>
             ) : null}
+            <p style={{ margin: "8px 0 4px", fontSize: 11, fontWeight: 700, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e" }}>
+              {t("providerDocumentationWorkspace.signReadiness")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e", lineHeight: 1.45, fontWeight: 700 }}>
+              {signedOrFinalized
+                ? t("providerDocumentationWorkspace.signedStatus")
+                : signReadiness.readyToSign
+                  ? t("providerDocumentationWorkspace.readyToSign")
+                  : t("providerDocumentationWorkspace.notReadyToSign")}
+            </p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
+              {t("providerDocumentationWorkspace.missingBeforeSign")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+              {signReadiness.missingSections.length
+                ? signReadiness.missingSections.map(completenessSectionLabel).join(", ")
+                : t("providerDocumentationWorkspace.noMissingKeySections")}
+              {!signReadiness.savedBeforeSign && !signedOrFinalized
+                ? ` · ${t("providerDocumentationWorkspace.saveRequiredBeforeSign")}`
+                : ""}
+            </p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
+              {t("providerDocumentationWorkspace.saveStatus")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+              {lastSaved ? `${lastSaved.savedBy} · ${lastSaved.savedAt}` : t("providerDocumentationWorkspace.notSavedYet")}
+            </p>
+            {signedMetadata ? (
+              <>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#166534" }}>
+                  {t("providerDocumentationWorkspace.signedBy")}
+                </p>
+                <p style={{ margin: "0 0 8px", fontSize: 12, color: "#166534", lineHeight: 1.45 }}>
+                  {signedMetadata.signedBy} · {signedMetadata.signedAt}
+                </p>
+              </>
+            ) : null}
             <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.chipsSafetyComment")}
             </p>
@@ -780,6 +844,55 @@ export function ProviderDocumentationWorkspace({
             </div>
           ) : null}
         </aside>
+      </div>
+      <div style={{ ...sectionShell, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 13, color: "#0f172a" }}>
+              {t("providerDocumentationWorkspace.finalActions")}
+            </h3>
+            <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+              {t("providerDocumentationWorkspace.signSafetyHelp")}
+            </p>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button type="button" disabled={readOnly || saving} onClick={() => void onSave()} style={primaryButton(readOnly || saving)}>
+              {saving ? t("providerDocumentationWorkspace.saving") : t("providerDocumentationWorkspace.save")}
+            </button>
+            {onSign ? (
+              <button
+                type="button"
+                disabled={readOnly || signing || !canSubmitSignature}
+                onClick={() => void onSign()}
+                style={primaryButton(readOnly || signing || !canSubmitSignature)}
+              >
+                {signing ? t("providerDocumentationWorkspace.signing") : t("providerDocumentationWorkspace.signFinalize")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {onSign && !signedOrFinalized ? (
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+            <input
+              type="checkbox"
+              checked={attestationAccepted}
+              disabled={readOnly || signing}
+              onChange={(event) => setAttestationAccepted(event.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <span>{t("providerDocumentationWorkspace.signAttestation")}</span>
+          </label>
+        ) : null}
+        {onSign && !signReadiness.readyToSign && !signedOrFinalized ? (
+          <p style={{ margin: 0, fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
+            {t("providerDocumentationWorkspace.signWarningsAdvisory")}
+          </p>
+        ) : null}
+        {signedMetadata ? (
+          <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
+            {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -272,6 +272,9 @@ type EncounterLite = {
   status?: string | null;
   nursingAssessment?: unknown;
   updatedAt?: string | null;
+  providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
 };
 
 const inputBase: React.CSSProperties = {
@@ -375,6 +378,7 @@ export function EmergencyProviderMsePanel({
     };
   });
   const [saving, setSaving] = useState(false);
+  const [signingDoc, setSigningDoc] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<{ variant: "success" | "error"; message: string } | null>(null);
   const [handoffToId, setHandoffToId] = useState<string | null>(null);
   const [handoffToDisplay, setHandoffToDisplay] = useState("");
@@ -699,6 +703,32 @@ export function EmergencyProviderMsePanel({
     }
   };
 
+  const handleSignProviderWorkspace = async () => {
+    if (formDisabled) return;
+    setSigningDoc(true);
+    setSaveFeedback(null);
+    try {
+      await apiFetch(`/encounters/${encounterId}/sign-provider-documentation`, {
+        method: "POST",
+        facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attestationAccepted: true }),
+      });
+      await onSaved();
+      setSaveFeedback({ variant: "success", message: t("encounterClinicTab.toastSigned") });
+    } catch (e) {
+      console.error(e);
+      setSaveFeedback({
+        variant: "error",
+        message:
+          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          t("encounterClinicTab.errSign"),
+      });
+    } finally {
+      setSigningDoc(false);
+    }
+  };
+
   const handleRecordProviderHandoff = useCallback(async () => {
     if (formDisabled) return;
     if (!handoffToId) {
@@ -891,8 +921,10 @@ export function EmergencyProviderMsePanel({
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}
         onSave={handleSaveProviderWorkspace}
+        onSign={handleSignProviderWorkspace}
         onClear={() => setProviderWorkspaceValue(emptyProviderDocumentationWorkspaceState())}
         saving={saving}
+        signing={signingDoc}
         readOnly={formDisabled}
         lockedMessage={
           isLocked
@@ -917,6 +949,22 @@ export function EmergencyProviderMsePanel({
                   dateStyle: "short",
                   timeStyle: "short",
                 }),
+              }
+            : null
+        }
+        signedMetadata={
+          encounter.providerDocumentationStatus === "SIGNED" &&
+          encounter.providerDocumentationSignedByDisplayFr &&
+          encounter.providerDocumentationSignedAt
+            ? {
+                signedBy: encounter.providerDocumentationSignedByDisplayFr,
+                signedAt: new Date(encounter.providerDocumentationSignedAt).toLocaleString(
+                  language === "en" ? "en-US" : "fr-FR",
+                  {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  }
+                ),
               }
             : null
         }

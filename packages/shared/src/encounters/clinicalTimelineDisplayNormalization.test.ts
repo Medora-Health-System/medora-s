@@ -74,6 +74,26 @@ describe("clinicalTimelineDisplayNormalization", () => {
     expect(clinicalTimelineCarePhaseForDisplayEventType(display)).toBe("ED");
   });
 
+  it("labels signed ED and observation provider notes distinctly", () => {
+    const edSigned = resolveClinicalTimelineDisplayEventType({
+      eventType: "PROVIDER_SIGNED",
+      payloadJson: { encounterMode: "ED", documentType: "INITIAL_PROVIDER_NOTE" },
+    });
+    const observationSigned = resolveClinicalTimelineDisplayEventType({
+      eventType: "PROVIDER_SIGNED",
+      payloadJson: {
+        encounterMode: "OBSERVATION",
+        documentType: "OBSERVATION_PROVIDER_PROGRESS_NOTE",
+      },
+    });
+
+    expect(edSigned).toBe("ED_PROVIDER_DOCUMENTATION_SIGNED");
+    expect(observationSigned).toBe("OBSERVATION_PROVIDER_PROGRESS_NOTE_SIGNED");
+    expect(observationSigned).not.toMatch(/DISCHARGE/);
+    expect(clinicalTimelineCarePhaseForDisplayEventType(edSigned)).toBe("ED");
+    expect(clinicalTimelineCarePhaseForDisplayEventType(observationSigned)).toBe("OBSERVATION");
+  });
+
   it("uses documented time for sort and flags correction separately", () => {
     const pair = buildClinicalTimeDisplayPair({
       documentedAt: "2026-05-16T10:00:00.000Z",

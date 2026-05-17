@@ -3878,6 +3878,8 @@ function ClinicVisitTab({
       await apiFetch(`/encounters/${encounter.id}/sign-provider-documentation`, {
         method: "POST",
         facilityId,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attestationAccepted: true }),
       });
       setMessage({ type: "ok", text: t("encounterClinicTab.toastSigned") });
       onUpdate();
@@ -4025,8 +4027,10 @@ function ClinicVisitTab({
         value={providerWorkspaceValue}
         onChange={setProviderWorkspaceValue}
         onSave={save}
+        onSign={canSignProviderDocumentation && !readOnly ? handleSignDocumentation : undefined}
         onClear={() => setProviderWorkspaceValue(emptyProviderDocumentationWorkspaceState())}
         saving={saving}
+        signing={signingDoc}
         readOnly={fieldsLocked}
         lockedMessage={
           docSigned
@@ -4053,6 +4057,14 @@ function ClinicVisitTab({
           encounter.status ? tEncounterStatus(t, encounter.status) : t("common.dash"),
         ]}
         savedMetadata={readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)}
+        signedMetadata={
+          docSigned && encounter.providerDocumentationSignedByDisplayFr && encounter.providerDocumentationSignedAt
+            ? {
+                signedBy: encounter.providerDocumentationSignedByDisplayFr,
+                signedAt: new Date(encounter.providerDocumentationSignedAt).toLocaleString(dateLocale),
+              }
+            : null
+        }
         signedOrFinalized={docSigned}
         t={t}
       />
@@ -4452,7 +4464,7 @@ function ClinicVisitTab({
             {saving ? t("encounterClinicTab.saving") : t("encounterClinicTab.saveVisit")}
           </button>
         )}
-        {canSignProviderDocumentation && !readOnly && !docSigned && (
+        {showLegacyProviderDocumentation && canSignProviderDocumentation && !readOnly && !docSigned && (
           <button
             type="button"
             onClick={() => void handleSignDocumentation()}
