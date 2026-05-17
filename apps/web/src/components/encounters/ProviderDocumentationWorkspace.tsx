@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import {
+  PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
   PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
   PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
@@ -273,6 +274,15 @@ const OBSERVATION_CHIPS: Chip[] = [
   labelKey: `providerDocumentationWorkspace.${key}`,
   fragmentKey: `providerDocumentationWorkspace.${key}`,
 }));
+
+const DICTATION_NAV_TARGETS = [
+  { labelKey: "providerDocumentationWorkspace.dictationFocusHpi", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi },
+  { labelKey: "providerDocumentationWorkspace.dictationFocusRos", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression },
+  { labelKey: "providerDocumentationWorkspace.dictationFocusExam", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral },
+  { labelKey: "providerDocumentationWorkspace.dictationFocusMdm", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment },
+  { labelKey: "providerDocumentationWorkspace.dictationFocusImpression", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression },
+  { labelKey: "providerDocumentationWorkspace.dictationFocusPlan", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan },
+];
 
 function WorkspaceSection({
   title,
@@ -566,8 +576,26 @@ export function ProviderDocumentationWorkspace({
       })
     );
   };
-  const ta = (field: keyof ProviderDocumentationWorkspaceState, rows = 2) => (
+  const focusDictationTarget = (id: string) => {
+    if (typeof document === "undefined") return;
+    document.getElementById(id)?.focus();
+  };
+  const focusRelativeDictationTarget = (direction: 1 | -1) => {
+    if (typeof document === "undefined") return;
+    const activeId = document.activeElement?.id;
+    const currentIndex = DICTATION_NAV_TARGETS.findIndex((target) => target.id === activeId);
+    const nextIndex =
+      currentIndex >= 0
+        ? Math.min(DICTATION_NAV_TARGETS.length - 1, Math.max(0, currentIndex + direction))
+        : direction > 0
+          ? 0
+          : DICTATION_NAV_TARGETS.length - 1;
+    focusDictationTarget(DICTATION_NAV_TARGETS[nextIndex].id);
+  };
+  const ta = (field: keyof ProviderDocumentationWorkspaceState, rows = 2, dictationId?: string) => (
     <textarea
+      id={dictationId}
+      data-dictation-ready={dictationId ? "true" : undefined}
       value={String(value[field] ?? "")}
       onChange={(e) => patch({ [field]: e.target.value } as Partial<ProviderDocumentationWorkspaceState>)}
       disabled={readOnly}
@@ -715,6 +743,27 @@ export function ProviderDocumentationWorkspace({
             {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
           </p>
         ) : null}
+        <div style={{ marginTop: 10, padding: "9px 10px", border: "1px solid #dbeafe", borderRadius: 12, background: "#f8fafc" }}>
+          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#1e40af", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+            {t("providerDocumentationWorkspace.dictationReady")}
+          </p>
+          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569", lineHeight: 1.45 }}>
+            {t("providerDocumentationWorkspace.dictationInstruction")}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <button type="button" onClick={() => focusRelativeDictationTarget(-1)} style={secondaryButton(false)}>
+              {t("providerDocumentationWorkspace.dictationPreviousSection")}
+            </button>
+            <button type="button" onClick={() => focusRelativeDictationTarget(1)} style={secondaryButton(false)}>
+              {t("providerDocumentationWorkspace.dictationNextSection")}
+            </button>
+            {DICTATION_NAV_TARGETS.map((target) => (
+              <button key={target.id} type="button" onClick={() => focusDictationTarget(target.id)} style={secondaryButton(false)}>
+                {t(target.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
         {showTemplates ? (
           <div
             style={{
@@ -777,9 +826,9 @@ export function ProviderDocumentationWorkspace({
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)", gap: 14, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPresentation")} status={sectionStatusById.chiefComplaintHpi} t={t}>
-            <Field label={t("providerDocumentationWorkspace.chiefComplaint")}>{ta("chiefComplaint", 2)}</Field>
+            <Field label={t("providerDocumentationWorkspace.chiefComplaint")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("chiefComplaint", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.chiefComplaint)}</Field>
             <div style={{ marginTop: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.hpi")}>{ta("hpi", 4)}</Field>
+              <Field label={t("providerDocumentationWorkspace.hpi")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("hpi", 4, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)}</Field>
               {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
               {HPI_CHIPS.map((group) => (
                 <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
@@ -823,10 +872,10 @@ export function ProviderDocumentationWorkspace({
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.focusedImpression")}>{ta("rosFocusedImpression", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.importantPositives")}>{ta("rosImportantPositives", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.importantNegatives")}>{ta("rosImportantNegatives", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.redFlags")}>{ta("rosRedFlags", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosFocusedImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
+              <Field label={t("providerDocumentationWorkspace.importantPositives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosImportantPositives", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.importantNegatives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosImportantNegatives", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.redFlags")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosRedFlags", 2)}</Field>
             </div>
             {templateTextChips(
               activeTemplate,
@@ -848,8 +897,10 @@ export function ProviderDocumentationWorkspace({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               {EXAM_CHIPS.map((group) => (
                 <div key={group.sectionId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 10, background: "#f8fafc" }}>
-                  <Field label={t(group.titleKey)}>
+                  <Field label={t(group.titleKey)} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>
                     <textarea
+                      id={group.sectionId === "general" ? PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral : undefined}
+                      data-dictation-ready="true"
                       value={value.physicalExam[group.sectionId]}
                       disabled={readOnly}
                       onChange={(e) =>
@@ -890,9 +941,9 @@ export function ProviderDocumentationWorkspace({
               {t("providerDocumentationWorkspace.chipsSafetyComment")}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.workingAssessment")}>{ta("mdmWorkingAssessment", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.differential")}>{ta("mdmDifferentialSynthesis", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.dataReviewed")}>{ta("mdmDataReviewed", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmWorkingAssessment", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field>
+              <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmDifferentialSynthesis", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.dataReviewed")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmDataReviewed", 2)}</Field>
               <Field label={t("providerDocumentationWorkspace.riskLevel")}>
                 <select
                   value={value.mdmRiskLevel}
@@ -906,20 +957,20 @@ export function ProviderDocumentationWorkspace({
                   <option value="High">{t("providerDocumentationWorkspace.riskHigh")}</option>
                 </select>
               </Field>
-              <Field label={t("providerDocumentationWorkspace.clinicalRationale")}>{ta("mdmClinicalRationale", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.planSummary")}>{ta("mdmPlanSummary", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.immediateActions")}>{ta("mdmImmediateActionsRationale", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.consults")}>{ta("mdmConsultsDiscussed", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")}>{ta("mdmAdmitObserveDischarge", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.clinicalRationale")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmClinicalRationale", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.planSummary")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmPlanSummary", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.immediateActions")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmImmediateActionsRationale", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmConsultsDiscussed", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmAdmitObserveDischarge", 2)}</Field>
             </div>
           </WorkspaceSection>
 
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPlan")} status={sectionStatusById.plan} t={t}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.clinicalImpression")}>{ta("clinicalImpression", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.treatmentPlan")}>{ta("treatmentPlan", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.followUpDisposition")}>{ta("followUpDisposition", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.providerAddendum")}>{ta("providerAddendum", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.clinicalImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("clinicalImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)}</Field>
+              <Field label={t("providerDocumentationWorkspace.treatmentPlan")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("treatmentPlan", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan)}</Field>
+              <Field label={t("providerDocumentationWorkspace.followUpDisposition")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("followUpDisposition", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.providerAddendum")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("providerAddendum", 2)}</Field>
             </div>
           </WorkspaceSection>
         </div>
@@ -1092,10 +1143,35 @@ export function ProviderDocumentationWorkspace({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  voiceReadyLabel,
+  children,
+}: {
+  label: string;
+  voiceReadyLabel?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label style={{ display: "block" }}>
-      <span style={labelStyle}>{label}</span>
+      <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+        <span style={{ ...labelStyle, marginBottom: 0 }}>{label}</span>
+        {voiceReadyLabel ? (
+          <span
+            style={{
+              borderRadius: 9999,
+              padding: "2px 6px",
+              fontSize: 10,
+              fontWeight: 800,
+              color: "#0f766e",
+              background: "#ecfdf5",
+              border: "1px solid #99f6e4",
+            }}
+          >
+            {voiceReadyLabel}
+          </span>
+        ) : null}
+      </span>
       {children}
     </label>
   );

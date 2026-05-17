@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   appendDocumentationFragment,
   PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
+  PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
   applyCompleteNormalRosPrefill,
   applyProviderDocumentationTemplate,
@@ -409,6 +410,68 @@ describe("providerDocumentationModel", () => {
     );
     removeProviderDocumentationDraft(storage, key);
     expect(readProviderDocumentationDraft(storage, key)).toBeNull();
+  });
+
+  it("defines stable dictation textarea IDs for major sections", () => {
+    expect(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS).toEqual({
+      chiefComplaint: "provider-documentation-chief-complaint",
+      hpi: "provider-documentation-hpi",
+      rosFocusedImpression: "provider-documentation-ros-focused-impression",
+      physicalExamGeneral: "provider-documentation-exam-general",
+      mdmWorkingAssessment: "provider-documentation-mdm-working-assessment",
+      clinicalImpression: "provider-documentation-clinical-impression",
+      treatmentPlan: "provider-documentation-treatment-plan",
+    });
+  });
+
+  it("renders dictation hints, navigation targets, and voice-ready fields without changing save behavior", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("dictationReady");
+    expect(source).toContain("dictationInstruction");
+    expect(source).toContain("dictationNextSection");
+    expect(source).toContain("dictationPreviousSection");
+    expect(source).toContain("voiceReadyField");
+    for (const key of Object.keys(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS)) {
+      expect(source).toContain(`PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.${key}`);
+    }
+    expect(source).not.toMatch(/SpeechRecognition|webkitSpeechRecognition|getUserMedia|MediaRecorder/i);
+  });
+
+  it("autosave and dictation readiness do not transform dictated field values", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Dragon dictated line one.\nDragon dictated line two with punctuation.";
+    const before = providerDocumentationStateSignature(state);
+    const shouldAutosave = shouldAutosaveProviderDocumentation({
+      currentSignature: `${before}-changed`,
+      lastSavedSignature: before,
+      hasContent: true,
+    });
+    expect(shouldAutosave).toBe(true);
+    expect(state.hpi).toBe("Dragon dictated line one.\nDragon dictated line two with punctuation.");
+    expect(JSON.stringify(state)).not.toMatch(/billing|diagnosisId|orderId|chargeCapture|billingComplexity/i);
+  });
+
+  it("all major dictation fields remain editable provider-authored text", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.chiefComplaint = "Dictated chief complaint";
+    state.hpi = "Dictated HPI";
+    state.rosFocusedImpression = "Dictated ROS";
+    state.physicalExam.general = "Dictated exam";
+    state.mdmWorkingAssessment = "Dictated MDM";
+    state.clinicalImpression = "Dictated impression";
+    state.treatmentPlan = "Dictated plan";
+    const preview = buildProviderDocumentationPreviewSections(state).flatMap((section) => section.lines).join("\n");
+    expect(preview).toContain("Dictated chief complaint");
+    expect(preview).toContain("Dictated HPI");
+    expect(preview).toContain("Dictated ROS");
+    expect(preview).toContain("Dictated exam");
+    expect(preview).toContain("Dictated MDM");
+    expect(preview).toContain("Dictated impression");
+    expect(preview).toContain("Dictated plan");
+    expect(preview).not.toMatch(/billing|diagnosisId|orderId|chargeCapture|billingComplexity/i);
   });
 
   it("preserves physical exam user edits through hydrate and save", () => {

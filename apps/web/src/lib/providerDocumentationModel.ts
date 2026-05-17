@@ -106,6 +106,16 @@ export type ProviderDocumentationSignReadiness = {
   warnings: ProviderDocumentationWarning[];
 };
 
+export const PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS = {
+  chiefComplaint: "provider-documentation-chief-complaint",
+  hpi: "provider-documentation-hpi",
+  rosFocusedImpression: "provider-documentation-ros-focused-impression",
+  physicalExamGeneral: "provider-documentation-exam-general",
+  mdmWorkingAssessment: "provider-documentation-mdm-working-assessment",
+  clinicalImpression: "provider-documentation-clinical-impression",
+  treatmentPlan: "provider-documentation-treatment-plan",
+} as const;
+
 export const PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS: ProviderDocumentationExamSectionId[] = [
   "general",
   "heent",
