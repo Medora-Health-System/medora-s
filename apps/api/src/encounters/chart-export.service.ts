@@ -25,6 +25,7 @@ import {
 } from "../patients/chart-audit-timeline.util";
 import { hashCanonicalJson, sha256Hex, canonicalizeForHash } from "./chart-export-hash.util";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
+import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
 import {
   CHART_EXPORT_SIGNATURE_ALGORITHM,
   CHART_EXPORT_SIGNATURE_VERSION,
@@ -346,6 +347,24 @@ export type ChartExportManifest = {
     }>;
     capped: boolean;
   };
+  /** Phase 15F-D.2 — optional cross-department unified read-model timeline. */
+  unifiedTimeline: {
+    items: Array<{
+      id: string;
+      sourceKind: string;
+      displayGroup: string;
+      displayEventType: string;
+      documentedAtIso: string;
+      effectiveClinicalAtIso: string | null;
+      hasClinicalTimeCorrection: boolean;
+      titleFr: string | null;
+      summaryFr: string | null;
+      actorDisplayName: string | null;
+      actorDepartment: string | null;
+      chips: string[];
+    }>;
+    capped: boolean;
+  } | null;
   auditTimelineSummary: {
     items: ReturnType<typeof mapAuditLogRowToTimelineItem>[];
     capped: boolean;
@@ -368,6 +387,11 @@ export type ChartExportRequestOptions = {
   /** Defaults to `json`. HTML uses the same manifest composition path; only the HTTP response differs. */
   exportFormat?: "json" | "html";
   /**
+   * Phase 15F-D.2 — include read-model unified longitudinal timeline in manifest (additive).
+   * Defaults to true; set false to preserve legacy export shape only.
+   */
+  includeUnifiedTimeline?: boolean;
+  /**
    * Internal use only. When `true`, suppresses the `CHART_ACCESS` audit emission
    * so the calling site (e.g. `createSnapshot`) can log a more specific action
    * such as `RECORD_EXPORT` instead. Never expose this to HTTP callers.
@@ -387,8 +411,30 @@ export type ChartExportSnapshotSummary = {
 export class EncounterChartExportService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly unifiedTimelineService: UnifiedEncounterTimelineService
   ) {}
+
+  private async buildUnifiedTimelineForExport(facilityId: string, encounterId: string) {
+    const res = await this.unifiedTimelineService.getUnifiedTimeline(facilityId, encounterId, 120);
+    return {
+      capped: res.capped,
+      items: res.items.map((i) => ({
+        id: i.id,
+        sourceKind: i.sourceKind,
+        displayGroup: i.displayGroup,
+        displayEventType: i.displayEventType,
+        documentedAtIso: i.documentedAtIso,
+        effectiveClinicalAtIso: i.effectiveClinicalAtIso,
+        hasClinicalTimeCorrection: i.hasClinicalTimeCorrection,
+        titleFr: i.titleFr,
+        summaryFr: i.summaryFr,
+        actorDisplayName: i.actor.displayName,
+        actorDepartment: i.actor.department,
+        chips: i.chips,
+      })),
+    };
+  }
 
   /**
    * Compose the manifest. Throws `NotFoundException` when the encounter does
@@ -963,6 +1009,10 @@ export class EncounterChartExportService {
         items: clinicalTimelineItems,
         capped: clinicalTimelineCapped,
       },
+      unifiedTimeline:
+        options?.includeUnifiedTimeline === false
+          ? null
+          : await this.buildUnifiedTimelineForExport(facilityId, encounter.id),
       auditTimelineSummary: {
         items: auditForEncounter,
         capped: auditCapped,

@@ -8485,6 +8485,26 @@ export default {
       TRIAGE_ASSESSMENT_SAVED: "Triage enregistré",
     },
   },
+  unifiedTimeline: {
+    loadError: "Impossible de charger la chronologie unifiée.",
+    empty: "Aucun événement inter-départements pour cette consultation.",
+    cappedHint: "Chronologie limitée aux {limit} événements les plus récents.",
+    groups: {
+      CLINICAL: "Clinique",
+      MEDICATION: "Médicament",
+      LABORATORY: "Laboratoire",
+      IMAGING: "Imagerie",
+      PROCEDURE: "Procédure",
+      OBSERVATION: "Observation",
+    },
+    chips: {
+      ADJUSTED: "Ajusté",
+      OBSERVATION: "Observation",
+      INFUSION_STARTED: "Perfusion démarrée",
+      INFUSION_STOPPED: "Perfusion arrêtée",
+      RESULT_CORRECTED: "Résultat corrigé",
+    },
+  },
   medicationSafety: {
     highRiskWarning: "Médicament à haut risque — vérifiez la dose, la voie et la posologie.",
   },

@@ -3,75 +3,73 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
-import type { SupportedLanguage } from "@/i18n/config";
-import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
-import { formatEncounterVitalsHistoryCompactLine } from "@/lib/patientVitals";
-import { summarizeClinicalTimelineRow } from "@/lib/clinicalTimelineDisplayUi";
+import type { UnifiedTimelineApiItem } from "@/lib/unifiedEncounterTimelineUi";
 import {
-  buildProcedureTimelineDetailLine,
-  procedureTimelineCompactSuffix,
-  procedureTypeDisplayName,
-  type ProcedurePayload,
-} from "@/lib/lacerationProcedurePayloadDisplay";
+  formatUnifiedTimelineCorrectionLine,
+  summarizeUnifiedTimelineItem,
+} from "@/lib/unifiedEncounterTimelineUi";
+import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 
-export type ClinicalTimelineApiRow = {
-  id: string;
-  eventType: string;
-  createdAt: string;
-  createdBy: { userId: string; firstName: string | null; lastName: string | null };
-  payloadJson: unknown;
-};
-
-const DEFAULT_LIMIT = 30;
+const DEFAULT_LIMIT = 40;
 
 function asRecord(v: unknown): Record<string, unknown> | null {
   if (v != null && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
   return null;
 }
 
-function formatActor(firstName: string | null | undefined, lastName: string | null | undefined, dash: string): string {
-  const s = `${firstName ?? ""} ${lastName ?? ""}`.trim();
-  return s || dash;
-}
-
-function summarizeClinicalEvent(
-  row: ClinicalTimelineApiRow,
-  language: SupportedLanguage,
-  t: (key: string) => string
-): { label: string; summary: string } {
-  if (row.eventType === "VITALS_RECORDED") {
-    const payload = asRecord(row.payloadJson) ?? {};
-    const vitalsRaw = payload.vitals;
-    const vitals =
-      vitalsRaw != null && typeof vitalsRaw === "object" && !Array.isArray(vitalsRaw)
-        ? (vitalsRaw as Record<string, unknown>)
-        : {};
-    const line = formatEncounterVitalsHistoryCompactLine(vitals, language).trim();
-    const base = summarizeClinicalTimelineRow(row, t);
-    return {
-      label: base.label,
-      summary: line || t("emergencyVisitSummaryPanel.clinicalTimeline.noVitalsDetail"),
-    };
+function parseUnifiedTimelineResponse(data: unknown): {
+  items: UnifiedTimelineApiItem[];
+  capped: boolean;
+  limit: number;
+} {
+  const root = asRecord(data);
+  const itemsRaw = Array.isArray(root?.items) ? root.items : [];
+  const items: UnifiedTimelineApiItem[] = [];
+  for (const r of itemsRaw) {
+    const o = asRecord(r);
+    if (!o) continue;
+    const id = typeof o.id === "string" ? o.id : "";
+    const sourceKind = typeof o.sourceKind === "string" ? o.sourceKind : "";
+    const documentedAtIso = typeof o.documentedAtIso === "string" ? o.documentedAtIso : "";
+    if (!id || !sourceKind || !documentedAtIso) continue;
+    const actor = asRecord(o.actor) ?? {};
+    items.push({
+      id,
+      sourceKind: sourceKind as UnifiedTimelineApiItem["sourceKind"],
+      sourceId: typeof o.sourceId === "string" ? o.sourceId : "",
+      storedEventType: typeof o.storedEventType === "string" ? o.storedEventType : "",
+      displayEventType: typeof o.displayEventType === "string" ? o.displayEventType : "",
+      displayGroup: (typeof o.displayGroup === "string"
+        ? o.displayGroup
+        : "CLINICAL") as UnifiedTimelineApiItem["displayGroup"],
+      carePhase: (typeof o.carePhase === "string" ? o.carePhase : "ED") as UnifiedTimelineApiItem["carePhase"],
+      documentedAtIso,
+      effectiveClinicalAtIso:
+        typeof o.effectiveClinicalAtIso === "string" ? o.effectiveClinicalAtIso : null,
+      hasClinicalTimeCorrection: o.hasClinicalTimeCorrection === true,
+      actor: {
+        userId: typeof actor.userId === "string" ? actor.userId : null,
+        displayName: typeof actor.displayName === "string" ? actor.displayName : null,
+        role: typeof actor.role === "string" ? actor.role : null,
+        department: typeof actor.department === "string" ? actor.department : null,
+      },
+      chips: Array.isArray(o.chips)
+        ? (o.chips.filter((c) => typeof c === "string") as UnifiedTimelineApiItem["chips"])
+        : [],
+      titleFr: typeof o.titleFr === "string" ? o.titleFr : null,
+      titleEn: typeof o.titleEn === "string" ? o.titleEn : null,
+      summaryFr: typeof o.summaryFr === "string" ? o.summaryFr : null,
+      summaryEn: typeof o.summaryEn === "string" ? o.summaryEn : null,
+      orderId: typeof o.orderId === "string" ? o.orderId : null,
+      orderItemId: typeof o.orderItemId === "string" ? o.orderItemId : null,
+      payloadJson: o.payloadJson,
+    });
   }
-  if (row.eventType === "PROCEDURE_DOCUMENTED") {
-    const payload = asRecord(row.payloadJson) ?? {} as ProcedurePayload;
-    const proc = typeof payload.procedureType === "string" ? payload.procedureType : "";
-    const procedure = procedureTypeDisplayName(t, proc);
-    const detail = procedureTimelineCompactSuffix(payload, t);
-    const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented")
-      .replace("{procedure}", procedure)
-      .replace("{detail}", detail);
-    const summary = buildProcedureTimelineDetailLine(
-      payload,
-      row.createdAt,
-      language,
-      t,
-      row.createdBy,
-      (fn, ln) => formatActor(fn, ln, t("common.dash"))
-    );
-    return { label, summary };
-  }
-  return summarizeClinicalTimelineRow(row, t);
+  return {
+    items,
+    capped: root?.capped === true,
+    limit: typeof root?.limit === "number" ? root.limit : DEFAULT_LIMIT,
+  };
 }
 
 export function ClinicalTimeline({
@@ -88,8 +86,10 @@ export function ClinicalTimeline({
   const [state, setState] = useState<{
     loading: boolean;
     error: boolean;
-    items: ClinicalTimelineApiRow[];
-  }>({ loading: true, error: false, items: [] });
+    items: UnifiedTimelineApiItem[];
+    capped: boolean;
+    limit: number;
+  }>({ loading: true, error: false, items: [], capped: false, limit: DEFAULT_LIMIT });
 
   useEffect(() => {
     let cancelled = false;
@@ -97,36 +97,21 @@ export function ClinicalTimeline({
     (async () => {
       try {
         const data = await apiFetch(
-          `/encounters/${encounterId}/clinical-timeline?limit=${DEFAULT_LIMIT}`,
+          `/encounters/${encounterId}/unified-timeline?limit=${DEFAULT_LIMIT}`,
           { facilityId }
         );
         if (cancelled) return;
-        const raw = Array.isArray(data) ? data : [];
-        const items: ClinicalTimelineApiRow[] = [];
-        for (const r of raw) {
-          if (!r || typeof r !== "object" || Array.isArray(r)) continue;
-          const o = r as Record<string, unknown>;
-          const id = typeof o.id === "string" ? o.id : "";
-          const eventType = typeof o.eventType === "string" ? o.eventType : "";
-          const createdAt = typeof o.createdAt === "string" ? o.createdAt : "";
-          const cb = asRecord(o.createdBy);
-          if (!id || !eventType || !createdAt || !cb) continue;
-          items.push({
-            id,
-            eventType,
-            createdAt,
-            createdBy: {
-              userId: typeof cb.userId === "string" ? cb.userId : "",
-              firstName: typeof cb.firstName === "string" ? cb.firstName : null,
-              lastName: typeof cb.lastName === "string" ? cb.lastName : null,
-            },
-            payloadJson: o.payloadJson,
-          });
-        }
-        setState({ loading: false, error: false, items });
+        const parsed = parseUnifiedTimelineResponse(data);
+        setState({
+          loading: false,
+          error: false,
+          items: parsed.items,
+          capped: parsed.capped,
+          limit: parsed.limit,
+        });
       } catch {
         if (!cancelled) {
-          setState({ loading: false, error: true, items: [] });
+          setState({ loading: false, error: true, items: [], capped: false, limit: DEFAULT_LIMIT });
         }
       }
     })();
@@ -151,6 +136,21 @@ export function ClinicalTimeline({
     lineHeight: 1.45,
   };
 
+  const chipStyle: React.CSSProperties = {
+    display: "inline-block",
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    color: "#475569",
+    backgroundColor: "#f1f5f9",
+    border: "1px solid #e2e8f0",
+    borderRadius: 9999,
+    padding: "1px 6px",
+    marginRight: 4,
+    marginTop: 2,
+  };
+
   return (
     <div
       style={{
@@ -167,39 +167,68 @@ export function ClinicalTimeline({
         {state.loading ? (
           <p style={{ ...lineStyle, color: "#64748b" }}>{t("common.loading")}</p>
         ) : state.error ? (
-          <p style={{ ...lineStyle, color: "#92400e", fontWeight: 600 }}>
-            {t("emergencyVisitSummaryPanel.clinicalTimeline.loadError")}
-          </p>
+          <p style={{ ...lineStyle, color: "#92400e", fontWeight: 600 }}>{t("unifiedTimeline.loadError")}</p>
         ) : state.items.length === 0 ? (
-          <p style={{ ...lineStyle, color: "#64748b" }}>{t("emergencyVisitSummaryPanel.clinicalTimeline.empty")}</p>
+          <p style={{ ...lineStyle, color: "#64748b" }}>{t("unifiedTimeline.empty")}</p>
         ) : (
-          <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
-            {state.items.map((row, i) => {
-              const { label, summary } = summarizeClinicalEvent(row, language, t);
-              const when = formatEncounterChromeDateTime(row.createdAt, language);
-              const actor = formatActor(row.createdBy.firstName, row.createdBy.lastName, t("common.dash"));
-              return (
-                <li
-                  key={row.id}
-                  style={{
-                    paddingBottom: 10,
-                    marginBottom: 10,
-                    borderBottom: i === state.items.length - 1 ? "none" : "1px solid #f1f5f9",
-                  }}
-                >
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
-                    <span style={{ color: "#0f172a", fontWeight: 700 }}>{when}</span>
-                    <span style={{ color: "#94a3b8" }}> — </span>
-                    <span>{actor}</span>
-                  </div>
-                  <p style={{ ...lineStyle, fontWeight: 700, color: "#0f172a", marginBottom: summary ? 2 : 0 }}>
-                    {label}
-                  </p>
-                  {summary ? <p style={{ ...lineStyle, color: "#475569", fontSize: 11 }}>{summary}</p> : null}
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            {state.capped ? (
+              <p style={{ ...lineStyle, color: "#92400e", fontSize: 11, marginBottom: 8 }}>
+                {t("unifiedTimeline.cappedHint").replace("{limit}", String(state.limit))}
+              </p>
+            ) : null}
+            <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
+              {state.items.map((row, i) => {
+                const { label, summary, groupLabel, chipLabels } = summarizeUnifiedTimelineItem(
+                  row,
+                  language,
+                  t
+                );
+                const when = formatEncounterChromeDateTime(row.documentedAtIso, language);
+                const actor =
+                  row.actor.displayName?.trim() ||
+                  row.actor.department?.trim() ||
+                  t("common.dash");
+                const correctionLine = formatUnifiedTimelineCorrectionLine(row, language, t);
+                return (
+                  <li
+                    key={row.id}
+                    style={{
+                      paddingBottom: 10,
+                      marginBottom: 10,
+                      borderBottom: i === state.items.length - 1 ? "none" : "1px solid #f1f5f9",
+                    }}
+                  >
+                    <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>
+                      <span style={{ color: "#0f172a", fontWeight: 700 }}>{when}</span>
+                      <span style={{ color: "#94a3b8" }}> — </span>
+                      <span>{actor}</span>
+                      <span style={{ color: "#94a3b8" }}> · </span>
+                      <span style={{ fontWeight: 600 }}>{groupLabel}</span>
+                    </div>
+                    {chipLabels.length > 0 ? (
+                      <div style={{ marginBottom: 4 }}>
+                        {chipLabels.map((chip) => (
+                          <span key={chip} style={chipStyle}>
+                            {chip}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <p style={{ ...lineStyle, fontWeight: 700, color: "#0f172a", marginBottom: summary ? 2 : 0 }}>
+                      {label}
+                    </p>
+                    {summary ? (
+                      <p style={{ ...lineStyle, color: "#475569", fontSize: 11 }}>{summary}</p>
+                    ) : null}
+                    {correctionLine ? (
+                      <p style={{ ...lineStyle, color: "#64748b", fontSize: 10, marginTop: 4 }}>{correctionLine}</p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
     </div>

@@ -332,6 +332,26 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
         )
         .join("")}</ol>`;
 
+  const unifiedInner =
+    !manifest.unifiedTimeline || manifest.unifiedTimeline.items.length === 0
+      ? `<p class="muted">${esc(NO_DATA)}</p>`
+      : `${manifest.unifiedTimeline.capped ? `<p class="warn">Chronologie unifiée limitée aux ${manifest.unifiedTimeline.items.length} événements les plus récents.</p>` : ""}
+      <ol>${manifest.unifiedTimeline.items
+        .map((u) => {
+          const chips =
+            u.chips.length > 0
+              ? ` <span class="muted">[${esc(u.chips.join(", "))}]</span>`
+              : "";
+          const corrected =
+            u.hasClinicalTimeCorrection && u.effectiveClinicalAtIso
+              ? `<div class="muted">Documenté : ${esc(u.documentedAtIso)} · Heure clinique corrigée : ${esc(u.effectiveClinicalAtIso)}</div>`
+              : "";
+          return `<li><strong>${esc(u.documentedAtIso)}</strong> — [${esc(u.displayGroup)}] ${esc(
+            u.titleFr ?? u.displayEventType
+          )}${chips} — ${esc(u.actorDisplayName ?? "—")}${corrected}</li>`;
+        })
+        .join("")}</ol>`;
+
   const auditInner =
     manifest.auditTimelineSummary.items.length === 0
       ? `<p class="muted">${esc(NO_DATA)}</p>`
@@ -420,6 +440,7 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
   ${section("Procedures", procInner)}
   ${section("IV access", ivInner)}
   ${section("Clinical timeline", clinInner)}
+  ${section("Chronologie unifiée (inter-départements)", unifiedInner)}
   ${section("Audit timeline summary", auditInner)}
   ${section("Follow-ups", fuInner)}
   ${section("Deferred domains", deferredInner)}

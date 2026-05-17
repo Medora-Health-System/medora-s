@@ -8469,6 +8469,26 @@ export default {
       TRIAGE_ASSESSMENT_SAVED: "Triage assessment saved",
     },
   },
+  unifiedTimeline: {
+    loadError: "Unable to load unified timeline.",
+    empty: "No cross-department events for this encounter.",
+    cappedHint: "Timeline limited to the {limit} most recent events.",
+    groups: {
+      CLINICAL: "Clinical",
+      MEDICATION: "Medication",
+      LABORATORY: "Laboratory",
+      IMAGING: "Imaging",
+      PROCEDURE: "Procedure",
+      OBSERVATION: "Observation",
+    },
+    chips: {
+      ADJUSTED: "Adjusted",
+      OBSERVATION: "Observation",
+      INFUSION_STARTED: "Infusion started",
+      INFUSION_STOPPED: "Infusion stopped",
+      RESULT_CORRECTED: "Result corrected",
+    },
+  },
   medicationSafety: {
     highRiskWarning: "High-risk medication — verify dose, route, and directions.",
   },
