@@ -1,8 +1,13 @@
--- CreateEnum
-CREATE TYPE "MsppAlertTriageStatus" AS ENUM ('NEW', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'ESCALATED_INTERNAL', 'CLOSED');
+-- Replay-safe legacy migration guard for CI/local/prod history alignment. Existing production object is preserved.
+DO $$
+BEGIN
+  CREATE TYPE "MsppAlertTriageStatus" AS ENUM ('NEW', 'ACKNOWLEDGED', 'UNDER_REVIEW', 'ESCALATED_INTERNAL', 'CLOSED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable
-CREATE TABLE "MsppAlertTriage" (
+CREATE TABLE IF NOT EXISTS "MsppAlertTriage" (
     "id" TEXT NOT NULL,
     "alertKey" TEXT NOT NULL,
     "windowCurrentStart" TIMESTAMP(3) NOT NULL,
@@ -24,19 +29,29 @@ CREATE TABLE "MsppAlertTriage" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MsppAlertTriage_alertKey_key" ON "MsppAlertTriage"("alertKey");
+CREATE UNIQUE INDEX IF NOT EXISTS "MsppAlertTriage_alertKey_key" ON "MsppAlertTriage"("alertKey");
 
 -- CreateIndex
-CREATE INDEX "MsppAlertTriage_triageStatus_idx" ON "MsppAlertTriage"("triageStatus");
+CREATE INDEX IF NOT EXISTS "MsppAlertTriage_triageStatus_idx" ON "MsppAlertTriage"("triageStatus");
 
 -- CreateIndex
-CREATE INDEX "MsppAlertTriage_departmentId_idx" ON "MsppAlertTriage"("departmentId");
+CREATE INDEX IF NOT EXISTS "MsppAlertTriage_departmentId_idx" ON "MsppAlertTriage"("departmentId");
 
 -- CreateIndex
-CREATE INDEX "MsppAlertTriage_updatedAt_idx" ON "MsppAlertTriage"("updatedAt");
+CREATE INDEX IF NOT EXISTS "MsppAlertTriage_updatedAt_idx" ON "MsppAlertTriage"("updatedAt");
 
 -- AddForeignKey
-ALTER TABLE "MsppAlertTriage" ADD CONSTRAINT "MsppAlertTriage_acknowledgedByUserId_fkey" FOREIGN KEY ("acknowledgedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "MsppAlertTriage" ADD CONSTRAINT "MsppAlertTriage_acknowledgedByUserId_fkey" FOREIGN KEY ("acknowledgedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "MsppAlertTriage" ADD CONSTRAINT "MsppAlertTriage_assignedToUserId_fkey" FOREIGN KEY ("assignedToUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "MsppAlertTriage" ADD CONSTRAINT "MsppAlertTriage_assignedToUserId_fkey" FOREIGN KEY ("assignedToUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;

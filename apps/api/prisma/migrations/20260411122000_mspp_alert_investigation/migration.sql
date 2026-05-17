@@ -1,10 +1,21 @@
 -- Suivi d'investigation interne MSPP (lien alertKey / triage), sans modifier signaux ni validation.
 
-CREATE TYPE "MsppAlertInvestigationStatus" AS ENUM ('OPEN', 'FIELD_VERIFICATION', 'LAB_FOLLOWUP', 'COORDINATION_ACTIVE', 'CLOSED');
+-- Replay-safe legacy migration guard for CI/local/prod history alignment. Existing production object is preserved.
+DO $$
+BEGIN
+  CREATE TYPE "MsppAlertInvestigationStatus" AS ENUM ('OPEN', 'FIELD_VERIFICATION', 'LAB_FOLLOWUP', 'COORDINATION_ACTIVE', 'CLOSED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE "MsppAlertInvestigationEventAction" AS ENUM ('OPENED', 'STATUS_CHANGED', 'NOTE_ADDED', 'ASSIGNED');
+DO $$
+BEGIN
+  CREATE TYPE "MsppAlertInvestigationEventAction" AS ENUM ('OPENED', 'STATUS_CHANGED', 'NOTE_ADDED', 'ASSIGNED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE "MsppAlertInvestigation" (
+CREATE TABLE IF NOT EXISTS "MsppAlertInvestigation" (
     "id" TEXT NOT NULL,
     "alertKey" TEXT NOT NULL,
     "msppAlertTriageId" TEXT,
@@ -23,17 +34,17 @@ CREATE TABLE "MsppAlertInvestigation" (
     CONSTRAINT "MsppAlertInvestigation_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "MsppAlertInvestigation_alertKey_key" ON "MsppAlertInvestigation"("alertKey");
+CREATE UNIQUE INDEX IF NOT EXISTS "MsppAlertInvestigation_alertKey_key" ON "MsppAlertInvestigation"("alertKey");
 
-CREATE UNIQUE INDEX "MsppAlertInvestigation_msppAlertTriageId_key" ON "MsppAlertInvestigation"("msppAlertTriageId");
+CREATE UNIQUE INDEX IF NOT EXISTS "MsppAlertInvestigation_msppAlertTriageId_key" ON "MsppAlertInvestigation"("msppAlertTriageId");
 
-CREATE INDEX "MsppAlertInvestigation_investigationStatus_idx" ON "MsppAlertInvestigation"("investigationStatus");
+CREATE INDEX IF NOT EXISTS "MsppAlertInvestigation_investigationStatus_idx" ON "MsppAlertInvestigation"("investigationStatus");
 
-CREATE INDEX "MsppAlertInvestigation_departmentId_idx" ON "MsppAlertInvestigation"("departmentId");
+CREATE INDEX IF NOT EXISTS "MsppAlertInvestigation_departmentId_idx" ON "MsppAlertInvestigation"("departmentId");
 
-CREATE INDEX "MsppAlertInvestigation_updatedAt_idx" ON "MsppAlertInvestigation"("updatedAt");
+CREATE INDEX IF NOT EXISTS "MsppAlertInvestigation_updatedAt_idx" ON "MsppAlertInvestigation"("updatedAt");
 
-CREATE TABLE "MsppAlertInvestigationEvent" (
+CREATE TABLE IF NOT EXISTS "MsppAlertInvestigationEvent" (
     "id" TEXT NOT NULL,
     "investigationId" TEXT NOT NULL,
     "action" "MsppAlertInvestigationEventAction" NOT NULL,
@@ -47,14 +58,39 @@ CREATE TABLE "MsppAlertInvestigationEvent" (
     CONSTRAINT "MsppAlertInvestigationEvent_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "MsppAlertInvestigationEvent_investigationId_createdAt_idx" ON "MsppAlertInvestigationEvent"("investigationId", "createdAt");
+CREATE INDEX IF NOT EXISTS "MsppAlertInvestigationEvent_investigationId_createdAt_idx" ON "MsppAlertInvestigationEvent"("investigationId", "createdAt");
 
-ALTER TABLE "MsppAlertInvestigation" ADD CONSTRAINT "MsppAlertInvestigation_msppAlertTriageId_fkey" FOREIGN KEY ("msppAlertTriageId") REFERENCES "MsppAlertTriage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "MsppAlertInvestigation" ADD CONSTRAINT "MsppAlertInvestigation_msppAlertTriageId_fkey" FOREIGN KEY ("msppAlertTriageId") REFERENCES "MsppAlertTriage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "MsppAlertInvestigation" ADD CONSTRAINT "MsppAlertInvestigation_openedByUserId_fkey" FOREIGN KEY ("openedByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "MsppAlertInvestigation" ADD CONSTRAINT "MsppAlertInvestigation_openedByUserId_fkey" FOREIGN KEY ("openedByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "MsppAlertInvestigation" ADD CONSTRAINT "MsppAlertInvestigation_assignedToUserId_fkey" FOREIGN KEY ("assignedToUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "MsppAlertInvestigation" ADD CONSTRAINT "MsppAlertInvestigation_assignedToUserId_fkey" FOREIGN KEY ("assignedToUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "MsppAlertInvestigationEvent" ADD CONSTRAINT "MsppAlertInvestigationEvent_investigationId_fkey" FOREIGN KEY ("investigationId") REFERENCES "MsppAlertInvestigation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "MsppAlertInvestigationEvent" ADD CONSTRAINT "MsppAlertInvestigationEvent_investigationId_fkey" FOREIGN KEY ("investigationId") REFERENCES "MsppAlertInvestigation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE "MsppAlertInvestigationEvent" ADD CONSTRAINT "MsppAlertInvestigationEvent_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$
+BEGIN
+  ALTER TABLE "MsppAlertInvestigationEvent" ADD CONSTRAINT "MsppAlertInvestigationEvent_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
