@@ -29,6 +29,15 @@ export type ProviderDocumentationExamSectionId =
 
 export type ProviderDocumentationRiskLevel = "" | "Low" | "Moderate" | "High";
 
+export type ProviderDocumentationTemplateId =
+  | "chest_pain"
+  | "abdominal_pain"
+  | "headache"
+  | "back_pain"
+  | "uri_respiratory"
+  | "trauma_musculoskeletal"
+  | "observation_reassessment";
+
 export type ProviderDocumentationWorkspaceState = {
   reasonForVisit: string;
   chiefComplaint: string;
@@ -60,6 +69,16 @@ export type ProviderDocumentationSavePayload = {
   treatmentPlan: string | null;
 };
 
+type TemplateStringField = Exclude<keyof ProviderDocumentationWorkspaceState, "physicalExam" | "mdmRiskLevel">;
+
+export type ProviderDocumentationTemplateDefinition = {
+  id: ProviderDocumentationTemplateId;
+  labelKey: string;
+  helperKey: string;
+  fields: Partial<Record<TemplateStringField, string[]>>;
+  physicalExam: Partial<Record<ProviderDocumentationExamSectionId, string[]>>;
+};
+
 export const PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS: ProviderDocumentationExamSectionId[] = [
   "general",
   "heent",
@@ -84,6 +103,168 @@ export const PROVIDER_DOCUMENTATION_EXAM_FIELD_TO_LEGACY_KEY: Record<
   musculoskeletal: "examMusculoskeletal",
   skin: "examSkin",
 };
+
+export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefinition[] = [
+  {
+    id: "chest_pain",
+    labelKey: "providerDocumentationWorkspace.templateChestPain",
+    helperKey: "providerDocumentationWorkspace.templateChestPainHelp",
+    fields: {
+      hpi: [
+        "erMseHpiChips.locChestPain",
+        "erMseHpiChips.timStartedToday",
+        "erMseHpiChips.qualPressureLike",
+      ],
+      rosImportantPositives: ["erMseRosChips.posChestPain", "erMseRosChips.posSob"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
+      rosRedFlags: ["erMseRosChips.rfSyncope", "erMseRosChips.rfHypotensionConcern"],
+      mdmWorkingAssessment: ["erMseMdmChips.waCardiopulmonary"],
+      mdmPlanSummary: ["erMseMdmChips.planLabs", "erMseMdmChips.planEcg", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispAdmit"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      cardiovascular: ["erMseExamChips.cardioRrr", "erMseExamChips.cardioNoMurmur"],
+      respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs"],
+    },
+  },
+  {
+    id: "abdominal_pain",
+    labelKey: "providerDocumentationWorkspace.templateAbdominalPain",
+    helperKey: "providerDocumentationWorkspace.templateAbdominalPainHelp",
+    fields: {
+      hpi: [
+        "erMseHpiChips.locAbdominalPain",
+        "erMseHpiChips.timStartedToday",
+        "erMseHpiChips.timWorsening",
+      ],
+      rosImportantPositives: ["erMseRosChips.posAbdominalPain", "erMseRosChips.posVomiting"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
+      rosRedFlags: ["erMseRosChips.rfSeverePain", "erMseRosChips.rfHypotensionConcern"],
+      mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
+      mdmPlanSummary: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdTendernessPresent", "erMseExamChips.abdGuarding"],
+    },
+  },
+  {
+    id: "headache",
+    labelKey: "providerDocumentationWorkspace.templateHeadache",
+    helperKey: "providerDocumentationWorkspace.templateHeadacheHelp",
+    fields: {
+      hpi: ["erMseHpiChips.locHeadache", "erMseHpiChips.timStartedToday", "erMseHpiChips.timSuddenOnset"],
+      rosImportantPositives: ["erMseRosChips.posHeadache", "erMseRosChips.posDizziness"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
+      rosRedFlags: ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSeverePain"],
+      mdmWorkingAssessment: ["erMseMdmChips.waNeurologic"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planImaging", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      heent: ["erMseExamChips.heentPerrla"],
+      neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroSpeechClear"],
+    },
+  },
+  {
+    id: "back_pain",
+    labelKey: "providerDocumentationWorkspace.templateBackPain",
+    helperKey: "providerDocumentationWorkspace.templateBackPainHelp",
+    fields: {
+      hpi: ["erMseHpiChips.locBackPain", "erMseHpiChips.timStartedToday", "erMseHpiChips.qualAching"],
+      rosImportantPositives: ["erMseRosChips.posWeakness"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesWeakness"],
+      rosRedFlags: ["erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSeverePain"],
+      mdmWorkingAssessment: ["erMseMdmChips.waTrauma"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      neuroPsych: ["erMseExamChips.neuroFollowsCommands"],
+      musculoskeletal: ["erMseExamChips.mskRomNormal", "erMseExamChips.mskTendernessPresent"],
+    },
+  },
+  {
+    id: "uri_respiratory",
+    labelKey: "providerDocumentationWorkspace.templateUriRespiratory",
+    helperKey: "providerDocumentationWorkspace.templateUriRespiratoryHelp",
+    fields: {
+      hpi: ["erMseHpiChips.timStartedToday", "erMseHpiChips.timGradualOnset", "erMseHpiChips.assocSob"],
+      rosImportantPositives: ["erMseRosChips.posFever", "erMseRosChips.posSob"],
+      rosImportantNegatives: ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesSyncope"],
+      rosRedFlags: ["erMseRosChips.rfRespDistress", "erMseRosChips.rfHypotensionConcern"],
+      mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waCardiopulmonary"],
+      mdmPlanSummary: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging", "erMseMdmChips.planReassess"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actOxygen"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      heent: ["erMseExamChips.heentOropharynxClear"],
+      respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs", "erMseExamChips.respWheezing"],
+    },
+  },
+  {
+    id: "trauma_musculoskeletal",
+    labelKey: "providerDocumentationWorkspace.templateTraumaMsk",
+    helperKey: "providerDocumentationWorkspace.templateTraumaMskHelp",
+    fields: {
+      hpi: ["erMseHpiChips.locLimbPain", "erMseHpiChips.timSuddenOnset", "erMseHpiChips.qualAching"],
+      rosImportantPositives: ["erMseRosChips.posWeakness"],
+      rosRedFlags: ["erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSeverePain", "erMseRosChips.rfBleeding"],
+      mdmWorkingAssessment: ["erMseMdmChips.waTrauma"],
+      mdmPlanSummary: ["erMseMdmChips.planImaging", "erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actPain", "erMseMdmChips.actSafety"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert"],
+      musculoskeletal: [
+        "erMseExamChips.mskRomNormal",
+        "erMseExamChips.mskTendernessPresent",
+        "erMseExamChips.mskSwellingPresent",
+        "erMseExamChips.mskDeformityNoted",
+      ],
+      skin: ["erMseExamChips.skinLacerationPresent"],
+      neuroPsych: ["erMseExamChips.neuroFocalDeficitNoted"],
+    },
+  },
+  {
+    id: "observation_reassessment",
+    labelKey: "providerDocumentationWorkspace.templateObservationReassessment",
+    helperKey: "providerDocumentationWorkspace.templateObservationReassessmentHelp",
+    fields: {
+      hpi: [
+        "providerDocumentationWorkspace.obsSymptomsImproving",
+        "providerDocumentationWorkspace.obsSymptomsUnchanged",
+        "providerDocumentationWorkspace.obsSymptomsWorsening",
+        "providerDocumentationWorkspace.obsVitalsStable",
+      ],
+      rosFocusedImpression: [
+        "providerDocumentationWorkspace.obsAwaitingLab",
+        "providerDocumentationWorkspace.obsAwaitingImaging",
+      ],
+      mdmWorkingAssessment: ["erMseMdmChips.waUndifferentiated"],
+      mdmPlanSummary: [
+        "providerDocumentationWorkspace.obsContinuedMonitoring",
+        "erMseMdmChips.planReassess",
+      ],
+      mdmAdmitObserveDischarge: [
+        "providerDocumentationWorkspace.obsDischargeReadiness",
+        "providerDocumentationWorkspace.obsTransferConsidered",
+      ],
+    },
+    physicalExam: {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      respiratory: ["erMseExamChips.respNoDistress"],
+      cardiovascular: ["erMseExamChips.cardioPeripheralPulsesPresent"],
+      neuroPsych: ["erMseExamChips.neuroAlertOriented"],
+    },
+  },
+];
 
 export function documentTypeForEncounterMode(
   encounterMode: ProviderDocumentationEncounterMode
@@ -170,6 +351,52 @@ export function appendDocumentationFragment(current: string, fragment: string): 
   const alreadyPresent = parts.some((p) => p.toLocaleLowerCase() === clean.toLocaleLowerCase());
   if (alreadyPresent) return current;
   return `${currentTrimmed}; ${clean}`;
+}
+
+export function providerDocumentationTemplateById(
+  templateId: ProviderDocumentationTemplateId
+): ProviderDocumentationTemplateDefinition {
+  const template = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === templateId);
+  if (!template) {
+    throw new Error(`Unknown provider documentation template: ${templateId}`);
+  }
+  return template;
+}
+
+export function applyProviderDocumentationTemplate(input: {
+  state: ProviderDocumentationWorkspaceState;
+  templateId: ProviderDocumentationTemplateId;
+  resolveFragment: (key: string) => string;
+}): ProviderDocumentationWorkspaceState {
+  const template = providerDocumentationTemplateById(input.templateId);
+  const next: ProviderDocumentationWorkspaceState = {
+    ...input.state,
+    physicalExam: { ...input.state.physicalExam },
+  };
+
+  for (const [field, fragmentKeys] of Object.entries(template.fields) as Array<
+    [TemplateStringField, string[] | undefined]
+  >) {
+    if (!fragmentKeys) continue;
+    let current = next[field];
+    for (const key of fragmentKeys) {
+      current = appendDocumentationFragment(current, input.resolveFragment(key));
+    }
+    next[field] = current;
+  }
+
+  for (const [sectionId, fragmentKeys] of Object.entries(template.physicalExam) as Array<
+    [ProviderDocumentationExamSectionId, string[] | undefined]
+  >) {
+    if (!fragmentKeys) continue;
+    let current = next.physicalExam[sectionId];
+    for (const key of fragmentKeys) {
+      current = appendDocumentationFragment(current, input.resolveFragment(key));
+    }
+    next.physicalExam[sectionId] = current;
+  }
+
+  return next;
 }
 
 export function hydrateProviderDocumentationWorkspaceState(input: {

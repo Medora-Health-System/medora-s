@@ -4,7 +4,9 @@ import React, { useMemo, useState } from "react";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import {
   PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
+  PROVIDER_DOCUMENTATION_TEMPLATES,
   appendDocumentationFragment,
+  applyProviderDocumentationTemplate,
   buildProviderDocumentationPreviewSections,
   providerDocumentationTitleKey,
   type ProviderDocumentationEncounterMode,
@@ -232,6 +234,7 @@ export function ProviderDocumentationWorkspace({
   t,
 }: ProviderDocumentationWorkspaceProps) {
   const [showPreview, setShowPreview] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
 
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
@@ -250,6 +253,17 @@ export function ProviderDocumentationWorkspace({
         [sectionId]: appendDocumentationFragment(value.physicalExam[sectionId], t(fragmentKey)),
       },
     });
+  };
+  const applyTemplate = (templateId: (typeof PROVIDER_DOCUMENTATION_TEMPLATES)[number]["id"]) => {
+    if (readOnly) return;
+    onChange(
+      applyProviderDocumentationTemplate({
+        state: value,
+        templateId,
+        resolveFragment: t,
+      })
+    );
+    setShowTemplates(false);
   };
   const ta = (field: keyof ProviderDocumentationWorkspaceState, rows = 2) => (
     <textarea
@@ -303,7 +317,14 @@ export function ProviderDocumentationWorkspace({
             </p>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <button type="button" disabled={readOnly} style={secondaryButton(readOnly)}>{t("providerDocumentationWorkspace.templates")}</button>
+            <button
+              type="button"
+              disabled={readOnly}
+              onClick={() => setShowTemplates((visible) => !visible)}
+              style={secondaryButton(readOnly)}
+            >
+              {t("providerDocumentationWorkspace.templates")}
+            </button>
             <button type="button" disabled={readOnly || !onClear} onClick={onClear} style={secondaryButton(readOnly || !onClear)}>{t("providerDocumentationWorkspace.clear")}</button>
             <button type="button" onClick={() => setShowPreview((v) => !v)} style={secondaryButton(false)}>{t("providerDocumentationWorkspace.preview")}</button>
             <button type="button" disabled={readOnly || saving} onClick={() => void onSave()} style={primaryButton(readOnly || saving)}>
@@ -316,6 +337,52 @@ export function ProviderDocumentationWorkspace({
           <p style={{ margin: "10px 0 0", fontSize: 12, color: saveMessage.variant === "error" ? "#b91c1c" : "#15803d" }}>
             {saveMessage.text}
           </p>
+        ) : null}
+        {showTemplates ? (
+          <div
+            style={{
+              marginTop: 12,
+              padding: "10px 12px",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              background: "#f8fafc",
+            }}
+          >
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
+              {t("providerDocumentationWorkspace.templatePickerHelp")}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+              {PROVIDER_DOCUMENTATION_TEMPLATES.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  disabled={readOnly}
+                  onClick={() => applyTemplate(template.id)}
+                  title={t(template.helperKey)}
+                  style={{
+                    padding: "9px 10px",
+                    border: "1px solid #dbeafe",
+                    borderRadius: 10,
+                    background: "#fff",
+                    color: "#1e3a8a",
+                    textAlign: "left",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: readOnly ? "not-allowed" : "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <span style={{ display: "block" }}>{t(template.labelKey)}</span>
+                  <span style={{ display: "block", marginTop: 3, color: "#64748b", fontSize: 11, fontWeight: 500 }}>
+                    {t(template.helperKey)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p style={{ margin: "8px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+              {t("providerDocumentationWorkspace.templateSafetyComment")}
+            </p>
+          </div>
         ) : null}
       </div>
 

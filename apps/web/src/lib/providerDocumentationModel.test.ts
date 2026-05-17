@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   appendDocumentationFragment,
+  PROVIDER_DOCUMENTATION_TEMPLATES,
+  applyProviderDocumentationTemplate,
   buildProviderDocumentationMetadata,
   buildProviderDocumentationPreviewSections,
   buildProviderDocumentationSavePayload,
@@ -84,6 +86,73 @@ describe("providerDocumentationModel", () => {
     expect(providerDocumentationTitleKey("ED")).toMatch(/^providerDocumentationWorkspace\./);
     expect(providerDocumentationTitleKey("ED")).not.toContain("Documentation du");
     expect(providerDocumentationTitleKey("OBSERVATION")).not.toContain("Provider documentation");
+  });
+
+  it("defines all requested complaint-driven templates", () => {
+    expect(PROVIDER_DOCUMENTATION_TEMPLATES.map((template) => template.id)).toEqual([
+      "chest_pain",
+      "abdominal_pain",
+      "headache",
+      "back_pain",
+      "uri_respiratory",
+      "trauma_musculoskeletal",
+      "observation_reassessment",
+    ]);
+  });
+
+  it("applies a complaint template into visible editable fields only", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "custom history";
+    const next = applyProviderDocumentationTemplate({
+      state,
+      templateId: "chest_pain",
+      resolveFragment: (key) => key,
+    });
+    expect(next.hpi).toContain("custom history");
+    expect(next.hpi).toContain("erMseHpiChips.locChestPain");
+    expect(next.rosImportantPositives).toContain("erMseRosChips.posChestPain");
+    expect(next.physicalExam.cardiovascular).toContain("erMseExamChips.cardioRrr");
+    expect(next.clinicalImpression).toBe("");
+    expect(next.treatmentPlan).toBe("");
+  });
+
+  it("does not duplicate template fragments on repeated application", () => {
+    const first = applyProviderDocumentationTemplate({
+      state: emptyProviderDocumentationWorkspaceState(),
+      templateId: "observation_reassessment",
+      resolveFragment: (key) => key,
+    });
+    const second = applyProviderDocumentationTemplate({
+      state: first,
+      templateId: "observation_reassessment",
+      resolveFragment: (key) => key,
+    });
+    expect(second.hpi).toBe(first.hpi);
+    expect(second.mdmPlanSummary).toBe(first.mdmPlanSummary);
+  });
+
+  it("templates do not create diagnoses, orders, billing, or preview-only content", () => {
+    const next = applyProviderDocumentationTemplate({
+      state: emptyProviderDocumentationWorkspaceState(),
+      templateId: "trauma_musculoskeletal",
+      resolveFragment: (key) => key,
+    });
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state: next,
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    expect(JSON.stringify(payload)).not.toMatch(/diagnosisId|orderId|billing|billingLevel/i);
+    expect(buildProviderDocumentationPreviewSections(next).map((section) => section.id)).toEqual([
+      "hpi",
+      "ros",
+      "physicalExam",
+      "mdm",
+    ]);
   });
 });
 
