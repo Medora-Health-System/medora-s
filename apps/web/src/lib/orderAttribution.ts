@@ -117,3 +117,75 @@ export function formatOrderAttribution(
 ): string {
   return formatOrderAttributionLines(order, t, language).join(" · ");
 }
+
+function namesMatch(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? "").trim() !== "" && (a ?? "").trim() === (b ?? "").trim();
+}
+
+type ErOrderEventAttributionInput = {
+  eventType?: string | null;
+  performedByDisplayName?: string | null;
+  roleSnapshot?: string | null;
+  performedAt?: string | null;
+};
+
+function lineForAction(
+  lines: string[],
+  actionKey: "attribution.completedBy" | "attribution.acknowledgedBy" | "attribution.cancelledBy",
+  t: (key: string) => string
+): string | undefined {
+  const prefix = t(actionKey).split("{")[0]?.trim() ?? "";
+  if (!prefix) return undefined;
+  return lines.find((line) => line.startsWith(prefix));
+}
+
+/**
+ * ER orders table (completed / cancelled): Ordered by vs Performed/Acknowledged/Cancelled by — never conflate creator with performer.
+ */
+export function formatErOrderEventAttributionCell(
+  order: unknown,
+  orderEvent: ErOrderEventAttributionInput | null,
+  t: (key: string) => string,
+  language?: SupportedLanguage
+): string {
+  const lines = formatOrderAttributionLines(order, t, language);
+  const eventType = (orderEvent?.eventType ?? "").trim().toUpperCase();
+
+  if (eventType === "CANCELLED") {
+    const cancelledLine = lineForAction(lines, "attribution.cancelledBy", t);
+    if (cancelledLine) return cancelledLine;
+    const createdBy =
+      order && typeof order === "object"
+        ? ((order as OrderAttributionCarrier).createdByDisplay?.name ?? null)
+        : null;
+    const eventName = orderEvent?.performedByDisplayName?.trim() || null;
+    if (eventName && !namesMatch(eventName, createdBy)) {
+      return fillTemplate(t("attribution.cancelledBy"), {
+        name: displayName(eventName, t),
+        role: displayRole(orderEvent?.roleSnapshot),
+        datetime: formatDateTime(orderEvent?.performedAt, language),
+      });
+    }
+    return t("attribution.performedByUnset");
+  }
+
+  const performerLine =
+    lineForAction(lines, "attribution.completedBy", t) ??
+    lineForAction(lines, "attribution.acknowledgedBy", t);
+  if (performerLine) return performerLine;
+
+  const createdBy =
+    order && typeof order === "object"
+      ? ((order as OrderAttributionCarrier).createdByDisplay?.name ?? null)
+      : null;
+  const eventName = orderEvent?.performedByDisplayName?.trim() || null;
+  if (eventType === "COMPLETED" && eventName && !namesMatch(eventName, createdBy)) {
+    return fillTemplate(t("attribution.completedBy"), {
+      name: displayName(eventName, t),
+      role: displayRole(orderEvent?.roleSnapshot),
+      datetime: formatDateTime(orderEvent?.performedAt, language),
+    });
+  }
+
+  return t("attribution.performedByUnset");
+}

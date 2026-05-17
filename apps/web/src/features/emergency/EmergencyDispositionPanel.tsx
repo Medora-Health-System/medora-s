@@ -39,6 +39,7 @@ import {
   type EmtalaDispositionComplementForm,
 } from "./erEmtalaV1";
 import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
+import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
 
@@ -326,7 +327,11 @@ export function EmergencyDispositionPanel({
       const admissionPayload = admissionFormToPayload(admissionForm);
 
       const body: Record<string, unknown> = {};
-      if (mergedDischarge !== null) {
+      /**
+       * Phase 15F-D — observation admission must not PATCH discharge summary (avoids
+       * DISCHARGE_SUMMARY_SAVED timeline noise). Trackboard disposition uses admission packet + erDispositionV1.
+       */
+      if (mergedDischarge !== null && outcomeUi !== "ADMISSION") {
         body.dischargeSummaryJson = mergedDischarge;
       }
       if (
@@ -357,7 +362,13 @@ export function EmergencyDispositionPanel({
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
       await onSaved();
-      setSaveInfo(queued ? t("emergencyDisposition.saveQueued") : t("emergencyDisposition.saveOk"));
+      setSaveInfo(
+        queued
+          ? t("emergencyDisposition.saveQueued")
+          : outcomeUi === "ADMISSION"
+            ? t("emergencyDisposition.saveOkObservationAdmission")
+            : t("emergencyDisposition.saveOk")
+      );
     } catch (e) {
       console.error(e);
       setSaveInfo(
@@ -429,6 +440,11 @@ export function EmergencyDispositionPanel({
   );
 
   const showAdmissionFields = outcomeUi === "ADMISSION";
+  const observationHandoffReady = useMemo(
+    () => erHandoffV1SatisfiesInpatientTransferConfirm(encounter.nursingAssessment),
+    [encounter.nursingAssessment]
+  );
+  const showObservationHandoffStatus = showAdmissionFields && hasSavedAdmission;
   const showTransferExtra = outcomeUi === "TRANSFER";
   const showAmaExtra = outcomeUi === "AMA";
   const showLwbsExtra = outcomeUi === "LWBS";
@@ -479,6 +495,25 @@ export function EmergencyDispositionPanel({
             }}
           >
             {saveInfo}
+          </p>
+        ) : null}
+
+        {showObservationHandoffStatus ? (
+          <p
+            style={{
+              margin: "10px 0 0 0",
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: `1px solid ${observationHandoffReady ? "#bbf7d0" : "#fde68a"}`,
+              backgroundColor: observationHandoffReady ? "#f0fdf4" : "#fffbeb",
+              fontSize: 13,
+              color: observationHandoffReady ? "#166534" : "#92400e",
+              lineHeight: 1.45,
+            }}
+          >
+            {observationHandoffReady
+              ? t("emergencyDisposition.observationActive")
+              : t("emergencyDisposition.observationHandoffAwaitingRn")}
           </p>
         ) : null}
 

@@ -32,7 +32,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { isMedicationInfusionCandidate } from "@medora/shared";
 import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
-import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { formatErOrderEventAttributionCell, formatOrderAttributionLines } from "@/lib/orderAttribution";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -1460,7 +1460,7 @@ export function EmergencyErOrdersPanel({
                         const categoryLabel = t(domainHeadingKey(typeKey));
                         const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
                         const performedWhen = new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US");
-                        const titleCell = `${t("orderEvent.performedBy")}: ${e.performedByDisplayName || "—"} · ${e.roleSnapshot ?? "—"}`;
+                        const titleCell = formatErOrderEventAttributionCell(completedOrder, e, t, language);
                         return (
                           <tr key={e.id} style={{ verticalAlign: "top" }}>
                             <td
@@ -1677,7 +1677,7 @@ export function EmergencyErOrdersPanel({
                         const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
                         const performedWhen = new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US");
                         const cancelReason = formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t);
-                        const titleCell = `${t("orderEvent.performedBy")}: ${e.performedByDisplayName || "—"} · ${e.roleSnapshot ?? "—"}`;
+                        const titleCell = formatErOrderEventAttributionCell(cancelledOrder, e, t, language);
                         return (
                           <tr key={e.id} style={{ verticalAlign: "top" }}>
                             <td

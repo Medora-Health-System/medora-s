@@ -7451,6 +7451,9 @@ export default {
       "This encounter is linked to an observation / short-stay stay (encounter type). Open the full chart for administrative and clinical detail.",
     saveQueued: "Pending sync.",
     saveOk: "Disposition saved.",
+    saveOkObservationAdmission: "Observation admission saved. Continue care in observation.",
+    observationHandoffAwaitingRn: "Awaiting nursing observation handoff",
+    observationActive: "Observation active",
     saveFailed: "Unable to save.",
     signerFallback: "Clinician",
     outcomeHOME: "Discharge home",
@@ -8446,9 +8449,10 @@ export default {
   attribution: {
     orderedBy: "Ordered by {name}{role} · {datetime}",
     cancelledBy: "Cancelled by {name}{role} · {datetime}",
-    completedBy: "Completed by {name}{role} · {datetime}",
+    completedBy: "Performed by {name}{role} · {datetime}",
     acknowledgedBy: "Acknowledged by {name}{role} · {datetime}",
     actionBy: "Action by {name}{role} · {datetime}",
+    performedByUnset: "Performed by: —",
     unknownUser: "unknown user",
   },
   medicationSafety: {

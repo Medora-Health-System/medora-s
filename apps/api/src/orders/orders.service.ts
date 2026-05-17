@@ -375,16 +375,8 @@ export class OrdersService {
               at: order.createdAt,
             }
           : null;
-      const lastActionDisplay =
-        lastActionByOrderId.get(order.id) ??
-        (createdByDisplay
-          ? {
-              action: "CREATED",
-              name: createdByDisplay.name,
-              role: createdByDisplay.role,
-              at: createdByDisplay.at,
-            }
-          : null);
+      /** Phase 15F-D — order placer is not performer; omit last action until a terminal OrderEvent exists. */
+      const lastActionDisplay = lastActionByOrderId.get(order.id) ?? null;
 
       return {
         ...order,

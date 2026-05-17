@@ -31,7 +31,12 @@ import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet }
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
 import { deriveEmtalaStateFromEncounter } from "./erEmtalaV1";
-import { ER_HANDOFF_V1_KEY, readErHandoffV1FromNursingAssessment } from "@medora/shared";
+import {
+  ER_HANDOFF_V1_KEY,
+  readErHandoffV1FromNursingAssessment,
+  dischargeSnapshotIsObservationAdmissionRoutingOnly,
+  mislabeledDischargeEventIsObservationAdmission,
+} from "@medora/shared";
 
 export type VisitSummaryTextBlock = {
   title: string;
@@ -87,6 +92,7 @@ export type VisitSummaryDocumentationHistoryEntry = {
     | "HANDOFF_NURSING"
     | "DISCHARGE_SUMMARY_SAVED"
     | "ADMISSION_SUMMARY_SAVED"
+    | "OBSERVATION_ADMISSION_PACKET_SAVED"
     | "DISPOSITION_SUPPLEMENT_SAVED"
     | "TRIAGE_ASSESSMENT_SAVED";
   documentedAt: string | null;
@@ -633,8 +639,10 @@ function buildDischargeSummaryHistoryEntries(
     const savedAt = payloadSavedAt(e) ?? (typeof e.createdAt === "string" ? e.createdAt : "");
     if (!id || !savedAt) continue;
     const snapshot = payloadSnapshot(e);
+    if (dischargeSnapshotIsObservationAdmissionRoutingOnly(snapshot)) continue;
     const dischargeForm = hydrateDischargeFormFromEncounterJson(snapshot);
     const outcome = inferOutcomeUiFromForms(dischargeForm.dischargeMode, emptySupplement);
+    if (outcome === "ADMISSION") continue;
     const modeLabel = localizedErDischargeModeLabel(dischargeForm.dischargeMode, emptySupplement, locale);
     const preview = buildErDispositionPreviewModel(
       dischargeForm,
@@ -648,6 +656,53 @@ function buildDischargeSummaryHistoryEntries(
     out.push({
       id,
       eventType: "DISCHARGE_SUMMARY_SAVED",
+      documentedAt: savedAt,
+      savedAt,
+      displayWhen: formatIsoForLocale(savedAt, locale),
+      performerDisplayName: performer.displayName,
+      performerInitials: performer.initials,
+      performerRoleTitle: performer.roleTitle,
+      structuredLines: structuredLinesFromSections(preview.sections),
+      narrativeExcerpt: trunc(preview.headline, HISTORY_NARRATIVE_MAX),
+    });
+  }
+  return out;
+}
+
+function buildObservationAdmissionFromMislabeledDischargeEvents(
+  events: ClinicalDocumentationEventApiEntry[],
+  locale: SupportedLanguage
+): VisitSummaryDocumentationHistoryEntry[] {
+  const out: VisitSummaryDocumentationHistoryEntry[] = [];
+  const emptyDischarge = hydrateDischargeFormFromEncounterJson(null);
+  const emptySupplement = erDispositionSupplementFromEncounter(null);
+  for (const e of events) {
+    if (
+      !mislabeledDischargeEventIsObservationAdmission({
+        eventType: typeof e.eventType === "string" ? e.eventType : null,
+        payloadJson: e.payloadJson,
+      })
+    ) {
+      continue;
+    }
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = payloadSavedAt(e) ?? (typeof e.createdAt === "string" ? e.createdAt : "");
+    if (!id || !savedAt) continue;
+    const snapshot = payloadSnapshot(e);
+    const dischargeForm = hydrateDischargeFormFromEncounterJson(snapshot);
+    const modeLabel = localizedErDischargeModeLabel(dischargeForm.dischargeMode, emptySupplement, locale);
+    const preview = buildErDispositionPreviewModel(
+      dischargeForm,
+      hydrateAdmissionFormFromEncounterJson(null, ""),
+      emptySupplement,
+      "ADMISSION",
+      dispositionPreviewLabelsFromLocale(locale),
+      modeLabel
+    );
+    const performer = performerFromEntry(e, snapshot);
+    out.push({
+      id,
+      eventType: "OBSERVATION_ADMISSION_PACKET_SAVED",
       documentedAt: savedAt,
       savedAt,
       displayWhen: formatIsoForLocale(savedAt, locale),
@@ -1074,7 +1129,10 @@ export function buildEmergencyVisitSummaryModel(
   const handoffLatestId = handoffHistory.length > 0 ? handoffHistory[0].id : null;
   const dischargeSummaryHistory = buildDischargeSummaryHistoryEntries(documentationEvents, locale);
   const dischargeSummaryLatestId = dischargeSummaryHistory.length > 0 ? dischargeSummaryHistory[0].id : null;
-  const admissionSummaryHistory = buildAdmissionSummaryHistoryEntries(documentationEvents, locale);
+  const admissionSummaryHistory = [
+    ...buildAdmissionSummaryHistoryEntries(documentationEvents, locale),
+    ...buildObservationAdmissionFromMislabeledDischargeEvents(documentationEvents, locale),
+  ].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
   const admissionSummaryLatestId = admissionSummaryHistory.length > 0 ? admissionSummaryHistory[0].id : null;
   const dispositionSupplementHistory = buildDispositionSupplementHistoryEntries(documentationEvents, locale);
   const dispositionSupplementLatestId =

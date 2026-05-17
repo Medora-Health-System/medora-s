@@ -475,6 +475,9 @@ export function buildDiagnosisCandidate(params: {
  * Order-item charge capture uses documented completion time only.
  * Lab/radiology `effectiveCollectedAt`, `effectivePerformedAt`, `effectiveResultedAt`, and
  * `effectiveFinalizedAt` are operational-clinical overlays — never use them for serviceDate.
+ *
+ * Phase 15F-D — `createdByUserId` is the ordering clinician at placement; it is not
+ * `renderingProviderId` (performer/resulting). Do not map order creator to rendering provider.
  */
 export function buildOrderItemCandidate(params: {
   orderItemId: string;

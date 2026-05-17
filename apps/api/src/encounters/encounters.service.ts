@@ -96,6 +96,7 @@ import {
   readBillingCaptureV1,
   upsertBillingCaptureItem,
   type ObservationReassessmentV1Body,
+  dischargeSnapshotIsObservationAdmissionRoutingOnly,
 } from "@medora/shared";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
@@ -1039,7 +1040,13 @@ export class EncountersService {
         if (!encounter.admittedAt) {
           updateData.admittedAt = new Date();
         }
-        if (encounter.type !== EncounterType.INPATIENT && encounter.type !== EncounterType.EMERGENCY) {
+        /**
+         * Phase 15F-D — observation admission from ER: same open encounter, level-of-care promotion.
+         * Do not require a separate `confirmInpatientTransfer` before board / observation workflow.
+         */
+        if (encounter.type === EncounterType.EMERGENCY) {
+          updateData.type = EncounterType.INPATIENT;
+        } else if (encounter.type !== EncounterType.INPATIENT) {
           updateData.type = EncounterType.INPATIENT;
         }
       }
@@ -1419,7 +1426,11 @@ export class EncountersService {
        * noise. Failure to resolve performer identity does not block the event — empty fields
        * just render as "—" in any future history view.
        */
-      if (dischargeChanged && dischargePerformer) {
+      const skipDischargeEventForObservationAdmission =
+        dischargeChanged &&
+        admissionChanged &&
+        dischargeSnapshotIsObservationAdmissionRoutingOnly(data.dischargeSummaryJson);
+      if (dischargeChanged && dischargePerformer && !skipDischargeEventForObservationAdmission) {
         await tx.encounterClinicalEvent.create({
           data: {
             facilityId,

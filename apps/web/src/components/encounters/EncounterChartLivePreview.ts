@@ -22,6 +22,7 @@ import { fetchPatientFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
 import { chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 import { formatOrderAuthorityLines } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
+import { mislabeledDischargeEventIsObservationAdmission } from "@medora/shared";
 import {
   diagnosisDisplayFr,
   nirMrnDisplay,
@@ -602,9 +603,24 @@ function renderProviderAddenda(lang: SupportedLanguage, encounter: AnyRecord): s
 function renderClinicalDocumentationHistorySection(
   lang: SupportedLanguage,
   events: AnyRecord[],
-  filterTypes: string[]
+  filterTypes: string[],
+  options?: { excludeMislabeledObservationAdmissionDischarge?: boolean }
 ): string {
-  const filtered = events.filter((e) => filterTypes.includes(pickString(e, "eventType") ?? ""));
+  const filtered = events.filter((e) => {
+    const et = pickString(e, "eventType") ?? "";
+    if (!filterTypes.includes(et)) return false;
+    if (
+      options?.excludeMislabeledObservationAdmissionDischarge &&
+      et === "DISCHARGE_SUMMARY_SAVED" &&
+      mislabeledDischargeEventIsObservationAdmission({
+        eventType: et,
+        payloadJson: e.payloadJson,
+      })
+    ) {
+      return false;
+    }
+    return true;
+  });
   if (filtered.length === 0) return noData(lang);
   const items = filtered
     .map((e) => {
@@ -698,7 +714,8 @@ function renderDischargeSummary(
     const history = renderClinicalDocumentationHistorySection(
       lang,
       docEvents.entries,
-      ["DISCHARGE_SUMMARY_SAVED"]
+      ["DISCHARGE_SUMMARY_SAVED"],
+      { excludeMislabeledObservationAdmissionDischarge: true }
     );
     if (history && !history.includes(tprev(lang, "noData"))) {
       out.push(`<p style="margin:8px 0 4px 0;"><strong>${esc(tprev(lang, "dischargeHistoryHeader"))}</strong></p>`);
@@ -725,11 +742,18 @@ function renderAdmissionSummary(
     }
   }
   if (docEvents) {
-    const history = renderClinicalDocumentationHistorySection(
-      lang,
-      docEvents.entries,
-      ["ADMISSION_SUMMARY_SAVED"]
-    );
+    const admissionEvents = docEvents.entries.filter((e) => {
+      const et = pickString(e, "eventType") ?? "";
+      if (et === "ADMISSION_SUMMARY_SAVED") return true;
+      return mislabeledDischargeEventIsObservationAdmission({
+        eventType: et,
+        payloadJson: e.payloadJson,
+      });
+    });
+    const history = renderClinicalDocumentationHistorySection(lang, admissionEvents, [
+      "ADMISSION_SUMMARY_SAVED",
+      "DISCHARGE_SUMMARY_SAVED",
+    ]);
     if (history && !history.includes(tprev(lang, "noData"))) {
       out.push(`<p style="margin:8px 0 4px 0;"><strong>${esc(tprev(lang, "admissionHistoryHeader"))}</strong></p>`);
       out.push(history);
