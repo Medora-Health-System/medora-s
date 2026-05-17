@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   appendDocumentationFragment,
   PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
@@ -23,6 +24,33 @@ import {
   providerDocumentationTitleKey,
   readProviderDocumentationWorkspaceMetadata,
 } from "./providerDocumentationModel";
+import {
+  createProviderDocumentationAutosaveScheduler,
+  shouldAutosaveProviderDocumentation,
+} from "./providerDocumentationAutosave";
+import {
+  buildProviderDocumentationDraftKey,
+  providerDocumentationStateSignature,
+  readProviderDocumentationDraft,
+  removeProviderDocumentationDraft,
+  shouldRestoreProviderDocumentationDraft,
+  writeProviderDocumentationDraft,
+  type ProviderDocumentationStorageLike,
+} from "./providerDocumentationDraftStorage";
+
+function makeMemoryStorage(): ProviderDocumentationStorageLike & { data: Map<string, string> } {
+  const data = new Map<string, string>();
+  return {
+    data,
+    getItem: (key) => data.get(key) ?? null,
+    setItem: (key, value) => {
+      data.set(key, value);
+    },
+    removeItem: (key) => {
+      data.delete(key);
+    },
+  };
+}
 
 describe("providerDocumentationModel", () => {
   it("appends chip fragments and prevents duplicates", () => {
@@ -163,6 +191,224 @@ describe("providerDocumentationModel", () => {
       activeTemplateId: null,
     });
     expect(JSON.stringify(payload)).not.toMatch(/billing|orderId|diagnosisId/i);
+  });
+
+  it("prefers chief complaint for new saves while preserving legacy reason fallback", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.reasonForVisit = "Legacy reason for visit";
+    state.chiefComplaint = "Provider-authored chief complaint";
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state,
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    const stored = payload.nursingAssessment.erProviderMseV1 as Record<string, unknown>;
+    expect(payload.visitReason).toBe("Provider-authored chief complaint");
+    expect(stored.chiefConcern).toBe("Provider-authored chief complaint");
+
+    const legacyOnlyPayload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state: { ...emptyProviderDocumentationWorkspaceState(), reasonForVisit: "Legacy reason only" },
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    expect(legacyOnlyPayload.visitReason).toBe("Legacy reason only");
+  });
+
+  it("hydrates old reason for visit as chief complaint fallback without duplicate preview", () => {
+    const hydrated = hydrateProviderDocumentationWorkspaceState({
+      encounter: { visitReason: "Legacy visit reason", nursingAssessment: {} },
+    });
+    expect(hydrated.reasonForVisit).toBe("Legacy visit reason");
+    expect(hydrated.chiefComplaint).toBe("Legacy visit reason");
+    hydrated.hpi = "Focused HPI";
+    const previewText = buildProviderDocumentationPreviewSections(hydrated)
+      .flatMap((section) => section.lines)
+      .join("\n");
+    expect(previewText.match(/Legacy visit reason/g)?.length).toBe(1);
+    expect(previewText).not.toMatch(/billing|diagnosisId|orderId|chargeCapture/i);
+  });
+
+  it("keeps chief complaint editable and removes separate reason for visit UI", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain('ta("chiefComplaint"');
+    expect(source).not.toContain('ta("reasonForVisit"');
+  });
+
+  it("builds scoped local draft keys and restores only newer matching drafts", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Unsaved local HPI";
+    const key = buildProviderDocumentationDraftKey({
+      encounterId: "enc-1",
+      encounterMode: "ED",
+      providerUserId: "user-1",
+    });
+    expect(key).toContain("enc-1");
+    expect(key).toContain("ED");
+    expect(key).toContain("user-1");
+
+    const storage = makeMemoryStorage();
+    writeProviderDocumentationDraft(storage, key, {
+      schemaVersion: 1,
+      encounterId: "enc-1",
+      encounterMode: "ED",
+      providerUserId: "user-1",
+      updatedAt: "2026-05-17T12:05:00.000Z",
+      serverSavedAt: "2026-05-17T12:00:00.000Z",
+      state,
+    });
+    const draft = readProviderDocumentationDraft(storage, key);
+    expect(
+      shouldRestoreProviderDocumentationDraft({
+        draft,
+        encounterId: "enc-1",
+        encounterMode: "ED",
+        providerUserId: "user-1",
+        serverSavedAt: "2026-05-17T12:00:00.000Z",
+      })
+    ).toBe(true);
+    expect(
+      shouldRestoreProviderDocumentationDraft({
+        draft,
+        encounterId: "enc-2",
+        encounterMode: "ED",
+        providerUserId: "user-1",
+        serverSavedAt: "2026-05-17T12:00:00.000Z",
+      })
+    ).toBe(false);
+    expect(
+      shouldRestoreProviderDocumentationDraft({
+        draft,
+        encounterId: "enc-1",
+        encounterMode: "ED",
+        providerUserId: "user-2",
+        serverSavedAt: "2026-05-17T12:00:00.000Z",
+      })
+    ).toBe(false);
+  });
+
+  it("rejects stale local drafts to avoid overwriting newer server notes", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Stale HPI";
+    expect(
+      shouldRestoreProviderDocumentationDraft({
+        draft: {
+          schemaVersion: 1,
+          encounterId: "enc-1",
+          encounterMode: "OBSERVATION",
+          providerUserId: "unknown-provider",
+          updatedAt: "2026-05-17T11:55:00.000Z",
+          serverSavedAt: "2026-05-17T12:00:00.000Z",
+          state,
+        },
+        encounterId: "enc-1",
+        encounterMode: "OBSERVATION",
+        serverSavedAt: "2026-05-17T12:00:00.000Z",
+      })
+    ).toBe(false);
+  });
+
+  it("debounces autosave and supports failed-save draft preservation", async () => {
+    vi.useFakeTimers();
+    const save = vi.fn().mockResolvedValue(undefined);
+    const scheduler = createProviderDocumentationAutosaveScheduler({
+      debounceMs: 2000,
+      save,
+    });
+    scheduler.schedule();
+    scheduler.schedule();
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(save).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(save).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Draft survives failed save";
+    const storage = makeMemoryStorage();
+    const key = buildProviderDocumentationDraftKey({ encounterId: "enc-1", encounterMode: "ED" });
+    writeProviderDocumentationDraft(storage, key, {
+      schemaVersion: 1,
+      encounterId: "enc-1",
+      encounterMode: "ED",
+      providerUserId: "unknown-provider",
+      updatedAt: "2026-05-17T12:05:00.000Z",
+      serverSavedAt: null,
+      state,
+    });
+    expect(readProviderDocumentationDraft(storage, key)?.state.hpi).toBe("Draft survives failed save");
+  });
+
+  it("autosave is blocked after sign/finalization and for unchanged content", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Draft";
+    const signature = providerDocumentationStateSignature(state);
+    expect(
+      shouldAutosaveProviderDocumentation({
+        currentSignature: `${signature}-changed`,
+        lastSavedSignature: signature,
+        signedOrFinalized: true,
+        hasContent: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldAutosaveProviderDocumentation({
+        currentSignature: signature,
+        lastSavedSignature: signature,
+        hasContent: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldAutosaveProviderDocumentation({
+        currentSignature: `${signature}-changed`,
+        lastSavedSignature: signature,
+        hasContent: true,
+      })
+    ).toBe(true);
+  });
+
+  it("local drafts do not contaminate save payload or export-oriented preview unless restored into state", () => {
+    const savedState = emptyProviderDocumentationWorkspaceState();
+    savedState.hpi = "Saved HPI";
+    const unsavedDraftState = emptyProviderDocumentationWorkspaceState();
+    unsavedDraftState.hpi = "Unsaved local-only HPI";
+    const storage = makeMemoryStorage();
+    const key = buildProviderDocumentationDraftKey({ encounterId: "enc-1", encounterMode: "ED" });
+    writeProviderDocumentationDraft(storage, key, {
+      schemaVersion: 1,
+      encounterId: "enc-1",
+      encounterMode: "ED",
+      providerUserId: "unknown-provider",
+      updatedAt: "2026-05-17T12:05:00.000Z",
+      serverSavedAt: "2026-05-17T12:00:00.000Z",
+      state: unsavedDraftState,
+    });
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state: savedState,
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    expect(JSON.stringify(payload)).toContain("Saved HPI");
+    expect(JSON.stringify(payload)).not.toContain("Unsaved local-only HPI");
+    expect(buildProviderDocumentationPreviewSections(savedState).flatMap((section) => section.lines).join("\n")).not.toContain(
+      "Unsaved local-only HPI"
+    );
+    removeProviderDocumentationDraft(storage, key);
+    expect(readProviderDocumentationDraft(storage, key)).toBeNull();
   });
 
   it("preserves physical exam user edits through hydrate and save", () => {

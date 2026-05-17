@@ -1168,7 +1168,7 @@ export function buildProviderDocumentationSavePayload(input: {
 
   return {
     nursingAssessment,
-    visitReason: trimmedOrNull(s.reasonForVisit || s.chiefComplaint),
+    visitReason: trimmedOrNull(s.chiefComplaint || s.reasonForVisit),
     clinicianImpression: trimmedOrNull(s.clinicalImpression),
     treatmentPlan: trimmedOrNull(s.treatmentPlan),
   };

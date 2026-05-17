@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import {
   PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
@@ -13,6 +13,7 @@ import {
   buildProviderDocumentationPreviewSections,
   buildProviderDocumentationSignReadiness,
   providerDocumentationCanSubmitSignature,
+  providerDocumentationStateHasContent,
   providerDocumentationTitleKey,
   type ProviderDocumentationEncounterMode,
   type ProviderDocumentationExamSectionId,
@@ -25,6 +26,18 @@ import {
   type ProviderDocumentationTemplateStringField,
   type ProviderDocumentationWorkspaceState,
 } from "@/lib/providerDocumentationModel";
+import {
+  type ProviderDocumentationAutosaveStatus,
+  shouldAutosaveProviderDocumentation,
+} from "@/lib/providerDocumentationAutosave";
+import {
+  buildProviderDocumentationDraftKey,
+  providerDocumentationStateSignature,
+  readProviderDocumentationDraft,
+  removeProviderDocumentationDraft,
+  shouldRestoreProviderDocumentationDraft,
+  writeProviderDocumentationDraft,
+} from "@/lib/providerDocumentationDraftStorage";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -32,7 +45,9 @@ type ExamChipGroup = { sectionId: ProviderDocumentationExamSectionId; titleKey: 
 type PreviewSectionId = ReturnType<typeof buildProviderDocumentationPreviewSections>[number]["id"];
 
 export type ProviderDocumentationWorkspaceProps = {
+  encounterId: string;
   encounterMode: ProviderDocumentationEncounterMode;
+  providerUserId?: string | null;
   value: ProviderDocumentationWorkspaceState;
   onChange: (next: ProviderDocumentationWorkspaceState) => void;
   onSave: () => void | Promise<void>;
@@ -53,6 +68,8 @@ export type ProviderDocumentationWorkspaceProps = {
   quickActions?: React.ReactNode;
   t: (key: string) => string;
 };
+
+const AUTOSAVE_DEBOUNCE_MS = 2000;
 
 const sectionShell: React.CSSProperties = {
   padding: "12px 14px",
@@ -280,7 +297,9 @@ function WorkspaceSection({
 }
 
 export function ProviderDocumentationWorkspace({
+  encounterId,
   encounterMode,
+  providerUserId = null,
   value,
   onChange,
   onSave,
@@ -304,6 +323,13 @@ export function ProviderDocumentationWorkspace({
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [attestationAccepted, setAttestationAccepted] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<ProviderDocumentationAutosaveStatus>("idle");
+  const [autosaveSavedAt, setAutosaveSavedAt] = useState<string | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const latestSignatureRef = useRef(providerDocumentationStateSignature(value));
+  const lastSavedSignatureRef = useRef(providerDocumentationStateSignature(value));
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoredDraftKeyRef = useRef<string | null>(null);
   const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
   const activeTemplate = useMemo(
     () => PROVIDER_DOCUMENTATION_TEMPLATES.find((template) => template.id === value.activeTemplateId) ?? null,
@@ -344,6 +370,164 @@ export function ProviderDocumentationWorkspace({
     signReadiness,
     signedOrFinalized,
   });
+  const currentSignature = useMemo(() => providerDocumentationStateSignature(value), [value]);
+  const draftKey = useMemo(
+    () => buildProviderDocumentationDraftKey({ encounterId, encounterMode, providerUserId }),
+    [encounterId, encounterMode, providerUserId]
+  );
+  const hasDraftableContent = useMemo(() => providerDocumentationStateHasContent(value), [value]);
+
+  useEffect(() => {
+    latestSignatureRef.current = currentSignature;
+  }, [currentSignature]);
+
+  useEffect(() => {
+    if (signedOrFinalized || readOnly) return;
+    if (typeof window === "undefined") return;
+    if (restoredDraftKeyRef.current === draftKey) return;
+    restoredDraftKeyRef.current = draftKey;
+    const draft = readProviderDocumentationDraft(window.localStorage, draftKey);
+    if (
+      shouldRestoreProviderDocumentationDraft({
+        draft,
+        encounterId,
+        encounterMode,
+        providerUserId,
+        serverSavedAt: savedMetadata?.savedAt ?? null,
+      })
+    ) {
+      setAutosaveStatus("restore_available");
+      setDraftRestoredAt(draft?.updatedAt ?? null);
+      onChange({ ...draft!.state, physicalExam: { ...draft!.state.physicalExam } });
+    }
+  }, [draftKey, encounterId, encounterMode, onChange, providerUserId, readOnly, savedMetadata?.savedAt, signedOrFinalized]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (signedOrFinalized || readOnly) return;
+    if (!hasDraftableContent || currentSignature === lastSavedSignatureRef.current) {
+      try {
+        removeProviderDocumentationDraft(window.localStorage, draftKey);
+      } catch {
+        /* Local draft cleanup is best-effort; provider text stays in React state. */
+      }
+      return;
+    }
+    const now = new Date().toISOString();
+    try {
+      writeProviderDocumentationDraft(window.localStorage, draftKey, {
+        schemaVersion: 1,
+        encounterId,
+        encounterMode,
+        providerUserId: providerUserId?.trim() || "unknown-provider",
+        updatedAt: now,
+        serverSavedAt: savedMetadata?.savedAt ?? null,
+        state: value,
+      });
+      setAutosaveStatus((status) => (status === "saving" || status === "failed" ? status : "unsaved"));
+    } catch {
+      setAutosaveStatus("failed");
+    }
+  }, [
+    currentSignature,
+    draftKey,
+    encounterId,
+    encounterMode,
+    hasDraftableContent,
+    providerUserId,
+    readOnly,
+    savedMetadata?.savedAt,
+    signedOrFinalized,
+    value,
+  ]);
+
+  useEffect(() => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    const shouldAutosave = shouldAutosaveProviderDocumentation({
+      currentSignature,
+      lastSavedSignature: lastSavedSignatureRef.current,
+      readOnly,
+      signedOrFinalized,
+      saving,
+      hasContent: hasDraftableContent,
+    });
+    if (!shouldAutosave) return;
+
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      const signatureToSave = latestSignatureRef.current;
+      setAutosaveStatus("saving");
+      Promise.resolve(onSave())
+        .then(() => {
+          if (latestSignatureRef.current === signatureToSave) {
+            lastSavedSignatureRef.current = signatureToSave;
+            if (typeof window !== "undefined") {
+              try {
+                removeProviderDocumentationDraft(window.localStorage, draftKey);
+              } catch {
+                /* Draft cleanup is best-effort after a confirmed save. */
+              }
+            }
+            setAutosaveSavedAt(new Date().toISOString());
+            setAutosaveStatus("saved");
+          } else {
+            setAutosaveStatus("unsaved");
+          }
+        })
+        .catch(() => {
+          setAutosaveStatus("failed");
+        });
+    }, AUTOSAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [currentSignature, draftKey, hasDraftableContent, onSave, readOnly, saving, signedOrFinalized]);
+
+  useEffect(() => {
+    if (signedOrFinalized || readOnly) return;
+    if (currentSignature === lastSavedSignatureRef.current) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [currentSignature, readOnly, signedOrFinalized]);
+
+  const runManualSave = async () => {
+    setAutosaveStatus("saving");
+    const signatureToSave = latestSignatureRef.current;
+    try {
+      await onSave();
+      if (latestSignatureRef.current === signatureToSave) {
+        lastSavedSignatureRef.current = signatureToSave;
+        if (typeof window !== "undefined") {
+          try {
+            removeProviderDocumentationDraft(window.localStorage, draftKey);
+          } catch {
+            /* Draft cleanup is best-effort after a confirmed save. */
+          }
+        }
+        setAutosaveSavedAt(new Date().toISOString());
+        setAutosaveStatus("saved");
+      }
+    } catch {
+      setAutosaveStatus("failed");
+    }
+  };
+
+  useEffect(() => {
+    if (!saveMessage) return;
+    if (saveMessage.variant === "error") setAutosaveStatus("failed");
+    if (saveMessage.variant === "success" || saveMessage.variant === "queued") setAutosaveStatus("saved");
+  }, [saveMessage]);
 
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
     onChange({ ...value, ...patchValue });
@@ -483,7 +667,7 @@ export function ProviderDocumentationWorkspace({
             </button>
             <button type="button" disabled={readOnly || !onClear} onClick={onClear} style={secondaryButton(readOnly || !onClear)}>{t("providerDocumentationWorkspace.clear")}</button>
             <button type="button" onClick={() => setShowPreview((v) => !v)} style={secondaryButton(false)}>{t("providerDocumentationWorkspace.preview")}</button>
-            <button type="button" disabled={readOnly || saving} onClick={() => void onSave()} style={primaryButton(readOnly || saving)}>
+            <button type="button" disabled={readOnly || saving} onClick={() => void runManualSave()} style={primaryButton(readOnly || saving)}>
               {saving ? t("providerDocumentationWorkspace.saving") : t("providerDocumentationWorkspace.save")}
             </button>
             {onSign ? (
@@ -509,6 +693,11 @@ export function ProviderDocumentationWorkspace({
             {saveMessage.text}
           </p>
         ) : null}
+        <p style={{ margin: "10px 0 0", fontSize: 11, color: autosaveStatus === "failed" ? "#b91c1c" : autosaveStatus === "unsaved" ? "#92400e" : "#64748b", lineHeight: 1.45 }}>
+          {t(autosaveStatusLabelKey(autosaveStatus))}
+          {autosaveSavedAt ? ` · ${new Date(autosaveSavedAt).toLocaleTimeString()}` : ""}
+          {draftRestoredAt ? ` · ${t("providerDocumentationWorkspace.draftRestored")}` : ""}
+        </p>
         {onSign && !signedOrFinalized ? (
           <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 10, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
             <input
@@ -588,10 +777,7 @@ export function ProviderDocumentationWorkspace({
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)", gap: 14, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPresentation")} status={sectionStatusById.chiefComplaintHpi} t={t}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.reasonForVisit")}>{ta("reasonForVisit", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.chiefComplaint")}>{ta("chiefComplaint", 2)}</Field>
-            </div>
+            <Field label={t("providerDocumentationWorkspace.chiefComplaint")}>{ta("chiefComplaint", 2)}</Field>
             <div style={{ marginTop: 10 }}>
               <Field label={t("providerDocumentationWorkspace.hpi")}>{ta("hpi", 4)}</Field>
               {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
@@ -849,6 +1035,9 @@ export function ProviderDocumentationWorkspace({
             <p style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
               {lastSaved ? `${lastSaved.savedBy} · ${lastSaved.savedAt}` : t("common.dash")}
             </p>
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: autosaveStatus === "failed" ? "#b91c1c" : "#64748b", lineHeight: 1.45 }}>
+              {t(autosaveStatusLabelKey(autosaveStatus))}
+            </p>
           </div>
           {showPreview ? (
             <div style={sectionShell}>
@@ -980,6 +1169,13 @@ function readinessColor(state: ProviderDocumentationReadinessState): string {
   if (state === "ready_to_save" || state === "saved" || state === "signed_or_finalized") return "#166534";
   if (state === "needs_review") return "#92400e";
   return "#991b1b";
+}
+
+function autosaveStatusLabelKey(status: ProviderDocumentationAutosaveStatus): string {
+  return `providerDocumentationWorkspace.autosave${status
+    .split("_")
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join("")}`;
 }
 
 function secondaryButton(disabled: boolean): React.CSSProperties {
