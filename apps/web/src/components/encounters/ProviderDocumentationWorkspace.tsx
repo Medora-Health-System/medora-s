@@ -243,6 +243,18 @@ const examTitleKeyBySection: Record<ProviderDocumentationExamSectionId, string> 
   reassessment: "providerDocumentationWorkspace.examReassessment",
 };
 
+const examDictationIdBySection: Record<ProviderDocumentationExamSectionId, string> = {
+  general: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral,
+  heent: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamHeent,
+  cardiovascular: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamCardiovascular,
+  respiratory: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamRespiratory,
+  abdomen: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamAbdomen,
+  neuroPsych: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamNeuroPsych,
+  musculoskeletal: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamMusculoskeletal,
+  skin: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamSkin,
+  reassessment: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamReassessment,
+};
+
 const previewTitleKeyBySection: Record<PreviewSectionId, string> = {
   hpi: "providerDocumentationWorkspace.previewHpi",
   ros: "providerDocumentationWorkspace.previewRos",
@@ -826,9 +838,27 @@ export function ProviderDocumentationWorkspace({
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)", gap: 14, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPresentation")} status={sectionStatusById.chiefComplaintHpi} t={t}>
-            <Field label={t("providerDocumentationWorkspace.chiefComplaint")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("chiefComplaint", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.chiefComplaint)}</Field>
+            <Field
+              label={t("providerDocumentationWorkspace.chiefComplaint")}
+              voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
+              dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.chiefComplaint}
+              dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
+              readOnly={readOnly}
+              readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}
+            >
+              {ta("chiefComplaint", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.chiefComplaint)}
+            </Field>
             <div style={{ marginTop: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.hpi")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("hpi", 4, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)}</Field>
+              <Field
+                label={t("providerDocumentationWorkspace.hpi")}
+                voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
+                dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi}
+                dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
+                readOnly={readOnly}
+                readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}
+              >
+                {ta("hpi", 4, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)}
+              </Field>
               {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
               {HPI_CHIPS.map((group) => (
                 <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
@@ -872,10 +902,10 @@ export function ProviderDocumentationWorkspace({
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosFocusedImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
-              <Field label={t("providerDocumentationWorkspace.importantPositives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosImportantPositives", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.importantNegatives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosImportantNegatives", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.redFlags")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("rosRedFlags", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosFocusedImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
+              <Field label={t("providerDocumentationWorkspace.importantPositives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantPositives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives)}</Field>
+              <Field label={t("providerDocumentationWorkspace.importantNegatives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantNegatives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives)}</Field>
+              <Field label={t("providerDocumentationWorkspace.redFlags")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosRedFlags} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosRedFlags", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosRedFlags)}</Field>
             </div>
             {templateTextChips(
               activeTemplate,
@@ -897,9 +927,16 @@ export function ProviderDocumentationWorkspace({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               {EXAM_CHIPS.map((group) => (
                 <div key={group.sectionId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 10, background: "#f8fafc" }}>
-                  <Field label={t(group.titleKey)} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>
+                  <Field
+                    label={t(group.titleKey)}
+                    voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
+                    dictationTargetId={examDictationIdBySection[group.sectionId]}
+                    dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
+                    readOnly={readOnly}
+                    readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}
+                  >
                     <textarea
-                      id={group.sectionId === "general" ? PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral : undefined}
+                      id={examDictationIdBySection[group.sectionId]}
                       data-dictation-ready="true"
                       value={value.physicalExam[group.sectionId]}
                       disabled={readOnly}
@@ -941,9 +978,9 @@ export function ProviderDocumentationWorkspace({
               {t("providerDocumentationWorkspace.chipsSafetyComment")}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmWorkingAssessment", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field>
-              <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmDifferentialSynthesis", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.dataReviewed")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmDataReviewed", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmWorkingAssessment", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field>
+              <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDifferentialSynthesis", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis)}</Field>
+              <Field label={t("providerDocumentationWorkspace.dataReviewed")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDataReviewed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed)}</Field>
               <Field label={t("providerDocumentationWorkspace.riskLevel")}>
                 <select
                   value={value.mdmRiskLevel}
@@ -957,20 +994,20 @@ export function ProviderDocumentationWorkspace({
                   <option value="High">{t("providerDocumentationWorkspace.riskHigh")}</option>
                 </select>
               </Field>
-              <Field label={t("providerDocumentationWorkspace.clinicalRationale")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmClinicalRationale", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.planSummary")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmPlanSummary", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.immediateActions")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmImmediateActionsRationale", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmConsultsDiscussed", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("mdmAdmitObserveDischarge", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.clinicalRationale")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmClinicalRationale} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmClinicalRationale", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmClinicalRationale)}</Field>
+              <Field label={t("providerDocumentationWorkspace.planSummary")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmPlanSummary} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmPlanSummary", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmPlanSummary)}</Field>
+              <Field label={t("providerDocumentationWorkspace.immediateActions")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmImmediateActionsRationale", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale)}</Field>
+              <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmConsultsDiscussed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed)}</Field>
+              <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmAdmitObserveDischarge", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge)}</Field>
             </div>
           </WorkspaceSection>
 
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPlan")} status={sectionStatusById.plan} t={t}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              <Field label={t("providerDocumentationWorkspace.clinicalImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("clinicalImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)}</Field>
-              <Field label={t("providerDocumentationWorkspace.treatmentPlan")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("treatmentPlan", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan)}</Field>
-              <Field label={t("providerDocumentationWorkspace.followUpDisposition")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("followUpDisposition", 2)}</Field>
-              <Field label={t("providerDocumentationWorkspace.providerAddendum")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}>{ta("providerAddendum", 2)}</Field>
+              <Field label={t("providerDocumentationWorkspace.clinicalImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("clinicalImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)}</Field>
+              <Field label={t("providerDocumentationWorkspace.treatmentPlan")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("treatmentPlan", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan)}</Field>
+              <Field label={t("providerDocumentationWorkspace.followUpDisposition")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("followUpDisposition", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition)}</Field>
+              <Field label={t("providerDocumentationWorkspace.providerAddendum")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("providerAddendum", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum)}</Field>
             </div>
           </WorkspaceSection>
         </div>
@@ -1146,14 +1183,27 @@ export function ProviderDocumentationWorkspace({
 function Field({
   label,
   voiceReadyLabel,
+  dictationTargetId,
+  dictationLabel,
+  readOnly = false,
+  readOnlyLabel,
   children,
 }: {
   label: string;
   voiceReadyLabel?: string;
+  dictationTargetId?: string;
+  dictationLabel?: string;
+  readOnly?: boolean;
+  readOnlyLabel?: string;
   children: React.ReactNode;
 }) {
+  const focusDictationField = () => {
+    if (!dictationTargetId || typeof document === "undefined") return;
+    document.getElementById(dictationTargetId)?.focus();
+  };
+  const microphoneTitle = readOnly ? readOnlyLabel : dictationLabel;
   return (
-    <label style={{ display: "block" }}>
+    <div style={{ display: "block" }}>
       <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
         <span style={{ ...labelStyle, marginBottom: 0 }}>{label}</span>
         {voiceReadyLabel ? (
@@ -1171,9 +1221,50 @@ function Field({
             {voiceReadyLabel}
           </span>
         ) : null}
+        {dictationTargetId ? (
+          <button
+            type="button"
+            disabled={readOnly}
+            title={microphoneTitle}
+            aria-label={microphoneTitle}
+            onClick={focusDictationField}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              borderRadius: 9999,
+              border: "1px solid #cbd5e1",
+              background: readOnly ? "#f1f5f9" : "#fff",
+              color: readOnly ? "#94a3b8" : "#0f766e",
+              cursor: readOnly ? "not-allowed" : "pointer",
+            }}
+          >
+            <MicrophoneGlyph />
+          </button>
+        ) : null}
       </span>
       {children}
-    </label>
+    </div>
+  );
+}
+
+function MicrophoneGlyph() {
+  return (
+    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M8 10.25c1.2 0 2.1-.9 2.1-2.1V3.6c0-1.2-.9-2.1-2.1-2.1s-2.1.9-2.1 2.1v4.55c0 1.2.9 2.1 2.1 2.1Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M3.75 7.75a4.25 4.25 0 0 0 8.5 0M8 12v2.5M5.75 14.5h4.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

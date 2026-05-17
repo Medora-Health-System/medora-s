@@ -5170,6 +5170,8 @@ export default {
     dictationInstruction:
       "Place cursor in a section, then use Dragon or browser dictation. Review before saving.",
     voiceReadyField: "Voice-ready",
+    dictationFocusField: "Click to focus this field, then use Dragon or browser dictation.",
+    dictationReadOnlyField: "This note is signed or read-only.",
     dictationPreviousSection: "Previous section",
     dictationNextSection: "Next section",
     dictationFocusHpi: "Focus HPI",

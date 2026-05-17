@@ -5151,6 +5151,8 @@ export default {
     dictationInstruction:
       "Placer le curseur dans une section, puis utiliser Dragon ou la dictée du navigateur. Relire avant d'enregistrer.",
     voiceReadyField: "Prêt voix",
+    dictationFocusField: "Cliquez pour placer le curseur ici, puis utilisez Dragon ou la dictée du navigateur.",
+    dictationReadOnlyField: "Cette note est signée ou en lecture seule.",
     dictationPreviousSection: "Section précédente",
     dictationNextSection: "Section suivante",
     dictationFocusHpi: "Aller à HPI",

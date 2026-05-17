@@ -417,14 +417,34 @@ describe("providerDocumentationModel", () => {
       chiefComplaint: "provider-documentation-chief-complaint",
       hpi: "provider-documentation-hpi",
       rosFocusedImpression: "provider-documentation-ros-focused-impression",
+      rosImportantPositives: "provider-documentation-ros-important-positives",
+      rosImportantNegatives: "provider-documentation-ros-important-negatives",
+      rosRedFlags: "provider-documentation-ros-red-flags",
       physicalExamGeneral: "provider-documentation-exam-general",
+      physicalExamHeent: "provider-documentation-exam-heent",
+      physicalExamCardiovascular: "provider-documentation-exam-cardiovascular",
+      physicalExamRespiratory: "provider-documentation-exam-respiratory",
+      physicalExamAbdomen: "provider-documentation-exam-abdomen",
+      physicalExamNeuroPsych: "provider-documentation-exam-neuro-psych",
+      physicalExamMusculoskeletal: "provider-documentation-exam-musculoskeletal",
+      physicalExamSkin: "provider-documentation-exam-skin",
+      physicalExamReassessment: "provider-documentation-exam-reassessment",
       mdmWorkingAssessment: "provider-documentation-mdm-working-assessment",
+      mdmDifferentialSynthesis: "provider-documentation-mdm-differential-synthesis",
+      mdmDataReviewed: "provider-documentation-mdm-data-reviewed",
+      mdmClinicalRationale: "provider-documentation-mdm-clinical-rationale",
+      mdmPlanSummary: "provider-documentation-mdm-plan-summary",
+      mdmImmediateActionsRationale: "provider-documentation-mdm-immediate-actions-rationale",
+      mdmConsultsDiscussed: "provider-documentation-mdm-consults-discussed",
+      mdmAdmitObserveDischarge: "provider-documentation-mdm-admit-observe-discharge",
       clinicalImpression: "provider-documentation-clinical-impression",
       treatmentPlan: "provider-documentation-treatment-plan",
+      followUpDisposition: "provider-documentation-follow-up-disposition",
+      providerAddendum: "provider-documentation-provider-addendum",
     });
   });
 
-  it("renders dictation hints, navigation targets, and voice-ready fields without changing save behavior", () => {
+  it("renders dictation hints, navigation targets, and microphone focus affordances without changing save behavior", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"
@@ -434,10 +454,14 @@ describe("providerDocumentationModel", () => {
     expect(source).toContain("dictationNextSection");
     expect(source).toContain("dictationPreviousSection");
     expect(source).toContain("voiceReadyField");
+    expect(source).toContain("dictationFocusField");
+    expect(source).toContain("dictationReadOnlyField");
+    expect(source).toContain("MicrophoneGlyph");
+    expect(source).toContain("focusDictationField");
     for (const key of Object.keys(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS)) {
       expect(source).toContain(`PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.${key}`);
     }
-    expect(source).not.toMatch(/SpeechRecognition|webkitSpeechRecognition|getUserMedia|MediaRecorder/i);
+    expect(source).not.toMatch(/SpeechRecognition|webkitSpeechRecognition|getUserMedia|MediaRecorder|navigator\.mediaDevices/i);
   });
 
   it("autosave and dictation readiness do not transform dictated field values", () => {
