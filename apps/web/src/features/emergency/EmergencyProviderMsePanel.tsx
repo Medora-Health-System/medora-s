@@ -37,6 +37,8 @@ import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
   emptyProviderDocumentationWorkspaceState,
+  readProviderDocumentationWorkspaceMetadata,
+  type ProviderDocumentationTemplateId,
   type ProviderDocumentationWorkspaceState,
 } from "@/lib/providerDocumentationModel";
 
@@ -357,6 +359,9 @@ export function EmergencyProviderMsePanel({
 }) {
   const { t, language } = useI18n();
   const [form, setForm] = useState<ErProviderMseForm>(() => erProviderMseFormFromEncounter(encounter.nursingAssessment));
+  const [providerActiveTemplateId, setProviderActiveTemplateId] = useState<ProviderDocumentationTemplateId | null>(
+    () => readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)?.activeTemplateId ?? null
+  );
   const [saving, setSaving] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<{ variant: "success" | "error"; message: string } | null>(null);
   const [handoffToId, setHandoffToId] = useState<string | null>(null);
@@ -372,6 +377,7 @@ export function EmergencyProviderMsePanel({
 
   useEffect(() => {
     setForm(erProviderMseFormFromEncounter(encounter.nursingAssessment));
+    setProviderActiveTemplateId(readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)?.activeTemplateId ?? null);
   }, [encounter.nursingAssessment, encounter.updatedAt]);
 
   const [wideLayout, setWideLayout] = useState(false);
@@ -427,6 +433,7 @@ export function EmergencyProviderMsePanel({
 
   const providerWorkspaceValue = useMemo<ProviderDocumentationWorkspaceState>(() => {
     const next = emptyProviderDocumentationWorkspaceState();
+    next.activeTemplateId = providerActiveTemplateId;
     next.chiefComplaint = form.chiefConcern;
     next.hpi = form.hpiNarrative;
     next.rosFocusedImpression = form.focusedImpression;
@@ -449,9 +456,10 @@ export function EmergencyProviderMsePanel({
     next.mdmAdmitObserveDischarge = form.mdmAdmitObserveDischarge;
     next.providerAddendum = form.mdmProviderAddendum;
     return next;
-  }, [form]);
+  }, [form, providerActiveTemplateId]);
 
   const setProviderWorkspaceValue = useCallback((next: ProviderDocumentationWorkspaceState) => {
+    setProviderActiveTemplateId(next.activeTemplateId);
     setForm((f) => ({
       ...f,
       chiefConcern: next.chiefComplaint,
@@ -621,6 +629,7 @@ export function EmergencyProviderMsePanel({
         encounterMode: "ED",
         savedAt: new Date().toISOString(),
         savedBy: savedByDisplayName,
+        activeTemplateId: providerWorkspaceValue.activeTemplateId,
       });
       const payload = buildProviderDocumentationSavePayload({
         previousNursingAssessment: encounter.nursingAssessment,
@@ -874,6 +883,8 @@ export function EmergencyProviderMsePanel({
               }
             : null
         }
+        savedMetadata={readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)}
+        signedOrFinalized={isLocked}
         keyInformation={[t("erMseProviderPanel.previewSubline")]}
         encounterSummary={[t("erMseProviderPanel.sectionPresentation"), t("erMseProviderPanel.sectionMdm")]}
         quickActions={
