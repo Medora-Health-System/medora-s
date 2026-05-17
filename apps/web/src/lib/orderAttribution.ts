@@ -1,4 +1,10 @@
 import type { SupportedLanguage } from "@/i18n/config";
+import {
+  orderAttributionActionForOrderType,
+  orderAttributionLabelKey,
+  orderCreatorMustNotDisplayAsPerformer,
+  type OrderAttributionActionKind,
+} from "@medora/shared";
 
 export type OrderAttributionDisplay = {
   userId?: string | null;
@@ -44,19 +50,10 @@ function displayName(name: string | null | undefined, t: (key: string) => string
   return trimmed || t("attribution.unknownUser");
 }
 
-function actionKey(action: string | null | undefined): string {
-  switch ((action ?? "").trim().toUpperCase()) {
-    case "CANCELLED":
-      return "attribution.cancelledBy";
-    case "COMPLETED":
-    case "ADMINISTERED":
-    case "RESULTED":
-      return "attribution.completedBy";
-    case "ACKNOWLEDGED":
-      return "attribution.acknowledgedBy";
-    default:
-      return "attribution.actionBy";
-  }
+function actionKey(action: string | null | undefined, orderType?: string | null): string {
+  const kind = orderAttributionActionForOrderType(action, orderType);
+  if (kind) return orderAttributionLabelKey(kind);
+  return "attribution.actionBy";
 }
 
 function sameActionAsCreate(
@@ -74,10 +71,14 @@ function sameActionAsCreate(
 export function formatOrderAttributionLines(
   input: unknown,
   t: (key: string) => string,
-  language?: SupportedLanguage
+  language?: SupportedLanguage,
+  orderType?: string | null
 ): string[] {
   if (!input || typeof input !== "object") return [];
   const order = input as OrderAttributionCarrier;
+  const typeFromOrder =
+    orderType ??
+    (typeof (order as { type?: string }).type === "string" ? (order as { type: string }).type : null);
 
   const lines: string[] = [];
   const createdBy = order.createdByDisplay;
@@ -98,7 +99,7 @@ export function formatOrderAttributionLines(
     const action = (lastAction.action ?? "").trim().toUpperCase();
     if (action && action !== "CREATED") {
       lines.push(
-        fillTemplate(t(actionKey(action)), {
+        fillTemplate(t(actionKey(action, typeFromOrder)), {
           name: displayName(lastAction.name, t),
           role: displayRole(lastAction.role),
           datetime: formatDateTime(lastAction.at, language),
@@ -119,7 +120,7 @@ export function formatOrderAttribution(
 }
 
 function namesMatch(a: string | null | undefined, b: string | null | undefined): boolean {
-  return (a ?? "").trim() !== "" && (a ?? "").trim() === (b ?? "").trim();
+  return orderCreatorMustNotDisplayAsPerformer({ creatorName: a, actorName: b });
 }
 
 type ErOrderEventAttributionInput = {
@@ -129,12 +130,12 @@ type ErOrderEventAttributionInput = {
   performedAt?: string | null;
 };
 
-function lineForAction(
+function lineForActionKind(
   lines: string[],
-  actionKey: "attribution.completedBy" | "attribution.acknowledgedBy" | "attribution.cancelledBy",
+  kind: OrderAttributionActionKind,
   t: (key: string) => string
 ): string | undefined {
-  const prefix = t(actionKey).split("{")[0]?.trim() ?? "";
+  const prefix = t(orderAttributionLabelKey(kind)).split("{")[0]?.trim() ?? "";
   if (!prefix) return undefined;
   return lines.find((line) => line.startsWith(prefix));
 }
@@ -148,11 +149,15 @@ export function formatErOrderEventAttributionCell(
   t: (key: string) => string,
   language?: SupportedLanguage
 ): string {
-  const lines = formatOrderAttributionLines(order, t, language);
+  const orderType =
+    order && typeof order === "object" && typeof (order as { type?: string }).type === "string"
+      ? (order as { type: string }).type
+      : null;
+  const lines = formatOrderAttributionLines(order, t, language, orderType);
   const eventType = (orderEvent?.eventType ?? "").trim().toUpperCase();
 
   if (eventType === "CANCELLED") {
-    const cancelledLine = lineForAction(lines, "attribution.cancelledBy", t);
+    const cancelledLine = lineForActionKind(lines, "CANCELLED", t);
     if (cancelledLine) return cancelledLine;
     const createdBy =
       order && typeof order === "object"
@@ -170,8 +175,9 @@ export function formatErOrderEventAttributionCell(
   }
 
   const performerLine =
-    lineForAction(lines, "attribution.completedBy", t) ??
-    lineForAction(lines, "attribution.acknowledgedBy", t);
+    lineForActionKind(lines, "PERFORMED", t) ??
+    lineForActionKind(lines, "RESULTED", t) ??
+    lineForActionKind(lines, "ACKNOWLEDGED", t);
   if (performerLine) return performerLine;
 
   const createdBy =
@@ -180,7 +186,8 @@ export function formatErOrderEventAttributionCell(
       : null;
   const eventName = orderEvent?.performedByDisplayName?.trim() || null;
   if (eventType === "COMPLETED" && eventName && !namesMatch(eventName, createdBy)) {
-    return fillTemplate(t("attribution.completedBy"), {
+    const kind = orderAttributionActionForOrderType("COMPLETED", orderType) ?? "PERFORMED";
+    return fillTemplate(t(orderAttributionLabelKey(kind)), {
       name: displayName(eventName, t),
       role: displayRole(orderEvent?.roleSnapshot),
       datetime: formatDateTime(orderEvent?.performedAt, language),

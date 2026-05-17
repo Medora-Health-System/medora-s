@@ -4,6 +4,8 @@ import { formatErOrderEventAttributionCell, formatOrderAttributionLines } from "
 const t = (key: string) => {
   const map: Record<string, string> = {
     "attribution.orderedBy": "Ordered by {name}{role} · {datetime}",
+    "attribution.performedBy": "Performed by {name}{role} · {datetime}",
+    "attribution.resultedBy": "Resulted by {name}{role} · {datetime}",
     "attribution.completedBy": "Performed by {name}{role} · {datetime}",
     "attribution.acknowledgedBy": "Acknowledged by {name}{role} · {datetime}",
     "attribution.cancelledBy": "Cancelled by {name}{role} · {datetime}",
@@ -29,9 +31,10 @@ describe("formatOrderAttributionLines", () => {
     expect(lines[0]).not.toContain("Performed by");
   });
 
-  it("shows performed by when completion actor differs from order creator", () => {
+  it("shows resulted by for lab completion when actor differs from order creator", () => {
     const lines = formatOrderAttributionLines(
       {
+        type: "LAB",
         createdByDisplay: { name: "Dr A", role: "PROVIDER", at: "2026-05-16T10:00:00Z" },
         lastActionDisplay: {
           action: "COMPLETED",
@@ -41,9 +44,11 @@ describe("formatOrderAttributionLines", () => {
         },
       },
       t,
-      "en"
+      "en",
+      "LAB"
     );
     expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain("Resulted by");
     expect(lines[1]).toContain("Tech B");
   });
 });

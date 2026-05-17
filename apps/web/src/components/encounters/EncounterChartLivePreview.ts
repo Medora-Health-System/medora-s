@@ -22,7 +22,12 @@ import { fetchPatientFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
 import { chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
 import { formatOrderAuthorityLines } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
-import { mislabeledDischargeEventIsObservationAdmission } from "@medora/shared";
+import {
+  clinicalDocumentationEventBelongsInAdmissionHistory,
+  clinicalDocumentationEventBelongsInDischargeHistory,
+  clinicalTimelineDisplayLabelFr,
+  resolveClinicalTimelineDisplayEventType,
+} from "@medora/shared";
 import {
   diagnosisDisplayFr,
   nirMrnDisplay,
@@ -611,8 +616,7 @@ function renderClinicalDocumentationHistorySection(
     if (!filterTypes.includes(et)) return false;
     if (
       options?.excludeMislabeledObservationAdmissionDischarge &&
-      et === "DISCHARGE_SUMMARY_SAVED" &&
-      mislabeledDischargeEventIsObservationAdmission({
+      !clinicalDocumentationEventBelongsInDischargeHistory({
         eventType: et,
         payloadJson: e.payloadJson,
       })
@@ -742,14 +746,12 @@ function renderAdmissionSummary(
     }
   }
   if (docEvents) {
-    const admissionEvents = docEvents.entries.filter((e) => {
-      const et = pickString(e, "eventType") ?? "";
-      if (et === "ADMISSION_SUMMARY_SAVED") return true;
-      return mislabeledDischargeEventIsObservationAdmission({
-        eventType: et,
+    const admissionEvents = docEvents.entries.filter((e) =>
+      clinicalDocumentationEventBelongsInAdmissionHistory({
+        eventType: pickString(e, "eventType") ?? "",
         payloadJson: e.payloadJson,
-      });
-    });
+      })
+    );
     const history = renderClinicalDocumentationHistorySection(lang, admissionEvents, [
       "ADMISSION_SUMMARY_SAVED",
       "DISCHARGE_SUMMARY_SAVED",
@@ -1100,9 +1102,14 @@ function renderClinicalTimeline(
   const items = rows
     .map((r) => {
       const at = pickString(r, "createdAt");
-      const eventType = pickString(r, "eventType") || "";
+      const storedType = pickString(r, "eventType") || "";
+      const displayType = resolveClinicalTimelineDisplayEventType({
+        eventType: storedType,
+        payloadJson: r.payloadJson,
+      });
+      const label = clinicalTimelineDisplayLabelFr(displayType);
       const performer = performerLineFromCreatedBy(r, lang);
-      return `<li><strong>${esc(eventType)}</strong> — ${esc(fmtDt(at, lang))}${
+      return `<li><strong>${esc(label)}</strong> — ${esc(fmtDt(at, lang))}${
         performer ? ` — ${esc(performer)}` : ""
       }</li>`;
     })

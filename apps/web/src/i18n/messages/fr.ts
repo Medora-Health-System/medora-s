@@ -8464,12 +8464,26 @@ export default {
   },
   attribution: {
     orderedBy: "Prescrit par {name}{role} · {datetime}",
+    performedBy: "Réalisé par {name}{role} · {datetime}",
+    resultedBy: "Résultat enregistré par {name}{role} · {datetime}",
     cancelledBy: "Annulé par {name}{role} · {datetime}",
     completedBy: "Réalisé par {name}{role} · {datetime}",
     acknowledgedBy: "Accusé de réception par {name}{role} · {datetime}",
+    adjustedBy: "Heure clinique corrigée par {name}{role} · {datetime}",
     actionBy: "Action par {name}{role} · {datetime}",
     performedByUnset: "Réalisé par : —",
     unknownUser: "utilisateur inconnu",
+  },
+  clinicalTimelineDisplay: {
+    documentedAt: "Documenté : {datetime}",
+    correctedClinicalTime: "Heure clinique corrigée : {datetime}",
+    event: {
+      OBSERVATION_ADMISSION_PACKET_SAVED: "Admission en observation enregistrée",
+      ADMISSION_SUMMARY_SAVED: "Dossier d'admission enregistré (observation / court séjour)",
+      DISCHARGE_SUMMARY_SAVED: "Dossier de sortie enregistré",
+      DISPOSITION_SUPPLEMENT_SAVED: "Complément de disposition enregistré",
+      TRIAGE_ASSESSMENT_SAVED: "Triage enregistré",
+    },
   },
   medicationSafety: {
     highRiskWarning: "Médicament à haut risque — vérifiez la dose, la voie et la posologie.",

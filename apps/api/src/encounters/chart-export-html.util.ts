@@ -326,9 +326,9 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
       <ol>${manifest.clinicalTimeline.items
         .map(
           (p) =>
-            `<li><strong>${esc(p.createdAt)}</strong> — ${esc(p.eventType)} — ${esc(
-              p.createdByDisplayFr ?? "—"
-            )}${jsonPreBlock(p.payloadJson)}</li>`
+            `<li><strong>${esc(p.createdAt)}</strong> — ${esc(
+              (p as { displayLabelFr?: string }).displayLabelFr ?? p.eventType
+            )} — ${esc(p.createdByDisplayFr ?? "—")}${jsonPreBlock(p.payloadJson)}</li>`
         )
         .join("")}</ol>`;
 

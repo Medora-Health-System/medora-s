@@ -10,7 +10,12 @@ import {
   EncounterStatus,
   Prisma,
 } from "@prisma/client";
-import { computeObservationStaySummaryForExport, type ObservationStaySummaryForExport } from "@medora/shared";
+import {
+  clinicalTimelineDisplayLabelFr,
+  computeObservationStaySummaryForExport,
+  resolveClinicalTimelineDisplayEventType,
+  type ObservationStaySummaryForExport,
+} from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import {
@@ -703,13 +708,22 @@ export class EncounterChartExportService {
 
     /* ---------- Clinical timeline (cap signaled separately) ---------- */
     const clinicalTimelineCapped = clinicalTimelineRows.length > CLINICAL_TIMELINE_CAP;
-    const clinicalTimelineItems = clinicalTimelineRows.slice(0, CLINICAL_TIMELINE_CAP).map((r) => ({
-      id: r.id,
-      eventType: r.eventType as string,
-      createdAt: r.createdAt.toISOString(),
-      createdByDisplayFr: userDisplayFr(r.createdBy),
-      payloadJson: r.payloadJson,
-    }));
+    const clinicalTimelineItems = clinicalTimelineRows.slice(0, CLINICAL_TIMELINE_CAP).map((r) => {
+      const storedType = r.eventType as string;
+      const displayEventType = resolveClinicalTimelineDisplayEventType({
+        eventType: storedType,
+        payloadJson: r.payloadJson,
+      });
+      return {
+        id: r.id,
+        eventType: storedType,
+        displayEventType,
+        displayLabelFr: clinicalTimelineDisplayLabelFr(displayEventType),
+        createdAt: r.createdAt.toISOString(),
+        createdByDisplayFr: userDisplayFr(r.createdBy),
+        payloadJson: r.payloadJson,
+      };
+    });
 
     /* ---------- Closed-by display (from ENCOUNTER_CLOSE audit row) ---------- */
     let closedByDisplayFr: string | null = null;

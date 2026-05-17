@@ -11,6 +11,7 @@ export * from "./observationOperational.js";
 export * from "./observationAdmissionCareLevel.js";
 export * from "./observationShortStayEncounter.js";
 export * from "./encounters/observationAdmissionDischargeRouting.js";
+export * from "./encounters/clinicalTimelineDisplayNormalization.js";
 export * from "./observationReassessmentV1.js";
 export * from "./observationOrderTemplate.js";
 export * from "./billingCaptureV1.js";

@@ -6,13 +6,13 @@ import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { formatEncounterVitalsHistoryCompactLine } from "@/lib/patientVitals";
+import { summarizeClinicalTimelineRow } from "@/lib/clinicalTimelineDisplayUi";
 import {
   buildProcedureTimelineDetailLine,
   procedureTimelineCompactSuffix,
   procedureTypeDisplayName,
   type ProcedurePayload,
 } from "@/lib/lacerationProcedurePayloadDisplay";
-import { OBSERVATION_REASSESSMENT_EVENT_SOURCE } from "@medora/shared";
 
 export type ClinicalTimelineApiRow = {
   id: string;
@@ -39,132 +39,39 @@ function summarizeClinicalEvent(
   language: SupportedLanguage,
   t: (key: string) => string
 ): { label: string; summary: string } {
-  const payload = asRecord(row.payloadJson) ?? {};
-
-  switch (row.eventType) {
-    case "VITALS_RECORDED": {
-      const vitalsRaw = payload.vitals;
-      const vitals =
-        vitalsRaw != null && typeof vitalsRaw === "object" && !Array.isArray(vitalsRaw)
-          ? (vitalsRaw as Record<string, unknown>)
-          : {};
-      const line = formatEncounterVitalsHistoryCompactLine(vitals, language).trim();
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.vitalsRecorded"),
-        summary: line || t("emergencyVisitSummaryPanel.clinicalTimeline.noVitalsDetail"),
-      };
-    }
-    case "PROVIDER_SIGNED":
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.providerSigned"),
-        summary: "",
-      };
-    case "PROVIDER_UNLOCKED":
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.providerUnlocked"),
-        summary: "",
-      };
-    case "PROVIDER_MSE_SAVED":
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.providerMseSaved"),
-        summary: "",
-      };
-    case "NURSING_ASSESSMENT_SAVED": {
-      if (payload.source === OBSERVATION_REASSESSMENT_EVENT_SOURCE) {
-        const obs = asRecord(payload.observationReassessmentV1) ?? {};
-        const roleRaw = typeof obs.role === "string" ? obs.role : "";
-        const roleLabel =
-          roleRaw === "PROVIDER"
-            ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationReassessmentRoleMd")
-            : roleRaw === "RN"
-              ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationReassessmentRoleRn")
-              : roleRaw;
-        const ps = typeof obs.patientStatus === "string" ? obs.patientStatus : "";
-        const statusLabel =
-          ps === "improved"
-            ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationStatusImproved")
-            : ps === "worsening"
-              ? t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationStatusWorsening")
-              : t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationStatusUnchanged");
-        const note = typeof obs.note === "string" && obs.note.trim() ? obs.note.trim() : "";
-        const summary = note
-          ? `${statusLabel} — ${note.slice(0, 160)}${note.length > 160 ? "…" : ""}`
-          : statusLabel;
-        return {
-          label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.observationReassessment").replace(
-            "{role}",
-            roleLabel
-          ),
-          summary,
-        };
-      }
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.nursingAssessmentSaved"),
-        summary: "",
-      };
-    }
-    case "HANDOFF_PROVIDER": {
-      const name = typeof payload.toDisplayName === "string" && payload.toDisplayName.trim()
-        ? payload.toDisplayName.trim()
-        : t("emergencyVisitSummaryPanel.clinicalTimeline.handoffUnknown");
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.handoffProvider").replace("{name}", name),
-        summary: "",
-      };
-    }
-    case "HANDOFF_NURSING": {
-      const snap = asRecord(payload.snapshot);
-      const rn =
-        snap && typeof snap.receivingNurseName === "string" && snap.receivingNurseName.trim()
-          ? snap.receivingNurseName.trim()
-          : t("emergencyVisitSummaryPanel.clinicalTimeline.handoffUnknown");
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.handoffNursing").replace("{name}", rn),
-        summary: "",
-      };
-    }
-    case "IV_INSERTED": {
-      const gauge = typeof payload.gauge === "string" ? payload.gauge.trim() : "";
-      const site = typeof payload.site === "string" ? payload.site.trim() : "";
-      const detail = [gauge, site].filter(Boolean).join(" ").trim() || "—";
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.ivInserted").replace("{detail}", detail),
-        summary: "",
-      };
-    }
-    case "IV_REMOVED": {
-      const gauge = typeof payload.gauge === "string" ? payload.gauge.trim() : "";
-      const site = typeof payload.site === "string" ? payload.site.trim() : "";
-      const detail = [gauge, site].filter(Boolean).join(" ").trim() || "—";
-      return {
-        label: t("emergencyVisitSummaryPanel.clinicalTimeline.event.ivRemoved").replace("{detail}", detail),
-        summary: "",
-      };
-    }
-    case "PROCEDURE_DOCUMENTED": {
-      const p = payload as ProcedurePayload;
-      const proc = typeof p.procedureType === "string" ? p.procedureType : "";
-      const procedure = procedureTypeDisplayName(t, proc);
-      const detail = procedureTimelineCompactSuffix(p, t);
-      const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented")
-        .replace("{procedure}", procedure)
-        .replace("{detail}", detail);
-      const summary = buildProcedureTimelineDetailLine(
-        p,
-        row.createdAt,
-        language,
-        t,
-        row.createdBy,
-        (fn, ln) => formatActor(fn, ln, t("common.dash"))
-      );
-      return { label, summary };
-    }
-    default:
-      return {
-        label: row.eventType,
-        summary: "",
-      };
+  if (row.eventType === "VITALS_RECORDED") {
+    const payload = asRecord(row.payloadJson) ?? {};
+    const vitalsRaw = payload.vitals;
+    const vitals =
+      vitalsRaw != null && typeof vitalsRaw === "object" && !Array.isArray(vitalsRaw)
+        ? (vitalsRaw as Record<string, unknown>)
+        : {};
+    const line = formatEncounterVitalsHistoryCompactLine(vitals, language).trim();
+    const base = summarizeClinicalTimelineRow(row, t);
+    return {
+      label: base.label,
+      summary: line || t("emergencyVisitSummaryPanel.clinicalTimeline.noVitalsDetail"),
+    };
   }
+  if (row.eventType === "PROCEDURE_DOCUMENTED") {
+    const payload = asRecord(row.payloadJson) ?? {} as ProcedurePayload;
+    const proc = typeof payload.procedureType === "string" ? payload.procedureType : "";
+    const procedure = procedureTypeDisplayName(t, proc);
+    const detail = procedureTimelineCompactSuffix(payload, t);
+    const label = t("emergencyVisitSummaryPanel.clinicalTimeline.event.procedureDocumented")
+      .replace("{procedure}", procedure)
+      .replace("{detail}", detail);
+    const summary = buildProcedureTimelineDetailLine(
+      payload,
+      row.createdAt,
+      language,
+      t,
+      row.createdBy,
+      (fn, ln) => formatActor(fn, ln, t("common.dash"))
+    );
+    return { label, summary };
+  }
+  return summarizeClinicalTimelineRow(row, t);
 }
 
 export function ClinicalTimeline({

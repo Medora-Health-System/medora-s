@@ -34,7 +34,8 @@ import { deriveEmtalaStateFromEncounter } from "./erEmtalaV1";
 import {
   ER_HANDOFF_V1_KEY,
   readErHandoffV1FromNursingAssessment,
-  dischargeSnapshotIsObservationAdmissionRoutingOnly,
+  clinicalDocumentationEventBelongsInAdmissionHistory,
+  clinicalDocumentationEventBelongsInDischargeHistory,
   mislabeledDischargeEventIsObservationAdmission,
 } from "@medora/shared";
 
@@ -639,7 +640,14 @@ function buildDischargeSummaryHistoryEntries(
     const savedAt = payloadSavedAt(e) ?? (typeof e.createdAt === "string" ? e.createdAt : "");
     if (!id || !savedAt) continue;
     const snapshot = payloadSnapshot(e);
-    if (dischargeSnapshotIsObservationAdmissionRoutingOnly(snapshot)) continue;
+    if (
+      !clinicalDocumentationEventBelongsInDischargeHistory({
+        eventType: typeof e.eventType === "string" ? e.eventType : null,
+        payloadJson: e.payloadJson,
+      })
+    ) {
+      continue;
+    }
     const dischargeForm = hydrateDischargeFormFromEncounterJson(snapshot);
     const outcome = inferOutcomeUiFromForms(dischargeForm.dischargeMode, emptySupplement);
     if (outcome === "ADMISSION") continue;

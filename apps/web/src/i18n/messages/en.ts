@@ -8448,12 +8448,26 @@ export default {
   },
   attribution: {
     orderedBy: "Ordered by {name}{role} · {datetime}",
+    performedBy: "Performed by {name}{role} · {datetime}",
+    resultedBy: "Resulted by {name}{role} · {datetime}",
     cancelledBy: "Cancelled by {name}{role} · {datetime}",
     completedBy: "Performed by {name}{role} · {datetime}",
     acknowledgedBy: "Acknowledged by {name}{role} · {datetime}",
+    adjustedBy: "Clinical time corrected by {name}{role} · {datetime}",
     actionBy: "Action by {name}{role} · {datetime}",
     performedByUnset: "Performed by: —",
     unknownUser: "unknown user",
+  },
+  clinicalTimelineDisplay: {
+    documentedAt: "Documented: {datetime}",
+    correctedClinicalTime: "Clinical time corrected: {datetime}",
+    event: {
+      OBSERVATION_ADMISSION_PACKET_SAVED: "Observation admission saved",
+      ADMISSION_SUMMARY_SAVED: "Admission packet saved (observation / short stay)",
+      DISCHARGE_SUMMARY_SAVED: "Discharge summary saved",
+      DISPOSITION_SUPPLEMENT_SAVED: "Disposition supplement saved",
+      TRIAGE_ASSESSMENT_SAVED: "Triage assessment saved",
+    },
   },
   medicationSafety: {
     highRiskWarning: "High-risk medication — verify dose, route, and directions.",
