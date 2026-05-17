@@ -82,6 +82,17 @@ const inputBase: React.CSSProperties = {
   lineHeight: 1.45,
 };
 
+const stickyActionHeaderStyle: React.CSSProperties = {
+  position: "sticky",
+  top: 12,
+  zIndex: 40,
+  background: "rgba(255, 255, 255, 0.98)",
+  border: MEDORA_CARD_SHELL.border,
+  borderRadius: MEDORA_CARD_SHELL.radius,
+  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.12)",
+  padding: "14px 16px",
+};
+
 const chipStyle: React.CSSProperties = {
   border: "1px solid #dbeafe",
   borderRadius: 9999,
@@ -450,13 +461,7 @@ export function ProviderDocumentationWorkspace({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div
-        style={{
-          background: MEDORA_CARD_SHELL.background,
-          border: MEDORA_CARD_SHELL.border,
-          borderRadius: MEDORA_CARD_SHELL.radius,
-          boxShadow: MEDORA_CARD_SHELL.boxShadow,
-          padding: "14px 16px",
-        }}
+        style={stickyActionHeaderStyle}
       >
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
           <div>
@@ -481,6 +486,16 @@ export function ProviderDocumentationWorkspace({
             <button type="button" disabled={readOnly || saving} onClick={() => void onSave()} style={primaryButton(readOnly || saving)}>
               {saving ? t("providerDocumentationWorkspace.saving") : t("providerDocumentationWorkspace.save")}
             </button>
+            {onSign ? (
+              <button
+                type="button"
+                disabled={readOnly || signing || !canSubmitSignature}
+                onClick={() => void onSign()}
+                style={primaryButton(readOnly || signing || !canSubmitSignature)}
+              >
+                {signing ? t("providerDocumentationWorkspace.signing") : t("providerDocumentationWorkspace.signFinalize")}
+              </button>
+            ) : null}
           </div>
         </div>
         {lockedMessage ? <p style={{ margin: "10px 0 0", fontSize: 12, color: "#92400e" }}>{lockedMessage}</p> : null}
@@ -492,6 +507,23 @@ export function ProviderDocumentationWorkspace({
         {saveMessage ? (
           <p style={{ margin: "10px 0 0", fontSize: 12, color: saveMessage.variant === "error" ? "#b91c1c" : "#15803d" }}>
             {saveMessage.text}
+          </p>
+        ) : null}
+        {onSign && !signedOrFinalized ? (
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 10, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+            <input
+              type="checkbox"
+              checked={attestationAccepted}
+              disabled={readOnly || signing}
+              onChange={(event) => setAttestationAccepted(event.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <span>{t("providerDocumentationWorkspace.signAttestation")}</span>
+          </label>
+        ) : null}
+        {signedMetadata ? (
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
+            {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
           </p>
         ) : null}
         {showTemplates ? (
@@ -855,34 +887,7 @@ export function ProviderDocumentationWorkspace({
               {t("providerDocumentationWorkspace.signSafetyHelp")}
             </p>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <button type="button" disabled={readOnly || saving} onClick={() => void onSave()} style={primaryButton(readOnly || saving)}>
-              {saving ? t("providerDocumentationWorkspace.saving") : t("providerDocumentationWorkspace.save")}
-            </button>
-            {onSign ? (
-              <button
-                type="button"
-                disabled={readOnly || signing || !canSubmitSignature}
-                onClick={() => void onSign()}
-                style={primaryButton(readOnly || signing || !canSubmitSignature)}
-              >
-                {signing ? t("providerDocumentationWorkspace.signing") : t("providerDocumentationWorkspace.signFinalize")}
-              </button>
-            ) : null}
-          </div>
         </div>
-        {onSign && !signedOrFinalized ? (
-          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-            <input
-              type="checkbox"
-              checked={attestationAccepted}
-              disabled={readOnly || signing}
-              onChange={(event) => setAttestationAccepted(event.target.checked)}
-              style={{ marginTop: 2 }}
-            />
-            <span>{t("providerDocumentationWorkspace.signAttestation")}</span>
-          </label>
-        ) : null}
         {onSign && !signReadiness.readyToSign && !signedOrFinalized ? (
           <p style={{ margin: 0, fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
             {t("providerDocumentationWorkspace.signWarningsAdvisory")}
