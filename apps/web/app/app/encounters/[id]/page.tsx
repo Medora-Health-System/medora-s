@@ -3761,6 +3761,7 @@ function ClinicVisitTab({
   const readOnly = encounter.status !== "OPEN";
   const docSigned = isEncounterLocked(encounter);
   const fieldsLocked = readOnly || docSigned;
+  const showLegacyProviderDocumentation = false;
 
   const providerWorkspaceValue = useMemo<ProviderDocumentationWorkspaceState>(() => {
     const next = emptyProviderDocumentationWorkspaceState();
@@ -4200,12 +4201,14 @@ function ClinicVisitTab({
           </button>
         </div>
       ) : null}
-      <div style={{ ...clinicShell, padding: "12px 16px" }}>
-        <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
-          {readOnly ? t("encounterClinicTab.helperClosed") : t("encounterClinicTab.helperOpen")}
-        </p>
-      </div>
-      <div style={{ ...clinicShell, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
+      {showLegacyProviderDocumentation ? (
+        <>
+          <div style={{ ...clinicShell, padding: "12px 16px" }}>
+            <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
+              {readOnly ? t("encounterClinicTab.helperClosed") : t("encounterClinicTab.helperOpen")}
+            </p>
+          </div>
+          <div style={{ ...clinicShell, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ marginBottom: 0 }}>
         <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13, color: "#334155" }}>
           {t("encounterClinicTab.labelVisitReason")}
@@ -4405,6 +4408,8 @@ function ClinicVisitTab({
         />
       </div>
       </div>
+        </>
+      ) : null}
       <div style={{ ...clinicShell, padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
       {message && (
         <p
@@ -4422,7 +4427,7 @@ function ClinicVisitTab({
         </p>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-        {!readOnly && !docSigned && (
+        {showLegacyProviderDocumentation && !readOnly && !docSigned && (
           <button
             type="button"
             onClick={save}

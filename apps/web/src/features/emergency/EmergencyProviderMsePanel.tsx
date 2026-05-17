@@ -720,6 +720,124 @@ export function EmergencyProviderMsePanel({
     />
   );
 
+  const showLegacyProviderDocumentation = false;
+  const providerHandoffSection = (
+    <>
+      {handoffLockedReason ? (
+        <p
+          style={{
+            margin: "14px 0 0 0",
+            fontSize: 12,
+            color: "#92400e",
+            lineHeight: 1.45,
+            fontWeight: 600,
+          }}
+        >
+          {handoffLockedReason === "closed"
+            ? t("erMseProviderPanel.handoffLockedClosed")
+            : t("erMseProviderPanel.handoffLockedSigned")}
+        </p>
+      ) : null}
+      <details
+        style={{
+          marginTop: handoffLockedReason ? 10 : 14,
+          border: "1px solid #e2e8f0",
+          borderRadius: 10,
+          padding: "10px 12px",
+          backgroundColor: "#fff",
+        }}
+      >
+        <summary
+          style={{
+            cursor: formDisabled ? "default" : "pointer",
+            fontWeight: 600,
+            fontSize: 13,
+            color: "#334155",
+          }}
+        >
+          {t("erMseProviderPanel.sectionProviderHandoff")}
+        </summary>
+        <div style={{ marginTop: 10, maxWidth: 480, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <label style={labelStyle}>{t("erMseProviderPanel.labelHandoffRecipient")}</label>
+            <ClinicalUserRoleAutocomplete
+              facilityId={facilityId}
+              role="PROVIDER"
+              disabled={formDisabled || handoffSaving}
+              placeholder={t("erMseProviderPanel.handoffRecipientPlaceholder")}
+              ariaLabel={t("erMseProviderPanel.labelHandoffRecipient")}
+              displayValue={handoffToDisplay}
+              onChangeDisplay={(v) => {
+                setHandoffToDisplay(v);
+                setHandoffToId(null);
+              }}
+              selectedUserId={handoffToId}
+              onSelectUser={(u: ClinicalUserRoleOption | null) => {
+                setHandoffToId(u?.id ?? null);
+                if (u) setHandoffToDisplay(`${u.firstName} ${u.lastName}`.trim());
+              }}
+            />
+            <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#94a3b8" }}>
+              {t("clinicalUserRoleAutocomplete.minCharsHint")}
+            </p>
+          </div>
+          <div>
+            <label style={labelStyle}>{t("erMseProviderPanel.labelHandoffReportAt")}</label>
+            <input
+              type="datetime-local"
+              value={handoffReportAtLocal}
+              onChange={(e) => setHandoffReportAtLocal(e.target.value)}
+              disabled={formDisabled || handoffSaving}
+              style={{
+                ...inputBase,
+                maxWidth: 280,
+              }}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>{t("erMseProviderPanel.labelHandoffNotes")}</label>
+            <textarea
+              value={handoffNotes}
+              onChange={(e) => setHandoffNotes(e.target.value)}
+              disabled={formDisabled || handoffSaving}
+              rows={3}
+              style={{ ...inputBase, minHeight: 72, resize: "vertical" as const }}
+            />
+          </div>
+          <button
+            type="button"
+            disabled={formDisabled || handoffSaving || !handoffToId}
+            onClick={() => void handleRecordProviderHandoff()}
+            style={{
+              padding: "9px 16px",
+              borderRadius: 10,
+              border: "1px solid #0f766e",
+              backgroundColor: formDisabled || !handoffToId ? "#f1f5f9" : "#0d9488",
+              color: formDisabled || !handoffToId ? "#94a3b8" : "#fff",
+              fontWeight: 600,
+              fontSize: 14,
+              alignSelf: "flex-start",
+              cursor: formDisabled || !handoffToId ? "not-allowed" : "pointer",
+            }}
+          >
+            {handoffSaving ? t("erMseProviderPanel.handoffSaving") : t("erMseProviderPanel.handoffSaveButton")}
+          </button>
+          {handoffFeedback ? (
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                color: handoffFeedback.variant === "success" ? "#15803d" : "#b45309",
+              }}
+            >
+              {handoffFeedback.message}
+            </p>
+          ) : null}
+        </div>
+      </details>
+    </>
+  );
+
   return (
     <>
       <ProviderDocumentationWorkspace
@@ -765,6 +883,8 @@ export function EmergencyProviderMsePanel({
         }
         t={t}
       />
+      {providerHandoffSection}
+      {showLegacyProviderDocumentation ? (
       <details style={{ marginTop: 12 }}>
         <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#475569" }}>
           {t("providerDocumentationWorkspace.legacyDetails")}
@@ -1453,6 +1573,7 @@ export function EmergencyProviderMsePanel({
     </MedoraCard>
         </div>
       </details>
+      ) : null}
     </>
   );
 }
