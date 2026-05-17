@@ -26,6 +26,7 @@ import {
   ER_PROVIDER_MSE_V1_KEY,
   erProviderMseFormFromEncounter,
 } from "./emergencyProviderMseV1";
+import { buildProviderDocumentationDisplayModel } from "@/lib/providerDocumentationModel";
 import type { SupportedLanguage } from "@/i18n/config";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
@@ -562,18 +563,21 @@ function buildProviderMseHistoryEntries(
     const documentedAt =
       typeof signature?.savedAt === "string" && signature.savedAt.trim() ? signature.savedAt.trim() : null;
     const wrapped = snapshot ? ({ [ER_PROVIDER_MSE_V1_KEY]: snapshot } as Record<string, unknown>) : null;
-    const preview = buildErProviderMsePreviewModel(erProviderMseFormFromEncounter(wrapped), locale);
-    const structuredLines: string[] = [];
-    for (const sec of preview.sections) {
-      if (sec.id === "empty") continue;
-      for (const ln of sec.lines) {
-        const t = ln.trim();
-        if (!t) continue;
-        structuredLines.push(trunc(t, 200));
-        if (structuredLines.length >= HISTORY_STRUCTURED_LINES_MAX) break;
-      }
-      if (structuredLines.length >= HISTORY_STRUCTURED_LINES_MAX) break;
-    }
+    const workspace = buildProviderDocumentationDisplayModel({
+      nursingAssessment: wrapped,
+      locale: locale === "en" ? "en" : "fr",
+    });
+    const preview = workspace
+      ? null
+      : buildErProviderMsePreviewModel(erProviderMseFormFromEncounter(wrapped), locale);
+    const structuredLines = workspace
+      ? workspace.sections
+          .flatMap((section) => section.text.split("\n").map((line) => `${section.label}: ${line}`))
+          .map((line) => trunc(line, 200))
+          .slice(0, HISTORY_STRUCTURED_LINES_MAX)
+      : preview
+        ? structuredLinesFromSections(preview.sections)
+        : [];
     const performer = performerFromEntry(e, snapshot);
     out.push({
       id,
@@ -585,7 +589,7 @@ function buildProviderMseHistoryEntries(
       performerInitials: performer.initials,
       performerRoleTitle: performer.roleTitle,
       structuredLines,
-      narrativeExcerpt: trunc(preview.oneLineSummary, HISTORY_NARRATIVE_MAX),
+      narrativeExcerpt: trunc(workspace?.title ?? preview?.oneLineSummary ?? "", HISTORY_NARRATIVE_MAX),
     });
   }
   return out;
@@ -963,14 +967,24 @@ export function buildEmergencyVisitSummaryModel(
     });
   }
 
+  const providerWorkspace = buildProviderDocumentationDisplayModel({
+    nursingAssessment: nav,
+    locale: locale === "en" ? "en" : "fr",
+  });
   const providerForm = erProviderMseFormFromEncounter(nav);
-  const providerPreview = buildErProviderMsePreviewModel(providerForm, locale);
-  const providerSecs = nonEmptyPreviewSections(providerPreview.sections.filter((s) => s.id !== "empty"));
+  const providerPreview = providerWorkspace ? null : buildErProviderMsePreviewModel(providerForm, locale);
+  const providerSecs = providerWorkspace
+    ? providerWorkspace.sections.map((section) => ({
+        id: section.id,
+        title: section.label,
+        lines: section.text.split("\n").filter(Boolean),
+      }))
+    : nonEmptyPreviewSections(providerPreview?.sections.filter((s) => s.id !== "empty") ?? []);
   let evaluationMedicale =
     providerSecs.length > 0
       ? flattenSectionsToBlock(vs(locale, "providerFlattenTitle"), providerSecs, locale, 22)
       : null;
-  if (!evaluationMedicale && providerPreview.oneLineSummary.trim()) {
+  if (!evaluationMedicale && providerPreview?.oneLineSummary.trim()) {
     evaluationMedicale = {
       title: vs(locale, "providerNarrativeOnlyTitle"),
       lines: [trunc(providerPreview.oneLineSummary)],

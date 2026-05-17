@@ -44,8 +44,14 @@ describe("unifiedEncounterTimelineDisplayTitles", () => {
     expect(buildUnifiedClinicalEventTitle("en", "ED_PROVIDER_DOCUMENTATION_SAVED")).toBe(
       "ED provider documentation saved"
     );
+    expect(buildUnifiedClinicalEventTitle("en", "OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED")).toBe(
+      "Observation provider progress note saved"
+    );
     expect(buildUnifiedClinicalEventTitle("fr", "OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED")).toBe(
       "Note d'évolution médecin observation enregistrée"
+    );
+    expect(buildUnifiedClinicalEventTitle("en", "OBSERVATION_PROVIDER_PROGRESS_NOTE_SAVED")).not.toMatch(
+      /discharge|sortie|évolution|médecin/i
     );
   });
 });

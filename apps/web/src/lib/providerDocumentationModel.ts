@@ -606,6 +606,58 @@ export type ProviderDocumentationPreviewSection = {
   lines: string[];
 };
 
+export type ProviderDocumentationDisplayLocale = "en" | "fr";
+
+export type ProviderDocumentationDisplaySection = {
+  id: ProviderDocumentationPreviewSection["id"];
+  label: string;
+  text: string;
+};
+
+export type ProviderDocumentationDisplayModel = {
+  encounterMode: ProviderDocumentationEncounterMode;
+  documentType: ProviderDocumentationDocumentType;
+  title: string;
+  savedAt: string | null;
+  savedBy: string | null;
+  sections: ProviderDocumentationDisplaySection[];
+};
+
+const PROVIDER_DOCUMENTATION_DISPLAY_LABELS: Record<
+  ProviderDocumentationDisplayLocale,
+  {
+    titleEd: string;
+    titleObservation: string;
+    hpi: string;
+    ros: string;
+    physicalExam: string;
+    mdm: string;
+    impression: string;
+    plan: string;
+  }
+> = {
+  en: {
+    titleEd: "ED provider documentation",
+    titleObservation: "Observation provider progress note",
+    hpi: "HPI",
+    ros: "ROS",
+    physicalExam: "Physical Exam",
+    mdm: "MDM",
+    impression: "Impression",
+    plan: "Plan",
+  },
+  fr: {
+    titleEd: "Documentation médecin urgences",
+    titleObservation: "Note d'évolution médecin observation",
+    hpi: "HPI",
+    ros: "Revue ciblée",
+    physicalExam: "Examen physique",
+    mdm: "Décision médicale",
+    impression: "Impression",
+    plan: "Plan",
+  },
+};
+
 export function buildProviderDocumentationPreviewSections(
   state: ProviderDocumentationWorkspaceState
 ): ProviderDocumentationPreviewSection[] {
@@ -657,5 +709,79 @@ export function buildProviderDocumentationPreviewSections(
   if (plan.length) sections.push({ id: "plan", titleKey: "providerDocumentationWorkspace.previewPlan", lines: plan });
 
   return sections;
+}
+
+function providerDocumentationDisplayTitle(
+  encounterMode: ProviderDocumentationEncounterMode,
+  locale: ProviderDocumentationDisplayLocale
+): string {
+  const labels = PROVIDER_DOCUMENTATION_DISPLAY_LABELS[locale];
+  return encounterMode === "OBSERVATION" ? labels.titleObservation : labels.titleEd;
+}
+
+export function readProviderDocumentationWorkspaceMetadata(
+  nursingAssessment: unknown
+): ProviderDocumentationMetadata | null {
+  const root = asObject(nursingAssessment);
+  const stored = asObject(root?.[PROVIDER_DOCUMENTATION_NAMESPACE_KEY]);
+  const meta = asObject(stored?.workspaceMetadata);
+  if (meta?.source !== PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE) return null;
+  const encounterMode = meta.encounterMode === "OBSERVATION" ? "OBSERVATION" : meta.encounterMode === "ED" ? "ED" : null;
+  const documentType =
+    meta.documentType === "OBSERVATION_PROVIDER_PROGRESS_NOTE" || meta.documentType === "INITIAL_PROVIDER_NOTE"
+      ? meta.documentType
+      : null;
+  const savedAt = typeof meta.savedAt === "string" ? meta.savedAt : null;
+  const savedBy = typeof meta.savedBy === "string" ? meta.savedBy : null;
+  if (!encounterMode || !documentType || !savedAt || !savedBy) return null;
+  return {
+    encounterMode,
+    documentType,
+    savedAt,
+    savedBy,
+    source: PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE,
+  };
+}
+
+export function hasProviderDocumentationWorkspaceNote(nursingAssessment: unknown): boolean {
+  return readProviderDocumentationWorkspaceMetadata(nursingAssessment) !== null;
+}
+
+export function buildProviderDocumentationDisplayModel(input: {
+  nursingAssessment: unknown;
+  locale: ProviderDocumentationDisplayLocale;
+  fallbackEncounterMode?: ProviderDocumentationEncounterMode;
+}): ProviderDocumentationDisplayModel | null {
+  const metadata = readProviderDocumentationWorkspaceMetadata(input.nursingAssessment);
+  if (!metadata) return null;
+  const state = hydrateProviderDocumentationWorkspaceState({
+    encounter: { nursingAssessment: input.nursingAssessment },
+  });
+  const preview = buildProviderDocumentationPreviewSections(state);
+  const labels = PROVIDER_DOCUMENTATION_DISPLAY_LABELS[input.locale];
+  const labelById: Record<ProviderDocumentationPreviewSection["id"], string> = {
+    hpi: labels.hpi,
+    ros: labels.ros,
+    physicalExam: labels.physicalExam,
+    mdm: labels.mdm,
+    impression: labels.impression,
+    plan: labels.plan,
+  };
+  const sections = preview
+    .map((section): ProviderDocumentationDisplaySection => ({
+      id: section.id,
+      label: labelById[section.id],
+      text: section.lines.map((line) => line.trim()).filter(Boolean).join("\n"),
+    }))
+    .filter((section) => section.text.trim().length > 0);
+  if (sections.length === 0) return null;
+  return {
+    encounterMode: metadata.encounterMode ?? input.fallbackEncounterMode ?? "ED",
+    documentType: metadata.documentType,
+    title: providerDocumentationDisplayTitle(metadata.encounterMode, input.locale),
+    savedAt: metadata.savedAt,
+    savedBy: metadata.savedBy,
+    sections,
+  };
 }
 

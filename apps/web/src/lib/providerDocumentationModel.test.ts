@@ -4,12 +4,14 @@ import {
   PROVIDER_DOCUMENTATION_TEMPLATES,
   applyProviderDocumentationTemplate,
   buildProviderDocumentationMetadata,
+  buildProviderDocumentationDisplayModel,
   buildProviderDocumentationPreviewSections,
   buildProviderDocumentationSavePayload,
   emptyProviderDocumentationWorkspaceState,
   hydrateProviderDocumentationWorkspaceState,
   providerDocumentationTimelineLabel,
   providerDocumentationTitleKey,
+  readProviderDocumentationWorkspaceMetadata,
 } from "./providerDocumentationModel";
 
 describe("providerDocumentationModel", () => {
@@ -153,6 +155,64 @@ describe("providerDocumentationModel", () => {
       "physicalExam",
       "mdm",
     ]);
+  });
+
+  it("builds an ordered export-safe display model from the structured workspace note", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.chiefComplaint = "Chest pain";
+    state.hpi = "Started today";
+    state.rosImportantPositives = "shortness of breath";
+    state.physicalExam.cardiovascular = "regular rate and rhythm";
+    state.mdmWorkingAssessment = "concern for cardiopulmonary process";
+    state.clinicalImpression = "provider-authored impression";
+    state.treatmentPlan = "reassessment planned";
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: { physicianEvalV1: { hpi: "legacy duplicate" } },
+      state,
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    const model = buildProviderDocumentationDisplayModel({
+      nursingAssessment: payload.nursingAssessment,
+      locale: "en",
+    });
+    expect(model?.title).toBe("ED provider documentation");
+    expect(model?.savedAt).toBe("2026-05-17T12:00:00.000Z");
+    expect(model?.savedBy).toBe("Dr Test");
+    expect(model?.sections.map((section) => section.id)).toEqual([
+      "hpi",
+      "ros",
+      "physicalExam",
+      "mdm",
+      "impression",
+      "plan",
+    ]);
+    expect(model?.sections.map((section) => section.text).join("\n")).not.toContain("legacy duplicate");
+  });
+
+  it("uses observation labels without discharge wording or French leakage in English", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Symptoms improving";
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state,
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "OBSERVATION",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    const metadata = readProviderDocumentationWorkspaceMetadata(payload.nursingAssessment);
+    const model = buildProviderDocumentationDisplayModel({
+      nursingAssessment: payload.nursingAssessment,
+      locale: "en",
+    });
+    expect(metadata?.documentType).toBe("OBSERVATION_PROVIDER_PROGRESS_NOTE");
+    expect(model?.title).toBe("Observation provider progress note");
+    expect(model?.title).not.toMatch(/discharge|sortie|observation médecin/i);
   });
 });
 

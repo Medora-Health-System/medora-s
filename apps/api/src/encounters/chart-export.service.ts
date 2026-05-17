@@ -207,6 +207,14 @@ export type ChartExportManifest = {
       status: string;
       signedAt: string | null;
       signedByDisplayFr: string | null;
+      workspaceNote: {
+        title: string;
+        encounterMode: string;
+        documentType: string;
+        savedAt: string | null;
+        savedBy: string | null;
+        sections: Array<{ id: string; label: string; text: string }>;
+      } | null;
     };
     providerAddenda: Array<{
       id: string;
@@ -382,6 +390,94 @@ export type ChartExportManifest = {
   };
   deferredDomains: Array<{ domain: string; reason: string }>;
 };
+
+const PROVIDER_DOCUMENTATION_NAMESPACE_KEY = "erProviderMseV1";
+const PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE = "PROVIDER_DOCUMENTATION_WORKSPACE";
+
+function providerDocumentationWorkspaceNote(raw: unknown): ChartExportManifest["encounter"]["providerDocumentation"]["workspaceNote"] {
+  const root = asObjectOrNull(raw);
+  const stored = asObjectOrNull(root?.[PROVIDER_DOCUMENTATION_NAMESPACE_KEY]);
+  const meta = asObjectOrNull(stored?.workspaceMetadata);
+  if (!stored || meta?.source !== PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE) return null;
+  const encounterMode = meta.encounterMode === "OBSERVATION" ? "OBSERVATION" : "ED";
+  const documentType =
+    meta.documentType === "OBSERVATION_PROVIDER_PROGRESS_NOTE"
+      ? "OBSERVATION_PROVIDER_PROGRESS_NOTE"
+      : "INITIAL_PROVIDER_NOTE";
+  const labels =
+    encounterMode === "OBSERVATION"
+      ? {
+          title: "Observation provider progress note",
+          hpi: "HPI",
+          ros: "ROS",
+          physicalExam: "Physical Exam",
+          mdm: "MDM",
+          impression: "Impression",
+          plan: "Plan",
+        }
+      : {
+          title: "ED provider documentation",
+          hpi: "HPI",
+          ros: "ROS",
+          physicalExam: "Physical Exam",
+          mdm: "MDM",
+          impression: "Impression",
+          plan: "Plan",
+        };
+  const str = (key: string): string => {
+    const value = stored[key];
+    return typeof value === "string" ? value.trim() : "";
+  };
+  const join = (values: string[]): string => values.map((value) => value.trim()).filter(Boolean).join("\n");
+  const sections = [
+    { id: "hpi", label: labels.hpi, text: join([str("chiefConcern"), str("hpiNarrative")]) },
+    {
+      id: "ros",
+      label: labels.ros,
+      text: join([str("focusedImpression"), str("importantPositives"), str("importantNegatives"), str("redFlagsText")]),
+    },
+    {
+      id: "physicalExam",
+      label: labels.physicalExam,
+      text: join([
+        str("examGeneralAppearance"),
+        str("examHeent"),
+        str("examCardiac"),
+        str("examRespiratory"),
+        str("examAbdomen"),
+        str("examNeuroMental"),
+        str("examMusculoskeletal"),
+        str("examSkin"),
+      ]),
+    },
+    {
+      id: "mdm",
+      label: labels.mdm,
+      text: join([
+        str("mdmWorkingAssessment"),
+        str("differentialAssessmentText"),
+        str("mdmDataReviewed"),
+        str("mdmRiskLevel"),
+        str("mdmClinicalRationale"),
+        str("mdmPlanSummary"),
+        str("mdmImmediateActionsRationale"),
+        str("mdmConsultsDiscussed"),
+        str("mdmAdmitObserveDischarge"),
+      ]),
+    },
+    { id: "impression", label: labels.impression, text: str("clinicalImpression") },
+    { id: "plan", label: labels.plan, text: join([str("treatmentPlan"), str("followUpDisposition"), str("mdmProviderAddendum")]) },
+  ].filter((section) => section.text.trim());
+  if (sections.length === 0) return null;
+  return {
+    title: labels.title,
+    encounterMode,
+    documentType,
+    savedAt: typeof meta.savedAt === "string" ? meta.savedAt : null,
+    savedBy: typeof meta.savedBy === "string" ? meta.savedBy : null,
+    sections,
+  };
+}
 
 export type ChartExportRequestOptions = {
   /** Defaults to `json`. HTML uses the same manifest composition path; only the HTTP response differs. */
@@ -896,6 +992,7 @@ export class EncounterChartExportService {
             ? encounter.providerDocumentationSignedAt.toISOString()
             : null,
           signedByDisplayFr: userDisplayFr(encounter.providerDocumentationSignedBy),
+          workspaceNote: providerDocumentationWorkspaceNote(encounter.nursingAssessment),
         },
         providerAddenda,
         observationStay,

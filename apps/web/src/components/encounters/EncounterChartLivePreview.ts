@@ -25,6 +25,7 @@ import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import {
   clinicalDocumentationEventBelongsInAdmissionHistory,
   clinicalDocumentationEventBelongsInDischargeHistory,
+  clinicalTimelineDisplayLabelForLocale,
   clinicalTimelineDisplayLabelFr,
   resolveClinicalTimelineDisplayEventType,
 } from "@medora/shared";
@@ -36,6 +37,7 @@ import {
   parseNursingAssessmentSectionsForChart,
   parsePhysicianEvalV1ForChart,
 } from "@/components/patient-chart/patientChartHelpers";
+import { buildProviderDocumentationDisplayModel } from "@/lib/providerDocumentationModel";
 import { parseNursingProceduresForChart } from "@/lib/nursingProcedures";
 import {
   printDateLocale,
@@ -553,6 +555,27 @@ function renderNursingReassessments(
 }
 
 function renderProviderDocumentation(lang: SupportedLanguage, encounter: AnyRecord): string {
+  const workspace = buildProviderDocumentationDisplayModel({
+    nursingAssessment: encounter.nursingAssessment,
+    locale: lang === "en" ? "en" : "fr",
+  });
+  if (workspace) {
+    const savedLine =
+      workspace.savedBy || workspace.savedAt
+        ? `<p style="margin:0 0 8px 0;font-size:11px;color:#475569;">${esc(
+            [workspace.savedBy, workspace.savedAt ? fmtDt(workspace.savedAt, lang) : ""].filter(Boolean).join(" — ")
+          )}</p>`
+        : "";
+    const blocks = workspace.sections
+      .map(
+        (s) =>
+          `<div style="margin:6px 0;"><strong>${esc(s.label)}</strong><div style="white-space:pre-wrap;margin-top:2px;">${esc(
+            s.text
+          )}</div></div>`
+      )
+      .join("");
+    return `<div style="margin:6px 0 8px 0;"><strong>${esc(workspace.title)}</strong></div>${savedLine}${blocks}`;
+  }
   const sections = parsePhysicianEvalV1ForChart(encounter.nursingAssessment, lang);
   const impression = pickString(encounter, "clinicianImpression") || pickString(encounter, "providerNote");
   const plan = pickString(encounter, "treatmentPlan");
@@ -632,6 +655,40 @@ function renderClinicalDocumentationHistorySection(
       const performer = performerLineFromCreatedBy(e, lang);
       const payload = asObject(e.payloadJson);
       const snapshot = asObject(payload?.snapshot) ?? null;
+      const displayEventType = resolveClinicalTimelineDisplayEventType({
+        eventType: pickString(e, "eventType"),
+        payloadJson: e.payloadJson,
+      });
+      const workspace = snapshot
+        ? buildProviderDocumentationDisplayModel({
+            nursingAssessment: { erProviderMseV1: snapshot },
+            locale: lang === "en" ? "en" : "fr",
+          })
+        : null;
+      if (workspace) {
+        const title = clinicalTimelineDisplayLabelForLocale(lang === "en" ? "en" : "fr", displayEventType);
+        const sectionBlocks = workspace.sections
+          .map(
+            (s) =>
+              `<div style="margin:6px 0;"><strong>${esc(s.label)}</strong><div style="white-space:pre-wrap;margin-top:2px;">${esc(
+                s.text
+              )}</div></div>`
+          )
+          .join("");
+        const sigLine =
+          workspace.savedBy || workspace.savedAt
+            ? `<p style="margin:4px 0 0 0;font-size:11px;color:#475569;font-style:italic;">${esc(
+                [workspace.savedBy, workspace.savedAt ? fmtDt(workspace.savedAt, lang) : ""].filter(Boolean).join(" — ")
+              )}</p>`
+            : "";
+        return `<div style="margin:6px 0 10px 0;border-left:2px solid #e2e8f0;padding:4px 10px;">
+          <p style="margin:0;font-weight:600;">${esc(title)} — ${esc(fmtDt(at, lang))}${
+            performer ? ` — ${esc(performer)}` : ""
+          }</p>
+          ${sectionBlocks}
+          ${sigLine}
+        </div>`;
+      }
       const snapshotLines: string[] = [];
       if (snapshot) {
         for (const [k, v] of Object.entries(snapshot)) {

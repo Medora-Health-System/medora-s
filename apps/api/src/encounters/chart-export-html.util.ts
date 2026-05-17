@@ -37,6 +37,24 @@ function jsonPreBlock(value: unknown): string {
   return `<pre class="json-block">${esc(safeJsonStringify(value))}</pre>`;
 }
 
+function workspaceProviderNoteHtml(
+  workspaceNote: ChartExportManifest["encounter"]["providerDocumentation"]["workspaceNote"]
+): string {
+  if (!workspaceNote) return `<p class="muted">${esc(NO_DATA)}</p>`;
+  const meta = [workspaceNote.savedBy, workspaceNote.savedAt].filter(Boolean).join(" — ");
+  return `<div class="note-block">
+    <h3>${esc(workspaceNote.title)}</h3>
+    ${meta ? `<p class="muted">${esc(meta)}</p>` : ""}
+    ${workspaceNote.sections
+      .map(
+        (section) => `<div class="note-section"><strong>${esc(section.label)}</strong><div class="pre-text">${esc(
+          section.text
+        )}</div></div>`
+      )
+      .join("")}
+  </div>`;
+}
+
 function h2(title: string): string {
   return `<h2>${esc(title)}</h2>`;
 }
@@ -140,6 +158,8 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
     ${pLine("Provider documentation status", enc.providerDocumentation.status)}
     ${pLine("Signed at", enc.providerDocumentation.signedAt)}
     ${pLine("Signed by", enc.providerDocumentation.signedByDisplayFr)}
+    <h3>Structured provider documentation</h3>
+    ${workspaceProviderNoteHtml(enc.providerDocumentation.workspaceNote)}
     ${pLine("Treatment plan", enc.treatmentPlan)}
     ${pLine("Clinician impression", enc.clinicianImpression)}
     ${pLine("Provider note", enc.providerNote)}
@@ -410,6 +430,8 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
     th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;}
     th{background:#f8fafc;}
     .json-block,.pre-text{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e2e8f0;padding:10px;font-size:11px;margin:6px 0;}
+    .note-block{border-left:3px solid #0f766e;padding-left:10px;margin:10px 0 14px;}
+    .note-section{margin:8px 0;}
     .order{border:1px solid #e2e8f0;padding:10px;margin:10px 0;border-radius:6px;}
     .result{border-left:3px solid #94a3b8;padding-left:10px;margin:12px 0;}
     .footer{margin-top:28px;padding-top:12px;border-top:1px solid #cbd5e1;font-size:11px;color:#475569;}

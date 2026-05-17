@@ -4,6 +4,10 @@ import {
   buildErNursingReassessmentPreviewModel,
   erNursingReassessmentFormFromEncounter,
 } from "@/features/emergency/emergencyNursingReassessmentV1";
+import {
+  buildProviderDocumentationDisplayModel,
+  hasProviderDocumentationWorkspaceNote,
+} from "@/lib/providerDocumentationModel";
 
 /** Libellés des sections d’évaluation infirmière (`nursingEvalV1.sections`) — aligné sur `NursingAssessmentTab`. */
 export const NURSING_ASSESSMENT_SECTION_LABELS_FR: Record<string, string> = {
@@ -230,6 +234,13 @@ export function parsePhysicianEvalV1ForChart(
   language: SupportedLanguage = "fr"
 ): { label: string; text: string }[] {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const workspace = buildProviderDocumentationDisplayModel({
+    nursingAssessment: raw,
+    locale: language === "en" ? "en" : "fr",
+  });
+  if (workspace) {
+    return workspace.sections.map((section) => ({ label: section.label, text: section.text }));
+  }
   const o = raw as Record<string, unknown>;
   const pe = o.physicianEvalV1;
   if (!pe || typeof pe !== "object" || Array.isArray(pe)) return [];
@@ -243,6 +254,29 @@ export function parsePhysicianEvalV1ForChart(
     out.push({ label: labels[key] ?? key, text: v.trim() });
   }
   return out;
+}
+
+export function providerDocumentationWorkspaceSignatureForLocale(
+  raw: unknown,
+  language: SupportedLanguage,
+  t: (key: string) => string
+): string | null {
+  const workspace = buildProviderDocumentationDisplayModel({
+    nursingAssessment: raw,
+    locale: language === "en" ? "en" : "fr",
+  });
+  if (!workspace?.savedAt || !workspace.savedBy) return null;
+  const dt = new Date(workspace.savedAt);
+  const formatted = Number.isNaN(dt.getTime())
+    ? "—"
+    : dt.toLocaleString(language === "en" ? "en-US" : "fr-FR");
+  return t("providerDocumentationWorkspace.savedByAt")
+    .replace("{name}", workspace.savedBy)
+    .replace("{datetime}", formatted);
+}
+
+export function hasProviderDocumentationWorkspaceForChart(raw: unknown): boolean {
+  return hasProviderDocumentationWorkspaceNote(raw);
 }
 
 /** Champs dossier de sortie historiques (V1). */
