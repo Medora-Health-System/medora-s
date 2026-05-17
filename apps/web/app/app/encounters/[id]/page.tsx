@@ -75,7 +75,10 @@ import {
   computeObservationOperationalSnapshot,
   isObservationOrderTemplateProtocol,
   deriveObservationEncounterDisplayStatus,
+  deriveObservationTemplateCareOpsIndicators,
+  deriveObservationTemplateLineLifecyclePhase,
   isObservationShortStayEncounter,
+  observationTemplateItemIdFromPersistedManualLabel,
   mergeObservationTrackboardOpsInput,
   OBSERVATION_ORDER_TEMPLATE_ITEMS,
   temperatureHintPairCelsiusFahrenheit,
@@ -1258,6 +1261,35 @@ export default function EncounterDetailPage() {
 
   const observationTemplateHasAppliedLines = existingObservationTemplateItemIds.length > 0;
 
+  const observationTemplateCareOps = useMemo(() => {
+    const rows: { lifecyclePhase: ReturnType<typeof deriveObservationTemplateLineLifecyclePhase>; templateItemId: string | null }[] = [];
+    for (const o of quickOrders) {
+      if (!o || (o as { type?: string }).type !== "CARE" || (o as { cancelledAt?: string | null }).cancelledAt)
+        continue;
+      if (
+        !isObservationOrderTemplateProtocol(
+          (o as { authority?: { protocolName?: string | null } }).authority?.protocolName ?? null
+        )
+      ) {
+        continue;
+      }
+      const items = Array.isArray((o as { items?: unknown }).items) ? (o as { items: unknown[] }).items : [];
+      for (const it of items) {
+        const row = it as { manualLabel?: string | null; status?: string | null; lifecycleState?: string | null };
+        const status = String(row.status ?? row.lifecycleState ?? "PLACED").toUpperCase();
+        const cancelled =
+          status === "CANCELLED" || String(row.lifecycleState ?? "").toUpperCase() === "CANCELLED";
+        const templateItemId =
+          observationTemplateItemIdFromPersistedManualLabel(row.manualLabel ?? null) ?? null;
+        rows.push({
+          lifecyclePhase: deriveObservationTemplateLineLifecyclePhase({ status, cancelled }),
+          templateItemId,
+        });
+      }
+    }
+    return deriveObservationTemplateCareOpsIndicators(rows);
+  }, [quickOrders]);
+
   if (!facilityId || !encounterId) {
     return (
       <div style={{ ...encounterPageShell, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1930,6 +1962,7 @@ export default function EncounterDetailPage() {
               loading: observationMarEncounterDigest.loading,
             }}
             canOpenMarTab={canFetchMarTab}
+            templateCareOps={observationTemplateCareOps}
           />
         ) : null}
         <EncounterOperationalPanel

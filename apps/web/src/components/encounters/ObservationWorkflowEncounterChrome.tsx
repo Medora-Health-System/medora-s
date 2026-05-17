@@ -5,6 +5,7 @@ import type {
   ObservationOperationalBlocker,
   ObservationOperationalSnapshot,
   ObservationReadinessLine,
+  ObservationTemplateCareOpsIndicators,
   ObservationTrackboardOpsInput,
 } from "@medora/shared";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
@@ -150,6 +151,8 @@ export type ObservationWorkflowEncounterChromeProps = {
   marEncounterDigest?: { summary: ObservationMarEncounterSummary | null; loading: boolean } | null;
   /** When true, show “Review MAR” quick action (tab must exist in parent). */
   canOpenMarTab?: boolean;
+  /** Derived from observation template CARE rows on the encounter (read-only indicators). */
+  templateCareOps?: ObservationTemplateCareOpsIndicators | null;
 };
 
 export function ObservationWorkflowEncounterChrome({
@@ -169,6 +172,7 @@ export function ObservationWorkflowEncounterChrome({
   compact = false,
   marEncounterDigest,
   canOpenMarTab = false,
+  templateCareOps = null,
 }: ObservationWorkflowEncounterChromeProps) {
   const providerObsAt = snapshot.reassessmentLanes.provider.lastAtIso
     ? formatDateTime(snapshot.reassessmentLanes.provider.lastAtIso)
@@ -498,6 +502,38 @@ export function ObservationWorkflowEncounterChrome({
         {flags.readyForDischarge ? (
           <span style={{ ...badgeBase, backgroundColor: "#dcfce7", borderColor: "#86efac", color: "#166534" }}>
             {t("encounterChrome.observationWorkflow.badges.readyDischarge")}
+          </span>
+        ) : null}
+        {templateCareOps && templateCareOps.pendingAcknowledgementCount > 0 ? (
+          <span style={{ ...badgeBase, backgroundColor: "#fff3cd", borderColor: "#fde047", color: "#854d0e" }}>
+            {t("encounterChrome.observationTemplateOrders.careOpsPendingAck").replace(
+              "{count}",
+              String(templateCareOps.pendingAcknowledgementCount)
+            )}
+          </span>
+        ) : null}
+        {templateCareOps && templateCareOps.careTasksPendingCount > 0 ? (
+          <span style={{ ...badgeBase, backgroundColor: "#fef9c3", borderColor: "#eab308", color: "#854d0e" }}>
+            {t("encounterChrome.observationTemplateOrders.careOpsTasksPending").replace(
+              "{count}",
+              String(templateCareOps.careTasksPendingCount)
+            )}
+          </span>
+        ) : null}
+        {templateCareOps && templateCareOps.monitoringActiveCount > 0 ? (
+          <span style={{ ...badgeBase, backgroundColor: "#dbeafe", borderColor: "#93c5fd", color: "#1e40af" }}>
+            {t("encounterChrome.observationTemplateOrders.careOpsMonitoringActive").replace(
+              "{count}",
+              String(templateCareOps.monitoringActiveCount)
+            )}
+          </span>
+        ) : null}
+        {templateCareOps && templateCareOps.totalOpenLines > 0 && templateCareOps.careCompleteCount === templateCareOps.totalOpenLines ? (
+          <span style={{ ...badgeBase, backgroundColor: "#f1f5f9", borderColor: "#cbd5e1", color: "#334155" }}>
+            {t("encounterChrome.observationTemplateOrders.careOpsComplete").replace(
+              "{count}",
+              String(templateCareOps.careCompleteCount)
+            )}
           </span>
         ) : null}
         {flags.dispositionPhase ? (

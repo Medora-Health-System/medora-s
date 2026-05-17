@@ -231,6 +231,9 @@ export function resolveOrderEventAttributionKind(
   if (et === "STARTED" && meta?.lifecycleOutcome === "ACKNOWLEDGED") {
     return "ACKNOWLEDGED";
   }
+  if (et === "COMPLETED" && meta?.source === "OBSERVATION_TEMPLATE_ORDER") {
+    return "PERFORMED";
+  }
   const orderType =
     item.displayGroup === "LABORATORY"
       ? "LAB"

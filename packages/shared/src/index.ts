@@ -12,6 +12,7 @@ export * from "./observationAdmissionCareLevel.js";
 export * from "./observationShortStayEncounter.js";
 export * from "./observationEncounterDisplayStatus.js";
 export * from "./orderAcknowledgementBillingSafety.js";
+export * from "./observationTemplateOrderLifecycle.js";
 export * from "./encounters/observationAdmissionDischargeRouting.js";
 export * from "./encounters/clinicalTimelineDisplayNormalization.js";
 export * from "./encounters/unifiedEncounterTimeline.js";

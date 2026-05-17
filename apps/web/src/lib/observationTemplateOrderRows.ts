@@ -4,9 +4,12 @@
 
 import {
   collectObservationTemplateItemIdsFromOrderItems,
+  deriveObservationTemplateLineLifecyclePhase,
   isObservationOrderTemplateProtocol,
   observationOrderTemplateItemManualLabel,
   observationTemplateItemIdFromPersistedManualLabel,
+  observationTemplateLineAllowsInProgressStart,
+  type ObservationTemplateLineLifecyclePhase,
 } from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
@@ -17,10 +20,17 @@ export type ObservationTemplateOrderRow = {
   templateItemId: string | null;
   label: string;
   status: string;
+  lifecyclePhase: ObservationTemplateLineLifecyclePhase;
+  orderedBy: string | null;
+  orderedAtIso: string | null;
   acknowledgedBy: string | null;
   acknowledgedAtIso: string | null;
+  performedBy: string | null;
+  completedAtIso: string | null;
+  inProgressAtIso: string | null;
   cancelled: boolean;
   cancellationReason: string | null;
+  allowsInProgressStart: boolean;
 };
 
 type OrderEventRow = {
@@ -46,6 +56,13 @@ function isObservationTemplateOrder(order: Record<string, unknown>): boolean {
   return false;
 }
 
+function formatActor(name: string | null | undefined, role: string | null | undefined): string | null {
+  const n = name?.trim() || null;
+  const r = role?.trim();
+  if (n && r) return `${n}, ${r}`;
+  return n;
+}
+
 function findItemAckEvent(events: OrderEventRow[], itemId: string): OrderEventRow | null {
   for (const e of events) {
     const meta = asRecord(e.metadata);
@@ -53,6 +70,27 @@ function findItemAckEvent(events: OrderEventRow[], itemId: string): OrderEventRo
     if (meta?.lifecycleOutcome === "ACKNOWLEDGED" || e.eventType === "ACKNOWLEDGED") {
       return e;
     }
+  }
+  return null;
+}
+
+function findItemStartEvent(events: OrderEventRow[], itemId: string): OrderEventRow | null {
+  for (const e of events) {
+    if (e.eventType !== "STARTED") continue;
+    const meta = asRecord(e.metadata);
+    if (meta?.orderItemId !== itemId) continue;
+    if (meta?.lifecycleOutcome === "ACKNOWLEDGED") continue;
+    return e;
+  }
+  return null;
+}
+
+function findItemCompleteEvent(events: OrderEventRow[], itemId: string): OrderEventRow | null {
+  for (const e of events) {
+    if (e.eventType !== "COMPLETED") continue;
+    const meta = asRecord(e.metadata);
+    if (meta?.orderItemId && meta.orderItemId !== itemId) continue;
+    return e;
   }
   return null;
 }
@@ -81,6 +119,17 @@ export function flattenObservationTemplateOrders(
   for (const raw of orders) {
     const order = asRecord(raw);
     if (!order || !isObservationTemplateOrder(order)) continue;
+
+    const orderCreatedAt =
+      typeof order.createdAt === "string" ? order.createdAt : null;
+    const createdByDisplay = asRecord(order.createdByDisplay);
+    const orderedByFromOrder =
+      typeof createdByDisplay?.name === "string"
+        ? createdByDisplay.name.trim()
+        : typeof order.orderedByDisplayFr === "string"
+          ? order.orderedByDisplayFr.trim()
+          : null;
+
     const items = Array.isArray(order.items) ? order.items : [];
     for (const itRaw of items) {
       const it = asRecord(itRaw);
@@ -100,23 +149,35 @@ export function flattenObservationTemplateOrders(
         String(it.manualLabel ?? "").trim() ||
         "—";
       const ackEv = findItemAckEvent(events, itemId);
-      const ackName = ackEv?.performedByDisplayName?.trim() || null;
-      const ackRole = ackEv?.roleSnapshot?.trim();
-      const acknowledgedBy =
-        ackName && ackRole ? `${ackName}, ${ackRole}` : ackName || null;
+      const startEv = findItemStartEvent(events, itemId);
+      const completeEv = findItemCompleteEvent(events, itemId);
       const cancelled =
         status === "CANCELLED" || String(it.lifecycleState ?? "").toUpperCase() === "CANCELLED";
+      const lifecyclePhase = deriveObservationTemplateLineLifecyclePhase({ status, cancelled });
+      const completedAtIso =
+        (typeof it.completedAt === "string" ? it.completedAt : null) ||
+        (typeof it.documentedCompletedAt === "string" ? it.documentedCompletedAt : null) ||
+        completeEv?.performedAt ||
+        null;
+
       rows.push({
         itemId,
         orderId: String(order.id ?? ""),
         templateItemId,
         label,
         status,
-        acknowledgedBy,
+        lifecyclePhase,
+        orderedBy: orderedByFromOrder,
+        orderedAtIso: orderCreatedAt,
+        acknowledgedBy: formatActor(ackEv?.performedByDisplayName, ackEv?.roleSnapshot),
         acknowledgedAtIso: ackEv?.performedAt ?? null,
+        performedBy: formatActor(completeEv?.performedByDisplayName, completeEv?.roleSnapshot),
+        completedAtIso,
+        inProgressAtIso: startEv?.performedAt ?? null,
         cancelled,
         cancellationReason:
           typeof it.cancellationReason === "string" ? it.cancellationReason : null,
+        allowsInProgressStart: observationTemplateLineAllowsInProgressStart(templateItemId),
       });
     }
   }

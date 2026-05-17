@@ -26,12 +26,43 @@ function asRecord(v: unknown): Record<string, unknown> | null {
   return null;
 }
 
+function observationTemplateTimelineTitleFr(
+  eventType: string,
+  lineLabelFr: string | null,
+  metadata?: Record<string, unknown> | null
+): string | null {
+  if (metadata?.source !== "OBSERVATION_TEMPLATE_ORDER") return null;
+  const line = lineLabelFr?.trim();
+  const et = eventType.toUpperCase();
+  const lifecycle =
+    typeof metadata.lifecycleOutcome === "string" ? metadata.lifecycleOutcome.toUpperCase() : "";
+  if (et === "CREATED") {
+    return line ? `${line} — prescrit (observation)` : "Ordre observation prescrit";
+  }
+  if (et === "STARTED" && lifecycle === "ACKNOWLEDGED") {
+    return line ? `${line} — accusé réception` : "Ordre observation accusé réception";
+  }
+  if (et === "STARTED") {
+    return line ? `${line} — en cours` : "Ordre observation démarré";
+  }
+  if (et === "COMPLETED") {
+    return line ? `${line} — terminé` : "Ordre observation terminé";
+  }
+  if (et === "CANCELLED") {
+    return line ? `${line} — annulé` : "Ordre observation annulé";
+  }
+  return null;
+}
+
 function orderEventTitleFr(
   eventType: string,
   orderType: string,
   lineLabelFr: string | null,
   metadata?: Record<string, unknown> | null
 ): string {
+  const templateTitle = observationTemplateTimelineTitleFr(eventType, lineLabelFr, metadata);
+  if (templateTitle) return templateTitle;
+
   const et = eventType.toUpperCase();
   const ot = orderType.toUpperCase();
   const lifecycle =
@@ -52,9 +83,18 @@ function orderEventTitleFr(
   if (et === "COMPLETED") {
     if (ot === "LAB") return "Laboratoire — étape terminée";
     if (ot === "IMAGING") return "Imagerie — étape terminée";
+    if (ot === "CARE") return "Soins / procédure terminés";
   }
-  if (et === "CANCELLED") return "Ordre annulé";
+  if (et === "CANCELLED") {
+    const line = lineLabelFr?.trim();
+    if (line && metadata?.orderItemId) return `${line} — ligne annulée`;
+    return "Ordre annulé";
+  }
   if (et === "STARTED" && ot === "MEDICATION") return "Perfusion démarrée";
+  if (et === "STARTED" && ot === "CARE") {
+    const line = lineLabelFr?.trim();
+    return line ? `${line} — démarré` : "Soins / procédure démarrés";
+  }
   return `Ordre — ${et}`;
 }
 

@@ -46,13 +46,16 @@ import type {
 } from "@medora/shared";
 import {
   OBSERVATION_ORDER_TEMPLATE_ID,
+  buildOrderItemCandidate,
   deltaMinutesBetween,
   isCareProcedureOrderItem,
+  orderItemStatusEligibleForBillingCapture,
   parseCareProcedureEffectiveClinicalTimeIso,
   toCareProcedureEffectiveClinicalTimeIsoUtc,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
 } from "@medora/shared";
+import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isMedicationInfusionCandidate } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -700,7 +703,10 @@ export class OrdersService {
 
     const orderSource = data.orderSource ?? "PROVIDER_ORDER";
     const orderAuthorityMetadata = stripUndefinedKeys({
-      source: orderSource,
+      source:
+        data.protocolName?.trim() === OBSERVATION_ORDER_TEMPLATE_ID
+          ? "OBSERVATION_TEMPLATE_ORDER"
+          : orderSource,
       readbackConfirmed: data.readbackConfirmed,
       protocolName: data.protocolName?.trim() || undefined,
       ...(data.observationTemplateItemId?.trim()
@@ -708,6 +714,9 @@ export class OrdersService {
         : {}),
       ...(data.observationTemplateGroupId?.trim()
         ? { observationTemplateGroupId: data.observationTemplateGroupId.trim() }
+        : {}),
+      ...(data.observationTemplateItemId?.trim() && data.items[0]?.manualLabel?.trim()
+        ? { lineLabelFr: data.items[0]!.manualLabel!.trim() }
         : {}),
       ...(data.type === "MEDICATION" && data.safetyAcknowledgedMedicationAllergies === true
         ? { safetyAcknowledgedMedicationAllergies: true as const }
@@ -1789,6 +1798,25 @@ export class OrdersService {
     return this.prisma.orderItem.findFirstOrThrow({ where: { id: orderItemId } });
   }
 
+  private observationTemplateOrderEventExtras(
+    orderType: string,
+    createdMeta: unknown,
+    manualLabel: string | null | undefined
+  ): { lineLabelFr?: string; source?: "OBSERVATION_TEMPLATE_ORDER" } {
+    const protocolName =
+      createdMeta && typeof createdMeta === "object" && !Array.isArray(createdMeta)
+        ? (createdMeta as { protocolName?: unknown }).protocolName
+        : null;
+    if (orderType !== "CARE" || protocolName !== OBSERVATION_ORDER_TEMPLATE_ID) {
+      return {};
+    }
+    const lineLabelFr = manualLabel?.trim() || undefined;
+    return {
+      ...(lineLabelFr ? { lineLabelFr } : {}),
+      source: "OBSERVATION_TEMPLATE_ORDER",
+    };
+  }
+
   /**
    * RN/provider acknowledgment only — does not complete the line, bill, or set performedBy.
    * `acknowledgedBy` (event actor) must not be treated as clinical performer for billing.
@@ -1846,10 +1874,11 @@ export class OrdersService {
       createdMeta && typeof createdMeta === "object" && !Array.isArray(createdMeta)
         ? (createdMeta as { protocolName?: unknown }).protocolName
         : null;
-    const ackSource =
-      typeof protocolName === "string" && protocolName.trim() === "medora_observation_order_set_v1"
-        ? "OBSERVATION_TEMPLATE_ORDER"
-        : undefined;
+    const templateExtras = this.observationTemplateOrderEventExtras(
+      orderItem.order.type,
+      createdMeta,
+      orderItem.manualLabel
+    );
 
     assertCanTransition(orderItem.status, OrderStatus.ACKNOWLEDGED);
 
@@ -1901,8 +1930,7 @@ export class OrdersService {
             orderItemId,
             lifecycleOutcome: "ACKNOWLEDGED",
             dedupeKey: ackDedupeKey,
-            ...(lineLabelFr ? { lineLabelFr } : {}),
-            ...(ackSource ? { source: ackSource } : {}),
+            ...templateExtras,
           },
           tx,
         });
@@ -1941,6 +1969,12 @@ export class OrdersService {
         order: {
           include: {
             encounter: { include: { patient: true } },
+            orderEvents: {
+              where: { eventType: OrderEventType.CREATED },
+              orderBy: { performedAt: "asc" },
+              take: 1,
+              select: { metadata: true },
+            },
           },
         },
       },
@@ -1954,6 +1988,14 @@ export class OrdersService {
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
     assertAckOrStartActor(orderItem, requestorRoleCodes);
+
+    if (
+      orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED ||
+      orderItem.status === OrderStatus.CANCELLED
+    ) {
+      throw new BadRequestException("Cette ligne est annulée ; le démarrage n'est pas possible.");
+    }
+
     assertCanTransition(orderItem.status, OrderStatus.IN_PROGRESS);
 
     const lifecycleState = applyLifecycleWithStatus(
@@ -1965,8 +2007,24 @@ export class OrdersService {
       throw new ForbiddenException("Authentification requise pour démarrer une ligne.");
     }
 
+    const createdMeta = orderItem.order.orderEvents[0]?.metadata;
+    const templateExtras = this.observationTemplateOrderEventExtras(
+      orderItem.order.type,
+      createdMeta,
+      orderItem.manualLabel
+    );
+    const startDedupeKey = `order-item-start:${orderItemId}`;
+
     const systemNow = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      const existingStart = await tx.orderEvent.findFirst({
+        where: {
+          orderId: orderItem.orderId,
+          eventType: OrderEventType.STARTED,
+          metadata: { path: ["dedupeKey"], equals: startDedupeKey } as Prisma.JsonFilter,
+        },
+      });
+
       const row = await tx.orderItem.update({
         where: { id: orderItemId },
         data: {
@@ -1980,16 +2038,22 @@ export class OrdersService {
             : {}),
         },
       });
-      await this.writeOrderEvent({
-        facilityId,
-        encounterId: orderItem.order.encounterId,
-        orderId: orderItem.orderId,
-        orderType: orderItem.order.type,
-        eventType: OrderEventType.STARTED,
-        performedByUserId: userId,
-        metadata: { orderItemId },
-        tx,
-      });
+      if (!existingStart) {
+        await this.writeOrderEvent({
+          facilityId,
+          encounterId: orderItem.order.encounterId,
+          orderId: orderItem.orderId,
+          orderType: orderItem.order.type,
+          eventType: OrderEventType.STARTED,
+          performedByUserId: userId,
+          metadata: {
+            orderItemId,
+            dedupeKey: startDedupeKey,
+            ...templateExtras,
+          },
+          tx,
+        });
+      }
       return row;
     });
 
@@ -2055,6 +2119,12 @@ export class OrdersService {
         order: {
           include: {
             encounter: { include: { patient: true } },
+            orderEvents: {
+              where: { eventType: OrderEventType.CREATED },
+              orderBy: { performedAt: "asc" },
+              take: 1,
+              select: { metadata: true },
+            },
           },
         },
         pharmacyDispenseRecord: { select: { id: true } },
@@ -2068,6 +2138,14 @@ export class OrdersService {
     assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
+
+    if (
+      orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED ||
+      orderItem.status === OrderStatus.CANCELLED
+    ) {
+      throw new BadRequestException("Cette ligne est annulée ; la complétion n'est pas possible.");
+    }
+
     if (isMedicationAdministerChart(orderItem)) {
       throw new BadRequestException(
         "Cette ligne est destinée à l'administration infirmière ; utilisez la fin d'administration au lit."
@@ -2124,13 +2202,21 @@ export class OrdersService {
       }
     }
 
+    const createdMeta = orderItem.order.orderEvents[0]?.metadata;
+    const templateExtras = this.observationTemplateOrderEventExtras(
+      orderItem.order.type,
+      createdMeta,
+      orderItem.manualLabel
+    );
+
     const eventMetadata: Prisma.InputJsonValue = isCareProcedure
       ? {
           orderItemId,
           effectiveClinicalTime: toCareProcedureEffectiveClinicalTimeIsoUtc(effectiveAt),
           originalSystemTime: toCareProcedureEffectiveClinicalTimeIsoUtc(systemNow),
+          ...templateExtras,
         }
-      : { orderItemId };
+      : { orderItemId, ...templateExtras };
 
     const itemUpdateData: Prisma.OrderItemUpdateInput = {
       status: OrderStatus.COMPLETED,
@@ -2176,6 +2262,32 @@ export class OrdersService {
       ip,
       userAgent,
     });
+
+    /** Completion only — acknowledgement does not bill. `performedBy` is the COMPLETED event actor. */
+    if (isCareProcedure && orderItemStatusEligibleForBillingCapture(OrderStatus.COMPLETED)) {
+      const completedAtIso =
+        updated.completedAt instanceof Date && !Number.isNaN(updated.completedAt.getTime())
+          ? updated.completedAt.toISOString()
+          : systemNow.toISOString();
+      await appendBillingCaptureCandidate(
+        this.prisma,
+        orderItem.order.encounterId,
+        facilityId,
+        buildOrderItemCandidate({
+          orderItemId,
+          orderId: orderItem.orderId,
+          encounterId: orderItem.order.encounterId,
+          patientId: orderItem.order.encounter.patientId,
+          facilityId,
+          orderType: orderItem.order.type,
+          catalogItemType: orderItem.catalogItemType,
+          manualLabel: orderItem.manualLabel,
+          quantity: orderItem.quantity,
+          completedAtIso,
+          createdByUserId: userId ?? null,
+        })
+      );
+    }
 
     return updated;
   }

@@ -10,14 +10,9 @@ import {
   flattenObservationTemplateOrders,
   type ObservationTemplateOrderRow,
 } from "@/lib/observationTemplateOrderRows";
-import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
+import type { ObservationTemplateLineLifecyclePhase } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
-
-function itemStatusAllowsAcknowledge(st: string): boolean {
-  const u = st.toUpperCase();
-  return u === "PLACED" || u === "PENDING";
-}
 
 export function ObservationTemplateOrdersPanel({
   encounterId,
@@ -66,25 +61,45 @@ export function ObservationTemplateOrdersPanel({
     [orders, orderEvents, language]
   );
 
-  const acknowledgeItem = async (itemId: string) => {
-    setLineActionBusy(`${itemId}:acknowledge`);
+  const runLineAction = async (itemId: string, action: string, fn: () => Promise<void>) => {
+    setLineActionBusy(`${itemId}:${action}`);
     setFeedback(null);
     try {
-      await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
+      await fn();
       await loadEvents();
       await onOrdersUpdated?.();
-      setFeedback({ type: "ok", text: t("encounterChrome.observationTemplateOrders.acknowledgedOk") });
     } catch (e) {
       setFeedback({
         type: "err",
         text:
           normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
-          t("encounterChrome.observationTemplateOrders.acknowledgeFailed"),
+          t("encounterChrome.observationTemplateOrders.actionFailed"),
       });
     } finally {
       setLineActionBusy(null);
     }
   };
+
+  const acknowledgeItem = (itemId: string) =>
+    runLineAction(itemId, "acknowledge", async () => {
+      await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
+      setFeedback({ type: "ok", text: t("encounterChrome.observationTemplateOrders.acknowledgedOk") });
+    });
+
+  const startItem = (itemId: string) =>
+    runLineAction(itemId, "start", async () => {
+      await apiFetch(`/orders/items/${itemId}/start`, { method: "POST", facilityId });
+      setFeedback({ type: "ok", text: t("encounterChrome.observationTemplateOrders.startedOk") });
+    });
+
+  const completeItem = (row: ObservationTemplateOrderRow) =>
+    runLineAction(row.itemId, "complete", async () => {
+      if (row.lifecyclePhase === "ACKNOWLEDGED" && !row.allowsInProgressStart) {
+        await apiFetch(`/orders/items/${row.itemId}/start`, { method: "POST", facilityId });
+      }
+      await apiFetch(`/orders/items/${row.itemId}/complete`, { method: "POST", facilityId });
+      setFeedback({ type: "ok", text: t("encounterChrome.observationTemplateOrders.completedOk") });
+    });
 
   const confirmCancelItem = async (payload: CancelOrderConfirmPayload) => {
     if (!cancelItemId || cancelSubmitting) return;
@@ -158,14 +173,15 @@ export function ObservationTemplateOrdersPanel({
         {eventsLoading ? (
           <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc" }}>
                 {[
                   "tableOrder",
-                  "tableStatus",
+                  "tableLifecycle",
+                  "tableOrdered",
                   "tableAckBy",
-                  "tableAckAt",
+                  "tablePerformed",
                   "tableActions",
                 ].map((key) => (
                   <th
@@ -194,6 +210,8 @@ export function ObservationTemplateOrdersPanel({
                   canAct={canAct}
                   lineActionBusy={lineActionBusy}
                   onAcknowledge={() => void acknowledgeItem(row.itemId)}
+                  onStart={() => void startItem(row.itemId)}
+                  onComplete={() => void completeItem(row)}
                   onCancel={() => {
                     setFeedback(null);
                     setCancelItemId(row.itemId);
@@ -226,6 +244,8 @@ function ObservationTemplateOrderRowView({
   canAct,
   lineActionBusy,
   onAcknowledge,
+  onStart,
+  onComplete,
   onCancel,
 }: {
   row: ObservationTemplateOrderRow;
@@ -234,55 +254,82 @@ function ObservationTemplateOrderRowView({
   canAct: boolean;
   lineActionBusy: string | null;
   onAcknowledge: () => void;
+  onStart: () => void;
+  onComplete: () => void;
   onCancel: () => void;
 }) {
-  const statusKey = row.cancelled ? "CANCELLED" : row.status;
-  const statusLabel = getOrderItemChartLabel(statusKey);
-  const acked = row.status === "ACKNOWLEDGED" || Boolean(row.acknowledgedAtIso);
-  const showAck = canAct && !row.cancelled && !acked && itemStatusAllowsAcknowledge(row.status);
-  const showCancel = canAct && !row.cancelled;
-  const busyAck = lineActionBusy === `${row.itemId}:acknowledge`;
+  const phase = row.lifecyclePhase;
+  const terminal = phase === "COMPLETED" || phase === "CANCELLED";
+  const showAck = canAct && phase === "ORDERED";
+  const showStart = canAct && row.allowsInProgressStart && phase === "ACKNOWLEDGED";
+  const showComplete =
+    canAct &&
+    (phase === "IN_PROGRESS" || (phase === "ACKNOWLEDGED" && !row.allowsInProgressStart));
+  const showCancel = canAct && !terminal;
+
+  const busy = (action: string) => lineActionBusy === `${row.itemId}:${action}`;
 
   return (
-    <tr style={{ borderTop: "1px solid #e2e8f0", opacity: row.cancelled ? 0.75 : 1 }}>
+    <tr style={{ borderTop: "1px solid #e2e8f0", opacity: phase === "CANCELLED" ? 0.75 : 1 }}>
       <td style={{ padding: "10px 12px", fontSize: 13, color: "#0f172a", fontWeight: 600 }}>{row.label}</td>
       <td style={{ padding: "10px 12px", fontSize: 12 }}>
-        <StatusBadge label={statusLabel} tone={row.cancelled ? "cancelled" : acked ? "ack" : "pending"} />
+        <LifecycleChip phase={phase} t={t} />
       </td>
       <td style={{ padding: "10px 12px", fontSize: 12, color: "#334155" }}>
-        {row.acknowledgedBy ?? t("common.dash")}
+        <div>{row.orderedBy ?? t("common.dash")}</div>
+        <div style={{ fontSize: 11, color: "#64748b" }}>
+          {row.orderedAtIso
+            ? formatEncounterChromeDateTime(row.orderedAtIso, language)
+            : t("common.dash")}
+        </div>
       </td>
-      <td style={{ padding: "10px 12px", fontSize: 12, color: "#334155", whiteSpace: "nowrap" }}>
-        {row.acknowledgedAtIso
-          ? formatEncounterChromeDateTime(row.acknowledgedAtIso, language)
-          : t("common.dash")}
+      <td style={{ padding: "10px 12px", fontSize: 12, color: "#334155" }}>
+        <div>{row.acknowledgedBy ?? t("common.dash")}</div>
+        <div style={{ fontSize: 11, color: "#64748b" }}>
+          {row.acknowledgedAtIso
+            ? formatEncounterChromeDateTime(row.acknowledgedAtIso, language)
+            : t("common.dash")}
+        </div>
+      </td>
+      <td style={{ padding: "10px 12px", fontSize: 12, color: "#334155" }}>
+        <div>{row.performedBy ?? t("common.dash")}</div>
+        <div style={{ fontSize: 11, color: "#64748b" }}>
+          {row.completedAtIso
+            ? formatEncounterChromeDateTime(row.completedAtIso, language)
+            : t("common.dash")}
+        </div>
       </td>
       <td style={{ padding: "10px 12px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {showAck ? (
-            <button
-              type="button"
-              disabled={busyAck}
-              onClick={onAcknowledge}
-              style={actionBtnStyle(false)}
-            >
-              {busyAck
+            <button type="button" disabled={busy("acknowledge")} onClick={onAcknowledge} style={actionBtnStyle(false)}>
+              {busy("acknowledge")
                 ? t("encounterChrome.observationTemplateOrders.acknowledging")
                 : t("encounterChrome.observationTemplateOrders.acknowledge")}
             </button>
-          ) : acked && !row.cancelled ? (
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#166534",
-                padding: "4px 10px",
-                borderRadius: 6,
-                background: "#dcfce7",
-                border: "1px solid #86efac",
-              }}
-            >
+          ) : null}
+          {showStart ? (
+            <button type="button" disabled={busy("start")} onClick={onStart} style={actionBtnStyle(false)}>
+              {busy("start")
+                ? t("encounterChrome.observationTemplateOrders.starting")
+                : t("encounterChrome.observationTemplateOrders.start")}
+            </button>
+          ) : null}
+          {showComplete ? (
+            <button type="button" disabled={busy("complete")} onClick={onComplete} style={actionBtnStyle(false)}>
+              {busy("complete")
+                ? t("encounterChrome.observationTemplateOrders.completing")
+                : t("encounterChrome.observationTemplateOrders.complete")}
+            </button>
+          ) : null}
+          {phase === "ACKNOWLEDGED" && !showStart && !showComplete && !showAck ? (
+            <span style={statePillStyle("#dcfce7", "#166534", "#86efac")}>
               {t("encounterChrome.observationTemplateOrders.acknowledgedState")}
+            </span>
+          ) : null}
+          {phase === "COMPLETED" ? (
+            <span style={statePillStyle("#f1f5f9", "#334155", "#cbd5e1")}>
+              {t("encounterChrome.observationTemplateOrders.completedState")}
             </span>
           ) : null}
           {showCancel ? (
@@ -296,19 +343,22 @@ function ObservationTemplateOrderRowView({
   );
 }
 
-function StatusBadge({
-  label,
-  tone,
+function LifecycleChip({
+  phase,
+  t,
 }: {
-  label: string;
-  tone: "pending" | "ack" | "cancelled";
+  phase: ObservationTemplateLineLifecyclePhase;
+  t: (key: string) => string;
 }) {
-  const styles =
-    tone === "ack"
-      ? { bg: "#dcfce7", color: "#166534", border: "#86efac" }
-      : tone === "cancelled"
-        ? { bg: "#ffebee", color: "#b71c1c", border: "#fecaca" }
-        : { bg: "#fff3cd", color: "#856404", border: "#fde68a" };
+  const key = `encounterChrome.observationTemplateOrders.lifecycle.${phase}`;
+  const styles: Record<ObservationTemplateLineLifecyclePhase, { bg: string; color: string; border: string }> = {
+    ORDERED: { bg: "#fff3cd", color: "#856404", border: "#fde68a" },
+    ACKNOWLEDGED: { bg: "#dcfce7", color: "#166534", border: "#86efac" },
+    IN_PROGRESS: { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
+    COMPLETED: { bg: "#f1f5f9", color: "#334155", border: "#cbd5e1" },
+    CANCELLED: { bg: "#ffebee", color: "#b71c1c", border: "#fecaca" },
+  };
+  const s = styles[phase];
   return (
     <span
       style={{
@@ -317,14 +367,26 @@ function StatusBadge({
         borderRadius: 9999,
         fontSize: 11,
         fontWeight: 700,
-        background: styles.bg,
-        color: styles.color,
-        border: `1px solid ${styles.border}`,
+        background: s.bg,
+        color: s.color,
+        border: `1px solid ${s.border}`,
       }}
     >
-      {label}
+      {t(key)}
     </span>
   );
+}
+
+function statePillStyle(bg: string, color: string, border: string): React.CSSProperties {
+  return {
+    fontSize: 12,
+    fontWeight: 600,
+    color,
+    padding: "4px 10px",
+    borderRadius: 6,
+    background: bg,
+    border: `1px solid ${border}`,
+  };
 }
 
 function actionBtnStyle(danger: boolean): React.CSSProperties {
