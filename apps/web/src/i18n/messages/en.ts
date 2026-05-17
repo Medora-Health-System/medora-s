@@ -8279,8 +8279,8 @@ export default {
     safetyPreviewCumulativeEvents: "“Administered” events (cumulative): {count}",
     adminTime: {
       adjustTooltip: "Adjust time",
-      adjustStartTooltip: "Adjust infusion start time",
-      adjustStopTooltip: "Adjust infusion stop time",
+      adjustStartTooltip: "Adjust infusion start clinical time",
+      adjustStopTooltip: "Adjust infusion stop clinical time",
       documentNoteTooltip: "Document medication note",
       modalTitle: "Actual administration time",
       effectiveLabel: "Actual administration time",
@@ -8295,6 +8295,18 @@ export default {
         "Clinical time corrected — original documented time preserved",
       infusionPhaseChipStart: "Infusion started",
       infusionPhaseChipStop: "Infusion stopped",
+      recordModalAdjustTitle: "Adjust time",
+      recordModalAdjustSubtext: "Clinical time correction",
+      recordModalAdjustCardTooltip: "Adjust clinical time",
+      recordModalAdjustedSelected: "Adjusted time selected",
+      recordModalClearAdjusted: "Clear",
+      recordModalDocumentedNow: "Documented time: current save time",
+      recordModalClinicalSeparate:
+        "Clinical time correction will be recorded separately.",
+      historyClinicalLabel: "Clinical",
+      historyDocumentedLabel: "Documented",
+      largeBackdateSupervisoryWarning:
+        "Large retroactive corrections may require supervisory review.",
       controlledWarning:
         "Controlled medication: a reason is always required for any time adjustment.",
       largeBackdateReasonHelp:

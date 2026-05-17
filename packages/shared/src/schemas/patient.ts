@@ -634,6 +634,9 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
   /** Required when documented allergies exist on the visit and MAR outcome is administered (server-enforced). */
   safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
+  /** Phase 15F-B: optional clinical administration time at create (ISO-8601 UTC); `administeredAt` stays documented time. */
+  effectiveAdministeredAt: z.preprocess(emptyStrToUndefined, z.string().trim().optional()),
+  effectiveAdministeredAtReason: z.preprocess(emptyStrToUndefined, z.string().max(500).optional()),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;

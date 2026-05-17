@@ -43,8 +43,14 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { medicationMarIntendedTimingUrgency } from "@/lib/medicationMarIntendedUrgency";
 import {
   canAdjustMedicationAdministrationTime,
+  datetimeLocalValueToUtcIso,
   resolveMedicationAdministrationDisplayTimes,
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
+import {
+  buildMarCreateEffectiveTimeRequestFields,
+  marRecordModalEffectiveTimeClientError,
+} from "@/features/mar/marRecordModalEffectiveTime";
+import { MedicationAdministrationRecordModalAdjustTime } from "@/components/encounters/MedicationAdministrationRecordModalAdjustTime";
 import { MedicationAdministrationEffectiveTimeModal } from "@/components/encounters/MedicationAdministrationEffectiveTimeModal";
 import { MedicationAdministrationTimeCell } from "@/components/encounters/MedicationAdministrationTimeCell";
 import { MedicationAdministrationInfusionPhaseChip } from "@/components/encounters/MedicationAdministrationInfusionPhaseChip";
@@ -297,6 +303,9 @@ export function MedicationAdministrationTab({
   const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
   const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
+  const [modalShowEffectiveTimeEditor, setModalShowEffectiveTimeEditor] = useState(false);
+  const [modalEffectiveTimeLocal, setModalEffectiveTimeLocal] = useState("");
+  const [modalEffectiveTimeReason, setModalEffectiveTimeReason] = useState("");
   const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
   const [adminTimeSaving, setAdminTimeSaving] = useState(false);
@@ -305,6 +314,20 @@ export function MedicationAdministrationTab({
   useEffect(() => {
     const id = setInterval(() => setInfusionClockTick((n) => n + 1), 15_000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (modalAction !== "administered") {
+      setModalShowEffectiveTimeEditor(false);
+      setModalEffectiveTimeLocal("");
+      setModalEffectiveTimeReason("");
+    }
+  }, [modalAction]);
+
+  const clearModalEffectiveTime = useCallback(() => {
+    setModalShowEffectiveTimeEditor(false);
+    setModalEffectiveTimeLocal("");
+    setModalEffectiveTimeReason("");
   }, []);
 
   const encounterOpen = encounterStatus === "OPEN";
@@ -602,6 +625,7 @@ export function MedicationAdministrationTab({
     setMarAllergySafetyAck(false);
     setMarTimingOverrideAck(false);
     setMarHighRiskSafetyAck(false);
+    clearModalEffectiveTime();
   };
 
   const closeModal = () => {
@@ -610,6 +634,7 @@ export function MedicationAdministrationTab({
     setModalSubmitError(null);
     setMarTimingOverrideAck(false);
     setMarHighRiskSafetyAck(false);
+    clearModalEffectiveTime();
   };
 
   const submitModal = async () => {
@@ -636,15 +661,61 @@ export function MedicationAdministrationTab({
       setModalSubmitError(t("marTab.errInfusionUseStartStop"));
       return;
     }
+    const documentedAt = new Date();
+    const linkedOrderItem = orderItemById.get(orderItemId);
+    const linkedOrder = orders
+      .map((o) => asApiObject(o))
+      .find((ord) => {
+        const items = Array.isArray(ord?.items) ? ord.items : [];
+        return items.some((it) => asApiObject(it)?.id === orderItemId);
+      });
+    const orderCreatedAt = linkedOrder?.createdAt
+      ? new Date(String(linkedOrder.createdAt))
+      : documentedAt;
+    const orderItemCreatedAt = linkedOrderItem?.createdAt
+      ? new Date(String(linkedOrderItem.createdAt))
+      : null;
+    const orderCancelledAt =
+      String(linkedOrder?.status ?? "").toUpperCase() === "CANCELLED" && linkedOrder?.cancelledAt
+        ? new Date(String(linkedOrder.cancelledAt))
+        : null;
+    const controlledMedication = Boolean(linkedOrderItem?.catalogMedication?.isControlled);
+
+    if (modalAction === "administered" && modalEffectiveTimeLocal.trim()) {
+      const clientErr = marRecordModalEffectiveTimeClientError({
+        effectiveTimeLocal: modalEffectiveTimeLocal,
+        effectiveTimeReason: modalEffectiveTimeReason,
+        documentedAt,
+        orderCreatedAt,
+        orderItemCreatedAt,
+        orderCancelledAt,
+        controlledMedication,
+        toUtcIso: datetimeLocalValueToUtcIso,
+        t,
+      });
+      if (clientErr) {
+        setModalSubmitError(clientErr);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setModalSubmitError(null);
     setError(null);
     try {
       const routeLine = modalRoute.trim() || modalItem.routeHint;
+      const effectiveFields =
+        modalAction === "administered"
+          ? buildMarCreateEffectiveTimeRequestFields({
+              effectiveTimeLocal: modalEffectiveTimeLocal,
+              effectiveTimeReason: modalEffectiveTimeReason,
+              toUtcIso: datetimeLocalValueToUtcIso,
+            })
+          : null;
       const body: Record<string, unknown> = {
         orderItemId,
         marAction: modalAction,
-        administeredAt: new Date().toISOString(),
+        administeredAt: documentedAt.toISOString(),
         ...(routeLine ? { route: routeLine } : {}),
         ...(modalDoseValue.trim() ? { doseValue: Number(modalDoseValue) } : {}),
         ...(modalDoseUnit.trim() ? { doseUnit: modalDoseUnit.trim() } : {}),
@@ -656,6 +727,7 @@ export function MedicationAdministrationTab({
         ...(modalAction === "administered" && marAllergyDocSummary && marAllergySafetyAck
           ? { safetyAcknowledgedMedicationAllergies: true }
           : {}),
+        ...(effectiveFields ?? {}),
       };
       const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
         method: "POST",
@@ -1799,7 +1871,104 @@ export function MedicationAdministrationTab({
               );
             })()}
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
+            {modalAction === "administered" ? (
+              <div
+                style={{
+                  marginTop: 14,
+                  paddingTop: 12,
+                  borderTop: "1px solid #e2e8f0",
+                  fontSize: 12,
+                  color: "#64748b",
+                  lineHeight: 1.5,
+                }}
+              >
+                <p style={{ margin: 0 }}>{t("marTab.adminTime.recordModalDocumentedNow")}</p>
+                {modalEffectiveTimeLocal.trim() ? (
+                  <p style={{ margin: "6px 0 0", color: "#475569" }}>
+                    {t("marTab.adminTime.recordModalClinicalSeparate")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 12,
+                justifyContent: "space-between",
+                alignItems: "flex-end",
+                marginTop: modalAction === "administered" ? 10 : 0,
+              }}
+            >
+              {modalAction === "administered" && canAdjustAdminTime && modalItem ? (
+                <MedicationAdministrationRecordModalAdjustTime
+                  showEditor={modalShowEffectiveTimeEditor}
+                  onToggleEditor={() => {
+                    setModalShowEffectiveTimeEditor((open) => {
+                      const next = !open;
+                      if (next && !modalEffectiveTimeLocal.trim()) {
+                        const d = new Date();
+                        const pad = (n: number) => String(n).padStart(2, "0");
+                        setModalEffectiveTimeLocal(
+                          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+                        );
+                      }
+                      return next;
+                    });
+                  }}
+                  effectiveTimeLocal={modalEffectiveTimeLocal}
+                  onEffectiveTimeLocalChange={setModalEffectiveTimeLocal}
+                  effectiveTimeReason={modalEffectiveTimeReason}
+                  onEffectiveTimeReasonChange={setModalEffectiveTimeReason}
+                  onClear={clearModalEffectiveTime}
+                  documentedAt={new Date()}
+                  orderCreatedAt={(() => {
+                    const oid = modalItem.orderItemId;
+                    const ord = orders
+                      .map((o) => asApiObject(o))
+                      .find((o) => {
+                        const items = Array.isArray(o?.items) ? o.items : [];
+                        return items.some((it) => asApiObject(it)?.id === oid);
+                      });
+                    return ord?.createdAt ? new Date(String(ord.createdAt)) : new Date();
+                  })()}
+                  orderItemCreatedAt={(() => {
+                    const oi = orderItemById.get(modalItem.orderItemId);
+                    return oi?.createdAt ? new Date(String(oi.createdAt)) : null;
+                  })()}
+                  orderCancelledAt={(() => {
+                    const oid = modalItem.orderItemId;
+                    const ord = orders
+                      .map((o) => asApiObject(o))
+                      .find((o) => {
+                        const items = Array.isArray(o?.items) ? o.items : [];
+                        return items.some((it) => asApiObject(it)?.id === oid);
+                      });
+                    return String(ord?.status ?? "").toUpperCase() === "CANCELLED" && ord?.cancelledAt
+                      ? new Date(String(ord.cancelledAt))
+                      : null;
+                  })()}
+                  controlledMedication={Boolean(
+                    orderItemById.get(modalItem.orderItemId)?.catalogMedication?.isControlled
+                  )}
+                  dateLocale={dateLocale}
+                  disabled={submitting}
+                  t={t}
+                />
+              ) : (
+                <div style={{ flex: "1 1 120px" }} />
+              )}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  justifyContent: "flex-end",
+                  flex: "1 1 200px",
+                  minWidth: 0,
+                }}
+              >
               <button
                 type="button"
                 onClick={closeModal}
@@ -1853,6 +2022,7 @@ export function MedicationAdministrationTab({
               >
                 {submitting ? t("common.loading") : t("marTab.save")}
               </button>
+              </div>
             </div>
           </div>
         </div>

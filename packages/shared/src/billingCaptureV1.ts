@@ -544,6 +544,10 @@ export function buildMedicationDispenseCandidate(params: {
   };
 }
 
+/**
+ * Billing capture for MAR administrations.
+ * `atIso` / `serviceDate` must be documented administration time (administeredAt), never effectiveAdministeredAt.
+ */
 export function buildMedicationAdministrationCandidate(params: {
   administrationId: string;
   encounterId: string;

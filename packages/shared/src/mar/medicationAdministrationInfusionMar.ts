@@ -49,7 +49,9 @@ export function medicationAdministrationInfusionPhaseChipKind(
 
 /**
  * Terminal / completed medication administration for counts, overdue, and dose totals.
- * INFUSION_START rows are in-progress anchors — not completed administrations.
+ * INFUSION_START and INFUSION_STOP rows are workflow state anchors (linked session, clock targets).
+ * START rows are not completed administrations and must not inflate dose/administered totals.
+ * STOP rows are operational markers; completion counts use shared helper — no duplicate med counts.
  */
 export function medicationAdministrationCountsAsCompletedAdministration(
   row: MedicationAdministrationInfusionRowRef

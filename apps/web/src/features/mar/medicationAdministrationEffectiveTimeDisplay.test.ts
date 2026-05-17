@@ -26,6 +26,28 @@ describe("medicationAdministrationEffectiveTimeDisplay", () => {
     expect(result.effectiveIso).toBe("2026-05-16T13:00:00.000Z");
   });
 
+  it("shows dual Clinical + Documented labels when times differ", () => {
+    const result = resolveMedicationAdministrationDisplayTimes({
+      ...baseRow,
+      administeredAt: "2026-05-16T14:42:00.000Z",
+      effectiveAdministeredAt: "2026-05-16T17:30:00.000Z",
+      effectiveAdministeredAtVersion: 1,
+    });
+    expect(result.showDualTimeLabels).toBe(true);
+    expect(result.showAdjustedBadge).toBe(true);
+    expect(result.effectiveIso).toBe("2026-05-16T17:30:00.000Z");
+    expect(result.originalAdministeredIso).toBe("2026-05-16T14:42:00.000Z");
+  });
+
+  it("hides dual labels when effective equals documented administeredAt", () => {
+    const result = resolveMedicationAdministrationDisplayTimes({
+      ...baseRow,
+      effectiveAdministeredAt: "2026-05-16T14:00:00.000Z",
+      effectiveAdministeredAtVersion: 1,
+    });
+    expect(result.showDualTimeLabels).toBe(false);
+  });
+
   it("RN / PROVIDER / ADMIN may adjust; LAB may not", () => {
     expect(canAdjustMedicationAdministrationTime(["RN"])).toBe(true);
     expect(canAdjustMedicationAdministrationTime(["PROVIDER"])).toBe(true);

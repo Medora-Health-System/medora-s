@@ -1,3 +1,8 @@
+/**
+ * MAR display times: effective clinical time vs documented administration time (administeredAt).
+ * START/STOP infusion rows are workflow anchors — see medicationAdministrationInfusionMar.ts.
+ * Billing/completion must never use effectiveAdministeredAt; UI may show both for audits.
+ */
 import {
   medicationAdminEffectiveTimeIsLargeBackdate,
   medicationAdminEffectiveTimeRequiresDetailedReason,
@@ -42,6 +47,7 @@ function toDate(raw: string | Date | null | undefined): Date | null {
   return null;
 }
 
+/** Parse datetime-local (browser local TZ) → UTC ISO for API storage. Always store UTC internally. */
 export function datetimeLocalValueToUtcIso(localValue: string): string | null {
   if (!localValue.trim()) return null;
   const d = new Date(localValue);
@@ -131,6 +137,8 @@ export function resolveMedicationAdministrationDisplayTimes(row: MedicationAdmin
   originalAdministeredIso: string;
   documentedSystemIso: string | null;
   showAdjustedBadge: boolean;
+  /** When true, history should show separate Clinical vs Documented (administeredAt) lines. */
+  showDualTimeLabels: boolean;
 } {
   const original = toDate(row.administeredAt);
   const effective = toDate(row.effectiveAdministeredAt) ?? original;
@@ -143,10 +151,18 @@ export function resolveMedicationAdministrationDisplayTimes(row: MedicationAdmin
     ? toMedicationAdministrationEffectiveTimeIsoUtc(documented)
     : null;
   const wasAdjusted = (row.effectiveAdministeredAtVersion ?? 0) > 0;
-  const showAdjustedBadge =
-    wasAdjusted ||
-    Boolean(original && effective && medicationAdminEffectiveTimesDiffer(effective, original));
-  return { effectiveIso, originalAdministeredIso, documentedSystemIso, showAdjustedBadge };
+  const timesDiffer = Boolean(
+    original && effective && medicationAdminEffectiveTimesDiffer(effective, original)
+  );
+  const showAdjustedBadge = wasAdjusted || timesDiffer;
+  const showDualTimeLabels = showAdjustedBadge && timesDiffer && Boolean(originalAdministeredIso);
+  return {
+    effectiveIso,
+    originalAdministeredIso,
+    documentedSystemIso,
+    showAdjustedBadge,
+    showDualTimeLabels,
+  };
 }
 
 export function medicationAdminTimeModalRequiresReason(input: {

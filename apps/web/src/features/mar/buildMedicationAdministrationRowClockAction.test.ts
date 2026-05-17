@@ -25,6 +25,23 @@ describe("buildMedicationAdministrationRowClockAction", () => {
     expect(action.tooltipKey).toBe("marTab.adminTime.adjustTooltip");
   });
 
+  it("uses distinct tooltip keys for infusion start vs stop", () => {
+    const start = buildMedicationAdministrationRowClockAction({
+      administration: { ...baseAdmin, infusionPhase: "INFUSION_START" },
+      ...openRn,
+    });
+    const stop = buildMedicationAdministrationRowClockAction({
+      administration: {
+        ...baseAdmin,
+        notes: "Perfusion IV terminée — durée : 12 min",
+      },
+      ...openRn,
+    });
+    expect(start.tooltipKey).toBe("marTab.adminTime.adjustStartTooltip");
+    expect(stop.tooltipKey).toBe("marTab.adminTime.adjustStopTooltip");
+    expect(start.tooltipKey).not.toBe(stop.tooltipKey);
+  });
+
   it("enables infusion stop terminal row (effective time only)", () => {
     const action = buildMedicationAdministrationRowClockAction({
       administration: {

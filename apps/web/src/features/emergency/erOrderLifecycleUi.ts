@@ -244,6 +244,7 @@ export function formatInfusionDurationForI18n(
 /**
  * Replays infusion-tagged order events for one order line (same rules as API infusion session).
  * `events` may be unsorted; replay sorts by `performedAt` ascending.
+ * MAR START/STOP rows are workflow anchors; duration/billing evidence uses OrderEvent metadata only.
  */
 export function findMedicationInfusionTimelineFromOrderEvents(
   events: ReadonlyArray<{

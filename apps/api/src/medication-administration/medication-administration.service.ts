@@ -343,7 +343,19 @@ export class MedicationAdministrationService {
     if (orderItemId) {
       const item = await this.prisma.orderItem.findFirst({
         where: { id: orderItemId },
-        include: { order: { select: { id: true, encounterId: true, facilityId: true, type: true, status: true } } },
+        include: {
+          order: {
+            select: {
+              id: true,
+              encounterId: true,
+              facilityId: true,
+              type: true,
+              status: true,
+              createdAt: true,
+              cancelledAt: true,
+            },
+          },
+        },
       });
       if (!item) {
         throw new BadRequestException("Ligne d'ordre introuvable.");
@@ -500,6 +512,22 @@ export class MedicationAdministrationService {
       }
     }
 
+    const systemNowForCreate = new Date();
+    const effectiveCreate = await this.resolveCreateEffectiveAdministeredFields({
+      data,
+      marActionResolved,
+      administeredAtDocumented: administeredAtEffective,
+      systemNow: systemNowForCreate,
+      encounter,
+      linkedMedicationLine: linkedMedicationLine as {
+        catalogItemType?: string;
+        catalogItemId?: string | null;
+        createdAt?: Date;
+        order?: { createdAt: Date; status: string; cancelledAt: Date | null };
+      } | null,
+      administeredByUserId,
+    });
+
     const doseStr = normalizedDoseForAudit({
       doseValue: doseValue != null ? Number(doseValue) : null,
       doseUnit,
@@ -522,6 +550,7 @@ export class MedicationAdministrationService {
     if (data.safetyAcknowledgedMedicationAllergies === true) {
       marAuditMetadata.safetyAcknowledgedMedicationAllergies = true;
     }
+    Object.assign(marAuditMetadata, effectiveCreate.auditExtras);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.medicationAdministration.create({
@@ -549,6 +578,7 @@ export class MedicationAdministrationService {
             : null,
           infusionSessionKey: serviceOptions?.infusionMar?.infusionSessionKey?.trim() || null,
           notes: data.notes?.trim() ? data.notes.trim() : null,
+          ...effectiveCreate.prismaFields,
         },
         include: {
           administeredBy: { select: { id: true, firstName: true, lastName: true } },
@@ -618,6 +648,8 @@ export class MedicationAdministrationService {
       medicationAdministrationId: created.id,
     });
 
+    // Effective clinical time is operational/audit metadata only.
+    // Billing and completion calculations must use documented timestamps (administeredAt).
     const atIso =
       created.administeredAt instanceof Date
         ? created.administeredAt.toISOString()
@@ -753,6 +785,104 @@ export class MedicationAdministrationService {
 
   private encounterAnchorAt(encounter: { createdAt: Date; admittedAt: Date | null }): Date {
     return encounter.admittedAt ?? encounter.createdAt;
+  }
+
+  /** Optional effective clinical time on MAR create (Record administration modal). */
+  private async resolveCreateEffectiveAdministeredFields(input: {
+    data: MedicationAdministrationCreateDto;
+    marActionResolved: MarClinicalAction;
+    administeredAtDocumented: Date;
+    systemNow: Date;
+    encounter: { createdAt: Date; admittedAt: Date | null };
+    linkedMedicationLine: {
+      catalogItemType?: string;
+      catalogItemId?: string | null;
+      createdAt?: Date;
+      order?: { createdAt: Date; status: string; cancelledAt: Date | null };
+    } | null;
+    administeredByUserId: string;
+  }): Promise<{
+    prismaFields: {
+      effectiveAdministeredAt?: Date;
+      effectiveAdministeredAtSetAt?: Date;
+      effectiveAdministeredAtSetByUserId?: string;
+      effectiveAdministeredAtReason?: string | null;
+      effectiveAdministeredAtVersion?: number;
+    };
+    auditExtras: Record<string, unknown>;
+  }> {
+    const effectiveRaw = input.data.effectiveAdministeredAt?.trim();
+    const reasonTrim = input.data.effectiveAdministeredAtReason?.trim() || null;
+    if (!effectiveRaw && !reasonTrim) {
+      return { prismaFields: {}, auditExtras: {} };
+    }
+    if (input.marActionResolved !== "administered") {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage("NOT_ADMINISTERED"));
+    }
+    if (!effectiveRaw) {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INVALID_TIME"));
+    }
+    const effectiveAt = parseMedicationAdministrationEffectiveTimeIso(effectiveRaw);
+    if (!effectiveAt) {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INVALID_TIME"));
+    }
+
+    const originalAdministeredAt =
+      input.administeredAtDocumented instanceof Date
+        ? input.administeredAtDocumented
+        : new Date(input.administeredAtDocumented);
+    const systemDocumentedAt = input.systemNow;
+
+    const order = input.linkedMedicationLine?.order;
+    const orderCreatedAt = order?.createdAt ?? input.encounter.createdAt;
+    const orderItemCreatedAt = input.linkedMedicationLine?.createdAt ?? null;
+    const orderCancelledAt =
+      order?.status === OrderStatus.CANCELLED && order.cancelledAt ? order.cancelledAt : null;
+
+    let controlledMedication = false;
+    if (input.linkedMedicationLine?.catalogItemType === "MEDICATION" && input.linkedMedicationLine.catalogItemId) {
+      const cat = await this.prisma.catalogMedication.findUnique({
+        where: { id: input.linkedMedicationLine.catalogItemId },
+        select: { isControlled: true },
+      });
+      controlledMedication = Boolean(cat?.isControlled);
+    }
+
+    const validation = validateMedicationAdministrationEffectiveTime({
+      effectiveAdministeredTime: effectiveAt,
+      now: input.systemNow,
+      encounterAnchorAt: this.encounterAnchorAt(input.encounter),
+      originalAdministeredAt,
+      systemDocumentedAt,
+      orderCreatedAt,
+      orderItemCreatedAt,
+      orderCancelledAt,
+      adjustmentVersion: 0,
+      reason: reasonTrim,
+      controlledMedication,
+      marActionAdministered: true,
+    });
+    if (!validation.ok) {
+      throw new BadRequestException(this.marEffectiveTimeValidationMessage(validation.code));
+    }
+
+    const effectiveAtUtc = new Date(toMedicationAdministrationEffectiveTimeIsoUtc(effectiveAt));
+    return {
+      prismaFields: {
+        effectiveAdministeredAt: effectiveAtUtc,
+        effectiveAdministeredAtSetAt: input.systemNow,
+        effectiveAdministeredAtSetByUserId: input.administeredByUserId,
+        effectiveAdministeredAtReason: reasonTrim,
+        effectiveAdministeredAtVersion: 1,
+      },
+      auditExtras: {
+        effectiveAdministeredAtProvided: true,
+        deltaMinutes: deltaMinutesBetween(effectiveAtUtc, originalAdministeredAt),
+        reasonProvided: Boolean(reasonTrim),
+        controlledMedication,
+        source: "MAR_CREATE_MODAL",
+      },
+    };
   }
 
   private marEffectiveTimeValidationMessage(code: MedicationAdminEffectiveTimeValidationCode): string {

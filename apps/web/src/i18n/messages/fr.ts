@@ -8293,8 +8293,8 @@ export default {
     safetyPreviewCumulativeEvents: "Événements « administré » (cumul) : {count}",
     adminTime: {
       adjustTooltip: "Ajuster l'heure",
-      adjustStartTooltip: "Ajuster l'heure de début de perfusion",
-      adjustStopTooltip: "Ajuster l'heure d'arrêt de perfusion",
+      adjustStartTooltip: "Ajuster l'heure clinique de début de perfusion",
+      adjustStopTooltip: "Ajuster l'heure clinique d'arrêt de perfusion",
       documentNoteTooltip: "Documenter une note médicament",
       modalTitle: "Heure d'administration réelle",
       effectiveLabel: "Heure d'administration réelle",
@@ -8309,6 +8309,18 @@ export default {
         "Heure clinique corrigée — l'heure documentée originale est conservée",
       infusionPhaseChipStart: "Perfusion démarrée",
       infusionPhaseChipStop: "Perfusion arrêtée",
+      recordModalAdjustTitle: "Ajuster l'heure",
+      recordModalAdjustSubtext: "Correction de l'heure clinique",
+      recordModalAdjustCardTooltip: "Ajuster l'heure clinique",
+      recordModalAdjustedSelected: "Heure ajustée sélectionnée",
+      recordModalClearAdjusted: "Effacer",
+      recordModalDocumentedNow: "Heure documentée : heure actuelle de sauvegarde",
+      recordModalClinicalSeparate:
+        "La correction de l'heure clinique sera enregistrée séparément.",
+      historyClinicalLabel: "Clinique",
+      historyDocumentedLabel: "Documentée",
+      largeBackdateSupervisoryWarning:
+        "Les corrections rétroactives importantes peuvent nécessiter une révision de supervision.",
       controlledWarning:
         "Médicament soumis à contrôle : un motif est toujours requis pour tout ajustement d'heure.",
       largeBackdateReasonHelp:
