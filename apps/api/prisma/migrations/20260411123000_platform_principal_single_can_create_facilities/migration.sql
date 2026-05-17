@@ -7,6 +7,7 @@ UPDATE "User"
 SET "canCreateFacilities" = true
 WHERE LOWER(TRIM("email")) = 'atranchant@medora.local';
 
-CREATE UNIQUE INDEX "User_unique_platform_principal_can_create_facilities"
+-- Replay-safe legacy migration guard for CI/local/prod history alignment. Existing production object is preserved.
+CREATE UNIQUE INDEX IF NOT EXISTS "User_unique_platform_principal_can_create_facilities"
 ON "User" ((1))
 WHERE "canCreateFacilities" = true;
