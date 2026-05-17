@@ -7,13 +7,16 @@ import {
   PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
   appendDocumentationFragment,
+  applyCompleteNormalRosPrefill,
   applyProviderDocumentationTemplate,
+  buildProviderDocumentationCompleteness,
   buildProviderDocumentationPreviewSections,
-  providerDocumentationCompletedSectionIds,
-  providerDocumentationMissingSectionIds,
   providerDocumentationTitleKey,
   type ProviderDocumentationEncounterMode,
   type ProviderDocumentationExamSectionId,
+  type ProviderDocumentationMetadata,
+  type ProviderDocumentationReadinessState,
+  type ProviderDocumentationSectionStatus,
   type ProviderDocumentationRiskLevel,
   type ProviderDocumentationTemplateDefinition,
   type ProviderDocumentationTemplateId,
@@ -37,6 +40,8 @@ export type ProviderDocumentationWorkspaceProps = {
   lockedMessage?: string | null;
   saveMessage?: { variant: "success" | "error" | "queued"; text: string } | null;
   lastSaved?: { savedAt: string; savedBy: string } | null;
+  savedMetadata?: ProviderDocumentationMetadata | null;
+  signedOrFinalized?: boolean;
   latestVitalSigns?: string[];
   keyInformation?: string[];
   encounterSummary?: string[];
@@ -234,10 +239,23 @@ const OBSERVATION_CHIPS: Chip[] = [
   fragmentKey: `providerDocumentationWorkspace.${key}`,
 }));
 
-function WorkspaceSection({ title, children }: { title: string; children: React.ReactNode }) {
+function WorkspaceSection({
+  title,
+  status,
+  t,
+  children,
+}: {
+  title: string;
+  status?: ProviderDocumentationSectionStatus;
+  t: (key: string) => string;
+  children: React.ReactNode;
+}) {
   return (
     <section style={sectionShell}>
-      <h3 style={{ margin: "0 0 10px", fontSize: 13, color: "#0f172a", fontWeight: 700 }}>{title}</h3>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 10 }}>
+        <h3 style={{ margin: 0, fontSize: 13, color: "#0f172a", fontWeight: 700 }}>{title}</h3>
+        {status ? <StatusPill status={status} t={t} /> : null}
+      </div>
       {children}
     </section>
   );
@@ -254,6 +272,8 @@ export function ProviderDocumentationWorkspace({
   lockedMessage = null,
   saveMessage = null,
   lastSaved = null,
+  savedMetadata = null,
+  signedOrFinalized = false,
   latestVitalSigns = [],
   keyInformation = [],
   encounterSummary = [],
@@ -262,14 +282,28 @@ export function ProviderDocumentationWorkspace({
 }: ProviderDocumentationWorkspaceProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  const [activeTemplateId, setActiveTemplateId] = useState<ProviderDocumentationTemplateId | null>(null);
   const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
   const activeTemplate = useMemo(
-    () => PROVIDER_DOCUMENTATION_TEMPLATES.find((template) => template.id === activeTemplateId) ?? null,
-    [activeTemplateId]
+    () => PROVIDER_DOCUMENTATION_TEMPLATES.find((template) => template.id === value.activeTemplateId) ?? null,
+    [value.activeTemplateId]
   );
-  const completedSections = useMemo(() => providerDocumentationCompletedSectionIds(value), [value]);
-  const missingSections = useMemo(() => providerDocumentationMissingSectionIds(value), [value]);
+  const completeness = useMemo(
+    () =>
+      buildProviderDocumentationCompleteness({
+        state: value,
+        encounterMode,
+        savedMetadata,
+        signedOrFinalized,
+        dispositionContext: null,
+        hasPendingResults: false,
+        longStayOrInterventionHeavy: false,
+      }),
+    [encounterMode, savedMetadata, signedOrFinalized, value]
+  );
+  const sectionStatusById = useMemo(
+    () => Object.fromEntries(completeness.sectionStatuses.map((section) => [section.id, section.status])),
+    [completeness.sectionStatuses]
+  ) as Partial<Record<string, ProviderDocumentationSectionStatus>>;
 
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
     onChange({ ...value, ...patchValue });
@@ -297,8 +331,16 @@ export function ProviderDocumentationWorkspace({
         resolveFragment: t,
       })
     );
-    setActiveTemplateId(templateId);
     setShowTemplates(false);
+  };
+  const applyCompleteNormalRos = () => {
+    if (readOnly) return;
+    onChange(
+      applyCompleteNormalRosPrefill({
+        state: value,
+        text: t("providerDocumentationWorkspace.completeNormalRosText"),
+      })
+    );
   };
   const ta = (field: keyof ProviderDocumentationWorkspaceState, rows = 2) => (
     <textarea
@@ -366,7 +408,15 @@ export function ProviderDocumentationWorkspace({
       </div>
     );
   };
-  const sectionLabel = (sectionId: PreviewSectionId) => t(previewTitleKeyBySection[sectionId]);
+  const completenessSectionLabel = (sectionId: string) => {
+    const labelKey =
+      sectionId === "chiefComplaintHpi"
+        ? "providerDocumentationWorkspace.completenessChiefComplaintHpi"
+        : sectionId === "followUpDisposition"
+          ? "providerDocumentationWorkspace.followUpDisposition"
+          : previewTitleKeyBySection[sectionId as PreviewSectionId] ?? "common.dash";
+    return t(labelKey);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -446,10 +496,10 @@ export function ProviderDocumentationWorkspace({
                         title={t(template.helperKey)}
                         style={{
                           padding: "9px 10px",
-                          border: activeTemplateId === template.id ? "1px solid #0f766e" : "1px solid #dbeafe",
+                          border: value.activeTemplateId === template.id ? "1px solid #0f766e" : "1px solid #dbeafe",
                           borderRadius: 10,
-                          background: activeTemplateId === template.id ? "#ecfdf5" : "#fff",
-                          color: activeTemplateId === template.id ? "#0f766e" : "#1e3a8a",
+                          background: value.activeTemplateId === template.id ? "#ecfdf5" : "#fff",
+                          color: value.activeTemplateId === template.id ? "#0f766e" : "#1e3a8a",
                           textAlign: "left",
                           fontSize: 12,
                           fontWeight: 700,
@@ -476,7 +526,7 @@ export function ProviderDocumentationWorkspace({
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)", gap: 14, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPresentation")}>
+          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPresentation")} status={sectionStatusById.chiefComplaintHpi} t={t}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <Field label={t("providerDocumentationWorkspace.reasonForVisit")}>{ta("reasonForVisit", 2)}</Field>
               <Field label={t("providerDocumentationWorkspace.chiefComplaint")}>{ta("chiefComplaint", 2)}</Field>
@@ -497,7 +547,34 @@ export function ProviderDocumentationWorkspace({
             </div>
           </WorkspaceSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionRos")}>
+          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionRos")} status={sectionStatusById.ros} t={t}>
+            <div
+              style={{
+                marginBottom: 10,
+                padding: "10px 12px",
+                border: "1px solid #fde68a",
+                borderRadius: 12,
+                background: "#fffbeb",
+              }}
+            >
+              <button
+                type="button"
+                disabled={readOnly}
+                onClick={applyCompleteNormalRos}
+                style={{
+                  ...chipStyle,
+                  background: readOnly ? "#f1f5f9" : "#fff",
+                  borderColor: readOnly ? "#e2e8f0" : "#fcd34d",
+                  color: readOnly ? "#94a3b8" : "#92400e",
+                  cursor: readOnly ? "not-allowed" : "pointer",
+                }}
+              >
+                {t("providerDocumentationWorkspace.insertCompleteNormalRos")}
+              </button>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
+                {t("providerDocumentationWorkspace.completeNormalRosHelp")}
+              </p>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <Field label={t("providerDocumentationWorkspace.focusedImpression")}>{ta("rosFocusedImpression", 2)}</Field>
               <Field label={t("providerDocumentationWorkspace.importantPositives")}>{ta("rosImportantPositives", 2)}</Field>
@@ -519,7 +596,7 @@ export function ProviderDocumentationWorkspace({
             ))}
           </WorkspaceSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionExam")}>
+          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionExam")} status={sectionStatusById.physicalExam} t={t}>
             {templateExamChips(activeTemplate)}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               {EXAM_CHIPS.map((group) => (
@@ -544,7 +621,7 @@ export function ProviderDocumentationWorkspace({
             </div>
           </WorkspaceSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionMdm")}>
+          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionMdm")} status={sectionStatusById.mdm} t={t}>
             {templateTextChips(
               activeTemplate,
               [
@@ -590,7 +667,7 @@ export function ProviderDocumentationWorkspace({
             </div>
           </WorkspaceSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPlan")}>
+          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPlan")} status={sectionStatusById.plan} t={t}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <Field label={t("providerDocumentationWorkspace.clinicalImpression")}>{ta("clinicalImpression", 2)}</Field>
               <Field label={t("providerDocumentationWorkspace.treatmentPlan")}>{ta("treatmentPlan", 2)}</Field>
@@ -613,14 +690,27 @@ export function ProviderDocumentationWorkspace({
               {t("providerDocumentationWorkspace.completedSections")}
             </p>
             <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-              {completedSections.length ? completedSections.map(sectionLabel).join(", ") : t("common.dash")}
+              {completeness.completedSections.length ? completeness.completedSections.map(completenessSectionLabel).join(", ") : t("common.dash")}
             </p>
             <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
               {t("providerDocumentationWorkspace.missingKeySections")}
             </p>
             <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-              {missingSections.length ? missingSections.map(sectionLabel).join(", ") : t("providerDocumentationWorkspace.noMissingKeySections")}
+              {completeness.missingSections.length ? completeness.missingSections.map(completenessSectionLabel).join(", ") : t("providerDocumentationWorkspace.noMissingKeySections")}
             </p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: readinessColor(completeness.readinessState) }}>
+              {t("providerDocumentationWorkspace.readyToSaveIndicator")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: readinessColor(completeness.readinessState), lineHeight: 1.45, fontWeight: 700 }}>
+              {t(readinessLabelKey(completeness.readinessState))}
+            </p>
+            {completeness.warnings.length ? (
+              <ul style={{ margin: "0 0 8px", paddingLeft: 18, fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
+                {completeness.warnings.slice(0, 5).map((warning) => (
+                  <li key={warning.id}>{t(warning.messageKey)}</li>
+                ))}
+              </ul>
+            ) : null}
             <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.chipsSafetyComment")}
             </p>
@@ -644,14 +734,22 @@ export function ProviderDocumentationWorkspace({
               {previewSections.length === 0 ? (
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("providerDocumentationWorkspace.previewEmpty")}</p>
               ) : (
-                previewSections.map((section) => (
-                  <div key={section.id} style={{ marginBottom: 10 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>{t(section.titleKey)}</p>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-                      {section.lines.map((line, idx) => <li key={idx}>{line}</li>)}
-                    </ul>
-                  </div>
-                ))
+                <>
+                  <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+                    {t("providerDocumentationWorkspace.previewDraftReadiness")}: {t(readinessLabelKey(completeness.readinessState))}
+                    {completeness.missingSections.length
+                      ? ` · ${t("providerDocumentationWorkspace.missingKeySections")}: ${completeness.missingSections.map(completenessSectionLabel).join(", ")}`
+                      : ""}
+                  </p>
+                  {previewSections.map((section) => (
+                    <div key={section.id} style={{ marginBottom: 10 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>{t(section.titleKey)}</p>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+                        {section.lines.map((line, idx) => <li key={idx}>{line}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           ) : null}
@@ -694,6 +792,50 @@ function ContextCard({ title, lines, empty }: { title: string; lines: string[]; 
       )}
     </div>
   );
+}
+
+function StatusPill({ status, t }: { status: ProviderDocumentationSectionStatus; t: (key: string) => string }) {
+  const color =
+    status === "complete" || status === "saved"
+      ? "#166534"
+      : status === "recommended"
+        ? "#92400e"
+        : "#991b1b";
+  const background =
+    status === "complete" || status === "saved"
+      ? "#f0fdf4"
+      : status === "recommended"
+        ? "#fffbeb"
+        : "#fef2f2";
+  return (
+    <span
+      style={{
+        borderRadius: 9999,
+        padding: "3px 8px",
+        fontSize: 10,
+        fontWeight: 800,
+        color,
+        background,
+        border: `1px solid ${status === "missing" ? "#fecaca" : status === "recommended" ? "#fcd34d" : "#bbf7d0"}`,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {t(`providerDocumentationWorkspace.sectionStatus${status[0].toUpperCase()}${status.slice(1)}`)}
+    </span>
+  );
+}
+
+function readinessLabelKey(state: ProviderDocumentationReadinessState): string {
+  return `providerDocumentationWorkspace.readiness${state
+    .split("_")
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join("")}`;
+}
+
+function readinessColor(state: ProviderDocumentationReadinessState): string {
+  if (state === "ready_to_save" || state === "saved" || state === "signed_or_finalized") return "#166534";
+  if (state === "needs_review") return "#92400e";
+  return "#991b1b";
 }
 
 function secondaryButton(disabled: boolean): React.CSSProperties {

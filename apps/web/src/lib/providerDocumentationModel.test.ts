@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   appendDocumentationFragment,
+  PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
   PROVIDER_DOCUMENTATION_TEMPLATES,
+  applyCompleteNormalRosPrefill,
   applyProviderDocumentationTemplate,
+  buildProviderDocumentationCompleteness,
   buildProviderDocumentationMetadata,
   buildProviderDocumentationDisplayModel,
+  buildProviderDocumentationReadiness,
+  buildProviderDocumentationWarnings,
   providerDocumentationCompletedSectionIds,
   providerDocumentationMissingSectionIds,
   buildProviderDocumentationPreviewSections,
@@ -42,6 +47,43 @@ describe("providerDocumentationModel", () => {
     expect(preview.flatMap((s) => s.lines).join(" ")).not.toContain("diagnosis");
   });
 
+  it("defines the editable complete normal ROS prefill text", () => {
+    expect(PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT).toContain("Review of Systems:");
+    expect(PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT).toContain("Constitutional: Denies fever");
+    expect(PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT).toContain("Allergic/Immunologic: Denies seasonal allergies");
+  });
+
+  it("appends complete normal ROS without overwriting existing ROS text", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.rosFocusedImpression = "Patient reports mild cough.";
+    const next = applyCompleteNormalRosPrefill({ state });
+    expect(next.rosFocusedImpression).toContain("Patient reports mild cough.");
+    expect(next.rosFocusedImpression).toContain("\n\nReview of Systems:");
+  });
+
+  it("prevents duplicate complete normal ROS insertion", () => {
+    const first = applyCompleteNormalRosPrefill({ state: emptyProviderDocumentationWorkspaceState() });
+    const second = applyCompleteNormalRosPrefill({ state: first });
+    expect(second.rosFocusedImpression).toBe(first.rosFocusedImpression);
+  });
+
+  it("complete normal ROS prefill remains editable text and has no billing/order/diagnosis side effects", () => {
+    const next = applyCompleteNormalRosPrefill({ state: emptyProviderDocumentationWorkspaceState() });
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state: next,
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+      }),
+    });
+    expect(JSON.stringify(payload)).not.toMatch(/diagnosisId|orderId|billing|billingLevel|chargeCapture|billingComplexity/i);
+    const preview = buildProviderDocumentationPreviewSections(next);
+    expect(preview.map((section) => section.id)).toEqual(["ros"]);
+    expect(preview.flatMap((section) => section.lines).join("\n")).toContain("Review of Systems:");
+  });
+
   it("save payload includes required safe metadata and no billing conclusions", () => {
     const state = emptyProviderDocumentationWorkspaceState();
     state.chiefComplaint = "Vomiting";
@@ -64,6 +106,7 @@ describe("providerDocumentationModel", () => {
       savedAt: "2026-05-17T12:00:00.000Z",
       savedBy: "Dr Test",
       source: "PROVIDER_DOCUMENTATION_WORKSPACE",
+      activeTemplateId: null,
     });
     expect(JSON.stringify(payload)).not.toMatch(/billing|orderId|diagnosisId/i);
   });
@@ -84,6 +127,92 @@ describe("providerDocumentationModel", () => {
       encounter: { nursingAssessment: payload.nursingAssessment },
     });
     expect(hydrated.physicalExam.respiratory).toBe("clear breath sounds; user edit");
+  });
+
+  it("marks an empty draft incomplete with advisory warnings only", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    const completeness = buildProviderDocumentationCompleteness({
+      state,
+      encounterMode: "ED",
+      dispositionContext: null,
+    });
+    expect(completeness.readinessState).toBe("incomplete");
+    expect(completeness.completedSections).toEqual([]);
+    expect(completeness.missingSections).toContain("chiefComplaintHpi");
+    expect(completeness.warnings.map((warning) => warning.id)).toContain("missingHpi");
+  });
+
+  it("marks a populated unsaved draft ready to save except saved metadata advisory", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.chiefComplaint = "Chest pain";
+    state.hpi = "Started today";
+    state.rosImportantPositives = "chest pain";
+    state.physicalExam.general = "alert";
+    state.mdmWorkingAssessment = "concern for cardiopulmonary process";
+    state.mdmPlanSummary = "reassessment planned";
+    state.mdmAdmitObserveDischarge = "discharge criteria reviewed";
+    state.clinicalImpression = "provider-authored impression";
+    state.treatmentPlan = "provider-authored plan";
+    state.followUpDisposition = "return precautions documented";
+    const completeness = buildProviderDocumentationCompleteness({
+      state,
+      encounterMode: "ED",
+      dispositionContext: null,
+    });
+    expect(completeness.readinessState).toBe("needs_review");
+    expect(completeness.warnings.map((warning) => warning.id)).toEqual(["missingSavedMetadata"]);
+    expect(
+      buildProviderDocumentationReadiness({
+        state,
+        encounterMode: "ED",
+        savedMetadata: buildProviderDocumentationMetadata({
+          encounterMode: "ED",
+          savedAt: "2026-05-17T12:00:00.000Z",
+          savedBy: "Dr Test",
+        }),
+      })
+    ).toBe("saved");
+  });
+
+  it("produces ED disposition and reassessment advisory warnings", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.chiefComplaint = "Trauma";
+    state.hpi = "Fall today";
+    state.rosImportantPositives = "limb pain";
+    state.physicalExam.musculoskeletal = "tenderness present";
+    state.mdmWorkingAssessment = "traumatic injury considered";
+    state.clinicalImpression = "provider-authored impression";
+    state.treatmentPlan = "provider-authored plan";
+    const warnings = buildProviderDocumentationWarnings({
+      state,
+      encounterMode: "ED",
+      dispositionContext: "DISCHARGE",
+      longStayOrInterventionHeavy: true,
+    }).map((warning) => warning.id);
+    expect(warnings).toContain("edMissingDispositionReasoning");
+    expect(warnings).toContain("edReassessmentRecommended");
+  });
+
+  it("produces observation response, readiness, pending result, and discharge advisory warnings", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.chiefComplaint = "Observation";
+    state.hpi = "Interval check";
+    state.rosFocusedImpression = "interval status documented";
+    state.physicalExam.general = "alert";
+    state.mdmWorkingAssessment = "undifferentiated symptoms";
+    state.clinicalImpression = "provider-authored impression";
+    state.treatmentPlan = "provider-authored plan";
+    const warnings = buildProviderDocumentationWarnings({
+      state,
+      encounterMode: "OBSERVATION",
+      hasPendingResults: true,
+      dispositionContext: "DISCHARGE",
+    }).map((warning) => warning.id);
+    expect(warnings).toContain("observationMissingResponseToTreatment");
+    expect(warnings).toContain("observationMissingVitalsTrend");
+    expect(warnings).toContain("observationPendingResultsRecommended");
+    expect(warnings).toContain("observationMissingReadinessOrRationale");
+    expect(warnings).toContain("observationMissingTransferDischargeReasoning");
   });
 
   it("keeps English and French label keys separate for callers", () => {
@@ -132,6 +261,12 @@ describe("providerDocumentationModel", () => {
       expect(helper, template.id).toMatch(/^template/);
       expect(template.labelKey, template.id).not.toContain("Douleur");
     }
+  });
+
+  it("uses i18n keys for complete normal ROS labels", () => {
+    expect("providerDocumentationWorkspace.insertCompleteNormalRos").toMatch(/^providerDocumentationWorkspace\./);
+    expect("providerDocumentationWorkspace.completeNormalRosHelp").toMatch(/^providerDocumentationWorkspace\./);
+    expect("providerDocumentationWorkspace.completeNormalRosText").toMatch(/^providerDocumentationWorkspace\./);
   });
 
   it("applies a complaint template into visible editable fields only", () => {
@@ -201,6 +336,38 @@ describe("providerDocumentationModel", () => {
       "physicalExam",
       "mdm",
     ]);
+    const completeness = buildProviderDocumentationCompleteness({
+      state: next,
+      encounterMode: "ED",
+      dispositionContext: null,
+    });
+    expect(JSON.stringify(completeness)).not.toMatch(/diagnosisId|orderId|billing|chargeCapture|billingComplexity/i);
+    expect(buildProviderDocumentationPreviewSections(next).flatMap((section) => section.lines).join(" ")).not.toMatch(
+      /recommended|missing|readiness|warning/i
+    );
+  });
+
+  it("preserves active template id in workspace metadata without exporting warnings as note text", () => {
+    const state = applyProviderDocumentationTemplate({
+      state: emptyProviderDocumentationWorkspaceState(),
+      templateId: "chest_pain",
+      resolveFragment: (key) => key,
+    });
+    state.clinicalImpression = "provider-authored impression";
+    state.treatmentPlan = "provider-authored plan";
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state,
+      metadata: buildProviderDocumentationMetadata({
+        encounterMode: "ED",
+        savedAt: "2026-05-17T12:00:00.000Z",
+        savedBy: "Dr Test",
+        activeTemplateId: state.activeTemplateId,
+      }),
+    });
+    const metadata = readProviderDocumentationWorkspaceMetadata(payload.nursingAssessment);
+    expect(metadata?.activeTemplateId).toBe("chest_pain");
+    expect(JSON.stringify(payload)).not.toMatch(/warningMissing|readinessState|missingSections/i);
   });
 
   it("builds an ordered export-safe display model from the structured workspace note", () => {

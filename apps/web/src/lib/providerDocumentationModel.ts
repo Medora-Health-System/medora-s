@@ -15,6 +15,7 @@ export type ProviderDocumentationMetadata = {
   savedAt: string;
   savedBy: string;
   source: typeof PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE;
+  activeTemplateId?: ProviderDocumentationTemplateId | null;
 };
 
 export type ProviderDocumentationExamSectionId =
@@ -44,6 +45,7 @@ export type ProviderDocumentationTemplateId =
   | "observation_reassessment";
 
 export type ProviderDocumentationWorkspaceState = {
+  activeTemplateId: ProviderDocumentationTemplateId | null;
   reasonForVisit: string;
   chiefComplaint: string;
   hpi: string;
@@ -76,7 +78,7 @@ export type ProviderDocumentationSavePayload = {
 
 export type ProviderDocumentationTemplateStringField = Exclude<
   keyof ProviderDocumentationWorkspaceState,
-  "physicalExam" | "mdmRiskLevel"
+  "activeTemplateId" | "physicalExam" | "mdmRiskLevel"
 >;
 
 export type ProviderDocumentationTemplateCategory =
@@ -106,6 +108,22 @@ export const PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS: ProviderDocumentationExamS
   "musculoskeletal",
   "skin",
 ];
+
+export const PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT = `Review of Systems:
+Constitutional: Denies fever, chills, fatigue, or weight changes.
+Eyes: Denies vision changes, eye pain, redness, or discharge.
+ENT: Denies ear pain, nasal congestion, sore throat, or difficulty swallowing.
+Cardiovascular: Denies chest pain, palpitations, or leg swelling.
+Respiratory: Denies cough, shortness of breath, wheezing, or chest tightness.
+Gastrointestinal: Denies abdominal pain, nausea, vomiting, diarrhea, constipation, or blood in stool.
+Genitourinary: Denies painful urination, urinary frequency, urgency, blood in urine, or flank pain.
+Musculoskeletal: Denies joint pain, muscle pain, back pain, or swelling.
+Skin: Denies rash, itching, wounds, or skin changes.
+Neurologic: Denies headache, dizziness, weakness, numbness, tingling, or fainting.
+Psychiatric: Denies anxiety, depression, confusion, suicidal thoughts, or sleep disturbance.
+Endocrine: Denies excessive thirst, excessive urination, heat or cold intolerance.
+Hematologic/Lymphatic: Denies easy bruising, easy bleeding, or swollen lymph nodes.
+Allergic/Immunologic: Denies seasonal allergies, hives, or recurrent infections.`;
 
 export const PROVIDER_DOCUMENTATION_EXAM_FIELD_TO_LEGACY_KEY: Record<
   ProviderDocumentationExamSectionId,
@@ -501,8 +519,78 @@ export function providerDocumentationTimelineLabel(
     : "Observation provider progress note saved";
 }
 
+export type ProviderDocumentationSectionStatus = "complete" | "missing" | "recommended" | "saved";
+
+export type ProviderDocumentationCompletenessSectionId =
+  | "chiefComplaintHpi"
+  | "ros"
+  | "physicalExam"
+  | "mdm"
+  | "impression"
+  | "plan"
+  | "followUpDisposition";
+
+export type ProviderDocumentationReadinessState =
+  | "incomplete"
+  | "needs_review"
+  | "ready_to_save"
+  | "saved"
+  | "signed_or_finalized";
+
+export type ProviderDocumentationWarningId =
+  | "missingHpi"
+  | "missingRos"
+  | "missingPhysicalExam"
+  | "missingMdm"
+  | "missingImpression"
+  | "missingPlan"
+  | "missingSavedMetadata"
+  | "edMissingChiefComplaint"
+  | "edMissingDispositionReasoning"
+  | "edReassessmentRecommended"
+  | "edMdmRecommendedBeforeFinalization"
+  | "observationMissingIntervalStatus"
+  | "observationMissingResponseToTreatment"
+  | "observationMissingVitalsTrend"
+  | "observationPendingResultsRecommended"
+  | "observationMissingReadinessOrRationale"
+  | "observationMissingTransferDischargeReasoning";
+
+export type ProviderDocumentationWarning = {
+  id: ProviderDocumentationWarningId;
+  messageKey: string;
+  severity: "info" | "warning" | "critical";
+};
+
+export type ProviderDocumentationCompletenessSection = {
+  id: ProviderDocumentationCompletenessSectionId;
+  labelKey: string;
+  status: ProviderDocumentationSectionStatus;
+};
+
+export type ProviderDocumentationCompleteness = {
+  completedSections: ProviderDocumentationCompletenessSectionId[];
+  missingSections: ProviderDocumentationCompletenessSectionId[];
+  recommendedSections: ProviderDocumentationCompletenessSectionId[];
+  sectionStatuses: ProviderDocumentationCompletenessSection[];
+  warnings: ProviderDocumentationWarning[];
+  readinessState: ProviderDocumentationReadinessState;
+};
+
+export type ProviderDocumentationCompletenessInput = {
+  state: ProviderDocumentationWorkspaceState;
+  encounterMode: ProviderDocumentationEncounterMode;
+  documentType?: ProviderDocumentationDocumentType;
+  savedMetadata?: ProviderDocumentationMetadata | null;
+  signedOrFinalized?: boolean;
+  dispositionContext?: "DISCHARGE" | "ADMISSION" | "TRANSFER" | "OBSERVATION" | null;
+  hasPendingResults?: boolean;
+  longStayOrInterventionHeavy?: boolean;
+};
+
 export function emptyProviderDocumentationWorkspaceState(): ProviderDocumentationWorkspaceState {
   return {
+    activeTemplateId: null,
     reasonForVisit: "",
     chiefComplaint: "",
     hpi: "",
@@ -564,6 +652,16 @@ export function appendDocumentationFragment(current: string, fragment: string): 
   return `${currentTrimmed}; ${clean}`;
 }
 
+function appendDocumentationBlock(current: string, block: string): string {
+  const clean = block.trim();
+  if (!clean) return current;
+  const currentTrimmed = current.trim();
+  if (!currentTrimmed) return clean;
+  const normalizeBlock = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  if (normalizeBlock(currentTrimmed).includes(normalizeBlock(clean))) return current;
+  return `${currentTrimmed}\n\n${clean}`;
+}
+
 export function providerDocumentationTemplateById(
   templateId: ProviderDocumentationTemplateId
 ): ProviderDocumentationTemplateDefinition {
@@ -587,6 +685,174 @@ export function providerDocumentationMissingSectionIds(
   return PROVIDER_DOCUMENTATION_REQUIRED_SECTION_IDS.filter((sectionId) => !completed.has(sectionId));
 }
 
+const COMPLETENESS_SECTION_LABEL_KEYS: Record<ProviderDocumentationCompletenessSectionId, string> = {
+  chiefComplaintHpi: "providerDocumentationWorkspace.completenessChiefComplaintHpi",
+  ros: "providerDocumentationWorkspace.previewRos",
+  physicalExam: "providerDocumentationWorkspace.previewExam",
+  mdm: "providerDocumentationWorkspace.previewMdm",
+  impression: "providerDocumentationWorkspace.previewImpression",
+  plan: "providerDocumentationWorkspace.previewPlan",
+  followUpDisposition: "providerDocumentationWorkspace.followUpDisposition",
+};
+
+function hasText(...values: string[]): boolean {
+  return values.some((value) => value.trim().length > 0);
+}
+
+function dispositionReasoningPresent(state: ProviderDocumentationWorkspaceState): boolean {
+  return hasText(state.mdmAdmitObserveDischarge, state.followUpDisposition);
+}
+
+function observationReadinessOrRationalePresent(state: ProviderDocumentationWorkspaceState): boolean {
+  return hasText(state.mdmAdmitObserveDischarge, state.followUpDisposition, state.mdmPlanSummary);
+}
+
+function observationResponseToTreatmentPresent(state: ProviderDocumentationWorkspaceState): boolean {
+  const text = [
+    state.hpi,
+    state.rosFocusedImpression,
+    state.mdmPlanSummary,
+    state.followUpDisposition,
+  ].join(" ");
+  return /improv|unchanged|worsen|response|tolerating|pain controlled|amélioration|inchangé|aggrav/i.test(text);
+}
+
+function observationVitalsTrendPresent(state: ProviderDocumentationWorkspaceState): boolean {
+  return /vital|vitals|signes vitaux|stable|trend|tendance/i.test(
+    [state.hpi, state.rosFocusedImpression, state.mdmDataReviewed, state.mdmPlanSummary].join(" ")
+  );
+}
+
+function observationPendingResultsAddressed(state: ProviderDocumentationWorkspaceState): boolean {
+  return /pending|awaiting|lab|imaging|result|résultat|labo|imagerie|attente/i.test(
+    [state.rosFocusedImpression, state.mdmDataReviewed, state.mdmPlanSummary].join(" ")
+  );
+}
+
+function sectionStatus(input: {
+  id: ProviderDocumentationCompletenessSectionId;
+  complete: boolean;
+  recommended: boolean;
+  saved: boolean;
+}): ProviderDocumentationCompletenessSection {
+  return {
+    id: input.id,
+    labelKey: COMPLETENESS_SECTION_LABEL_KEYS[input.id],
+    status: input.saved && input.complete ? "saved" : input.complete ? "complete" : input.recommended ? "recommended" : "missing",
+  };
+}
+
+export function buildProviderDocumentationWarnings(
+  input: ProviderDocumentationCompletenessInput
+): ProviderDocumentationWarning[] {
+  const { state, encounterMode } = input;
+  const warnings: ProviderDocumentationWarning[] = [];
+  const add = (warning: ProviderDocumentationWarning) => warnings.push(warning);
+
+  if (!hasText(state.hpi, state.chiefComplaint)) {
+    add({ id: "missingHpi", messageKey: "providerDocumentationWorkspace.warningMissingHpi", severity: "critical" });
+  }
+  if (!hasText(state.rosFocusedImpression, state.rosImportantPositives, state.rosImportantNegatives, state.rosRedFlags)) {
+    add({ id: "missingRos", messageKey: "providerDocumentationWorkspace.warningMissingRos", severity: "warning" });
+  }
+  if (!PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS.some((id) => state.physicalExam[id].trim())) {
+    add({ id: "missingPhysicalExam", messageKey: "providerDocumentationWorkspace.warningMissingPhysicalExam", severity: "critical" });
+  }
+  if (!hasText(state.mdmWorkingAssessment, state.mdmDifferentialSynthesis, state.mdmDataReviewed, state.mdmPlanSummary, state.mdmAdmitObserveDischarge)) {
+    add({ id: "missingMdm", messageKey: "providerDocumentationWorkspace.warningMissingMdm", severity: "critical" });
+  }
+  if (!hasText(state.clinicalImpression)) {
+    add({ id: "missingImpression", messageKey: "providerDocumentationWorkspace.warningMissingImpression", severity: "warning" });
+  }
+  if (!hasText(state.treatmentPlan)) {
+    add({ id: "missingPlan", messageKey: "providerDocumentationWorkspace.warningMissingPlan", severity: "warning" });
+  }
+  if (!input.savedMetadata) {
+    add({ id: "missingSavedMetadata", messageKey: "providerDocumentationWorkspace.warningMissingSavedMetadata", severity: "info" });
+  }
+
+  if (encounterMode === "ED") {
+    if (!hasText(state.chiefComplaint, state.reasonForVisit)) {
+      add({ id: "edMissingChiefComplaint", messageKey: "providerDocumentationWorkspace.warningEdMissingChiefComplaint", severity: "warning" });
+    }
+    if (!dispositionReasoningPresent(state)) {
+      add({ id: "edMissingDispositionReasoning", messageKey: "providerDocumentationWorkspace.warningEdDispositionReasoning", severity: "warning" });
+    }
+    if (input.longStayOrInterventionHeavy && !hasText(state.providerAddendum, state.followUpDisposition, state.mdmClinicalRationale)) {
+      add({ id: "edReassessmentRecommended", messageKey: "providerDocumentationWorkspace.warningEdReassessment", severity: "warning" });
+    }
+    if (!hasText(state.mdmWorkingAssessment, state.mdmPlanSummary)) {
+      add({ id: "edMdmRecommendedBeforeFinalization", messageKey: "providerDocumentationWorkspace.warningEdMdmBeforeFinalization", severity: "critical" });
+    }
+  } else {
+    if (!hasText(state.hpi, state.rosFocusedImpression)) {
+      add({ id: "observationMissingIntervalStatus", messageKey: "providerDocumentationWorkspace.warningObsIntervalStatus", severity: "warning" });
+    }
+    if (!observationResponseToTreatmentPresent(state)) {
+      add({ id: "observationMissingResponseToTreatment", messageKey: "providerDocumentationWorkspace.warningObsResponseToTreatment", severity: "warning" });
+    }
+    if (!observationVitalsTrendPresent(state)) {
+      add({ id: "observationMissingVitalsTrend", messageKey: "providerDocumentationWorkspace.warningObsVitalsTrend", severity: "warning" });
+    }
+    if (input.hasPendingResults && !observationPendingResultsAddressed(state)) {
+      add({ id: "observationPendingResultsRecommended", messageKey: "providerDocumentationWorkspace.warningObsPendingResults", severity: "warning" });
+    }
+    if (!observationReadinessOrRationalePresent(state)) {
+      add({ id: "observationMissingReadinessOrRationale", messageKey: "providerDocumentationWorkspace.warningObsReadinessOrRationale", severity: "warning" });
+    }
+    if (!dispositionReasoningPresent(state)) {
+      add({ id: "observationMissingTransferDischargeReasoning", messageKey: "providerDocumentationWorkspace.warningObsTransferDischarge", severity: "warning" });
+    }
+  }
+
+  return warnings;
+}
+
+export function buildProviderDocumentationCompleteness(
+  input: ProviderDocumentationCompletenessInput
+): ProviderDocumentationCompleteness {
+  const { state } = input;
+  const saved = Boolean(input.savedMetadata);
+  const checks: Array<{ id: ProviderDocumentationCompletenessSectionId; complete: boolean; recommended: boolean }> = [
+    { id: "chiefComplaintHpi", complete: hasText(state.chiefComplaint, state.hpi), recommended: true },
+    { id: "ros", complete: hasText(state.rosFocusedImpression, state.rosImportantPositives, state.rosImportantNegatives, state.rosRedFlags), recommended: true },
+    { id: "physicalExam", complete: PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS.some((id) => state.physicalExam[id].trim()), recommended: true },
+    { id: "mdm", complete: hasText(state.mdmWorkingAssessment, state.mdmDifferentialSynthesis, state.mdmDataReviewed, state.mdmPlanSummary, state.mdmAdmitObserveDischarge), recommended: true },
+    { id: "impression", complete: hasText(state.clinicalImpression), recommended: true },
+    { id: "plan", complete: hasText(state.treatmentPlan), recommended: true },
+    { id: "followUpDisposition", complete: hasText(state.followUpDisposition, state.mdmAdmitObserveDischarge), recommended: input.encounterMode === "OBSERVATION" || Boolean(input.dispositionContext) },
+  ];
+  const sectionStatuses = checks.map((check) => sectionStatus({ ...check, saved }));
+  const completedSections = checks.filter((check) => check.complete).map((check) => check.id);
+  const missingSections = checks.filter((check) => !check.complete && check.recommended).map((check) => check.id);
+  const recommendedSections = checks.filter((check) => check.recommended).map((check) => check.id);
+  const warnings = buildProviderDocumentationWarnings(input);
+  return {
+    completedSections,
+    missingSections,
+    recommendedSections,
+    sectionStatuses,
+    warnings,
+    readinessState: buildProviderDocumentationReadiness({ ...input, warnings, missingSections }),
+  };
+}
+
+export function buildProviderDocumentationReadiness(
+  input: ProviderDocumentationCompletenessInput & {
+    warnings?: ProviderDocumentationWarning[];
+    missingSections?: ProviderDocumentationCompletenessSectionId[];
+  }
+): ProviderDocumentationReadinessState {
+  if (input.signedOrFinalized) return "signed_or_finalized";
+  if (input.savedMetadata) return "saved";
+  const warnings = input.warnings ?? buildProviderDocumentationWarnings(input);
+  const hasCritical = warnings.some((warning) => warning.severity === "critical");
+  if (hasCritical) return "incomplete";
+  const missing = input.missingSections ?? buildProviderDocumentationCompleteness(input).missingSections;
+  if (missing.length || warnings.length) return "needs_review";
+  return "ready_to_save";
+}
+
 export function applyProviderDocumentationTemplate(input: {
   state: ProviderDocumentationWorkspaceState;
   templateId: ProviderDocumentationTemplateId;
@@ -595,6 +861,7 @@ export function applyProviderDocumentationTemplate(input: {
   const template = providerDocumentationTemplateById(input.templateId);
   const next: ProviderDocumentationWorkspaceState = {
     ...input.state,
+    activeTemplateId: input.templateId,
     physicalExam: { ...input.state.physicalExam },
   };
 
@@ -623,6 +890,19 @@ export function applyProviderDocumentationTemplate(input: {
   return next;
 }
 
+export function applyCompleteNormalRosPrefill(input: {
+  state: ProviderDocumentationWorkspaceState;
+  text?: string;
+}): ProviderDocumentationWorkspaceState {
+  return {
+    ...input.state,
+    rosFocusedImpression: appendDocumentationBlock(
+      input.state.rosFocusedImpression,
+      input.text ?? PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT
+    ),
+  };
+}
+
 export function hydrateProviderDocumentationWorkspaceState(input: {
   encounter?: {
     visitReason?: string | null;
@@ -638,7 +918,9 @@ export function hydrateProviderDocumentationWorkspaceState(input: {
   const nursing = asObject(encounter?.nursingAssessment);
   const stored = asObject(nursing?.[PROVIDER_DOCUMENTATION_NAMESPACE_KEY]);
   const legacyPhysicianEval = asObject(nursing?.physicianEvalV1);
+  const storedMetadata = asObject(stored?.workspaceMetadata);
 
+  state.activeTemplateId = templateIdFromUnknown(storedMetadata?.activeTemplateId);
   state.reasonForVisit = str(encounter?.visitReason);
   state.chiefComplaint =
     str(stored?.chiefConcern) || str(encounter?.chiefComplaint) || str(encounter?.visitReason);
@@ -682,6 +964,12 @@ function riskLevelFromUnknown(value: unknown): ProviderDocumentationRiskLevel {
   return "";
 }
 
+function templateIdFromUnknown(value: unknown): ProviderDocumentationTemplateId | null {
+  return typeof value === "string" && PROVIDER_DOCUMENTATION_TEMPLATES.some((template) => template.id === value)
+    ? (value as ProviderDocumentationTemplateId)
+    : null;
+}
+
 function trimmedOrNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
@@ -723,6 +1011,7 @@ export function buildProviderDocumentationMetadata(input: {
   encounterMode: ProviderDocumentationEncounterMode;
   savedAt: string;
   savedBy: string;
+  activeTemplateId?: ProviderDocumentationTemplateId | null;
 }): ProviderDocumentationMetadata {
   return {
     encounterMode: input.encounterMode,
@@ -730,6 +1019,7 @@ export function buildProviderDocumentationMetadata(input: {
     savedAt: input.savedAt,
     savedBy: input.savedBy,
     source: PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE,
+    activeTemplateId: input.activeTemplateId ?? null,
   };
 }
 
@@ -780,6 +1070,11 @@ export function buildProviderDocumentationSavePayload(input: {
     },
     workspaceMetadata: input.metadata,
   };
+  const workspaceMetadata = {
+    ...input.metadata,
+    activeTemplateId: s.activeTemplateId ?? input.metadata.activeTemplateId ?? null,
+  };
+  stored.workspaceMetadata = workspaceMetadata;
 
   if (providerDocumentationStateHasContent(s)) {
     nursingAssessment[PROVIDER_DOCUMENTATION_NAMESPACE_KEY] = stored;
@@ -964,6 +1259,7 @@ export function readProviderDocumentationWorkspaceMetadata(
     savedAt,
     savedBy,
     source: PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE,
+    activeTemplateId: templateIdFromUnknown(meta.activeTemplateId),
   };
 }
 
