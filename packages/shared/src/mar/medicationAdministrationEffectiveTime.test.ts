@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   medicationAdminEffectiveTimeRequiresReason,
+  medicationAdministrationEffectiveTimeDtoSchema,
   medicationAdministrationRowIsInfusionTerminal,
   validateMedicationAdministrationEffectiveTime,
 } from "./medicationAdministrationEffectiveTime.js";
@@ -87,6 +88,23 @@ describe("medicationAdministrationEffectiveTime", () => {
       marActionAdministered: true,
     });
     expect(ok.ok).toBe(true);
+  });
+
+  it("PATCH DTO accepts effectiveAdministeredAt alias", () => {
+    const parsed = medicationAdministrationEffectiveTimeDtoSchema.safeParse({
+      effectiveAdministeredAt: "2026-05-16T13:00:00.000Z",
+      reason: "Delayed documentation correction",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.effectiveAdministeredTime).toBe("2026-05-16T13:00:00.000Z");
+      expect(parsed.data.reason).toBe("Delayed documentation correction");
+    }
+  });
+
+  it("PATCH DTO requires a clinical timestamp", () => {
+    const parsed = medicationAdministrationEffectiveTimeDtoSchema.safeParse({ reason: "only reason" });
+    expect(parsed.success).toBe(false);
   });
 
   it("allows infusion stop terminal row adjustment (effective time only)", () => {

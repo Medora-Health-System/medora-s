@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { parseMedicationAdministrationEffectiveTimeIso } from "@medora/shared";
+import { useI18n } from "@/lib/i18n";
+import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
   datetimeLocalValueToUtcIso,
   medicationAdminTimeModalIsLargeBackdate,
@@ -47,6 +49,7 @@ export function MedicationAdministrationEffectiveTimeModal({
   onSave: (payload: { effectiveAdministeredTime: string; reason?: string }) => Promise<void>;
   saving: boolean;
 }) {
+  const { language } = useI18n();
   const [clinicalLocal, setClinicalLocal] = useState(() => toDatetimeLocalValue(defaultEffectiveIso));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -126,9 +129,13 @@ export function MedicationAdministrationEffectiveTimeModal({
       await onSave({
         effectiveAdministeredTime: iso,
         ...(reason.trim() ? { reason: reason.trim() } : {}),
-      });
+      } satisfies { effectiveAdministeredTime: string; reason?: string });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("marTab.adminTime.saveFailed"));
+      const raw = err instanceof Error ? err.message : "";
+      const fromServer = raw.trim()
+        ? normalizeUserFacingError(raw, language) ?? raw.trim()
+        : null;
+      setError(fromServer ?? t("marTab.adminTime.saveFailed"));
     }
   };
 

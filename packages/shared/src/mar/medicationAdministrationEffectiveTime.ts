@@ -3,12 +3,29 @@ import { deltaMinutesBetween } from "../orders/careProcedureEffectiveClinicalTim
 
 export { deltaMinutesBetween };
 
-export const medicationAdministrationEffectiveTimeDtoSchema = z
+const medicationAdministrationEffectiveTimeBodySchema = z
   .object({
-    effectiveAdministeredTime: z.string().min(1),
+    effectiveAdministeredTime: z.string().trim().min(1).optional(),
+    /** Client alias (create payload uses effectiveAdministeredAt) — normalized to effectiveAdministeredTime. */
+    effectiveAdministeredAt: z.string().trim().min(1).optional(),
     reason: z.string().max(500).optional(),
   })
   .strict();
+
+export const medicationAdministrationEffectiveTimeDtoSchema = medicationAdministrationEffectiveTimeBodySchema
+  .transform((body) => ({
+    effectiveAdministeredTime:
+      body.effectiveAdministeredTime?.trim() || body.effectiveAdministeredAt?.trim() || "",
+    reason: body.reason?.trim() || undefined,
+  }))
+  .pipe(
+    z.object({
+      effectiveAdministeredTime: z
+        .string()
+        .min(1, "Horodatage clinique requis."),
+      reason: z.string().max(500).optional(),
+    })
+  );
 
 export type MedicationAdministrationEffectiveTimeDto = z.infer<
   typeof medicationAdministrationEffectiveTimeDtoSchema

@@ -64,6 +64,7 @@ import {
   buildMedicationAdministrationRowDocumentAction,
   buildMedicationAdministrationTaskRowClockAction,
 } from "@/features/mar/buildMedicationAdministrationRowClockAction";
+import { isEncounterLocked } from "@/lib/encounterLock";
 
 type AdminRow = {
   id: string;
@@ -253,11 +254,14 @@ export function MedicationAdministrationTab({
   encounterId,
   facilityId,
   encounterStatus,
+  providerDocumentationStatus,
   roleCodes = [],
 }: {
   encounterId: string;
   facilityId: string;
   encounterStatus: string;
+  /** When SIGNED, clinical mutations (including MAR time adjust) are blocked server-side. */
+  providerDocumentationStatus?: string | null;
   /** RN / PROVIDER / ADMIN may adjust effective administration time (MAR tab callers). */
   roleCodes?: string[];
 }) {
@@ -331,6 +335,8 @@ export function MedicationAdministrationTab({
   }, []);
 
   const encounterOpen = encounterStatus === "OPEN";
+  const encounterClinicalMutationsAllowed =
+    encounterOpen && !isEncounterLocked({ providerDocumentationStatus });
   /** When omitted, callers rely on MAR-tab route gating (RN / PROVIDER / ADMIN only). */
   const canAdjustAdminTime = canAdjustMedicationAdministrationTime(
     roleCodes.length > 0 ? roleCodes : ["RN", "PROVIDER", "ADMIN"]
@@ -1172,7 +1178,7 @@ export function MedicationAdministrationTab({
                 const adminListForRow = adminsByOrderItemId.get(row.orderItemId) ?? [];
                 const marRowClock = buildMedicationAdministrationTaskRowClockAction({
                   administrations: adminListForRow,
-                  encounterOpen,
+                  encounterOpen: encounterClinicalMutationsAllowed,
                   canAdjust: canAdjustAdminTime,
                   infusionActive: Boolean(row.isInfusionLifecycleMed && activeMarInfusion),
                   activeInfusionSessionKey: activeMarInfusion?.infusionSessionKey ?? null,
@@ -1182,7 +1188,7 @@ export function MedicationAdministrationTab({
                     ? adminListForRow.find((a) => a.id === marRowClock.administrationId) ?? null
                     : null;
                 const showDocAction = buildMedicationAdministrationRowDocumentAction({
-                  encounterOpen,
+                  encounterOpen: encounterClinicalMutationsAllowed,
                   canAdjust: canAdjustAdminTime,
                 }).show;
 
@@ -1369,7 +1375,7 @@ export function MedicationAdministrationTab({
                   : t("marTab.noLinkedOrder"));
               const historyClock = buildMedicationAdministrationRowClockAction({
                 administration: r,
-                encounterOpen,
+                encounterOpen: encounterClinicalMutationsAllowed,
                 canAdjust: canAdjustAdminTime,
               });
               return (
@@ -2084,6 +2090,8 @@ export function MedicationAdministrationTab({
                 );
                 setAdminTimeModalRow(null);
                 await loadAll();
+              } catch (err) {
+                throw err;
               } finally {
                 setAdminTimeSaving(false);
               }

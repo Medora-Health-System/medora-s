@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { datetimeLocalValueToUtcIso } from "./medicationAdministrationEffectiveTimeDisplay";
 import {
   buildMarCreateEffectiveTimeRequestFields,
+  buildMarPatchEffectiveTimeRequestBody,
   marRecordModalEffectiveTimeClientError,
   marRecordModalShowsLargeBackdateSupervisoryWarning,
 } from "./marRecordModalEffectiveTime";
@@ -24,6 +25,16 @@ describe("marRecordModalEffectiveTime", () => {
         toUtcIso: () => "2026-05-16T13:00:00.000Z",
       })
     ).toBeNull();
+  });
+
+  it("PATCH body uses effectiveAdministeredTime key (not effectiveAdministeredAt)", () => {
+    const body = buildMarPatchEffectiveTimeRequestBody({
+      effectiveTimeUtcIso: "2026-05-16T13:00:00.000Z",
+      reason: "Delayed documentation correction",
+    });
+    expect(body.effectiveAdministeredTime).toBe("2026-05-16T13:00:00.000Z");
+    expect(body.reason).toBe("Delayed documentation correction");
+    expect("effectiveAdministeredAt" in body).toBe(false);
   });
 
   it("includes effectiveAdministeredAt in create payload when set", () => {

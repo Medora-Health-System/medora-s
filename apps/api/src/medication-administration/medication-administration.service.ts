@@ -894,7 +894,7 @@ export class MedicationAdministrationService {
       case "REASON_REQUIRED":
         return "Un motif est requis pour cet ajustement d'heure.";
       case "REASON_TOO_SHORT_FOR_LARGE_BACKDATE":
-        return "Pour un décalage de plus de 24 h, le motif doit comporter au moins 15 caractères.";
+        return "Un motif détaillé est requis pour les corrections d'heure importantes.";
       case "NOT_ADMINISTERED":
         return "Seules les administrations documentées (administré) peuvent être ajustées.";
       case "INFUSION_DEFERRED":
@@ -919,7 +919,7 @@ export class MedicationAdministrationService {
    * Never mutates `administeredAt`, `createdAt`, billing, or OrderEvent timestamps.
    *
    * Phase 15F-B visibility: MAR tab history only. ClinicalTimeline / chart export deferred (15F-D / 15G).
-   * Infusion terminal MAR rows deferred (would desync infusion STOP OrderEvent metadata).
+   * INFUSION_START / INFUSION_STOP rows: effectiveAdministeredAt only — OrderEvent duration metadata unchanged.
    */
   async setEffectiveAdministeredAt(
     encounterId: string,

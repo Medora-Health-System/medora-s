@@ -4,6 +4,19 @@ import {
   medicationAdminTimeModalRequiresReason,
 } from "./medicationAdministrationEffectiveTimeDisplay";
 
+/** PATCH effective-administered-time body (must match medicationAdministrationEffectiveTimeDtoSchema). */
+export function buildMarPatchEffectiveTimeRequestBody(input: {
+  effectiveTimeUtcIso: string;
+  reason?: string;
+}): { effectiveAdministeredTime: string; reason?: string } {
+  const iso = input.effectiveTimeUtcIso.trim();
+  const reason = input.reason?.trim();
+  return {
+    effectiveAdministeredTime: iso,
+    ...(reason ? { reason } : {}),
+  };
+}
+
 /** Build create payload fields; effectiveAdministeredAt is always UTC ISO (never local storage). */
 export function buildMarCreateEffectiveTimeRequestFields(input: {
   effectiveTimeLocal: string;

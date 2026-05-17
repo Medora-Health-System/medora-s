@@ -191,4 +191,83 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
       })
     );
   });
+
+  it("allows INFUSION_STOP phase row with infusionPhase enum", async () => {
+    const row = makeAdminRow({
+      notes: "Perfusion IV terminée — durée : 45 min",
+      infusionPhase: "INFUSION_STOP",
+    });
+    const { service, update, auditLog: log } = makeService(row);
+    await service.setEffectiveAdministeredAt(
+      "enc-1",
+      "fac-1",
+      "mar-1",
+      {
+        effectiveAdministeredTime: "2026-05-16T13:30:00.000Z",
+        reason: "Delayed documentation correction",
+      },
+      "user-rn"
+    );
+    expect(update).toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          infusionEvent: true,
+          infusionPhase: "INFUSION_STOP",
+        }),
+      })
+    );
+  });
+
+  it("rejects adjustment when provider documentation is signed", async () => {
+    const row = makeAdminRow({
+      encounter: {
+        id: "enc-1",
+        status: "OPEN",
+        providerDocumentationStatus: "SIGNED",
+        createdAt: new Date("2026-05-16T08:00:00Z"),
+        admittedAt: null,
+      },
+    });
+    const { service, update } = makeService(row);
+    await expect(
+      service.setEffectiveAdministeredAt(
+        "enc-1",
+        "fac-1",
+        "mar-1",
+        {
+          effectiveAdministeredTime: "2026-05-16T13:00:00.000Z",
+          reason: "Delayed documentation correction",
+        },
+        "user-rn"
+      )
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("signée"),
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects large backdate with short reason using clear message", async () => {
+    const row = makeAdminRow({
+      createdAt: new Date("2026-05-18T14:30:00Z"),
+    });
+    const { service, update } = makeService(row);
+    await expect(
+      service.setEffectiveAdministeredAt(
+        "enc-1",
+        "fac-1",
+        "mar-1",
+        {
+          effectiveAdministeredTime: "2026-05-16T10:00:00.000Z",
+          reason: "too short",
+        },
+        "user-rn"
+      )
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("motif détaillé"),
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
 });
