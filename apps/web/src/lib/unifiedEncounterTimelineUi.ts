@@ -36,6 +36,11 @@ export function summarizeUnifiedTimelineItem(
   const groupLabel = unifiedTimelineGroupLabel(item.displayGroup, t);
   const chipLabels = item.chips.map((c) => unifiedTimelineChipLabel(c, t));
 
+  const localizedTitle =
+    language === "en" ? item.titleEn?.trim() : item.titleFr?.trim();
+  const localizedSummary =
+    language === "en" ? item.summaryEn?.trim() : item.summaryFr?.trim();
+
   if (item.sourceKind === "ENCOUNTER_CLINICAL_EVENT" && item.payloadJson != null) {
     const clinical = summarizeClinicalTimelineRow(
       {
@@ -46,16 +51,16 @@ export function summarizeUnifiedTimelineItem(
       t
     );
     return {
-      label: item.titleFr?.trim() || clinical.label,
-      summary: item.summaryFr?.trim() || clinical.summary,
+      label: localizedTitle || clinical.label,
+      summary: localizedSummary || clinical.summary,
       groupLabel,
       chipLabels,
     };
   }
 
   return {
-    label: item.titleFr?.trim() || item.displayEventType,
-    summary: item.summaryFr?.trim() || "",
+    label: localizedTitle || item.displayEventType,
+    summary: localizedSummary || "",
     groupLabel,
     chipLabels,
   };

@@ -2,8 +2,9 @@
  * Phase 15F-D.3 — Enterprise command timeline view model (display-only).
  */
 
+import type { SupportedLanguage } from "@/i18n/config";
 import {
-  clinicalTimelineDisplayLabelFr,
+  clinicalTimelineDisplayLabelKey,
   labRadReconciliationNeedsFollowUp,
   orderAttributionActionForOrderType,
   orderAttributionLabelKey,
@@ -210,17 +211,49 @@ export function safeSourceLabel(sourceKind: string, sourceId: string): string {
   return `${sourceKind} · …${tail}`;
 }
 
+const FRENCH_UI_LEAK_TOKENS = [
+  "enregistré",
+  "enregistrée",
+  "Ordre accusé",
+  "Dossier de sortie",
+  "Complément de disposition",
+  "Prescrit",
+  "Réalisé",
+  "Signes vitaux",
+  "Évaluation infirmière",
+  "Triage enregistré",
+] as const;
+
 export function commandTimelineEventTitle(
   item: UnifiedTimelineApiItem,
-  t: (key: string) => string
+  t: (key: string) => string,
+  language: SupportedLanguage
 ): string {
-  if (item.titleFr?.trim()) return item.titleFr.trim();
+  const apiTitle =
+    language === "en" ? item.titleEn?.trim() : item.titleFr?.trim();
+  if (apiTitle) return apiTitle;
+
+  if (item.sourceKind === "ENCOUNTER_CLINICAL_EVENT") {
+    const key = clinicalTimelineDisplayLabelKey(item.displayEventType);
+    const viaI18n = t(key);
+    if (viaI18n !== key) return viaI18n;
+  }
+
   if (item.displayEventType === "OBSERVATION_ADMISSION_PACKET_SAVED") {
     return t("clinicalTimelineDisplay.event.OBSERVATION_ADMISSION_PACKET_SAVED");
   }
-  const fr = clinicalTimelineDisplayLabelFr(item.displayEventType);
-  if (fr) return fr;
+
+  const clinicalKey = `clinicalTimelineDisplay.event.${item.displayEventType}`;
+  const clinicalViaI18n = t(clinicalKey);
+  if (clinicalViaI18n !== clinicalKey) return clinicalViaI18n;
+
   return item.displayEventType;
+}
+
+/** Regression guard — English command timeline must not surface known French UI tokens. */
+export function commandTimelineTitleHasFrenchUiLeak(title: string): boolean {
+  const lower = title.toLowerCase();
+  return FRENCH_UI_LEAK_TOKENS.some((token) => lower.includes(token.toLowerCase()));
 }
 
 export function resolveOrderEventAttributionKind(

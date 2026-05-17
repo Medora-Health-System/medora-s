@@ -15,6 +15,7 @@ export * from "./orderAcknowledgementBillingSafety.js";
 export * from "./observationTemplateOrderLifecycle.js";
 export * from "./encounters/observationAdmissionDischargeRouting.js";
 export * from "./encounters/clinicalTimelineDisplayNormalization.js";
+export * from "./encounters/unifiedEncounterTimelineDisplayTitles.js";
 export * from "./encounters/unifiedEncounterTimeline.js";
 export * from "./observationReassessmentV1.js";
 export * from "./observationOrderTemplate.js";

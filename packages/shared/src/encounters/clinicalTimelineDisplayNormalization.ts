@@ -129,6 +129,38 @@ export function clinicalTimelineDisplayLabelFr(displayEventType: string): string
   return CLINICAL_TIMELINE_DISPLAY_LABEL_FR[displayEventType] ?? displayEventType;
 }
 
+/** English labels for server-rendered export / unified timeline (Phase 15F-D.3.4). */
+export const CLINICAL_TIMELINE_DISPLAY_LABEL_EN: Record<string, string> = {
+  VITALS_RECORDED: "Vital signs recorded",
+  PROVIDER_SIGNED: "Provider documentation signed",
+  PROVIDER_UNLOCKED: "Provider documentation unlocked",
+  PROVIDER_MSE_SAVED: "Medical exam updated",
+  NURSING_ASSESSMENT_SAVED: "Nursing assessment updated",
+  HANDOFF_PROVIDER: "Provider handoff",
+  HANDOFF_NURSING: "Nursing handoff",
+  IV_INSERTED: "IV placed",
+  IV_REMOVED: "IV removed",
+  PROCEDURE_DOCUMENTED: "Procedure documented",
+  DISCHARGE_SUMMARY_SAVED: "Discharge packet saved",
+  ADMISSION_SUMMARY_SAVED: "Admission packet saved (observation / short stay)",
+  OBSERVATION_ADMISSION_PACKET_SAVED: "Observation admission saved",
+  DISPOSITION_SUPPLEMENT_SAVED: "Disposition supplement saved",
+  TRIAGE_ASSESSMENT_SAVED: "Triage recorded",
+};
+
+export function clinicalTimelineDisplayLabelEn(displayEventType: string): string {
+  return CLINICAL_TIMELINE_DISPLAY_LABEL_EN[displayEventType] ?? displayEventType;
+}
+
+export function clinicalTimelineDisplayLabelForLocale(
+  locale: "en" | "fr",
+  displayEventType: string
+): string {
+  return locale === "en"
+    ? clinicalTimelineDisplayLabelEn(displayEventType)
+    : clinicalTimelineDisplayLabelFr(displayEventType);
+}
+
 export function clinicalDocumentationEventBelongsInDischargeHistory(event: ClinicalTimelineStoredRow): boolean {
   const display = resolveClinicalTimelineDisplayEventType(event);
   if (display !== "DISCHARGE_SUMMARY_SAVED") return false;

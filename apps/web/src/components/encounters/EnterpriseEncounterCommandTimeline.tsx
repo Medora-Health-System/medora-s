@@ -182,7 +182,7 @@ export function EnterpriseEncounterCommandTimeline({
                 const category = resolveCommandTimelineCategory(item);
                 const tone = categoryTone(category);
                 const expanded = expandedIds.has(item.id);
-                const title = commandTimelineEventTitle(item, t);
+                const title = commandTimelineEventTitle(item, t, language);
                 const actorLine = buildCommandTimelinePrimaryActorLine(item, t);
                 const timeBlock = formatCommandTimelineTimeBlock(item, formatDt, t, viewMode);
                 const expandedLines = buildCommandTimelineExpandedLines(item, t, formatDt);

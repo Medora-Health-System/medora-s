@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCommandTimelinePrimaryActorLine,
   commandTimelineEventTitle,
+  commandTimelineTitleHasFrenchUiLeak,
   filterCommandTimelineItems,
   isSortedByDocumentedTimeNewestFirst,
   matchesCommandTimelineFilter,
@@ -10,7 +11,7 @@ import {
 } from "./enterpriseEncounterCommandTimelineModel";
 import type { UnifiedTimelineApiItem } from "./enterpriseEncounterCommandTimelineModel";
 
-const t = (key: string) => {
+const tFr = (key: string) => {
   const map: Record<string, string> = {
     "clinicalTimelineDisplay.event.OBSERVATION_ADMISSION_PACKET_SAVED": "Admission en observation enregistrée",
     "emergencyVisitSummaryPanel.clinicalTimeline.event.vitalsRecorded": "Signes vitaux enregistrés",
@@ -19,6 +20,20 @@ const t = (key: string) => {
     "attribution.acknowledgedBy": "Accusé réception par {name}{role} · {datetime}",
     "attribution.resultedBy": "Résultat par {name}{role} · {datetime}",
     "unifiedTimeline.groups.CLINICAL": "Clinique",
+    "commandTimeline.attribution.documentedBy": "Documenté par {name}{role}",
+  };
+  return map[key] ?? key;
+};
+
+const tEn = (key: string) => {
+  const map: Record<string, string> = {
+    "clinicalTimelineDisplay.event.OBSERVATION_ADMISSION_PACKET_SAVED": "Observation admission saved",
+    "emergencyVisitSummaryPanel.clinicalTimeline.event.vitalsRecorded": "Vital signs recorded",
+    "attribution.orderedBy": "Ordered by {name}{role} · {datetime}",
+    "attribution.performedBy": "Performed by {name}{role} · {datetime}",
+    "attribution.acknowledgedBy": "Acknowledged by {name}{role} · {datetime}",
+    "attribution.resultedBy": "Resulted by {name}{role} · {datetime}",
+    "commandTimeline.attribution.documentedBy": "Documented by {name}{role}",
   };
   return map[key] ?? key;
 };
@@ -48,15 +63,78 @@ function baseItem(overrides: Partial<UnifiedTimelineApiItem>): UnifiedTimelineAp
 }
 
 describe("enterpriseEncounterCommandTimelineModel", () => {
-  it("maps observation admission display without discharge label", () => {
+  it("maps observation admission display without discharge label (French)", () => {
     const item = baseItem({
       displayEventType: "OBSERVATION_ADMISSION_PACKET_SAVED",
       storedEventType: "DISCHARGE_SUMMARY_SAVED",
       displayGroup: "OBSERVATION",
       carePhase: "OBSERVATION",
+      titleFr: "Admission en observation enregistrée",
     });
-    expect(commandTimelineEventTitle(item, t)).toBe("Admission en observation enregistrée");
+    expect(commandTimelineEventTitle(item, tFr, "fr")).toBe("Admission en observation enregistrée");
     expect(resolveCommandTimelineCategory(item)).toBe("OBSERVATION");
+  });
+
+  it("English mode uses titleEn from API, not titleFr", () => {
+    const item = baseItem({
+      sourceKind: "ORDER_EVENT",
+      storedEventType: "STARTED",
+      displayEventType: "ORDER_STARTED_CARE",
+      displayGroup: "PROCEDURE",
+      titleFr: "Ordre accusé réception — Oxymétrie de pouls en continu",
+      titleEn: "Order acknowledged — Continuous pulse oximetry monitoring",
+      payloadJson: { lifecycleOutcome: "ACKNOWLEDGED" },
+    });
+    const title = commandTimelineEventTitle(item, tEn, "en");
+    expect(title).toBe("Order acknowledged — Continuous pulse oximetry monitoring");
+    expect(commandTimelineTitleHasFrenchUiLeak(title)).toBe(false);
+  });
+
+  it("English mode clinical events prefer titleEn", () => {
+    const item = baseItem({
+      displayEventType: "DISCHARGE_SUMMARY_SAVED",
+      titleFr: "Dossier de sortie enregistré",
+      titleEn: "Discharge packet saved",
+    });
+    const title = commandTimelineEventTitle(item, tEn, "en");
+    expect(title).toBe("Discharge packet saved");
+    expect(commandTimelineTitleHasFrenchUiLeak(title)).toBe(false);
+  });
+
+  it("English mode falls back to i18n when titleEn missing", () => {
+    const item = baseItem({
+      displayEventType: "VITALS_RECORDED",
+      titleFr: "Signes vitaux enregistrés",
+    });
+    const title = commandTimelineEventTitle(item, tEn, "en");
+    expect(title).toBe("Vital signs recorded");
+    expect(commandTimelineTitleHasFrenchUiLeak(title)).toBe(false);
+  });
+
+  it("regression: English titles must not contain known French UI tokens", () => {
+    const samples = [
+      baseItem({
+        titleEn: "Triage recorded",
+        titleFr: "Triage enregistré",
+        displayEventType: "TRIAGE_ASSESSMENT_SAVED",
+      }),
+      baseItem({
+        sourceKind: "ORDER_EVENT",
+        titleEn: "Discharge packet saved",
+        titleFr: "Dossier de sortie enregistré",
+        displayEventType: "ORDER_COMPLETED_CARE",
+      }),
+      baseItem({
+        sourceKind: "ORDER_EVENT",
+        titleEn: "Order acknowledged — Nursing reassessment every 2 hours",
+        titleFr: "Ordre accusé réception — Réévaluation infirmière toutes les 2 h",
+        displayEventType: "ORDER_STARTED_CARE",
+      }),
+    ];
+    for (const item of samples) {
+      const title = commandTimelineEventTitle(item, tEn, "en");
+      expect(commandTimelineTitleHasFrenchUiLeak(title)).toBe(false);
+    }
   });
 
   it("shows MAR corrected time fields on item", () => {
@@ -126,11 +204,24 @@ describe("enterpriseEncounterCommandTimelineModel", () => {
       displayGroup: "PROCEDURE",
       displayEventType: "ORDER_STARTED_CARE",
       titleFr: "Ordre accusé réception — Signes vitaux",
+      titleEn: "Order acknowledged — Vital signs",
       payloadJson: { lifecycleOutcome: "ACKNOWLEDGED", orderItemId: "item-1" },
       actor: { userId: "u1", displayName: "Elizabeth Posada", role: "RN", department: "RN" },
     });
     expect(resolveOrderEventAttributionKind(item)).toBe("ACKNOWLEDGED");
-    expect(buildCommandTimelinePrimaryActorLine(item, t)).toContain("Accusé réception");
-    expect(buildCommandTimelinePrimaryActorLine(item, t)).not.toContain("Réalisé");
+    expect(buildCommandTimelinePrimaryActorLine(item, tEn)).toContain("Acknowledged");
+    expect(buildCommandTimelinePrimaryActorLine(item, tEn)).not.toMatch(/Réalisé|Accusé réception/);
+  });
+
+  it("French attribution uses French i18n strings", () => {
+    const item = baseItem({
+      id: "ORDER_EVENT:ack-2",
+      sourceKind: "ORDER_EVENT",
+      storedEventType: "STARTED",
+      displayGroup: "PROCEDURE",
+      payloadJson: { lifecycleOutcome: "ACKNOWLEDGED" },
+      actor: { userId: "u1", displayName: "Marie", role: "RN", department: "RN" },
+    });
+    expect(buildCommandTimelinePrimaryActorLine(item, tFr)).toContain("Accusé réception");
   });
 });

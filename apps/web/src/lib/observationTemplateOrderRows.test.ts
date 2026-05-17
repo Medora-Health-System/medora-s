@@ -84,4 +84,24 @@ describe("observationTemplateOrderRows", () => {
     expect(rows[0]?.performedBy).toContain("Marie Infirmière");
     expect(rows[0]?.acknowledgedBy).toBeNull();
   });
+
+  it("renders English template labels when manualLabel is stored in French", () => {
+    const orders = [
+      {
+        id: "ord-1",
+        type: "CARE",
+        authority: { protocolName: "medora_observation_order_set_v1" },
+        items: [
+          {
+            id: "item-pox",
+            manualLabel: "Surveillance continue par oxymétrie de pouls",
+            status: "PLACED",
+          },
+        ],
+      },
+    ];
+    const rows = flattenObservationTemplateOrders(orders, [], "en");
+    expect(rows[0]?.label).toBe("Continuous pulse oximetry monitoring");
+    expect(rows[0]?.label).not.toMatch(/oxymétrie/i);
+  });
 });

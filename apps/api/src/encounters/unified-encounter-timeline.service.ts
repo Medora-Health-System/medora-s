@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   aggregateUnifiedEncounterTimeline,
+  buildUnifiedClinicalEventTitle,
+  buildUnifiedMarAdministrationTitle,
+  buildUnifiedOrderEventTitle,
+  buildUnifiedResultTitle,
   capUnifiedTimeline,
-  clinicalTimelineDisplayLabelFr,
   resolveClinicalTimelineDisplayEventType,
+  resolveUnifiedTimelineOrderLineLabel,
   type UnifiedTimelineSourceRow,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -26,76 +30,38 @@ function asRecord(v: unknown): Record<string, unknown> | null {
   return null;
 }
 
-function observationTemplateTimelineTitleFr(
-  eventType: string,
-  lineLabelFr: string | null,
-  metadata?: Record<string, unknown> | null
-): string | null {
-  if (metadata?.source !== "OBSERVATION_TEMPLATE_ORDER") return null;
-  const line = lineLabelFr?.trim();
-  const et = eventType.toUpperCase();
-  const lifecycle =
-    typeof metadata.lifecycleOutcome === "string" ? metadata.lifecycleOutcome.toUpperCase() : "";
-  if (et === "CREATED") {
-    return line ? `${line} — prescrit (observation)` : "Ordre observation prescrit";
-  }
-  if (et === "STARTED" && lifecycle === "ACKNOWLEDGED") {
-    return line ? `${line} — accusé réception` : "Ordre observation accusé réception";
-  }
-  if (et === "STARTED") {
-    return line ? `${line} — en cours` : "Ordre observation démarré";
-  }
-  if (et === "COMPLETED") {
-    return line ? `${line} — terminé` : "Ordre observation terminé";
-  }
-  if (et === "CANCELLED") {
-    return line ? `${line} — annulé` : "Ordre observation annulé";
-  }
-  return null;
-}
-
-function orderEventTitleFr(
+function orderEventTitles(
   eventType: string,
   orderType: string,
-  lineLabelFr: string | null,
-  metadata?: Record<string, unknown> | null
-): string {
-  const templateTitle = observationTemplateTimelineTitleFr(eventType, lineLabelFr, metadata);
-  if (templateTitle) return templateTitle;
-
-  const et = eventType.toUpperCase();
-  const ot = orderType.toUpperCase();
-  const lifecycle =
-    metadata && typeof metadata.lifecycleOutcome === "string"
-      ? metadata.lifecycleOutcome.toUpperCase()
-      : "";
-  if (et === "STARTED" && lifecycle === "ACKNOWLEDGED") {
-    const line = lineLabelFr?.trim();
-    return line ? `Ordre accusé réception — ${line}` : "Ordre accusé réception";
-  }
-  if (lineLabelFr?.trim() && et !== "STARTED") return lineLabelFr.trim();
-  if (et === "CREATED") {
-    if (ot === "LAB") return "Prescription laboratoire";
-    if (ot === "IMAGING") return "Prescription imagerie";
-    if (ot === "MEDICATION") return "Prescription médicament";
-    if (ot === "CARE") return "Ordre de soins / procédure";
-  }
-  if (et === "COMPLETED") {
-    if (ot === "LAB") return "Laboratoire — étape terminée";
-    if (ot === "IMAGING") return "Imagerie — étape terminée";
-    if (ot === "CARE") return "Soins / procédure terminés";
-  }
-  if (et === "CANCELLED") {
-    const line = lineLabelFr?.trim();
-    if (line && metadata?.orderItemId) return `${line} — ligne annulée`;
-    return "Ordre annulé";
-  }
-  if (et === "STARTED" && ot === "MEDICATION") return "Perfusion démarrée";
-  if (et === "STARTED" && ot === "CARE") {
-    const line = lineLabelFr?.trim();
-    return line ? `${line} — démarré` : "Soins / procédure démarrés";
-  }
-  return `Ordre — ${et}`;
+  meta: Record<string, unknown> | null,
+  lineLabelFr: string | null
+): { titleFr: string; titleEn: string } {
+  const lineEn = resolveUnifiedTimelineOrderLineLabel({
+    metadata: meta,
+    lineLabelFr,
+    locale: "en",
+  });
+  const lineFr = resolveUnifiedTimelineOrderLineLabel({
+    metadata: meta,
+    lineLabelFr,
+    locale: "fr",
+  });
+  return {
+    titleEn: buildUnifiedOrderEventTitle({
+      locale: "en",
+      eventType,
+      orderType,
+      lineLabel: lineEn,
+      metadata: meta,
+    }),
+    titleFr: buildUnifiedOrderEventTitle({
+      locale: "fr",
+      eventType,
+      orderType,
+      lineLabel: lineFr,
+      metadata: meta,
+    }),
+  };
 }
 
 @Injectable()
@@ -182,7 +148,8 @@ export class UnifiedEncounterTimelineService {
         documentedAtIso: r.createdAt.toISOString(),
         actorUserId: r.createdByUserId,
         actorDisplayName: userDisplayName(r.createdBy),
-        titleFr: clinicalTimelineDisplayLabelFr(displayType),
+        titleFr: buildUnifiedClinicalEventTitle("fr", displayType),
+        titleEn: buildUnifiedClinicalEventTitle("en", displayType),
         payloadJson: r.payloadJson,
       });
     }
@@ -191,6 +158,7 @@ export class UnifiedEncounterTimelineService {
       const meta = asRecord(e.metadata);
       const lineLabelFr =
         typeof meta?.lineLabelFr === "string" ? meta.lineLabelFr : null;
+      const { titleFr, titleEn } = orderEventTitles(e.eventType, e.orderType, meta, lineLabelFr);
       sourceRows.push({
         sourceKind: "ORDER_EVENT",
         sourceId: e.id,
@@ -204,7 +172,8 @@ export class UnifiedEncounterTimelineService {
         orderId: e.orderId,
         orderItemId:
           typeof meta?.orderItemId === "string" ? meta.orderItemId : null,
-        titleFr: orderEventTitleFr(e.eventType, e.orderType, lineLabelFr, meta),
+        titleFr,
+        titleEn,
         payloadJson: e.metadata,
         dedupeKey:
           typeof meta?.dedupeKey === "string" ? meta.dedupeKey : undefined,
@@ -212,7 +181,7 @@ export class UnifiedEncounterTimelineService {
     }
 
     for (const m of marRows) {
-      const label = m.medicationLabelSnapshot?.trim() || "Médicament";
+      const label = m.medicationLabelSnapshot?.trim() || null;
       const action = m.marAction?.trim() || "administered";
       sourceRows.push({
         sourceKind: "MEDICATION_ADMINISTRATION",
@@ -228,7 +197,8 @@ export class UnifiedEncounterTimelineService {
         orderType: "MEDICATION",
         orderId: m.orderItem?.orderId ?? null,
         orderItemId: m.orderItemId,
-        titleFr: `Administration — ${label}`,
+        titleFr: buildUnifiedMarAdministrationTitle("fr", label),
+        titleEn: buildUnifiedMarAdministrationTitle("en", label),
         summaryFr: m.notes?.trim() || null,
         dedupeKey: `mar:${m.id}`,
       });
@@ -254,10 +224,7 @@ export class UnifiedEncounterTimelineService {
       const version = isImaging
         ? res.effectiveFinalizedAtVersion
         : res.effectiveResultedAtVersion;
-      const label =
-        res.orderItem.manualLabel?.trim() ||
-        res.orderItem.catalogItemType?.trim() ||
-        "Résultat";
+      const label = res.orderItem.manualLabel?.trim() || res.orderItem.catalogItemType?.trim() || null;
       const verifiedByName = res.verifiedByUserId
         ? verifierNameById.get(res.verifiedByUserId) ?? ""
         : "";
@@ -274,7 +241,8 @@ export class UnifiedEncounterTimelineService {
         orderType,
         orderId: res.orderItem.orderId,
         orderItemId: res.orderItemId,
-        titleFr: isImaging ? `Résultat imagerie — ${label}` : `Résultat labo — ${label}`,
+        titleFr: buildUnifiedResultTitle("fr", isImaging, label),
+        titleEn: buildUnifiedResultTitle("en", isImaging, label),
         dedupeKey: `result:${res.orderItemId}`,
       });
     }
