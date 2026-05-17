@@ -20,7 +20,7 @@ import {
   type VisitSummaryReassessmentEntry,
   type VisitSummaryTextBlock,
 } from "./emergencyVisitSummaryModel";
-import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
+import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
 import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
 
@@ -556,7 +556,13 @@ export function EmergencyVisitSummaryPanel({
         enabled={proceduresFetchEnabled}
       />
 
-      <ClinicalTimeline encounterId={encounterId} facilityId={facilityId} refreshToken={resultsRefresh} />
+      <EnterpriseEncounterCommandTimeline
+        encounterId={encounterId}
+        facilityId={facilityId}
+        refreshToken={resultsRefresh}
+        embedded
+        limit={40}
+      />
 
       <div style={gridStyle}>
         {model.motifPresentation ? (

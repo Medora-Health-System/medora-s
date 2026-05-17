@@ -56,7 +56,7 @@ import { EncounterOperationalPanel } from "@/components/encounters/EncounterOper
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
 import { ObservationContinueObservationQuickModal } from "@/components/encounters/ObservationContinueObservationQuickModal";
 import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
-import { ClinicalTimeline } from "@/components/clinical/ClinicalTimeline";
+import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { DispositionReadinessBanner } from "@/components/clinical/DispositionReadinessBanner";
 import { NursingAssessmentTab } from "@/components/encounters/NursingAssessmentTab";
 import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
@@ -210,6 +210,7 @@ const ENCOUNTER_TAB_IDS = new Set([
   "results",
   "observation_summary",
   "clinical_timeline",
+  "command_timeline",
   "notes",
   "pathways",
   "history",
@@ -1087,6 +1088,7 @@ export default function EncounterDetailPage() {
             { id: "triage", label: t("encounterChrome.tabs.triage") },
             { id: "orders", label: t("encounterChrome.tabs.orders") },
             { id: "results", label: t("encounterChrome.tabs.results") },
+            { id: "command_timeline", label: t("encounterChrome.tabs.commandTimeline") },
             ...(observationWorkflowActive
               ? [
                   { id: "observation_summary", label: t("encounterChrome.tabs.observationSummary") },
@@ -1104,6 +1106,7 @@ export default function EncounterDetailPage() {
             { id: "orders", label: t("encounterChrome.tabs.orders") },
             ...(canFetchMarTab ? [{ id: "mar" as const, label: t("encounterChrome.tabs.mar") }] : []),
             { id: "results", label: t("encounterChrome.tabs.results") },
+            { id: "command_timeline", label: t("encounterChrome.tabs.commandTimeline") },
             ...(observationWorkflowActive
               ? [
                   { id: "observation_summary", label: t("encounterChrome.tabs.observationSummary") },
@@ -2272,12 +2275,24 @@ export default function EncounterDetailPage() {
               />
             </div>
           ) : null}
-          {activeTab === "clinical_timeline" && observationWorkflowActive ? (
+          {activeTab === "command_timeline" && facilityId ? (
             <div style={{ marginTop: 0 }}>
-              <ClinicalTimeline
+              <EnterpriseEncounterCommandTimeline
                 encounterId={encounterId}
                 facilityId={facilityId}
                 refreshToken={clinicalTimelineRefresh}
+              />
+            </div>
+          ) : null}
+          {activeTab === "clinical_timeline" && observationWorkflowActive ? (
+            <div style={{ marginTop: 0 }}>
+              <EnterpriseEncounterCommandTimeline
+                encounterId={encounterId}
+                facilityId={facilityId}
+                refreshToken={clinicalTimelineRefresh}
+                embedded
+                defaultViewMode="COMPACT"
+                limit={40}
               />
             </div>
           ) : null}
