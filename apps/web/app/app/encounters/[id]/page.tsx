@@ -3075,6 +3075,7 @@ export default function EncounterDetailPage() {
         defaultRole={observationReassessmentModalRole ?? "PROVIDER"}
         encounterId={encounterId}
         facilityId={facilityId}
+        encounterStatus={typeof encounter?.status === "string" ? encounter.status : null}
         onClose={() => setObservationReassessmentModalRole(null)}
         onSaved={refreshObservationClinicalSurfaces}
       />
@@ -3083,6 +3084,7 @@ export default function EncounterDetailPage() {
         open={showContinueObservationQuickModal}
         encounterId={encounterId}
         facilityId={facilityId}
+        encounterStatus={typeof encounter?.status === "string" ? encounter.status : null}
         onClose={() => setShowContinueObservationQuickModal(false)}
         onSaved={refreshObservationClinicalSurfaces}
       />
